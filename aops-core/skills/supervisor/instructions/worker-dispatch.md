@@ -17,10 +17,10 @@ Before pauli emits a `dispatch` verdict, she validates the task purely through P
 
 1. **Task ID:** The epic / subtask being dispatched.
 2. **Source repo:** Inferred from file paths the task names (file-path grep validates source repo).
-3. **Project:** Task's `project:` frontmatter MUST exist.
+3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
 4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
 
-**Halt conditions:** Any row is unknown, source repo cannot be inferred, `project` is missing/ambiguous, or dependencies are not met.
+**Halt conditions:** Any row is unknown, source repo cannot be inferred, `project` is missing and ancestors are ambiguous, or dependencies are not met.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
 ### 2. Pre-flight Confirmation Summary (Design / Spec / Research Tasks)
@@ -30,10 +30,10 @@ Before pauli emits a `dispatch` verdict, she validates the task purely through P
 
 1. **Task ID:** The epic / subtask being dispatched.
 2. **Output artefact location:** Canonical spec or reference doc the design edits will land in (taken from AC).
-3. **Project:** Task's `project:` frontmatter MUST exist.
+3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
 4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
 
-**Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing/ambiguous, or dependencies are not met.
+**Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, or dependencies are not met.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
 ### Existing PR Check
