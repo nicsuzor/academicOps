@@ -91,7 +91,7 @@ From [sender] to [recipients], [date]:
 [1 sentence summary of what this means / why it matters]
 
 - **[DECIDE]** → **Task**: [task-id] Task title (if user judgment/direction is needed)
-- **[CONFIRM]** → **Task**: [task-id] Draft reply ready: `<summary>`. Send? `[y/N]` (if drafted and awaiting confirmation)
+- **[CONFIRM]** → **Task**: [task-id] Draft reply ready: `<summary>`. [ ] send? (if drafted and awaiting confirmation)
 - **[FYI]** [ ] acknowledged (if visibility only, no action needed)
 
 ### [Single Email Topic]

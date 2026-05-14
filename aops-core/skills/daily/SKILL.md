@@ -240,7 +240,7 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 5. **Ambiguous cases**: When evidence exists but is ambiguous (partial subject match, PR closed but not merged), surface the task in the note under "Needs your call" within "What Needs Attention". Include the PR/email link. **Never auto-close ambiguous cases.**
 6. **Stale tasks**:
    - **Weekly Triage (>14d)**: If a task has been in `review` or `merge_ready` for more than 14 days with no evidence found, surface it weekly in the note under "Stale review/merge_ready" in Status with the prompt: `Still relevant? [unblock / archive / surface]`.
-   - **Auto-archive (>30d)**: If a task has been in `review` for more than 30 days with zero updates, auto-archive it. Call `mcp__pkb__update_task` to set `status="done"` and add the tag `auto-archived: stale-review`. Append an explanation to the task body. Do not surface these in the note as needing review, just log the auto-archive in the sweep summary.
+   - **Auto-archive (>30d)**: If a task has been in `review` or `merge_ready` for more than 30 days with zero updates (no status change, no tags added, no notes appended since entering that status), auto-archive it. Call `mcp__pkb__complete_task` with a note explaining the auto-archive (e.g., "Auto-archived: stale >30d in review/merge_ready with no updates") and add the tag `auto-archived: stale`. Do not surface these in the note as needing review, just log the auto-archive in the sweep summary.
 7. **Report summary**: Include a brief sweep summary in the Work Log section:
    - `N tasks auto-closed from merged PRs`
    - `N tasks auto-closed from sent emails`
