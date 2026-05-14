@@ -113,13 +113,6 @@ Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>`
 
 Marsha never dispatches, never edits, never files tasks. The supervisor consumes her verdict.
 
-## Prescription vs Trust (The Golden-Path-First Dispatch)
-
-This skill serves as the framework's worked example of the **prescription-vs-trust** principle.
-Previously, the supervisor pre-paid diagnostic cost by running a multi-gate preflight (SSH probes, `ping-pkb`, `tmux` checks) before every dispatch. This prescription bloat caused the supervisor to chase wrong blockers when the environment didn't match the prescribed probes exactly.
-
-**The trust thesis:** Modern polecat workers (Claude/Gemini) can read errors and recover. The supervisor dispatches on the golden path; the react phase pays the diagnostic cost _only_ when reality says it must (e.g. a worker fails with an exit code). Pre-paying diagnostic cost protects against agents that can't reflect, not against ones that can.
-
 ## Canonical Dispatch Template
 
 The supervisor main agent executes dispatch directly using this canonical shape. It does not probe the environment first.
