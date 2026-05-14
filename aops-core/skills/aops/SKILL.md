@@ -178,6 +178,7 @@ Route your task to the appropriate workflow:
 | **Unstick a blocked decision**            | [08-decision-briefing](workflows/08-decision-briefing.md)           |
 | **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
 | **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
+| **Resolve enforcer PR reviews**           | [12-enforcer-cba-fix](workflows/12-enforcer-cba-fix.md)             |
 
 ### Quick Decision Tree
 
