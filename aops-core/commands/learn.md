@@ -38,7 +38,7 @@ Agent(
 
 Context from user: <paste user's invocation context here — transcript path if specified, or omit for auto-select>
 
-Follow the retro mode workflow exactly: select transcript → read in full → identify structural and systemic findings (don't just list symptoms) → look for patterns across findings → for each finding produce facts + Root Cause Category + structural shape/rule context + an impact statement → file forensic issues (factual structural articulation is fine, but no remediation proposals) → stamp transcript → framework reflection.
+Follow the canonical retro mode workflow defined in aops-core/skills/survey/SKILL.md to produce forensic findings including Causal chain and Framework layer fields.
 
 **A17 (Recusal) — hard constraint**: /learn is the forensic phase. You are recused from proposing framework change motivated by the transcript you just read. What counts as forensic includes structural articulation ("design X is impossible because Y") but you may NOT propose how to fix it. Do NOT include "suggested axiom", "add a gate", "propose a mechanism", or any cost-ladder placement in the report or the filed issues. The detached judgment phase (sweep mode / /issue-sweep) reads your forensic report later, with no prior exposure to this incident, and is the only agent allowed to author rule changes. Recency is bias; the split is the discipline that prevents it.""",
   tools=[
