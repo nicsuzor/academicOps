@@ -40,7 +40,7 @@ The coordinator reads the review and creates a `fix-task` in the PKB. The task m
 With the task created, the coordinator dispatches the worker:
 
 ```bash
-polecat run -t <this-task-id> -p <project> -g --model gemini-3.1-pro-preview
+polecat run -t <this-task-id> -p <project> -g --model gemini-2.5-pro
 ```
 
 _(Ensure the correct `-p <project>` is passed, inheriting from the original PR's context)._
