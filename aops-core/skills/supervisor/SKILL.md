@@ -92,29 +92,7 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 **Pre-flight shape (Decision Tree)**:
 Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research variant if task `type` or `kind` is design/spec/research, OR if the AC indicates creating a new file/design doc/spec. Otherwise, use the Code/Edit variant.
 
-#### Variant A: Code / Edit Tasks (Default)
-
-**Inputs**: Task body, existing file paths.
-**Checks**:
-
-1. **Task ID:** The epic / subtask being dispatched.
-2. **Source repo:** Inferred from file paths the task names (file-path grep validates source repo).
-3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
-4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
-   **Halt conditions**: Any row is unknown, source repo cannot be inferred, `project` is missing and ancestors are ambiguous, or dependencies are not met.
-   **Dispatch line**: `dispatch <worker> on <task-id> in <project>`
-
-#### Variant B: Design / Spec / Research Tasks
-
-**Inputs**: Task body, Acceptance Criteria.
-**Checks**:
-
-1. **Task ID:** The epic / subtask being dispatched.
-2. **Output artefact location:** Canonical spec or reference doc the design edits will land in (taken from AC).
-3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
-4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
-   **Halt conditions**: Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, or dependencies are not met.
-   **Dispatch line**: `dispatch <worker> on <task-id> in <project>`
+The detailed validation protocol (inputs, checks, and halt conditions) for both **Code/Edit** and **Design/Research** variants is canonical at [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]].
 
 **Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
