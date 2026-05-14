@@ -4638,15 +4638,41 @@ def run(
             print("📝 Auto-finish disabled. Run `polecat finish` when ready.")
             print(f"   Worktree: {worktree_path}")
     else:
+        worktree_removed = False
         if exit_code == 137:
             if getattr(result, "watchdog_terminated", False):
                 print(_format_watchdog_terminated_message(task_id=task.id))
+                if not no_auto_finish:
+                    try:
+                        from polecat.pkb_bridge import get_task as pkb_get_task
+
+                        current_task = pkb_get_task(task.id)
+                        current_status = getattr(current_task, "status", None)
+                        if current_status in TERMINAL_PKB_STATUSES or current_status == "review":
+                            print(
+                                f"🔄 Task {task.id} is terminal ({current_status}). Nuking orphaned worktree..."
+                            )
+                            original_cwd = os.getcwd()
+                            # git worktree remove fails if cwd is inside the tree being removed
+                            os.chdir(Path.home())
+                            try:
+                                manager.nuke_worktree(task.id, force=True, allow_unpushed=False)
+                                print("✅ Orphaned worktree removed.")
+                                worktree_removed = True
+                            except Exception as e:
+                                print(f"⚠️  Could not GC worktree: {e}")
+                            finally:
+                                os.chdir(original_cwd)
+                    except Exception as e:
+                        print(f"⚠️  Failed to check task status for worktree GC: {e}")
             else:
                 print(_format_oom_message(env, daemon_mem))
         else:
             print(f"\n⚠️  Agent exited with code {exit_code}. Skipping auto-finish.")
-        print(f"   Worktree: {worktree_path}")
-        print(f"   To finish manually: cd {worktree_path} && polecat finish")
+
+        if not worktree_removed:
+            print(f"   Worktree: {worktree_path}")
+            print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
 try:
