@@ -41,7 +41,8 @@ def write_polecat_test_config(
     registry: dict = {
         "session_defaults": {
             "hooks_enabled": True,
-            "model": "claude-sonnet-4-6",
+            "claude_model": "claude-sonnet-4-6",
+            "gemini_model": "gemini-2.5-pro",
             "debug": False,
             "gates": {
                 "handover": "warn",

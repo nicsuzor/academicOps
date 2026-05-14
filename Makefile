@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini package-cowork install-cli install-crontab install-hooks nextver release prerelease clean build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini package-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -54,6 +54,10 @@ help:
 	@echo "  make prerelease     - Trigger testing build via GitHub Actions"
 	@echo "  make nextver        - Show next version number"
 	@echo "  make release        - Manually tag/push (prefer release-please PRs)"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make clean          - Remove dist/ and prune stale plugin cache"
+	@echo "  make clean-plugins  - Prune stale plugin cache versions + orphan manifests"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make build          - Build the aops crew worker image"
@@ -239,7 +243,19 @@ shell: build-docker
 
 # --- Utils ---
 
-clean:
+clean: clean-plugins
 	@echo "Cleaning artifacts..."
 	@rm -rf $(DIST_DIR)
 	@echo "✓ Cleaned"
+
+# Prune stale Claude plugin caches in both surfaces:
+#  1. CLI / `~/.claude/plugins/cache/` — keeps only versions referenced by
+#     installed_plugins.json; removes install manifests whose marketplace dir
+#     is gone.
+#  2. Desktop GUI app / `~/Library/Application Support/Claude/
+#     local-agent-mode-sessions/<account>/<surface>/rpm/` — force-removes
+#     aops-* entries from the rpm manifest and deletes their unpacked dirs.
+#     Use this when the GUI's "Uninstall plugin" button fails.
+clean-plugins:
+	@echo "Pruning stale Claude plugin cache versions..."
+	@python3 scripts/clean_plugins.py

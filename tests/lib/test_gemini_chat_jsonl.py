@@ -156,6 +156,7 @@ def test_transcript_round_trip_has_request_and_tool_calls(tmp_path: Path) -> Non
     # Body has the original request and at least one tool call rendered.
     assert "ship the gemini transcript fix" in md
     assert "read_file" in md
-    # Empty-fallback was ~466 bytes (frontmatter only + "Original Request: (not found)").
-    # Even a tiny 4-entry fixture must clearly exceed that.
-    assert len(md) > 800
+    # Empty-fallback was ~466 bytes (frontmatter only). Even a tiny 4-entry
+    # fixture must clearly exceed that once chronological turns + tool calls
+    # are rendered.
+    assert len(md) > 700

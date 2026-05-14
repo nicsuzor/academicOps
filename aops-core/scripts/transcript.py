@@ -248,6 +248,7 @@ def _save_minimal_token_summary(
     shortform: str | None = None,
     provider: str | None = None,
     session_path: Path | None = None,
+    origin_override: dict[str, str | None] | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -288,12 +289,15 @@ def _save_minimal_token_summary(
     # Infer surface/client/crew from the persisted session path. The live env
     # ($GITHUB_ACTIONS, $POLECAT_SESSION_TYPE, $POLECAT_CREW_NAME) is gone by
     # the time the offline converter runs, so without this overrides every
-    # GHA/crew/polecat summary mis-stamps `surface: claude-code-cli`.
-    origin = (
-        session_naming.infer_session_origin_from_path(session_path, provider=provider)
-        if session_path is not None
-        else {}
-    )
+    # GHA/crew/polecat summary mis-stamps `surface: claude-code-cli`. The
+    # caller may also pass origin_override when it has scanned the entries
+    # for a more specific signal (e.g. Claude Desktop LAM marker).
+    if origin_override is not None:
+        origin = origin_override
+    elif session_path is not None:
+        origin = session_naming.infer_session_origin_from_path(session_path, provider=provider)
+    else:
+        origin = {}
 
     # Build minimal insights with token_metrics
     insights = {
@@ -377,6 +381,7 @@ def _process_reflection(
     shortform: str | None = None,
     provider: str | None = None,
     session_path: Path | None = None,
+    origin_override: dict[str, str | None] | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -412,6 +417,7 @@ def _process_reflection(
                 shortform=shortform,
                 provider=provider,
                 session_path=session_path,
+                origin_override=origin_override,
             )
         return None, None
 
@@ -443,6 +449,7 @@ def _process_reflection(
                 timeline_events=timeline_events if i == len(reflections) - 1 else None,
                 provider=provider,
                 session_path=session_path,
+                origin_override=origin_override,
             )
         )
 
@@ -1180,6 +1187,19 @@ Examples:
                     elif ".claude/" in str(session_path):
                         session_summary.provider = "claude"
 
+                # Resolve launch surface/client. Path-based detection handles
+                # GHA / crew / polecat / Gemini; entry-content scan upgrades a
+                # bare claude-code-cli to claude-code-desktop when the JSONL
+                # references the Claude Desktop GUI's LAM plugin cache.
+                path_origin = session_naming.infer_session_origin_from_path(
+                    session_path, provider=session_summary.provider
+                )
+                session_origin = session_naming.infer_session_origin_from_entries(
+                    entries, path_origin
+                )
+                session_summary.surface = session_summary.surface or session_origin.get("surface")
+                session_summary.client = session_summary.client or session_origin.get("client")
+
                 # Check for meaningful content
                 MIN_MEANINGFUL_ENTRIES = 2
                 meaningful_count = sum(
@@ -1250,6 +1270,7 @@ Examples:
                     timeline_events,
                     provider=session_summary.provider,
                     session_path=session_path,
+                    origin_override=session_origin,
                 )
 
                 # Generate full version
@@ -1359,6 +1380,17 @@ Examples:
             elif ".claude/" in str(session_path):
                 session_summary.provider = "claude"
 
+        # Resolve launch surface/client. Path-based detection handles
+        # GHA / crew / polecat / Gemini; entry-content scan upgrades a
+        # bare claude-code-cli to claude-code-desktop when the JSONL
+        # references the Claude Desktop GUI's LAM plugin cache.
+        path_origin = session_naming.infer_session_origin_from_path(
+            session_path, provider=session_summary.provider
+        )
+        session_origin = session_naming.infer_session_origin_from_entries(entries, path_origin)
+        session_summary.surface = session_summary.surface or session_origin.get("surface")
+        session_summary.client = session_summary.client or session_origin.get("client")
+
         # Generate output base name
         output_dir = None
         base_name = None
@@ -1443,6 +1475,7 @@ Examples:
                 timeline_events,
                 provider=session_summary.provider,
                 session_path=session_path,
+                origin_override=session_origin,
             )
 
             # Generate transcripts and return
@@ -1560,6 +1593,7 @@ Examples:
             shortform=args.shortform,
             provider=session_summary.provider,
             session_path=session_path,
+            origin_override=session_origin,
         )
 
         # Generate full version

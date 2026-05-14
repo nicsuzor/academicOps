@@ -22,13 +22,13 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
 
     session_defaults:                         # applied to every session
         hooks_enabled: bool                   # legacy field, must be true (#940)
-        model: str                            # claude/gemini model id
+        claude_model: str                     # model id passed to `claude --model`
+        gemini_model: str                     # model id passed to `gemini --model`
         debug: bool                           # forwarded as DEBUG_HOOKS=1
         gates:
             handover: warn|block|off
             qa: warn|block|off
             enforcer: warn|block|off
-            commit: warn|block|off
             hydration: warn|block|off
             ida: warn|block|off            # Ida B. Wells reminder gate
             enforcer_threshold: int
@@ -67,7 +67,6 @@ class GatesConfig:
     handover: str
     qa: str
     enforcer: str
-    commit: str
     hydration: str
     ida: str
     enforcer_threshold: int
@@ -76,9 +75,18 @@ class GatesConfig:
 @dataclass(frozen=True)
 class SessionDefaults:
     hooks_enabled: bool
-    model: str
+    claude_model: str
+    gemini_model: str
     debug: bool
     gates: GatesConfig
+
+    def model_for(self, client: str) -> str:
+        """Return the model id for the given client (``claude`` or ``gemini``)."""
+        if client == "claude":
+            return self.claude_model
+        if client == "gemini":
+            return self.gemini_model
+        raise ValueError(f"unknown client: {client!r} (expected 'claude' or 'gemini')")
 
 
 @dataclass(frozen=True)
@@ -145,7 +153,7 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
                 raise ValueError(f"unsupported nested override: {key!r}")
             gates_patch[tail] = value
             continue
-        if key not in {"hooks_enabled", "model", "debug"}:
+        if key not in {"hooks_enabled", "claude_model", "gemini_model", "debug"}:
             raise ValueError(f"unknown override key: {key!r}")
         patch[key] = value
     if gates_patch:
@@ -161,7 +169,7 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
     are validated); False when loading the YAML (all keys required).
     """
     out: dict[str, Any] = {}
-    for name in ("handover", "qa", "enforcer", "commit", "hydration", "ida"):
+    for name in ("handover", "qa", "enforcer", "hydration", "ida"):
         if name in raw:
             raw_value = raw[name]
             # YAML 1.1 parses bare `off` / `on` as booleans. Translate False→"off"
@@ -198,7 +206,6 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
         "handover",
         "qa",
         "enforcer",
-        "commit",
         "hydration",
         "ida",
         "enforcer_threshold",
@@ -248,7 +255,8 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
     gates = GatesConfig(**_validate_gates(_require_mapping(sd_raw, "gates", cfg_path)))
     session_defaults = SessionDefaults(
         hooks_enabled=_require_bool(sd_raw, "hooks_enabled", cfg_path),
-        model=_require_str(sd_raw, "model", cfg_path),
+        claude_model=_require_str(sd_raw, "claude_model", cfg_path),
+        gemini_model=_require_str(sd_raw, "gemini_model", cfg_path),
         debug=_require_bool(sd_raw, "debug", cfg_path),
         gates=gates,
     )

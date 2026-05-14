@@ -154,7 +154,31 @@ The supervisor never silently substitutes a different **worker type**, **deliver
 
 **The ambiguity exception:** in-repo design ambiguity is not a halt. If the task is underspecified but the work stays inside the requested repository, the supervisor MUST NOT halt — it dispatches. Pauli writes a brief naming the ambiguity and pointing at a sensible default; the supervisor pastes it into the task body; the polecat investigates and either resolves it or opens a draft PR for review. Polecats are full-judgment agents — trust them to make in-repo design calls.
 
+### Keep the Pipe Flowing — Don't Micromanage Polecats
+
+Polecats are **smart agents, not mechanical drones**. The supervisor's job is throughput: claim → dispatch → next. It is NOT to:
+
+- Read every task body and design the implementation before firing.
+- Plan how the polecat should approach the work, what files to edit, or what tests to add.
+- Wait for one polecat to finish before firing the next.
+
+Bias hard toward dispatching. A queue of approved tasks gets fired one-per-tick in rapid succession, maintaining a small concurrency window. **Concurrency is the supervisor's discretion** — ramp up or down based on observed signals (quota events, infra failures, review-pipeline pressure). The user is not in a rush; under-shooting beats over-shooting.
+
+**"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
+
+**Discourage substantive supervisor work — including planning.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat. Polecats can plan and decompose; supervisor only owns decomposition when the user asks explicitly or a polecat returns a structured "needs decomposition" verdict. (See [[instructions/decomposition-and-review]] for the canonical phase split.)
+
+**Batched interruptions, not per-task.** When the supervisor genuinely cannot proceed on multiple items, collect them into ONE message (generic summary in the [ATTN] block, details in the epic body) — not one ping per blocker.
+
+The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes. Iterate.
+
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
+
+### Dispatch Is Supervisor Judgment — Not A Wrapper Or A Swarm
+
+Dispatch policy — _when_ to fire the next worker, _whether_ to pair two in flight, when to back off, when to halt — is **supervisor judgment**. It does not belong in a CLI flag, a shell wrapper (`~/bin/polecat-*.sh`), or a batched "swarm" abstraction. The dispatch CLI is documented at [[instructions/worker-dispatch#dispatch-protocol]] — exit code, `gh pr list`, and PKB status are the whole telemetry surface at the sequential N=2–4 regime [Reporting Posture](#reporting-posture) actually supports.
+
+**When a correction lands** ("stop building wrappers"), the lesson is **not** "encode the same policy into a different tool." The lesson is: this judgment lives in the supervisor loop. Do it in supervisor judgment, in bash, one call at a time, with PKB writes between. If pacing-the-pipe ever genuinely needs more, that is a SKILL.md change to discuss with the user — not a polecat feature request and not a wrapper.
 
 ### Engineering Integrity (A8) Is Non-Negotiable
 

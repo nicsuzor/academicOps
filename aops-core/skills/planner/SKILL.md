@@ -31,6 +31,11 @@ triggers:
   - "explore complexity"
   - "think through"
   - "let me think"
+  # wire mode
+  - "wire edges"
+  - "link to target"
+  - "contributes_to"
+  - "Renooij-Witteman"
   # maintain mode (from /garden + /densify)
   - "prune knowledge"
   - "consolidate notes"
@@ -190,6 +195,18 @@ Break validated epics into structured task trees.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
 11. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
 
+### Promotion gate: inbox → ready
+
+To promote a node from `inbox` to `ready`, you must produce all of the following. Missing any one means the node stays in `inbox`.
+
+1. **Subtask breakdown (or explicit "leaf" assertion)**: Either child nodes that cover the parent scope or an explicit "leaf" assertion in the parent body.
+2. **Project / source-location field, verified**: `project: <name>` on parent and children, matching CORE.md topology. Name at least one file or symbol the work will modify.
+3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
+4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
+5. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
+
+**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
+
 **Critical rules**:
 
 - Every subtask MUST have clear acceptance criteria. If you can't write AC, keep the step in the parent body instead of creating a hollow subtask.
@@ -237,6 +254,41 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 - Collaborative language: "What's your sense of...", "How does that connect to..."
 - Avoid prescriptive language: "You should...", "Best practice is..."
 - Let synthesis emerge naturally
+
+### wire
+Allowed tools: mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__update_task, mcp__pkb__get_semantic_neighbors, AskUserQuestion
+Interactive flow for densifying `contributes_to` edges on target nodes.
+
+**When**: "wire edges", "link to target", "contributes_to", "Renooij-Witteman"
+
+**Allowed tools**: `mcp__pkb__list_tasks`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__get_semantic_neighbors`, `AskUserQuestion`, `replace`
+3. Find Candidates: For the selected target, search for related tasks (status: ready/queued/in_progress) in the same project or semantically related. Filter out tasks that already have a contributes_to edge pointing to the target.
+**Workflow**:
+
+1. **List Targets**: Identify `type: target` nodes in the PKB.
+2. **Select Target**: Present targets to the user and ask which one to wire edges for.
+3. **Find Candidates**: For the selected target, search for related tasks (status: ready/queued/in_progress) in the same project or semantically related.
+4. **Iterate & Elicit**: For each candidate:
+   - Display candidate summary.
+   - Ask: "Does this task contribute to [Target]?"
+   - If yes:
+     - Ask for weight using the **Renooij-Witteman scale**:
+       (Impossible, Improbable, Uncertain, Fifty-Fifty, Expected, Probable, Certain)
+     - Ask for a one-sentence justification.
+     - Write the edge to the candidate's frontmatter.
+5. **Report**: Summarize edges added.
+
+**Weight Scale (Renooij-Witteman)**:
+
+- Certain: 1.0
+- Probable: 0.85
+- Expected: 0.75
+- Fifty-Fifty: 0.5
+- Uncertain: 0.25
+- Improbable: 0.15
+- Impossible: 0.0
+
+**Workflow files**: `aops-core/skills/planner/workflows/wire-edges.md`
 
 ### maintain
 
@@ -323,7 +375,37 @@ SEV4 targets with weak consequence prose (ADVISORY — heuristic):
 
 This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
 
-**Implementation note**: All three checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
+**Check 4 — Active SEV4-committed target concurrency**
+
+> Spec: §6 Q4. AC#4.
+
+Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and `status: active` (or any non-terminal status: `queued`, `ready`, `in_progress`). The cap is **2**. If `count > 2`, emit a warning.
+
+**Check 5 — Type/ID-prefix/Filename consistency**
+
+Find every task/epic/target/learn node where:
+
+1. The ID prefix does not match the type (e.g., `epic-` prefix with `type: task`).
+2. The filename stem does not match the ID (e.g., `task-123-title.md` instead of `task-123.md`).
+
+Prefix rules:
+
+- `epic-` -> `type: epic`
+- `task-` -> `type: task`
+- `bug-` -> `type: task` (classification bug)
+- `learn-` -> `type: learn`
+- `target-` -> `type: target`
+- `goal-` -> `type: target` (legacy)
+- Project slug (e.g., `aops-`) -> allowed for any type within that project.
+
+List as:
+
+```
+Type/ID/Filename mismatches (SURFACE):
+  - [task-id] [[Title]] — reason: <mismatch details>
+```
+
+**Implementation note**: All five checks read graph state via `list_tasks` / `pkb_context` / direct YAML inspection of frontmatter or `graph_json`. None call `update_task` or any write tool — they print and return. Run on demand when the user explicitly requests `Anti-inflation` (like any other named activity in the table above) or asks for graph hygiene.
 
 ### Data Quality Procedures (Dedup, Stale, Misclassification, Domain)
 

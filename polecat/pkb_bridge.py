@@ -332,6 +332,46 @@ def create_task(
     if "priority" not in params or params["priority"] is None:
         params["priority"] = 3
 
+    # Enforce type-prefix-filename consistency
+    task_id = params.get("id")
+    task_type = params.get("type", "task")
+    project = params.get("project")
+
+    if task_id:
+        # Well-known type prefixes
+        TYPE_PREFIXES = {
+            "epic": "epic",
+            "task": "task",
+            "learn": "learn",
+            "target": "target",
+            "goal": "target",  # legacy goal alias to target
+            "bug": "task",  # bug prefix implies type task
+        }
+
+        # Determine the prefix from the ID
+        prefix = task_id.split("-")[0] if "-" in task_id else task_id
+
+        # 1. If prefix is a known type prefix, it MUST match the intended type/classification
+        if prefix in TYPE_PREFIXES:
+            expected_type = TYPE_PREFIXES[prefix]
+            if prefix == "bug":
+                # bug prefix is only allowed for type task (with bug classification)
+                if task_type != "task":
+                    raise ValueError(
+                        f"ID prefix 'bug-' is only allowed for type 'task', got '{task_type}'"
+                    )
+            elif task_type != expected_type:
+                raise ValueError(
+                    f"ID prefix '{prefix}-' does not match type '{task_type}' (expected '{expected_type}')"
+                )
+        # 2. If it's not a known type prefix, it should likely be a project prefix.
+        # If project is provided, the ID must start with "{project}-" (handles hyphenated slugs).
+        elif project and not (task_id == project or task_id.startswith(f"{project}-")):
+            raise ValueError(
+                f"ID prefix '{prefix}-' does not match project '{project}'. "
+                f"Downstream consumers infer project from ID prefix; use '{project}-' or a type prefix."
+            )
+
     # Reject checklist items in body — they diverge from the subtask graph
     body = params.get("body", "")
     if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):

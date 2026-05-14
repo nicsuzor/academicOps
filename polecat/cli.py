@@ -33,6 +33,7 @@ from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from lib.session_naming import derive_polecat_session_id
 from manager import PolecatManager
+from observability import metrics
 from validation import TaskIDValidationError, validate_task_id_or_raise
 
 # In-container path for the staged polecat.yaml. Hooks running inside the
@@ -260,6 +261,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
 def _resolve_session_config(
     mode: str,
     *,
+    client: str,
     hooks_enabled: bool | None = None,
     model: str | None = None,
     debug: bool | None = None,
@@ -269,13 +271,25 @@ def _resolve_session_config(
 
     The full ``PolecatConfig`` is returned alongside the resolved session
     defaults so callers can also reach ``cfg.docker`` etc.
+
+    ``client`` is "claude", "gemini", or "shell" — used to route a CLI
+    ``--model`` override to the matching client field. ``--model`` with
+    ``client="shell"`` is rejected (interactive shell sessions don't run an
+    agent CLI).
     """
     cfg = load_polecat_config()
     overrides: dict[str, object] = {}
     if hooks_enabled is not None:
         overrides["hooks_enabled"] = hooks_enabled
     if model is not None:
-        overrides["model"] = model
+        if client == "claude":
+            overrides["claude_model"] = model
+        elif client == "gemini":
+            overrides["gemini_model"] = model
+        else:
+            raise click.UsageError(
+                f"--model has no effect for client={client!r}; drop the flag or pick claude/gemini"
+            )
     if debug is not None:
         overrides["debug"] = debug
     for entry in set_overrides:
@@ -1386,6 +1400,7 @@ def _pkb_termination_watchdog(
     task_id: str,
     cancel_event: threading.Event,
     fired_event: threading.Event | None = None,
+    bypass: bool = False,
 ) -> None:
     """Poll PKB for task terminal status; kill the container when reached.
 
@@ -1399,6 +1414,10 @@ def _pkb_termination_watchdog(
 
     ``cancel_event`` is set by the main thread when the CLI exits cleanly
     on its own; the watchdog then returns without killing anything.
+
+    If ``bypass`` is True (interactive or crew sessions), the watchdog logs
+    the terminal status but does NOT kill the container, as a user is
+    likely present.
     """
     try:
         from polecat.pkb_bridge import get_task as pkb_get_task
@@ -1435,19 +1454,38 @@ def _pkb_termination_watchdog(
 
         status = getattr(task, "status", None) if task is not None else None
         if status in TERMINAL_PKB_STATUSES:
+            if bypass:
+                print(
+                    f"   [termination watchdog] task {task_id} status={status!r}; "
+                    f"BYPASS: interactive/crew session — watchdog will NOT kill container.",
+                    file=sys.stderr,
+                )
+                metrics.record_watchdog_event(task_id, "bypass", status=status)
+                return
+
             print(
                 f"   [termination watchdog] task {task_id} status={status!r}; "
                 f"grace={grace_seconds}s before SIGTERM",
                 file=sys.stderr,
             )
+            metrics.record_watchdog_event(
+                task_id, "waiting", status=status, grace_seconds=grace_seconds
+            )
+
             # Grace period — respect cancellation so a natural exit wins.
             if cancel_event.wait(timeout=grace_seconds):
+                metrics.record_watchdog_event(task_id, "natural_exit", status=status)
                 return
+
             # Mark that the watchdog (not OOM, not user) is the cause of any
             # subsequent SIGKILL exit. Caller checks this to format the right
             # exit message — see `_format_watchdog_terminated_message`.
             if fired_event is not None:
                 fired_event.set()
+
+            metrics.record_watchdog_event(
+                task_id, "timeout", status=status, grace_seconds=grace_seconds
+            )
             try:
                 subprocess.run(
                     ["docker", "kill", "--signal=TERM", container_id],
@@ -1501,6 +1539,10 @@ def _run_docker_container(
     ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
+    # Bypass watchdog kills for interactive or crew sessions (user present)
+    _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
+    _is_interactive = any(arg in cmd for arg in ["-t", "--tty"])
+    _bypass = _is_crew or _is_interactive
 
     if not _is_remote_daemon():
         # Local: bind mounts already in cmd. Add --name for watchdog targeting.
@@ -1515,7 +1557,13 @@ def _run_docker_container(
             _watchdog_fired = threading.Event()
             _watchdog_thread = threading.Thread(
                 target=_pkb_termination_watchdog,
-                args=(container_name, task_id, _watchdog_cancel, _watchdog_fired),
+                args=(
+                    container_name,
+                    task_id,
+                    _watchdog_cancel,
+                    _watchdog_fired,
+                    _bypass,
+                ),
                 name=f"polecat-watchdog-{task_id}",
                 daemon=True,
             )
@@ -1664,7 +1712,7 @@ def _run_docker_container(
             watchdog_fired = threading.Event()
             watchdog_thread = threading.Thread(
                 target=_pkb_termination_watchdog,
-                args=(container_id, task_id, watchdog_cancel, watchdog_fired),
+                args=(container_id, task_id, watchdog_cancel, watchdog_fired, _bypass),
                 name=f"polecat-watchdog-{task_id}",
                 daemon=True,
             )
@@ -3492,14 +3540,16 @@ def crew(
     print(f"   Working dir: {work_dir}")
     cfg, session_cfg = _resolve_session_config(
         "crew",
+        client=cli_tool,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,
     )
+    _client_model = None if cli_tool == "shell" else session_cfg.model_for(cli_tool)
     print(
         "   Mode: "
         f"hooks_enabled={session_cfg.hooks_enabled}, "
-        f"model={session_cfg.model}, debug={session_cfg.debug}"
+        f"model={_client_model}, debug={session_cfg.debug}"
     )
     print(f"   Config: {cfg.source_path}")
     print("-" * 50)
@@ -3527,6 +3577,8 @@ def crew(
             [
                 "--include-directories",
                 "/home/worker/.gemini/extensions/aops-core",
+                "--model",
+                session_cfg.gemini_model,
             ]
         )
     else:
@@ -3539,7 +3591,7 @@ def crew(
             "--allow-dangerously-skip-permissions",
             "--setting-sources=user,project",
             "--model",
-            session_cfg.model,
+            session_cfg.claude_model,
         ]
 
     # Append any extra args passed after '--' to the agent command
@@ -4204,6 +4256,7 @@ def run(
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
         "run",
+        client=cli_tool,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,
@@ -4212,7 +4265,7 @@ def run(
     print(
         "   Mode: "
         f"hooks_enabled={session_cfg.hooks_enabled}, "
-        f"model={session_cfg.model}, debug={session_cfg.debug}"
+        f"model={session_cfg.model_for(cli_tool)}, debug={session_cfg.debug}"
     )
     print(f"   Config: {cfg.source_path}")
     print("-" * 50)
@@ -4234,6 +4287,8 @@ def run(
             "yolo",
             "--include-directories",
             "/home/worker/.gemini/extensions/aops-core",
+            "--model",
+            session_cfg.gemini_model,
         ]
 
         if interactive:
@@ -4258,7 +4313,7 @@ def run(
             "--dangerously-skip-permissions",
             "--setting-sources=user,project",
             "--model",
-            session_cfg.model,
+            session_cfg.claude_model,
         ]
 
         if interactive:

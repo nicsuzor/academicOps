@@ -79,7 +79,8 @@ def temp_polecat_home(tmp_path):
     config = {
         "session_defaults": {
             "hooks_enabled": True,
-            "model": "claude-sonnet-4-6",
+            "claude_model": "claude-sonnet-4-6",
+            "gemini_model": "gemini-2.5-pro",
             "debug": False,
             "gates": {
                 "handover": "warn",

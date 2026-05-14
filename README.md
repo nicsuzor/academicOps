@@ -110,6 +110,70 @@ GitHub is the coordination layer. PRs run through automated review before human 
 PR opened → lint + typecheck + tests → agent review → merge prep → human approval → merge
 ```
 
+## Features × Targets
+
+| Feature Category           |   Claude CLI    |  Desktop Code   |     Cowork      |   Gemini CLI    |   Antigravity   |     Polecat     |    MCP-only     |
+| :------------------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| **Skills: core (13)**      | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
+| **Skills: cowork ext (5)** | ? (unverified)  | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  |
+| **Skills: tools-only**     | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
+| **Slash commands**         | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✗ (unverified)  |
+| **Named agents**           | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
+| **Hooks (lifecycle)**      | ✅ (unverified) | ✅ (unverified) | ✗ (unverified)  | ✅ (unverified) | ✗ (unverified)  | ✗ (unverified)  | ✗ (unverified)  |
+| **Gates / classifiers**    | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  |
+| **MCP: PKB**               | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) |
+| **MCP: Outlook (omcp)**    | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
+| **MCP: Zotero (zotmcp)**   | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
+| **MCP: Discord**           | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
+| **MCP: computer-use**      | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  |
+| **Background jobs**        | ✗ (unverified)  | ✗ (unverified)  | ? (unverified)  | ✗ (unverified)  | ? (unverified)  | ✅ (unverified) | ✗ (unverified)  |
+
+**Legend**: ✅ Supported · ⚠ Partial · ✗ N/A · ? Unknown · (unverified) status: unverified
+
+### Per-target install
+
+#### Claude Code CLI
+
+```bash
+# Placeholder for T2
+```
+
+#### Claude Desktop Code
+
+```bash
+# Placeholder for T3
+```
+
+#### Claude Code Cowork
+
+```bash
+# Placeholder for T4
+```
+
+#### Gemini CLI
+
+```bash
+# Placeholder for T5
+```
+
+#### Antigravity
+
+```bash
+# Placeholder for T6
+```
+
+#### Polecat / GHA workers
+
+```bash
+# Placeholder for T7
+```
+
+#### Standalone MCP-only
+
+```bash
+# Placeholder for T8
+```
+
 ## Design principles
 
 1. **Qualitative over quantitative** — evaluate fitness-for-purpose, not compliance with templates

@@ -364,6 +364,113 @@ def infer_session_origin_from_path(
     return {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
 
 
+# Detection signals for a Claude Desktop GUI "Local Agent Mode" (LAM) session.
+# The desktop app caches plugins under
+# ~/Library/Application Support/Claude/local-agent-mode-sessions/ and the CLI
+# it shells out to writes its JSONL to ~/.claude/projects/<workspace>/ — same
+# place as a terminal launch — so the path itself tells us nothing. The LAM
+# path does leak into the JSONL via:
+#   1. The "Base directory for this skill: <path>" line injected as a
+#      system reminder when a /skill is invoked. This is software-emitted,
+#      not user-typable, so it is the highest-confidence signal.
+#   2. The `cwd` field claude-code stamps on each entry, which on LAM points
+#      into the desktop's session sandbox.
+# We deliberately do NOT scan plain user/assistant text for the path — users
+# can mention "local-agent-mode-sessions" in chat (as in this very session)
+# and that should not produce a false positive.
+_LAM_PATH_MARKER = "Library/Application Support/Claude/local-agent-mode-sessions"
+_LAM_SKILL_PREFIX = "Base directory for this skill: "
+
+
+def infer_session_origin_from_entries(
+    entries: list,
+    base_origin: dict[str, str | None] | None = None,
+    *,
+    max_scan: int = 50,
+) -> dict[str, str | None]:
+    """Upgrade an origin dict by scanning JSONL entries for Claude Desktop LAM.
+
+    Claude Code launched from inside Claude Desktop's "Local Agent Mode" writes
+    its JSONL to the same ``~/.claude/projects/...`` location as a terminal
+    launch, so :func:`infer_session_origin_from_path` cannot distinguish them.
+
+    Two high-confidence signals trigger an upgrade to
+    ``surface=claude-code-desktop`` / ``client=claude-desktop``:
+
+    1. ``entry.cwd`` contains the LAM plugin-cache path.
+    2. Any content text contains the software-injected skill-invocation
+       header ``"Base directory for this skill: ..."`` whose path includes
+       the LAM marker.
+
+    Plain conversational text mentioning the marker is intentionally ignored
+    — users can type the path into chat without it implying a LAM launch.
+
+    Crew/polecat/GHA path detection takes priority — if the path already
+    pinned a more specific surface, we leave it alone.
+    """
+    origin = (
+        dict(base_origin)
+        if base_origin
+        else {
+            "surface": "claude-code-cli",
+            "client": "claude-code",
+            "crew": None,
+        }
+    )
+
+    if origin.get("surface") != "claude-code-cli":
+        return origin
+
+    for entry in (entries or [])[:max_scan]:
+        if _entry_signals_lam(entry):
+            origin["surface"] = "claude-code-desktop"
+            origin["client"] = "claude-desktop"
+            return origin
+
+    return origin
+
+
+def _entry_signals_lam(entry) -> bool:
+    """True if an entry carries a high-confidence Claude Desktop LAM signal."""
+    cwd = getattr(entry, "cwd", None)
+    if isinstance(cwd, str) and _LAM_PATH_MARKER in cwd:
+        return True
+
+    for text in _iter_entry_text(entry):
+        idx = text.find(_LAM_SKILL_PREFIX)
+        if idx < 0:
+            continue
+        # The path follows the prefix on the same line; require the LAM
+        # marker to appear within a reasonable window so chat that quotes
+        # the prefix doesn't match a far-away mention by accident.
+        tail = text[idx : idx + 1024]
+        if _LAM_PATH_MARKER in tail:
+            return True
+    return False
+
+
+def _iter_entry_text(entry):
+    """Yield every text fragment carried by an entry's message content."""
+    msg = getattr(entry, "message", None)
+    content = msg.get("content") if isinstance(msg, dict) else None
+    if isinstance(content, str):
+        yield content
+        return
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict):
+                for key in ("text", "content", "input"):
+                    val = block.get(key)
+                    if isinstance(val, str):
+                        yield val
+                    elif isinstance(val, dict):
+                        for sub in val.values():
+                            if isinstance(sub, str):
+                                yield sub
+            elif isinstance(block, str):
+                yield block
+
+
 def _surface_with_provider(provider: str) -> str:
     """Internal: surface detection with an explicit provider value."""
     if os.environ.get("GITHUB_ACTIONS") == "true":

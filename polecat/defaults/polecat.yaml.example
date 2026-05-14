@@ -22,9 +22,11 @@ session_defaults:
   #            minimal claude-settings.json staged.
   hooks_enabled: true
 
-  # Default model for claude / gemini sessions. Per-session-type overlays
-  # below may override.
-  model: claude-sonnet-4-6
+  # Default models for each client. Per-session-type overlays below may
+  # override either field independently. The `--model` CLI flag overrides
+  # the entry for the active client (selected by `--gemini` / no flag).
+  claude_model: claude-sonnet-4-6
+  gemini_model: gemini-2.5-pro
 
   # Forwarded into containers as DEBUG_HOOKS=1 when true; the hook router
   # then dumps raw stdin to /tmp/cc_hooks_<slug>.jsonl.
@@ -35,7 +37,6 @@ session_defaults:
     handover: warn
     qa: warn
     enforcer: warn
-    commit: warn
     hydration: off
     ida: warn
     enforcer_threshold: 50
@@ -176,7 +177,7 @@ crew_names:
 #                             JSONL, gate files.
 #   AOPS_HOOK_LOG_PATH        Path to per-session hook JSONL.
 #   AOPS_GATE_FILE_<NAME>     Per-gate file path overrides (HANDOVER, QA,
-#                             ENFORCER, COMMIT, HYDRATION, IDA — six dynamic
+#                             ENFORCER, HYDRATION, IDA — five dynamic
 #                             names). Lets in-session hook invocations share
 #                             the same gate file.
 #   PYTHONPATH                Includes aops-core/ so hooks can import lib.*.
@@ -253,7 +254,7 @@ crew_names:
 #
 # ─── Removed (do not set; covered by the YAML above) ───────────────────────
 #
-#   HANDOVER_GATE_MODE, QA_GATE_MODE, ENFORCER_GATE_MODE, COMMIT_GATE_MODE,
+#   HANDOVER_GATE_MODE, QA_GATE_MODE, ENFORCER_GATE_MODE,
 #   HYDRATION_GATE_MODE, IDA_GATE_MODE   →  use `gates:` above.
 #   ENFORCER_TOOL_CALL_THRESHOLD          →  use `gates.enforcer_threshold`.
 #   ENFORCER_DISABLED                     →  use `gates.enforcer: off`.

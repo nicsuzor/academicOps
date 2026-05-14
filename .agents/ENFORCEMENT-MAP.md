@@ -156,6 +156,14 @@ through `aops-core/hooks/router.py`. Tier: `hint` = injected reminder,
 | `aca_data_autocommit` | PostToolUse      | `aops-core/hooks/router.py` `_run_aca_data_autocommit`  | (procedural: keep PKB synced)                     | When `$ACA_DATA` set                  | n/a     | L2 · ~100ms wall-clock × per write op                       | Auto-commits `$ACA_DATA` after state-modifying tool calls                |
 | `context-map hints`   | UserPromptSubmit | `aops-core/hooks/router.py` `_inject_context_map_hints` | (procedural: discovery via `.agents/context-map`) | Repos with `.agents/context-map.json` | `hint`  | L1 · ~50–200 tok × per prompt                               | Injects relevant doc pointers from the repo's context map                |
 
+## Retired runtime hooks
+
+Gates that were defined in config infrastructure but have since been removed.
+
+| Mechanism      | Retired in  | Notes                                                                                                                              |
+| -------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `commit` gate  | PR #988     | Config key only — never implemented in `gates/definitions.py` and never registered here. Superseded by `handover` gate (Stop hook already mandates commit before Stop). |
+
 ## Pre-commit hooks
 
 | Hook ID                     | Script                                 | Rule(s)                    | Tier   | Cost / Impact               | Behaviour                                                                                                                                               |
@@ -175,3 +183,11 @@ listed cost is the cold-start contribution.
 | Directive   | Source                                                    | Rule(s)                           | Scope            | Tier   | Cost / Impact                           | Behaviour                                               |
 | ----------- | --------------------------------------------------------- | --------------------------------- | ---------------- | ------ | --------------------------------------- | ------------------------------------------------------- |
 | `pkb-first` | `.agents/CORE.md` — "Where to find documentation" section | (procedural: PKB-first discovery) | academicOps repo | `hint` | L1 · ~120 tok at session start (cached) | Instructs agents to use PKB before reading source code. |
+
+## Bridge-level constraints
+
+Synchronous validation in library/bridge code that fires at call time, not via the hook router. Not session hooks — fire whenever the underlying function is invoked (MCP call, direct import, or CLI).
+
+| Mechanism | Source | Rule(s) | Scope | Tier | Cost / Impact | Behaviour |
+| --------- | ------ | -------- | ----- | ---- | ------------- | --------- |
+| `create_task` prefix guard | `polecat/pkb_bridge.py` | type-prefix-filename consistency (spec: `projects/aops/specs/pkb/consistency.md` AC#5) | All `create_task` calls via PKB bridge | `block` | L2 · negligible (string match × each call) | Raises `ValueError` when ID prefix mismatches the task type or project slug |
