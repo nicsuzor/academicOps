@@ -32,6 +32,8 @@ Location: `$ACA_DATA/daily/YYYYMMDD-daily.md`
 
 **Do not backfill yesterday's narrative into today's note.** When `/daily` runs in the morning and today has no session activity yet, the work date for any narrative you generate is _yesterday_ (or earlier) — and that narrative must land in _yesterday's_ note, not today's. Today's note gets the empty-morning treatment: omit `## Today's Log` entirely, leave Work Log with "No PRs merged yet today". The most common failure mode of this skill is writing yesterday's PR-merge wave into today's note while mislabelling the day-of-week — guard against it explicitly.
 
+**But when today HAS session activity, render `## Today's Log` in Morning Timeline mode** — a chronological narrative anchored on the user's verbatim prompts that answers "what was I just trying to do?" for a user returning to their desk after a context switch. See [[instructions/morning-timeline]]. This is the most useful artefact in a mid-day `/daily` and must not be skipped because the day isn't over.
+
 ## Purpose
 
 The daily note answers two questions for a knowledge worker returning to their desk:
@@ -130,19 +132,21 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 ### 4. Today's Log
 
-An editorial synthesis of the day's work. Not a transcript, not an audit log, not a table of sessions — the 100x summary a skilled chief of staff would write for someone who was in the chair but wants the shape of the day in one read.
+Narrative of the day's work. The shape and depth depend on **when** `/daily` runs relative to the work day:
 
-**Empty-morning rule**: If the work date has no sessions yet (typical morning run), omit this section entirely.
+- **In-flight day (Morning Timeline mode)** — the work date has interactive sessions but no end-of-day reflection yet. Render a **chronological timeline anchored on the user's verbatim prompts**, one outcome line each, closing with a 1–2 sentence "what you were trying to do" synthesis that names the through-line and any blocker that ate time. The reader is the user returning to their desk after a context switch and wanting to remember what they were just doing. See [[instructions/morning-timeline]].
+- **Closed day (Work Summary mode)** — end-of-day reflection has fired (a `## Framework Reflection` block exists in the note, or the user invoked `/end-session` / `/dump`). Render the **editorial synthesis**: a brief narrative of the shape of the day, threads that moved or stalled, patterns across sessions, with proportional detail. See [[instructions/work-summary]].
+- **Empty-morning (omit)** — no interactive sessions for the work date yet. Omit `## Today's Log` entirely.
 
-**What this section IS**: A brief narrative that captures the shape of the day. Which threads moved. Which stalled. Which dropped. What the autonomous runs produced. Patterns across sessions or across days. Real work disproportionately named; noise folded into clauses or omitted entirely.
+Mode selection happens automatically — see the decision matrix in [[instructions/morning-timeline]] §"When to render".
 
-**What this section IS NOT**:
+**What this section IS NOT**, in either mode:
 
 - A prioritisation of what to do next — that belongs in §Status and the user's own `### My priorities`.
 - A row-for-row rendering of session summaries — the collapsed Work Log carries only provenance (merged PRs, completed tasks), and even there we do not duplicate this narrative.
-- A verdict on the day ("research day", "infrastructure day") framed as praise or criticism — you can describe what happened in those terms factually; you cannot weight one category over another.
+- A verdict on the day ("research day", "infrastructure day", "productive morning", "wasted hours") framed as praise or criticism — you can describe what happened in those terms factually; you cannot weight one category over another.
 
-**The agent is trusted to choose what to surface and how.** No prescribed sub-structure (no required "Interactive / Dispatched / Autonomous" blocks, no enforced chronology). Pick the form that fits this day — by thread, by project, by significance of outcome, chronologically — and commit. See [[instructions/work-summary]] for the full editorial brief.
+**The agent is trusted to choose what to surface and how within the chosen mode.** Morning Timeline mode is strictly chronological and verbatim-quote-anchored — chronology IS the structure. Work Summary mode has no prescribed sub-structure; pick the form that fits the day.
 
 ### 5. Work Log
 
@@ -209,7 +213,11 @@ The skill gathers information from multiple sources and composes the note. Indep
 **Steps 4–6 — run in parallel** (independent; each reads from different data sources):
 
 4. **Build Status** — load task summary, deadline list, calendar. See [[instructions/status-snapshot]].
-5. **Sync progress** — session JSONs, merged PRs, task completions → Work Log + Today's Log. See [[instructions/progress-sync]].
+5. **Sync progress + render Today's Log** — session JSONs, merged PRs, task completions → Work Log; then render `## Today's Log` in the appropriate mode:
+   - In-flight day with interactive sessions → **Morning Timeline** (verbatim-prompt-anchored chronology). See [[instructions/morning-timeline]].
+   - End-of-day reflection already fired → **Work Summary** (editorial synthesis). See [[instructions/work-summary]].
+   - Empty morning → omit the section.
+     See [[instructions/progress-sync]] for session JSON loading shared by both modes.
 6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]].
 
 7. **Task completion sweep** — close tasks whose completion is evidenced by merged PRs or sent emails (see below).
