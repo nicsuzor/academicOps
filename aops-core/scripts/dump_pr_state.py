@@ -104,7 +104,8 @@ def _project_pr(pr: dict, *, is_open: bool) -> dict:
 
 
 def apply_triage(pr: dict, repo_path: Path):
-    labels = [lbl.get("name") for lbl in pr.get("labels", []) if isinstance(lbl, dict)]
+    raw_names = [lbl.get("name") for lbl in pr.get("labels", []) if isinstance(lbl, dict)]
+    labels: list[str] = [n for n in raw_names if isinstance(n, str)]
     existing_triage_labels = [lbl for lbl in labels if lbl.startswith("triage:")]
 
     new_label = None
@@ -126,70 +127,53 @@ def apply_triage(pr: dict, repo_path: Path):
     ]
 
     branch = pr.get("headRefName", "")
-    author = pr.get("author", {})
-    login = author.get("login", "")
-
-    files = pr.get("files", [])
-    is_doc_only = bool(files) and all(
-        isinstance(f, dict) and f.get("path", "").endswith((".md", ".txt")) for f in files
-    )
-
-    body = pr.get("body", "").lower()
+    login = pr.get("author", {}).get("login", "")
 
     if mergeable == "CONFLICTING" or failed_checks:
         new_label = "triage:escalate"
     elif is_stale and not is_draft:
         new_label = "triage:stale"
-    elif (
-        branch.startswith("release")
-        or author.get("is_bot")
-        or login in ("app/github-actions", "github-actions[bot]")
-    ):
+    elif branch.startswith("release") or login in ("app/github-actions", "github-actions[bot]"):
         new_label = "triage:auto-mergeable"
-    elif is_doc_only:
-        new_label = "triage:auto-mergeable"
-    elif "security" in body or "axiom" in body:
-        new_label = "triage:needs-judgment"
     else:
         new_label = "triage:needs-judgment"
 
     if new_label and new_label not in existing_triage_labels:
-        try:
-            cmd = ["gh", "pr", "edit", str(pr["number"]), "--add-label", new_label]
-            if existing_triage_labels:
-                cmd.extend(["--remove-label", ",".join(existing_triage_labels)])
-            subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True)
+        cmd = ["gh", "pr", "edit", str(pr["number"]), "--add-label", new_label]
+        if existing_triage_labels:
+            cmd.extend(["--remove-label", ",".join(existing_triage_labels)])
+        subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True)
 
-            if new_label == "triage:escalate":
-                search_cmd = [
-                    "gh",
-                    "issue",
-                    "list",
-                    "--search",
-                    f"PR #{pr['number']} in:title",
-                    "--json",
-                    "number",
-                    "--limit",
-                    "1",
-                ]
-                res = subprocess.run(search_cmd, cwd=repo_path, capture_output=True, text=True)
-                issues = json.loads(res.stdout) if res.stdout.strip() else []
-                if not issues:
-                    title = f"[Action Required] PR #{pr['number']} needs manual fix"
-                    reason = (
-                        "Failing CI checks: " + ", ".join(failed_checks)
-                        if failed_checks
-                        else "Merge conflicts detected."
-                    )
-                    issue_body = f"PR #{pr['number']} ({pr['url']}) has conflicting CI or merge conflicts and requires manual intervention.\n\n**Reason**: {reason}"
-                    subprocess.run(
-                        ["gh", "issue", "create", "--title", title, "--body", issue_body],
-                        cwd=repo_path,
-                        capture_output=True,
-                        check=True,
-                    )
-        except Exception as e:
-            print(f"Error applying triage to PR {pr['number']}: {e}", file=sys.stderr)
+        if new_label == "triage:escalate":
+            search_cmd = [
+                "gh",
+                "issue",
+                "list",
+                "--search",
+                f"PR #{pr['number']} in:title",
+                "--json",
+                "number",
+                "--limit",
+                "1",
+            ]
+            res = subprocess.run(
+                search_cmd, cwd=repo_path, capture_output=True, text=True, check=True
+            )
+            issues = json.loads(res.stdout) if res.stdout.strip() else []
+            if not issues:
+                title = f"[Action Required] PR #{pr['number']} needs manual fix"
+                reason = (
+                    "Failing CI checks: " + ", ".join(failed_checks)
+                    if failed_checks
+                    else "Merge conflicts detected."
+                )
+                issue_body = f"PR #{pr['number']} ({pr['url']}) has conflicting CI or merge conflicts and requires manual intervention.\n\n**Reason**: {reason}"
+                subprocess.run(
+                    ["gh", "issue", "create", "--title", title, "--body", issue_body],
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=True,
+                )
 
 
 def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = None) -> list:
