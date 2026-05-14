@@ -8,10 +8,6 @@ Update daily note from session JSON files and narrative path reconstruction.
 
 Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
 
-> **Note**: The `polecat sweep` shell command was removed (see task-9fa50763) because the supervisor agent loop already handles PR-state transitions in-band via `gh pr view` + Monitor. Run the agent-side sweep below directly.
-
-**Agent-side sweep** (SSoT: SKILL.md Step 7):
-
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID).
 3. For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries).
@@ -20,17 +16,9 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 6. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
 7. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
-**Steps 4.1, 4.1.5, 4.2, and 4.2.5 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
-
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
-Instead of a mechanical table, build a narrative timeline of the day's work using the `show_path.py` script. This helps the user recover context and identify "where they are" in the day's story.
-
-```bash
-uv run python3 aops-core/scripts/show_path.py --hours 24
-```
-
-**Use as an input to the editorial synthesis**, not as a section to render verbatim. The path output helps you see the threads of work per project — what was started, what was finished, what was claimed — so the Today's Log narrative can name them. There is no standalone `## Session Timeline` or `## Today's Path` section in the daily note; the synthesis absorbs these signals.
+Build a narrative timeline of the day's work. Create an **editorial synthesis**, not a standalone `## Session Timeline` or `## Today's Path` section in the daily note. Help the reader see the threads of work per project — what was started, what was finished, what was claimed. This helps the user recover context and identify "where they are" in the day's story.
 
 ### Step 4.1.5: Load Closure History
 
@@ -122,12 +110,6 @@ _N PRs merged today across M repos_
 **Empty state**: If no PRs merged today across all repos: "No PRs merged today."
 
 **Error handling**: If `gh` CLI is unavailable or authentication fails for a repo, note it inline and continue to the next repo.
-
-### Step 4.2.6: (retired — moved to Outstanding Workflows)
-
-Open PR handling lives in `## What Needs Attention / Outstanding Workflows` only. See [[instructions/workflow-monitor]] Step 6 for the bucketing rules (Ready to merge, Needs review, Needs fixes, Stale, Draft/autonomous), the `gh pr list` query, and the decision-oriented formatting. The Work Log does not carry a parallel Open PRs table.
-
-When composing the Outstanding Workflows subsection, the agent may apply the PR-action classification heuristics below inline (e.g., note "fix type check + conflicts" next to the PR in its bucket) rather than in a separate table.
 
 ### Step 4.2.7: PR Action Pipeline
 
