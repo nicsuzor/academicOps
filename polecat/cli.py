@@ -4269,6 +4269,8 @@ def run(
             "yolo",
             "--include-directories",
             "/home/worker/.gemini/extensions/aops-core",
+            "--model",
+            session_cfg.model,
         ]
 
         if interactive:
