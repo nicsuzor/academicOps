@@ -27,14 +27,17 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import click
 from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from lib.session_naming import derive_polecat_session_id
-from manager import PolecatManager
-from observability import metrics
-from validation import TaskIDValidationError, validate_task_id_or_raise
+
+from polecat.manager import PolecatManager
+from polecat.observability import metrics
+from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 
 # In-container path for the staged polecat.yaml. Hooks running inside the
 # container read AOPS_POLECAT_CONFIG (set by ``_build_docker_cmd``) to resolve
