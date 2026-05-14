@@ -8,18 +8,18 @@ import urllib.error
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from polecat.observability import metrics
-from polecat.validation import validate_task_id_or_raise
-
-# Add aops-core to path for lib imports
+# Add aops-core and repo root to path for lib and polecat package imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
 REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT / "aops-core") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+import yaml
+
+from polecat.observability import metrics
+from polecat.validation import validate_task_id_or_raise
 
 # lib.task_storage and lib.task_model are deprecated and removed.
 # Task management has migrated to the PKB MCP server (nicsuzor/mem).
