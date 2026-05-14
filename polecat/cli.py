@@ -261,6 +261,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
 def _resolve_session_config(
     mode: str,
     *,
+    client: str,
     hooks_enabled: bool | None = None,
     model: str | None = None,
     debug: bool | None = None,
@@ -270,13 +271,25 @@ def _resolve_session_config(
 
     The full ``PolecatConfig`` is returned alongside the resolved session
     defaults so callers can also reach ``cfg.docker`` etc.
+
+    ``client`` is "claude", "gemini", or "shell" — used to route a CLI
+    ``--model`` override to the matching client field. ``--model`` with
+    ``client="shell"`` is rejected (interactive shell sessions don't run an
+    agent CLI).
     """
     cfg = load_polecat_config()
     overrides: dict[str, object] = {}
     if hooks_enabled is not None:
         overrides["hooks_enabled"] = hooks_enabled
     if model is not None:
-        overrides["model"] = model
+        if client == "claude":
+            overrides["claude_model"] = model
+        elif client == "gemini":
+            overrides["gemini_model"] = model
+        else:
+            raise click.UsageError(
+                f"--model has no effect for client={client!r}; drop the flag or pick claude/gemini"
+            )
     if debug is not None:
         overrides["debug"] = debug
     for entry in set_overrides:
@@ -3527,14 +3540,16 @@ def crew(
     print(f"   Working dir: {work_dir}")
     cfg, session_cfg = _resolve_session_config(
         "crew",
+        client=cli_tool,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,
     )
+    _client_model = None if cli_tool == "shell" else session_cfg.model_for(cli_tool)
     print(
         "   Mode: "
         f"hooks_enabled={session_cfg.hooks_enabled}, "
-        f"model={session_cfg.model}, debug={session_cfg.debug}"
+        f"model={_client_model}, debug={session_cfg.debug}"
     )
     print(f"   Config: {cfg.source_path}")
     print("-" * 50)
@@ -3562,6 +3577,8 @@ def crew(
             [
                 "--include-directories",
                 "/home/worker/.gemini/extensions/aops-core",
+                "--model",
+                session_cfg.gemini_model,
             ]
         )
     else:
@@ -3574,7 +3591,7 @@ def crew(
             "--allow-dangerously-skip-permissions",
             "--setting-sources=user,project",
             "--model",
-            session_cfg.model,
+            session_cfg.claude_model,
         ]
 
     # Append any extra args passed after '--' to the agent command
@@ -4239,6 +4256,7 @@ def run(
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
         "run",
+        client=cli_tool,
         model=model,
         debug=debug_flag,
         set_overrides=set_overrides,
@@ -4247,7 +4265,7 @@ def run(
     print(
         "   Mode: "
         f"hooks_enabled={session_cfg.hooks_enabled}, "
-        f"model={session_cfg.model}, debug={session_cfg.debug}"
+        f"model={session_cfg.model_for(cli_tool)}, debug={session_cfg.debug}"
     )
     print(f"   Config: {cfg.source_path}")
     print("-" * 50)
@@ -4270,7 +4288,7 @@ def run(
             "--include-directories",
             "/home/worker/.gemini/extensions/aops-core",
             "--model",
-            session_cfg.model,
+            session_cfg.gemini_model,
         ]
 
         if interactive:
@@ -4295,7 +4313,7 @@ def run(
             "--dangerously-skip-permissions",
             "--setting-sources=user,project",
             "--model",
-            session_cfg.model,
+            session_cfg.claude_model,
         ]
 
         if interactive:

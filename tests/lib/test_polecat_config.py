@@ -17,7 +17,8 @@ CANONICAL_YAML = dedent(
     """
     session_defaults:
       hooks_enabled: true
-      model: claude-sonnet-4-6
+      claude_model: claude-sonnet-4-6
+      gemini_model: gemini-2.5-pro
       debug: false
       gates:
         handover: warn
@@ -52,7 +53,10 @@ def test_load_canonical(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
     assert isinstance(cfg, PolecatConfig)
     assert cfg.session_defaults.hooks_enabled is True
-    assert cfg.session_defaults.model == "claude-sonnet-4-6"
+    assert cfg.session_defaults.claude_model == "claude-sonnet-4-6"
+    assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
+    assert cfg.session_defaults.model_for("claude") == "claude-sonnet-4-6"
+    assert cfg.session_defaults.model_for("gemini") == "gemini-2.5-pro"
     assert cfg.session_defaults.debug is False
     assert cfg.session_defaults.gates.handover == "warn"
     assert cfg.session_defaults.gates.hydration == "off"
@@ -66,16 +70,26 @@ def test_for_mode_crew_overlays_hooks(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
     crew = cfg.for_mode("crew")
     assert crew.hooks_enabled is False
-    assert crew.model == "claude-sonnet-4-6"  # inherited
+    assert crew.claude_model == "claude-sonnet-4-6"  # inherited
+    assert crew.gemini_model == "gemini-2.5-pro"  # inherited
     run = cfg.for_mode("run")
     assert run.hooks_enabled is True  # falls through to session_defaults
 
 
 def test_overrides_via_with_overrides(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
-    overridden = cfg.with_overrides("crew", {"hooks_enabled": True, "model": "opus"})
+    overridden = cfg.with_overrides(
+        "crew", {"hooks_enabled": True, "claude_model": "opus", "gemini_model": "flash"}
+    )
     assert overridden.hooks_enabled is True
-    assert overridden.model == "opus"
+    assert overridden.claude_model == "opus"
+    assert overridden.gemini_model == "flash"
+
+
+def test_model_for_rejects_unknown_client(cfg_path: Path) -> None:
+    cfg = load_polecat_config(cfg_path)
+    with pytest.raises(ValueError, match="unknown client"):
+        cfg.session_defaults.model_for("openai")
 
 
 def test_overrides_supports_dotted_gates_key(cfg_path: Path) -> None:
@@ -110,7 +124,8 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
             """
             session_defaults:
               hooks_enabled: true
-              model: foo
+              claude_model: foo
+              gemini_model: bar
               debug: false
               gates:
                 handover: warn
@@ -159,7 +174,8 @@ def test_aops_sessions_default(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions))
     monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
     cfg = load_polecat_config()
-    assert cfg.session_defaults.model == "claude-sonnet-4-6"
+    assert cfg.session_defaults.claude_model == "claude-sonnet-4-6"
+    assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
 
 
 def test_unset_env_hard_fails(monkeypatch) -> None:
