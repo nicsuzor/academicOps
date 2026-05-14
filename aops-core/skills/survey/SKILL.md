@@ -110,7 +110,7 @@ Read(file_path="<path>", offset=500, limit=500)
 
 Evaluate the transcript critically. We are aiming for EXCELLENCE, not "running code".
 
-Rather than prescribing a mandatory list of lenses or enforcing independent findings, you are trusted to find what matters. Read the transcript. Find what's worth fixing. Write it up however makes most sense. Flag your own biases.
+You are trusted to find what matters. Read the transcript. Find what's worth fixing. Write it up however makes most sense. Flag your own biases.
 
 - **Look for structural causes**: If you find yourself listing the same proximate cause across multiple findings, the deeper cause is upstream. Say so explicitly. Instead of listing four separate errors, articulate the structural mis-design that caused them.
 - **Is the shape right?**: Instead of just asking "what went wrong against the framework as-is", ask "is the framework's shape correct?"
