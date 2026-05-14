@@ -78,7 +78,8 @@ def _stage_gate_modes_yaml(tmp_path, **modes) -> Path:
     body = """
 session_defaults:
   hooks_enabled: true
-  model: claude-sonnet-4-6
+  claude_model: claude-sonnet-4-6
+  gemini_model: gemini-2.5-pro
   debug: false
   gates:
     handover: "{handover}"

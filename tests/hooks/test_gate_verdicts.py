@@ -122,7 +122,8 @@ def _write_polecat_yaml_with_gate_modes(
     body = f"""
 session_defaults:
   hooks_enabled: true
-  model: claude-sonnet-4-6
+  claude_model: claude-sonnet-4-6
+  gemini_model: gemini-2.5-pro
   debug: false
   gates:
     handover: "{handover}"
