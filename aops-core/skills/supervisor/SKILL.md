@@ -70,7 +70,7 @@ That is the whole loop. The next tick fires 30 minutes later with a fresh contex
 
 The main agent reads structured verdicts and acts. It does **not**:
 
-- inspect work — task bodies, PR diffs, transcripts, repo scans, polecat output, pre-flight probes (`ssh`, `polecat ping-pkb`, etc.). Pauli reads PKB; marsha reads runtime artifacts; the supervisor only reads the epic body.
+- run proactive pre-dispatch probes (`ssh`, `polecat ping-pkb`, etc.) or inspect work — task bodies, PR diffs, transcripts, repo scans, polecat output. Pauli reads PKB; marsha reads runtime artifacts; the supervisor only reads the epic body. (This prohibition is on proactive pre-flight gates; reactive A7 capability checks before asserting incapability — `gh auth status`, `which gemini` — are not pre-dispatch probes and remain required per [A7 Edge 2](#a7-edge-2-act-on-delegated-agent-verdicts).)
 - author fixes — code edits, test edits, "the fix is X" prose. Fix decisions are pauli's.
 - persist state outside the epic body (no local JSON, no Stop-hook files). See [The Task File Is the Only State](#the-task-file-is-the-only-state).
 - prompt the user on a decision with a defensible default — take the default, report. User attention only per [Reporting Posture](#reporting-posture).
@@ -87,9 +87,9 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Brief shape:** epic ID + role (`preflight` | `react`) + (for `react`) one-line context (work item ID, exit signal).
 
-**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[WORKERS.md]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell, probe hosts, or test capabilities — she has no Bash tool.
+**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[WORKERS.md]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
 
-**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
 
