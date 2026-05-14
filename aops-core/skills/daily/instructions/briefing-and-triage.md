@@ -80,7 +80,7 @@ The `/email` skill returns:
 **Format in briefing**:
 
 ```markdown
-## FYI
+## FYI / Inbox
 
 ### [Thread Topic]
 
@@ -90,8 +90,9 @@ From [sender] to [recipients], [date]:
 
 [1 sentence summary of what this means / why it matters]
 
-- **→ Task**: [task-id] Task title (if action required)
-- [ ] acknowledged
+- **[DECIDE]** → **Task**: [task-id] Task title (if user judgment/direction is needed)
+- **[CONFIRM]** → **Task**: [task-id] Draft reply ready: `<summary>`. [ ] send? (if drafted and awaiting confirmation)
+- **[FYI]** [ ] acknowledged (if visibility only, no action needed)
 
 ### [Single Email Topic]
 
@@ -99,7 +100,7 @@ From [sender], [date]:
 
 > [Actual email content — verbatim, not summarised]
 
-- [ ] acknowledged
+- **[FYI]** [ ] acknowledged
 ```
 
 **Acknowledged checkbox**: Every FYI item ends with a `- [ ] acknowledged` line. Users tick it in their editor once they've read the item; this lets the item stay in the note as context without it continuing to feel unread. Ticks survive regeneration (bidirectional contract — agent regenerates above user edits).
