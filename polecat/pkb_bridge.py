@@ -24,7 +24,7 @@ class PkbTask:
     """Duck-types the task attributes needed by polecat commands."""
 
     def __init__(self, data: dict[str, Any]):
-        fm = data.get("frontmatter", {})
+        fm = data.get("frontmatter") or {}
         self.id: str = fm.get("id") or data.get("id", "")
         self.title: str = fm.get("title") or data.get("title", "")
         self.body: str = data.get("body", "")
