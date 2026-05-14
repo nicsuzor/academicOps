@@ -8,10 +8,6 @@ Update daily note from session JSON files and narrative path reconstruction.
 
 Before syncing progress, run a sweep of tasks in `merge_ready` and `review` status to synchronize with external signals (merged PRs, sent emails). This ensures the task graph accurately reflects completed, blocked, or stale work.
 
-> **Note**: The `polecat sweep` shell command was removed (see task-9fa50763) because the supervisor agent loop already handles PR-state transitions in-band via `gh pr view` + Monitor. Run the agent-side sweep below directly.
-
-**Agent-side sweep** (SSoT: SKILL.md Step 7):
-
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID).
 3. For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries).
@@ -19,8 +15,6 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 5. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close (using `mcp__pkb__complete_task`) only when the match is unambiguous — same correspondent, subject line matching (using whole-word boundaries), sent after task creation within ~48 hours.
 6. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
 7. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
-
-**Steps 4.1, 4.1.5, 4.2, and 4.2.5 — run in parallel.** These data-gathering steps are independent: they read from different sources (shell scripts, PKB, session JSONs, GitHub) and produce separate outputs that are merged only at composition time. Agent teams should dispatch concurrent subagents for each; single-agent environments should issue all data-fetching tool calls simultaneously rather than sequentially.
 
 ### Step 4.1: Narrative Path Reconstruction (Compass Model)
 
