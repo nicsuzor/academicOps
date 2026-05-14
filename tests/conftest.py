@@ -316,8 +316,16 @@ def ensure_test_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
     # Strip any leaked host environment variables that hardcode paths (e.g. from polecat sessions)
+    scrub_keys = {
+        "AOPS_HOOK_LOG_PATH",
+        "CLAUDE_PROJECT_DIR",
+        "POLECAT_HOME",
+        "AOPS_SESSION_ID",
+        "AOPS_SESSION_STATE_DIR",
+        "AOPS_SRC_DIR",
+    }
     for key in list(os.environ.keys()):
-        if key.startswith("AOPS_GATE_FILE_") or key in ("AOPS_HOOK_LOG_PATH", "CLAUDE_PROJECT_DIR"):
+        if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:
             monkeypatch.delenv(key, raising=False)
 
 
