@@ -315,6 +315,11 @@ def ensure_test_environment(monkeypatch, tmp_path):
     uv_cache.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
+    # Strip any leaked host environment variables that hardcode paths (e.g. from polecat sessions)
+    for key in list(os.environ.keys()):
+        if key.startswith("AOPS_GATE_FILE_") or key in ("AOPS_HOOK_LOG_PATH", "CLAUDE_PROJECT_DIR"):
+            monkeypatch.delenv(key, raising=False)
+
 
 @pytest.fixture
 def bots_dir() -> Path:
