@@ -10,9 +10,10 @@ Before syncing progress, run a sweep of tasks in `merge_ready` and `review` stat
 
 1. Call `list_tasks(status="merge_ready")` and `list_tasks(status="review")` to get all candidate tasks.
 2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID).
-3. For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries).
-4. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
-5. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), cross-reference against recent sent items. Auto-close (using `mcp__pkb__complete_task`) only when the match is unambiguous — same correspondent, subject line matching (using whole-word boundaries), sent after task creation within ~48 hours.
+3. Use deterministic signals as a cheap pre-filter to identify candidate PR–task pairs — not as the decision: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title similar to the task title. These signals identify _candidates_.
+   3a. **Confirm candidates via agent judgment**: For each candidate pair, invoke an agent against the full PR body and task body to confirm the PR genuinely completes the task. Only agent-confirmed candidates proceed to auto-close.
+4. **Auto-complete clear cases**: If the agent assessment in step 3a confirms a merged PR completes a task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence.
+5. **Sent-email evidence**: For tasks where the completion signal is a sent email (e.g., reply-required tasks from `/email`), use correspondent and approximate subject as a pre-filter to identify candidates, then invoke an agent against the email content and task body to confirm task completion. Auto-close only when the agent assessment is unambiguous.
 6. **Ambiguous cases**: Surface in the daily note under "Needs your call" in "What Needs Attention" (see [[instructions/workflow-monitor]] Step 6.5). Never auto-close ambiguous cases.
 7. **Report** in Work Log: `N tasks auto-closed from merged PRs`, `N tasks auto-closed from sent emails`, `N flagged for user decision`.
 
