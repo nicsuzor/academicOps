@@ -232,16 +232,18 @@ Age is not a staleness signal. Never cancel based on age alone. Only cancel when
 
 When operating as supervisor (top-level interactive session) and a claimed task has an `assignee` matching a specialist sub-agent namespace (`aops-core:<name>` or the bare name `polecat`), the main agent MUST dispatch via the Agent tool with `subagent_type` set to the bare name — NOT execute inline with Read/Grep/Bash. See `/pull` Step 1.7 for the short-circuit. Inline execution by the supervisor erases the specialist's audit trail and bypasses the agent's specialised prompt.
 
-## Trust Over Prescription
+<a id="P125"></a>
+
+## Trust Over Prescription (P#125)
 
 Trust an agent to read errors and recover instead of pre-paying the diagnostic cost of prescribed checks. Only prescribe preflight checks when the failure mode is high-probability, the agent lacks the reflective capacity to recover, or the cost asymmetry heavily favors try-after-checking over try-and-react.
 
-**Corollaries:**
+**Corollaries**:
 
 - Golden-path-first: Dispatch on the happy path; pay diagnostic costs in the react phase only when reality demands it.
 - Remove format prescription that forces agents into mechanical rituals or symptom-level outputs rather than structural analysis.
 
-**Empirical Basis:**
+**Derivation**:
 
 - Parent Epic: [[aops-5430c4c1]]
 - [[aops-76525b02]] (`/supervisor` rewrite): Replaced multi-gate preflight environment probes with golden-path-first dispatch, trusting the agent to recover if execution fails.
