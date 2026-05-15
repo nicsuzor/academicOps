@@ -204,9 +204,9 @@ Side-effects triggered by `aops-core/scripts/dump_pr_state.py` on a cron schedul
 
 LLM agents that fire on PR events to enforce framework discipline at the
 review surface. Each row maps a named framework agent to one named status
-check (the contract — see `specs/pr-pipeline-v2.md` §3.2). Branch protection
+check (the contract — see `brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.2). Branch protection
 AND-gates these statuses directly; there is no LLM judgment in the merge
-gate. **Status: proposed by `specs/pr-pipeline-v2.md`. Operative once
+gate. **Status: proposed by `brain/projects/aops/specs/workflows/pr-pipeline-v2.md`. Operative once
 Phase 1 ships.**
 
 | Agent (status name)                | Source (workflow + prompt)                                                                                                                                                                                                    | Rule(s)                                                                                             | Scope                                                           | Tier    | Cost / Impact                                                                                      | Behaviour                                                                                                                                                                                                                                          |
@@ -217,8 +217,8 @@ Phase 1 ships.**
 
 ### Retired (v1 → v2)
 
-| Mechanism                                                                                            | Retiring in                   | Notes                                                                                                                    |
-| ---------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Author-trailer loop-skip (`Enforcer-By:` / `Merge-Prep-By:` grep on HEAD commit)                     | Phase 1 (per `aops-10d5b344`) | Replaced by SHA-based loop-skip (`specs/pr-pipeline-v2.md` §3.6, §8). Closed PR #1037 black-hole bug.                    |
-| Triage-substitution (merge-prep approves ⇒ implies all agent verdicts present)                       | Phase 1 + ruleset update      | Branch protection now AND-gates each `<agent>-status` directly (`specs/pr-pipeline-v2.md` §5). No LLM in the merge gate. |
-| Loose triggers on enforcer (`workflow_run` + `pull_request` + `workflow_dispatch` + `workflow_call`) | Phase 1                       | v2 contract: `workflow_call` only (`specs/pr-pipeline-v2.md` §3.1). Closes ~130M cache_r/wk waste (`aops-638a351e`).     |
+| Mechanism                                                                                            | Retiring in                   | Notes                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Author-trailer loop-skip (`Enforcer-By:` / `Merge-Prep-By:` grep on HEAD commit)                     | Phase 1 (per `aops-10d5b344`) | Replaced by SHA-based loop-skip (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.6, §8). Closed PR #1037 black-hole bug.                    |
+| Triage-substitution (merge-prep approves ⇒ implies all agent verdicts present)                       | Phase 1 + ruleset update      | Branch protection now AND-gates each `<agent>-status` directly (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §5). No LLM in the merge gate. |
+| Loose triggers on enforcer (`workflow_run` + `pull_request` + `workflow_dispatch` + `workflow_call`) | Phase 1                       | v2 contract: `workflow_call` only (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.1). Closes ~130M cache_r/wk waste (`aops-638a351e`).     |
