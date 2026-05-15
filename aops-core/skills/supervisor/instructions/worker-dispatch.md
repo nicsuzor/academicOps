@@ -67,3 +67,10 @@ The supervisor checks status on its next ORIENT tick — it does not actively po
 Stale task cleanup is periodic: `polecat reset-stalled --hours 4`
 
 Worker failures surface as missing PRs or crashed statuses. The task stays `in_progress` until reset or picked up by the react phase.
+
+### Turn Budget Exhaustion
+
+If a worker exhausts its turn budget without finishing the task, it exits cleanly (status 1) and preserves the uncommitted worktree.
+
+- Supervisors can resume the worktree with a fresh budget: `polecat resume <task-id>`
+- To explicitly override the turn limit on a retry, use: `polecat run -t <task-id> --force --max-turns 150`
