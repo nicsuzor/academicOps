@@ -1096,19 +1096,28 @@ def _init_container_memory(
 def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
     """Ensure Docker image is present; pull it if not, silencing output unless verbose."""
     # Fast check: does the image exist locally?
-    inspect = subprocess.run(
-        [docker_binary, "image", "inspect", image], capture_output=True, check=False
-    )
+    try:
+        inspect = subprocess.run(
+            [docker_binary, "image", "inspect", image], capture_output=True, check=False
+        )
+    except FileNotFoundError:
+        # Docker binary not found — let the actual docker run command surface the error
+        # via the existing FileNotFoundError handler in crew/run.
+        return
     if inspect.returncode == 0:
         return
 
     # Image missing, pull it
-    print(f"Pulling Docker image {image}...")
+    if verbose:
+        print(f"Pulling Docker image {image}...")
     cmd = [docker_binary, "pull"]
     if not verbose:
         cmd.append("-q")
     cmd.append(image)
-    pull_result = subprocess.run(cmd, check=False, capture_output=not verbose, text=True)
+    try:
+        pull_result = subprocess.run(cmd, check=False, capture_output=not verbose, text=True)
+    except FileNotFoundError:
+        return
     if pull_result.returncode != 0 and not verbose:
         print(f"Error pulling image {image}:", file=sys.stderr)
         print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
