@@ -411,6 +411,44 @@ body:
       required: true
 ```
 
+### Canonical labels
+
+Provision the framework's canonical label set on the new repo. Issue templates and the `repo-sync-cron` triage pipeline assume these exist — GitHub does **not** auto-create labels from `labels:` fields in issue templates, and `gh pr edit --add-label` against a missing label fails with exit 1 (which historically caused `pr-state.json` to bail mid-write; see aops-2a4d0d47).
+
+`gh label create --force` is idempotent — safe to re-run on existing repos.
+
+```bash
+# Issue-template defaults (referenced by .github/ISSUE_TEMPLATE/*.yml)
+gh label create task        --color "0e8a16" --description "Discrete unit of work"               --force
+gh label create bug         --color "d73a4a" --description "Defect or regression"                --force
+gh label create enhancement --color "a2eeef" --description "Improvement to existing capability"  --force
+gh label create triage      --color "fbca04" --description "Needs initial triage"                --force
+
+# PR triage routing (consumed by aops-core/scripts/dump_pr_state.py)
+gh label create "triage:escalate"       --color "b60205" --description "PR needs human attention (CI failed / stalled)" --force
+gh label create "triage:stale"          --color "cccccc" --description "Open >7d without merge or update"               --force
+gh label create "triage:auto-mergeable" --color "0e8a16" --description "Bot-authored, CI green, safe to auto-merge"     --force
+gh label create "triage:needs-judgment" --color "fbca04" --description "Human-authored, needs review judgment"          --force
+
+# Issue-sweep dispositions (consumed by aops-core/skills/survey, sweep mode)
+gh label create "triaged-stale"   --color "ededed" --description "Sweep: closed as stale"            --force
+gh label create "triaged-comment" --color "ededed" --description "Sweep: merged into canonical"     --force
+gh label create "triaged-single"  --color "ededed" --description "Sweep: filed as single polecat task" --force
+gh label create "triaged-epic"    --color "ededed" --description "Sweep: filed as fix-epic"         --force
+gh label create "triaged-defer"   --color "ededed" --description "Sweep: deferred; revisit-by date set" --force
+
+# Criticality (used by survey + sweep when filing/triaging issues)
+gh label create "criticality:critical" --color "b60205" --description "Production-blocking or data-integrity risk" --force
+gh label create "criticality:high"     --color "d93f0b" --description "Material impact on workflows"               --force
+gh label create "criticality:medium"   --color "fbca04" --description "Noticeable but contained"                   --force
+gh label create "criticality:low"      --color "0e8a16" --description "Polish, minor friction"                     --force
+
+# PR origin
+gh label create polecat --color "5319e7" --description "PR authored by a polecat worker" --force
+```
+
+If the cron's `gh` token lacks `repo:write` on the new repo, label provisioning will fail loudly here rather than silently downstream — file a token-scope task and HALT per the fail-fast rule.
+
 ## Step 5: Research tooling (conditional)
 
 Only create these if the user selected them in Phase 1.
