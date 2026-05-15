@@ -86,7 +86,7 @@ def summary(ctx, since, project):
     import subprocess
     from datetime import timedelta
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     def _list(status, proj=project):
         if manager.storage is not None:

@@ -85,7 +85,7 @@ def watch(ctx, interval, stall_threshold, project):
     except ImportError:
         pass
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # Track seen PRs and last activity time
     seen_merge_ready = set()

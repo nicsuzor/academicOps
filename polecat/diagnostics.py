@@ -41,7 +41,7 @@ def analyze(ctx, task_id, transcript_lines):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # Load task
     if manager.storage is not None:
@@ -252,7 +252,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     except ImportError:
         pass
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # Calculate cutoff time
     cutoff = datetime.now().astimezone() - timedelta(hours=hours)

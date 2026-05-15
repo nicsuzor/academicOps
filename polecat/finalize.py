@@ -58,7 +58,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
         _read_latest_real_transcript_path,
     )
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
     cwd = Path.cwd()
 
     # Detect if we're in a polecat worktree

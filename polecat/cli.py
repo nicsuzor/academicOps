@@ -1098,6 +1098,36 @@ def _init_container_memory(
     return memory_limit, daemon_mem
 
 
+def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
+    """Ensure Docker image is present; pull it if not, silencing output unless verbose."""
+    # Fast check: does the image exist locally?
+    try:
+        inspect = subprocess.run(
+            [docker_binary, "image", "inspect", image], capture_output=True, check=False
+        )
+    except FileNotFoundError:
+        # Docker binary not found — let the actual docker run command surface the error
+        # via the existing FileNotFoundError handler in crew/run.
+        return
+    if inspect.returncode == 0:
+        return
+
+    # Image missing, pull it
+    if verbose:
+        print(f"Pulling Docker image {image}...")
+    cmd = [docker_binary, "pull"]
+    if not verbose:
+        cmd.append("-q")
+    cmd.append(image)
+    try:
+        pull_result = subprocess.run(cmd, check=False, capture_output=not verbose, text=True)
+    except FileNotFoundError:
+        return
+    if pull_result.returncode != 0 and not verbose:
+        print(f"Error pulling image {image}:", file=sys.stderr)
+        print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
+
+
 def _build_docker_cmd(
     cli_tool: str,
     work_dir: Path,
@@ -1113,6 +1143,7 @@ def _build_docker_cmd(
     memory_limit: str | None = None,
     project_slug: str | None = None,
     manager: PolecatManager | None = None,
+    verbose: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1147,7 +1178,12 @@ def _build_docker_cmd(
     # ``subprocess.run(..., env=env)`` cannot fail with FileNotFoundError when
     # the worker env's PATH happens not to contain it (regression of
     # task-dff66ab3 — see _resolve_docker_binary docstring).
-    cmd = [_resolve_docker_binary(env), "run", "--rm"]
+    docker_binary = _resolve_docker_binary(env)
+
+    # Pre-pull image if missing to suppress the spinner when not verbose
+    _ensure_docker_image(image, verbose, docker_binary)
+
+    cmd = [docker_binary, "run", "--rm"]
     _staging_dir: Path | None = None  # set below if auth files are staged
 
     # TTY allocation — flags must be separate elements so _run_docker_container
@@ -2162,11 +2198,18 @@ def _bootstrap_or_exit() -> None:
     type=click.Path(path_type=Path),
     help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
 )
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Enable verbose output (e.g. missing project warnings, docker pull logs)",
+)
 @click.pass_context
-def main(ctx, home):
+def main(ctx, home, verbose):
     """Polecat: Ephemeral worker management system."""
     ctx.ensure_object(dict)
     ctx.obj["home"] = home
+    ctx.obj["verbose"] = verbose
 
 
 @main.command()
@@ -2208,7 +2251,7 @@ def init(ctx, project):
         polecat init -p aops      # Initialize only aops
         polecat --home /custom/path init  # Use custom home directory
     """
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     if project:
         try:
@@ -2684,7 +2727,7 @@ def sync(ctx, check, quiet, mirrors_only):
         polecat sync --quiet      # Only show issues
         polecat sync --mirrors-only  # Only sync bare mirrors
     """
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # --- Phase 1: Working repos ---
     if not mirrors_only:
@@ -2734,7 +2777,7 @@ def start(ctx, project, caller):
     """Claim next ready task and spawn a worktree."""
     from polecat.claim import claim_next_ready
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     task = claim_next_ready(manager, caller, project)
 
@@ -2779,7 +2822,7 @@ def checkout(ctx, task_id, caller):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     if manager.storage is not None:
         task = manager.storage.get_task(task_id)
@@ -2842,7 +2885,7 @@ def checkout(ctx, task_id, caller):
 @click.pass_context
 def nuke(ctx, target, force, allow_unpushed):
     """Destroy a polecat or crew worker, or clean up stale branches when run without args."""
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     if target:
         crew_path = manager.crew_dir / target
@@ -3064,7 +3107,7 @@ def _get_running_polecat_containers() -> set[str] | None:
 @click.pass_context
 def list_polecats(ctx):
     """List active polecats, labelling stale worktrees without running containers."""
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
     if not manager.polecats_dir.exists():
         print("No active polecats.")
         return
@@ -3339,7 +3382,7 @@ def crew(
     """
     import subprocess
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # --- Resolve target project(s) ---
     if resume:
@@ -3682,6 +3725,7 @@ def crew(
             hooks_enabled=session_cfg.hooks_enabled,
             project_slug=project_slug,
             manager=manager,
+            verbose=manager.verbose,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -3710,6 +3754,7 @@ def crew(
             hooks_enabled=session_cfg.hooks_enabled,
             project_slug=project_slug,
             manager=manager,
+            verbose=manager.verbose,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -3729,6 +3774,7 @@ def crew(
             hooks_enabled=session_cfg.hooks_enabled,
             project_slug=project_slug,
             manager=manager,
+            verbose=manager.verbose,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -3822,7 +3868,7 @@ def crew(
 @click.pass_context
 def list_crew(ctx):
     """List active crew workers."""
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
     crew = manager.list_crew()
     if not crew:
         print("No active crew workers.")
@@ -4062,7 +4108,7 @@ def run(
         print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
         sys.exit(1)
 
-    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # Step 1: Get/claim task (or fetch GitHub issue)
     is_issue = False
@@ -4389,6 +4435,7 @@ def run(
             hooks_enabled=session_cfg.hooks_enabled,
             project_slug=project_slug,
             manager=manager,
+            verbose=manager.verbose,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4417,6 +4464,7 @@ def run(
             hooks_enabled=session_cfg.hooks_enabled,
             project_slug=project_slug,
             manager=manager,
+            verbose=manager.verbose,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")
