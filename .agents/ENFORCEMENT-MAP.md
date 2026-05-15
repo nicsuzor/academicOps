@@ -129,9 +129,11 @@ This applies to PRs that **add, escalate, or remove** a row in the tables
 below — a new gate, a tier change (e.g. L1→L3), a new axiom, an additional
 hook firing surface, or removing one. Bug fixes within an existing
 enforcement surface at the same tier (correcting wrong logic or wrong
-prose in an existing skill, agent, hook, or gate) and user-directed
-architectural changes do NOT require CBA — they need only a clear
-description of the bug or directive and the corrective edit.
+prose in an existing skill, agent, hook, or gate) do NOT require CBA —
+they need only a clear description of the bug and the corrective edit.
+User-directed architectural changes skip the ≥3 recurrence requirement
+but still require cost-ladder reasoning to document where the fix lands
+on the enforcement ladder.
 
 Any PR that adds, escalates, or removes enforcement MUST include a
 **Cost-Benefit Analysis** block in the PR body:

@@ -398,9 +398,10 @@ surface. **Bug fixes** within an existing enforcement surface at the same
 tier (correcting wrong logic or wrong prose in an existing skill, agent,
 hook, or gate) follow the normal `fix-epic` / `single-task` path — they do
 not require this section, and a single forensic incident is sufficient
-evidence. **User-directed architectural changes** likewise bypass this
-section: the user's directive substitutes for the recurrence count, not for
-the cost-ladder reasoning.
+evidence. **User-directed architectural changes** do NOT bypass this section —
+cost-ladder reasoning still applies to establish where the fix lands on
+the enforcement ladder. Only the ≥3 recurrence requirement is waived;
+the user's directive substitutes for that evidence.
 
 For genuine add-or-escalate proposals, run this sequence before assigning a
 disposition. This is the work that retro is forbidden to do; sweep is the
@@ -417,7 +418,7 @@ only mode allowed to author it.
 6. **Cite the row.** The disposition proposal must name either the row of ENFORCEMENT-MAP.md the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into `aops-core/agents/marsha.md` lines XX–YY, citing existing axiom A8" is.
 7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `comment-only` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
 
-The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix and user-directed dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and the corrective scope.
+The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and corrective scope. User-directed dispositions still include cost-ladder reasoning (citing the user's directive as the evidence base in place of recurrence links).
 
 ### 3. Present cycle plan and gate
 
