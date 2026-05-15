@@ -344,10 +344,10 @@ Arm it **once**, immediately after the first DISPATCH that fills a slot in the r
 
 ## Lifecycle Trigger Hooks
 
-| Hook          | Trigger       | What it does                                                            |
-| ------------- | ------------- | ----------------------------------------------------------------------- |
-| `queue-drain` | cron / manual | Checks queue, starts supervisor session                                 |
-| `stale-check` | cron / manual | Resets tasks stuck beyond threshold                                     |
+| Hook          | Trigger            | What it does                                                                                                                |
+| ------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `queue-drain` | cron / manual      | Checks queue, starts supervisor session                                                                                     |
+| `stale-check` | cron / manual      | Resets tasks stuck beyond threshold                                                                                         |
 | `pr-merge`    | James (in-session) | (Code deliverable) PR merged → James closes associated tasks per Task Completion Loop in james.md; not driven by supervisor |
 
 > **Configuration**: See [[WORKERS.md]] for runner types, capabilities, and sizing defaults — pauli reads these at dispatch time.
