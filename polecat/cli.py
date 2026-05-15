@@ -4798,6 +4798,12 @@ def resume(ctx, task_id):
             capture_output=True,
             text=True,
         )
+        if result.returncode != 0:
+            print(
+                f"Error: git status failed in {worktree_path}: {result.stderr.strip()}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         if not result.stdout.strip():
             print("✨ Worktree is clean. Running auto-finish...")
             original_cwd = os.getcwd()
