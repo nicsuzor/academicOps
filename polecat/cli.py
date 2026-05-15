@@ -119,17 +119,19 @@ def _compute_max_turns(task, override: str | None = None) -> str:
     return str(turns)
 
 
-def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> None:
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> bool:
     """Detect and log a turn-budget exhaustion event.
 
     Scans agent output for Claude's "Reached max turns" message.
     When found, extracts the last tool call name from the output so
     supervisors can see where the agent was when the budget ran out,
     without having to dig through the full transcript.
+
+    Returns True if budget exhaustion was detected, False otherwise.
     """
     combined = (stdout or "") + (stderr or "")
     if "Reached max turns" not in combined:
-        return
+        return False
 
     print(
         f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
@@ -169,6 +171,7 @@ def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> Non
         "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
         file=sys.stderr,
     )
+    return True
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -4446,6 +4449,7 @@ def run(
         session_dir=str(run_session_dir),
     )
 
+    budget_exhausted = False
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -4514,7 +4518,7 @@ def run(
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
 
             # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
-            _emit_budget_hit_diagnostic(
+            budget_exhausted = _emit_budget_hit_diagnostic(
                 result.stdout, result.stderr, _compute_max_turns(task, max_turns)
             )
 
@@ -4684,7 +4688,7 @@ def run(
 
         if not worktree_removed:
             print(f"   Worktree: {worktree_path}")
-            if exit_code == 1:
+            if budget_exhausted:
                 print(f"   Recovery hint: polecat resume {task.id}")
             else:
                 print(f"   To finish manually: cd {worktree_path} && polecat finish")
