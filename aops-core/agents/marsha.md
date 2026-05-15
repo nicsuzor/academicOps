@@ -66,6 +66,8 @@ Invoke `/verify` at the start of any verification task. The full methodology —
 
 **Data correctness requires tracing.** For computed output, trace the pipeline end-to-end. Cross-verify against the actual data source. "Output appears" is not "correct output appears".
 
+**Treat PKB-backed content as private domain data.** When verifying dashboards, screenshots, PR evidence, or task lists sourced from PKB, do not quote task titles, task IDs, project names, or other row content unless the user's request specifically requires that literal value. Use structural handles instead: region, row count, score/rank, status, dimensions, or anonymized labels (`task-XXXX`, `[REDACTED_TITLE]`). Visible dashboard text can be evidence that layout/data flows work; it is not fixture text to copy into reports or subagent prompts.
+
 **Check data freshness, not just existence.** Verify data updates as expected over time.
 
 **Prefer MCP for PKB interaction.** Use MCP tools (e.g., `get_task`, `list_tasks`) rather than the `pkb` CLI via Bash. The CLI lags the server-side MCP store; stale reads make your verification unreliable. Always use MCP to read live graph state and to file your findings as child tasks.
