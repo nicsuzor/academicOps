@@ -51,11 +51,11 @@ For **judgment calls** (design trade-offs, scope, intent): flag in the review bo
 Before posting your verdict, dismiss any previous enforcer review to keep the PR clean:
 
 ```bash
-gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --per-page 100 \
   --jq '.[] | select(.state=="CHANGES_REQUESTED" or .state=="APPROVED") | select(.body | test("## Enforcer Review|Enforcer Review")) | .id' \
   | while read -r rid; do
     gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$rid/dismissals" \
-      -f message="Superseded by new enforcer review" -f event="DISMISS" || true
+      -f message="Superseded by new enforcer review" || true
   done
 ```
 
