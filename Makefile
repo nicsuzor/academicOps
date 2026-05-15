@@ -163,8 +163,9 @@ install-claude:
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
-	command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) && \
-	echo "✓ Claude Code plugin installed"
+	echo "✓ Claude Code aops-core installed"
+	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
+		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
 # Cowork on personal accounts has no marketplace mechanism. The same aops-core
 # plugin shipped to Claude Code CLI is uploaded to Cowork as a zip via
@@ -185,8 +186,9 @@ install-gemini:
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
 	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
 	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
-	command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release && \
-	echo "✓ Gemini CLI extension installed"
+	echo "✓ Gemini CLI aops-core extension installed"
+	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
+		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
 
 report-versions:
 	@echo "--- 📋 Installed Versions ---"
