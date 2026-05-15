@@ -55,10 +55,27 @@ prior exposure to any individual incident. It:
    cycle. Fix-epics stay `queued` until the user dispatches them via
    `/supervisor`.
 
-The sweep agent will not propose escalation up the ladder from one
-incident. It needs ≥3 cited recurrences plus the CBA evidence below
-(named cheaper level tried, ongoing cost, reversibility). Single
-incidents get logged and either closed or deferred to wait for pattern.
+The sweep agent will not propose **adding or escalating** a rule from one
+incident — a new gate, a new axiom, a tier-bump (e.g. L1→L3), a new hook
+firing surface. Add-or-escalate proposals need ≥3 cited recurrences plus
+the CBA evidence below (named cheaper level tried, ongoing cost,
+reversibility).
+
+This bar does NOT apply to **fixes** within an existing enforcement
+surface at the same tier — a skill that does the wrong thing, an agent
+prompt that misroutes, a hook with broken logic, a gate whose verdict
+table is incomplete. A clear forensic incident is sufficient evidence
+for `fix-epic` or `single-task`; sweep dispatches the fix without
+waiting for two more incidents. The same rule covers **directed
+architectural changes** the user has explicitly authorised: one
+incident plus user direction is sufficient — the user's authorisation
+substitutes for the recurrence count, not for the cost-ladder
+reasoning.
+
+What gets deferred for pattern is the _add-or-escalate_ case: proposals
+to grow the enforcement surface from a single witness report. Single
+incidents that are bugs get fixed; single incidents that are
+escalation proposals get logged and either closed or deferred.
 
 ### Why the split
 
@@ -108,12 +125,22 @@ order-of-magnitude — measure when proposing.
 
 ## PR requirements for enforcement changes
 
-Any PR that adds, modifies, or removes a row in the tables below — or any
-hook, gate, axiom, CORE.md directive, or skill instruction targeting agent
-behaviour — MUST include a **Cost-Benefit Analysis** block in the PR body:
+This applies to PRs that **add, escalate, or remove** a row in the tables
+below — a new gate, a tier change (e.g. L1→L3), a new axiom, an additional
+hook firing surface, or removing one. Bug fixes within an existing
+enforcement surface at the same tier (correcting wrong logic or wrong
+prose in an existing skill, agent, hook, or gate) do NOT require CBA —
+they need only a clear description of the bug and the corrective edit.
+User-directed architectural changes skip the ≥3 recurrence requirement
+but still require cost-ladder reasoning to document where the fix lands
+on the enforcement ladder.
+
+Any PR that adds, escalates, or removes enforcement MUST include a
+**Cost-Benefit Analysis** block in the PR body:
 
 1. **Friction evidence**: ≥3 concrete recurrences with links (transcript, PR,
-   issue, /retro report). Fewer than 3 → close as premature.
+   issue, /retro report) for add/escalate proposals. Fewer than 3 → close as
+   premature unless explicitly directed by the user.
 2. **Cheapest plausible level**: which row of the ladder above could
    reasonably address this?
 3. **Why escalate above that level (if escalating)?**: what was tried at the
