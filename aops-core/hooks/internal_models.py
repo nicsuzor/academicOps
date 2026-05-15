@@ -50,22 +50,3 @@ class HookLogEntry(HookContext):
     exit_code: int = 0
     output: dict | None = None
     raw_input: dict = Field(default_factory=dict)
-
-
-# --- Policy Enforcer Models (policy_enforcer.py) ---
-
-
-class PolicyCheckResult(BaseModel):
-    """Result of a policy check.
-
-    Attributes:
-        passed: Policy check passed
-        policy_name: Name of the policy that was checked
-        message: Human-readable result message
-        details: Additional details about the check
-    """
-
-    passed: bool = True
-    policy_name: str = ""
-    message: str = ""
-    details: dict = Field(default_factory=dict)
