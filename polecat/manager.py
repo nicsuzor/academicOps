@@ -294,13 +294,15 @@ def _to_https_url(url: str) -> str:
 
 
 class PolecatManager:
-    def __init__(self, home_dir: Path | None = None):
+    def __init__(self, home_dir: Path | None = None, verbose: bool = False):
         """Initialize the polecat manager.
 
         Args:
             home_dir: Optional home directory override. If not specified,
                       uses POLECAT_HOME env var or defaults to ~/.polecat
+            verbose: Enable verbose logging (e.g. missing project warnings)
         """
+        self.verbose = verbose
         # Determine home directory
         if home_dir is not None:
             if isinstance(home_dir, str):
@@ -346,7 +348,7 @@ class PolecatManager:
         # repos that aren't present locally. Consumers that actually need a
         # missing path (e.g. get_repo_path) raise on demand.
         unresolved = [slug for slug, p in self.projects.items() if p["path"] is None]
-        if unresolved:
+        if unresolved and self.verbose:
             print(
                 f"polecat: {len(unresolved)} project(s) not found locally: "
                 f"{sorted(unresolved)}. Add to {self.overlay_path} under `paths:` to override.",
