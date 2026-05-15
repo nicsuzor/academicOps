@@ -146,11 +146,13 @@ def uninstall_framework(aops_path: Path):
     # 2. Gemini Extensions
     if shutil.which("gemini"):
         run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
+        run_command(["gemini", "extensions", "uninstall", "aops-tools"], check=False)
         print("✓ Gemini extensions uninstalled")
 
     # 3. Claude Plugins
     if shutil.which("claude"):
         run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
         print("✓ Claude plugins uninstalled")
 
     # 4. Cleanup Files
@@ -352,6 +354,24 @@ def main():
                     print(f"Warning: could not update extension enablement: {e}")
         else:
             print("Warning: Gemini extension dist not found. Skipping link.")
+
+        dist_tools_gemini = aops_root / "dist" / "aops-tools-gemini"
+        if dist_tools_gemini.exists():
+            print(f"Installing Gemini aops-tools extension from: {dist_tools_gemini}")
+            run_command(["gemini", "extensions", "uninstall", "aops-tools"], check=False)
+            run_command(
+                [
+                    "gemini",
+                    "extensions",
+                    "link",
+                    str(dist_tools_gemini),
+                    "--consent",
+                ],
+                check=False,
+            )
+            print("✓ Gemini aops-tools extension linked")
+        else:
+            print("Warning: Gemini aops-tools dist not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
@@ -365,16 +385,32 @@ def main():
                 dist_core_claude = candidate
                 break
 
+        dist_tools_claude = None
+        for name in ("aops-tools-claude", "aops-tools"):
+            candidate = aops_root / "dist" / name
+            if candidate.exists():
+                dist_tools_claude = candidate
+                break
+
+        if dist_core_claude or dist_tools_claude:
+            # Use local repo as marketplace for source installs (shared setup)
+            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
+
         if dist_core_claude:
             print(f"Installing Claude plugin from: {dist_core_claude}")
-            # Uninstall first to avoid "already installed" error
             run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
-            # Use local repo as marketplace for source installs
-            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
             run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
             print("✓ Claude plugin installed")
         else:
             print("Warning: Claude plugin dist not found. Skipping install.")
+
+        if dist_tools_claude:
+            print(f"Installing Claude aops-tools from: {dist_tools_claude}")
+            run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
+            run_command(["claude", "plugin", "install", "aops-tools@academicOps"], check=False)
+            print("✓ Claude aops-tools plugin installed")
+        else:
+            print("Warning: Claude aops-tools dist not found. Skipping install.")
 
         # Install auto mode classifier rules
         print("\n=== Phase 4b: Install Auto Mode Rules ===")
