@@ -38,6 +38,7 @@ jobs:
   # Set merge-prep-status to pending immediately. This ensures the PR
   # stays "yellow" until the Merge-Prep Agent triages reviews.
   initialize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 45
     name: Initialize
     runs-on: ubuntu-latest
@@ -57,7 +58,6 @@ jobs:
   # pipeline restarts on the clean commit.
   lint:
     name: Lint
-    needs: [initialize]
     uses: ./.github/workflows/lint.yml
     secrets: inherit
 
