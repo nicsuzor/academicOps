@@ -146,11 +146,13 @@ def uninstall_framework(aops_path: Path):
     # 2. Gemini Extensions
     if shutil.which("gemini"):
         run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
+        run_command(["gemini", "extensions", "uninstall", "aops-tools"], check=False)
         print("✓ Gemini extensions uninstalled")
 
     # 3. Claude Plugins
     if shutil.which("claude"):
         run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
         print("✓ Claude plugins uninstalled")
 
     # 4. Cleanup Files
@@ -352,6 +354,24 @@ def main():
                     print(f"Warning: could not update extension enablement: {e}")
         else:
             print("Warning: Gemini extension dist not found. Skipping link.")
+
+        dist_tools_gemini = aops_root / "dist" / "aops-tools-gemini"
+        if dist_tools_gemini.exists():
+            print(f"Installing Gemini aops-tools extension from: {dist_tools_gemini}")
+            run_command(["gemini", "extensions", "uninstall", "aops-tools"], check=False)
+            run_command(
+                [
+                    "gemini",
+                    "extensions",
+                    "link",
+                    str(dist_tools_gemini),
+                    "--consent",
+                ],
+                check=False,
+            )
+            print("✓ Gemini aops-tools extension linked")
+        else:
+            print("Warning: Gemini aops-tools dist not found. Skipping link.")
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
@@ -373,6 +393,11 @@ def main():
             run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
             run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
             print("✓ Claude plugin installed")
+
+            # Also install aops-tools
+            run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
+            run_command(["claude", "plugin", "install", "aops-tools@academicOps"], check=False)
+            print("✓ Claude aops-tools plugin installed")
         else:
             print("Warning: Claude plugin dist not found. Skipping install.")
 

@@ -16,6 +16,8 @@ GEMINI_REMOTE_URL := https://github.com/nicsuzor/aops.git
 # Extension names
 GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
+GEMINI_TOOLS_EXT_NAME := aops-tools
+CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -39,15 +41,15 @@ help:
 	@echo "Local Development (Install from source):"
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude and Gemini"
+	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools)"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "User Installation (Install from remote releases):"
-	@echo "  make install        - Install all components from GitHub releases"
-	@echo "  make install-claude - Install Claude plugin from dist repo"
+	@echo "  make install        - Install all components from GitHub releases (includes aops-tools)"
+	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
-	@echo "  make install-gemini - Install Gemini extension from main repo"
+	@echo "  make install-gemini - Install Gemini extensions from main repo"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
 	@echo "Release Management (Automation):"
@@ -90,7 +92,9 @@ install-dev: build-dev
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
+	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
@@ -103,8 +107,10 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	-command claude plugin marketplace add $(DIST_DIR)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
+	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
+	@command gemini extensions install $(DIST_DIR)/aops-tools-gemini --consent || echo "  ⚠️ Gemini aops-tools install failed"
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
@@ -116,6 +122,7 @@ uninstall-dev:
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
+	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -151,9 +158,11 @@ install-claude:
 	@echo "Installing aops plugin for Claude Code..."
 	@echo "  Source: $(DIST_REPO_URL)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
+	command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) && \
 	echo "✓ Claude Code plugin installed"
 
 # Cowork on personal accounts has no marketplace mechanism. The same aops-core
@@ -173,7 +182,9 @@ install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
 	@echo "  Source: $(GEMINI_REMOTE_URL)"
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
+	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
 	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
+	command gemini extensions install https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
 
 report-versions:
