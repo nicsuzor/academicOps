@@ -205,7 +205,7 @@ v2 closes this structurally on two fronts:
 
 ## 4. Pauli alignment surface — design
 
-This is the most novel and risky component. GHA cannot reach the Tailscale-internal PKB MCP (`http://services-new.stoat-musical.ts.net:8026/mcp`), so pauli — whose value is precisely the PKB context — cannot run inside a GHA runner. Two designs were considered:
+This is the most novel and risky component. GHA cannot reach the Tailscale-internal PKB MCP (a Tailscale magic-DNS endpoint — see `.agents/CAPABILITIES.md` for the address), so pauli — whose value is precisely the PKB context — cannot run inside a GHA runner. Two designs were considered:
 
 ### Option A — GHA posts pending; host-side cron (polecat) picks up and posts back
 
