@@ -142,7 +142,16 @@ def apply_triage(pr: dict, repo_path: Path):
         cmd = ["gh", "pr", "edit", str(pr["number"]), "--add-label", new_label]
         if existing_triage_labels:
             cmd.extend(["--remove-label", ",".join(existing_triage_labels)])
-        subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True)
+        try:
+            subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True, text=True)
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr or ""
+            print(
+                f"Warning: label-edit failed for {repo_path.name} PR #{pr['number']}: "
+                f"{' '.join(cmd)} -> exit {e.returncode} {stderr.strip()}",
+                file=sys.stderr,
+            )
+            return
 
         if new_label == "triage:escalate":
             search_cmd = [
@@ -156,23 +165,32 @@ def apply_triage(pr: dict, repo_path: Path):
                 "--limit",
                 "1",
             ]
-            res = subprocess.run(
-                search_cmd, cwd=repo_path, capture_output=True, text=True, check=True
-            )
-            issues = json.loads(res.stdout) if res.stdout.strip() else []
-            if not issues:
-                title = f"[Action Required] PR #{pr['number']} needs manual fix"
-                reason = (
-                    "Failing CI checks: " + ", ".join(failed_checks)
-                    if failed_checks
-                    else "Merge conflicts detected."
+            try:
+                res = subprocess.run(
+                    search_cmd, cwd=repo_path, capture_output=True, text=True, check=True
                 )
-                issue_body = f"PR #{pr['number']} ({pr['url']}) has conflicting CI or merge conflicts and requires manual intervention.\n\n**Reason**: {reason}"
-                subprocess.run(
-                    ["gh", "issue", "create", "--title", title, "--body", issue_body],
-                    cwd=repo_path,
-                    capture_output=True,
-                    check=True,
+                issues = json.loads(res.stdout) if res.stdout.strip() else []
+                if not issues:
+                    title = f"[Action Required] PR #{pr['number']} needs manual fix"
+                    reason = (
+                        "Failing CI checks: " + ", ".join(failed_checks)
+                        if failed_checks
+                        else "Merge conflicts detected."
+                    )
+                    issue_body = f"PR #{pr['number']} ({pr['url']}) has conflicting CI or merge conflicts and requires manual intervention.\n\n**Reason**: {reason}"
+                    subprocess.run(
+                        ["gh", "issue", "create", "--title", title, "--body", issue_body],
+                        cwd=repo_path,
+                        capture_output=True,
+                        check=True,
+                        text=True,
+                    )
+            except subprocess.CalledProcessError as e:
+                stderr = e.stderr or ""
+                print(
+                    f"Warning: escalate issue search/creation failed for {repo_path.name} PR #{pr['number']}: "
+                    f"exit {e.returncode} {stderr.strip()}",
+                    file=sys.stderr,
                 )
 
 
@@ -204,16 +222,24 @@ def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = 
         result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True)
         data = json.loads(result.stdout)
         prs = [_project_pr(pr, is_open=is_open) for pr in data]
-        if is_open:
-            for pr in prs:
-                apply_triage(pr, repo_path)
-        return prs
     except subprocess.CalledProcessError as e:
         print(f"Error fetching {state} PRs for {repo_path.name}: {e.stderr}", file=sys.stderr)
         raise
     except Exception as e:
         print(f"Error processing {state} PRs for {repo_path.name}: {e}", file=sys.stderr)
         raise
+
+    if is_open:
+        for pr in prs:
+            try:
+                apply_triage(pr, repo_path)
+            except Exception as e:
+                print(
+                    f"Warning: apply_triage failed for {repo_path.name} PR #{pr.get('number')}: {e}",
+                    file=sys.stderr,
+                )
+
+    return prs
 
 
 def main():
