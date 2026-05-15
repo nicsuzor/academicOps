@@ -279,7 +279,7 @@ Each test should map to specific acceptance criteria from above. Reference which
 
 - **Likelihood**: [High/Medium/Low]
 - **Impact**: [High/Medium/Low]
-- **Mitigation**: [e.g., "Start with simple keyword matching, add complexity only if needed"]
+- **Mitigation**: [e.g., "Invoke an agent with a focused prompt; fall back to structured extraction only if the agent approach cannot run at the required scale"]
 
 **Risk 2**: [e.g., "Performance issues with large datasets"]
 

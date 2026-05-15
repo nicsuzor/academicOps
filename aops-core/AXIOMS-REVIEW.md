@@ -46,6 +46,8 @@ _Edge 3 (script abdication):_
 - Did the agent build infrastructure for a problem one well-crafted agent prompt would solve in a single pass?
 - Did the agent personally exercise the qualitative judgment before designing automation for it?
 
+**Two canonical failure shapes under Edge 3**: (1) _mechanical-pattern-matching-as-review-proxy_ — substituting regex, substring, or allowlist checks for the qualitative property the axioms describe; (2) _tests-as-spec-substitute_ — assertions that specific prose tokens appear in agent/skill markdown, making agent prose immutable at the token level and the test the de-facto spec. Both reduce to the same canonical question: _is the property being verified qualitative?_ If yes, the verification belongs at agent-invocation time, not in a regex/substring/test.
+
 For placement on the enforcement pyramid and guidance on future cheaper fixes, see `.agents/ENFORCEMENT-MAP.md` § "Worked example: A7".
 
 ## A8

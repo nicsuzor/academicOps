@@ -69,9 +69,9 @@ If none, write `No contributes_to edges are missing justification.` Do not omit 
 
 ### 3. SEV4 targets with weak consequence prose (advisory heuristic)
 
-> Spec: §1.5 defers semantic checks to review skills. AC#3. Heuristic — the keyword list lives in `aops-core/skills/planner/SKILL.md` under "Severe-state keyword list" and is the SSoT.
+> Spec: §1.5 defers semantic checks to review skills. AC#3. Heuristic — qualitative check described in `aops-core/skills/planner/SKILL.md` under "Check 3 — SEV4 targets with weak consequence prose".
 
-For every active `type: target` node with `severity: 4`, scan the `consequence` prose with case-insensitive whole-word matching against the planner's documented severe-state keyword list. If **none** match, surface the target:
+For every active `type: target` node with `severity: 4`, qualitatively assess whether the `consequence` prose describes a concrete, serious outcome. If the prose is vague or does not articulate a tangible high-stakes consequence, surface the target:
 
 ```
 SEV4 targets with weak consequence prose (advisory — heuristic):

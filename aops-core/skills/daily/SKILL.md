@@ -230,13 +230,14 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 **Procedure:**
 
 1. Call `list_tasks(status="review")` and `list_tasks(status="merge_ready")` to get candidate tasks.
-2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact already contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID). Match locally:
+2. **Read merge evidence from `$AOPS_SESSIONS/state/pr-state.json`** (produced by `repo-sync-cron`). The artefact already contains, per tracked repo, recent merged-PR records (number, title, url, mergedAt, headRefName, body excerpt, matched task ID). Use deterministic signals as a cheap pre-filter to generate candidates — not as the decision:
    - Inspect each task's `evidence`, `notes`, `description`, and frontmatter for a linked PR number, PR URL (`pr_url`), task ID, task title, and any linked branch name
-   - For each task, look up the artefact's merged-PR records: PR number already linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching the task's linked branch, or PR title matching the task title (whole-word boundaries)
+   - For each task, look up the artefact's merged-PR records: candidate PRs are those where the PR number is already linked on the task, `pr_url` matches, task ID appears in the PR body, `headRefName` matches the task's branch, or the PR title resembles the task title — these signals identify _candidates_, not confirmed matches
    - **Do NOT run `gh pr list` from this skill.** The `repo-sync-cron` artefact is the single source. If the artefact is older than 24 hours or missing, report counts as `unknown — repo-sync-cron artefact stale` and skip auto-close.
    - Only if a specific candidate PR number is already known and the artefact lacks detail, use `gh pr view <number> --json state,url,mergedAt,headRefName` as a one-off lookup (not a list scan).
-3. **Auto-complete clear cases**: If a merged PR is found matching the task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence. No human confirmation needed — the merge is sufficient evidence.
-4. **Sent-email evidence**: For tasks where the completion signal is a sent email, cross-reference against recent sent items. If a sent reply matches the task's correspondent + subject (whole-word boundaries) within 48 hours of task creation, call `mcp__pkb__complete_task` with the sent email as evidence. Only auto-close when the match is unambiguous.
+     2a. **Confirm candidates via agent judgment**: For each candidate PR–task pair identified in step 2, invoke an agent against the full PR body and task body (title, description, acceptance criteria) to confirm the PR genuinely completes the task. The deterministic signals in step 2 are a pre-filter; this agent assessment is the decision. Only agent-confirmed candidates proceed to auto-close.
+3. **Auto-complete clear cases**: If the agent assessment in step 2a confirms a merged PR completes a task, call `mcp__pkb__complete_task` with a completion note including the PR URL and merge timestamp as evidence.
+4. **Sent-email evidence**: For tasks where the completion signal is a sent email, use correspondent and approximate subject as a pre-filter to identify candidates, then invoke an agent against the email content and task body to confirm the email represents task completion. Only auto-close when the agent assessment is unambiguous.
 5. **Ambiguous cases**: When evidence exists but is ambiguous (partial subject match, PR closed but not merged), surface the task in the note under "Needs your call" within "What Needs Attention". Include the PR/email link. **Never auto-close ambiguous cases.**
 6. **Stale tasks**:
    - **Weekly Triage (>14d)**: If a task has been in `review` or `merge_ready` for more than 14 days with no evidence found, surface it weekly in the note under "Stale review/merge_ready" in Status with the prompt: `Still relevant? [unblock / archive / surface]`.
@@ -248,7 +249,7 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
    - `N flagged as stale (>14d)` — list task IDs inline with 'Still relevant?' prompt
    - `N auto-archived as stale (>30d)`
 
-**What counts as evidence**: A merged PR linked by `pr_url`, PR number already on task, task ID in PR body, `headRefName` matching branch, or PR title matching task title (whole-word boundaries). A sent email matching correspondent + subject (whole-word boundaries) within 48 hours of task creation. A closed-but-not-merged PR is **not** evidence.
+**What counts as evidence**: An agent-confirmed merged PR, where the candidate was identified by one or more deterministic signals (PR number linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching branch, or PR title similar to task title). For email: an agent-confirmed sent reply where the candidate was identified by correspondent and approximate subject. A closed-but-not-merged PR is **not** evidence.
 
 > Detailed procedures for each step are in the `instructions/` subdirectory.
 
