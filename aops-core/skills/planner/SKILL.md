@@ -353,19 +353,9 @@ Per §2.3, missing justifications are surfaced here, not blocked at write time. 
 
 **Check 3 — SEV4 targets with weak consequence prose (advisory heuristic)**
 
-For every `type: target` node with `status: active` and `severity: 4`, scan the `consequence` prose (case-insensitive whole-word match, e.g., via `\b` regex boundaries) for any of the following severe-state keywords. If **none** match, flag the target for user review.
+For every `type: target` node with `status: active` and `severity: 4`, qualitatively assess the `consequence` prose: does it describe a concrete, serious outcome that explains why this is a severity-4 situation? If the prose is vague, abstract, or does not articulate a tangible high-stakes consequence, surface the target for user review.
 
-**Severe-state keyword list** (canonical, edit here):
-
-```
-job, fired, sacked, terminated, redundancy,
-legal, lawsuit, sued, prosecution, breach,
-health, hospital, hospitalised, hospitalized, illness, injury,
-bankruptcy, insolvent, financial ruin,
-eviction, evicted, homeless,
-divorce, separation,
-death, fatal, life-threatening
-```
+The assessment is a qualitative judgment — do not reduce it to keyword matching or regex scanning. Read the prose and ask: "Does this explain _what specifically happens_ and _why it is severe_?"
 
 Render as:
 
@@ -374,7 +364,7 @@ SEV4 targets with weak consequence prose (ADVISORY — heuristic):
   - [task-id] [[Title]] — consequence: "<first 80 chars>…"
 ```
 
-This is a heuristic. The keyword list is documented inline above and revisable. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
+This is a heuristic. False positives are expected — present them as advisory, not as errors. The user (or planner mode) decides whether to rewrite the prose or accept it.
 
 **Check 4 — Active SEV4-committed target concurrency**
 
