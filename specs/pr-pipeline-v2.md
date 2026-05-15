@@ -147,10 +147,22 @@ Breaking changes ship with intent: a new tag (`enforcer-v2`), an issue documenti
 
 ### 3.6 Per-agent SHA-based loop-skip
 
-Every agent reads its own latest commit status from PR HEAD before running:
+Every agent reads its own latest commit status from PR HEAD before running.
+
+The snippet below assumes three shell variables, sourced from the calling
+workflow's `env:` block:
+
+| Variable      | Source                                                                |
+| ------------- | --------------------------------------------------------------------- |
+| `$REPO`       | `${{ github.repository }}` (e.g. `nicsuzor/academicOps`)              |
+| `$HEAD_SHA`   | `${{ inputs.sha }}` — explicit workflow_call input per §3.1           |
+| `$AGENT_NAME` | Hard-coded per agent (`enforcer`, `alignment`, `mechanic`, …)         |
+
+`$GH_TOKEN` must also be set to `${{ secrets.AOPS_BOT_GH_TOKEN }}` so `gh api`
+authenticates as the bot.
 
 ```bash
-# Each agent's first real step
+# Each agent's first real step. Assumes $REPO, $HEAD_SHA, $AGENT_NAME, $GH_TOKEN.
 LATEST_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
   --jq "[.[] | select(.context == \"$AGENT_NAME-status\")] | sort_by(.created_at) | last")
 PRIOR_TARGET_SHA=$(echo "$LATEST_STATUS" | jq -r '.target_url' | sed -n 's/.*target_sha=\([a-f0-9]*\).*/\1/p')
@@ -160,7 +172,7 @@ if [ "$PRIOR_TARGET_SHA" = "$HEAD_SHA" ]; then
   gh api "repos/$REPO/statuses/$HEAD_SHA" \
     -f state=success -f context="$AGENT_NAME-status" \
     -f description="Skipped: SHA already reviewed" \
-    -f target_url="...?target_sha=$HEAD_SHA"
+    -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
   exit 0
 fi
 ```
@@ -269,38 +281,88 @@ jobs:
   signal:
     runs-on: ubuntu-latest
     permissions: { statuses: write, pull-requests: write }
+    env:
+      GH_TOKEN:   ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO:       ${{ github.repository }}
+      SHA:        ${{ inputs.sha }}
+      PR_NUMBER:  ${{ inputs.pr_number }}
+      AGENT_NAME: alignment
     steps:
       - name: SHA-skip check
-        # ... §3.6 logic
+        # ... §3.6 logic. Uses $REPO / $SHA / $AGENT_NAME from job env.
       - name: Post pending + work-queue entry
-        env: { GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }} }
         run: |
           gh api "repos/$REPO/statuses/$SHA" \
             -f state=pending -f context=alignment-status \
             -f description="Queued for host-side pauli review" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID?target_sha=$SHA"
-          # Optionally: write to a queue (Issue with label `alignment:queued`,
-          # GitHub Project, or Tailscale-internal queue endpoint).
-          gh issue create --label alignment:queued --title "Alignment review: $REPO#$PR_NUMBER@$SHA" \
+          # The work-queue surface is a GitHub Issue labelled `alignment:queued`.
+          # Rationale: alignment-status is per-SHA, not enumerable across PRs;
+          # the dispatcher needs a cross-PR queryable list of pending reviews.
+          # Commit statuses do not provide that surface; labelled issues do.
+          # The issue is auxiliary state, NOT the gate — the gate is the commit
+          # status. Issue closure on completion is bookkeeping.
+          gh issue create --label alignment:queued \
+            --title "Alignment review: $REPO#$PR_NUMBER@$SHA" \
             --body "Auto-filed. Closed when alignment-status terminal."
 ```
 
 **Host side** (new: `aops-core/scripts/alignment-dispatcher.sh`, run by cron every 5 min):
 
 ```bash
-# Pseudocode
-for pr in $(gh issue list --label alignment:queued --json title,body --jq '.[]'); do
-  # Parse repo + PR + SHA from the issue title (deterministic format above)
-  # Check current alignment-status on that SHA — skip if no longer pending
-  # Dispatch polecat:
-  polecat run -p aops -t alignment-review-$REPO-$PR-$SHA \
+# Pseudocode — actual implementation lives in aops-core/scripts/alignment-dispatcher.sh.
+# Inputs (env): $WATCHED_REPO is the host-config-defined repo whose alignment
+# queue this dispatcher drains (e.g. `nicsuzor/academicOps`). Multiple repos
+# can be drained by running multiple cron entries with different $WATCHED_REPO.
+# $GH_TOKEN is the bot PAT (AOPS_BOT_GH_TOKEN equivalent on host).
+#
+# Iterate alignment:queued issues with NUL-safe parsing (issue titles may contain
+# whitespace or shell metacharacters; do not splat over `for ... in $(...)`).
+
+gh issue list --label alignment:queued --repo "$WATCHED_REPO" \
+  --json number,title --jq '.[] | [.number, .title] | @tsv' \
+  | while IFS=$'\t' read -r issue_number title; do
+
+  # Title format (deterministic — produced by §4.1 GHA snippet):
+  #   "Alignment review: <repo>#<pr_number>@<sha>"
+  parsed=$(printf '%s\n' "$title" \
+    | sed -nE 's|^Alignment review: ([^#]+)#([0-9]+)@([a-f0-9]+)$|\1 \2 \3|p')
+  [ -z "$parsed" ] && { echo "skip: malformed title: $title" >&2; continue; }
+  read -r REPO PR SHA <<<"$parsed"
+
+  # Reconcile against the authoritative state (the commit status, not the issue):
+  # only dispatch if alignment-status is still `pending` for this SHA. If a
+  # previous tick has already posted a terminal status, the issue is stale and
+  # gets closed as a bookkeeping no-op.
+  current=$(gh api "repos/$REPO/commits/$SHA/statuses" \
+    --jq '[.[] | select(.context=="alignment-status")] | sort_by(.created_at) | last.state')
+  if [ "$current" != "pending" ]; then
+    gh issue close "$issue_number" --repo "$WATCHED_REPO" \
+      --comment "alignment-status already terminal ($current); closing stale queue entry."
+    continue
+  fi
+
+  # Dispatch polecat with an aops-prefixed task id (enforced by the
+  # create_task prefix guard in polecat/pkb_bridge.py; see ENFORCEMENT-MAP).
+  task_id="aops-alignment-$(echo "$REPO-$PR-$SHA" | sha1sum | cut -c1-8)"
+  polecat run -p aops -t "$task_id" \
     --workflow alignment-review \
-    --prompt "$(cat aops-core/agents/pauli.md && cat .github/agents/alignment.agent.md)" \
+    --prompt "$(cat aops-core/agents/pauli.md .github/agents/alignment.agent.md)" \
     --params "repo=$REPO,pr=$PR,sha=$SHA"
-  # The polecat run posts the verdict + status itself (per §3.2)
-  gh issue close $issue_number  # transitions to closed once polecat acks
+
+  # polecat run posts terminal alignment-status + PR review per §3.2.
+  # Issue closure is bookkeeping (the gate is the commit status).
+  gh issue close "$issue_number" --repo "$WATCHED_REPO"
 done
 ```
+
+**State-channel note.** The labelled issue is *queue infrastructure*, not state.
+The single source of truth for whether a PR has passed alignment is the
+`alignment-status` commit status on the HEAD SHA — which is what branch
+protection gates on (§5). The issue is a cross-PR enumeration surface because
+GitHub commit statuses are not enumerable by label/state across SHAs. If GitHub
+ever ships such an API, this queue layer becomes redundant; the gate semantics
+do not change.
 
 **Pauli prompt** (`.github/agents/alignment.agent.md`) — wraps `aops-core/agents/pauli.md` with the PR-review framing: read CORE, load PKB context for the touched specs, run Strategic Review against the diff, post the review + status using the agent's PAT, then exit. Mirrors the structure of `merge-prep.agent.md`.
 
