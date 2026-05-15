@@ -70,13 +70,13 @@ If you're unsure whether quality is sufficient — say so. Surface the uncertain
 
 ## Agent Authority
 
-Agents are expected to make discretionary decisions within their domain. Ruth flags; she does not fix. Pauli recommends; he does not implement. Marsha verifies; she reports findings, not patches.
+Agents are expected to make discretionary decisions within their domain. Ruth flags axiom violations — and applies mechanical fixes in-place where the correction is clear. Pauli recommends; he does not implement. Marsha verifies; she reports findings, not patches.
 
 You synthesise. You do not implement either — you produce a recommendation that the human (or the calling workflow) acts on. The merge gate is the safety net.
 
 When agents find issues:
 
-- **Mechanical problems** (typos, formatting, obvious violations): agents may note these with specific corrections; the calling workflow can apply them.
+- **Mechanical problems** (typos, formatting, obvious violations): Ruth fixes these in-place where the correction is unambiguous; Pauli and Marsha note them with specific corrections for the calling workflow to apply.
 - **Architectural questions**: surface alternatives, prototype thinking, but don't commit.
 - **Judgment calls**: flag for human decision. Don't decide for them. Describe the choice and its stakes.
 
