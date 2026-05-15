@@ -96,13 +96,15 @@ def _rollback_status_for(task) -> str:
     return prior_str
 
 
-def _compute_max_turns(task) -> str:
+def _compute_max_turns(task, override: str | None = None) -> str:
     """Return the --max-turns value for a headless Claude run.
 
     Derives the budget from the task's ``effort`` field (XS/S/M/L).
     Falls back to _DEFAULT_MAX_TURNS when the field is absent or unrecognised.
     Returns a string because subprocess args must be strings.
     """
+    if override is not None:
+        return str(override)
     effort = getattr(task, "effort", None)
     turns = _DEFAULT_MAX_TURNS
     if isinstance(effort, str) and effort:
@@ -117,17 +119,19 @@ def _compute_max_turns(task) -> str:
     return str(turns)
 
 
-def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> None:
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> bool:
     """Detect and log a turn-budget exhaustion event.
 
     Scans agent output for Claude's "Reached max turns" message.
     When found, extracts the last tool call name from the output so
     supervisors can see where the agent was when the budget ran out,
     without having to dig through the full transcript.
+
+    Returns True if budget exhaustion was detected, False otherwise.
     """
     combined = (stdout or "") + (stderr or "")
     if "Reached max turns" not in combined:
-        return
+        return False
 
     print(
         f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
@@ -167,6 +171,7 @@ def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> Non
         "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
         file=sys.stderr,
     )
+    return True
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -3968,6 +3973,10 @@ class _IssueTask:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key.",
 )
+@click.option(
+    "--max-turns",
+    help="Override the max turns budget for this run.",
+)
 @click.pass_context
 def run(
     ctx,
@@ -3984,6 +3993,7 @@ def run(
     model,
     debug_flag,
     set_overrides,
+    max_turns,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -4324,7 +4334,7 @@ def run(
             cmd.append(prompt)
         else:
             # Headless: use -p for print mode
-            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task)])
+            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task, max_turns)])
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -4439,6 +4449,7 @@ def run(
         session_dir=str(run_session_dir),
     )
 
+    budget_exhausted = False
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -4507,7 +4518,9 @@ def run(
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
 
             # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
-            _emit_budget_hit_diagnostic(result.stdout, result.stderr, _compute_max_turns(task))
+            budget_exhausted = _emit_budget_hit_diagnostic(
+                result.stdout, result.stderr, _compute_max_turns(task, max_turns)
+            )
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
@@ -4675,7 +4688,10 @@ def run(
 
         if not worktree_removed:
             print(f"   Worktree: {worktree_path}")
-            print(f"   To finish manually: cd {worktree_path} && polecat finish")
+            if budget_exhausted:
+                print(f"   Recovery hint: polecat resume {task.id}")
+            else:
+                print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
 
 try:
@@ -4747,6 +4763,84 @@ except ImportError:
     from finalize import finish_cmd as _finish_cmd  # type: ignore[no-redef]
 
 main.add_command(_finish_cmd)
+
+
+@main.command()
+@click.argument("task_id")
+@click.pass_context
+def resume(ctx, task_id):
+    """Resume an in_progress task and re-enter its worktree."""
+    _bootstrap_or_exit()
+
+    try:
+        validate_task_id_or_raise(task_id)
+    except TaskIDValidationError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    manager = PolecatManager(home_dir=ctx.obj.get("home"))
+    task = manager.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}", file=sys.stderr)
+        sys.exit(1)
+
+    status_str = task.status.value if hasattr(task.status, "value") else str(task.status or "")
+    if status_str != "in_progress":
+        print(
+            f"Error: Task {task_id} is '{status_str}', not 'in_progress'. Use 'polecat run -t {task_id} --force' if you really want to force re-run.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    worktree_path = manager.polecats_dir / task.id
+    if worktree_path.exists():
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            print(
+                f"Error: git status failed in {worktree_path}: {result.stderr.strip()}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if not result.stdout.strip():
+            print("✨ Worktree is clean. Running auto-finish...")
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(worktree_path)
+                try:
+                    from polecat.finalize import finish_cmd as _finish_cmd
+                except ImportError:
+                    from finalize import finish_cmd as _finish_cmd  # type: ignore[no-redef]
+                ctx.invoke(
+                    _finish_cmd, no_push=False, do_nuke=True, force_done=False, project=task.project
+                )
+            finally:
+                os.chdir(original_cwd)
+            return
+
+    ctx.invoke(
+        run,
+        project=None,
+        caller="polecat",
+        task_id=task_id,
+        issue=None,
+        no_finish=False,
+        gemini=False,
+        interactive=False,
+        no_auto_finish=False,
+        memory=None,
+        force=True,
+        model=None,
+        debug_flag=None,
+        set_overrides=(),
+        max_turns=None,
+    )
 
 
 if __name__ == "__main__":
