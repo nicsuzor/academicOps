@@ -18,6 +18,7 @@ GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
+GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -184,7 +185,7 @@ install-gemini:
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
 	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
 	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
-	command gemini extensions install https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz --consent --auto-update --pre-release && \
+	command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release && \
 	echo "✓ Gemini CLI extension installed"
 
 report-versions:

@@ -385,21 +385,32 @@ def main():
                 dist_core_claude = candidate
                 break
 
+        dist_tools_claude = None
+        for name in ("aops-tools-claude", "aops-tools"):
+            candidate = aops_root / "dist" / name
+            if candidate.exists():
+                dist_tools_claude = candidate
+                break
+
+        if dist_core_claude or dist_tools_claude:
+            # Use local repo as marketplace for source installs (shared setup)
+            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
+
         if dist_core_claude:
             print(f"Installing Claude plugin from: {dist_core_claude}")
-            # Uninstall first to avoid "already installed" error
             run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
-            # Use local repo as marketplace for source installs
-            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
             run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
             print("✓ Claude plugin installed")
+        else:
+            print("Warning: Claude plugin dist not found. Skipping install.")
 
-            # Also install aops-tools
+        if dist_tools_claude:
+            print(f"Installing Claude aops-tools from: {dist_tools_claude}")
             run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
             run_command(["claude", "plugin", "install", "aops-tools@academicOps"], check=False)
             print("✓ Claude aops-tools plugin installed")
         else:
-            print("Warning: Claude plugin dist not found. Skipping install.")
+            print("Warning: Claude aops-tools dist not found. Skipping install.")
 
         # Install auto mode classifier rules
         print("\n=== Phase 4b: Install Auto Mode Rules ===")
