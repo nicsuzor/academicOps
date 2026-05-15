@@ -163,8 +163,9 @@ install-claude:
 	@command claude plugin marketplace add $(DIST_REPO) && \
 	command claude plugin marketplace update academicOps && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
-	command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) && \
-	echo "✓ Claude Code plugin installed"
+	echo "✓ Claude Code aops-core installed"
+	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
+		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
 # Cowork on personal accounts has no marketplace mechanism. The same aops-core
 # plugin shipped to Claude Code CLI is uploaded to Cowork as a zip via
