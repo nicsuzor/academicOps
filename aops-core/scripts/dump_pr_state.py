@@ -143,12 +143,12 @@ def apply_triage(pr: dict, repo_path: Path):
         if existing_triage_labels:
             cmd.extend(["--remove-label", ",".join(existing_triage_labels)])
         try:
-            subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True)
+            subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True, text=True)
         except subprocess.CalledProcessError as e:
-            stderr = e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or "")
+            stderr = e.stderr or ""
             print(
                 f"Warning: label-edit failed for {repo_path.name} PR #{pr['number']}: "
-                f"gh pr edit {pr['number']} --add-label {new_label} -> exit {e.returncode} {stderr.strip()}",
+                f"{' '.join(cmd)} -> exit {e.returncode} {stderr.strip()}",
                 file=sys.stderr,
             )
             return
@@ -183,11 +183,12 @@ def apply_triage(pr: dict, repo_path: Path):
                         cwd=repo_path,
                         capture_output=True,
                         check=True,
+                        text=True,
                     )
             except subprocess.CalledProcessError as e:
-                stderr = e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or "")
+                stderr = e.stderr or ""
                 print(
-                    f"Warning: escalate issue creation failed for {repo_path.name} PR #{pr['number']}: "
+                    f"Warning: escalate issue search/creation failed for {repo_path.name} PR #{pr['number']}: "
                     f"exit {e.returncode} {stderr.strip()}",
                     file=sys.stderr,
                 )
