@@ -186,8 +186,9 @@ install-gemini:
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
 	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
 	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
-	command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release && \
-	echo "✓ Gemini CLI extension installed"
+	echo "✓ Gemini CLI aops-core extension installed"
+	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
+		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
 
 report-versions:
 	@echo "--- 📋 Installed Versions ---"
