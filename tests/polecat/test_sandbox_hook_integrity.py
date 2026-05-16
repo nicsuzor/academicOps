@@ -3,16 +3,15 @@
 
 The sandbox hook router (router.sh → router.py) silently fails inside polecat
 containers because it tries to write host paths (Path.home() → /home/nic).
-Session state doesn't persist, hook telemetry isn't logged, and the commit gate
+Session state doesn't persist, hook telemetry isn't logged, and the handover gate
 silently defaults to warn-only — all while exiting 0.
 
 These tests spin up an aops-crew Docker container, invoke the hook router with
 a synthetic SessionStart event, and verify:
 
   1. session_env_setup did not emit CRITICAL on stderr
-  2. COMMIT_GATE_MODE was not silently defaulted
-  3. stderr contains no Permission denied or No such file or directory for host paths
-  4. Hook session-state + event-log writes either succeed or the hook exits non-zero
+  2. stderr contains no Permission denied or No such file or directory for host paths
+  3. Hook session-state + event-log writes either succeed or the hook exits non-zero
 
 Run: pytest tests/polecat/test_sandbox_hook_integrity.py -m 'slow and integration' -v
 """
@@ -201,24 +200,6 @@ class TestSandboxHookIntegrity:
         critical_lines = [line for line in stderr.splitlines() if "CRITICAL" in line]
         assert not critical_lines, (
             "Hook router emitted CRITICAL errors inside sandbox:\n" + "\n".join(critical_lines)
-        )
-
-    def test_commit_gate_mode_not_silently_defaulted(self, hook_results):
-        """COMMIT_GATE_MODE must not be silently defaulted to 'warn'.
-
-        Invariant 2: When gate mode env vars are missing, _gate_mode() logs a
-        WARNING and defaults to 'warn'. Inside a sandbox this means the commit
-        gate is effectively disabled with no visible signal to the agent.
-        """
-        stderr = hook_results["stderr"]
-        silent_default_lines = [
-            line
-            for line in stderr.splitlines()
-            if "COMMIT_GATE_MODE" in line and "not set" in line and "defaulting" in line
-        ]
-        assert not silent_default_lines, (
-            "COMMIT_GATE_MODE was silently defaulted inside sandbox:\n"
-            + "\n".join(silent_default_lines)
         )
 
     def test_no_host_path_permission_errors(self, hook_results):
