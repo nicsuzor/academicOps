@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini package-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -51,6 +51,7 @@ help:
 	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
 	@echo "  make install-gemini - Install Gemini extensions from main repo"
+	@echo "  make install-windows - (WSL only) Install into Windows-side Claude/Gemini if present"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
 	@echo "Release Management (Automation):"
@@ -139,7 +140,7 @@ install-hooks:
 # can't add custom marketplaces, so the Cowork plugin must be uploaded manually
 # via the Claude desktop app (Customize → Add plugins → Upload a file). Run
 # `make package-cowork` to produce the zip, then upload it through the UI.
-install: ensure-docker install-claude install-gemini install-crontab
+install: ensure-docker install-claude install-gemini install-windows install-crontab
 	@$(MAKE) report-versions
 
 ensure-docker:
@@ -179,6 +180,29 @@ package-cowork: build-dev
 	@echo ""
 	@echo "Upload via Claude desktop app:"
 	@echo "  Cowork tab → Customize → Add plugins → Upload a file → select the zip above."
+	@if [ -d /mnt/c ] && grep -qi microsoft /proc/version 2>/dev/null; then \
+		$(MAKE) --no-print-directory package-cowork-windows; \
+	fi
+
+# Copy the latest Cowork zip into the Windows user's Downloads folder so the
+# desktop file-picker can see it on a native drive (UNC paths can be flaky).
+# Only meaningful on WSL.
+package-cowork-windows:
+	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
+		echo "Not on WSL — nothing to copy."; exit 0; \
+	fi; \
+	ZIP=$$(ls -1t $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | head -1); \
+	if [ -z "$$ZIP" ]; then \
+		echo "  ⚠️ No Cowork zip found in $(DIST_DIR) — run 'make package-cowork' first."; exit 1; \
+	fi; \
+	WIN_USER=$$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r' | tr -d '\n'); \
+	DEST="/mnt/c/Users/$$WIN_USER/Downloads"; \
+	if [ ! -d "$$DEST" ]; then \
+		echo "  ⚠️ Windows Downloads not found at $$DEST — skipping."; exit 0; \
+	fi; \
+	cp "$$ZIP" "$$DEST/" && \
+		echo "✓ Copied $$(basename $$ZIP) → $$DEST" && \
+		echo "  In Claude desktop: Cowork → Customize → Add plugins → Upload a file → pick from Downloads."
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."
@@ -189,6 +213,43 @@ install-gemini:
 	echo "✓ Gemini CLI aops-core extension installed"
 	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
 		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
+
+# Optional: install into Windows-side Claude/Gemini when invoked from WSL.
+# Silently no-ops outside WSL or when no Windows binaries are found.
+# Set AOPS_SKIP_WINDOWS=1 to opt out even when WSL + Windows binaries are present.
+install-windows:
+	@if [ -n "$$AOPS_SKIP_WINDOWS" ]; then \
+		echo "Skipping Windows-side install (AOPS_SKIP_WINDOWS set)"; \
+		exit 0; \
+	fi; \
+	if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
+		exit 0; \
+	fi; \
+	echo "--- 🪟  WSL detected — checking for Windows-side Claude/Gemini ---"; \
+	if (cd /mnt/c && cmd.exe /c "where claude" >/dev/null 2>&1); then \
+		echo "Installing aops-core plugin into Windows Claude..."; \
+		(cd /mnt/c && cmd.exe /c "claude plugin marketplace add $(DIST_REPO)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)' || true); \
+		(cd /mnt/c && cmd.exe /c "claude plugin marketplace update academicOps" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)' || true); \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Claude aops-core installed" \
+			|| echo "  ⚠️ Windows Claude aops-core install failed"; \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Claude aops-tools installed" \
+			|| echo "  ⚠️ Windows Claude aops-tools install failed"; \
+	else \
+		echo "  (no Windows-side claude found — skipping)"; \
+	fi; \
+	if (cd /mnt/c && cmd.exe /c "where gemini" >/dev/null 2>&1); then \
+		echo "Installing aops extensions into Windows Gemini CLI..."; \
+		(cd /mnt/c && cmd.exe /c "gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Gemini aops-core installed" \
+			|| echo "  ⚠️ Windows Gemini aops-core install failed"; \
+		(cd /mnt/c && cmd.exe /c "gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Gemini aops-tools installed" \
+			|| echo "  ⚠️ Windows Gemini aops-tools install failed"; \
+	else \
+		echo "  (no Windows-side gemini found — skipping)"; \
+	fi
 
 report-versions:
 	@echo "--- 📋 Installed Versions ---"
