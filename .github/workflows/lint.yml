@@ -13,7 +13,7 @@ on:
 
 jobs:
   lint:
-    timeout-minutes: 45
+    timeout-minutes: 10
     name: Lint
     runs-on: ubuntu-latest
     permissions:
@@ -42,27 +42,32 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
+        timeout-minutes: 5
 
       # Initial check: identify problems but don't fail the job yet
       - name: Ruff lint (initial)
         id: lint-initial
         continue-on-error: true
+        timeout-minutes: 2
         run: uv run ruff check --output-format=github
 
       - name: Ruff format check (initial)
         id: format-initial
         continue-on-error: true
+        timeout-minutes: 2
         run: uv run ruff format --check
 
       # Autofix and push if either check found problems (PRs and workflow_dispatch)
       - name: Autofix lint and formatting
         if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
+        timeout-minutes: 3
         run: |
           uv run ruff check --fix || true
           uv run ruff format
 
       - name: Commit and push fixes
         if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
+        timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -77,8 +82,10 @@ jobs:
       # Final gate: re-check after fixes (or confirm clean on first pass)
       - name: Ruff lint (final)
         if: steps.lint-initial.outcome == 'failure'
+        timeout-minutes: 2
         run: uv run ruff check --output-format=github
 
       - name: Ruff format check (final)
         if: steps.format-initial.outcome == 'failure'
+        timeout-minutes: 2
         run: uv run ruff format --check
