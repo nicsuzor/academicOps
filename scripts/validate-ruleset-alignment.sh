@@ -26,6 +26,7 @@ RULESET_FILE=".github/rulesets/pr-review-and-merge.yml"
 # and must be explicitly listed here to pass validation.
 API_DRIVEN_STATUSES=(
   "merge-prep-status"   # set by agent-merge-prep.yml and pr-pipeline.yml Initialize job
+  "enforcer-status"     # set by agent-enforcer.yml via GitHub Statuses API (Phase 1 v2 enforcer)
 )
 
 # ── Extract required check names ────────────────────────────────────────────

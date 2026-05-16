@@ -12,9 +12,6 @@ name: "Trigger: Enforcer"
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    branches-ignore:
-      - main
-      - "release-please*"
 
 jobs:
   enforce:
