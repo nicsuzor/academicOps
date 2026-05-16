@@ -129,7 +129,6 @@ def check_normality_per_group(
     groups = data[group_col].unique()
     results = []
 
-    axes = None
     if plot:
         n_groups = len(groups)
         _fig, axes = plt.subplots(1, n_groups, figsize=(5 * n_groups, 4))

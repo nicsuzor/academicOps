@@ -4498,7 +4498,6 @@ def run(
     )
 
     budget_exhausted = False
-    result: subprocess.CompletedProcess | None = None
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
