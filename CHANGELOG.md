@@ -1,5 +1,149 @@
 # Changelog
 
+## [0.3.25](https://github.com/nicsuzor/academicOps/compare/v0.3.24...v0.3.25) (2026-05-16)
+
+
+### Features
+
+* **axioms:** split reviewer questions into AXIOMS-REVIEW.md ([a5058d0](https://github.com/nicsuzor/academicOps/commit/a5058d075724e96960d0bd0dbdbd3261a324da9f))
+* **daily:** add human-action item coordinator ([797b0f8](https://github.com/nicsuzor/academicOps/commit/797b0f8821ad76c8269bc77c6afda94edbdce612))
+* **daily:** add human-action item coordinator ([f84d533](https://github.com/nicsuzor/academicOps/commit/f84d533a1a05085a6d3f45e0215da2ed3ad72483))
+* **diagram:** unified diagram skill replacing flowchart + excalidraw ([#967](https://github.com/nicsuzor/academicOps/issues/967)) ([e9d80ea](https://github.com/nicsuzor/academicOps/commit/e9d80ea40008a498334edfd42d16021ed36cf0d2))
+* **enforcer:** migrate agent-enforcer.yml to v2 contract (Phase 1) ([69892d5](https://github.com/nicsuzor/academicOps/commit/69892d5d0eae8717095f029bae5785d27076834c))
+* **enforcer:** migrate agent-enforcer.yml to v2 contract (Phase 1) ([d52db3b](https://github.com/nicsuzor/academicOps/commit/d52db3bff2f8804da732edb77d6a50e7886b4b2c))
+* **extract:** absorb convert-to-md as docs-to-md route ([#966](https://github.com/nicsuzor/academicOps/issues/966)) ([654b0a5](https://github.com/nicsuzor/academicOps/commit/654b0a5a36e7fb25d520e924696078996407b381))
+* implement auto-progress gate and autonomy tiers (A18) ([593782d](https://github.com/nicsuzor/academicOps/commit/593782ddf8482686c5348c142f2839ccbdf01a56))
+* **install:** install aops-tools to local clients alongside aops-core ([#1053](https://github.com/nicsuzor/academicOps/issues/1053)) ([a7034f1](https://github.com/nicsuzor/academicOps/commit/a7034f16213b45eba011aa6cbc981cc5927d4cd2))
+* **memory:** merge /remember + /sleep into unified memory skill ([82af014](https://github.com/nicsuzor/academicOps/commit/82af014ade8c2ff284d853dd022e8edf2900ec05))
+* **memory:** merge /remember + /sleep into unified memory skill ([e10b044](https://github.com/nicsuzor/academicOps/commit/e10b044ef4ee02a877afdf0a31260d222f96ef98))
+* **pkb:** enforce type-prefix-filename consistency in create_task ([#994](https://github.com/nicsuzor/academicOps/issues/994)) ([85766a6](https://github.com/nicsuzor/academicOps/commit/85766a63970dca308949f012739edd33c2aea8f0))
+* **planner:** add interactive edge-wiring flow ([436966c](https://github.com/nicsuzor/academicOps/commit/436966c576ffb9432cd49d23251010c875d50ccf))
+* **planner:** add interactive edge-wiring flow and Renooij-Witteman scale ([0829d8e](https://github.com/nicsuzor/academicOps/commit/0829d8eb8dcb964444cf49c54e1646bf4ab39c26))
+* **polecat:** auto-finish orphaned worktrees when watchdog kills agent ([#1018](https://github.com/nicsuzor/academicOps/issues/1018)) ([5eda6ed](https://github.com/nicsuzor/academicOps/commit/5eda6ed1d0cc0b5d986d95ebf39991a5a2bbd70a))
+* **polecat:** bypass watchdog kills for interactive/crew sessions and add telemetry ([#996](https://github.com/nicsuzor/academicOps/issues/996)) ([778565f](https://github.com/nicsuzor/academicOps/commit/778565fd0910718ec7fb588cdcec5a72ff67106e))
+* **polecat:** implement mounts support, worker prompt verification, and pc finish error improvement ([fb1a1fa](https://github.com/nicsuzor/academicOps/commit/fb1a1fa48f9ac05a9e9231934706b9f004265e7e))
+* **polecat:** implement mounts support, worker prompt verification, and pc finish error improvement ([f1ddb51](https://github.com/nicsuzor/academicOps/commit/f1ddb519941cf77bca02856eb065061bbec899c2))
+* **pr-triage:** auto-bin classification and routing rules ([88c2d22](https://github.com/nicsuzor/academicOps/commit/88c2d22649ed1ddde485f6a68e222f915b56813e))
+* **project:** provision canonical label set on repo init ([fcb7441](https://github.com/nicsuzor/academicOps/commit/fcb744124259298c8b796d1bd2d2c3a810cbe2a5))
+* **project:** provision canonical label set on repo init ([e1ec695](https://github.com/nicsuzor/academicOps/commit/e1ec695df5d84e5a1a7d608d0c029dd845677be7))
+* re-shape /learn toward systems-level findings ([#1006](https://github.com/nicsuzor/academicOps/issues/1006)) ([7dd7d72](https://github.com/nicsuzor/academicOps/commit/7dd7d72422ac59b001c9e1ac2186b2ee561261d8))
+* **session-summary:** enrich metadata with surface/client/crew + subagent names ([ddb3200](https://github.com/nicsuzor/academicOps/commit/ddb32009dc961622fb07411f6ea59eedccdae6bc))
+* **skills:** merge /critic into /strategic-review as mode=critic ([#965](https://github.com/nicsuzor/academicOps/issues/965)) ([08028d4](https://github.com/nicsuzor/academicOps/commit/08028d41c802cc856b4285568a2470b69784fd12))
+* **skills:** replace /qa with bundled /verify skill (m:n dispatch) ([#968](https://github.com/nicsuzor/academicOps/issues/968)) ([774700d](https://github.com/nicsuzor/academicOps/commit/774700d7c73c8e62fcaeb33995ece0b423356e65))
+* **supervisor:** add design-only preflight gate variant ([1db1c6c](https://github.com/nicsuzor/academicOps/commit/1db1c6c2710f18eada464677458ba19ff9d9afed))
+* **supervisor:** add design-only preflight gate variant ([6e2dd87](https://github.com/nicsuzor/academicOps/commit/6e2dd87344c5cb2d709722ece27718e1e61d879c))
+* **supervisor:** add Row 0 pre-flight check for open pr_url ([690027b](https://github.com/nicsuzor/academicOps/commit/690027b876b445ac17ad120fe37908a4d9002c3f))
+* **survey:** merge /retro + /trend-review + /issue-sweep into unified /survey skill ([#972](https://github.com/nicsuzor/academicOps/issues/972)) ([ad938e4](https://github.com/nicsuzor/academicOps/commit/ad938e43b51467623fa70c8a179742578c3d3271))
+
+
+### Bug Fixes
+
+* address enforcer review feedback on apply_triage ([0f118e9](https://github.com/nicsuzor/academicOps/commit/0f118e977332a362e1b77af3b4f59b63e802d1b5))
+* address nicsuzor review concerns more accurately ([6cbb684](https://github.com/nicsuzor/academicOps/commit/6cbb684e8e4297cc4432b37620786d64eabf67b2))
+* address nicsuzor review feedback on supervisor/worker-dispatch ([59aeff8](https://github.com/nicsuzor/academicOps/commit/59aeff8edbd9c60f46fa30cfa048c50d9635ee7e))
+* address review feedback ([27c9bd8](https://github.com/nicsuzor/academicOps/commit/27c9bd8906f48b5d87b2089985aed56938eb7691))
+* address review feedback ([5324308](https://github.com/nicsuzor/academicOps/commit/5324308271311867e1d3f609ed5b61e42bd8a948))
+* address review feedback + merge origin/main ([84a7212](https://github.com/nicsuzor/academicOps/commit/84a721233a97f0ad32a20eab4a31c944d3496ad4))
+* address review feedback on auto-archive and CONFIRM format ([fcba325](https://github.com/nicsuzor/academicOps/commit/fcba325e1abe791eb89c02f13f41e1c70fb28f78))
+* address review feedback on polecat trust framing ([565c154](https://github.com/nicsuzor/academicOps/commit/565c15481e61daa47a63e4a22d1c2a7a066f0a7d))
+* address review feedback on supervisor SKILL.md ([5de03e5](https://github.com/nicsuzor/academicOps/commit/5de03e55a1419546bfe48da6e38d54b60220f720))
+* **build:** strip H1 headers from inlined axioms content ([66b8b75](https://github.com/nicsuzor/academicOps/commit/66b8b758acdcce7e4065f4aa8f4db5fccb339d78))
+* **ci:** eliminate merge-prep concurrency waste ([87f1eda](https://github.com/nicsuzor/academicOps/commit/87f1edaeba8693b5a07c5d2a3c5cd840c7f7e73e))
+* **ci:** eliminate merge-prep concurrency waste ([5999cff](https://github.com/nicsuzor/academicOps/commit/5999cff97fe1e9d525172924949fb9075103b9b1))
+* **ci:** gate initialize on same-repo, decouple lint from initialize ([245fed0](https://github.com/nicsuzor/academicOps/commit/245fed09c6f02e4869b3e5983b49c88178450252))
+* **ci:** gate initialize on same-repo, decouple lint from initialize ([630423a](https://github.com/nicsuzor/academicOps/commit/630423a0c39e7b0661c4fbfceb9a6b0ad7edd4a7))
+* correct broken INSTALL.md relative link in BUILD.md ([0c07bbb](https://github.com/nicsuzor/academicOps/commit/0c07bbb9d0783565a8c73c0890db03f3e47180b0))
+* correct docstring — handover gate hard-fails, does not silently default ([06c31d9](https://github.com/nicsuzor/academicOps/commit/06c31d94de20d12ad957d06fca947fdf1868d613))
+* correct review-dismissal API call in enforcer prompt ([7c80849](https://github.com/nicsuzor/academicOps/commit/7c80849c99f3a99fb7d5be180291447d295bf5d0))
+* **daily:** log skip reasons for mobile captures ([44c8b34](https://github.com/nicsuzor/academicOps/commit/44c8b340322087fe2c30c92e681fce9ee2f38390))
+* **docker:** tag aops-crew image under ghcr.io/nicsuzor namespace ([#955](https://github.com/nicsuzor/academicOps/issues/955)) ([c9bc184](https://github.com/nicsuzor/academicOps/commit/c9bc184768b55bf2862847d1c8298ac22c8b1221))
+* drop project: example that contradicted Gate 3 and required body access ([258eee8](https://github.com/nicsuzor/academicOps/commit/258eee821b61d74dcbb519a93a32220c62a6bdba))
+* **dump_pr_state:** label-edit failures no longer abort open_prs/recent_merged fetch ([be880d1](https://github.com/nicsuzor/academicOps/commit/be880d1607328b8a6482ae0ca539980644f06977))
+* **dump_pr_state:** label-edit failures no longer abort open_prs/recent_merged fetch ([7f604e1](https://github.com/nicsuzor/academicOps/commit/7f604e1ecbd635c0bc90fb6d20ef40614555f3f3))
+* **enforcer:** address nicsuzor review — update rbg.md capabilities and decouple enforcer framing ([100e450](https://github.com/nicsuzor/academicOps/commit/100e45092e2d3975d56c82f799897b9fb2c77d8f))
+* **enforcer:** remove branches-ignore that prevented trigger on PRs to main ([a116f90](https://github.com/nicsuzor/academicOps/commit/a116f9096c7bc9297fb04acb71c9c4dde99ed615))
+* **enforcer:** remove branches-ignore that prevented trigger on PRs to main ([1225d52](https://github.com/nicsuzor/academicOps/commit/1225d52112027784710a339c98cd418344c2da62))
+* **enforcer:** remove unverified condition field; harden build fallback ([19e3822](https://github.com/nicsuzor/academicOps/commit/19e38227c56dcec200dc1874b79df6c3ce41899a))
+* guard autonomy field access against null frontmatter ([7d3ae71](https://github.com/nicsuzor/academicOps/commit/7d3ae7141d02d8f62eb0822c4f8f9e26f186c197))
+* guard backlog against overwrite; fix yaml.safe_load None crash ([b07b5dd](https://github.com/nicsuzor/academicOps/commit/b07b5dd0a46a84474f68a2a55cda34e9d11b3578))
+* include 'to' in contributes_to canonical fields list ([dc70738](https://github.com/nicsuzor/academicOps/commit/dc707387c7df89a317cc81cd6d4a72737485e2b8))
+* **install:** apply best-effort aops-tools pattern to install-gemini ([15dc517](https://github.com/nicsuzor/academicOps/commit/15dc51769e6fca3d805eec02a446333e4809ac25))
+* **install:** tolerate missing aops-tools in dist marketplace ([9c35bdd](https://github.com/nicsuzor/academicOps/commit/9c35bdd1db618098dac75c16e123b36701d5481b))
+* **install:** tolerate missing aops-tools in dist marketplace ([cc2df57](https://github.com/nicsuzor/academicOps/commit/cc2df575add7a9cc7a279431180933d32039062f))
+* **issue-sweep:** reconcile step 5 with halt-after-one-cycle ([#829](https://github.com/nicsuzor/academicOps/issues/829)) ([6803eb9](https://github.com/nicsuzor/academicOps/commit/6803eb90453bf8edc28eb7e1945475a8e0b583d9))
+* **make:** derive short tag from DOCKER_IMAGE via notdir ([21c93c3](https://github.com/nicsuzor/academicOps/commit/21c93c3134bc274124baa8d06796a225abfd8427))
+* **make:** tag aops-crew image under both names on build ([7377dbc](https://github.com/nicsuzor/academicOps/commit/7377dbc809052f0aa85067ab9fe782dda829e1b9))
+* **make:** tag aops-crew image under both names on build ([dd5f16b](https://github.com/nicsuzor/academicOps/commit/dd5f16b3a515576803bacdd943ec2ac619b91d0f))
+* **memory:** correct procedures→references path in sub-agent dispatch example ([c2a5c79](https://github.com/nicsuzor/academicOps/commit/c2a5c79ee8920cbbe2f2f42e7eb4d977cdc7cdf2))
+* **merge-prep:** fix SHA drift and per-PR concurrency hazards ([74599d1](https://github.com/nicsuzor/academicOps/commit/74599d1e1641441c6a8d32eb9675fc07a9857d62))
+* **merge-prep:** fix SHA drift and per-PR concurrency hazards ([1de6f13](https://github.com/nicsuzor/academicOps/commit/1de6f1319a5bedf8f3a9e5ffcea41fb7835b6628))
+* **merge-prep:** use consumer repo's default branch, not hardcoded 'main' ([182a88e](https://github.com/nicsuzor/academicOps/commit/182a88effd1506eb65546269c73dbb2bea6b182a))
+* **merge-prep:** use consumer repo's default branch, not hardcoded 'main' ([2e3e5aa](https://github.com/nicsuzor/academicOps/commit/2e3e5aa471a974ea44091c693820729092306553))
+* **planner:** add wire mode triggers to SKILL.md frontmatter ([1ac018d](https://github.com/nicsuzor/academicOps/commit/1ac018db5cdc1034d477a90899c827ab69be8273))
+* **polecat:** label stale worktrees in polecat list via Docker liveness check ([#964](https://github.com/nicsuzor/academicOps/issues/964)) ([ea5efb9](https://github.com/nicsuzor/academicOps/commit/ea5efb9931d25238d0aa9a60247663b5ec961add))
+* **polecat:** quiet-by-default output ([c394ac8](https://github.com/nicsuzor/academicOps/commit/c394ac8b3df12f92fdaab278de42a878acb5e0de))
+* **polecat:** quiet-by-default output (suppress missing-project warnings + Docker noise) ([9e6dce1](https://github.com/nicsuzor/academicOps/commit/9e6dce1ea9e7995ef778902f5a5adcfb2f3126c1))
+* **polecat:** robust reachability check in integrity gate ([#992](https://github.com/nicsuzor/academicOps/issues/992)) ([78796a2](https://github.com/nicsuzor/academicOps/commit/78796a29e1f45b2b678bb28c8f39ff3e50eafee6))
+* **polecat:** use absolute imports and add entry point ([#1037](https://github.com/nicsuzor/academicOps/issues/1037)) ([62e0659](https://github.com/nicsuzor/academicOps/commit/62e0659be699edb8790087d08702cb3edad8fff3))
+* prevent project name truncation in session transcripts ([#1031](https://github.com/nicsuzor/academicOps/issues/1031)) ([538005b](https://github.com/nicsuzor/academicOps/commit/538005b6ec15f9ea2437d09b1d49a4332e12d6b4))
+* remove extant references to 'aops' as a binary (renamed to pkb) ([#963](https://github.com/nicsuzor/academicOps/issues/963)) ([7240001](https://github.com/nicsuzor/academicOps/commit/724000176b4ce0610e43d1273aef36b7453043e1))
+* resolve project alias and use cfg-relative paths in mounts block ([266909f](https://github.com/nicsuzor/academicOps/commit/266909f0c957f2780da8e45e24ebf0b144e5ba7e))
+* restore project-resolution-from-ancestors in both preflight variants ([4be9884](https://github.com/nicsuzor/academicOps/commit/4be9884aa043358eaf0f2e5d0b5877dea95e7113))
+* simplify subprocess stderr handling with text=True; log actual command ([e5e7d08](https://github.com/nicsuzor/academicOps/commit/e5e7d08788c64c52f038aa1906751c923ea3a407))
+* **sleep:** correct maintenance-phases.md path in backwards-compat stub ([3d45aee](https://github.com/nicsuzor/academicOps/commit/3d45aee070eab9efa48e31f3408acc3748511f52))
+* **spec:** redact ts.net hostname from pr-pipeline-v2.md (A9/R4) ([0465435](https://github.com/nicsuzor/academicOps/commit/0465435cee53b737647da5ae3becf6ef7b418fba))
+* **transcript:** skip empty hook payload blocks ([8f01bc8](https://github.com/nicsuzor/academicOps/commit/8f01bc875742cd7ecaa7f9a326ab9aebfe2daf49))
+* trust polecats as full-judgment in-repo agents (GH [#957](https://github.com/nicsuzor/academicOps/issues/957)) ([f5ad384](https://github.com/nicsuzor/academicOps/commit/f5ad3848235b115e3b7ebe7855161dda2a3cfb56))
+* **typecheck:** exclude tests/ from pyrightconfig.json and suppress reportUntypedBaseClass ([b3f7b0f](https://github.com/nicsuzor/academicOps/commit/b3f7b0fff5a7ac32e298fa43cd8da1cdd8a7a3f5))
+* **typecheck:** resolve remaining possibly-unbound and argument-type errors ([308a3fe](https://github.com/nicsuzor/academicOps/commit/308a3fe1c22507c6f5a090c6abe81e71956abb16))
+* **typecheck:** restore CI after pyrightconfig.json strict mode introduced by main ([97b9c61](https://github.com/nicsuzor/academicOps/commit/97b9c61ae31887caaea21359d7399e686a2eeb55))
+* **typecheck:** simplify pyrightconfig.json exclude list ([0599cd6](https://github.com/nicsuzor/academicOps/commit/0599cd69597466090be49b340679b31f83ca61f9))
+* **typecheck:** use correct basedpyright rule name and revert None initializations ([26ff05c](https://github.com/nicsuzor/academicOps/commit/26ff05c3c9765dda5debb284cfeb035cb26c1dd9))
+* update polecat config for model fields ([b1ef756](https://github.com/nicsuzor/academicOps/commit/b1ef75609b7eff60aac20958039d011e70191512))
+* **vocab:** align gate/lens/consolidate/audit usage in sleep and rbg ([#954](https://github.com/nicsuzor/academicOps/issues/954)) ([f1b7db2](https://github.com/nicsuzor/academicOps/commit/f1b7db202fbefc1742ba54c5511664c71434c94c))
+* **worker-dispatch:** cite A4 source for User intent rationale ([33a1ace](https://github.com/nicsuzor/academicOps/commit/33a1ace24a317bc03300aad819cbec02218d54bb))
+* **workers-md:** correct polecat.yaml citation to existing .example file ([a1bdee5](https://github.com/nicsuzor/academicOps/commit/a1bdee57c506fb7d1fa2a5b29883d697609e2f82))
+* **workers-md:** remove unjustified 'claude only' routing guidance ([cf1f805](https://github.com/nicsuzor/academicOps/commit/cf1f8052de1741bf629bc06094299f536dc69ea6))
+
+
+### Reverts
+
+* drop A18 axiom and autonomy-tier infrastructure per review ([0c8f4d9](https://github.com/nicsuzor/academicOps/commit/0c8f4d95ebec51b391bf326ec5300f701fc1207e))
+
+
+### Code Refactoring
+
+* **ida:** compress stop-hook reminder to 3-sentence cue ([#958](https://github.com/nicsuzor/academicOps/issues/958)) ([6f4ede9](https://github.com/nicsuzor/academicOps/commit/6f4ede942cccc271d3922d6fe71be5e75e6fdbb1))
+* **supervisor:** golden-path-first; shrink pre-flight gates ([8b6d819](https://github.com/nicsuzor/academicOps/commit/8b6d8197d58f3f76c92833dbb65e097511425589))
+* **supervisor:** golden-path-first; shrink pre-flight gates ([61b10df](https://github.com/nicsuzor/academicOps/commit/61b10df27e37b8335251251e0fef386af7fa89ad))
+* **transcript:** unify hook rendering across all event types ([6c9f869](https://github.com/nicsuzor/academicOps/commit/6c9f8692499fc76b6f617cad3f8613cc9f79babb))
+* **transcript:** unify hook rendering across all event types ([4c3033c](https://github.com/nicsuzor/academicOps/commit/4c3033c04cb1841ef9eb306ce4f66e052283d01e))
+
+
+### Documentation
+
+* draft Trust Over Prescription heuristic ([#1055](https://github.com/nicsuzor/academicOps/issues/1055)) ([639d862](https://github.com/nicsuzor/academicOps/commit/639d8625e01a42c933649f21b8bae9f3d0ba2c64))
+* **enforcement-map:** mark Phase 1 operative; regenerate agent matrix ([0fcb46d](https://github.com/nicsuzor/academicOps/commit/0fcb46d2cc0dbed6e8514547f88bb6ac9c3a3408))
+* **taxonomy:** narrow project to polecat slug; collapse hierarchy; formalize contributes_to ([6d8f411](https://github.com/nicsuzor/academicOps/commit/6d8f41116e9b8fa24f6e8e68be8b9012018371c8))
+* **taxonomy:** narrow project to polecat slug; collapse hierarchy; formalize contributes_to edges ([d381088](https://github.com/nicsuzor/academicOps/commit/d3810880a5586001e735c500c6aeb0f7e9073ca4))
+* **taxonomy:** narrow project to polecat slug; collapse hierarchy; formalize contributes_to edges ([90fbaba](https://github.com/nicsuzor/academicOps/commit/90fbaba59ebce3fa526fcda216921f858aec66da))
+
+
+### Tests
+
+* update polecat.yaml fixtures for claude_model/gemini_model split ([f179d0e](https://github.com/nicsuzor/academicOps/commit/f179d0ec8404d5302794c07f4638a4952a61761e))
+
+
+### Miscellaneous
+
+* **main:** release 0.3.24 ([8faa85c](https://github.com/nicsuzor/academicOps/commit/8faa85c22aba0d32b9ee2d129d79e30048559e07))
+* **main:** release 0.3.24 ([1549742](https://github.com/nicsuzor/academicOps/commit/15497427130ad96cde4d47f5856937a898cebbd4))
+* remove lingering commit gate references ([3baf221](https://github.com/nicsuzor/academicOps/commit/3baf221bb415c83ca6d58daef91a71857994ded9))
+* remove show_path.py references and progress-sync bloat ([77f06e4](https://github.com/nicsuzor/academicOps/commit/77f06e48c9808af355d2b87c5241c1106499e39b))
+* **supervisor:** surface RBG axiom-check in Decompose phase ([93b09b6](https://github.com/nicsuzor/academicOps/commit/93b09b69cebd9c4adbe8f19173f1d6971bc64b31))
+* **supervisor:** surface RBG axiom-check in Decompose phase table ([42bca83](https://github.com/nicsuzor/academicOps/commit/42bca8335e5841ac402db09c25c0bf578c33bc60))
+* update uv.lock for release ([2399d4e](https://github.com/nicsuzor/academicOps/commit/2399d4e7942ba2db6a7b121f1fc89d6301f4aca8))
+
 ## [0.3.24](https://github.com/nicsuzor/academicOps/compare/v0.3.23...v0.3.24) (2026-05-16)
 
 
