@@ -40,7 +40,7 @@ gh pr diff "$PR_NUMBER" --repo "$REPO"
 
 ### 3. Apply detection rules
 
-Run all four detection rules from `rbg.md` in order. State each rule's verdict explicitly.
+Run all four detection rules in order. State each rule's verdict explicitly.
 
 For **mechanical violations** (typos, missing required frontmatter, orphan files, misnamed tools, wrong paths): fix them yourself with Edit/Write and push the fix. Writing "Fix: add X" in a review when you could apply the edit is a failure mode — do it instead.
 
@@ -61,34 +61,12 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --per-page 100 \
 
 ### 5. Post the PR review
 
-Use `gh pr review` to file your verdict:
-
-```bash
-# APPROVED — no violations:
-gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
-  --body "## Enforcer Review
-
-No axiom violations found.
-
-<!-- aops-verdict: APPROVE -->
-<!-- aops-issues: 0 -->"
-
-# CHANGES_REQUESTED — violations found:
-gh pr review "$PR_NUMBER" --repo "$REPO" --request-changes \
-  --body "## Enforcer Review
-
-[List violations with axiom numbers]
-
-<!-- aops-verdict: REVISE -->
-<!-- aops-issues: N -->"
-```
-
-Rules:
+File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
 
 - Only post a review if violations exist **or** if you pushed fixes.
 - If no violations and no fixes: do NOT post a review and do NOT comment.
 - Start every review body with `## Enforcer Review` so it can be found for future dismissal.
-- Keep it concise: axiom number, violation, one-line remedy.
+- Include the machine-readable trailer (`<!-- aops-verdict: ... -->`, `<!-- aops-issues: N -->`) from the verdict format in your review body.
 
 If you push fixes, use the commit trailer:
 
