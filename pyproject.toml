@@ -110,13 +110,18 @@ exclude = [
   "**/dist",
   "**/.venv",
   "**/venv",
+  "aops-core/*.md",  # Exclude markdown docs
+  "aops-core/*.conf", # Exclude config files
+  "aops-core/uv.lock", # Exclude lock file
+  "aops-core/agents/", # Exclude non-code agent configs
+  "aops-core/commands/", # Exclude command specs
+  "aops-core/policies/", # Exclude policy docs
+  "aops-core/scripts/", # Exclude scripts
+  "aops-core/skills/", # Exclude skill definitions (YAML)
 ]
 ignore = ["**/site-packages"]
-venv = ".venv"
-# Use basic mode for gradual adoption - standard is too strict initially
-typeCheckingMode = "basic"
-# Python path for internal imports
-extraPaths = ["aops-core", "aops-core/hooks", "aops-core/lib"]
+# Python path for internal imports - be specific about Python subdirs only
+extraPaths = ["aops-core/lib", "aops-core/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:

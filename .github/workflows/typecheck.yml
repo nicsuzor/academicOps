@@ -37,5 +37,5 @@ jobs:
         timeout-minutes: 5
 
       - name: Run basedpyright
-        timeout-minutes: 15
+        timeout-minutes: 3
         run: uv run basedpyright
