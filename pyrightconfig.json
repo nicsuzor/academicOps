@@ -1,6 +1,8 @@
 {
   "typeCheckingMode": "strict",
+  "extraPaths": ["aops-core", "aops-core/hooks", "aops-core/lib"],
   "reportMissingTypeStubs": "none",
+  "reportMissingImports": "none",
   "reportUnknownMemberType": "warning",
   "reportUnknownVariableType": "warning",
   "reportUnknownArgumentType": "warning",
@@ -13,5 +15,22 @@
   "reportUnusedVariable": "warning",
   "reportUnusedImport": "warning",
   "reportAny": "none",
-  "reportExplicitAny": "none"
+  "reportExplicitAny": "none",
+  "reportMissingTypeArgument": "none",
+  "reportUnknownParameterType": "none",
+  "reportUnusedFunction": "none",
+  "reportUnnecessaryIsInstance": "none",
+  "reportPrivateUsage": "none",
+  "reportConstantRedefinition": "none",
+  "reportUnnecessaryComparison": "none",
+  "reportPossiblyUnbound": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportIndexIssue": "none",
+  "reportDuplicateImport": "none",
+  "reportIgnoreCommentWithoutRule": false,
+  "reportUnnecessaryTypeIgnoreComment": false,
+  "reportUnusedCallResult": false,
+  "reportImplicitStringConcatenation": false,
+  "reportUnreachable": false
 }

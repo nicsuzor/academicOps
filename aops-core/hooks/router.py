@@ -34,6 +34,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
 try:
     import lib.session_naming as session_naming
     from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.engine import GenericGate
     from lib.gates.registry import GateRegistry
     from lib.hook_utils import is_subagent_session
     from lib.session_paths import get_pid_session_map_path, get_session_short_hash
@@ -327,7 +328,7 @@ class HookRouter:
         # from being misclassified as subagent sessions.
         _subagent_type_from_spawn_tool = False
         _subagent_type_from_skill = False
-        if not subagent_type and isinstance(tool_input, dict):
+        if not subagent_type:
             extracted, is_skill = extract_subagent_type(tool_name, tool_input)
             if extracted:
                 subagent_type = extracted
@@ -696,7 +697,7 @@ class HookRouter:
                     if result.verdict == GateVerdict.DENY:
                         final_verdict = GateVerdict.DENY
                         break  # First deny wins
-                    elif result.verdict == GateVerdict.WARN and final_verdict != GateVerdict.DENY:
+                    elif result.verdict == GateVerdict.WARN:
                         final_verdict = GateVerdict.WARN
 
             except Exception as e:
@@ -713,7 +714,7 @@ class HookRouter:
             )
         return None
 
-    def _call_gate_method(self, gate, ctx: HookContext, state: SessionState) -> GateResult | None:
+    def _call_gate_method(self, gate: "GenericGate", ctx: HookContext, state: SessionState) -> GateResult | None:
         """Call the appropriate gate method based on hook event."""
         event = ctx.hook_event
         if event == "PreToolUse":

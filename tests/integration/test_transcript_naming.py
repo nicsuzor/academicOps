@@ -28,6 +28,7 @@ import importlib.util
 # Import aops-core scripts by file path to avoid shadowing root scripts/ package
 def _import_from_path(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None, f"Cannot locate module spec for {path}"
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

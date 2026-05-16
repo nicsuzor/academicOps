@@ -129,6 +129,7 @@ class TestConvertCommandUnit:
                 "build.py expects it there — was it moved to scripts/archived/?"
             )
         spec = importlib.util.spec_from_file_location("convert_commands", CONVERT_SCRIPT)
+        assert spec is not None and spec.loader is not None
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod.convert_command

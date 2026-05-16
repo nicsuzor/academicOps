@@ -5,6 +5,8 @@ These models define typed structures for internal hook operations.
 External API contracts are defined in schemas.py (HookContext, CanonicalHookOutput).
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from hooks.schemas import HookContext
@@ -48,5 +50,5 @@ class HookLogEntry(HookContext):
     trace_id: str | None = None
     logged_at: str
     exit_code: int = 0
-    output: dict | None = None
-    raw_input: dict = Field(default_factory=dict)
+    output: dict[str, Any] | None = None
+    raw_input: dict[str, Any] = Field(default_factory=dict)

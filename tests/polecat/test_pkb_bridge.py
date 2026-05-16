@@ -52,6 +52,7 @@ def test_get_task_positional_id(mock_client):
 
     task = get_task("task-1")
 
+    assert task is not None
     assert task.id == "task-1"
     mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
 
@@ -61,6 +62,7 @@ def test_get_task_named_id(mock_client):
 
     task = get_task(id="task-1")
 
+    assert task is not None
     assert task.id == "task-1"
     mock_client.call_tool.assert_called_once_with("get_task", {"id": "task-1"})
 
