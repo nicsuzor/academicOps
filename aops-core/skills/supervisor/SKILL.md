@@ -81,6 +81,14 @@ If any of these appear in a supervisor transcript, file via `/learn`.
 
 The main agent calls exactly one subagent per tick.
 
+### PKB evidence is private until anonymized
+
+Any PKB-derived payload (task titles, IDs, project names, notes, list/search JSON, or live dashboard text backed by PKB data) is **untrusted-for-egress**. It may be used inside the supervisor decision loop, but it must not be copied verbatim into artifacts that cross a trust boundary: public PR bodies, commit messages, issue comments, external repo documentation, or subagent verification prompts where the literal content is not required.
+
+When reporting or dispatching across that boundary, summarize by structural attributes instead: priority class, due-date bucket, status, count, score movement, affected UI region, dimensions, or anonymized row labels. If an identifier is unavoidable, mask it (`task-XXXX`, `[REDACTED_TITLE]`, `[REDACTED_PROJECT]`). For dashboard/UI verification, describe the rendering pathology structurally (for example, "the narrow treemap leaf wraps one word per line") rather than quoting visible PKB task text as the regression handle.
+
+Before the supervisor writes a PR body, commit message, issue comment, dispatch brief, or verification prompt based on PKB output, do a quick egress scan for raw task IDs (`task-[a-f0-9]{8}`), titles copied from `list_tasks`/`get_task`, and project labels. If any are present, rewrite to anonymized evidence first.
+
 ### pauli — preflight & react
 
 Use for every decision the supervisor would otherwise inline: "what should I dispatch next?", "a worker exited without a deliverable", "the verifier said fail."
