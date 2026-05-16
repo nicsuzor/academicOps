@@ -3,8 +3,7 @@
 
 The sandbox hook router (router.sh → router.py) silently fails inside polecat
 containers because it tries to write host paths (Path.home() → /home/nic).
-Session state doesn't persist, hook telemetry isn't logged, and the handover gate
-silently defaults to warn-only — all while exiting 0.
+Session state doesn't persist and hook telemetry isn't logged — all while exiting 0.
 
 These tests spin up an aops-crew Docker container, invoke the hook router with
 a synthetic SessionStart event, and verify:
