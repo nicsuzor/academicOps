@@ -1,160 +1,123 @@
-# Agent: Enforcer
-# Personality: Universal standards enforcer — axiom compliance reviewer.
-# Responsibilities:
-#   - Review PR diff against framework axioms
-#   - Read local .agents/CORE.md for project-specific context
-#   - Push fixes for axiom violations directly to the PR branch
-#   - Comment on issues requiring human judgment
-# Prompt: aops-core/agents/rbg.md (canonical source — same prompt as local subagent)
+# Agent: Enforcer (RBG)
+# Personality: The Judge — axiom compliance reviewer.
+# Status check: enforcer-status (posted to PR head SHA via statuses API)
+# Prompt: aops-core/agents/rbg.md + .github/agents/enforcer.agent.md
 #
-# This is a reusable workflow. Install on other repos with:
-#   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@main
+# This is a reusable workflow. academicOps installs its own trigger in:
+#   .github/workflows/triggers/enforcer.yml
+# External consumers pin to a release tag:
+#   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
+#
+# v2 contract (specs/pr-pipeline-v2.md):
+#   §3.1 workflow_call only — no pull_request, workflow_run, workflow_dispatch
+#   §3.2 one named status: enforcer-status, posted to inputs.sha
+#   §3.6 SHA-based loop-skip (replaces broken Enforcer-By trailer check)
 
-name: "Agent: Enforcer Review"
+name: "Agent: Enforcer (RBG)"
 
 on:
-  workflow_run:
-    workflows:
-      - "PR Review Pipeline"
-    types: [completed]
-    branches-ignore:
-      - main
-      - 'release-please*'
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR number to review'
-        type: string
-        required: true
-      ref:
-        description: 'Git ref to checkout'
-        type: string
-        required: true
   workflow_call:
     inputs:
       pr_number:
-        description: 'PR number to review'
+        description: "PR number to review"
         type: string
         required: true
       ref:
-        description: 'Git ref to checkout'
+        description: "Git ref to checkout (PR head branch)"
         type: string
+        required: true
+      sha:
+        description: "PR head SHA — explicit, not derived (§3.1)"
+        type: string
+        required: true
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: "PAT for GitHub API operations (statuses, reviews)"
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: "OAuth token for Claude agent"
         required: true
 
 jobs:
-  enforcer-review:
+  enforcer:
     name: Enforcer Review
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: agent-enforcer-${{ inputs.pr_number || github.event.pull_request.number || github.event.workflow_run.head_branch }}
+      group: agent-enforcer-${{ inputs.pr_number }}
       cancel-in-progress: true
     permissions:
       contents: write
       pull-requests: write
       statuses: write
-      id-token: write
       issues: write
-      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.sha }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      AGENT_NAME: enforcer
+
     steps:
-      - name: Extract PR from workflow_run event
-        if: github.event_name == 'workflow_run'
-        id: workflow-run-pr
+      # §3.6 SHA-based loop-skip: re-post success if this exact SHA was already reviewed.
+      # Replaces v1's broken Enforcer-By trailer check (see PR #1037 / issue #1039).
+      # Author identity is irrelevant — only "have we judged this diff?" matters.
+      - name: SHA-skip check
+        id: sha-skip
         run: |
-          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
-          PR_NUM=$(gh pr list --head "$HEAD_BRANCH" --repo "${{ github.repository }}" \
-            --json number -q '.[0].number' 2>/dev/null || echo "")
-          if [ -z "$PR_NUM" ]; then
-            echo "No open PR found for branch $HEAD_BRANCH — skipping"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName -q '.headRefName')
-            {
-              echo "pr_number=$PR_NUM"
-              echo "ref=$REF"
-              echo "skip=false"
-            } >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          LATEST_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last // empty" 2>/dev/null || echo "")
+          PRIOR_TARGET_SHA=$(echo "$LATEST_STATUS" \
+            | jq -r '.target_url // empty' 2>/dev/null \
+            | sed -n 's/.*target_sha=\([a-f0-9]*\).*/\1/p')
 
-      - name: Determine PR info
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
-        id: pr-info
-        run: |
-          if [ -n "$WORKFLOW_RUN_PR_NUMBER" ]; then
-            SHA=$(gh pr view "$WORKFLOW_RUN_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
-            {
-              echo "pr_number=$WORKFLOW_RUN_PR_NUMBER"
-              echo "ref=$WORKFLOW_RUN_REF"
-              echo "sha=$SHA"
-            } >> "$GITHUB_OUTPUT"
-          elif [ -n "$INPUT_PR_NUMBER" ]; then
-            if [ ! -d .git ]; then
-              git init
-              git remote add origin ${{ github.server_url }}/${{ github.repository }} || true
-            fi
-
-            SHA=$(gh pr view "$INPUT_PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid -q '.headRefOid')
-            {
-              echo "pr_number=$INPUT_PR_NUMBER"
-              echo "ref=$INPUT_REF"
-              echo "sha=$SHA"
-            } >> "$GITHUB_OUTPUT"
-          else
-            {
-              echo "pr_number=$EVENT_PR_NUMBER"
-              echo "sha=$EVENT_HEAD_SHA"
-              echo "ref=$EVENT_HEAD_REF"
-            } >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
-          WORKFLOW_RUN_PR_NUMBER: ${{ steps.workflow-run-pr.outputs.pr_number }}
-          WORKFLOW_RUN_REF: ${{ steps.workflow-run-pr.outputs.ref }}
-          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
-          INPUT_REF: ${{ inputs.ref }}
-          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
-          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          EVENT_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-
-      # Checkout the caller's repo (the PR under review)
-      - uses: actions/checkout@v4
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.pr-info.outputs.ref }}
-
-      # Checkout academicOps to read the canonical enforcer prompt
-      # Pinned to pipeline-v1 so the prompt stays in lockstep with the
-      # workflow code that loaded it (matches agent-merge-prep.yml).
-      - uses: actions/checkout@v4
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
-        with:
-          repository: nicsuzor/academicOps
-          ref: pipeline-v1
-          path: .aops
-          sparse-checkout: aops-core/agents/rbg.md
-          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
-
-      # Loop detection: skip if last commit was from enforcer
-      - name: Check if last push was from an agent
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true'
-        id: loop-check
-        run: |
-          LAST_MSG=$(git log -1 --format='%B')
-          if echo "$LAST_MSG" | grep -qE '(Enforcer-By|Autofix-By|Merge-Prep-By):'; then
-            echo "Last commit was from an agent — skipping to avoid loop"
+          if [ -n "$PRIOR_TARGET_SHA" ] && [ "$PRIOR_TARGET_SHA" = "$HEAD_SHA" ]; then
+            echo "SHA $HEAD_SHA already reviewed — re-posting idempotent success"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already reviewed" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Read enforcer agent prompt
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true' && steps.loop-check.outputs.skip != 'true'
-        id: prompt
+      - name: Post pending status
+        if: steps.sha-skip.outputs.skip != 'true'
         run: |
-          PROMPT=$(cat .aops/aops-core/agents/rbg.md)
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="${AGENT_NAME}-status" \
+            -f description="Enforcer review in progress" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+      - uses: actions/checkout@v4
+        if: steps.sha-skip.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      # Fetch canonical enforcer prompt from academicOps.
+      # Uses sparse checkout to pull only the two prompt files.
+      # External consumers calling @enforcer-v1 get the workflow at the tag;
+      # the prompt is fetched from the same tag for consistency.
+      # Fetch and assemble the enforcer prompt:
+      #   rbg.md (personality + detection rules) + enforcer.agent.md (PR framing)
+      # Pinned to main for academicOps's own runs; external consumers calling
+      # @enforcer-v1 implicitly freeze both files at the tag's commit.
+      - name: Fetch enforcer prompt
+        id: prompt
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse \
+            "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+            .aops
+          cd .aops && git sparse-checkout set \
+            aops-core/agents/rbg.md \
+            .github/agents/enforcer.agent.md && cd ..
+          PROMPT=$(cat .aops/aops-core/agents/rbg.md .aops/.github/agents/enforcer.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
@@ -163,48 +126,20 @@ jobs:
 
       - name: Run Enforcer Review
         id: review
-        if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && steps.workflow-run-pr.outputs.skip != 'true' && steps.loop-check.outputs.skip != 'true'
+        if: steps.sha-skip.outputs.skip != 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: enforcer
+          GITHUB_RUN_ID: ${{ github.run_id }}
         with:
-          allowed_bots: "claude[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.prompt.outputs.prompt }}
-
-            ---
-
-            Your task: Review PR #${{ steps.pr-info.outputs.pr_number }} in repository ${{ github.repository }} against the axioms above.
-
-            1. Read `.agents/CORE.md` from the repo root (if it exists) for local project context.
-            2. Run `gh pr view ${{ steps.pr-info.outputs.pr_number }}` to understand the PR.
-            3. Run `gh pr diff ${{ steps.pr-info.outputs.pr_number }}` to see the changes.
-            4. Check each change against the axioms.
-               - For **mechanical violations** (typos, missing required frontmatter fields, orphan files missing from an INDEX, misnamed tools, wrong paths) — fix them yourself with Edit/Write and push the commit. Do NOT just describe a fix you could have applied. Pushing the fix IS the review for mechanical issues.
-               - For **judgment calls** (design trade-offs, intent, scope) — describe the violation and leave the decision to the human. Do not push.
-               - If you find yourself writing "Fix: add X" or "Fix: change Y to Z" in a review, that's the signal to do it instead of writing it.
-            5. Before posting your review, dismiss any previous enforcer review to keep the PR clean:
-               ```bash
-               gh api repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.pr_number }}/reviews \
-                 --jq '.[] | select(.state=="CHANGES_REQUESTED" or .state=="APPROVED") | select(.body | test("Enforcer Review")) | .id' \
-                 | xargs -I{} gh api -X PUT repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.pr_number }}/reviews/{}/dismissals \
-                   -f message="Superseded by new review" -f event="DISMISS"
-               ```
-            6. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
-               - Only file a review if violations are found or if you pushed fixes.
-               - If no violations are found and no fixes were pushed, do NOT file a review and DO NOT post any comment.
-               - Start the review body with `## Enforcer Review` so it can be identified for future dismissal.
-               - Keep it concise: list violations with axiom numbers.
-
-            If you push fixes, use this commit trailer: `Enforcer-By: agent`
-
-            PR ref: ${{ steps.pr-info.outputs.ref }}
-            PR head SHA: ${{ steps.pr-info.outputs.sha }}
-
-            You have Edit and Write tools — use them. A review that lists mechanical fixes without pushing them is a failure mode. The human reading the PR shouldn't be the one applying a frontmatter edit you could have made yourself.
+          prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
 
       - name: Upload Claude session artifacts
@@ -216,10 +151,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-      - name: Propagate agent exit status
-        if: always() && steps.workflow-run-pr.outputs.skip != 'true'
+      # Fallback: if the agent crashed before posting its own terminal status,
+      # the commit status is still pending — flip it to failure so branch
+      # protection surfaces a clear signal rather than hanging at pending.
+      - name: Post failure status if agent did not complete
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
         run: |
-          if [ "${{ steps.review.outcome }}" != "success" ]; then
-            echo "::error::Enforcer agent run failed. Session artifacts uploaded for post-mortem analysis."
-            exit 1
+          CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state' \
+            2>/dev/null || echo "")
+          if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Enforcer agent run failed — see artifacts" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
           fi

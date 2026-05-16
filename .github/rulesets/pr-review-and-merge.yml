@@ -63,6 +63,7 @@ rules:
       required_approving_review_count: 2
       # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
       # Approval #2: Human Maintainer
+      # NOTE (Phase 3): count reduces to 1 when merge-prep becomes mechanic (no bot approval).
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -102,6 +103,10 @@ rules:
         # (merge-prep reads and triages its review output). To require it directly,
         # add a non-matrix gate job downstream of `review` with a fixed name, or
         # publish a commit status via the Statuses API.
+        #
+        # v2 framework agents (specs/pr-pipeline-v2.md §5) — each owns its AND-gate slot.
+        # merge-prep-status stays required until Phase 3 strips down merge-prep to mechanic.
+        - context: "enforcer-status"
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)

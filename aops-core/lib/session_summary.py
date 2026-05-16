@@ -160,13 +160,12 @@ def append_task_contribution(session_id: str, task_data: dict[str, Any]) -> None
 
     ts = datetime.now().isoformat()
 
+    data: dict[str, Any] = {"session_id": session_id, "tasks": []}
     if path.exists():
         try:
             data = json.loads(path.read_text())
         except json.JSONDecodeError:
-            data = {"session_id": session_id, "tasks": []}
-    else:
-        data = {"session_id": session_id, "tasks": []}
+            pass
 
     # Add timestamp to task
     task_with_ts = dict(task_data)

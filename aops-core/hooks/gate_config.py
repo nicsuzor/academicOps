@@ -438,7 +438,7 @@ def _resolve_gate_modes() -> dict[str, Any]:
     return _GATE_MODE_CACHE
 
 
-def _reset_gate_mode_cache() -> None:
+def _reset_gate_mode_cache() -> None:  # pyright: ignore[reportUnusedFunction]
     """Test-only hook: drop the cached config so the next access re-reads YAML."""
     _GATE_MODE_CACHE.clear()
 

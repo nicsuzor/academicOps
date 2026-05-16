@@ -1,0 +1,28 @@
+# Trigger: Enforcer (academicOps)
+#
+# Fires the v2 enforcer reusable workflow on PR events in academicOps.
+# This is the academicOps-side shim — external consumers define an
+# equivalent file pointing to @enforcer-v1 (see specs/pr-pipeline-v2.md §7).
+#
+# The reusable workflow (agent-enforcer.yml) accepts explicit pr_number,
+# ref, and sha inputs — no event-context magic inside the callee.
+
+name: "Trigger: Enforcer"
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+    branches-ignore:
+      - main
+      - "release-please*"
+
+jobs:
+  enforce:
+    uses: ./.github/workflows/agent-enforcer.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

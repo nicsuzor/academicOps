@@ -69,7 +69,7 @@ def _load_transcript_config() -> dict:
         with open(registry) as f:
             config = yaml.safe_load(f) or {}
         return config.get("transcripts", {}) or {}
-    except (OSError, yaml.YAMLError) as e:
+    except (OSError, Exception) as e:
         print(f"Warning: Could not load transcript config from {registry}: {e}", file=sys.stderr)
         return {}
 
@@ -130,7 +130,7 @@ def _resolve_project_key(name: str, match_suffix: bool = False) -> str:
             parts = name.strip("-").split("-")
             return parts[-1] if parts else name
 
-    except (OSError, yaml.YAMLError) as e:
+    except (OSError, Exception) as e:
         print(f"Warning: could not load polecat.yaml registry: {e}", file=sys.stderr)
 
     if match_suffix:
@@ -1193,8 +1193,9 @@ Examples:
         errors = 0
 
         for s in sessions:
+            session_path = Path(str(s))
             try:
-                session_path = s.path if hasattr(s, "path") else Path(str(s))
+                session_path = s.path if hasattr(s, "path") else session_path
                 session_id = _get_session_id(session_path)
 
                 # Early mtime check: skip if transcript already exists and is current

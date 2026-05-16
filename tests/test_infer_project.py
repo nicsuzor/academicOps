@@ -27,6 +27,7 @@ projects:
     script_path = repo_root / "aops-core" / "scripts" / "transcript.py"
 
     spec = importlib.util.spec_from_file_location("transcript_script", script_path)
+    assert spec is not None and spec.loader is not None
     transcript_script = importlib.util.module_from_spec(spec)
     sys.modules["transcript_script"] = transcript_script
     spec.loader.exec_module(transcript_script)

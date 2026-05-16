@@ -12,6 +12,7 @@ def _import_transcript():
     spec = importlib.util.spec_from_file_location(
         "transcript", _REPO_ROOT / "aops-core" / "scripts" / "transcript.py"
     )
+    assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
