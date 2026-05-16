@@ -1,7 +1,7 @@
 {
   "typeCheckingMode": "strict",
   "extraPaths": ["aops-core", "aops-core/hooks", "aops-core/lib"],
-  "exclude": ["tests", "archived", "**/__pycache__"],
+  "exclude": ["tests", "archived"],
   "reportUntypedBaseClass": "none",
   "reportMissingTypeStubs": "none",
   "reportMissingImports": "none",
