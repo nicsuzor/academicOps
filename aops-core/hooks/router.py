@@ -714,7 +714,9 @@ class HookRouter:
             )
         return None
 
-    def _call_gate_method(self, gate: "GenericGate", ctx: HookContext, state: SessionState) -> GateResult | None:
+    def _call_gate_method(
+        self, gate: "GenericGate", ctx: HookContext, state: SessionState
+    ) -> GateResult | None:
         """Call the appropriate gate method based on hook event."""
         event = ctx.hook_event
         if event == "PreToolUse":
