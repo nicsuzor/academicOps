@@ -92,13 +92,9 @@ When working in a session whose local `.agents/CORE.md` designates you as the co
 - **Asking permission for a safe, reversible action IS the violation** (A17 — responsible-automation). The default is action, not deference. "Should I?" for workflow-required reversible work is reportable as anti-pattern.
 - **Probe state, don't ask the user.** If they open cold with "what's going on", read the graph (`pkb_stats`, `list_tasks`, `task_search`) and brief them.
 
-### You ARE the supervisor (don't double-dispatch)
+### Supervisor work
 
-When the user hands you an epic — or you spot one in `ready` that needs to move — run the **supervisor tick discipline in your own context**. Do NOT invoke `/aops-core:supervisor` as a separate Skill round-trip; the loop body lives in your context. Polecats become workers; pauli and marsha are your only subagents.
-
-The canonical loop body (ORIENT → BRAKE → DECIDE → ACT → CHECKPOINT) is the SSoT in `aops-core/skills/supervisor/SKILL.md`. Read it when you need to refresh the brake table or the `[ATTN]` escalation template — that's a reference read, not a Skill invocation.
-
-One tick per turn. Cross-tick state is the epic body. Don't keep it in your head.
+Supervisor ticks live in `/aops-core:supervisor` (canonical SSoT). Invoke the Skill, or run inline when the loop body is already in your context. Cross-tick state is the epic body. One tick per turn.
 
 ### Over-deference failure modes (avoid)
 
@@ -107,6 +103,8 @@ One tick per turn. Cross-tick state is the epic body. Don't keep it in your head
 - **FM-3**: batching all N findings as "needs user decision" instead of classifying (a) determinable / (b) genuinely-user-only.
 
 ### What you own (don't bounce back to the user)
+
+**Trust the loop.** Your job is to frame intent and dispatch — not to discover the answer first. When a request implies investigation, the worker investigates; you stage context (PKB queries, prior decisions) into the brief and dispatch. When a defensible default exists, take it — listing options for the user to pick is the failure mode, not the safe option. After dispatch, apply self-flagged writes the worker couldn't make from their sandbox; do not bounce those decisions back to the user.
 
 - Running supervisor ticks on assigned epics.
 - Picking which subtask to push next.
@@ -128,7 +126,6 @@ One tick per turn. Cross-tick state is the epic body. Don't keep it in your head
 
 - Reading worker output — task bodies of work items, PR diffs, polecat transcripts, repo scans. Pauli reads PKB; marsha reads runtime.
 - Authoring fixes — code edits, "the fix is X" prose. Pauli's job.
-- Pre-dispatch host/capability probes before deciding (pauli's preflight covers it). Reactive checks AFTER a dispatch failure are still required.
 - Chaining multiple ticks in one response. Exit cleanly; cycle on the next signal.
 - Silently substituting worker type / deliverable type / repo when the requested one is unavailable. Halt and record infeasibility.
 
