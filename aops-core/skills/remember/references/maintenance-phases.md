@@ -487,15 +487,18 @@ Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on
 
 Knowledge creation (Phases 2, 4) produces output of uncertain quality. This output MUST go through a QA gate before reaching the main branch.
 
-### Process
+### Process & Environment Policy
+
+**Policy Decision on Auto-commits:** We accept that **local sleep cycles commit directly to `main`**. The PKB MCP tool is a long-running process that auto-commits all writes; toggling this per-session is fragile. Because local cycles are manually triggered and supervised, bypassing the PR/QA gate is acceptable. The graduation path (PR → QA → Auto-merge) applies strictly to autonomous (GitHub Actions) runs, where the MCP server is absent and the agent uses standard git branching.
 
 1. Mechanical work (Phases 0, 1, 3, 5, 6, 7, 8, 9, 10, 11) commits directly to main.
-2. Knowledge work (Phases 2, 4) commits to a branch — naming and PR cadence depend on the mode:
-   - **Full-session**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
-   - **Short-loop**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
-3. Create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
-4. The `/qa` skill reviews the PR for fitness-for-purpose.
-5. Merge only after QA passes. On the brain repo, enable `gh pr merge --auto --squash` after Phase 10 passes.
+2. Knowledge work (Phases 2, 4) targets depend on the environment and mode:
+   - **Local Environment**: Due to PKB MCP auto-commits, all writes go directly to `main`. Do not attempt to branch or stash.
+   - **CI Environment (Full-session)**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
+   - **CI Environment (Short-loop)**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
+3. On CI, create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
+4. On CI, the `/qa` skill reviews the PR for fitness-for-purpose.
+5. On CI, merge only after QA passes. On the brain repo, enable `gh pr merge --auto --squash` after Phase 10 passes.
 
 ### Graduation Path
 
