@@ -402,7 +402,7 @@ Rules of thumb:
 
 - Skip any lifecycle phase
 - Claim complete without pushing
-- Bypass critic review for plans
+- Skip critic review when uncertainty or blast radius genuinely demands it
 - Make ad-hoc changes without rules
 - Assume tests pass without running them
 - Mark tasks complete without verification

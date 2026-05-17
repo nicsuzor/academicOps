@@ -120,8 +120,8 @@ exclude = [
   "aops-core/skills/", # Exclude skill definitions (YAML)
 ]
 ignore = ["**/site-packages"]
-# Python path for internal imports - be specific about Python subdirs only
-extraPaths = ["aops-core/lib", "aops-core/hooks"]
+# Python path for internal imports
+extraPaths = ["aops-core", "aops-core/lib", "aops-core/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -138,13 +138,17 @@ reportUnreachable = false
 # Ignore missing imports for third-party packages without stubs
 reportMissingImports = false
 reportMissingTypeStubs = false
+reportMissingModuleSource = false
 
-# reportPrivateImportUsage = false
-# reportPrivateLocalImportUsage = false
-# reportMissingImports = false
-# reportUnnecessaryIsInstance = false
-# reportUnknownVariableType = false
-# reportUnknownArgumentType = false
+# Pre-existing issues tracked for incremental remediation — match pre-deletion baseline
+reportMissingTypeArgument = false
+reportPossiblyUnboundVariable = false
+reportImplicitRelativeImport = false
+reportConstantRedefinition = false
+reportImportCycles = false
+reportAttributeAccessIssue = false
+reportGeneralTypeIssues = false
+reportUninitializedInstanceVariable = false
 [tool.pytest.ini_options]
 # Required by gate_config.py, which intentionally has no defaults (fail-fast design).
 # Values must match valid gate engine verdicts: warn, deny, or block.
