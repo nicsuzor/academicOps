@@ -52,6 +52,8 @@ Prompting the user when a defensible default exists is a rubber-stamp anti-patte
 
 **Canonical invocation:** `/loop 30m /supervisor <epic-id>`
 
+> **Cost Warning:** Claude Code's `/loop` command re-injects the full skill prompt on every cron fire because prompt caching across slash commands is an inherent platform constraint. For high-frequency loops, this wastes thousands of input tokens per session (e.g., 19 cycles of a 120-line skill = 2,280 lines of duplicated instructions). For high-frequency polling, prefer direct tool calls or shortened prompts instead of `/loop [skill]`.
+
 Each tick gets a fresh main-agent context. The supervisor's job is to advance one epic by one decision, then exit. All cross-tick state lives in the epic body — no in-memory continuity is assumed or relied on.
 
 ## Per-tick checklist

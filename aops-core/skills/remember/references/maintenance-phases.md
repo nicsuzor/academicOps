@@ -415,6 +415,8 @@ Time budget: 2 minutes. Only check notes created/modified in THIS cycle.
 
 ## Active Loop Integration
 
+> **Cost Warning:** Claude Code's `/loop` command re-injects the full skill prompt on every cron fire because prompt caching across slash commands is an inherent platform constraint. For high-frequency `/sleep` or `/remember` maintenance loops, this wastes thousands of input tokens per session (e.g., 19 cycles of a 120-line skill = 2,280 lines of duplicated instructions). For high-frequency loops, prefer direct tool calls or shortened prompts instead of `/loop [skill]`.
+
 When running via `/loop` or `/active-loop`:
 
 1. Detect mode per [[remember]] Mode Detection rules.
