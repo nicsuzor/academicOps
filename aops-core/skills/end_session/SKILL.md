@@ -97,6 +97,8 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
 3. **Call `release_task` once, with the full session payload.**
 
+   _Pre-check if `AOPS_GATE_PRS_GREEN=1`: before calling `release_task`, confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure. (This gate must run before the terminal call — halting after `release_task` is too late.)_
+
    ```
    mcp__pkb__release_task(
      id="<task-id>",
@@ -139,8 +141,6 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    **Environment-Gated Behaviors:**
    Check the following environment variables and apply their rules to your closing output if set to `1` (or if marked default-on):
    - `AOPS_GATE_HEDGE_CLAIMS` (default-on, treat as always set): **Hedge your claims.** Your closing output names its load-bearing claims, the evidence behind each, your confidence, and — for anything you're less than highly confident in — the next most plausible alternative. Confidence floor is "I checked"; "should work" or "probably" are halts to convert into observations or hedges.
-   - `AOPS_GATE_LAND_THE_PLANE`: Land the plane. Push, file PR, release. Don't abandon work mid-flight.
-   - `AOPS_GATE_PRS_GREEN`: Before close: confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure.
    - `AOPS_GATE_STATE_QA`: Closing output states: what was the user's question? What did you deliver?
 
    **a. `## Output` — required, explicit artefact link**
@@ -177,7 +177,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Must address, in concrete terms:
 
-   - **One real friction point** the agent hit (tool, instruction, hook, gate), with enough context to act on it. NOT generic procedure-griping — only flag procedures that are truly awful or broken. _Note: the close describes the friction; it does not file it. Filing is the calling agent's responsibility via `/learn` (or other skills) AFTER `/end-session` completes._
+   - **One real friction point** the agent hit (tool, instruction, hook, gate), with enough context to act on it. NOT generic procedure-griping — only flag procedures that are truly awful or broken. _Note: the close describes the friction; it does not file it. Filing is the calling agent's responsibility via `/learn` (or other skills) before invoking the close sequence._
    - **One instruction or tool improvement** the agent would propose, with a pointer to the file/skill/agent it would change.
    - _(Optional)_ one thing that worked well and is worth keeping — short, specific, attributable.
 
