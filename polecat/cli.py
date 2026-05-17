@@ -2178,11 +2178,11 @@ def _require_pkb_url_or_exit() -> None:
     sys.exit(4)
 
 
-def _bootstrap_or_exit() -> None:
+def _bootstrap_or_exit(client: str | None = None) -> None:
     from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     try:
-        validate_bootstrap(aops_path=os.environ.get("AOPS"))
+        validate_bootstrap(aops_path=os.environ.get("AOPS"), client=client)
     except BootstrapError as e:
         print("\n❌ Bootstrap validation failed:", file=sys.stderr)
         for err in e.errors:
@@ -3382,6 +3382,9 @@ def crew(
     """
     import subprocess
 
+    cli_tool = "gemini" if gemini else "claude"
+    _bootstrap_or_exit(client=cli_tool)
+
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
     # --- Resolve target project(s) ---
@@ -4102,7 +4105,8 @@ def run(
         pass
 
     _require_pkb_url_or_exit()
-    _bootstrap_or_exit()
+    cli_tool = "gemini" if gemini else "claude"
+    _bootstrap_or_exit(client=cli_tool)
 
     if issue and task_id:
         print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
@@ -4774,7 +4778,12 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     Spawns N claude and M gemini workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
-    _bootstrap_or_exit()
+    if claude > 0:
+        _bootstrap_or_exit(client="claude")
+    if gemini > 0:
+        _bootstrap_or_exit(client="gemini")
+    if claude == 0 and gemini == 0:
+        _bootstrap_or_exit()
 
     try:
         from swarm import run_swarm

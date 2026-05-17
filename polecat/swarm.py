@@ -125,13 +125,40 @@ def worker_loop(
 
             print(f"[{worker_name}] 🔄 Starting cycle...")
             try:
-                # Run the worker process
-                result = subprocess.run(cmd)
-                exit_code = result.returncode
+                import threading
+
+                p = subprocess.Popen(
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+                )
+                last_output = [time.time()]
+                timeout_s = int(os.environ.get("POLECAT_SILENT_TIMEOUT", 300))
+
+                def _reader(proc, out_tracker):
+                    for line in proc.stdout:
+                        sys.stdout.write(line)
+                        sys.stdout.flush()
+                        out_tracker[0] = time.time()
+
+                t = threading.Thread(target=_reader, args=(p, last_output))
+                t.daemon = True
+                t.start()
+
+                while p.poll() is None:
+                    if time.time() - last_output[0] > timeout_s:
+                        msg = (
+                            f"Silent failure detected: no output for {timeout_s}s. Killing worker."
+                        )
+                        print(f"[{worker_name}] ❌ {msg}")
+                        alert(msg)
+                        p.kill()
+                        break
+                    time.sleep(1)
+
+                t.join(timeout=1.0)
+                exit_code = p.returncode
             except Exception as e:
                 print(f"[{worker_name}] ❌ Execution error: {e}")
                 exit_code = 1
-
         if exit_code == 0:
             print(f"[{worker_name}] ✅ Finished successfully.")
             # Check for stop signal before restarting
