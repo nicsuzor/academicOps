@@ -6,9 +6,9 @@ This procedure generates a traffic-light decision dashboard for batch PR triage.
 
 ## Procedure
 
-1. **Check Threshold**: Read `$AOPS_SESSIONS/state/pr-state.json`. If the total open PR count is `< 10`, abort this procedure and do not render the dashboard subsection.
+1. **Check Threshold**: Use the PR state already loaded in Step 6.2. If the total open PR count is `< 10`, abort this procedure and do not render the dashboard subsection.
 2. **Cluster**: Group the open PRs by theme based on PR titles and commit message excerpts. Aim for 4–7 clusters of 2–7 PRs each.
-   _Heuristic: If a PR doesn't share a theme with ≥ 2 others, give it its own cluster rather than forcing a batch._
+   _Heuristic: If a PR doesn't share a theme with at least one other, give it its own cluster rather than forcing a batch._
 3. **Dispatch Subagents**: For each cluster, dispatch one subagent in parallel. Provide the subagent with the PRs in its cluster and the specific brief template below.
 4. **Render Dashboard**: Roll up the cluster cards into the daily note under `## What Needs Attention` -> `### PR Triage Dashboard` (sibling to `Outstanding Workflows`).
 
@@ -39,7 +39,7 @@ Use this template when invoking the subagent for each cluster.
 
 ```text
 You are a PR triage subagent evaluating a cluster of PRs around the theme: <THEME>.
-Your goal is to produce a decision card for this cluster. Read the PRs using `gh pr view` and `gh pr diff | head -400` (sample more only if load-bearing).
+Your goal is to produce a decision card for this cluster. Read the PRs using `gh pr view -R <repo> <number>` and `gh pr diff -R <repo> <number> | head -400` (sample more only if load-bearing).
 
 Discipline Rules:
 1. Override reviewer flags when they're noise (mechanical or factually wrong).
