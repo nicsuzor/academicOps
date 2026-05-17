@@ -103,5 +103,6 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 ## Agent Rules
 
 - **Always leave a loose thread.** Before completing work that is part of a chain, file the next task in the PKB so the chain isn't dropped. A summary message in chat is not sufficient; it disappears when the user multitasks. Use `create_task` with a clear parent, title, and body.
+- **File friction immediately.** When you encounter friction (tool limitations, bugs, missing instructions), invoke the `/learn` skill at the point of discovery. Do not ask "want me to file this?" or "happy to file if you confirm" — filing friction is unilateral. One friction = one `/learn` call.
 
 See [[README.md]] for framework usage documentation.
