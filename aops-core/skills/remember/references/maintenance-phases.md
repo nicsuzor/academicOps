@@ -116,8 +116,8 @@ The agent works through these in order, using judgment about what needs attentio
 Run `graph_stats` at the start of every cycle. Record:
 
 - `flat_tasks` — tasks with no parent or children
-- `disconnected_epics` — epics not connected to a project
-- `projects_without_goal_linkage` — projects with no `goals: []` field populated
+- `disconnected_epics` — epics with no parent edge and no `contributes_to` edge to a target — i.e. genuinely unmoored from the work hierarchy
+- `targets_without_contributing_edges` — target nodes with zero inbound `contributes_to`
 - `orphan_count` — truly disconnected nodes
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
@@ -347,24 +347,23 @@ Before doing any work, compare the current `metrics_hash` from `graph_stats` aga
 
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                            | Strategy            | Planner Activity                                                              |
-| ------------------------------------ | ------------------- | ----------------------------------------------------------------------------- |
-| `disconnected_epics` > 10            | Connect epics       | Reparent — find project parents for disconnected epics                        |
-| `projects_without_goal_linkage` > 10 | Link projects       | Add `goals: []` metadata — link projects to existing goals via metadata field |
-| `flat_tasks` > 100                   | Reparent flat tasks | Reparent — find epic/project parents for orphans                              |
-| `orphan_count` > 20                  | Fix orphans         | Reparent — connect or archive disconnected nodes                              |
-| All metrics healthy                  | Densify edges       | Densify — use strategies to add dependency edges                              |
+| Condition                                | Strategy            | Planner Activity                                       |
+| ---------------------------------------- | ------------------- | ------------------------------------------------------ |
+| `disconnected_epics` > 10                | Connect epics       | Reparent — find project parents for disconnected epics |
+| `targets_without_contributing_edges` > N | Wire edges          | Wire edges via `/planner wire-edges` flow              |
+| `flat_tasks` > 100                       | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
+| `orphan_count` > 20                      | Fix orphans         | Reparent — connect or archive disconnected nodes       |
+| All metrics healthy                      | Densify edges       | Densify — use strategies to add dependency edges       |
 
 ### Concrete Agent Instructions
 
 - **Split oversized containers**: If an epic has >20 direct children, split it by theme using `bulk_reparent`.
 - **Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans and reparent to an appropriate epic.
-- **Nest loose tasks**: For `flat_tasks`, read the task title and body, search for related epics/projects, and `bulk_reparent` to the best match. If no match, check if 3+ loose tasks share a theme — if so, create an epic.
-- **Connect disconnected epics**: Prefer the epic's `frontmatter.project` slug. If missing, read title and children, search for matching projects. Do not infer project membership from task ID prefixes.
+- **Nest loose tasks**: For `flat_tasks`, read the task title and body, search for related epics, and `bulk_reparent` to the best match. If no match, check if 3+ loose tasks share a theme — if so, create an epic.
+- **Connect disconnected epics**: The parent for an orphan is an `epic` (or a root-level `epic` if it's a top-level area). The `frontmatter.project` field is a polecat slug — use it only to discover _which repo_ the work belongs to for context, not as a parent ID.
 
 ### Known Metric Limitations
 
-- **`disconnected_epics`**: Only counts epics with no parent. Does NOT detect epics parented to the wrong project.
 - **`flat_tasks`**: Tasks parented to a catch-all "misc" epic show as connected even if meaningless.
 - **`orphan_count`**: Does not catch tasks parented to archived/cancelled containers.
 - **`metrics_hash`**: Use for convergence detection — unchanged hash means metrics have stabilized.
@@ -516,3 +515,8 @@ $ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
 Install via: `scripts/install-brain-workflows.sh <brain-repo-path>`
 
 The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools. In CI, the agent works directly with markdown files — no PKB MCP server is available. Changes sync to PKB consumers via git push.
+s sync to PKB consumers via git push.
+ipts/install-brain-workflows.sh <brain-repo-path>`
+
+The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools. In CI, the agent works directly with markdown files — no PKB MCP server is available. Changes sync to PKB consumers via git push.
+s sync to PKB consumers via git push.

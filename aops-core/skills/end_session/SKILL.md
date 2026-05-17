@@ -93,8 +93,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
       The `append` tool prepends a UTC timestamp and creates the section if missing. Existing entries are preserved — never rewrite the section.
    4. If the bound task IS the epic, drop the trailing `(task [[...]] ...)` clause.
 
-   Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a `type: project` document. Do not block the session close on a missing breadcrumb target.
-
+   Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a slug in `$AOPS_SESSIONS/polecat.yaml`. Do not block the session close on a missing breadcrumb target.
 3. **Call `release_task` once, with the full session payload.**
 
    ```

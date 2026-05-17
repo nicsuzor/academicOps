@@ -129,10 +129,10 @@ The `classification` field carries additional semantic subtypes (bug, feature, s
 
 ### Retired types
 
-| Retired type | Replacement                                                                                                                                                                                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `goal`       | Use `target`. Goals were aliased to targets historically; the alias is removed. Targets never parent.                                                                                                                                                                                                              |
-| `project`    | The hierarchy level is gone. The word "project" now refers narrowly to a polecat repo — see [Project (operational routing field)](#project-operational-routing-field) below. Existing `type: project` containers will be reclassified (typically to root-level epics) per the migration in [[areas-not-projects]]. |
+| Retired type | Replacement                                                                                                                                                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `goal`       | Use `target`. Goals were aliased to targets historically; the alias is removed. Targets never parent.                                                                                                                                                                                                                          |
+| `project`    | The hierarchy level is gone. The word "project" now refers narrowly to a polecat repo — see [Project (operational routing field)](#project-operational-routing-field) below. Existing containers previously typed as project will be reclassified (typically to root-level epics) per the migration in [[areas-not-projects]]. |
 
 ### `target` nodes
 
@@ -176,7 +176,7 @@ contributes_to:
 | Validation    | Slug must match a `projects:` key, a `project_aliases` entry, or a per-project `aliases:` list in `polecat.yaml` |
 | Inheritance   | Children inherit the parent's `project` unless explicitly overridden (most tasks just take the parent's value)   |
 
-**Project is not a hierarchy level** and does not appear in the work-decomposition tree. It is purely operational — "which repo does the worker check out for this task?" Conceptual containers that used to be `type: project` (e.g. `qut`, `osb`, `tja`, `arc-future-fellowship`) are not projects in this sense; they are root-level epics with no special type.
+**Project is not a hierarchy level** and does not appear in the work-decomposition tree. It is purely operational — "which repo does the worker check out for this task?" Conceptual containers that used to be marked as project type (e.g. `qut`, `osb`, `tja`, `arc-future-fellowship`) are not projects in this sense; they are root-level epics with no special type.
 
 ---
 
@@ -385,3 +385,4 @@ This document supersedes any conflicting definitions in other framework files. I
 **Referenced by**: all `SKILL.md` files, `aops-core/skills/planner/WORKFLOWS.md`, brain PKB (project: aops, topic: workflow-system-spec)
 
 **Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `EPIC → EPIC|TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field. (Decision 2026-05-10.)
+10.)
