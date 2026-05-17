@@ -118,6 +118,7 @@ exclude = [
   "aops-core/policies/", # Exclude policy docs
   "aops-core/scripts/", # Exclude scripts
   "aops-core/skills/", # Exclude skill definitions (YAML)
+  "aops-tools/skills/", # Exclude aops-tools skill definitions (scientific scripts)
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
