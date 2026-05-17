@@ -350,7 +350,7 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 | Condition                                | Strategy            | Planner Activity                                       |
 | ---------------------------------------- | ------------------- | ------------------------------------------------------ |
 | `disconnected_epics` > 10                | Connect epics       | Reparent — find project parents for disconnected epics |
-| `targets_without_contributing_edges` > N | Wire edges          | Wire edges via `/planner wire-edges` flow              |
+| `targets_without_contributing_edges` > 10 | Wire edges          | Wire edges via `/planner wire-edges` flow              |
 | `flat_tasks` > 100                       | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
 | `orphan_count` > 20                      | Fix orphans         | Reparent — connect or archive disconnected nodes       |
 | All metrics healthy                      | Densify edges       | Densify — use strategies to add dependency edges       |
@@ -515,8 +515,3 @@ $ACA_DATA/.github/workflows/sleep-cycle.yml  ← installed copy (runs the agent)
 Install via: `scripts/install-brain-workflows.sh <brain-repo-path>`
 
 The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools. In CI, the agent works directly with markdown files — no PKB MCP server is available. Changes sync to PKB consumers via git push.
-s sync to PKB consumers via git push.
-ipts/install-brain-workflows.sh <brain-repo-path>`
-
-The workflow uses `anthropics/claude-code-action` to launch an agent with a consolidation prompt. The agent has access to the brain repo and academicOps tools. In CI, the agent works directly with markdown files — no PKB MCP server is available. Changes sync to PKB consumers via git push.
-s sync to PKB consumers via git push.

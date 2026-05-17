@@ -468,5 +468,3 @@ Full per-phase instructions in [[references/maintenance-phases]].
 ### CI Environment
 
 When running on GitHub Actions, no PKB MCP server is available. Use `Bash`, `Glob`, `Grep`, `Read`, `Write`, `Edit` directly on markdown files. Changes sync to PKB consumers via git push. `Edit` is restricted to transcript frontmatter under `$AOPS_SESSIONS/` only — never inside `$ACA_DATA`.
-script frontmatter under `$AOPS_SESSIONS/` only — never inside `$ACA_DATA`.
-ed to transcript frontmatter under `$AOPS_SESSIONS/` only — never inside `$ACA_DATA`.
