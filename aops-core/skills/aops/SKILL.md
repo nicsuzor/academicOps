@@ -335,83 +335,11 @@ Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbid
 
 ## Full Task Lifecycle
 
-Every task MUST follow this lifecycle. No shortcuts.
+Operate using a simple, trust-based **Plan → Act → Validate** directive. You are trusted to orchestrate your own loop.
 
-### Phase 1: Pre-Work (BEFORE any implementation)
-
-```
-1. TASK TRACKING (choose based on context)
-
-   IF task exists:
-     mcp__plugin_aops-core_pkb__get_task(id="<id>")
-     mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
-
-   IF creating new tracked work:
-     mcp__plugin_aops-core_pkb__create_task(title="[description]", type="task", project="aops", priority=3)
-     mcp__plugin_aops-core_pkb__update_task(id="<id>", status="in_progress")
-
-   IF quick ad-hoc work (< 15 min, no dependencies):
-     Use TodoWrite for session tracking only
-
-2. LOAD CONTEXT (as needed)
-   - Invoke `rbg` if verifying axiomatic principles
-   - Read VISION.md if checking scope alignment
-   - mcp__plugin_aops-core_pkb__search(query="[topic]") for prior work
-   - mcp__plugin_aops-core_pkb__get_document(id="aops-state") for current framework state
-```
-
-### Phase 2: Planning (For Non-Trivial Work)
-
-**Non-trivial work** = changes more than 2 files, touches core abstractions, creates new patterns, or involves architectural decisions.
-
-```
-1. ENTER PLAN MODE (if editing framework files)
-   EnterPlanMode()
-
-2. DESIGN WITH CRITIC REVIEW (MANDATORY for non-trivial work)
-   Agent(subagent_type="aops-core:rbg", prompt="Review this plan...")
-
-3. ADDRESS CRITIC FEEDBACK
-   PROCEED: Continue to Phase 3
-   REVISE: Fix issues, re-run critic (max 2 iterations, then escalate to user)
-   HALT: Stop immediately. Report issues to user.
-```
-
-### Phase 3: Implementation
-
-```
-1. USE APPROPRIATE SKILLS
-2. FOLLOW CATEGORICAL IMPERATIVE — every change must be justifiable as universal rule
-3. UPDATE TASK AS YOU WORK
-4. ITERATION LOOP — if implementation reveals plan was incomplete, return to Phase 2
-```
-
-### Phase 3a: Handling Failures
-
-```
-IF skill invocation fails:
-  - Log the error exactly
-  - Check if skill exists, retry once, then HALT if still failing
-
-IF tests fail:
-  - Do NOT auto-fix if out of scope
-  - Report failure with exact error
-
-IF git operations fail:
-  - Merge conflicts: HALT, report to user
-```
-
-### Phase 4: Post-Work (MANDATORY)
-
-```
-1. RUN QA VERIFICATION — /verify or Skill(skill="verify")
-2. RUN TESTS — uv run pytest tests/ -v --tb=short
-3. FORMAT AND COMMIT — ./scripts/format.sh, git add, git commit
-4. PUSH — git pull --rebase, git push, git status
-5. COMPLETE TASK — mcp__plugin_aops-core_pkb__complete_task(id="<id>")
-6. PERSIST LEARNINGS — Skill(skill="remember") for key decisions
-7. UPDATE PKB STATE — mcp__plugin_aops-core_pkb__append(id="aops-state", content="[what changed]")
-```
+- **Plan**: Assess the task, map necessary context, and form an approach. Invoke critic review (e.g., `rbg` or `pauli`) ONLY when uncertainty or blast radius demands it.
+- **Act**: Execute the implementation.
+- **Validate**: Verify your changes locally (e.g., run tests if applicable). Invoke QA organically ONLY when the blast radius is large or independent verification is needed. Commit, push, and release the task.
 
 ---
 
@@ -423,20 +351,6 @@ When you encounter something you cannot derive:
 2. **STATE** — "I cannot determine [X] because [Y]"
 3. **ASK** — Use AskUserQuestion for clarification
 4. **DOCUMENT** — Once resolved, add the rule
-
----
-
-## Quality Gates
-
-### Before Claiming Complete
-
-- [ ] All tests pass (`uv run pytest`)
-- [ ] QA verification with real data passed
-- [ ] Changes committed with proper message
-- [ ] Changes pushed to remote
-- [ ] Task completed
-- [ ] Learnings persisted (if applicable)
-- [ ] PKB state document updated
 
 ---
 
