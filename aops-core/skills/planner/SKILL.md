@@ -79,7 +79,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **When**: User says "/q X", "queue task", "new task:", "save for later"
 
-**Allowed tools**: `mcp__pkb__create_task`, `mcp__pkb__task_search`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__get_task_children`
+**Allowed tools**: `mcp_pkb_create_task`, `mcp_pkb_task_search`, `mcp_pkb_update_task`, `mcp_pkb_get_task`, `mcp_pkb_get_task_children`
 
 **Workflow**:
 
@@ -105,7 +105,11 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
+<<<<<<< HEAD
 6. Create task with body template (Problem, Solution, Files, AC). Apply the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]): **state intent + AC, not prescription**, and do not invent mid-stream approval gates. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+=======
+6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp_pkb_create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+>>>>>>> da7d5b29 (planner: remove pre-paid diagnostic promotion gates)
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:
@@ -117,7 +121,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
    The output of capture should therefore frequently be **two or more tasks** (primary + follow-ups), each correctly linked.
 
-8. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task(s), marking new tasks with `← NEW`. Then HALT — no execution.
+8. **Report with context tree**: Fetch siblings via `mcp_pkb_get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task(s), marking new tasks with `← NEW`. Then HALT — no execution.
 
    Format:
    ```
@@ -151,7 +155,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 
 **When**: "plan X", "I had an idea", "new constraint", "what should I work on", "prioritise tasks"
 
-**Allowed tools**: `Read`, `mcp__pkb__create_task`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__list_tasks`, `mcp__pkb__task_search`, `mcp__pkb__search`, `mcp__pkb__get_document`, `mcp__pkb__create_memory`, `mcp__pkb__retrieve_memory`, `mcp__pkb__list_memories`, `mcp__pkb__search_by_tag`, `mcp__pkb__delete_memory`, `mcp__pkb__get_dependency_tree`, `mcp__pkb__get_network_metrics`, `mcp__pkb__pkb_context`, `mcp__pkb__pkb_trace`, `mcp__pkb__pkb_orphans`, `mcp__pkb__get_task_children`
+**Allowed tools**: `read_file`, `mcp_pkb_create_task`, `mcp_pkb_get_task`, `mcp_pkb_update_task`, `mcp_pkb_list_tasks`, `mcp_pkb_task_search`, `mcp_pkb_search`, `mcp_pkb_get_document`, `mcp_pkb_create_memory`, `mcp_pkb_retrieve_memory`, `mcp_pkb_list_memories`, `mcp_pkb_search_by_tag`, `mcp_pkb_delete_memory`, `mcp_pkb_get_dependency_tree`, `mcp_pkb_get_network_metrics`, `mcp_pkb_pkb_context`, `mcp_pkb_pkb_trace`, `mcp_pkb_pkb_orphans`, `mcp_pkb_get_task_children`
 
 **Sub-modes**:
 
@@ -177,7 +181,7 @@ Break validated epics into structured task trees.
 
 **When**: "break this down", "decompose task", "what tasks do we need"
 
-**Allowed tools**: Same as `plan` mode, plus `mcp__pkb__decompose_task`
+**Allowed tools**: Same as `plan` mode, plus `mcp_pkb_decompose_task`
 
 **Workflow**:
 
@@ -194,7 +198,7 @@ Break validated epics into structured task trees.
 8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
-11. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
+11. Create in PKB via `mcp_pkb_decompose_task(parent_id, subtasks)`.
 
 ### Promotion gate: inbox → ready
 
@@ -205,9 +209,8 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
 5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
-6. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until these pre-execution lenses reach status: done. Post-execution lenses (e.g., citation verification) do NOT block promotion to ready.
 
-**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
+**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing the rationale for promotion.
 
 **Critical rules**:
 
@@ -233,7 +236,7 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 
 **When**: "strategic thinking", "planning session", "explore complexity", "think through", "let me think"
 
-**Allowed tools**: `mcp__pkb__search`, `AskUserQuestion`, `Skill` (for `/remember` only)
+**Allowed tools**: `mcp_pkb_search`, `AskUserQuestion`, `Skill` (for `/remember` only)
 
 **HARD BOUNDARIES — explore mode MUST NOT**:
 
@@ -259,12 +262,12 @@ Facilitated strategic thinking. Thinking partner, NOT a doing agent.
 
 ### wire
 
-Allowed tools: mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__update_task, mcp__pkb__get_semantic_neighbors, AskUserQuestion
+Allowed tools: mcp_pkb_list_tasks, mcp_pkb_get_task, mcp_pkb_update_task, mcp_pkb_get_semantic_neighbors, AskUserQuestion
 Interactive flow for densifying `contributes_to` edges on target nodes.
 
 **When**: "wire edges", "link to target", "contributes_to", "Renooij-Witteman"
 
-**Allowed tools**: `mcp__pkb__list_tasks`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__get_semantic_neighbors`, `AskUserQuestion`, `replace`
+**Allowed tools**: `mcp_pkb_list_tasks`, `mcp_pkb_get_task`, `mcp_pkb_update_task`, `mcp_pkb_get_semantic_neighbors`, `AskUserQuestion`, `replace`
 3. Find Candidates: For the selected target, search for related tasks (status: ready/queued/in_progress) in the same project or semantically related. Filter out tasks that already have a contributes_to edge pointing to the target.
 **Workflow**:
 
@@ -301,7 +304,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **When**: "prune knowledge", "consolidate notes", "PKM maintenance", "garden", "reparent", "lint", "densify tasks", "add dependencies"
 
-**Allowed tools**: `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `AskUserQuestion`, `mcp__pkb__search`, `mcp__pkb__list_documents`, `mcp__pkb__list_tasks`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__task_search`, `mcp__pkb__pkb_orphans`, `mcp__pkb__bulk_reparent`, `mcp__pkb__pkb_context`, `mcp__pkb__get_network_metrics`, `mcp__pkb__find_duplicates`, `mcp__pkb__batch_merge`, `mcp__pkb__merge_node`, `mcp__pkb__complete_task`, `mcp__pkb__batch_reclassify`, `mcp__pkb__batch_archive`, `mcp__pkb__batch_update`, `mcp__omcp__messages_search`, `mcp__omcp__messages_query`, `mcp__omcp__calendar_list_events`
+**Allowed tools**: `read_file`, `grep_search`, `glob`, `replace`, `write_file`, `Bash`, `AskUserQuestion`, `mcp_pkb_search`, `mcp_pkb_list_documents`, `mcp_pkb_list_tasks`, `mcp_pkb_update_task`, `mcp_pkb_get_task`, `mcp_pkb_task_search`, `mcp_pkb_pkb_orphans`, `mcp_pkb_bulk_reparent`, `mcp_pkb_pkb_context`, `mcp_pkb_get_network_metrics`, `mcp_pkb_find_duplicates`, `mcp_pkb_batch_merge`, `mcp_pkb_merge_node`, `mcp_pkb_complete_task`, `mcp_pkb_batch_reclassify`, `mcp_pkb_batch_archive`, `mcp_pkb_batch_update`, `mcp_omcp_messages_search`, `mcp_omcp_messages_query`, `mcp_omcp_calendar_list_events`
 
 **Activities**:
 
