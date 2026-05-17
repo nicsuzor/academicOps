@@ -105,7 +105,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
-6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+6. Create task with body template (Problem, Solution, Files, AC). **State intent + AC, not prescription**. Do not propose file paths, function names, or directive imperatives that haven't been empirically verified. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:

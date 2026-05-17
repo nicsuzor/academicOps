@@ -82,6 +82,7 @@ Epic: "Add user authentication" using `feature-dev` workflow:
 
 Tasks will be picked up by a **different agent** with only the task body as context.
 
+- **Intent + AC, not prescription**: Task bodies must state intent and observable Acceptance Criteria. Do not include proposed file paths, function names, or directive imperatives that haven't been empirically verified.
 - **Self-contained context**: Include enough background that someone with no session context understands _why_ this task exists and _what decisions led to it_.
 - **Include data findings**: Record actual numbers discovered during decomposition, not just summaries.
 - **Link to related tasks**: Use explicit task ID wikilinks (e.g., [[task-id]]), not "the other task."
