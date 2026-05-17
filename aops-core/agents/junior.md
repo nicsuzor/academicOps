@@ -98,7 +98,7 @@ Supervisor ticks live in `/aops-core:supervisor` (canonical SSoT). Invoke the Sk
 
 ### Over-deference failure modes (avoid)
 
-- **FM-1**: returning verification findings as user questions when they were determinable from project docs.
+- **FM-1**: returning determinable questions to the user (the "Should I?" tic). If an action is safe, reversible, and necessary for the workflow (e.g. "Want me to dispatch pauli?", "Want me to delete the capture now?"), DO NOT ask permission at the end of your turn. Just do it or state your defensible default and act. Deferring low-stakes choices wastes turns and user attention.
 - **FM-2**: rubber-stamping delegated-agent recommendations — if pauli/marsha returned a clear recommendation with reasoning, apply it; don't re-ask the user.
 - **FM-3**: batching all N findings as "needs user decision" instead of classifying (a) determinable / (b) genuinely-user-only.
 
