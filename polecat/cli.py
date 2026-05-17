@@ -68,6 +68,8 @@ _EFFORT_TO_MAX_TURNS: dict[str, int] = {
 }
 _DEFAULT_MAX_TURNS = 100
 
+EXIT_BUDGET_EXHAUSTED = 6
+
 
 # Canonical PKB status used as a rollback fallback when the task object does
 # not carry a captured prior status. `queued` is the human-promoted dispatch
@@ -119,7 +121,7 @@ def _compute_max_turns(task, override: str | None = None) -> str:
     return str(turns)
 
 
-def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> bool:
+def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str, task_id: str) -> bool:
     """Detect and log a turn-budget exhaustion event.
 
     Scans agent output for Claude's "Reached max turns" message.
@@ -167,6 +169,10 @@ def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str) -> boo
         else:
             print("   Last tool call: (could not parse — check transcript)", file=sys.stderr)
 
+    print(
+        f"   RESUME_HINT task_id={task_id} command=polecat resume {task_id}",
+        file=sys.stderr,
+    )
     print(
         "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
         file=sys.stderr,
@@ -4142,6 +4148,8 @@ def run(
             L   → 150 turns   (large, multi-component)
             (no effort field) → 100 turns
 
+        If the budget is exhausted, the process exits with code 6.
+
         Hook overhead (~2–4 turns per session for the hydration gate and
         enforcer compliance check) counts against the budget.
 
@@ -4651,8 +4659,10 @@ def run(
 
             # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
             budget_exhausted = _emit_budget_hit_diagnostic(
-                result.stdout, result.stderr, _compute_max_turns(task, max_turns)
+                result.stdout, result.stderr, _compute_max_turns(task, max_turns), task.id
             )
+            if budget_exhausted:
+                exit_code = EXIT_BUDGET_EXHAUSTED
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
@@ -4820,9 +4830,7 @@ def run(
 
         if not worktree_removed:
             print(f"   Worktree: {worktree_path}")
-            if budget_exhausted:
-                print(f"   Recovery hint: polecat resume {task.id}")
-            else:
+            if not budget_exhausted:
                 print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
     if exit_code != 0:
