@@ -36,6 +36,8 @@ Agent(
 
 Context from user: <paste the review question and any parameters — component to assess, time window, success criteria, specific concern>
 
+If consuming inputs from dogfood outputs, apply the Phase 0 gate from aops-core/skills/dogfood/SKILL.md as the freshness check before inclusion.
+
 Follow the trend mode workflow exactly: define question → identify data sources → sample strategically → deep-read each sample → synthesize → produce report → save report.""",
   tools=[
     'Bash', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Skill',
