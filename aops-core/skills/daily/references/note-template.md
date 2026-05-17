@@ -90,6 +90,10 @@ Invited to join [[Journal Name]] editorial board. Application via online form.
 
 * 3 draft/autonomous PRs across 2 repos
 
+### PR Triage Dashboard
+
+_(Note: Rendered only when total open PRs ≥ 10. Contains cluster decision cards. See [[instructions/pr-triage-dashboard]].)_
+
 ## Today's Log
 
 (Omit this section entirely when the work date has no sessions yet. When populated, this is an editorial synthesis — narrative prose, not a table of sessions. See [[instructions/work-summary]] Step 5.3.)
