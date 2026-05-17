@@ -98,7 +98,7 @@ def _rollback_status_for(task) -> str:
     return prior_str
 
 
-def _compute_max_turns(task, override: str | None = None) -> str:
+def _compute_max_turns(task, override: int | str | None = None) -> str:
     """Return the --max-turns value for a headless Claude run.
 
     Derives the budget from the task's ``effort`` field (XS/S/M/L).

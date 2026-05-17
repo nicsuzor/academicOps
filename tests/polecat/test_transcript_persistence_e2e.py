@@ -417,7 +417,7 @@ def test_real_transcript_persists_on_success(shared_sessions_dir: Path, cli_tool
 
 
 # ---------------------------------------------------------------------------
-# Case 2: max-turns (xfail until task-1eae22cb lands)
+# Case 2: max-turns (deterministic budget-exhaustion)
 # ---------------------------------------------------------------------------
 
 _EXHAUSTIVE_INSTRUCTION = (
@@ -428,14 +428,6 @@ _EXHAUSTIVE_INSTRUCTION = (
 
 
 @_apply_gates
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Busting max_turns via prompt engineering is a behavioral oracle, "
-        "not deterministic. Remove xfail once task-1eae22cb (--max-turns CLI "
-        "passthrough) lands and this test can force the budget."
-    ),
-)
 def test_real_transcript_persists_on_max_turns(shared_sessions_dir: Path) -> None:
     """A max-turns failure still leaves a real transcript on the host."""
     project = _require_project()
@@ -445,13 +437,10 @@ def test_real_transcript_persists_on_max_turns(shared_sessions_dir: Path) -> Non
         project=project,
         tags=["test", "e2e", "transcript-persistence", "effort-xs"],
     )
-    # Smallest effort tier (post-#565: 40 turns) to maximise chance of
-    # hitting budget before the agent self-terminates.
-    client.call_tool("update_task", {"id": task_id, "updates": {"effort": "xs"}})
 
     proc: subprocess.Popen | None = None
     try:
-        cmd = _polecat_cmd(task_id, project)
+        cmd = _polecat_cmd(task_id, project) + ["--max-turns", "2"]
         proc = subprocess.Popen(
             cmd,
             cwd=str(REPO_ROOT),
@@ -468,12 +457,9 @@ def test_real_transcript_persists_on_max_turns(shared_sessions_dir: Path) -> Non
             pytest.fail(f"polecat run for task {task_id} exceeded 10 min")
 
         # Non-xfail property: transcript must exist regardless of exit code.
-        # If this assert survives but the one below fails, xfail marks the test
-        # as XPASS — which strict=False tolerates — documenting that the
-        # weak signal is passing.
-        _assert_real_transcript(task_id, project, min_bytes=10_000)
+        _assert_real_transcript(task_id, project, min_bytes=1_000)
 
-        # xfail-only property (deterministic only with follow-up task-1eae22cb):
+        # Deterministic check
         assert proc.returncode != 0, f"expected non-zero exit, got {proc.returncode}"
         assert "Reached max turns" in (stdout or ""), (
             "Expected 'Reached max turns' in output. This is the flaky part: "
