@@ -39,8 +39,7 @@ if _POLECAT_EXAMPLE.exists():
 
 # Staging base for DooD environments (so that tmp files are accessible to host Docker)
 _STAGING_BASE = _REPO_ROOT / ".aops" / "tmp" / "staging"
-_STAGING_BASE.mkdir(parents=True, exist_ok=True)
-os.environ["POLECAT_STAGING_BASE"] = str(_STAGING_BASE)
+os.environ.setdefault("POLECAT_STAGING_BASE", str(_STAGING_BASE))
 
 # Max turns for Claude in test fixtures — higher than the default of 3 to allow
 # for hook overhead (hydration gate, enforcer) before reaching the actual task.
