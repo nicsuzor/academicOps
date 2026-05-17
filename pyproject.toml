@@ -110,7 +110,7 @@ exclude = [
   "**/dist",
   "**/.venv",
   "**/venv",
-  "aops-core/*.md",  # Exclude markdown docs
+  "aops-core/*.md", # Exclude markdown docs
   "aops-core/*.conf", # Exclude config files
   "aops-core/uv.lock", # Exclude lock file
   "aops-core/agents/", # Exclude non-code agent configs
@@ -118,6 +118,7 @@ exclude = [
   "aops-core/policies/", # Exclude policy docs
   "aops-core/scripts/", # Exclude scripts
   "aops-core/skills/", # Exclude skill definitions (YAML)
+  "scripts/*_prototype.py", # Exclude scratch/prototype files
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports - be specific about Python subdirs only
