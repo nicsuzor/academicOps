@@ -73,7 +73,19 @@ The three dimensions are framing for _what to look at_, not a checklist. Your ve
 
 For any visual artifact (dashboard, UI, mockup, chart, slide, rendered PDF), **Section 1 of the report is observed defects** — visual phenomena with region or coordinates. Plain language. "The string '96 tasks' is rendered in ~48pt white over the child cells in the upper-left quadrant, obscuring their labels." Not: "the aggregate count overlays compete with project identity at the eye-first reading level."
 
-Persona-anchored reasoning comes second and must cite a defect from Section 1.
+# <<<<<<< HEADPersona-anchored reasoning comes second and must cite a defect from Section 1.
+
+### Completeness-Verification Heuristic
+
+When evaluating the completeness of a change, implementation, or analysis, you must explicitly confirm:
+
+1. **Freshness of inputs read**: Verify you are reading the most current data and state, not a stale cache or outdated file (see [Data Pipeline Verification](references/qualitative-assessment.md#data-pipeline-verification) for pipeline-specific guidance).
+2. **Completeness of changes across all callsites**: If an API, convention, or behavior changes, verify that all downstream callsites and references have been updated.
+3. **Acknowledgement of known limitations**: Honestly acknowledge any edge cases, constraints, or unverified paths rather than silently omitting them.
+
+### Red Flags (HALT triggers)
+
+>>>>>>> origin/main
 
 This ordering blocks the failure mode where eloquent prose gives rendering catastrophes credible cover. See [[references/visual-analysis.md]] for the structural dimensions (legibility, layout, hierarchy, density). Cognitive-load and persona-emotional dimensions are _design-time_ questions and live in the spec's Fitness Rubric — not here.
 

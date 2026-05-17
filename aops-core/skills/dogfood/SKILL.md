@@ -39,17 +39,22 @@ This skill is the **outer loop** that wraps any task category. The inner loop (e
 
 ### Phase 0: Know What You're Eating
 
-**Goal**: Understand the system being dogfooded well enough that your instructions won't send the subagent down a dead end.
+**Goal**: Understand the system being dogfooded well enough that your instructions won't send the subagent down a dead end, AND verify subagent verdicts before any propagation.
 
-This phase exists because of a specific, observed failure: a dogfooding supervisor concluded a task was impossible because "the data doesn't exist" — when the data was in the session transcripts and hook logs, documented in the framework's own forensics workflow. The supervisor had the right files in their research but didn't connect the dots.
+This phase exists because of specific, observed failures:
 
-**Before writing any instructions:**
+1. A dogfooding supervisor concluded a task was impossible because "the data doesn't exist" — when the data was in the session transcripts and hook logs, documented in the framework's own forensics workflow. The supervisor had the right files in their research but didn't connect the dots.
+2. A dogfooding supervisor relayed subagent verdicts (PASS/FAIL, observed defects) without independent verification against the original brief, propagating false-negatives into trend-review.
 
-1. **Read the relevant framework workflows.** Check the `/framework` skill's workflow router. If the task touches hooks/gates, read `09-session-hook-forensics.md`. If it touches skills, read the relevant SKILL.md. If it touches transcripts, read `transcript.py` and understand the data pipeline.
+**Before writing any instructions OR classifying/propagating subagent outputs:**
 
-2. **Verify data sources by sampling.** Do not ASSUME what a data file contains. READ one. If you're writing instructions that say "audit files contain X," open an audit file and confirm X is there. If it isn't, find where X actually lives.
+1. **Verify the verdict against the original brief.** Ground yourself in the subagent's actual output before classifying it. Do not blindly relay its self-reported pass/fail. Use `aops-core/skills/verify/SKILL.md` by citation to evaluate the data's (a) freshness, (b) completeness, and (c) limitations rather than restating the heuristics here.
 
-3. **Map the full data landscape.** For any framework component, there are typically multiple data sources at different levels of detail:
+2. **Read the relevant framework workflows.** Check the `/framework` skill's workflow router. If the task touches hooks/gates, read `09-session-hook-forensics.md`. If it touches skills, read the relevant SKILL.md. If it touches transcripts, read `transcript.py` and understand the data pipeline.
+
+3. **Verify data sources by sampling.** Do not ASSUME what a data file contains. READ one. If you're writing instructions that say "audit files contain X," open an audit file and confirm X is there. If it isn't, find where X actually lives.
+
+4. **Map the full data landscape.** For any framework component, there are typically multiple data sources at different levels of detail:
    - **Pre-rendered markdown transcripts** (`~/.aops/sessions/transcripts/`) — abridged and full forms, ~10K+ files. **Synced across machines** — your primary source for session-level analysis.
    - **Raw session logs** (`~/.claude/projects/<workspace>/<sid>.jsonl`) — local-only on the machine that ran the session.
    - **Hook event logs** (`~/.claude/projects/<workspace>/<sid>-hooks.jsonl`) — co-located with session stream; contains SubagentStart/SubagentStop events with verdicts.
@@ -61,9 +66,9 @@ This phase exists because of a specific, observed failure: a dogfooding supervis
 
    **When a command like `ls *.md` returns nothing on a large directory, try `ls <dir>/ | head` instead.** Glob expansion failures on 10K+ files are silent.
 
-4. **Understand the difference between "not in this file" and "doesn't exist."** If a data point isn't in the file you're looking at, ask where else it might be before concluding it's unavailable.
+5. **Understand the difference between "not in this file" and "doesn't exist."** If a data point isn't in the file you're looking at, ask where else it might be before concluding it's unavailable.
 
-5. **Trace the full data flow for multi-component systems.** If evaluating a system with multiple components (e.g., gate + subagent + main agent), map how data moves between them. A conclusion about "does X work?" requires knowing which channel delivers the result and whether the recipient sees it. Don't assume the obvious channel is the only one.
+6. **Trace the full data flow for multi-component systems.** If evaluating a system with multiple components (e.g., gate + subagent + main agent), map how data moves between them. A conclusion about "does X work?" requires knowing which channel delivers the result and whether the recipient sees it. Don't assume the obvious channel is the only one.
 
 ### Phase 1: Research and Draft Instructions
 
