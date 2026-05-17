@@ -176,6 +176,10 @@ The supervisor never silently substitutes a different **worker type**, **deliver
 
 **The ambiguity exception:** in-repo design ambiguity is not a halt. If the task is underspecified but the work stays inside the requested repository, the supervisor MUST NOT halt — it dispatches. Pauli writes a brief naming the ambiguity and pointing at a sensible default; the supervisor pastes it into the task body; the polecat investigates and either resolves it or opens a draft PR for review. Polecats are full-judgment agents — trust them to make in-repo design calls.
 
+### Drive-by Fix Policy
+
+When workers encounter trivial issues mid-task, they must adhere to the canonical project Drive-by fix policy (codified in `.agents/CORE.md`): bundle an unrelated fix into the current PR only when ALL of: (a) it is blocking your PR from merging (e.g. CI failure that's not your fault), (b) the fix is trivial and obvious, and (c) you can describe it in one sentence in the PR description. Otherwise, file a separate task — don't expand the PR scope.
+
 ### Keep the Pipe Flowing — Don't Micromanage Polecats
 
 Polecats are **smart agents, not mechanical drones**. The supervisor's job is throughput: claim → dispatch → next. It is NOT to:
