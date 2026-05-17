@@ -3345,6 +3345,13 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key (e.g. gates.handover=block).",
 )
+@click.option(
+    "--capture-on-exit",
+    "capture_on_exit",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="On exit, bundle session artifacts into this directory.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew_alias(
@@ -3360,6 +3367,7 @@ def crew_alias(
     model,
     debug_flag,
     set_overrides,
+    capture_on_exit,
     agent_args,
 ):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
@@ -3376,6 +3384,7 @@ def crew_alias(
         model=model,
         debug_flag=debug_flag,
         set_overrides=set_overrides,
+        capture_on_exit=capture_on_exit,
         agent_args=agent_args,
     )
 
@@ -3895,6 +3904,8 @@ def crew(
         if tmp_gemini_home and tmp_gemini_home.exists():
             _extract_gemini_sessions(tmp_gemini_home, session_dir)
             shutil.rmtree(tmp_gemini_home)
+        if capture_on_exit is not None:
+            _capture_artifacts(session_dir, capture_on_exit)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
             if tmp_file.is_dir():
@@ -4958,10 +4969,6 @@ def resume(ctx, task_id):
         set_overrides=(),
         max_turns=None,
     )
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
