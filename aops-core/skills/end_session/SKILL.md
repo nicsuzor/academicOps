@@ -132,34 +132,18 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    - **Fallback**: if `release_task` is unavailable, `update_task(id=..., status="merge_ready")` keeps the supervisor unblocked, but the dashboard loses this session.
    - **Polecat note**: calling `release_task` with a terminal status is what lets the polecat supervisor detect termination via PKB polling. Skipping this leaves Gemini workers running until external timeout (#521).
 
-4. **Emit the required reflection blocks** (`## Framework Reflection`, `## Output`, `## Tasks worked`).
+4. **Emit the required reflection blocks** (`## Output`, `## Tasks worked`, `## Framework Reflection`).
 
    Full-form sessions MUST include all three blocks before the handover block. `transcript.py` extracts each into structured metadata (`framework_reflections`, `outputs`, `tasks_worked`, `references`, `quality_warnings`); missing or empty blocks emit warnings into `quality_warnings` rather than being silently dropped. See [[transcript-metadata-schema]] for the wire format.
 
-   **a. `## Framework Reflection` — required, must be useful**
+   **Environment-Gated Behaviors:**
+   Check the following environment variables and apply their rules to your closing output if set to `1` (or if marked default-on):
+   - `AOPS_GATE_HEDGE_CLAIMS` (default-on, treat as always set): **Hedge your claims.** Your closing output names its load-bearing claims, the evidence behind each, your confidence, and — for anything you're less than highly confident in — the next most plausible alternative. Confidence floor is "I checked"; "should work" or "probably" are halts to convert into observations or hedges.
+   - `AOPS_GATE_LAND_THE_PLANE`: Land the plane. Push, file PR, release. Don't abandon work mid-flight.
+   - `AOPS_GATE_PRS_GREEN`: Before close: confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure.
+   - `AOPS_GATE_STATE_QA`: Closing output states: what was the user's question? What did you deliver?
 
-   Must address, in concrete terms:
-
-   - **One real friction point** the agent hit (tool, instruction, hook, gate), with enough context to act on it. NOT generic procedure-griping — only flag procedures that are truly awful or broken.
-   - **One instruction or tool improvement** the agent would propose, with a pointer to the file/skill/agent it would change.
-   - _(Optional)_ one thing that worked well and is worth keeping — short, specific, attributable.
-
-   **Quality bar.** Reject reflections that are generic ("everything was fine", "the procedure was annoying"), propose new tools/features/skills/commands ("we should build an X"), pitch grand refactors, or contain bare identifiers without a precis. Accept reflections that document concrete experienced problems and (where applicable) file bug reports.
-
-   The reflection's job is **bug reports + friction analysis**, not feature work. If you find yourself proposing a new capability, stop — file the underlying friction instead.
-
-   **Identifiers + precis.** Every reference to a task, PR, commit, issue, file, or other artefact MUST carry both:
-
-   1. The **stable identifier** (`task-id`, `PR #NNN`, `org/repo#NNN`, commit SHA, etc.).
-   2. A **short precis in parentheses** — what the thing is, in <60 chars.
-
-   Required form: `task-acba1234 (/end-session: add explicit process reflection)`, `PR #847 (transcript.py: extract reflection metadata)`, `commit cf83b1f (pkb: broaden --allowed-hosts)`. A bare `task-acba1234` is non-compliant — `transcript.py` flags it as a `bare-identifier` quality warning.
-
-   **Useful (require)** — concrete description of friction, surprises, dead-ends, wasted token paths, environment mismatches, instructions that were wrong or absent. Bug reports for things that look like real bugs (`$AOPS_SESSIONS=...` referenced but doesn't exist on worker container — file it). Token-cost breakdown of friction is the most useful framing.
-
-   **Not useful (reject)** — new tool/feature suggestions ("an `aops session inspect <id>` command that pulls just the summary…" — reject; this exact reflection was filed and cancelled). Feature development tasks of any kind. Grand refactors ("split transcript_parser.py is 3,640 lines"). Generic procedure-griping.
-
-   **b. `## Output` — required, explicit artefact link**
+   **a. `## Output` — required, explicit artefact link**
 
    Final summary MUST contain a `## Output` block with an explicit URL to the artefact produced — PR, commit, issue, deployed doc, etc. This is the forcing function: requiring a real link implicitly requires the agent to actually file the PR / push the commit / open the issue. **No link → /end-session does not pass.**
 
@@ -173,7 +157,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    If genuinely no artefact exists (pure planning session, blocked on input, etc.), state it explicitly: `Output: none — <reason>`. The extractor distinguishes "no output declared" (warning) from "explicit none" (acknowledged).
 
-   **c. `## Tasks worked` — required, source-of-truth list**
+   **b. `## Tasks worked` — required, source-of-truth list**
 
    Enumerate every task created, updated, completed, or cancelled during the session. This is the authoritative list — `transcript.py` cannot reliably derive it from git or PKB without ambiguity, so it must be written explicitly.
 
@@ -188,6 +172,29 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    ```
 
    Each entry: `- <id> (<precis>) — <action>`. Action verbs the extractor recognises: `created`, `updated`, `completed`, `cancelled`, `referenced`. Bare ids without a precis fail the quality bar.
+
+   **c. `## Framework Reflection` — required, must be useful**
+
+   Must address, in concrete terms:
+
+   - **One real friction point** the agent hit (tool, instruction, hook, gate), with enough context to act on it. NOT generic procedure-griping — only flag procedures that are truly awful or broken. _Note: the close describes the friction; it does not file it. Filing is the calling agent's responsibility via `/learn` (or other skills) AFTER `/end-session` completes._
+   - **One instruction or tool improvement** the agent would propose, with a pointer to the file/skill/agent it would change.
+   - _(Optional)_ one thing that worked well and is worth keeping — short, specific, attributable.
+
+   **Quality bar.** Reject reflections that are generic ("everything was fine", "the procedure was annoying"), propose new tools/features/skills/commands ("we should build an X"), pitch grand refactors, or contain bare identifiers without a precis. Accept reflections that document concrete experienced problems. (Do not file bug reports here; just describe the friction.)
+
+   The reflection's job is **bug reports + friction analysis**, not feature work. If you find yourself proposing a new capability, stop — file the underlying friction instead.
+
+   **Identifiers + precis.** Every reference to a task, PR, commit, issue, file, or other artefact MUST carry both:
+
+   1. The **stable identifier** (`task-id`, `PR #NNN`, `org/repo#NNN`, commit SHA, etc.).
+   2. A **short precis in parentheses** — what the thing is, in <60 chars.
+
+   Required form: `task-acba1234 (/end-session: add explicit process reflection)`, `PR #847 (transcript.py: extract reflection metadata)`, `commit cf83b1f (pkb: broaden --allowed-hosts)`. A bare `task-acba1234` is non-compliant — `transcript.py` flags it as a `bare-identifier` quality warning.
+
+   **Useful (require)** — concrete description of friction, surprises, dead-ends, wasted token paths, environment mismatches, instructions that were wrong or absent. Description of things that look like real bugs (`$AOPS_SESSIONS=...` referenced but doesn't exist on worker container). Token-cost breakdown of friction is the most useful framing.
+
+   **Not useful (reject)** — new tool/feature suggestions ("an `aops session inspect <id>` command that pulls just the summary…" — reject; this exact reflection was filed and cancelled). Feature development tasks of any kind. Grand refactors ("split transcript_parser.py is 3,640 lines"). Generic procedure-griping.
 
 5. **Emit the handover block**. Exactly this shape, 5–10 lines:
 
