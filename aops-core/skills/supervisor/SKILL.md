@@ -74,6 +74,8 @@ The main agent reads structured verdicts and acts. It does **not**:
 - author fixes — code edits, test edits, "the fix is X" prose. Fix decisions are pauli's.
 - persist state outside the epic body (no local JSON, no Stop-hook files). See [The Task File Is the Only State](#the-task-file-is-the-only-state).
 - prompt the user on a decision with a defensible default — take the default, report. User attention only per [Reporting Posture](#reporting-posture).
+- author verification briefs in-line. The supervisor pastes pauli's brief verbatim; it does NOT add iteration history, prior reviewer notes, or "what to check" enumerations. See [Subagent Contracts → pauli → Brief-for-verify shape](#pauli--preflight--react).
+- ask the supervisor agent itself to evaluate any artifact, especially visual ones. Visual QA always goes fresh-context to marsha via the pauli-assembled brief.
 
 If any of these appear in a supervisor transcript, file via `/learn`.
 
@@ -103,6 +105,22 @@ Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research var
 The detailed validation protocol (inputs, checks, and halt conditions) for both **Code/Edit** and **Design/Research** variants is canonical at [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]].
 
 **Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+
+**Brief-for-verify shape (verification brief assembly):**
+
+When a worker has just exited and the next action is verification, pauli (not the supervisor) writes marsha's brief. Pauli:
+
+1. Reads the original mission brief / spec / acceptance criteria from PKB, and the spec's `## Fitness Rubric` section (authored upstream via `/design-rubric`).
+2. States the deliverable in one sentence.
+3. Locates the artifact (PR URL, screenshot path, running URL).
+4. Produces ONE short paragraph for marsha — example shape:
+
+   > "Verify <artifact>. Goal: <one sentence>. Rubric + AC: <spec link>."
+
+5. Does NOT include: iteration history, prior reviewer notes, dimension checklists, methodology summaries, persona prompts, or "things to look for."
+6. Does NOT invent assessment criteria — forwards only what's in the spec. If the spec is missing `## Fitness Rubric` and the artifact is user-facing, the verdict is `halt: fitness rubric missing — invoke /design-rubric before verify`. Don't improvise.
+
+Why: the verification brief is the lever that determines whether marsha forms a fresh judgement or rubber-stamps the supervisor's narrative. Less is more. Marsha invokes `/verify` and reads methodology there.
 
 ### marsha — verify
 
@@ -198,6 +216,8 @@ Bias hard toward dispatching. A queue of approved tasks gets fired one-per-tick 
 
 The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes. Iterate.
 
+**Brevity in delegation.** Polecats and verifiers do better with short briefs than long ones. Long briefs anchor the recipient and reduce judgement to checklist execution. State the artifact, the goal, and the spec link — and stop. Methodology lives in the executing agent's invoked skills, not in the brief. When you find yourself listing "things to look for" or "things to consider," you are anchoring the recipient. Stop.
+
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 
 ### Dispatch Is Supervisor Judgment — Not A Wrapper Or A Swarm
@@ -230,15 +250,16 @@ Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in 
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.
 
-| Phase     | Subagent | What happens                                                                                                                                                              |
-| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orient    | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                                                                                             |
-| Decompose | pauli    | Pauli proposes subtasks; RBG axiom-check runs in parallel as a mandatory reviewer (verdict: OK/WARN/BLOCK gates promotion). See [[instructions/decomposition-and-review]] |
-| Review    | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`                                                                                          |
-| Dispatch  | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]]                                                                              |
-| Verify    | marsha   | Marsha returns PASS/FAIL/REVISE on a worker exit                                                                                                                          |
-| React     | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                                                                                                        |
-| Halt      | (none)   | All work items at review surface or escalated; emit final summary; exit                                                                                                   |
+| Phase      | Subagent | What happens                                                                                                                                                                                                                                                                                      |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orient     | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                                                                                                                                                                                                                     |
+| Decompose  | pauli    | Pauli proposes subtasks; RBG axiom-check runs in parallel as a mandatory reviewer (verdict: OK/WARN/BLOCK gates promotion). See [[instructions/decomposition-and-review]]                                                                                                                         |
+| Review     | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`                                                                                                                                                                                                                  |
+| Dispatch   | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]]                                                                                                                                                                                                      |
+| Pre-verify | pauli    | Assembles the minimal verification brief — fetches the original mission brief, project context, and the spec's `## Fitness Rubric` / acceptance criteria. Strips iteration history. Produces ONE short paragraph: artifact + goal + spec link. No methodology, no dimensions, no persona prompts. |
+| Verify     | marsha   | Receives the minimal brief in fresh context. Returns PASS / FAIL / REVISE. Invokes /verify herself for methodology — the supervisor never inlines it into the brief.                                                                                                                              |
+| React      | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                                                                                                                                                                                                                                |
+| Halt       | (none)   | All work items at review surface or escalated; emit final summary; exit                                                                                                                                                                                                                           |
 
 `Review` and `Halt` are real terminal states, not transient phases. The supervisor never finalises the deliverable itself — it hands off at the review surface. Async ownership transfers to whatever review pipeline the deliverable subworkflow defines.
 

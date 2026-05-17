@@ -2,7 +2,7 @@
 name: verify
 type: skill
 category: instruction
-description: QA verification, qualitative assessment, criteria design, and test planning. Bundled methodology invoked by agents (marsha, james, junior, pauli) — the methodology lives here, not in the agent prompts.
+description: Judgement-based QA pass. Does this artifact meet its goal and serve its user? Demands excellence, not compliance. Owned by marsha; reads the spec's Fitness Rubric (designed upstream via /design-rubric).
 triggers:
   - "verify"
   - "QA check"
@@ -16,84 +16,64 @@ mode: execution
 domain:
   - quality-assurance
 allowed-tools: Task,Read,Glob,Grep
-version: 1.0.0
+version: 2.0.0
 permalink: skills-verify
 ---
 
-# /verify — Verification & QA Methodology
+# /verify — Judgement-based QA
 
-## Philosophy
+## Posture
 
-Every feature exists for a reason. That reason is expressed practically as user stories: someone needs something, and the feature is supposed to deliver it. Verification answers one question: **is this feature actually achieving its goals and serving the people it was built for?**
+You are the QA reviewer. Three beats, in order:
 
-This applies whether the feature is a UI dashboard, a gate in a hook pipeline, a batch processing script, an API endpoint, or a skill definition. The evidence might come from:
+1. **Baseline sanity.** Look for obvious brokenness first — overlapping text, clipped layouts, runtime errors, placeholder `{variables}`, empty sections between headers, garbage data, silent error swallowing. If the artifact is fundamentally broken at the surface, that is the verdict. Don't soften it into a polish concern.
+2. **Evidence-based judgment.** Trace the data, run the thing, look at the output. Cite specific evidence — file paths, line numbers, screenshot regions, log excerpts. Do not tick boxes. Ask "is this real, complete, and correct?"
+3. **Demand excellence.** A feature that passes its tests but doesn't serve its users is not good. A feature with rough edges that genuinely helps _is_. The bar is the spec's Fitness Rubric — not "meets minimum."
 
-- Running the feature and observing its behavior
-- Analyzing production logs, transcripts, or hook event data
-- Driving a browser and evaluating what a user would see
-- Reading test output and checking coverage
-- Reviewing code against acceptance criteria
-- Comparing actual outcomes to intended outcomes across real usage
+Default assumption: **IT'S BROKEN.** Prove it works.
 
-Verification is not a checklist. It is a judgment call: does this work serve the people it was made for? The agent's job is to figure out what evidence is needed, gather it, and evaluate honestly.
+## The Fitness Rubric is upstream of you
 
-## What "Good Verification" Looks Like
+User-facing artifacts carry a `## Fitness Rubric` section authored at design time by pauli via `/design-rubric`. That section defines what excellence looks like for _this_ artifact and _this_ user — persona, scenarios, dimensions, quality spectrum.
 
-1. **Start from the user story**, not the implementation. What was this supposed to do? For whom? Why?
-2. **Gather real evidence.** Don't evaluate against imagined scenarios — look at actual behavior, actual data, actual user experience.
-3. **Evaluate fitness-for-purpose in narrative prose.** Binary pass/fail obscures the interesting parts. What works well? What almost works? What fails entirely? Why?
-4. **Be honest about what you find.** A feature that passes its tests but doesn't serve its users is not good. A feature that has rough edges but genuinely helps is.
-5. **Stop after the report.** Verification evaluates and reports. It does not decompose, fix, or redesign. A separate session handles remediation.
+**You read it. You do not re-derive it.** Persona immersion at QA time is contamination — you don't have the original context, you have the artifact in front of you and the temptation to rationalise.
 
-## Usage
+## Classify the bar before you start
 
-```
-/verify                                           # Quick verification of current work
-/verify Verify the authentication feature         # Specific feature verification
-/verify Analyze enforcer gate effectiveness      # Operational effectiveness analysis
-/verify Design QA criteria for the new epic       # Upstream criteria design
-```
+First decision in any verification: is this a mechanical task, a fitness task, or mixed?
 
-## Cynical Verification Protocol
+- **Mechanical bar** (lint fix, dependency bump, test repair, refactor with no UX surface) — evaluate against AC and Red Flags. Verdict is plain `PASS` / `FAIL` / `REVISE`. No rubric needed. Do not invent one.
+- **Fitness bar** (UX, prose, design output, dashboard, anything judged on whether it serves a human in context) — read the spec's `## Fitness Rubric` and judge against it. If a fitness task arrives at you without a rubric, verdict is `REVISE — fitness rubric missing; escalate to pauli/design-rubric`. Do not improvise.
+- **Mixed bar** (most non-trivial work) — both apply. Check AC + Red Flags mechanically, _and_ judge against the rubric. Verdict synthesises both. Expect the fitness judgement to take more attention than the mechanical check; if your verdict only addresses the mechanical side, it has silently collapsed.
 
-When verifying completed work, apply this protocol before declaring anything done.
+To detect a fitness bar, look for any of these signals in the brief or AC: adjectives of experience ("intuitive", "calm", "readable", "beautiful", "useful"); persona emotional/cognitive state ("tired", "anxious", "overwhelmed"); intended consumer is a human in a cognitively-loaded context; two reasonable evaluators could disagree on PASS/FAIL with the same evidence; fitness-for-purpose language ("serves the user", "lifeline not data dump"). Any one is sufficient. If you see these and the rubric is missing, that is the verdict — don't paper over it.
 
-**Default assumption: IT'S BROKEN.** You must PROVE it works, not confirm it works.
+## The QA loop
 
-**Triple-Check Protocol** (for every claim):
+1. **Read AC + Fitness Rubric.** One pass to understand what this is supposed to do, for whom, and what excellent looks like.
+2. **Step Zero — naive smoke check.** Before any structured walk, look at the artifact and ask: "what's wrong here? be specific." Preferably in a clean sub-context. This is the contamination detector — if your structured pass softens what the naive pass said was catastrophic, trust the naive pass.
+3. **Look at the artifact.** Concrete observations first. For visual artifacts, see [Concrete-defects-first](#concrete-defects-first-visual-artifacts) below.
+4. **Trace, where it matters.** For data-driven artifacts, follow the pipeline source-to-output (see [Data pipeline verification](#data-pipeline-verification)).
+5. **Judge against the rubric.** Per dimension, write one paragraph citing evidence from step 3-4. Not "looks good" — _why_ it does or doesn't serve the dimension.
+6. **Verdict.** PASS / FAIL / REVISE with prose reasoning.
 
-1. READ THE FULL OUTPUT — not summaries, not first lines
-2. LOOK FOR EMPTY/PLACEHOLDER DATA — empty sections, repeated headers, unfilled templates
-3. VERIFY SEMANTIC CONTENT — does the data MAKE SENSE? Is it REAL or GARBAGE?
+## Three dimensions of judgement
 
-### Three Verification Dimensions
+These are operational, not philosophical. The Fitness Rubric tells you _what_ the user needs; these dimensions tell you _what_ to check on the artifact itself.
 
-**Dimension 1 — Output Quality**: Does the result match what was specified?
+**Output Quality.** Are all required elements present? Do outputs match the spec? Does the code run without errors? Does the visual rendering work? Is the format right?
 
-| Check         | Question                               |
-| ------------- | -------------------------------------- |
-| Completeness  | Are all required elements present?     |
-| Correctness   | Do outputs match spec requirements?    |
-| Format        | Does output follow expected structure? |
-| Working state | Does code run without errors?          |
+**Process Compliance.** Were the acceptance criteria met? Did the agent stay in scope? If code changed, were tests run? Was the correct workflow applied?
 
-**Dimension 2 — Process Compliance**: Did the work follow required workflow?
+**Semantic Correctness.** Does the result make sense for its purpose? No placeholders, no garbage, no template artifacts. Would the intended user find this useful?
 
-| Check           | Question                               |
-| --------------- | -------------------------------------- |
-| Workflow used   | Was the correct workflow applied?      |
-| Steps completed | Were all TodoWrite items addressed?    |
-| Tests run       | If code changed, were tests executed?  |
-| No scope drift  | Did work stay within original request? |
+The three dimensions are framing for _what to look at_, not a checklist. Your verdict is one prose judgment on each, not three ticks.
 
-**Dimension 3 — Semantic Correctness**: Does the result make sense for its purpose?
+## Concrete-defects-first (visual artifacts)
 
-| Check              | Question                                       |
-| ------------------ | ---------------------------------------------- |
-| Content sensible   | Does the output make logical sense?            |
-| No placeholders    | No `{variable}`, `TODO`, `FIXME` in production |
-| No garbage data    | Content is real, not template artifacts        |
-| Useful to consumer | Would the intended user find this useful?      |
+For any visual artifact (dashboard, UI, mockup, chart, slide, rendered PDF), **Section 1 of the report is observed defects** — visual phenomena with region or coordinates. Plain language. "The string '96 tasks' is rendered in ~48pt white over the child cells in the upper-left quadrant, obscuring their labels." Not: "the aggregate count overlays compete with project identity at the eye-first reading level."
+
+# <<<<<<< HEADPersona-anchored reasoning comes second and must cite a defect from Section 1.
 
 ### Completeness-Verification Heuristic
 
@@ -105,119 +85,115 @@ When evaluating the completeness of a change, implementation, or analysis, you m
 
 ### Red Flags (HALT triggers)
 
-Any of these require immediate investigation:
+>>>>>>> origin/main
 
-- Repeated section headers (template/variable bug)
-- Empty sections between headers
-- Placeholder text (`{variable}`, `TODO`, `FIXME`)
-- Suspiciously short output for complex operations
+This ordering blocks the failure mode where eloquent prose gives rendering catastrophes credible cover. See [[references/visual-analysis.md]] for the structural dimensions (legibility, layout, hierarchy, density). Cognitive-load and persona-emotional dimensions are _design-time_ questions and live in the spec's Fitness Rubric — not here.
+
+## Data pipeline verification
+
+Apply this to **any artifact that produces computed, aggregated, or transformed output**, even if the brief doesn't mention data explicitly. Dashboards, transcripts, reports, generated documents, dashboards-of-dashboards. If a number, list, or chart was derived from a source, you trace it:
+
+1. **Identify the data source.** What file, API, query, or computation produces this output?
+2. **Verify the source is real and populated.** Don't assume. Check.
+3. **Check freshness, not just existence.** Static data in a dynamic field is failure.
+4. **Cross-verify.** Independently query the source. Do values match? Are timestamps right? Anything silently dropped?
+5. **Test fallbacks.** Disable the fallback; does the primary source work alone? Fallbacks silently mask broken primaries.
+6. **Test under load.** Stale or partial data often only appears at runtime.
+
+The question is "is this the RIGHT data?" — not "does data appear?" Output that looks plausible is the most dangerous kind of incorrect output.
+
+## Anti-anchoring rule
+
+If you have prior context on this artifact — earlier iterations, your own design choices, prior reviews you've authored — you are disqualified from the fitness-for-purpose verdict.
+
+You may report observed _changes_ between iterations. The fitness verdict must come from a fresh-context reviewer. Canonical pattern: pauli assembles a minimal brief; a clean marsha runs in fresh context.
+
+Eloquent narrative gives contamination cover. This rule blocks the substitution where "is iteration N better than N-1?" quietly replaces "is this fit for purpose?".
+
+## Red flags (HALT triggers)
+
+Any of these requires immediate FAIL, not "polish needed":
+
+- Repeated section headers or empty sections between headers (template bug)
+- Placeholder text in production (`{variable}`, `TODO`, `FIXME`)
+- Overlapping or clipped text in rendered output
+- Suspiciously short output for a complex operation
 - "Success" claims without showing actual output
 - Tests that check existence but not content
 - Silent error handling (try/except swallowing errors)
+- Data that looks plausible but doesn't match the source
 
-### Verification Output Format
+## Verdict format
 
 ```
 ## Verification Report
 
-**Verdict**: VERIFIED / ISSUES
+**Bar:** mechanical / fitness / mixed
+**Verdict:** PASS / FAIL / REVISE
 
-### Verification Summary
-- Output Quality: PASS / FAIL
-- Process Compliance: PASS / FAIL
-- Semantic Correctness: PASS / FAIL
+### Concrete observations
+[For visual artifacts: defect list with regions. Otherwise: short evidence list with file paths, line numbers, log excerpts.]
 
-[If ISSUES: list each finding with Dimension, Severity (Critical/Major/Minor), and Fix]
+### Judgement
+[Mechanical bar: one paragraph against AC and Red Flags. Fitness bar: one paragraph per Fitness Rubric dimension, citing evidence from concrete observations. Mixed bar: both — and the synthesis paragraph must address how the two sides combine. If the rubric flagged a dimension as load-bearing, address it explicitly. Prose, not tables.]
+
+### Recommendation
+[If FAIL/REVISE: what specifically needs to change, and why it matters to the user.]
 ```
 
-## Reference Materials
+## Browser-driven UI assessment
 
-These references provide detailed guidance for specific verification activities. Read the ones relevant to your task — you don't need all of them for every invocation.
+For running web apps, use Playwright MCP tools to drive a real browser:
 
-| Reference                                | When useful                                                  |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| [[references/qa-planning.md]]            | Designing acceptance criteria or QA plans before development |
-| [[references/qualitative-assessment.md]] | Evaluating fitness-for-purpose after development             |
-| [[references/acceptance-testing.md]]     | Running structured test plans, tracking failures             |
-| [[references/quick-verification.md]]     | Pre-completion sanity checks                                 |
-| [[references/integration-validation.md]] | Verifying structural/framework changes                       |
-| [[references/system-design-qa.md]]       | Designing QA infrastructure for a project                    |
-| [[references/visual-analysis.md]]        | UI changes or visual artifacts                               |
-| [[../eval/references/dimensions.md]]     | Agent session performance evaluation                         |
+1. `browser_navigate` to URL → `browser_wait_for` page-ready
+2. `browser_resize` 1920×1080 → `browser_take_screenshot` each view
+3. Interact to test functionality (`browser_click`, `browser_type`)
+4. Save screenshots to `$AOPS_SESSIONS/qa-screenshots/YYYY-MM-DD/`
+5. Apply concrete-defects-first.
 
-## Delegation
+## Delegation guidance
 
-Marsha is the primary verification agent. When delegating verification work:
+Briefs are short. Three things only:
 
-```
-Agent(subagent_type="aops-core:marsha", model="opus", prompt="
-[What you need verified and why]
+1. The artifact (URL, screenshot path, PR URL).
+2. The goal — one sentence.
+3. The spec link — Fitness Rubric and AC live there.
 
-**User story / goal**: [What this feature is supposed to achieve]
-**Evidence available**: [Where to find data — logs, transcripts, browser, tests, etc.]
-**Acceptance criteria**: [If known — extract from task or spec]
+Do NOT enumerate dimensions, methodology, persona prose, or what-to-check lists in the brief. Long briefs anchor the reviewer to checklist execution. The reviewer invokes `/verify` and reads methodology here.
 
-Invoke /verify for methodology. Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
-")
-```
-
-Other agents can also invoke /verify directly when verification methodology is needed without commissioning marsha — e.g., james running a verification pass on a PR, pauli verifying a PKB consolidation, junior checking work before completing a task.
-
-### Delegation Guidance for Callers
-
-**Preserve qualitative framing.** The delegation prompt determines output quality. Never reframe verification as pass/fail or checklist compliance — this causes the agent to regress to mechanical evaluation. The prompt must ask for judgment, not tallying.
-
-**Anti-pattern**: "Check each user story and report pass/fail" → produces DOM element counting, loses all interpretive value.
-
-**Good pattern**: "Evaluate fitness-for-purpose. Is this serving the user it was built for? Cite evidence." → produces genuine qualitative assessment.
-
-**For features with data pipelines** (dashboards, transcripts, reports, generated artifacts), explicitly instruct the agent to trace the pipeline, not just inspect output:
+**Anti-pattern:**
 
 ```
-Agent(subagent_type="aops-core:marsha", model="opus", prompt="
-Qualitative assessment of [FEATURE] against user stories in [SPEC].
-
-Invoke /verify for methodology. For each section: trace the data pipeline from source to output.
-1. Verify data freshness, not just existence. Check updates over time for real-time displays.
-2. Explicitly test fallback chains. Disable them and verify the primary source works independently.
-3. Verify during an active session (real runtime state).
-4. Identify design-level findings: if data is misleading or UX doesn't serve its purpose, report it.
-
-Evaluate fitness-for-purpose. Cite specific evidence. Report honestly.
-")
+Verify the dashboard. Trace the data pipeline from source to output. Check freshness.
+Test fallbacks. Verify during runtime. Apply visual-analysis.md. Inhabit the
+anxious-academic persona. For each section...
 ```
 
-For agent session evaluation, extract sessions first:
+[methodology in the brief crowds out fresh observation]
 
-```bash
-cd "$AOPS"
-PYTHONPATH=aops-core uv run python \
-  aops-core/skills/eval/scripts/prepare_evaluation.py \
-  --recent 10 --pretty
-```
-
-Evidence storage for evaluations:
+**Good pattern:**
 
 ```
-$ACA_DATA/eval/
-├── YYYY-MM-DD-<session-id>.md    # Individual session evaluations
-├── trends/
-│   └── YYYY-MM-DD-batch.md       # Batch trend reports
-└── insights/
-    └── YYYY-MM-DD-<topic>.md     # Cross-cutting quality insights
+Verify the treemap dashboard at <URL>. Goal: surface the shape of Nic's work
+without adding overwhelm. Spec: <link> (Fitness Rubric + AC there).
 ```
+
+## Follow-up tasks
+
+After a FAIL or REVISE verdict, create a follow-up task:
+
+- Title: `Address <project> QA findings`
+- Priority: P2 (P1 if core functionality broken)
+- Body: link to verification report; AC = re-verify against the rubric and reach PASS
+
+The QA report is evidence. The task is the action. Without a task, findings rot in `eval/` and nothing changes.
 
 ## Default (no args)
 
-When invoked as `/verify` with no arguments, do a quick verification of the current session's work:
-
-1. Identify what was requested and what was done
-2. Check: does the work actually achieve what was requested?
-3. Produce a verdict (VERIFIED / ISSUES) with brief evidence
+When invoked as `/verify` with no arguments, do a quick verification of the current session's work: identify what was requested and what was done, check whether the work actually achieves what was requested, produce a verdict with brief evidence.
 
 ## Integration
 
-- **Stop hook**: May require verification before session end
-- **Task completion**: Verify before `complete_task()`
-- **Gate tracking**: `prepare_qa_review` custom action fires on marsha/verify subagent start/stop
-- **Spec writing**: templates/spec.md references `verify/references/qa-planning.md` for criteria design
+- **Stop hook**: May require verification before session end.
+- **Task completion**: Verify before `complete_task()`.
+- **Spec writing**: New user-facing specs MUST carry a `## Fitness Rubric` section authored via `/design-rubric` before they reach a worker.

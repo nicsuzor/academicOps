@@ -98,7 +98,7 @@ def _rollback_status_for(task) -> str:
     return prior_str
 
 
-def _compute_max_turns(task, override: str | None = None) -> str:
+def _compute_max_turns(task, override: int | str | None = None) -> str:
     """Return the --max-turns value for a headless Claude run.
 
     Derives the budget from the task's ``effort`` field (XS/S/M/L).
@@ -280,7 +280,7 @@ def _resolve_session_config(
     model: str | None = None,
     debug: bool | None = None,
     set_overrides: tuple[str, ...] = (),
-) -> tuple[PolecatConfig, "SessionDefaults"]:  # type: ignore[name-defined]  # noqa: F821
+) -> tuple[PolecatConfig, "SessionDefaults"]:  # type: ignore[name-defined]  # pyright: ignore[reportUndefinedVariable]  # noqa: F821
     """Load polecat.yaml, apply per-mode overlay + CLI overrides, return both.
 
     The full ``PolecatConfig`` is returned alongside the resolved session
@@ -2915,7 +2915,7 @@ def checkout(ctx, task_id, caller):
         ):
             task.status = TaskStatus.IN_PROGRESS.value
             task.assignee = caller
-            manager.storage.save_task(task)
+            manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
             print(f"Claimed: {task.title}", file=sys.stderr)
     except ImportError:
         # PKB canonical statuses agents may claim from. See
