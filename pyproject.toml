@@ -118,7 +118,6 @@ exclude = [
   "aops-core/policies/", # Exclude policy docs
   "aops-core/scripts/", # Exclude scripts
   "aops-core/skills/", # Exclude skill definitions (YAML)
-  "scripts/*_prototype.py", # Exclude scratch/prototype files
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports - be specific about Python subdirs only
