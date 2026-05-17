@@ -89,17 +89,17 @@ Is this about the user? (projects, goals, context, tasks)
 
 ## File Locations
 
-| Content                | Location                            | Notes                                       |
-| ---------------------- | ----------------------------------- | ------------------------------------------- |
-| Project metadata       | `projects/<name>.md`                | Hub file                                    |
-| Project details        | `projects/<name>/`                  | Subdirectory                                |
-| Goals                  | `goals/`                            | Strategic objectives                        |
-| Context (about user)   | `context/`                          | Preferences, history                        |
-| Sessions/daily         | `sessions/`                         | Daily notes only, `type: daily-note`        |
-| Tasks                  | Delegate to [[tasks]]               | Use scripts                                 |
-| **General knowledge**  | `knowledge/<topic>/`                | Facts NOT about user                        |
-| Meeting/call notes     | `knowledge/<topic>/` or `projects/` | Contemporaneous notes, `type: meeting-note` |
-| Maps of Content (MOCs) | `knowledge/` or topic dirs          | Navigational hub notes, `type: moc`         |
+| Content                | Location                            | Notes                                                                                            |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Project metadata       | `projects/<name>.md`                | Hub file. The location is a storage directory, not a type assertion; the hub-doc type is `epic`. |
+| Project details        | `projects/<name>/`                  | Subdirectory                                                                                     |
+| Goals                  | `goals/`                            | Strategic objectives                                                                             |
+| Context (about user)   | `context/`                          | Preferences, history                                                                             |
+| Sessions/daily         | `sessions/`                         | Daily notes only, `type: daily-note`                                                             |
+| Tasks                  | Delegate to [[tasks]]               | Use scripts                                                                                      |
+| **General knowledge**  | `knowledge/<topic>/`                | Facts NOT about user                                                                             |
+| Meeting/call notes     | `knowledge/<topic>/` or `projects/` | Contemporaneous notes, `type: meeting-note`                                                      |
+| Maps of Content (MOCs) | `knowledge/` or topic dirs          | Navigational hub notes, `type: moc`                                                              |
 
 ## Episodic Content → Where It Belongs
 
@@ -184,6 +184,10 @@ mcp__pkb__create_memory(
 The body uses the frontmatter-less markdown shown in the format references below; PKB adds frontmatter (id, created, permalink) on write. **Never write the file yourself.**
 
 ## Graph Integration
+
+### Multi-Parent & Strategic Linkage
+
+Strategic cross-cutting linkage to terminal obligations uses `contributes_to` edges (see [[multi-parent]]) — not extra `parent` edges, not a separate `goals: []` field. Knowledge synthesis written during `/sleep` should follow the same model when linking work to targets.
 
 - Every file MUST [[wikilink]] to at least one related concept
 - Project files link to [[goals]] they serve

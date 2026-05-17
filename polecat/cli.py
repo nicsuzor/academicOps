@@ -4741,6 +4741,9 @@ def run(
             else:
                 print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
+    if exit_code != 0:
+        sys.exit(exit_code)
+
 
 try:
     from polecat.diagnostics import analyze as _analyze_cmd
