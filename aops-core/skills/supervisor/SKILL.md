@@ -200,23 +200,21 @@ When workers encounter trivial issues mid-task, they must adhere to the canonica
 
 ### Keep the Pipe Flowing — Don't Micromanage Polecats
 
-Polecats are **smart agents, not mechanical drones**. The supervisor's job is throughput: claim → dispatch → next. It is NOT to:
+The supervisor's job is throughput: claim → dispatch → next. It is NOT to read every task body and design the implementation before firing.
 
-- Read every task body and design the implementation before firing.
-- Plan how the polecat should approach the work, what files to edit, or what tests to add.
-- Wait for one polecat to finish before firing the next.
+**Trust the Worker:** Apply the canonical Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]) on every dispatch and decomposition.
+
+- **Trust polecat depth, throttle polecat width.** Give each polecat a substantive chunk of work instead of micro-decomposing it for them.
+- **No mid-stream approval theatre.** Polecats submit to the canonical review surface. Do not invent phantom gates.
+- **Brevity in delegation.** State the artifact, the goal, and the spec link — and stop.
 
 Bias hard toward dispatching. A queue of approved tasks gets fired one-per-tick in rapid succession, maintaining a small concurrency window. **Concurrency is the supervisor's discretion** — ramp up or down based on observed signals (quota events, infra failures, review-pipeline pressure). The user is not in a rush; under-shooting beats over-shooting.
-
-**"Bigger chunks of work" ≠ "more polecats simultaneously".** It means give each polecat a substantive task (an epic, a multi-step refactor, a design+implementation) instead of micro-decomposing it for them. Trust polecat _depth_, throttle polecat _width_.
 
 **Discourage substantive supervisor work — including planning.** Epics with `scope > 10`, design tasks, decomposition-heavy work — fire them at a polecat. Polecats can plan and decompose; supervisor only owns decomposition when the user asks explicitly or a polecat returns a structured "needs decomposition" verdict. (See [[instructions/decomposition-and-review]] for the canonical phase split.)
 
 **Batched interruptions, not per-task.** When the supervisor genuinely cannot proceed on multiple items, collect them into ONE message (generic summary in the [ATTN] block, details in the epic body) — not one ping per blocker.
 
 The right mental model: the supervisor is a **conveyor belt operator**, not a project manager. Keep parts moving onto the belt. Track outcomes. Iterate.
-
-**Brevity in delegation.** Polecats and verifiers do better with short briefs than long ones. Long briefs anchor the recipient and reduce judgement to checklist execution. State the artifact, the goal, and the spec link — and stop. Methodology lives in the executing agent's invoked skills, not in the brief. When you find yourself listing "things to look for" or "things to consider," you are anchoring the recipient. Stop.
 
 In autonomous (loop) sessions, legitimate halts set the epic to `blocked` or `review`; the next interactive supervisor invocation picks it up.
 

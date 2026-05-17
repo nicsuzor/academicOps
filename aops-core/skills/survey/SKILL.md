@@ -447,8 +447,8 @@ Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gat
 
 Order: comment-only → close-stale → defer → single-task → fix-epic.
 
-- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction.
-- **fix-epic**: create epic + subtasks + `verify-parent` task. Leave `queued`. Do NOT invoke `/supervisor`.
+- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
+- **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
 - Stamp `triaged-*` label after each confirmed action.
 
 ### 5. Append cycle log to loop epic
@@ -478,6 +478,7 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 
 | Anti-pattern                                                         | What to do instead                                                                                                                                                  |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authoring "surface for sign-off" or "review before promoting" prose  | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                               |
 | Skipping user-confirmation gate                                      | Always present and wait                                                                                                                                             |
 | Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                                                                                                              |
 | Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                                                                                                     |
