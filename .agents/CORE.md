@@ -12,6 +12,7 @@ Specifically for this project:
 - Project hub: [[aops|brain/projects/aops/aops]]
 - Vision: [[vision|brain/projects/aops/vision]] (where applicable)
 - Canonical taxonomy: `~/src/academicOps/aops-core/skills/remember/references/TAXONOMY.md`
+- Framework Capabilities & Artifacts: `.agents/CAPABILITIES.md`
 - Agent Compliance Matrix: `.agents/AGENT-COMPLIANCE-MATRIX.md`
 - Agent Tool Matrix: `.agents/AGENT-TOOLS.md`
 - Agent Remediation Backlog: `.agents/AGENT-REMEDIATION-BACKLOG.md`
