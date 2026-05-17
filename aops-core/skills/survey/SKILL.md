@@ -169,8 +169,8 @@ If an existing issue matches:
 gh issue comment <N> --repo nicsuzor/academicOps \
   --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
 
-# Structural correction — edit in place, don't add a comment:
-gh issue edit <N> --repo nicsuzor/academicOps --body-file /tmp/issue-<slug>.md
+# Structural correction — edit title, body, or both:
+gh issue edit <N> --repo nicsuzor/academicOps --title "<new-title>" --body-file /tmp/issue-<slug>.md
 ```
 
 If no existing issue, perform root cause analysis and file:
