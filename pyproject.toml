@@ -110,7 +110,7 @@ exclude = [
   "**/dist",
   "**/.venv",
   "**/venv",
-  "aops-core/*.md",  # Exclude markdown docs
+  "aops-core/*.md", # Exclude markdown docs
   "aops-core/*.conf", # Exclude config files
   "aops-core/uv.lock", # Exclude lock file
   "aops-core/agents/", # Exclude non-code agent configs

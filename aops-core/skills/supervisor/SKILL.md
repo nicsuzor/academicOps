@@ -102,6 +102,8 @@ Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research var
 
 The detailed validation protocol (inputs, checks, and halt conditions) for both **Code/Edit** and **Design/Research** variants is canonical at [[instructions/worker-dispatch#mandatory-pre-dispatch-gates]].
 
+**Review-lens annotations — RBG (axioms)**: Create a child subtask `lens: rbg-axiom-check` using `references/lens-templates/rbg-axiom-check.md`. Dispatch is blocked until it reaches status: done.
+
 **Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
 
 ### marsha — verify
