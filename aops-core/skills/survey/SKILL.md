@@ -2,7 +2,7 @@
 name: survey
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli/jr to keep main context clean."
+description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to generalist/jr to keep main context clean."
 triggers:
   - "survey"
   - "retro"
@@ -20,7 +20,7 @@ domain:
   - quality-assurance
   - operations
 allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__task_search
-owner: pauli
+owner: generalist
 version: 1.0.0
 tags:
   - retro
@@ -49,9 +49,9 @@ One abstract pattern, three modes: **survey a corpus, classify findings, dispatc
 This skill delegates execution to keep the main context window clean. The invoking agent dispatches, passes this skill as the execution spec, and exits.
 
 ```python
-# retro or trend mode — pauli has transcript/knowledge access
+# retro or trend mode — generalist has transcript/knowledge and execution access
 Agent(
-  subagent_type='aops-core:pauli',
+  subagent_type='generalist',
   prompt='Read aops-core/skills/survey/SKILL.md. Execute in [retro|trend] mode. [user context]',
   tools=['Bash','Read','Grep','Glob','Edit','Write','Skill',
          'mcp__plugin_aops-core_pkb__search',
@@ -122,13 +122,9 @@ You are trusted to find what matters. Read the transcript. Find what's worth fix
 
 However, **what counts as forensic includes structural articulation.** You may articulate structural shape factually (e.g., "design X is impossible because Y", "the rule forces the agent into an impossible loop"). You may flag: "this looks structural; sweep should ask whether the rule shape is right, not just whether the rule fired".
 
-For each finding, the retro report must include — and must stop at:
+For each finding, trust your judgment to provide a clear, forensic description that stops at the facts. Include what happened (quoted from the transcript), the structural context (how the framework's shape contributed), and the concrete impact.
 
-1. **The facts.** What happened, quoted from the transcript.
-2. **The most general category.** Pick one from the Root Cause Categories vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit.
-3. **Causal chain.** trigger → expected → actual → root cause. Include the framework layer: Component: [name] / File: [path].
-4. **Structural shape / Rule context.** Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. **Do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.**
-5. **Impact statement.** What did this failure cost — agent turns, user time, downstream cleanup, trust? One paragraph. Concrete.
+**Crucially, do not propose what should be added, escalated, or propagated. That is the sweep agent's job, not yours.** You are trusted to identify the root cause category and causal chain naturally without adhering to a strict template.
 
 You may flag the finding as severe; you may not author the legislation that severity might motivate. If you find yourself writing "we should add…", "the framework needs…", "an axiom against… would prevent this," strike it. The detached reviewer reading this report later, with the enforcement map and the incident register open, is the agent allowed to write that sentence.
 
@@ -175,22 +171,15 @@ gh issue create --repo nicsuzor/academicOps \
   --label "bug" --label "criticality:<level>"
 ```
 
-**Issue body must include — and must stop at — these forensic fields. Factual structural articulation is allowed, but no remediation proposals (A17 Recusal):**
+**Issue body must stick to the forensic core. Factual structural articulation is allowed, but no remediation proposals (A17 Recusal):**
 
-```yaml
-## Incident report (forensic)
-**Failure**: [1-sentence description]
-**Causal chain**: [trigger → expected → actual → root cause]
-**Root cause category**: [Discovery Gap | Detection Failure | Instruction Weighting | Index Lag | Cross-workflow Gap | Enforcement Gap | Dropped Thread | Design Inversion | Wrong Layer of Abstraction | Rule Should Not Exist | Other]
-**Framework layer**: Component: [name] / File: [path]
-**Expected vs Actual**: Expected: [...] / Actual: [...]
+Provide a clear, unstructured incident report containing:
 
-## Structural shape / Rule context
-[Describe factually how the framework's shape contributed to this. Name any rule that fired or should have fired. Do NOT propose what should change — only document what existed at the time of the incident and the structural realities of why it failed.]
+1. **Incident facts**: What failed and why. Include any relevant logs or transcript excerpts.
+2. **Structural shape**: How the framework's shape contributed (name any rules that fired or were missing).
+3. **Impact**: The concrete cost of the failure (e.g. agent turns burned, downstream manual actions).
 
-## Impact statement
-[Concrete cost: agent turns burned, user time consumed, downstream actions that had to be reverted (PRs closed, commits reverted), trust impact. One paragraph.]
-```
+Do NOT propose what should change — only document what existed at the time of the incident and the structural realities of why it failed.
 
 Issues that include a "suggested axiom," "proposed gate," or any remediation are out-of-scope under A17 and will be edited down to the forensic core by the sweep agent. Volume bumps on existing issues (`gh issue comment`) follow the same discipline — facts and impact only.
 
