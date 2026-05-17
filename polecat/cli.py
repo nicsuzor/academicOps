@@ -1233,7 +1233,11 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell", "gemini"):
         # Create a staging directory for auth files. Bind-mounted (ro) into
         # /tmp/staging on local daemons; injected via docker cp on remote ones.
-        tmp_root = home / ".aops" / "tmp"
+        staging_base = env.get("POLECAT_STAGING_BASE") or os.environ.get("POLECAT_STAGING_BASE")
+        if staging_base:
+            tmp_root = Path(staging_base)
+        else:
+            tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
         os.chmod(staging_dir, 0o700)
