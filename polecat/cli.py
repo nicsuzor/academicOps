@@ -1239,7 +1239,11 @@ def _build_docker_cmd(
     if cli_tool in ("claude", "shell", "gemini"):
         # Create a staging directory for auth files. Bind-mounted (ro) into
         # /tmp/staging on local daemons; injected via docker cp on remote ones.
-        tmp_root = home / ".aops" / "tmp"
+        staging_base = env.get("POLECAT_STAGING_BASE") or os.environ.get("POLECAT_STAGING_BASE")
+        if staging_base:
+            tmp_root = Path(staging_base)
+        else:
+            tmp_root = home / ".aops" / "tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
         staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=tmp_root))
         os.chmod(staging_dir, 0o700)
@@ -2157,6 +2161,67 @@ def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
             # Avoid collision: prefix with parent hash dir name
             target = dest / f"{session_file.parent.parent.name}-{session_file.name}"
         shutil.copy2(session_file, target)
+
+
+def _capture_artifacts(session_dir: Path, out_dir: str | Path) -> None:
+    """Capture hooks/state/transcripts to out_dir, rescuing from container if needed.
+
+    Called by the `--capture-on-exit` flag to bundle artifacts for test suites
+    or debugging when a worker wedges.
+    """
+    out = Path(out_dir).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+
+    bundled: list[Path] = []
+    # 1. Bundle all from host session_dir
+    for sub in ("hooks", "summaries", "transcripts", "chats"):
+        src_root = session_dir / sub
+        if src_root.exists():
+            for src in src_root.rglob("*"):
+                if src.is_file():
+                    dst = out / sub / src.relative_to(src_root)
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+                    bundled.append(dst)
+
+    # 2. Extract from any running aops-crew containers as a fallback
+    # Defends against the case where the worker wedged and didn't flush.
+    try:
+        import subprocess
+
+        r = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "--filter",
+                "ancestor=ghcr.io/nicsuzor/aops-crew",
+                "--filter",
+                "ancestor=aops-crew",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if r.returncode == 0:
+            for name in [n for n in r.stdout.splitlines() if n.strip()]:
+                dst = out / "container" / name
+                dst.mkdir(parents=True, exist_ok=True)
+                for src in ("/home/worker/.gemini/tmp", "/home/worker/.claude"):
+                    cp = subprocess.run(
+                        ["docker", "cp", f"{name}:{src}/.", str(dst / Path(src).name)],
+                        capture_output=True,
+                        check=False,
+                    )
+                    if cp.returncode == 0:
+                        for p in (dst / Path(src).name).rglob("*"):
+                            if p.is_file():
+                                bundled.append(p)
+    except FileNotFoundError:
+        pass
+
+    print(f"   [capture-on-exit] Extracted {len(bundled)} artifact(s) to {out}")
 
 
 def is_interactive() -> bool:
@@ -3290,6 +3355,13 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key (e.g. gates.handover=block).",
 )
+@click.option(
+    "--capture-on-exit",
+    "capture_on_exit",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="On exit, bundle session artifacts into this directory.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew_alias(
@@ -3305,6 +3377,7 @@ def crew_alias(
     model,
     debug_flag,
     set_overrides,
+    capture_on_exit,
     agent_args,
 ):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
@@ -3321,6 +3394,7 @@ def crew_alias(
         model=model,
         debug_flag=debug_flag,
         set_overrides=set_overrides,
+        capture_on_exit=capture_on_exit,
         agent_args=agent_args,
     )
 
@@ -3348,6 +3422,13 @@ def crew_alias(
     metavar="KEY=VALUE",
     help="Override an arbitrary config key (e.g. gates.handover=block).",
 )
+@click.option(
+    "--capture-on-exit",
+    "capture_on_exit",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="On exit, bundle session artifacts into this directory.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew(
@@ -3363,6 +3444,7 @@ def crew(
     model,
     debug_flag,
     set_overrides,
+    capture_on_exit,
     agent_args,
 ):
     """Start an interactive crew session with worker isolation.
@@ -3832,6 +3914,8 @@ def crew(
         if tmp_gemini_home and tmp_gemini_home.exists():
             _extract_gemini_sessions(tmp_gemini_home, session_dir)
             shutil.rmtree(tmp_gemini_home)
+        if capture_on_exit is not None:
+            _capture_artifacts(session_dir, capture_on_exit)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
             if tmp_file.is_dir():
@@ -4749,8 +4833,8 @@ def run(
             if not budget_exhausted:
                 print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
-        if exit_code != 0:
-            sys.exit(exit_code)
+    if exit_code != 0:
+        sys.exit(exit_code)
 
 
 try:
