@@ -121,6 +121,14 @@ Run `graph_stats` at the start of every cycle. Record:
 - `orphan_count` — truly disconnected nodes
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
+**Convergence Check:**
+Maintain a persistent cycle log at `$ACA_DATA/state/sleep-convergence.json` (or track in the active PR body) to compare cycles.
+
+1. Compare current metrics (`flat_tasks`, `disconnected_epics`, `projects_without_goal_linkage`, `orphan_count`) to the previous cycle's baseline.
+2. If all key metrics are unchanged, increment the `no_op_count`. If any changed, reset `no_op_count` to 0.
+3. Save the new metrics and `no_op_count` to the persistent log.
+4. **Halt Rule**: If `no_op_count >= 2` (two consecutive no-op cycles), report convergence, cancel the active `/loop` cron, and exit the cycle early.
+
 This is the baseline. Phase 11 re-runs graph_stats to measure what changed.
 
 ## Phase 2: Transcript Mining
@@ -341,7 +349,6 @@ Rules:
 Before doing any work, compare the current `metrics_hash` from `graph_stats` against the previous cycle's hash.
 
 - **If `metrics_hash` is identical**: the graph has converged. Skip Phase 9 entirely and log "graph converged — no structural changes needed."
-- **If 2 consecutive cycles produce no-ops**: the graph is stable. Cancel the active-loop cron if running via `/loop`.
 
 ### Strategy Selection
 
@@ -382,15 +389,6 @@ Don't treat all-green metrics as "done." Spot-check qualitatively.
 ### Bounded Effort
 
 Process up to 100 items per cycle (configurable via `batch_limit` workflow input). Use `mcp__pkb__bulk_reparent` for efficiency.
-
-### Terminal Condition
-
-Graph maintenance is complete when EITHER of:
-
-1. `metrics_hash` unchanged for 2 consecutive cycles.
-2. Two cycles in a row where Phase 9 processed zero items.
-
-When terminal condition is met during an active loop: cancel the cron/loop and log the final `graph_stats` snapshot.
 
 ## Phase 10: Consolidation Self-Check (Lightweight)
 
