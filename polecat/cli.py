@@ -1120,7 +1120,7 @@ def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
 
     # Image missing, pull it
     if verbose:
-        print(f"Pulling Docker image {image}...")
+        print(f"Pulling Docker image {image}...", file=sys.stderr)
     cmd = [docker_binary, "pull"]
     if not verbose:
         cmd.append("-q")
