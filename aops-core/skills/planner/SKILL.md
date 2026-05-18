@@ -205,7 +205,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
 5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
-6. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
+6. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until these pre-execution lenses reach status: done. Post-execution lenses (e.g., citation verification) do NOT block promotion to ready.
 
 **Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
 
