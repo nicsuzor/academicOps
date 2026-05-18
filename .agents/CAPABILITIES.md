@@ -9,15 +9,16 @@ The framework records every LLM prompt as an individual transcript file, rather 
 **Naming Convention:**
 
 ```text
-{date}-{time}-{session_id}-{shortform}-{prompt_slug}-{variant}.md
+{date}-{time}-{session_id}-{shortform}-[task-{short_task_id}-]{slug}{-variant}.{ext}
 ```
 
 - `date`: `YYYYMMDD` format.
 - `time`: `HHMM` format.
 - `session_id`: 8-character hash identifying the overarching session.
-- `shortform`: Identifying context constructed from available identifiers (e.g., crew, repo, machine, and provider like `claude` or `gemini`), joined by hyphens.
-- `prompt_slug`: A short slug derived from the specific prompt content, making each file unique per interaction within the session.
-- `variant`: Usually `full` or `abridged`.
+- `shortform`: Identifying context constructed from available identifiers (e.g., crew, repo, and provider like `claude` or `gemini`), joined by hyphens.
+- `task_prefix`: Optional `task-XXXXXXXX-` prefix prepended to the slug when the session is associated with a task ID.
+- `slug`: A short slug derived from the specific prompt content, making each file unique per interaction within the session.
+- `variant`: Usually `-full` or `-abridged` (empty for some artifact types).
 
 ### Finding the Current Transcript
 
