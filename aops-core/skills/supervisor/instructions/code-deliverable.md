@@ -143,10 +143,10 @@ Any TDD fix that ships with tests the worker could not actually run (Docker rebu
 
 ## Code-Deliverable Known Limitations
 
-(See [[WORKERS.md#failure-modes-per-worker]] for the universal per-worker list; coding-specific items below.)
+(See [[SURFACES.md]] _Known traps_ sections per surface for the per-worker failure modes; coding-specific items below.)
 
 - Auto-finish overrides manual task completion when a task was already fixed by another worker. See `aops-fdc9d0e2`.
-- Gemini polecats are slow (15–20+ min before first commit). Don't poll. Marsha-side noise (boot-time stderr) is cosmetic — see [[WORKERS.md]].
+- Gemini polecats are slow (15–20+ min before first commit). Don't poll. Marsha-side noise (boot-time stderr) is cosmetic — see [[SURFACES.md#polecat-run-gemini]].
 - Docker container name collisions when dispatching concurrent polecats. Use task ID in container name for uniqueness.
 - dprint plugin 404s waste 10+ min per worker. Check `dprint.json` before dispatch.
 - PKB MCP unreachable from sandbox containers — workers can't update task status.

@@ -97,7 +97,7 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Brief shape:** epic ID + role (`preflight` | `react`) + (for `react`) one-line context (work item ID, exit signal).
 
-**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[WORKERS.md]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
+**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[SURFACES.md#tldr-matrix]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
 
 **Pre-flight shape (Decision Tree)**:
 Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research variant if task `type` or `kind` is design/spec/research, OR if the AC indicates creating a new file/design doc/spec. Otherwise, use the Code/Edit variant.
@@ -383,7 +383,7 @@ Arm it **once**, immediately after the first DISPATCH that fills a slot in the r
 | `stale-check` | cron / manual      | Resets tasks stuck beyond threshold                                                                                         |
 | `pr-merge`    | James (in-session) | (Code deliverable) PR merged → James closes associated tasks per Task Completion Loop in james.md; not driven by supervisor |
 
-> **Configuration**: See [[WORKERS.md]] for runner types, capabilities, and sizing defaults — pauli reads these at dispatch time.
+> **Configuration**: See [[SURFACES.md]] for execution surfaces, dispatch syntax, and plugin/gate state per surface — pauli reads these at dispatch time. (Sizing defaults are not currently documented; see SURFACES.md _Gaps / open questions_.)
 
 ## Task Assignment Rules
 

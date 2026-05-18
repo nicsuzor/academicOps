@@ -2,7 +2,7 @@
 
 The dispatch mechanics that govern epic progression.
 
-> **Worker registry**: see [[WORKERS.md]] for worker types, capabilities, cost/speed profiles, capacity limits, and selection rules. Pauli reads it fresh on each preflight.
+> **Surface reference**: see [[SURFACES.md]] for execution surfaces, plugin sources, gates, and dispatch capability per surface. Pauli reads it fresh on each preflight.
 
 ## Mandatory Pre-Dispatch Gates
 

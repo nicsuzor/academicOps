@@ -421,13 +421,12 @@ Share rbg's concern back with pauli (or vice versa) and ask whether they MAINTAI
 
 When task tags indicate specialized domain expertise is needed:
 
-> **Configuration**: See Domain Specialists registry in [[WORKERS.md]] for
-> available specialists and their domain mappings.
+> **Configuration**: A Domain Specialists registry is referenced here but does not currently exist. See [[SURFACES.md#gaps--open-questions]] for the open backfill question. Until the registry exists, this section's protocol is aspirational.
 
 ```markdown
-## Domain Specialist Protocol
+## Domain Specialist Protocol (aspirational — registry pending)
 
-1. Load Domain Specialists table from WORKERS.md
+1. Load Domain Specialists table (TBD: location)
 2. Match task.tags against registered domains
 3. For each matching domain:
    - Invoke the configured specialist agent
