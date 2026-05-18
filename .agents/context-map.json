@@ -159,6 +159,13 @@
       "keywords": ["agent", "compliance", "authority", "matrix", "audit", "permission", "conformance"]
     },
     {
+      "topic": "capabilities",
+      "type": "reference",
+      "path": ".agents/CAPABILITIES.md",
+      "description": "Framework Capabilities & Artifacts — conventions, transcript naming, and finding artifacts",
+      "keywords": ["capabilities", "conventions", "transcripts", "artifact", "prompt-slug", "discovery", "ls"]
+    },
+    {
       "topic": "agent_tools",
       "type": "reference",
       "path": ".agents/AGENT-TOOLS.md",
