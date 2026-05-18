@@ -31,7 +31,6 @@ KNOWN_SERVERS = [
     "omcp",
     "osb",
     "outlook",
-    "pbk",
     "pkb",
     "playwright",
     "plugin_0_2_25_pkb",
