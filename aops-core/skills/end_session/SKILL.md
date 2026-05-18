@@ -176,13 +176,13 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Must address, in concrete terms:
 
-   - **One real friction point** the agent hit (tool, instruction, hook, gate), with enough context to act on it. NOT generic procedure-griping — only flag procedures that are truly awful or broken. _Note: the close describes the friction; it does not file it. Filing is the calling agent's responsibility via `/learn` (or other skills) before invoking the close sequence._
+   - **Friction points**: One bullet per friction item encountered, containing ONLY the reference link (`gh issue #N` or `pkb task task-id`) that was filed via `/learn` at the point of discovery. No prose summaries or per-friction descriptions — the prose lives in the referenced records.
    - **One instruction or tool improvement** the agent would propose, with a pointer to the file/skill/agent it would change.
    - _(Optional)_ one thing that worked well and is worth keeping — short, specific, attributable.
 
-   **Quality bar.** Reject reflections that are generic ("everything was fine", "the procedure was annoying"), propose new tools/features/skills/commands ("we should build an X"), pitch grand refactors, or contain bare identifiers without a precis. Accept reflections that document concrete experienced problems. (Do not file bug reports here; just describe the friction.)
+   **Quality bar.** Reject reflections that are generic ("everything was fine", "the procedure was annoying"), propose new tools/features/skills/commands ("we should build an X"), pitch grand refactors, or contain bare identifiers without a precis. Accept reflections that document concrete experienced problems and (where applicable) file bug reports.
 
-   The reflection's job is **bug reports + friction analysis**, not feature work. If you find yourself proposing a new capability, stop — file the underlying friction instead.
+   The reflection's job is an **index of friction analysis and improvements**, not feature work. If you find yourself proposing a new capability, stop — invoke `/learn` to file the underlying friction instead.
 
    **Identifiers + precis.** Every reference to a task, PR, commit, issue, file, or other artefact MUST carry both:
 
@@ -191,7 +191,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Required form: `task-acba1234 (/end-session: add explicit process reflection)`, `PR #847 (transcript.py: extract reflection metadata)`, `commit cf83b1f (pkb: broaden --allowed-hosts)`. A bare `task-acba1234` is non-compliant — `transcript.py` flags it as a `bare-identifier` quality warning.
 
-   **Useful (require)** — concrete description of friction, surprises, dead-ends, wasted token paths, environment mismatches, instructions that were wrong or absent. Description of things that look like real bugs (`$AOPS_SESSIONS=...` referenced but doesn't exist on worker container). Token-cost breakdown of friction is the most useful framing.
+   **Useful (require)** — accurate links to the issues/tasks filed during the session via `/learn`. Bug reports for things that look like real bugs must be filed immediately when encountered, not summarized here. Token-cost breakdown of friction should be placed in the issue/task itself.
 
    **Not useful (reject)** — new tool/feature suggestions ("an `aops session inspect <id>` command that pulls just the summary…" — reject; this exact reflection was filed and cancelled). Feature development tasks of any kind. Grand refactors ("split transcript_parser.py is 3,640 lines"). Generic procedure-griping.
 
