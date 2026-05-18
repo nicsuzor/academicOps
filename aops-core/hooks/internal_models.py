@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from hooks.schemas import HookContext
+from .schemas import HookContext
 
 
 class SessionCleanupResult(BaseModel):
