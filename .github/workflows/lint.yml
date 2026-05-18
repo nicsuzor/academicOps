@@ -57,7 +57,17 @@ jobs:
         timeout-minutes: 2
         run: uv run ruff format --check
 
-      # Autofix and push if either check found problems (PRs and workflow_dispatch)
+      # Auto-heal Gemini-form MCP tool names that may have leaked into source
+      # via CI-side commits (which skip pre-commit). See scripts/normalize_mcp_names.py
+      # and issue #1128. Exit 1 means rewrites happened; downstream autofix-push
+      # step picks up the changes.
+      - name: Normalize MCP names (initial)
+        id: normalize-initial
+        continue-on-error: true
+        timeout-minutes: 1
+        run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
+
+      # Autofix and push if any check found problems (PRs and workflow_dispatch)
       - name: Autofix lint and formatting
         if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
         timeout-minutes: 3
@@ -66,7 +76,7 @@ jobs:
           uv run ruff format
 
       - name: Commit and push fixes
-        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.normalize-initial.outcome == 'failure')
         timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
@@ -75,7 +85,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No formatting changes to commit"
           else
-            git commit -m "style: autofix lint and formatting"
+            git commit -m "style: autofix lint, formatting, and MCP name normalization"
             git push
           fi
 
@@ -89,3 +99,8 @@ jobs:
         if: steps.format-initial.outcome == 'failure'
         timeout-minutes: 2
         run: uv run ruff format --check
+
+      - name: Normalize MCP names (final)
+        if: steps.normalize-initial.outcome == 'failure'
+        timeout-minutes: 1
+        run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
