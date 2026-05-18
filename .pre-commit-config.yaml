@@ -82,6 +82,17 @@ repos:
         pass_filenames: true
         files: '^(aops-core|\.github/agents)/.*\.md$'
 
+      # #1128 — block Gemini-form tool names (mcp_server_tool, read_file, etc.)
+      # from escaping into source via Gemini polecat edits. Build transforms
+      # canonical Claude names to Gemini form at distribution time; workers
+      # must never write Gemini-form names back into aops-core/**/*.md.
+      - id: check-gemini-tool-names
+        name: no Gemini-form tool names in source (#1128)
+        entry: uv run python scripts/check_gemini_tool_names.py
+        language: system
+        pass_filenames: false
+        files: '^aops-core/.*\.md$'
+
       # R5.6 — block new orphan markdown files (worker findings, capability
       # docs, summaries, comparisons, explainers belong in task body / parent
       # epic / PKB / a file named in an approved plan, not loose .md files).

@@ -13,8 +13,9 @@ client of both, but each flow runs in its own context with its own job.
 
 > "Something just went wrong in this session."
 
-Anywhere in or after a Claude / Gemini session, the user runs `/learn`
-(equivalent: `/retro`). The dispatched agent reads the transcript and
+When an agent hits friction (tool bug, missing instruction, dead end), it MUST invoke the `/learn` skill immediately at the point of discovery. One friction = one `/learn` call. Do NOT ask the user "want me to file this?" or "happy to file if you confirm" — filing friction is unilateral.
+
+The dispatched agent reads the transcript and
 files a GitHub issue containing only:
 
 1. **What happened** — quoted from the transcript.

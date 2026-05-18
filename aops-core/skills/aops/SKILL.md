@@ -370,7 +370,7 @@ When you encounter something you cannot derive:
 
 _Enforces A7 Edge 2 (FM-1, FM-3, FM-7). See `aops-core/AXIOMS.md` § A7._
 
-Asking "want me to file that?" or "should I create a task?" for any clearly-identified bug, issue, or actionable item. File it. Nic reviews and corrects after the fact. The only actions that need confirmation are destructive or externally visible ones (send email, merge PR, push to main).
+Asking "want me to file that?" or "should I create a task?" for any clearly-identified bug, issue, or actionable item. Invoke `/learn` for friction, or file a task directly. Nic reviews and corrects after the fact. The only actions that need confirmation are destructive or externally visible ones (send email, merge PR, push to main).
 
 Common shapes to catch (full list in A7 Edge 2): bundling 4 questions back when 3 have clear defaults from project docs; writing the answer in the same paragraph as the question; "want me to draft the methods note next?" after running the analysis (documentation is part of doing).
 

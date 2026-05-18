@@ -12,7 +12,7 @@ class BootstrapError(Exception):
         super().__init__("\n".join(errors))
 
 
-def validate_bootstrap(aops_path: Path | str | None = None) -> None:
+def validate_bootstrap(aops_path: Path | str | None = None, client: str | None = None) -> None:
     """Perform fail-fast validation of the polecat runtime environment.
 
     Checks:
@@ -43,6 +43,15 @@ def validate_bootstrap(aops_path: Path | str | None = None) -> None:
     # PAT secret (GH_TOKEN or AOPS_BOT_GH_TOKEN)
     if not os.environ.get("GH_TOKEN") and not os.environ.get("AOPS_BOT_GH_TOKEN"):
         errors.append("Missing PAT secret (GH_TOKEN or AOPS_BOT_GH_TOKEN)")
+
+    # Client-specific auth
+    if client == "gemini":
+        has_gemini_key = bool(os.environ.get("GEMINI_API_KEY"))
+        has_gemini_oauth = (Path.home() / ".gemini" / "oauth_creds.json").exists()
+        if not has_gemini_key and not has_gemini_oauth:
+            errors.append(
+                "Missing Gemini auth: GEMINI_API_KEY env var or ~/.gemini/oauth_creds.json required"
+            )
 
     # 2. PKB MCP reachability
     if pkb_url:
