@@ -347,13 +347,13 @@ Before doing any work, compare the current `metrics_hash` from `graph_stats` aga
 
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                                | Strategy            | Planner Activity                                       |
-| ---------------------------------------- | ------------------- | ------------------------------------------------------ |
-| `disconnected_epics` > 10                | Connect epics       | Reparent — find project parents for disconnected epics |
+| Condition                                 | Strategy            | Planner Activity                                       |
+| ----------------------------------------- | ------------------- | ------------------------------------------------------ |
+| `disconnected_epics` > 10                 | Connect epics       | Reparent — find project parents for disconnected epics |
 | `targets_without_contributing_edges` > 10 | Wire edges          | Wire edges via `/planner wire-edges` flow              |
-| `flat_tasks` > 100                       | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
-| `orphan_count` > 20                      | Fix orphans         | Reparent — connect or archive disconnected nodes       |
-| All metrics healthy                      | Densify edges       | Densify — use strategies to add dependency edges       |
+| `flat_tasks` > 100                        | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
+| `orphan_count` > 20                       | Fix orphans         | Reparent — connect or archive disconnected nodes       |
+| All metrics healthy                       | Densify edges       | Densify — use strategies to add dependency edges       |
 
 ### Concrete Agent Instructions
 
