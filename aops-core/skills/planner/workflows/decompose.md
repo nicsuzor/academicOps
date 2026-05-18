@@ -49,7 +49,7 @@ version: 2.0.0
 
 11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children, and do NOT infer priority from subtask content (e.g., "this looks important, mark it P1"). Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[../SKILL.md#priority-assignment-rules]] for the full rule.
 
-12. **Create in PKB** — Use `mcp_pkb_decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
+12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
 13. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Tag with `lens: <name>` (use `aops-core/skills/planner/references/verification-template.md` as a base).
     - **Methodology/Analysis**: Agent methodology critique followed by binary Human "accept/redesign" approval (`assignee="nic"`). Block promotion on these.
