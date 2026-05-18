@@ -68,6 +68,20 @@ repos:
         pass_filenames: false
         files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$'
 
+      # Auto-heal Gemini-form MCP tool names (mcp_pkb_get_task) back to
+      # canonical Claude form (mcp__pkb__get_task). Inverse of the transform
+      # in scripts/build.py:698. Gemini polecat workers see single-underscore
+      # names in their own tool catalog and sometimes write them into
+      # SKILL.md / agent prompts during edits (issue #1128). This hook
+      # rewrites in place; on rewrite the commit aborts so the user re-stages
+      # and re-commits, same UX as ruff --fix / trailing-whitespace.
+      - id: normalize-mcp-names
+        name: normalize MCP tool names (Gemini -> Claude)
+        entry: uv run python scripts/normalize_mcp_names.py
+        language: system
+        pass_filenames: true
+        files: '^(aops-core|\.github/agents)/.*\.md$'
+
       # R5.6 — block new orphan markdown files (worker findings, capability
       # docs, summaries, comparisons, explainers belong in task body / parent
       # epic / PKB / a file named in an approved plan, not loose .md files).
