@@ -110,11 +110,12 @@ jobs:
           echo "Manual override: processing PR #$PR_NUM immediately"
 
           HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
+          DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
 
           # Dispatch merge-prep
           gh workflow run "$WORKFLOW_REF" \
             --repo "${{ github.repository }}" \
-            --ref "refs/heads/$HEAD_REF" \
+            --ref "$DEFAULT_BRANCH" \
             -f pr_number="$PR_NUM" \
             -f force=true \
             -f bot_identity="$BOT_IDENTITY"
@@ -275,9 +276,11 @@ jobs:
           TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
           echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying)"
 
+          DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
+
           gh workflow run "$WORKFLOW_REF" \
             --repo "$REPO" \
-            --ref "refs/heads/$HEAD_REF" \
+            --ref "$DEFAULT_BRANCH" \
             -f pr_number="$PR_NUM" \
             -f bot_identity="$BOT_IDENTITY"
 
