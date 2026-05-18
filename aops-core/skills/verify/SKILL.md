@@ -73,7 +73,7 @@ The three dimensions are framing for _what to look at_, not a checklist. Your ve
 
 For any visual artifact (dashboard, UI, mockup, chart, slide, rendered PDF), **Section 1 of the report is observed defects** — visual phenomena with region or coordinates. Plain language. "The string '96 tasks' is rendered in ~48pt white over the child cells in the upper-left quadrant, obscuring their labels." Not: "the aggregate count overlays compete with project identity at the eye-first reading level."
 
-# <<<<<<< HEADPersona-anchored reasoning comes second and must cite a defect from Section 1.
+Persona-anchored reasoning comes second and must cite a defect from Section 1.
 
 ### Completeness-Verification Heuristic
 
@@ -84,8 +84,6 @@ When evaluating the completeness of a change, implementation, or analysis, you m
 3. **Acknowledgement of known limitations**: Honestly acknowledge any edge cases, constraints, or unverified paths rather than silently omitting them.
 
 ### Red Flags (HALT triggers)
-
->>>>>>> origin/main
 
 This ordering blocks the failure mode where eloquent prose gives rendering catastrophes credible cover. See [[references/visual-analysis.md]] for the structural dimensions (legibility, layout, hierarchy, density). Cognitive-load and persona-emotional dimensions are _design-time_ questions and live in the spec's Fitness Rubric — not here.
 
@@ -195,5 +193,5 @@ When invoked as `/verify` with no arguments, do a quick verification of the curr
 ## Integration
 
 - **Stop hook**: May require verification before session end.
-- **Task completion**: Verify before `complete_task()`.
+- **Task completion**: Verify before `complete_task()` — before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
 - **Spec writing**: New user-facing specs MUST carry a `## Fitness Rubric` section authored via `/design-rubric` before they reach a worker.

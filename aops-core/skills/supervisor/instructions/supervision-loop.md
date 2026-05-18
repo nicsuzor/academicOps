@@ -94,6 +94,8 @@ Pauli has already verified pre-dispatch gates (host check, ping-pkb, 4-row pre-f
 
 Marsha's job. Triggered when a work item is `in_progress` and the worker has exited (background task notification, PR appeared, polecat finish output). Pass marsha the work item ID, the review surface (PR URL or "none"), and the AC. Consume her structured verdict per [[../SKILL.md#marsha--verify]].
 
+Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
+
 For code deliverables, the concrete monitoring mechanisms (background worker exit notifications, one-shot `gh pr list`) are in [[code-deliverable#monitor-wait-for-the-pr-then-halt]].
 
 ### REACT

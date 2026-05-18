@@ -213,7 +213,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 
 - Every subtask MUST have clear acceptance criteria. If you can't write AC, keep the step in the parent body instead of creating a hollow subtask.
 - **No parallel tracking**: Don't put checklists (`- [ ]`) in task bodies if the items will be tracked as subtasks. Body checklists and subtask graphs inevitably diverge, creating false "no progress" signals (see: Nectar incident). When decomposing, replace the source checklist with a reference to children (e.g., "See subtasks below").
-- All tasks together must achieve the original epic (completeness).
+- All tasks together must achieve the original epic (completeness). Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
 - Every task must be completable in a single session (actionability).
 - Every epic must include at least one QA/review task (verification).
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
