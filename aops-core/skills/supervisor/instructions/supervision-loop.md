@@ -77,13 +77,13 @@ Worker transcript observability is maintained by a background cron job that dist
 **Invocation:**
 
 ```bash
-uv run python $AOPS/aops-core/scripts/transcript.py --recent
+AOPS_SESSIONS=$ACA_DATA/sessions uv run --project $AOPS python $AOPS/aops-core/scripts/transcript.py --recent
 ```
 
 **When to invoke:**
 
 - During the **REACT** phase when worker state is suspected to be stale or a stall is detected.
-- Before delegating a peek to marsha (or other delegates) if the cron hasn't run since recent worker activity.
+- Before delegating a peek to marsha (or other delegates) to ensure they have access to the most recent worker activity.
 
 **Invariant (Write-Only Operation):**
 This refresh is strictly a **write operation** (regenerating markdown from JSONL). The main supervisor agent _triggers_ the refresh, but **must never read the transcript output itself**. Reading the transcripts remains strictly delegated to marsha or pauli as part of their normal contract. This preserves the invariant that the main agent never reads transcripts directly. See [[kb-d8f58167]] (Session Log Observability Map) for the full pipeline context.
