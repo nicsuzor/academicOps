@@ -66,7 +66,7 @@ def test_is_gemini_tool_name(name: str, expected: bool) -> None:
 def test_find_gemini_mcp_names_in_text_detects_corrupted_name() -> None:
     body = "Call mcp_pkb_complete_task to close the task."
     matches = find_gemini_mcp_names_in_text(body)
-    assert "pkb" in matches[0] or "mcp_pkb_complete_task".startswith("mcp_")
+    assert matches[0] == "mcp_pkb_complete_task"
     # At least one match returned
     assert len(matches) >= 1
 

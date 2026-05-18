@@ -66,7 +66,7 @@ GEMINI_BUILTIN_NAMES = {
 # Canonical form always starts with mcp__ (double underscore).
 # Requires at least two underscore-separated segments after mcp_ to distinguish
 # from prose words like "mcp_servers" in YAML config keys.
-_GEMINI_MCP_PATTERN = re.compile(r"\bmcp_(?!_)([a-zA-Z0-9-]+)(?:_[a-zA-Z0-9-]+)+\b")
+_GEMINI_MCP_PATTERN = re.compile(r"\bmcp_(?!_)[a-zA-Z0-9-]+(?:_[a-zA-Z0-9-]+)+\b")
 
 
 def is_gemini_tool_name(name: str) -> bool:
