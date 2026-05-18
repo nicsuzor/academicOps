@@ -43,7 +43,7 @@ The Claude.app-hosted orchestrator environment Nic uses as his daily driver for 
 - **Engine**: Claude Code (Anthropic Claude.app)
 - **Persistence**: Ephemeral VM. `~/.ssh/`, `~/.bashrc`, anything outside `~/junior/` is wiped between sessions. Persistence lives in `~/junior/` (mounted from host) or in the PKB.
 - **Plugin source & override behaviour**: **Claude.app's plugin loader won't load aops-core from the marketplace**, so the cowork-plugin must be installed _locally_. When the local install happens, **Claude.app overwrites whatever marketplace version was present.** Net result: local install is required, not optional, and the marketplace listing is effectively dead for this surface.
-- **Hook env propagation**: ⚠ partial. `settings.json` `env` block reaches the agent's Bash tool but NOT hook subprocesses. Gates that read `$AOPS_SESSIONS` (e.g. via `polecat_config.py`) crash on import. PreToolUse path does fire (custodiet works); Stop/SessionEnd path crashes silently. → see _Known traps_ below and the cross-cutting _Hook env stripping_ note.
+- **Hook env propagation**: ⚠ partial. `settings.json` `env` block reaches the agent's Bash tool but NOT hook subprocesses. Gates that read `$AOPS_SESSIONS` (e.g. via `gate_config.py`) crash on import. PreToolUse path does fire (custodiet works); Stop/SessionEnd path crashes silently. → see _Known traps_ below and the cross-cutting _Hook env stripping_ note.
 - **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`), Slack (Anthropic Slack MCP), Chrome (`mcp__Claude_in_Chrome__*` — DOM-aware browser control), computer-use (`mcp__computer-use__*`), playwright, outlook, zot, hass, scheduled-tasks, ccd-session-mgmt, mcp-registry, claude-preview. **Not** present: direct shell access to polecat host (need `ssh wsl`).
 - **Gates active**: PreToolUse / custodiet fires; ida / handover / hydration crash on env (see traps).
 - **Computer-use tier**:
@@ -205,7 +205,7 @@ Asynchronous Google-infra worker. Receives a task spec, returns a session URL, e
 - **Worker dispatch**: Terminal.
 - **Dispatch syntax**: `pkb task <task-id> | jules new --repo <owner>/<repo>` (pipes full task context into Jules's session creator).
 - **Status checks**: `jules remote list --session`. Approval surface: https://jules.google.com.
-- **Install**: `npm install -g @anthropic-ai/jules` (⚠ verify package name).
+- **Install**: `npm install -g jules` (⚠ verify package name).
 - **Known traps**:
   - **Approval gate** — sessions show "Completed" when coding is done but require human approval on Jules web UI before branches are pushed and PRs are created. Don't assume Completed = PR exists.
   - **Auto-finish conflict** — if Jules completes a task that's also assigned to a polecat, polecat's auto-finish detects zero changes and resets task to active, creating retry loop. (Same trap as `polecat run` known-trap, surfaces from Jules side.)
@@ -244,7 +244,7 @@ Implication: when shipping a plugin change, six different consumers need to pick
 
 ---
 
-## Gaps / open questions (to fill on next pass)
+## Gaps / open questions
 
 - Gemini CLI hook env propagation — verify whether Gemini behaves like Claude Code CLI (stripped) or differently.
 - Gemini polecat (run & crew) gate-firing behaviour — empirically verify.
