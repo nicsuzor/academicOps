@@ -58,7 +58,7 @@ version: 2.0.0
     - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution, does not block promotion).
     - **Exploratory**: _Escape Hatch_ — Create minimal verification tasks and do not block promotion to ready for exploratory work.
 
-14. **Await & Record** — If pre-execution lenses apply, halt until addressed. Write a `## Promotion Log` in the parent tracking verdicts. Once verdicts are resolved, explicitly promote the epic from `inbox` to `ready`.
+14. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`.
 
 ## Hierarchy and Depth
 
