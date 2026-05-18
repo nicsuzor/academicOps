@@ -105,7 +105,11 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
+<<<<<<< HEAD
 6. Create task with body template (Problem, Solution, Files, AC). Apply the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]): **state intent + AC, not prescription**, and do not invent mid-stream approval gates. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+=======
+6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+>>>>>>> da7d5b29 (planner: remove pre-paid diagnostic promotion gates)
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:
@@ -151,7 +155,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 
 **When**: "plan X", "I had an idea", "new constraint", "what should I work on", "prioritise tasks"
 
-**Allowed tools**: `Read`, `mcp__pkb__create_task`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__list_tasks`, `mcp__pkb__task_search`, `mcp__pkb__search`, `mcp__pkb__get_document`, `mcp__pkb__create_memory`, `mcp__pkb__retrieve_memory`, `mcp__pkb__list_memories`, `mcp__pkb__search_by_tag`, `mcp__pkb__delete_memory`, `mcp__pkb__get_dependency_tree`, `mcp__pkb__get_network_metrics`, `mcp__pkb__pkb_context`, `mcp__pkb__pkb_trace`, `mcp__pkb__pkb_orphans`, `mcp__pkb__get_task_children`
+**Allowed tools**: `read_file`, `mcp__pkb__create_task`, `mcp__pkb__get_task`, `mcp__pkb__update_task`, `mcp__pkb__list_tasks`, `mcp__pkb__task_search`, `mcp__pkb__search`, `mcp__pkb__get_document`, `mcp__pkb__create_memory`, `mcp__pkb__retrieve_memory`, `mcp__pkb__list_memories`, `mcp__pkb__search_by_tag`, `mcp__pkb__delete_memory`, `mcp__pkb__get_dependency_tree`, `mcp__pkb__get_network_metrics`, `mcp__pkb__pkb_context`, `mcp__pkb__pkb_trace`, `mcp__pkb__pkb_orphans`, `mcp__pkb__get_task_children`
 
 **Sub-modes**:
 
@@ -205,9 +209,8 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
 5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
-6. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until these pre-execution lenses reach status: done. Post-execution lenses (e.g., citation verification) do NOT block promotion to ready.
 
-**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
+**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing the rationale for promotion.
 
 **Critical rules**:
 
@@ -301,7 +304,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **When**: "prune knowledge", "consolidate notes", "PKM maintenance", "garden", "reparent", "lint", "densify tasks", "add dependencies"
 
-**Allowed tools**: `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `AskUserQuestion`, `mcp__pkb__search`, `mcp__pkb__list_documents`, `mcp__pkb__list_tasks`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__task_search`, `mcp__pkb__pkb_orphans`, `mcp__pkb__bulk_reparent`, `mcp__pkb__pkb_context`, `mcp__pkb__get_network_metrics`, `mcp__pkb__find_duplicates`, `mcp__pkb__batch_merge`, `mcp__pkb__merge_node`, `mcp__pkb__complete_task`, `mcp__pkb__batch_reclassify`, `mcp__pkb__batch_archive`, `mcp__pkb__batch_update`, `mcp__omcp__messages_search`, `mcp__omcp__messages_query`, `mcp__omcp__calendar_list_events`
+**Allowed tools**: `read_file`, `grep_search`, `glob`, `replace`, `write_file`, `Bash`, `AskUserQuestion`, `mcp__pkb__search`, `mcp__pkb__list_documents`, `mcp__pkb__list_tasks`, `mcp__pkb__update_task`, `mcp__pkb__get_task`, `mcp__pkb__task_search`, `mcp__pkb__pkb_orphans`, `mcp__pkb__bulk_reparent`, `mcp__pkb__pkb_context`, `mcp__pkb__get_network_metrics`, `mcp__pkb__find_duplicates`, `mcp__pkb__batch_merge`, `mcp__pkb__merge_node`, `mcp__pkb__complete_task`, `mcp__pkb__batch_reclassify`, `mcp__pkb__batch_archive`, `mcp__pkb__batch_update`, `mcp__omcp__messages_search`, `mcp__omcp__messages_query`, `mcp__omcp__calendar_list_events`
 
 **Activities**:
 
