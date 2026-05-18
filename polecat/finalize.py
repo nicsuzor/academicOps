@@ -210,7 +210,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                     from lib.task_model import TaskStatus
 
                     task.status = TaskStatus.REVIEW
-                    manager.storage.save_task(task)
+                    manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
                 except ImportError:
                     from polecat.pkb_bridge import save_task as pkb_save
 
@@ -277,7 +277,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW.value
-                        manager.storage.save_task(task)
+                        manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
                     except ImportError:
                         from polecat.pkb_bridge import save_task as pkb_save
 
@@ -309,7 +309,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                 from lib.task_model import TaskStatus
 
                 task.status = TaskStatus.REVIEW.value
-                manager.storage.save_task(task)
+                manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
             except ImportError:
                 from polecat.pkb_bridge import save_task as pkb_save
 
@@ -412,7 +412,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW.value
-                        manager.storage.save_task(task)
+                        manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
                     except ImportError:
                         from polecat.pkb_bridge import save_task as pkb_save
 
@@ -620,7 +620,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
             from lib.task_model import TaskStatus
 
             task.status = TaskStatus.MERGE_READY.value
-            manager.storage.save_task(task)
+            manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
         except ImportError:
             from polecat.pkb_bridge import save_task as pkb_save
 

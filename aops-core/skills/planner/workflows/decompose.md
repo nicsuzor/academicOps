@@ -51,13 +51,14 @@ version: 2.0.0
 
 12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
-13. Create Verification Task — Create a child task using references/verification-template.md. Set the current task as parent. Reference parent AC as the source for pass/fail checks in Acceptance Standards and describe the Qualitative Verification Process. Set depends_on: [<execution-subtasks>] and tag lens: verification.
+13. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Don't make review mandatory for trivial tasks. Tag with `lens: <name>`.
+    - **Methodology/Analysis**: Methodology critique & Human approval (`assignee="nic"`). Block execution on these.
+    - **Citation-heavy Writing**: Citation verification & Argument review (runs AFTER execution).
+    - **Outbound Comms**: Alignment, Quality, & Voice review (runs AFTER execution).
+    - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution).
+    - **Exploratory**: _Escape Hatch_ — Note applicable lenses in parent body, recommend invoking manually.
 
-14. **Create Review Lens Tasks** — Create two child subtasks using `references/lens-templates/rbg-axiom-check.md` and `references/lens-templates/pauli-alignment-check.md`. Tags: `lens: rbg-axiom-check` and `lens: pauli-alignment-check`.
-
-15. Await Lens Completion — The promotion to status: ready is blocked until the lens tasks reach status: done. Halt and wait for completion before proceeding.
-
-16. **Record Promotion Decision** — Review lens verdicts. Address or overrule findings with rationale. Write a `## Promotion Log` entry to the parent body and transition status from `inbox` to `ready`.
+14. **Await & Record** — If pre-execution lenses apply, halt until addressed. Write a `## Promotion Log` in the parent tracking verdicts.
 
 ## Hierarchy and Depth
 
@@ -82,6 +83,7 @@ Epic: "Add user authentication" using `feature-dev` workflow:
 
 Tasks will be picked up by a **different agent** with only the task body as context.
 
+- **Intent + AC, not prescription**: Task bodies must state intent and observable Acceptance Criteria. Do not include proposed file paths, function names, or directive imperatives that haven't been empirically verified.
 - **Self-contained context**: Include enough background that someone with no session context understands _why_ this task exists and _what decisions led to it_.
 - **Include data findings**: Record actual numbers discovered during decomposition, not just summaries.
 - **Link to related tasks**: Use explicit task ID wikilinks (e.g., [[task-id]]), not "the other task."

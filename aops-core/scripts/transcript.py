@@ -458,6 +458,14 @@ def _process_reflection(
         Both are None if no reflections found
     """
     reflections = extract_reflection_from_entries(entries, agent_entries)
+
+    # Deduplicate reflections by content (handles continuations duplicating earlier cycles)
+    unique_reflections = []
+    for ref in reflections:
+        if ref not in unique_reflections:
+            unique_reflections.append(ref)
+    reflections = unique_reflections
+
     if not reflections:
         # No reflection found, but still save token_metrics if available
         if usage_stats and usage_stats.has_data():
@@ -847,7 +855,7 @@ def _generate_transcript_filename(
     # filename (base), date_str, short_project, session_id, slug
     return (
         base,
-        timestamp.strftime("%Y%m%d"),
+        timestamp.astimezone().strftime("%Y%m%d"),
         repo,
         session_id,
         slug,
@@ -1499,7 +1507,7 @@ Examples:
             session_timestamp = None
             for entry in entries:
                 if entry.timestamp:
-                    date_iso = entry.timestamp.strftime("%Y-%m-%d")
+                    date_iso = entry.timestamp.astimezone().strftime("%Y-%m-%d")
                     session_timestamp = entry.timestamp
                     break
             # Get session ID and project from path

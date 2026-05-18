@@ -105,7 +105,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
-6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
+6. Create task with body template (Problem, Solution, Files, AC). **State intent + AC, not prescription**. Do not propose file paths, function names, or directive imperatives that haven't been empirically verified. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:
@@ -189,6 +189,7 @@ Break validated epics into structured task trees.
 4. Select workflow — identify which workflow achieves this epic.
 5. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after).
 6. Define deliverables — each task must have a concrete output.
+   6a. **Brief shape check.** Each subtask body contains: the goal (one sentence), the spec/AC link, the deliverable. It does NOT include "how to approach this", "things to think about", "checks to run", or methodology summaries. The executing agent invokes its own skills; the brief is the anchor, not the script. (See Shared Principle #10.)
 7. Identify dependencies — hard (`depends_on`) vs soft (`soft_depends_on` = unlockers).
 8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
@@ -203,7 +204,8 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 2. **Project / source-location field, verified**: `project: <name>` on parent and children, matching CORE.md topology. Name at least one file or symbol the work will modify.
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
-5. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
+5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
+6. Review-lens annotations — RBG (axioms) + Pauli (alignment): Create two child subtasks: lens: rbg-axiom-check and lens: pauli-alignment-check. Promotion is blocked until both reach status: done.
 
 **Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing lens verdicts addressed/overruled and the rationale for promotion.
 
@@ -482,12 +484,12 @@ User prompt
 
 ## Interaction with Other Agents
 
-| Agent             | Relationship                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Butler**        | Butler governs framework changes. Planner shapes work, not framework.                                                                                                           |
-| **QA**            | Planner includes verification tasks in decompositions. QA executes them independently.                                                                                          |
-| **Daily/Reflect** | `/daily` calls Planner's `plan` mode for recommendations. `/reflect` reads graph state but doesn't invoke Planner. Planner provides data; orchestrators decide what to surface. |
-| **Sleep**         | Sleep's Phase 4b delegates to Planner's `maintain` mode for graph maintenance (including densification). Sleep remains a separate orchestrator.                                 |
+| Agent             | Relationship                                                                                                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Butler**        | Butler governs framework changes. Planner shapes work, not framework.                                                                                                                                                                                            |
+| **QA**            | Planner includes verification tasks in decompositions. For user-facing epics, planner also invokes `/aops-core:design-rubric` to author the `## Fitness Rubric` that QA will read. QA (marsha + /verify) executes verification independently against the rubric. |
+| **Daily/Reflect** | `/daily` calls Planner's `plan` mode for recommendations. `/reflect` reads graph state but doesn't invoke Planner. Planner provides data; orchestrators decide what to surface.                                                                                  |
+| **Sleep**         | Sleep's Phase 4b delegates to Planner's `maintain` mode for graph maintenance (including densification). Sleep remains a separate orchestrator.                                                                                                                  |
 
 ## Shared Principles
 
@@ -500,6 +502,7 @@ User prompt
 7. **Decomposition requires AC** — never create subtasks without clear acceptance criteria; keep steps in parent body instead
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 9. **Action items are graph nodes, not prose** — follow-up work outside the primary task's scope (supersession decisions, prerequisite investigations, cross-project updates, triage calls) must be created as separate linked tasks. Decision/triage → subtask or `soft_depends_on`; cross-epic → separate task with `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Never bury action items in body prose where they are invisible to the graph.
+10. **Brevity in delegation** — when authoring a brief for another agent (polecat, marsha, pauli, junior), state the artifact, the goal, and the spec link. Do NOT enumerate methodology, dimensions, protocols, or "things to consider." Smart agents do better with short briefs; long briefs anchor the recipient and reduce judgement to checklist execution. Methodology lives in the executing agent's invoked skills, not in the brief. If you find yourself listing what the worker should look for, you are anchoring them — stop.
 
 ## Decision Surfacing Heuristic
 
