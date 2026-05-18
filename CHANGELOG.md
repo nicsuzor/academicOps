@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.3.26](https://github.com/nicsuzor/academicOps/compare/v0.3.25...v0.3.26) (2026-05-18)
+
+
+### Features
+
+* **daily:** codify PR triage dashboard process ([#1136](https://github.com/nicsuzor/academicOps/issues/1136)) ([74323eb](https://github.com/nicsuzor/academicOps/commit/74323ebf8330c586514999dfb0639a3a5e5f5972))
+* **end_session:** update closing behaviors and resolve contradictions ([#1127](https://github.com/nicsuzor/academicOps/issues/1127)) ([0438437](https://github.com/nicsuzor/academicOps/commit/0438437dbe13babb24dd75510f05c3f22179136a))
+* Gemini polecat auth validation — fail-fast in crew containers when credentials are missing ([#1106](https://github.com/nicsuzor/academicOps/issues/1106)) ([2e77391](https://github.com/nicsuzor/academicOps/commit/2e77391f7f2fece2de534c5364cc3318ac0bda6b))
+* **instruction:** mandate point-of-discovery friction filing via /learn ([#1103](https://github.com/nicsuzor/academicOps/issues/1103)) ([0740a43](https://github.com/nicsuzor/academicOps/commit/0740a4394df6887ada23027d9056c4478d0fe199))
+* **polecat:** add --max-turns CLI passthrough for deterministic budget-exhaustion testing ([#1094](https://github.com/nicsuzor/academicOps/issues/1094)) ([686edfc](https://github.com/nicsuzor/academicOps/commit/686edfc001a3ded7cff6d3a3c3d16a838c656cc3))
+* **polecat:** add distinct budget-exhausted exit code and structured stderr resume hint ([#1112](https://github.com/nicsuzor/academicOps/issues/1112)) ([103b146](https://github.com/nicsuzor/academicOps/commit/103b1462a2651c9aa2c7dae3368cd3d15d7c56be))
+* **supervisor:** add RBG axiom-check trigger to pauli preflight ([#1105](https://github.com/nicsuzor/academicOps/issues/1105)) ([9966d80](https://github.com/nicsuzor/academicOps/commit/9966d8062a8c75b881b4b5589ff77a43abfee2d3))
+
+
+### Bug Fixes
+
+* **#1128:** auto-heal Gemini-form MCP tool names at commit time ([#1143](https://github.com/nicsuzor/academicOps/issues/1143)) ([29c7150](https://github.com/nicsuzor/academicOps/commit/29c7150603b1cbac367cbcc919af799bc9dcccdc))
+* **#1128:** CI guard against Gemini-form tool names escaping into source ([#1142](https://github.com/nicsuzor/academicOps/issues/1142)) ([bbee8eb](https://github.com/nicsuzor/academicOps/commit/bbee8eb5a461cfca4ba81a802669f1d7833ecfcc))
+* address untriaged review feedback from PR batch ([#1098](https://github.com/nicsuzor/academicOps/issues/1098), [#1096](https://github.com/nicsuzor/academicOps/issues/1096)) ([#1140](https://github.com/nicsuzor/academicOps/issues/1140)) ([5515571](https://github.com/nicsuzor/academicOps/commit/5515571814867f4a5d6e3482f55a61be8f4fa46a))
+* Deduplicate framework reflections across session continuations ([#1097](https://github.com/nicsuzor/academicOps/issues/1097)) ([f7f9eb0](https://github.com/nicsuzor/academicOps/commit/f7f9eb07d9dfd3b37695c3d9ee1f241313aa9cdf))
+* **framework:** enforce intent+AC authoring convention for task bodies ([#1133](https://github.com/nicsuzor/academicOps/issues/1133)) ([09b672a](https://github.com/nicsuzor/academicOps/commit/09b672a71ffe485a9630ea3b26a50c60a6869132))
+* **framework:** unify trust-the-worker authoring discipline ([#1138](https://github.com/nicsuzor/academicOps/issues/1138)) ([bff00e4](https://github.com/nicsuzor/academicOps/commit/bff00e42e8a85fa8da37d048bcff34fbf5d4d7dd))
+* **junior:** reinforce anti-FM-1 instructions against 'Should I' tic ([#1131](https://github.com/nicsuzor/academicOps/issues/1131)) ([459c76f](https://github.com/nicsuzor/academicOps/commit/459c76fe607fc60655708d667cc2fe6214eac9f6))
+* optimize basedpyright config to exclude non-Python files ([4091001](https://github.com/nicsuzor/academicOps/commit/4091001745416b14f4a33fff851a5544cd637792))
+* **polecat:** route docker pull announce to stderr ([#1113](https://github.com/nicsuzor/academicOps/issues/1113)) ([7597893](https://github.com/nicsuzor/academicOps/commit/75978930e28b5d0897354dd81ba9c4750696f77f))
+* resolve merge-prep workflow errors blocking PRs ([#1141](https://github.com/nicsuzor/academicOps/issues/1141)) ([33cbbb2](https://github.com/nicsuzor/academicOps/commit/33cbbb22e71e53a840c9544db4f0e6dab5f3920a))
+* **survey:** tighten retro bump-comment guidance — delta only, no restatement ([#1088](https://github.com/nicsuzor/academicOps/issues/1088)) ([bbbd62b](https://github.com/nicsuzor/academicOps/commit/bbbd62bb273821cf4b633e7f021787270c5e2568))
+* **transcript:** use local timezone for transcript session dates ([#1098](https://github.com/nicsuzor/academicOps/issues/1098)) ([19d6dde](https://github.com/nicsuzor/academicOps/commit/19d6dde45c2f6540d43aea0b04527aa1545ac969))
+
+
+### Reverts
+
+* **pyproject:** drop prototype-exclude smuggled into PR [#1119](https://github.com/nicsuzor/academicOps/issues/1119) ([0788263](https://github.com/nicsuzor/academicOps/commit/0788263cf3c522a7e03f881af0d1afd2be813c38))
+* **pyproject:** drop scripts/*_prototype.py basedpyright exclude ([6749415](https://github.com/nicsuzor/academicOps/commit/6749415cae39e446b5a97c8aaa5991037fd2422a))
+
+
+### Code Refactoring
+
+* **survey:** simplify retro mode and remove rigid checklists ([#1101](https://github.com/nicsuzor/academicOps/issues/1101)) ([c1f2ffa](https://github.com/nicsuzor/academicOps/commit/c1f2ffa66dc71a6284a7a885920c93c2d5490af0))
+
+
+### Documentation
+
+* codify drive-by fix policy in SSoT ([#1135](https://github.com/nicsuzor/academicOps/issues/1135)) ([321b1ed](https://github.com/nicsuzor/academicOps/commit/321b1ed64b839d2ebc3895edeb1e3eef52825550))
+* document transcript naming convention and discovery ([#1107](https://github.com/nicsuzor/academicOps/issues/1107)) ([581f278](https://github.com/nicsuzor/academicOps/commit/581f2784244be8b531fd8e1528fe2a551990d7c3))
+* formalize policy on local sleep cycle auto-commits ([#1095](https://github.com/nicsuzor/academicOps/issues/1095)) ([f602548](https://github.com/nicsuzor/academicOps/commit/f60254848a423b8d72ff0cf3bee6cdeea4350277))
+* **verify:** add Completeness-Verification Heuristic ([#1132](https://github.com/nicsuzor/academicOps/issues/1132)) ([c25d60d](https://github.com/nicsuzor/academicOps/commit/c25d60d9e53577a5617dd43043c8e2eb37e4ac4b))
+
+
+### CI/CD
+
+* add step-level timeouts for quick tests and fix typecheck ([30da8ad](https://github.com/nicsuzor/academicOps/commit/30da8ad07b8cc30c531c35a7b3cfc3113234a8ec))
+* add step-level timeouts for quick tests and fix typecheck ([712abde](https://github.com/nicsuzor/academicOps/commit/712abde3a534d80de795083a31f4c778b1ba937c))
+* capture reviewer agent transcripts ([#1108](https://github.com/nicsuzor/academicOps/issues/1108)) ([bacdc58](https://github.com/nicsuzor/academicOps/commit/bacdc58329e1cc79d8ca632259d34d183c052510)), closes [#166](https://github.com/nicsuzor/academicOps/issues/166)
+
+
+### Miscellaneous
+
+* exclude prototype files from type checking ([0a5f1a2](https://github.com/nicsuzor/academicOps/commit/0a5f1a268cb30f2e175f9b388ae58622fe43d32b))
+* **ruleset:** disable Type Check required-check — explicit debt for burn-down (aops-1c3de214) ([0cc1384](https://github.com/nicsuzor/academicOps/commit/0cc138486277ec01aa80f12bb86981b3cc7feccd))
+* **ruleset:** disable Type Check required-check — explicit debt for burn-down (aops-1c3de214) ([8aa0b6b](https://github.com/nicsuzor/academicOps/commit/8aa0b6b58d8bd2b97009862a020d996f5e6a50c7))
+
 ## [0.3.25](https://github.com/nicsuzor/academicOps/compare/v0.3.24...v0.3.25) (2026-05-16)
 
 ### Features
