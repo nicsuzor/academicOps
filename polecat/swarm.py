@@ -135,7 +135,7 @@ def worker_loop(
 
                 def _reader(proc, out_tracker):
                     for line in proc.stdout:
-                        sys.stdout.write(line)
+                        sys.stdout.write(f"[{worker_name}] {line}")
                         sys.stdout.flush()
                         out_tracker[0] = time.time()
 
@@ -151,6 +151,7 @@ def worker_loop(
                         print(f"[{worker_name}] ❌ {msg}")
                         alert(msg)
                         p.kill()
+                        p.wait()
                         break
                     time.sleep(1)
 

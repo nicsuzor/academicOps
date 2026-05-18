@@ -4778,12 +4778,8 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     Spawns N claude and M gemini workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
-    if claude > 0:
-        _bootstrap_or_exit(client="claude")
-    if gemini > 0:
-        _bootstrap_or_exit(client="gemini")
-    if claude == 0 and gemini == 0:
-        _bootstrap_or_exit()
+    client_to_check = "gemini" if gemini > 0 else ("claude" if claude > 0 else None)
+    _bootstrap_or_exit(client=client_to_check)
 
     try:
         from swarm import run_swarm
