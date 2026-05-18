@@ -96,6 +96,7 @@ After confirming a PR has merged (or upon receiving a merge notification), James
 2. **Mark tasks complete.** For each task associated with the merged PR, call `mcp__pkb__complete_task` with:
    - A completion note citing the PR: `"Closed by merge of PR #N: [title]"`
    - `evidence` set to include the PR URL, merge commit SHA, and merge timestamp
+   - Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
 
 3. **Check parent epics.** For each completed task, check its parent epic (if one exists):
    - Retrieve all sibling tasks (same parent)

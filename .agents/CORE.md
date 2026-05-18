@@ -104,5 +104,6 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 ## Agent Rules
 
 - **Always leave a loose thread.** Before completing work that is part of a chain, file the next task in the PKB so the chain isn't dropped. A summary message in chat is not sufficient; it disappears when the user multitasks. Use `create_task` with a clear parent, title, and body.
+- **Drive-by fix policy:** Bundle an unrelated fix into the current PR only when ALL of: (a) it is blocking your PR from merging (e.g. CI failure that's not your fault), (b) the fix is trivial and obvious, and (c) you can describe it in one sentence in the PR description. Otherwise, file a separate task — don't expand the PR scope.
 
 See [[README.md]] for framework usage documentation.

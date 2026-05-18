@@ -141,13 +141,16 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
 
       - name: Upload Claude session artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ~/.claude/projects/
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
           if-no-files-found: ignore
           retention-days: 30
 

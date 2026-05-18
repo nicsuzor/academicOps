@@ -130,6 +130,8 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 > See [[instructions/workflow-monitor]] for the full procedure.
 
+**PR Triage Dashboard**: When the total open-PR count across tracked repos is **≥ 10**, the skill must also render a **PR Triage Dashboard** subsection as a sibling to Outstanding Workflows. See [[instructions/pr-triage-dashboard]] for the cluster dispatch procedure.
+
 ### 4. Today's Log
 
 Narrative of the day's work. The shape and depth depend on **when** `/daily` runs relative to the work day:
@@ -219,6 +221,7 @@ The skill gathers information from multiple sources and composes the note. Indep
    - Empty morning → omit the section.
      See [[instructions/progress-sync]] for session JSON loading shared by both modes.
 6. **Monitor workflows** — surface outstanding PRs in "What Needs Attention". See [[instructions/workflow-monitor]].
+   - If open PRs ≥ 10, also render the PR Triage Dashboard via subagent dispatch. See [[instructions/pr-triage-dashboard]].
 
 7. **Task completion sweep** — close tasks whose completion is evidenced by merged PRs or sent emails (see below).
 8. **Output** terminal briefing and halt.

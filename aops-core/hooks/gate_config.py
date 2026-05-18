@@ -416,7 +416,9 @@ _ROOT_DIR = _Path(__file__).resolve().parent.parent
 if str(_ROOT_DIR) not in _sys.path:
     _sys.path.insert(0, str(_ROOT_DIR))
 
-from lib.polecat_config import load_polecat_config  # noqa: E402
+from lib.polecat_config import (
+    load_polecat_config,  # noqa: E402  # pyright: ignore[reportImplicitRelativeImport]
+)
 
 _GATE_MODE_NAMES = {
     "HANDOVER_GATE_MODE": "handover",
