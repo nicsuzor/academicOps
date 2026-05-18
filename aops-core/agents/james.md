@@ -93,7 +93,7 @@ After confirming a PR has merged (or upon receiving a merge notification), James
 
    Use `task_search` or `search` to find candidates by these identifiers (including PKB notes and evidence fields), then hydrate each match with `get_task` to confirm the linkage. A PR may be linked to one task or several — find all of them.
 
-2. **Mark tasks complete.** For each task associated with the merged PR, call `mcp_pkb_complete_task` with:
+2. **Mark tasks complete.** For each task associated with the merged PR, call `mcp__pkb__complete_task` with:
    - A completion note citing the PR: `"Closed by merge of PR #N: [title]"`
    - `evidence` set to include the PR URL, merge commit SHA, and merge timestamp
    - Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
