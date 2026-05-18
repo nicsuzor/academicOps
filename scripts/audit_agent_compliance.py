@@ -48,6 +48,93 @@ EXCLUSIVE_INTENT = {
     "Edit": "rbg",  # on .agents/rules/* - but we just track the tool for now
 }
 
+# Gemini-form built-in tool names produced by build.py's GEMINI_TOOL_NAME_MAP.
+# These should never appear in frontmatter tools/allowed-tools lists in source.
+GEMINI_BUILTIN_NAMES = {
+    "read_file",
+    "write_file",
+    "replace",
+    "glob",
+    "grep_search",
+    "run_shell_command",
+    "activate_skill",
+    "web_fetch",
+    "google_web_search",
+}
+
+# Matches Gemini-form MCP tool names: mcp_ followed by non-underscore.
+# Canonical form always starts with mcp__ (double underscore).
+# Requires at least two underscore-separated segments after mcp_ to distinguish
+# from prose words like "mcp_servers" in YAML config keys.
+_GEMINI_MCP_PATTERN = re.compile(r"\bmcp_(?!_)([a-zA-Z0-9-]+)(?:_[a-zA-Z0-9-]+)+\b")
+
+
+def is_gemini_tool_name(name: str) -> bool:
+    """Return True if name is a Gemini-transformed tool name that should not appear in source."""
+    if name in GEMINI_BUILTIN_NAMES:
+        return True
+    # mcp__server__tool → mcp_server_tool under Gemini transform (__ → _)
+    if _GEMINI_MCP_PATTERN.fullmatch(name):
+        return True
+    return False
+
+
+def find_gemini_mcp_names_in_text(text: str) -> list[str]:
+    """Find Gemini-form MCP tool names (mcp_server_tool) in body text.
+
+    Only scans for MCP-form names (not built-in aliases like read_file)
+    to avoid false positives in legitimate documentation prose.
+    """
+    return _GEMINI_MCP_PATTERN.findall(text)
+
+
+def check_gemini_names(root: Path | None = None) -> list[tuple[str, str, str]]:
+    """Scan aops-core/**/*.md for Gemini-form tool names that escaped from build output.
+
+    Returns list of (file_path, location, name) triples.
+    Frontmatter tools/allowed-tools lists: checked for both MCP-form and built-in aliases.
+    Body text: checked for MCP-form only (avoids false positives on prose).
+    """
+    if root is None:
+        root = Path(__file__).parent.parent.resolve()
+
+    core_dir = root / "aops-core"
+    violations: list[tuple[str, str, str]] = []
+
+    for md_file in sorted(core_dir.glob("**/*.md")):
+        try:
+            content = md_file.read_text()
+        except OSError:
+            continue
+
+        fm_match = re.search(r"^---\n(.*?)\n---", content, re.DOTALL)
+        if fm_match:
+            try:
+                fm = yaml.safe_load(fm_match.group(1)) or {}
+            except yaml.YAMLError:
+                fm = {}
+
+            for field in ("tools", "allowed-tools"):
+                tools = fm.get(field, [])
+                if not isinstance(tools, list):
+                    continue
+                for t in tools:
+                    if isinstance(t, str) and is_gemini_tool_name(t):
+                        rel = str(md_file.relative_to(root))
+                        violations.append((rel, f"frontmatter {field}", t))
+
+            # Body text: MCP-form scan only
+            parts = content.split("---", 2)
+            body = parts[2] if len(parts) >= 3 else ""
+        else:
+            body = content
+
+        for match in _GEMINI_MCP_PATTERN.finditer(body):
+            rel = str(md_file.relative_to(root))
+            violations.append((rel, "body text", match.group(0)))
+
+    return violations
+
 
 def is_valid_tool_name(name):
     if name in PASCAL_TOOLS:
