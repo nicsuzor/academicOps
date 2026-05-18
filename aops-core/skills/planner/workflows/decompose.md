@@ -51,14 +51,14 @@ version: 2.0.0
 
 12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
-13. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Don't make review mandatory for trivial tasks. Tag with `lens: <name>`.
-    - **Methodology/Analysis**: Methodology critique & Human approval (`assignee="nic"`). Block execution on these.
-    - **Citation-heavy Writing**: Citation verification & Argument review (runs AFTER execution).
-    - **Outbound Comms**: Alignment, Quality, & Voice review (runs AFTER execution).
-    - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution).
-    - **Exploratory**: _Escape Hatch_ — Note applicable lenses in parent body, recommend invoking manually.
+13. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Tag with `lens: <name>` (use `aops-core/skills/planner/references/verification-template.md` as a base).
+    - **Methodology/Analysis**: Agent methodology critique followed by binary Human "accept/redesign" approval (`assignee="nic"`). Block promotion on these.
+    - **Citation-heavy Writing**: Citation verification & Argument review (runs AFTER execution, does not block promotion).
+    - **Outbound Comms**: Alignment, Quality, & Voice review (runs AFTER execution, does not block promotion).
+    - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution, does not block promotion).
+    - **Exploratory**: _Escape Hatch_ — Create minimal verification tasks and do not block promotion to ready for exploratory work.
 
-14. **Await & Record** — If pre-execution lenses apply, halt until addressed. Write a `## Promotion Log` in the parent tracking verdicts.
+14. **Await & Record** — If pre-execution lenses apply, halt until addressed. Write a `## Promotion Log` in the parent tracking verdicts. Once verdicts are resolved, explicitly promote the epic from `inbox` to `ready`.
 
 ## Hierarchy and Depth
 

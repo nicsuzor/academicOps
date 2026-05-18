@@ -899,7 +899,13 @@ def extract_reflection_from_entries(
             if reflection:
                 reflections.append(reflection)
 
-    return reflections
+    # Deduplicate reflections by content (handles continuations duplicating earlier cycles)
+    unique_reflections = []
+    for ref in reflections:
+        if ref not in unique_reflections:
+            unique_reflections.append(ref)
+
+    return unique_reflections
 
 
 def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) -> str:

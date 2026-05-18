@@ -347,13 +347,13 @@ Before doing any work, compare the current `metrics_hash` from `graph_stats` aga
 
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                                | Strategy            | Planner Activity                                       |
-| ---------------------------------------- | ------------------- | ------------------------------------------------------ |
-| `disconnected_epics` > 10                | Connect epics       | Reparent — find project parents for disconnected epics |
+| Condition                                 | Strategy            | Planner Activity                                       |
+| ----------------------------------------- | ------------------- | ------------------------------------------------------ |
+| `disconnected_epics` > 10                 | Connect epics       | Reparent — find project parents for disconnected epics |
 | `targets_without_contributing_edges` > 10 | Wire edges          | Wire edges via `/planner wire-edges` flow              |
-| `flat_tasks` > 100                       | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
-| `orphan_count` > 20                      | Fix orphans         | Reparent — connect or archive disconnected nodes       |
-| All metrics healthy                      | Densify edges       | Densify — use strategies to add dependency edges       |
+| `flat_tasks` > 100                        | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
+| `orphan_count` > 20                       | Fix orphans         | Reparent — connect or archive disconnected nodes       |
+| All metrics healthy                       | Densify edges       | Densify — use strategies to add dependency edges       |
 
 ### Concrete Agent Instructions
 
@@ -488,11 +488,11 @@ Knowledge creation (Phases 2, 4) produces output of uncertain quality. This outp
 
 ### Process & Environment Policy
 
-**Policy Decision on Auto-commits:** We accept that **local sleep cycles commit directly to `main`**. The PKB MCP tool is a long-running process that auto-commits all writes; toggling this per-session is fragile. Because local cycles are manually triggered and supervised, bypassing the PR/QA gate is acceptable. The graduation path (PR → QA → Auto-merge) applies strictly to autonomous (GitHub Actions) runs, where the MCP server is absent and the agent uses standard git branching.
+**Policy Decision on Auto-commits:** We accept that **local sleep cycles commit directly to the active branch (intended to be main)**. The PKB MCP tool is a long-running process that auto-commits all writes; toggling this per-session is fragile. Because local cycles are manually triggered and supervised, bypassing the PR/QA gate is acceptable. The graduation path (PR → QA → Auto-merge) applies strictly to remote GitHub Actions runs, where the MCP server is absent and the agent uses standard git branching.
 
-1. Mechanical work (Phases 0, 1, 3, 5, 6, 7, 8, 9, 10, 11) commits directly to main.
-2. Knowledge work (Phases 2, 4) targets depend on the environment and mode:
-   - **Local Environment**: Due to PKB MCP auto-commits, all writes go directly to `main`. Do not attempt to branch or stash.
+1. Mechanical work (Phases 0, 1, 3, 5, 6, 7, 8, 9, 10, 11) commits directly to the active branch.
+2. Knowledge work (Phases 2, 4) requires review.
+   - **Local Environment**: Due to PKB MCP auto-commits, all writes go directly to the active branch. Do not attempt to branch or stash.
    - **CI Environment (Full-session)**: fresh branch `sleep/consolidation-YYYY-MM-DD-HHMM` per cycle, one PR per cycle.
    - **CI Environment (Short-loop)**: persistent daily branch `sleep/consolidation-YYYY-MM-DD`, one PR per day that accumulates commits from every cycle.
 3. On CI, create the PR against main on first use of the branch; subsequent short-loop cycles push to the existing PR.
