@@ -93,9 +93,10 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
       The `append` tool prepends a UTC timestamp and creates the section if missing. Existing entries are preserved — never rewrite the section.
    4. If the bound task IS the epic, drop the trailing `(task [[...]] ...)` clause.
 
-   Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a `type: project` document. Do not block the session close on a missing breadcrumb target.
-
+   Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a slug in `$AOPS_SESSIONS/polecat.yaml`. Do not block the session close on a missing breadcrumb target.
 3. **Call `release_task` once, with the full session payload.**
+
+   _Pre-check if `AOPS_GATE_PRS_GREEN=1`: before calling `release_task`, confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure. (This gate must run before the terminal call — halting after `release_task` is too late.)_
 
    ```
    mcp__pkb__release_task(
@@ -132,11 +133,46 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    - **Fallback**: if `release_task` is unavailable, `update_task(id=..., status="merge_ready")` keeps the supervisor unblocked, but the dashboard loses this session.
    - **Polecat note**: calling `release_task` with a terminal status is what lets the polecat supervisor detect termination via PKB polling. Skipping this leaves Gemini workers running until external timeout (#521).
 
-4. **Emit the required reflection blocks** (`## Framework Reflection`, `## Output`, `## Tasks worked`).
+4. **Emit the required reflection blocks** (`## Output`, `## Tasks worked`, `## Framework Reflection`).
 
    Full-form sessions MUST include all three blocks before the handover block. `transcript.py` extracts each into structured metadata (`framework_reflections`, `outputs`, `tasks_worked`, `references`, `quality_warnings`); missing or empty blocks emit warnings into `quality_warnings` rather than being silently dropped. See [[transcript-metadata-schema]] for the wire format.
 
-   **a. `## Framework Reflection` — required, must be useful**
+   **Environment-Gated Behaviors:**
+   Check the following environment variables and apply their rules to your closing output if set to `1` (or if marked default-on):
+   - `AOPS_GATE_HEDGE_CLAIMS` (default-on, treat as always set): **Hedge your claims.** Your closing output names its load-bearing claims, the evidence behind each, your confidence, and — for anything you're less than highly confident in — the next most plausible alternative. Confidence floor is "I checked"; "should work" or "probably" are halts to convert into observations or hedges.
+   - `AOPS_GATE_STATE_QA`: Closing output states: what was the user's question? What did you deliver?
+
+   **a. `## Output` — required, explicit artefact link**
+
+   Final summary MUST contain a `## Output` block with an explicit URL to the artefact produced — PR, commit, issue, deployed doc, etc. This is the forcing function: requiring a real link implicitly requires the agent to actually file the PR / push the commit / open the issue. **No link → /end-session does not pass.**
+
+   Example:
+
+   ```markdown
+   ## Output
+
+   - PR https://github.com/nicsuzor/academicOps/pull/847 (transcript.py: extract reflection metadata)
+   ```
+
+   If genuinely no artefact exists (pure planning session, blocked on input, etc.), state it explicitly: `Output: none — <reason>`. The extractor distinguishes "no output declared" (warning) from "explicit none" (acknowledged).
+
+   **b. `## Tasks worked` — required, source-of-truth list**
+
+   Enumerate every task created, updated, completed, or cancelled during the session. This is the authoritative list — `transcript.py` cannot reliably derive it from git or PKB without ambiguity, so it must be written explicitly.
+
+   Format:
+
+   ```markdown
+   ## Tasks worked
+
+   - task-5a54f813 (/end-session + transcript.py: require useful framework reflection) — updated, added quality bar
+   - task-d4932f32 (audit find_existing_* early-returns) — created
+   - task-acd9af54 (aops session inspect tool) — cancelled per user
+   ```
+
+   Each entry: `- <id> (<precis>) — <action>`. Action verbs the extractor recognises: `created`, `updated`, `completed`, `cancelled`, `referenced`. Bare ids without a precis fail the quality bar.
+
+   **c. `## Framework Reflection` — required, must be useful**
 
    Must address, in concrete terms:
 
@@ -158,36 +194,6 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    **Useful (require)** — accurate links to the issues/tasks filed during the session via `/learn`. Bug reports for things that look like real bugs must be filed immediately when encountered, not summarized here. Token-cost breakdown of friction should be placed in the issue/task itself.
 
    **Not useful (reject)** — new tool/feature suggestions ("an `aops session inspect <id>` command that pulls just the summary…" — reject; this exact reflection was filed and cancelled). Feature development tasks of any kind. Grand refactors ("split transcript_parser.py is 3,640 lines"). Generic procedure-griping.
-
-   **b. `## Output` — required, explicit artefact link**
-
-   Final summary MUST contain a `## Output` block with an explicit URL to the artefact produced — PR, commit, issue, deployed doc, etc. This is the forcing function: requiring a real link implicitly requires the agent to actually file the PR / push the commit / open the issue. **No link → /end-session does not pass.**
-
-   Example:
-
-   ```markdown
-   ## Output
-
-   - PR https://github.com/nicsuzor/academicOps/pull/847 (transcript.py: extract reflection metadata)
-   ```
-
-   If genuinely no artefact exists (pure planning session, blocked on input, etc.), state it explicitly: `Output: none — <reason>`. The extractor distinguishes "no output declared" (warning) from "explicit none" (acknowledged).
-
-   **c. `## Tasks worked` — required, source-of-truth list**
-
-   Enumerate every task created, updated, completed, or cancelled during the session. This is the authoritative list — `transcript.py` cannot reliably derive it from git or PKB without ambiguity, so it must be written explicitly.
-
-   Format:
-
-   ```markdown
-   ## Tasks worked
-
-   - task-5a54f813 (/end-session + transcript.py: require useful framework reflection) — updated, added quality bar
-   - task-d4932f32 (audit find_existing_* early-returns) — created
-   - task-acd9af54 (aops session inspect tool) — cancelled per user
-   ```
-
-   Each entry: `- <id> (<precis>) — <action>`. Action verbs the extractor recognises: `created`, `updated`, `completed`, `cancelled`, `referenced`. Bare ids without a precis fail the quality bar.
 
 5. **Emit the handover block**. Exactly this shape, 5–10 lines:
 

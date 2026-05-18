@@ -159,10 +159,18 @@ For every **Finding** that requires action, file or update a GitHub issue. Group
 gh issue list --repo nicsuzor/academicOps --search "<failure keywords>"
 ```
 
-If an existing issue matches, comment to bump its volume:
+If an existing issue matches:
+
+- **New occurrence** (same problem, new incident): post a **delta comment** — new date, new incident facts, new impact angle only. Never restate the title, background, or anything already in the body or prior comments. One short paragraph maximum.
+- **Structural correction** (wrong framing, wrong title, analysis needs updating): use `gh issue edit` — do not comment.
 
 ```bash
-gh issue comment <N> --repo nicsuzor/academicOps --body "<anonymised context>"
+# Delta comment — new incident facts only, no background recap:
+gh issue comment <N> --repo nicsuzor/academicOps \
+  --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
+
+# Structural correction — edit title, body, or both:
+gh issue edit <N> --repo nicsuzor/academicOps --title "<new-title>" --body-file /tmp/issue-<slug>.md
 ```
 
 If no existing issue, perform root cause analysis and file:
@@ -175,7 +183,7 @@ gh issue create --repo nicsuzor/academicOps \
   --label "bug" --label "criticality:<level>"
 ```
 
-**Issue body must include — and must stop at — these forensic fields. Factual structural articulation is allowed, but no remediation proposals (A17 Recusal):**
+**New issue body: forensic fields only, no narrative preamble. Lead with the failure; stop at impact.** Factual structural articulation is allowed; no remediation proposals (A17 Recusal):
 
 ```yaml
 ## Incident report (forensic)
@@ -223,18 +231,21 @@ Append (do not replace) if `reviewed_by` already exists.
 
 ### Retro anti-patterns
 
-| Anti-pattern                                                                               | What to do instead                                                                              |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| Skimming                                                                                   | Read every line                                                                                 |
-| "Overall good with minor issues"                                                           | Quote specifically                                                                              |
-| Filing four separate issues for symptoms of the same structural flaw                       | Identify the structural flaw and file one issue mapping the symptoms back to it                 |
-| Inventing praise                                                                           | Only genuine strengths                                                                          |
-| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                      |
-| Filing > 3 issues per session                                                              | Triage first; group structural causes; cap at 3 issues                                          |
-| New issue for known pattern                                                                | Comment on existing issue                                                                       |
-| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + structural-context + impact. The sweep agent legislates from a detached context |
-| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep |
-| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript        |
+| Anti-pattern                                                                               | What to do instead                                                                                 |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Skimming                                                                                   | Read every line                                                                                    |
+| "Overall good with minor issues"                                                           | Quote specifically                                                                                 |
+| Filing four separate issues for symptoms of the same structural flaw                       | Identify the structural flaw and file one issue mapping the symptoms back to it                    |
+| Inventing praise                                                                           | Only genuine strengths                                                                             |
+| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                         |
+| Filing > 3 issues per session                                                              | Triage first; group structural causes; cap at 3 issues                                             |
+| New issue for known pattern                                                                | Comment on existing issue                                                                          |
+| Restating background or title in a bump comment                                            | Post only the new delta: date, new incident facts, new impact angle. Reader already read the issue |
+| Verbose bump comment with narrative setup or recap                                         | One short paragraph max — lead with what happened this time; stop there                            |
+| Verbose new issue body with narrative preamble or framing                                  | Lead with the failure facts; no throat-clearing; no framing preamble                               |
+| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + structural-context + impact. The sweep agent legislates from a detached context    |
+| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep    |
+| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript           |
 
 ---
 
@@ -447,8 +458,8 @@ Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gat
 
 Order: comment-only → close-stale → defer → single-task → fix-epic.
 
-- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction.
-- **fix-epic**: create epic + subtasks + `verify-parent` task. Leave `queued`. Do NOT invoke `/supervisor`.
+- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
+- **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
 - Stamp `triaged-*` label after each confirmed action.
 
 ### 5. Append cycle log to loop epic
@@ -478,6 +489,7 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 
 | Anti-pattern                                                         | What to do instead                                                                                                                                                  |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authoring "surface for sign-off" or "review before promoting" prose  | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                               |
 | Skipping user-confirmation gate                                      | Always present and wait                                                                                                                                             |
 | Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                                                                                                              |
 | Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                                                                                                     |

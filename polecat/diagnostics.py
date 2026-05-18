@@ -178,8 +178,25 @@ def analyze(ctx, task_id, transcript_lines):
                             print(
                                 f"   [{entry.get('type', '?')}] {entry.get('message', entry.get('content', str(entry)[:80]))}"
                             )
+                        elif isinstance(entry, dict) and "phase" in entry:
+                            safe_entry = {
+                                k: v
+                                for k, v in entry.items()
+                                if k not in ("timestamp", "task_id", "phase", "session_type")
+                            }
+                            print(f"   [phase={entry['phase']}] {safe_entry}")
+                        elif isinstance(entry, dict) and "exit_code" in entry:
+                            print(
+                                f"   [worker_exit] exit_code={entry['exit_code']} success={entry.get('success')} agent={entry.get('agent', '?')}"
+                            )
                         else:
-                            print(f"   {str(entry)[:100]}")
+                            if isinstance(entry, dict):
+                                safe_entry = {
+                                    k: v for k, v in entry.items() if k not in ("stdout", "stderr")
+                                }
+                                print(f"   {str(safe_entry)[:200]}")
+                            else:
+                                print(f"   {str(entry)[:100]}")
                     except json.JSONDecodeError:
                         print(f"   {line.strip()[:100]}")
         except Exception as e:
