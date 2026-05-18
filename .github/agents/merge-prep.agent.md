@@ -177,8 +177,9 @@ Include a table:
 
 ```bash
 # Hard gate — do not approve if any of these are false
-gh pr view {pr} --repo {repo} --json mergeable,mergeStateStatus,statusCheckRollup
-# Require: mergeable == "MERGEABLE", no CI checks in FAILURE, no CHANGES_REQUESTED standing
+gh pr view {pr} --repo {repo} --json mergeable,mergeStateStatus
+gh pr checks {pr} --repo {repo} --required
+# Require: mergeable == "MERGEABLE", no required CI checks in FAILURE, no CHANGES_REQUESTED standing
 ```
 
 If the gate fails, jump to §"If blocked and cannot proceed" — do not approve.
