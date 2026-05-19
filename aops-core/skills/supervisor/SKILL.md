@@ -146,17 +146,17 @@ The supervisor main agent executes dispatch directly using this canonical shape.
 
 ```bash
 # Local dispatch (canonical)
-zsh -i -c "polecat run -t <task-id> -p <project> [--model <name>]"
+zsh -i -c "polecat run -t <task-id> -p <project> [--gemini] [--model <name>]"
 
 # Remote dispatch (SSH + tmux) - use when TARGET_HOST is required
-ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--model <name>]\"'"
+ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--gemini] [--model <name>]\"'"
 ```
 
 **Model selection flag semantics:**
 
 - `--model <name>` is the canonical flag for model selection. Examples: `--model claude-opus-4-7` for Opus, `--model claude-haiku-4-5` for Haiku.
 - `--gemini` selects the Gemini CLI as the worker backend (not a model name). To specify a particular Gemini model, pair it with `--model`: `--gemini --model gemini-2.5-pro`.
-- `--opus` is not a valid flag. It does not exist in the polecat CLI and silently falls back to the default model (Sonnet) rather than erroring. Use `--model claude-opus-4-7` instead.
+- `--opus` is not a valid flag. It does not exist in the polecat CLI and will cause an error if used. Use `--model claude-opus-4-7` instead.
 
 The supervisor pastes a `## Dispatch Brief` into the task body (via `pkb update_task`) before running the command. If the dispatch fails synchronously, or the worker fails asynchronously, the error routes to pauli in the `react` phase.
 
