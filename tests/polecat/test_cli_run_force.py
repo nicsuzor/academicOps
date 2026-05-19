@@ -51,7 +51,8 @@ def _invoke_run(args, mock_manager, task):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            return runner.invoke(main, args)
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                return runner.invoke(main, args)
 
 
 # ----------------------------------------------------------------------
@@ -67,7 +68,8 @@ def test_run_without_force_blocks_done_task(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-t", "task-done"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-t", "task-done"])
 
     assert result.exit_code == 0
     assert "already 'done'" in result.output
@@ -82,7 +84,8 @@ def test_run_without_force_blocks_locked_task(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-t", "task-locked"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-t", "task-locked"])
 
     assert result.exit_code == 2
     assert "locked" in result.output
@@ -101,7 +104,8 @@ def test_run_without_force_blocks_pr_locked_task(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-t", "task-pr"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-t", "task-pr"])
 
     assert result.exit_code == 2
     assert "locked" in result.output

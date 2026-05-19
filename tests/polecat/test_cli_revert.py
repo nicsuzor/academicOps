@@ -57,7 +57,8 @@ def test_run_revert_restores_prior_queued_status(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-p", "aops"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-p", "aops"])
 
     assert result.exit_code == 1
     assert "Error setting up worktree: Setup failed" in result.output
@@ -80,7 +81,8 @@ def test_run_revert_restores_prior_ready_status(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-p", "aops"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-p", "aops"])
 
     assert result.exit_code == 1
     assert "Reverting task task-2 to ready..." in result.output
@@ -104,7 +106,8 @@ def test_run_revert_falls_back_to_queued_when_prior_missing(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-p", "aops"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-p", "aops"])
 
     assert result.exit_code == 1
     assert "Reverting task task-3 to queued..." in result.output
@@ -141,7 +144,8 @@ def test_run_revert_never_passes_invalid_status_to_pkb(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["run", "-p", "aops"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["run", "-p", "aops"])
 
     assert result.exit_code == 1
     # The rollback must NOT have raised "Invalid status".
@@ -161,7 +165,8 @@ def test_start_revert_restores_prior_queued_status(mock_manager):
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            result = runner.invoke(main, ["start", "-p", "aops"])
+            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
+                result = runner.invoke(main, ["start", "-p", "aops"])
 
     assert result.exit_code == 1
     assert "Error setting up worktree: Setup failed" in result.output

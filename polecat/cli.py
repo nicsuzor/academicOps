@@ -3459,7 +3459,6 @@ def crew(
 
     cli_tool = "gemini" if gemini else "claude"
     _bootstrap_or_exit(client=cli_tool)
-    _require_claude_oauth_or_exit(cli_tool)
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
