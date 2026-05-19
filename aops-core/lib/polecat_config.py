@@ -251,9 +251,9 @@ def _builtin_config() -> PolecatConfig:
     """Return a minimal PolecatConfig using built-in defaults (no YAML needed)."""
     return PolecatConfig(
         session_defaults=BUILTIN_SESSION_DEFAULTS,
-        crew_defaults={},
+        crew_defaults={"hooks_enabled": False},
         run_defaults={},
-        docker=DockerConfig(image=""),
+        docker=DockerConfig(image="ghcr.io/nicsuzor/aops-crew"),
         external_agents={},
         source_path=Path("<builtin>"),
     )
