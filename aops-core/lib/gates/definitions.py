@@ -35,14 +35,15 @@ GATE_CONFIGS = [
         ),
         triggers=[
             # Enforcer check -> Reset
-            # PreToolUse is included so the trigger fires (resetting the counter)
-            # BEFORE the policy evaluates. Without it, Agent(enforcer) is itself
-            # blocked when ops >= threshold (deadlock: can't dispatch the agent
-            # that would reset the counter).
+            # We now only reset the counter when the subagent finishes AND
+            # returns a structured verdict (via the is_compliance_verified custom check).
+            # Compliance tool calls are bypasses via get_tool_category returning
+            # 'infrastructure', so dispatch is not blocked even if ops >= threshold.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
+                    hook_event="^(SubagentStop|PostToolUse)$",
                     subagent_type_pattern="^(aops[-_]core[:_])?(enforcer|rbg)$",
+                    custom_check="is_compliance_verified",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,

@@ -430,23 +430,46 @@ class TestPostToolUseCounter:
         )
 
     def test_enforcer_counter_resets_after_compliance_check(self, router):
-        """Counter should reset to 0 when enforcer SubagentStop fires."""
+        """Counter should reset to 0 when enforcer SubagentStop fires with a structured verdict."""
         state = SessionState.create("test-counter-reset")
         state.gates["enforcer"].status = GateStatus.OPEN
         state.gates["enforcer"].ops_since_open = 42
 
-        # Simulate enforcer SubagentStop
+        # Simulate enforcer SubagentStop with a valid verdict
         ctx = HookContext(
             session_id="test-counter-reset",
             hook_event="SubagentStop",
             tool_name=None,
             tool_input={},
+            tool_output={"verdict": "pass", "evidence": "All good"},
             subagent_type="aops-core:enforcer",
         )
         router._dispatch_gates(ctx, state)
 
         assert state.gates["enforcer"].ops_since_open == 0, (
             f"ops_since_open should reset to 0 after enforcer check, "
+            f"got {state.gates['enforcer'].ops_since_open}"
+        )
+
+    def test_enforcer_counter_does_not_reset_on_clarification(self, router):
+        """Counter should NOT reset when enforcer SubagentStop fires without a valid verdict."""
+        state = SessionState.create("test-counter-no-reset")
+        state.gates["enforcer"].status = GateStatus.OPEN
+        state.gates["enforcer"].ops_since_open = 42
+
+        # Simulate enforcer SubagentStop asking for clarification (no structured verdict)
+        ctx = HookContext(
+            session_id="test-counter-no-reset",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            tool_output={"response": "Could you please clarify what I should check?"},
+            subagent_type="aops-core:enforcer",
+        )
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["enforcer"].ops_since_open == 42, (
+            f"ops_since_open should NOT reset to 0 without a structured verdict, "
             f"got {state.gates['enforcer'].ops_since_open}"
         )
 

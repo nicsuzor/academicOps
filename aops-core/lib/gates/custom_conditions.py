@@ -36,4 +36,19 @@ def check_custom_condition(
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
 
+    if name == "is_compliance_verified":
+        output = ctx.tool_output
+        if not output:
+            return False
+
+        import re
+
+        output_str = str(output)
+
+        # Check if the output contains a structured verdict (e.g. {"verdict": "pass"})
+        if re.search(r'["\']verdict["\']\s*:\s*["\'][^"\']+["\']', output_str, re.IGNORECASE):
+            return True
+
+        return False
+
     return False
