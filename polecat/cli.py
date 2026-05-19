@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import functools
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -1394,6 +1395,8 @@ def _build_docker_cmd(
             session_dir.mkdir(parents=True, exist_ok=True)
             if not _is_remote_daemon():
                 cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
+                if cli_tool == "gemini":
+                    (session_dir / "chats").mkdir(exist_ok=True)
 
     # Stage polecat.yaml into the container so hooks resolve gate modes,
     # provider lists, and any other config without re-reading host paths.
@@ -2115,7 +2118,9 @@ def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
     dest = session_dir / "chats"
     dest.mkdir(parents=True, exist_ok=True)
 
-    for session_file in gemini_tmp.rglob("session-*.json"):
+    for session_file in itertools.chain(
+        gemini_tmp.rglob("session-*.json"), gemini_tmp.rglob("session-*.jsonl")
+    ):
         target = dest / session_file.name
         if target.exists():
             # Avoid collision: prefix with parent hash dir name
@@ -3869,12 +3874,14 @@ def crew(
         if docker_cmd and docker_cmd.staging_dir:
             # Extract session transcripts after the container stops.
             # Claude writes to /home/worker/.claude/projects/-workspace/
-            # Gemini writes to /home/worker/.gemini/tmp/workspace/
+            # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
             extract = []
             if gemini:
-                extract.append(("/home/worker/.gemini/tmp/workspace", session_dir))
+                if _is_remote_daemon():
+                    extract.append(("/home/worker/.gemini/tmp/workspace", session_dir))
             else:
                 extract.append(("/home/worker/.claude/projects/-workspace", session_dir))
+
             result = _run_docker_container(
                 docker_cmd,
                 cwd=work_dir,
@@ -4561,9 +4568,12 @@ def run(
 
     # Compute extract_paths for session transcript persistence.
     # Claude writes to /home/worker/.claude/projects/-workspace/
-    # Gemini writes to /home/worker/.gemini/tmp/workspace/
+    # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
     if gemini:
-        _extract = [("/home/worker/.gemini/tmp/workspace", run_session_dir)]
+        if _is_remote_daemon():
+            _extract = [("/home/worker/.gemini/tmp/workspace", run_session_dir)]
+        else:
+            _extract = []
     else:
         _extract = [("/home/worker/.claude/projects/-workspace", run_session_dir)]
 

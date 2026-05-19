@@ -788,12 +788,7 @@ def _generate_transcript_filename(
                 break
 
     # 2. Detect provider from path
-    provider = None
-    path_str = str(session_path)
-    if ".gemini/" in path_str:
-        provider = "gemini"
-    elif ".claude/" in path_str:
-        provider = "claude"
+    provider = session_naming.infer_provider_from_path(session_path)
 
     # 3. Get timestamp
     timestamp = None
@@ -1236,10 +1231,7 @@ Examples:
                                 session_summary.crew = session_path.parts[idx + 1]
                                 break
                 if not session_summary.provider:
-                    if ".gemini/" in str(session_path):
-                        session_summary.provider = "gemini"
-                    elif ".claude/" in str(session_path):
-                        session_summary.provider = "claude"
+                    session_summary.provider = session_naming.infer_provider_from_path(session_path)
 
                 # Resolve launch surface/client. Path-based detection handles
                 # GHA / crew / polecat / Gemini; entry-content scan upgrades a
@@ -1429,10 +1421,7 @@ Examples:
                         session_summary.crew = session_path.parts[idx + 1]
                         break
         if not session_summary.provider:
-            if ".gemini/" in str(session_path):
-                session_summary.provider = "gemini"
-            elif ".claude/" in str(session_path):
-                session_summary.provider = "claude"
+            session_summary.provider = session_naming.infer_provider_from_path(session_path)
 
         # Resolve launch surface/client. Path-based detection handles
         # GHA / crew / polecat / Gemini; entry-content scan upgrades a
