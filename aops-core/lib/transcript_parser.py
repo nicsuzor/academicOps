@@ -2106,7 +2106,10 @@ class SessionProcessor:
         summary.machine = summary.machine or os.environ.get("AOPS_MACHINE")
         summary.hostname = summary.hostname or session_naming.get_hostname()
         summary.provider = summary.provider or (
-            "gemini" if ".gemini/" in str(file_path) else "claude"
+            "gemini"
+            if ".gemini/" in str(file_path)
+            or ("chats/session-" in str(file_path) and str(file_path).endswith((".json", ".jsonl")))
+            else "claude"
         )
         summary.crew = summary.crew or os.environ.get("POLECAT_CREW_NAME")
         if not summary.repo:
