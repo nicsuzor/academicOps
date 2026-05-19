@@ -170,6 +170,12 @@ RUN cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 # These defaults are overridden at runtime if the host stages replacements.
 COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 COPY --chown=worker:worker polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+# Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
+# via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
+# env-only auth model (polecat/cli.py:_require_claude_oauth_or_exit) stages no
+# files, so without this seed claude regenerates a minimal .claude.json that
+# triggers onboarding even when the token is set.
+COPY --chown=worker:worker polecat/defaults/claude-config.json /home/worker/.claude.json
 
 # Copy entrypoint script
 COPY --chown=worker:worker polecat/entrypoint.sh /home/worker/entrypoint.sh
@@ -177,12 +183,11 @@ RUN chmod +x /home/worker/entrypoint.sh
 
 # Make home dir and .claude writable for any UID — polecat crew runs containers
 # as the host UID (non-root), which may differ from worker UID 1000.
-# Remove .claude.json so the entrypoint can populate it from staging with correct ownership.
 RUN chmod 777 /home/worker \
     && (chmod -R 777 /home/worker/.claude/ 2>/dev/null || true) \
     && (chmod -R 777 /home/worker/.gemini/ 2>/dev/null || true) \
     && (chmod -R 777 /home/worker/.cache/ 2>/dev/null || true) \
-    && rm -f /home/worker/.claude.json
+    && chmod 666 /home/worker/.claude.json
 
 # Default command and entrypoint
 ENTRYPOINT ["/home/worker/entrypoint.sh"]
