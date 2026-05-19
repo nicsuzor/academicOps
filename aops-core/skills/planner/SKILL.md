@@ -105,11 +105,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
-<<<<<<< HEAD
 6. Create task with body template (Problem, Solution, Files, AC). Apply the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]): **state intent + AC, not prescription**, and do not invent mid-stream approval gates. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
-=======
-6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
->>>>>>> da7d5b29 (planner: remove pre-paid diagnostic promotion gates)
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:
@@ -198,7 +194,8 @@ Break validated epics into structured task trees.
 8. Estimate effort — duration (0.5d, 1d, 1w); tasks over 0.5d need further decomposition.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
-11. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
+11. **RBG pre-flight check**: invoke RBG inline to review the proposed decomposition for axiom violations (A1–A8) before creating tasks.
+12. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
 
 ### Promotion gate: inbox → ready
 
