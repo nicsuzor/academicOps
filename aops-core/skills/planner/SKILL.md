@@ -105,11 +105,8 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
-<<<<<<< HEAD
 6. Create task with body template (Problem, Solution, Files, AC). Apply the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]): **state intent + AC, not prescription**, and do not invent mid-stream approval gates. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
-=======
-6. Create task with body template (Problem, Solution, Files, AC). Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
->>>>>>> da7d5b29 (planner: remove pre-paid diagnostic promotion gates)
+
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
 
    **Link types**:
@@ -572,6 +569,42 @@ Priority reflects _user intent_, not agent estimation. The planner has no privil
 - When in doubt, **P3**. The user can elevate later in the dashboard or via explicit instruction.
 
 **Example**: User says "add a task to look into X" → P3. User says "this is urgent, X needs fixing" → P1.
+
+## Severity Assignment Rules
+
+**Severity is a property of `type: target` nodes — not tasks. Default new tasks to `severity: 0` (or omit the field entirely).**
+
+The severity ladder (SEV0–SEV4, see [[../remember/references/TAXONOMY.md#severity-ladder-sev0sev4]] and [[multi-parent]] §1.2) describes the consequence of _missing a target_ — a non-negotiable obligation the rest of the graph protects. It is not a generic importance signal for individual tasks.
+
+`compute_focus_scores` adds a flat severity bonus to every node that carries the field — `+5 000 / +10 000 / +20 000 / +100 000` for SEV1–4 respectively. That bonus is calibrated for terminal obligations. Apply it to an ordinary backlog task and that task instantly outranks active P1 epics, deferred work outranks in-flight work, and the focus queue inverts. The edge-weight + slack-discount machinery in `contributes_to` propagation is the correct path for task urgency — direct severity on a task short-circuits it.
+
+| Severity | When to assign                                                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **0**    | **Default for tasks.** Use this whenever you are not authoring a target node — or omit the field entirely (parser treats absent as 0).  |
+| 1–3      | Target nodes only. The level describes the _consequence of missing the target_, not the importance of any individual contributing task. |
+| 4        | Target nodes only. Terminal, lexicographic. Subject to the SEV4 concurrency cap (≤ 2 active) surfaced by `/maintain` and `/daily`.      |
+
+**Rules**:
+
+- **Tasks** (`type: task`, `subtask`, or default) → omit `severity` or set `severity: 0`. They inherit urgency from targets via `contributes_to` edges, not by carrying severity directly.
+- **Targets** (`type: target`) → assign 0–4 per the ladder, with mandatory `consequence:` prose and `goal_type:` (`committed` / `aspirational` / `learning`).
+- **Prototypes** (`type: prototype`) → severity lives on `edge_template`, copied to instance edges at creation.
+- Never use severity as a generic "this feels important" signal on a task. If the task feels SEV3-worthy, the right move is to file (or link to) a target node and add a `contributes_to` edge — the propagated urgency will rank the task correctly without flattening the edge-weight model.
+- Skills that file follow-up tasks (supervisor, survey, /q, /learn) MUST pass `severity=0` (or omit) when calling `mcp__pkb__create_task` for a task-type node.
+
+**Example failure mode** ([[aops-53c483ed]]): an SSH-hardening backlog task filed with `severity: 3` lands a focus_score of 20 001 — higher than the active P1 coordinator epic (focus_score 5 089) that the body itself says must ship first. The severity bonus inverted the queue against the user's stated deferral.
+
+## Deferring Work
+
+When a task is not actionable yet — waits on another piece of work, an external event, or a parking decision — express that machine-readably. Do **not** leave "Defer until X" only in prose with `status: inbox`: that combination keeps the task in ready/queued surfaces, lets it accrue severity / age / urgency bonuses, and silently rots.
+
+| Situation                                                                              | Mechanism                                                                                                                  |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Waits on another task / PR / epic in the graph                                         | Add `depends_on: [<that-id>]`. The task auto-graduates to `ready` when the dependency closes. Prefer this when possible.   |
+| Waits on a signal the graph can't model (calendar date, third party, external service) | `status: blocked` with a body note describing the unblock condition.                                                       |
+| Parked indefinitely; may or may not ever be worked                                     | `status: someday`. `someday` is intentionally invisible to focus_picks and ready queues — use it only for genuine parking. |
+
+A "Defer until X ships" sentence in the task body, with `status: inbox` and no edge to X, is a graph-hygiene anti-pattern. Supervisor and planner skills filing follow-up tasks MUST convert prose-deferrals to one of the three mechanisms above at the moment of filing — not as a later cleanup pass.
 
 ## Handover
 
