@@ -16,11 +16,6 @@ specifies the operational mechanics — how invocation happens at runtime, how c
 is passed, how authority flows through nested delegation, and what orchestrators
 (james, supervisor, planner) may spawn.
 
-> **Note on location.** The parent task (`task-b3f602c9`) referenced the path
-> `aops-core/specs/skill-delegation.md`. The authoritative specs directory is
-> `specs/` (top of the monorepo); there is no `aops-core/specs/`. This spec is
-> filed at `specs/skill-delegation.md` and indexed from `specs/INDEX.md`.
-
 ## Giving Effect
 
 - [[specs/agent-authority.md]] — Authority envelope. This spec refines the invocation side.
