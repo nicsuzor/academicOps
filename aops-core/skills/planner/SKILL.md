@@ -590,7 +590,7 @@ The severity ladder (SEV0–SEV4, see [[../remember/references/TAXONOMY.md#sever
 - **Targets** (`type: target`) → assign 0–4 per the ladder, with mandatory `consequence:` prose and `goal_type:` (`committed` / `aspirational` / `learning`).
 - **Prototypes** (`type: prototype`) → severity lives on `edge_template`, copied to instance edges at creation.
 - Never use severity as a generic "this feels important" signal on a task. If the task feels SEV3-worthy, the right move is to file (or link to) a target node and add a `contributes_to` edge — the propagated urgency will rank the task correctly without flattening the edge-weight model.
-- Skills that file follow-up tasks (supervisor, survey, /q, /learn) MUST pass `severity=0` (or omit) when calling `mcp__pkb__create_task` for a task-type node.
+- Planner modes (capture, decompose) and external skills (supervisor, survey, /q, /learn) MUST pass `severity=0` (or omit) when calling `mcp__pkb__create_task` or `mcp__pkb__decompose_task` for task-type nodes.
 
 **Example failure mode** ([[aops-53c483ed]]): an SSH-hardening backlog task filed with `severity: 3` lands a focus_score of 20 001 — higher than the active P1 coordinator epic (focus_score 5 089) that the body itself says must ship first. The severity bonus inverted the queue against the user's stated deferral.
 
@@ -604,7 +604,7 @@ When a task is not actionable yet — waits on another piece of work, an externa
 | Waits on a signal the graph can't model (calendar date, third party, external service) | `status: blocked` with a body note describing the unblock condition.                                                       |
 | Parked indefinitely; may or may not ever be worked                                     | `status: someday`. `someday` is intentionally invisible to focus_picks and ready queues — use it only for genuine parking. |
 
-A "Defer until X ships" sentence in the task body, with `status: inbox` and no edge to X, is a graph-hygiene anti-pattern. Supervisor and planner skills filing follow-up tasks MUST convert prose-deferrals to one of the three mechanisms above at the moment of filing — not as a later cleanup pass.
+A "Defer until X ships" sentence in the task body, with `status: inbox` and no edge to X, is a graph-hygiene anti-pattern. Supervisor and planner skills (including capture and decompose workflows) filing follow-up tasks MUST convert prose-deferrals to one of the three mechanisms above at the moment of filing — not as a later cleanup pass.
 
 ## Handover
 
