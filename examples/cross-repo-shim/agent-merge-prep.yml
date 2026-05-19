@@ -28,6 +28,18 @@ on:
 
 jobs:
   merge-prep:
+    # Must match (or exceed) the permissions block in the called workflow's
+    # `fix` job. Without an explicit grant here, default-restrictive repo
+    # settings drop GITHUB_TOKEN to `*: none` and GitHub refuses to start
+    # the run at registration. See merge-prep-cron.yml shim for the same
+    # constraint on the dispatcher side.
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
     # Replace 'main' with '@pipeline-v1' for stability
     uses: nicsuzor/academicOps/.github/workflows/agent-merge-prep.yml@pipeline-v1
     with:

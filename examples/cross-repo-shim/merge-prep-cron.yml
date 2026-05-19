@@ -18,6 +18,20 @@ on:
 
 jobs:
   dispatch:
+    # Required: a calling job cannot grant the reusable workflow MORE
+    # permissions than itself. With default-restrictive repo settings the
+    # GITHUB_TOKEN comes through as `actions: none, pull-requests: none,
+    # statuses: none` and GitHub refuses to start the run with:
+    #   "The nested job 'dispatch' is requesting 'actions: write,
+    #    pull-requests: read, statuses: read', but is only allowed
+    #    'actions: none, pull-requests: none, statuses: none'."
+    # These must match (or exceed) the permissions block in the called
+    # workflow's `dispatch` job.
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+      actions: write
     # Replace 'main' with '@pipeline-v1' for stability
     uses: nicsuzor/academicOps/.github/workflows/merge-prep-cron.yml@pipeline-v1
     with:
