@@ -292,6 +292,18 @@ def get_session_metadata(
     }
 
 
+def infer_provider_from_path(path: Path | str) -> str | None:
+    """Return 'gemini', 'claude', or None inferred from a session file path."""
+    s = str(path)
+    if ".gemini/" in s:
+        return "gemini"
+    if "chats/session-" in s and (s.endswith(".json") or s.endswith(".jsonl")):
+        return "gemini"
+    if ".claude/" in s:
+        return "claude"
+    return None
+
+
 def infer_session_origin_from_path(
     session_path: Path | str,
     *,

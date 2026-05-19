@@ -1436,9 +1436,7 @@ def _build_docker_cmd(
             if not _is_remote_daemon():
                 cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
                 if cli_tool == "gemini":
-                    chats_dir = session_dir / "chats"
-                    chats_dir.mkdir(exist_ok=True)
-                    cmd.extend(["-v", f"{chats_dir}:{session_container_path}/chats"])
+                    (session_dir / "chats").mkdir(exist_ok=True)
 
     # Stage polecat.yaml into the container so hooks resolve gate modes,
     # provider lists, and any other config without re-reading host paths.
