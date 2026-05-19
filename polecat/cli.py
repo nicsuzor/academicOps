@@ -1257,58 +1257,18 @@ def _build_docker_cmd(
         assert (
             staging_dir is not None
         )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
-        claude_dir = home / ".claude"
-        # Stage a fixed .claude.json template rather than reading & merging the
-        # host's. Three flags are needed for fully headless operation inside
-        # Docker:
-        #   bypassPermissionsModeAccepted — skips the --dangerously-skip-permissions prompt.
-        #   hasTrustDialogAccepted — suppresses "Skipping project agents due to untrusted
-        #     folder" so CLAUDE.md and framework hooks are loaded from /workspace.
-        #   hasCompletedProjectOnboarding — suppresses the first-run onboarding wizard
-        #     that would otherwise block a headless session on new projects.
-        # Template lives in polecat/defaults/claude-headless.json — that is the
-        # single source of truth for the staged file's contents.
-        headless_template = SCRIPT_DIR / "defaults" / "claude-headless.json"
-        if not headless_template.exists():
-            raise RuntimeError(f"Missing bundled template: {headless_template}")
-        staged_claude_json = staging_dir / ".claude.json"
-        # Interactive `claude` (crew) consults .claude.json on launch and runs
-        # the onboarding wizard unless `oauthAccount` is present — the staged
-        # `.credentials.json` alone is not enough. Merge the host's account
-        # record into the template so crew workers boot authenticated. Non-
-        # interactive `polecat run` uses `-p` (print mode) which bypasses
-        # onboarding entirely, but interactive crew has no such escape hatch.
-        # (oauthAccount is PII — email, org UUID — so it cannot live in the
-        # bundled template.) See issue #938.
-        host_claude_json = home / ".claude.json"
-        with open(headless_template) as f:
-            staged_data = json.load(f)
-        if host_claude_json.exists():
-            try:
-                with open(host_claude_json) as f:
-                    host_data = json.load(f)
-                if "oauthAccount" in host_data:
-                    staged_data["oauthAccount"] = host_data["oauthAccount"]
-            except (OSError, json.JSONDecodeError):
-                # Host .claude.json missing/corrupt — proceed without merge;
-                # worker will hit the OAuth wall and the user will see why.
-                pass
-        with open(staged_claude_json, "w") as f:
-            json.dump(staged_data, f)
-        os.chmod(staged_claude_json, 0o600)
-        if claude_dir.exists():
-            # Copy only the auth files Claude needs at runtime — not the whole directory.
-            # The plugin installation is baked into the image (see Dockerfile), so mounting
-            # the full ~/.claude dir would override the image's plugin data with the host's
-            # (potentially stale or wrong-path) copy.
-            #
-            # Pick up the host's settings.json (autoMode rules, status line).
-            staged_claude_dir = staging_dir / ".claude"
-            staged_claude_dir.mkdir(exist_ok=True)
-            for auth_file in (".credentials.json", "settings.json"):
-                src = claude_dir / auth_file
-                if src.exists():
-                    shutil.copy2(src, staged_claude_dir / auth_file)
+        # Claude auth is env-only: CLAUDE_CODE_OAUTH_TOKEN forwarded via
+        # agent-env-map.conf. We do NOT stage `.claude.json`, `.credentials.json`,
+        # or `settings.json` from the host. Two reasons:
+        #   1) Single source of truth for auth — the host env var. No "which path
+        #      won this time" debugging when the file says one thing and the env
+        #      another.
+        #   2) Host `.credentials.json` carries PII (oauthAccount: email, org
+        #      UUID) and a token that may be scoped differently from what the
+        #      worker needs. Forwarding the OAuth env var is sufficient.
+        # If `CLAUDE_CODE_OAUTH_TOKEN` is unset on the host, the worker will hit
+        # a clear 401 — see the explicit pre-flight check at the `polecat run`
+        # entry point.
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
         if cli_tool == "shell":
@@ -2244,6 +2204,33 @@ def _require_pkb_url_or_exit() -> None:
         "polecat: PKB_MCP_URL is not set.\n"
         "  Start the PKB MCP server and export its URL, e.g.:\n"
         "      export PKB_MCP_URL=http://localhost:8026/mcp",
+        file=sys.stderr,
+    )
+    sys.exit(4)
+
+
+def _require_claude_oauth_or_exit(cli_tool: str) -> None:
+    """Fail fast if launching a Claude worker without CLAUDE_CODE_OAUTH_TOKEN.
+
+    Claude auth in polecat is env-only (see aops-core/agent-env-map.conf and
+    the auth-staging comment in :func:`_build_docker_cmd`). The OAuth token is
+    the single source of truth — no `.credentials.json` staging, no
+    `oauthAccount` merging, no `ANTHROPIC_API_KEY` fallback. If the host env
+    lacks the token we fail here, before spawning a worktree, rather than
+    letting the worker hit a generic 401 deep in headless execution.
+
+    Exit code 4 (config failure) mirrors :func:`_require_pkb_url_or_exit`.
+    """
+    if cli_tool != "claude":
+        return
+    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return
+    print(
+        "polecat: CLAUDE_CODE_OAUTH_TOKEN is not set.\n"
+        "  Claude auth in polecat is env-var only. Generate a token with:\n"
+        "      claude setup-token\n"
+        "  then export it before invoking polecat:\n"
+        "      export CLAUDE_CODE_OAUTH_TOKEN=<token>",
         file=sys.stderr,
     )
     sys.exit(4)
@@ -3472,6 +3459,7 @@ def crew(
 
     cli_tool = "gemini" if gemini else "claude"
     _bootstrap_or_exit(client=cli_tool)
+    _require_claude_oauth_or_exit(cli_tool)
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
@@ -3676,6 +3664,7 @@ def crew(
         cli_tool = "gemini"
     else:
         cli_tool = "claude"
+    _require_claude_oauth_or_exit(cli_tool)
     print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
     print(f"   Projects: {', '.join(projects)}")
@@ -4199,6 +4188,7 @@ def run(
     _require_pkb_url_or_exit()
     cli_tool = "gemini" if gemini else "claude"
     _bootstrap_or_exit(client=cli_tool)
+    _require_claude_oauth_or_exit(cli_tool)
 
     if issue and task_id:
         print("Error: --issue and --task-id are mutually exclusive.", file=sys.stderr)
@@ -4875,6 +4865,8 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
     """
     client_to_check = "gemini" if gemini > 0 else ("claude" if claude > 0 else None)
     _bootstrap_or_exit(client=client_to_check)
+    if claude > 0:
+        _require_claude_oauth_or_exit("claude")
 
     try:
         from swarm import run_swarm
