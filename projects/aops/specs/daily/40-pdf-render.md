@@ -1,6 +1,6 @@
 # `/daily-pdf` — daily PDF bundle render
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `~/src/academicOps/projects/aops/specs/daily/40-pdf-render.md`. Skill to land at `aops-tools/skills/daily-pdf/SKILL.md` (new).
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `projects/aops/specs/daily/40-pdf-render.md`. Skill to land at `aops-tools/skills/daily-pdf/SKILL.md` (new).
 
 **Inherits**: [00-architecture.md](00-architecture.md) — persona, shared types (`DailyNote`, `NewsBriefing`, `DailyPDF`).
 
@@ -33,7 +33,7 @@ The bundle is **for reading away from the laptop** — morning coffee on the dec
 3. **Render**:
    - Invoke `aops-tools/skills/pdf` with the pre-processed markdown.
    - Page size: A4 (Nic prints occasionally). Margins: 20mm.
-   - Fonts and styling: inherit the academic PDF profile from the `pdf` skill (Roboto, academic-typography). See [aops-tools/skills/pdf/SKILL.md](https://github.com/nicsuzor/academicOps/blob/main/aops-tools/skills/pdf/SKILL.md).
+   - Fonts and styling: inherit the academic PDF profile from the `pdf` skill (Roboto, academic-typography). See [aops-tools/skills/pdf/SKILL.md](../../../../aops-tools/skills/pdf/SKILL.md).
    - Header: "Daily — YYYY-MM-DD".
    - Footer: page X of Y, generated timestamp.
 4. **Write to**: `$ACA_DATA/daily/YYYYMMDD-daily.pdf`. Overwrite without prompt — the PDF is regenerable.

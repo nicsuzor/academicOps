@@ -1,6 +1,6 @@
 # Daily Note Pipeline — Architecture
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `~/src/academicOps/projects/aops/specs/daily/00-architecture.md` via PR.
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `projects/aops/specs/daily/00-architecture.md` via PR.
 
 **Sibling specs**:
 - [10-daily-orchestrator.md](10-daily-orchestrator.md) — `/daily` skill (aops-core)
@@ -30,8 +30,7 @@ Define the daily-note pipeline as a single coherent system: which component owns
                     │            │             │         │
                     ▼            ▼             ▼         ▼
               aops-tools    aops-tools    aops-core   aops-tools
-              /email        /news-       /remember   daily-pdf
-                            briefing
+              /email        /news-briefing /remember  daily-pdf
 ```
 
 ## Components and their homes
@@ -44,7 +43,7 @@ Define the daily-note pipeline as a single coherent system: which component owns
 | `/news-briefing`  | aops-tools | Outlook-MCP-dependent. Editorial curation is a content workflow, not framework infrastructure. Replaceable.                                              |
 | daily-pdf-render  | aops-tools | Built on top of the existing `/pdf` tool. Optional output format.                                                                                       |
 
-This split applies the [aops-tools convention](https://github.com/nicsuzor/academicOps/blob/main/aops-tools/GEMINI.md): aops-core provides non-fungible epistemic infrastructure; aops-tools provides optional domain skills that can be replaced when better external solutions arrive. See [50-aops-core-vs-tools.md](50-aops-core-vs-tools.md) for the migration plan and rationale (separate doc to keep this one focused on the steady-state design).
+This split applies the [aops-tools convention](../../../../aops-tools/GEMINI.md): aops-core provides non-fungible epistemic infrastructure; aops-tools provides optional domain skills that can be replaced when better external solutions arrive. See [50-aops-core-vs-tools.md](50-aops-core-vs-tools.md) for the migration plan and rationale (separate doc to keep this one focused on the steady-state design).
 
 ## Shared types
 
@@ -118,7 +117,7 @@ See [30-news-briefing.md](30-news-briefing.md) for the workflow.
 
 ### `DailyPDF`
 
-Optional artefact, produced when `/daily-pdf --bundle` is invoked (manually or via a `/daily --pdf` flag). Single PDF file at `$ACA_DATA/daily/YYYYMMDD-daily.pdf`. Combines the markdown daily note + news briefing into a print-readable bundle. Renderer config follows [aops-tools/pdf](https://github.com/nicsuzor/academicOps/blob/main/aops-tools/skills/pdf/SKILL.md).
+Optional artefact, produced when `/daily-pdf --bundle` is invoked (manually or via a `/daily --pdf` flag). Single PDF file at `$ACA_DATA/daily/YYYYMMDD-daily.pdf`. Combines the markdown daily note + news briefing into a print-readable bundle. Renderer config follows [aops-tools/pdf](../../../../aops-tools/skills/pdf/SKILL.md).
 
 See [40-pdf-render.md](40-pdf-render.md) for the workflow.
 

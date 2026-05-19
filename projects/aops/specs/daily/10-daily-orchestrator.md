@@ -1,6 +1,6 @@
 # `/daily` — orchestrator and composer
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `~/src/academicOps/projects/aops/specs/daily/10-daily-orchestrator.md`.
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `projects/aops/specs/daily/10-daily-orchestrator.md`.
 
 **Inherits**: [00-architecture.md](00-architecture.md) — persona, time context, shared types (`DailyNote`, `EmailCapture`, `NewsBriefing`).
 

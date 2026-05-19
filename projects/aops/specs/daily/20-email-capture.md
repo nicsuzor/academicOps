@@ -1,6 +1,6 @@
 # `/email` — email-to-task capture workflow
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `~/src/academicOps/projects/aops/specs/daily/20-email-capture.md`. Skill to relocate from `aops-core/commands/email.md` to `aops-tools/skills/email/SKILL.md`.
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `projects/aops/specs/daily/20-email-capture.md`. Skill to relocate from `aops-core/commands/email.md` to `aops-tools/skills/email/SKILL.md`.
 
 **Inherits**: [00-architecture.md](00-architecture.md) — persona, time context, shared types (`EmailCapture`).
 

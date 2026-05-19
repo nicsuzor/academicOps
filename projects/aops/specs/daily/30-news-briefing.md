@@ -1,6 +1,6 @@
 # `/news-briefing` — editorial morning briefing workflow
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `~/src/academicOps/projects/aops/specs/daily/30-news-briefing.md`. Skill to land at `aops-tools/skills/news-briefing/SKILL.md` (supersedes earlier aops-core landing plan).
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `projects/aops/specs/daily/30-news-briefing.md`. Skill to land at `aops-tools/skills/news-briefing/SKILL.md` (supersedes earlier aops-core landing plan).
 
 **Inherits**: [00-architecture.md](00-architecture.md) — persona, time context, shared types (`NewsBriefing`).
 

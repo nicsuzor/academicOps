@@ -1,6 +1,6 @@
 # Daily Note Pipeline — spec series
 
-Connected specs describing the morning daily-briefing pipeline: `/daily` orchestrator, the worker workflows it composes (`/email`, `/news-briefing`), and the optional PDF render. Drafted 2026-05-19 in the cowork sandbox; to land at `~/src/academicOps/projects/aops/specs/daily/` via PR (see [50-aops-core-vs-tools.md](50-aops-core-vs-tools.md) § Migration 4).
+Connected specs describing the morning daily-briefing pipeline: `/daily` orchestrator, the worker workflows it composes (`/email`, `/news-briefing`), and the optional PDF render. Drafted 2026-05-19 in the cowork sandbox; to land at `projects/aops/specs/daily/` via PR (see [50-aops-core-vs-tools.md](50-aops-core-vs-tools.md) § Migration 4).
 
 | # | Spec                                              | Plugin          | Owns                                              |
 | - | ------------------------------------------------- | --------------- | ------------------------------------------------- |

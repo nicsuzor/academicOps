@@ -1,6 +1,6 @@
 # aops-core vs aops-tools — split rationale and migration plan
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `~/src/academicOps/projects/aops/specs/daily/50-aops-core-vs-tools.md`.
+**Status**: draft (cowork-sandbox), proposed 2026-05-19. Spec to land at `projects/aops/specs/daily/50-aops-core-vs-tools.md`.
 
 **Inherits**: [00-architecture.md](00-architecture.md) — the steady-state design this spec migrates to.
 
@@ -8,7 +8,7 @@
 
 **aops-core** is **non-fungible epistemic infrastructure**: components Nic could not swap out without losing the framework's identity. **aops-tools** is **optional domain skills**: useful adapters that can be replaced when better external solutions arrive.
 
-This is the [aops-tools convention](https://github.com/nicsuzor/academicOps/blob/main/aops-tools/GEMINI.md) applied consistently.
+This is the [aops-tools convention](../../../../aops-tools/GEMINI.md) applied consistently.
 
 ## The test
 
@@ -91,7 +91,7 @@ Same test:
 ### Migration 4: Land the spec series
 
 1. **PR**: `add-daily-pipeline-specs`
-2. Copy this directory (`.dogfood-run/proposed/specs/daily/`) to `~/src/academicOps/projects/aops/specs/daily/`.
+2. Copy this directory (`.dogfood-run/proposed/specs/daily/`) to `projects/aops/specs/daily/`.
 3. Add a `README.md` linking to all five specs.
 4. Cross-link from `aops-core/skills/daily/SKILL.md` and the relevant tools-skill SKILL.md files: "See [projects/aops/specs/daily/](...)".
 
