@@ -116,7 +116,7 @@ where `expand(mcpServers)` is every `mcp__<server>__*` tool surfaced by those se
 
 ### Agent ↔ tool
 
-An agent may call tool `T` iff `T ∈ effective(agent)`. The harness enforces this; the ultra-vires enforcer (see `specs/ultra-vires-enforcer.md`) detects violations after the fact.
+An agent may call tool `T` iff `T ∈ effective(agent)`. The harness enforces this; the ultra-vires enforcer (see `specs/enforcement/ultra-vires-enforcer.md`) detects violations after the fact.
 
 ### Agent ↔ MCP server
 
@@ -210,7 +210,7 @@ When present, the audit confirms `tools` matches `claude_args` in the invoking w
 
 ## Compliance Matrix
 
-Every agent file is audited against this spec. The compliance matrix lives at `specs/agent-compliance-matrix.md` (filed by sibling task `task-8544ef68`). Columns:
+Every agent file is audited against this spec. The compliance matrix lives at `specs/agents/agent-compliance-matrix.md` (filed by sibling task `task-8544ef68`). Columns:
 
 - `agent` — file path
 - `schema_ok` — all required fields present, no unknown fields

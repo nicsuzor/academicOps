@@ -108,4 +108,3 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Drive-by fix policy:** Bundle an unrelated fix into the current PR only when ALL of: (a) it is blocking your PR from merging (e.g. CI failure that's not your fault), (b) the fix is trivial and obvious, and (c) you can describe it in one sentence in the PR description. Otherwise, file a separate task — don't expand the PR scope.
 
 See [[README.md]] for framework usage documentation.
-ocumentation.
