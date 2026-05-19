@@ -37,18 +37,20 @@ def check_custom_condition(
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
 
     if name == "is_compliance_verified":
-        output = ctx.tool_output
+        output = ctx.tool_output or {}
         if not output:
             return False
 
+        # Prioritize direct dictionary access for parsed JSON outputs
+        if isinstance(output, dict) and output.get("verdict"):
+            return True
+
+        # Fallback for raw string output or embedded JSON-like structures
         import re
 
         output_str = str(output)
-
-        # Check if the output contains a structured verdict (e.g. {"verdict": "pass"})
-        if re.search(r'["\']verdict["\']\s*:\s*["\'][^"\']+["\']', output_str, re.IGNORECASE):
-            return True
-
-        return False
+        return bool(
+            re.search(r'["\']\bverdict\b["\']\s*:\s*["\'][^"\']+["\']', output_str, re.IGNORECASE)
+        )
 
     return False
