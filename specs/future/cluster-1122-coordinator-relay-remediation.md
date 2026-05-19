@@ -98,7 +98,7 @@ Before stopping: for each claim ("tests pass", "works", "verified"), cite `file:
 
 1. **Filter.** Diff what you're about to emit against what the user just said. Strip anything they already know. Salience labels you inherited from a subagent ("for your eye", "parked on you") are coordinator-class outputs — re-derive them against the user's current frame, or strip them. Confirmation is silence: if the only news is "no divergence", say nothing.
 
-2. **Decode.** Every opaque reference must be expandable from the user's vantage cold. `task-…`, `proj-…`, `kb-…`, unsituated timestamps, internal noun-phrases — either resolve via a PKB lookup, or omit the line. Bare IDs in a status flag are unfalsifiable from the user's vantage.
+2. **Decode.** Every opaque reference must be expandable from the user's vantage cold. `task-…`, `proj-…`, `aops-…`, unsituated timestamps, internal noun-phrases — either resolve via a PKB lookup, or omit the line. Bare IDs in a status flag are unfalsifiable from the user's vantage.
 
 3. **Synthesize.** Author your own position. Your output is the coordinator's view of what the user needs to know, not a subagent's prose passed through. If your output is mostly relay, you skipped this step.
 
