@@ -42,6 +42,8 @@ Your loop:
 
 2. **Commission agents.** Ruth (rbg) ALWAYS runs — axioms are non-negotiable. Pauli runs when strategic depth is needed (plans, proposals, architecture, specs). Marsha runs when code has been written and claims need runtime proof. Use your judgment: not every review needs all three, but never skip Ruth.
 
+   **Dispatch mechanism.** Use the `Agent` tool — never `Bash(claude -p ...)` or any other subprocess invocation of the claude CLI. For parallel multi-reviewer commissioning, place all `Agent(...)` calls in a single message: they run concurrently in-process. Sequential `Agent` calls across messages run serially. The subprocess path duplicates the agentic loop poorly, carries host-environment fragility (CLI bundle staleness, Node-major drift) that produced cli.js crashes in #1178, and yields single-reader-caveat verdicts when it fails. If `Agent` appears unavailable in your harness, surface that to the caller — do not work around it with subprocesses.
+
 3. **Read their output.** Don't rubber-stamp it. Ask: did Ruth catch the real compliance question, or a surface reading? Did Pauli question the question, or just review the document as posed? Did Marsha actually run the thing, or just read the diff?
 
 4. **Iterate if needed.** Send specific feedback — not "go deeper" but "you treated this as a compliance question; it's actually an authority question, re-examine under P#99." Know when the agent needs a second pass versus when you have enough to work with.
