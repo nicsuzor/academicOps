@@ -1,23 +1,29 @@
 #!/bin/bash
 # Universal Hook Router Wrapper
 #
-# Bootstraps the environment to ensure 'uv' and 'python' are available
-# before delegating to the Python router.
+# Two paths to the Python router:
+#   1. Fast path — if a pre-built local .venv exists at $HOOK_DIR/.venv
+#      (container builds preinstall it), exec its python directly. No uv,
+#      no PyPI fetch on first invocation, no cold-cache failures.
+#   2. Fallback — bootstrap uv on PATH and use `uv --directory $HOOK_DIR run`.
+#      This is the dev / macOS path where the venv isn't pre-built.
 
-# 1. Ensure uv/uvx are on PATH (shared with run-mcp.sh)
+HOOK_DIR="$(cd "$(dirname "$(dirname "$0")")" && pwd)"
+
+# 1. Fast path: pre-built local venv.
+HOOK_VENV_PYTHON="$HOOK_DIR/.venv/bin/python"
+if [ -x "$HOOK_VENV_PYTHON" ]; then
+    exec "$HOOK_VENV_PYTHON" "$HOOK_DIR/hooks/router.py" "$@"
+fi
+
+# 2. Fallback: bootstrap uv.
 SCRIPT_DIR="$(cd "$(dirname "$0")/../scripts" && pwd)"
 source "$SCRIPT_DIR/ensure-path.sh"
 
-# 2. Final check
 if ! command -v uv &> /dev/null; then
-    echo "CRITICAL: 'uv' not found on PATH and not in common locations." >&2
+    echo "CRITICAL: 'uv' not found on PATH and no pre-built .venv at $HOOK_DIR/.venv." >&2
     exit 1
 fi
-
-# 3. Delegate to the Python router
-# Use 'uv --directory' with PLUGIN_DIR to ensure
-# correct environment resolution within the extension runtime.
-HOOK_DIR="$(cd "$(dirname "$(dirname "$0")")" && pwd)"
 
 # Set UV_CACHE_DIR to avoid Seatbelt permission errors outside the extension path.
 # In Docker containers the plugin dir may be root-owned, so fall back to a

@@ -142,6 +142,19 @@ d = json.loads(p.read_text()); \
 p.write_text(json.dumps(d, indent=2))" ; \
     fi
 
+# Pre-install the aops-core extension's uv env so the BeforeAgent hook doesn't
+# need to populate uv cache (or reach PyPI) on first invocation. router.sh
+# fast-paths to $HOOK_DIR/.venv when present. UV_PROJECT_ENVIRONMENT is unset
+# for this step so the venv lives inside the extension dir, independent of
+# /home/worker/.venv (which gets the root project deps below).
+RUN for ext in aops-core aops-tools; do \
+        if [ -f "/home/worker/.gemini/extensions/${ext}/pyproject.toml" ]; then \
+            (cd "/home/worker/.gemini/extensions/${ext}" && \
+                env -u UV_PROJECT_ENVIRONMENT uv sync --frozen && \
+                chmod -R a+rwX .venv) ; \
+        fi ; \
+    done
+
 # Pre-build Python project venv at a stable image path.
 # UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
 # preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
