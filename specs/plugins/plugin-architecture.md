@@ -1,0 +1,143 @@
+---
+id: plugins-25afaca9
+title: Plugin Architecture
+type: spec
+status: ready
+tier: core
+depends_on: []
+tags: [architecture, plugins]
+---
+
+# Plugin Architecture
+
+## Giving Effect
+
+- [[aops-core/.mcp.json]] - Core plugin MCP server definitions (gemini, memory, task_manager)
+- [[aops-core/hooks/hooks.json]] - Core plugin hook registrations
+- [[aops-core/skills/]] - Core skills directory (audit, framework, remember, etc.)
+- [[aops-core/agents/]] - Core agents directory (critic, enforcer, prompt-hydrator, qa)
+- [[aops-tools/.mcp.json]] - Tools plugin MCP server definitions (context7, outlook, playwright)
+- [[aops-tools/skills/]] - Tools skills directory (analyst, daily, excalidraw, pdf, etc.)
+
+This document defines the component assignments for the academicOps plugin ecosystem.
+
+## Design Principles
+
+1. **Core vs Tools Separation**: aops-core provides framework infrastructure; aops-tools provides domain utilities
+2. **MCP Server Assignment**: Each plugin bundles only the MCP servers it needs
+3. **Clear Boundaries**: Each component belongs to exactly one plugin
+
+## aops-core Plugin
+
+**Purpose**: Core framework infrastructure for agent coordination, quality assurance, and workflow orchestration.
+
+### Core Components
+
+**Skills**:
+
+- `audit` - Framework governance audit with structure and justification checking
+- `feature-dev` - Test-first feature development from idea to validated implementation
+- `framework` - Framework infrastructure workflows (deprecated - delegates to framework agent)
+- `remember` - Persist knowledge to markdown and memory server with semantic search
+- `session-insights` - Generate session insights from transcripts using Gemini
+- `tasks` - Task lifecycle management using scripts and MCP tools
+
+**Commands**:
+
+- `/learn` - Graduated framework improvement workflow
+
+**Agents**:
+
+- `critic` - Second-opinion review of plans and conclusions
+- `enforcer` - Ultra vires detector (catches agents acting beyond authority)
+- `framework` - Framework infrastructure work with explicit skill access
+- `prompt-hydrator` - Transform terse prompts into complete execution plans
+- `qa` - Independent end-to-end verification before completion
+
+**MCP Servers**:
+
+- `gemini` - Google Gemini API access (used by session-insights)
+- `memory` - Persistent memory service
+
+## aops-tools Plugin
+
+**Purpose**: Domain-specific tools and utilities for research workflows - planning, communication, visualization, data processing, and development.
+
+### Tools Components
+
+**Skills**:
+
+- `analyst` - Data analysis with dbt and Streamlit for academic research
+- `annotations` - Scan and process inline HTML comments for human-agent collaboration
+- `convert-to-md` - Batch convert documents to markdown
+- `daily` - Daily note lifecycle management
+- `dashboard` - Cognitive Load Dashboard for task visibility
+- `excalidraw` - Hand-drawn diagrams with organic layouts
+- `flowchart` - Mermaid flowcharts with accessibility best practices
+- `garden` - Incremental PKM maintenance
+- `pdf` - Convert markdown to professionally formatted PDFs
+- `python-dev` - Production-quality Python code with fail-fast philosophy
+
+**Commands**:
+
+- `/aops` - Show framework capabilities
+- `/email` - Create actionable tasks from emails
+- `/q` - Queue task for later execution (creates bd issue)
+
+**Skills (standalone packages)**:
+
+- `planning` (`skills/planning/`) - Strategic planning under uncertainty (effectual planner)
+
+**MCP Servers**:
+
+- `context7` - Context management and memory
+- `outlook` - Microsoft Outlook/Office integration
+- `playwright` - Browser automation
+
+## Cross-Plugin Dependencies
+
+### aops-tools depends on aops-core for
+
+- Framework agents
+
+(hydrator, enforcer, qa, critic)
+
+- Core workflows (/learn)
+- Audit capabilities
+
+### aops-core has no dependencies on aops-tools
+
+- Core framework remains independent
+- Can be used without tools plugin
+
+## MCP Server Rationale
+
+**aops-core servers**:
+
+- `gemini`: Required for session-insights skill (transcript analysis)
+- `memory`: Core capability for persistent agent memory
+
+**aops-tools servers**:
+
+- `context7`: Context management for research workflows
+- `outlook`: Email processing for academic communication
+- `playwright`: Browser automation for data collection and testing
+
+## Extension Guidelines
+
+When adding new components:
+
+1. **Determine plugin**: Core infrastructure → aops-core, Domain utility → aops-tools
+2. **Check dependencies**: Component should only depend on its own plugin or aops-core
+3. **MCP servers**: Assign to plugin that uses them; prefer stdio over HTTP for security
+4. **Document here**: Update this spec when adding components
+
+## User Expectations
+
+As a user of the academicOps framework, you can expect:
+
+1. **Infrastructure Stability**: `aops-core` provides the foundational "operating system" for research. The task graph, memory persistence, and quality assurance workflows remain stable and functional even if domain-specific tools are modified or removed.
+2. **Modular Capabilities**: Domain-specific tools (e.g., citation management, data analysis, PDF generation) are provided as optional extensions. You can enable the `aops-tools` plugin to gain these capabilities without bloating the core framework's footprint.
+3. **Clear Component Ownership**: Every skill, command, and agent belongs to exactly one plugin. Architectural boundaries are enforced to ensure that tool-specific logic does not leak into the core orchestration layer.
+4. **Predictable Performance**: By bundling only necessary MCP servers and skills within each plugin, the framework minimizes initialization latency and cognitive load for both the agent and the human.
+5. **Secure-by-Design Isolation**: Plugins manage their own tool permissions and external service connections. Security is improved by ensuring that the core framework remains lean and only domain-specific plugins handle sensitive external integrations.
