@@ -41,11 +41,7 @@ def _reinit_gates():
 
 
 @pytest.fixture(autouse=True)
-def _pin_gate_modes(monkeypatch):
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("QA_GATE_MODE", "block")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+def _reinit_gates_fixture():
     _reinit_gates()
     yield
     _reinit_gates()

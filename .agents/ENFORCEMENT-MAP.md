@@ -234,7 +234,7 @@ Side-effects triggered by `aops-core/scripts/dump_pr_state.py` on a cron schedul
 
 LLM agents that fire on PR events to enforce framework discipline at the
 review surface. Each row maps a named framework agent to one named status
-check (the contract — see `brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.2). Branch protection
+check (the contract — see `specs/workflows/pr-pipeline-v2.md` §3.2). Branch protection
 AND-gates these statuses directly; there is no LLM judgment in the merge
 gate. **Phase 1 operative (PR #1062). Remaining phases: 2 (pauli alignment surface), 3 (merge-prep mechanic strip-down), 5 (cross-repo rollout).**
 
@@ -246,8 +246,8 @@ gate. **Phase 1 operative (PR #1062). Remaining phases: 2 (pauli alignment surfa
 
 ### Retired (v1 → v2)
 
-| Mechanism                                                                                            | Retired in        | Notes                                                                                                                                                  |
-| ---------------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Author-trailer loop-skip (`Enforcer-By:` / `Merge-Prep-By:` grep on HEAD commit)                     | Phase 1, PR #1062 | Replaced by SHA-based loop-skip (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.6, §8). Closed PR #1037 black-hole bug.                    |
-| Triage-substitution (merge-prep approves ⇒ implies all agent verdicts present)                       | Phase 1, PR #1062 | Branch protection now AND-gates each `<agent>-status` directly (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §5). No LLM in the merge gate. |
-| Loose triggers on enforcer (`workflow_run` + `pull_request` + `workflow_dispatch` + `workflow_call`) | Phase 1, PR #1062 | v2 contract: `workflow_call` only (`brain/projects/aops/specs/workflows/pr-pipeline-v2.md` §3.1). Closes ~130M cache_r/wk waste (`aops-638a351e`).     |
+| Mechanism                                                                                            | Retired in        | Notes                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Author-trailer loop-skip (`Enforcer-By:` / `Merge-Prep-By:` grep on HEAD commit)                     | Phase 1, PR #1062 | Replaced by SHA-based loop-skip (`specs/workflows/pr-pipeline-v2.md` §3.6, §8). Closed PR #1037 black-hole bug.                    |
+| Triage-substitution (merge-prep approves ⇒ implies all agent verdicts present)                       | Phase 1, PR #1062 | Branch protection now AND-gates each `<agent>-status` directly (`specs/workflows/pr-pipeline-v2.md` §5). No LLM in the merge gate. |
+| Loose triggers on enforcer (`workflow_run` + `pull_request` + `workflow_dispatch` + `workflow_call`) | Phase 1, PR #1062 | v2 contract: `workflow_call` only (`specs/workflows/pr-pipeline-v2.md` §3.1). Closes ~130M cache_r/wk waste (`aops-638a351e`).     |

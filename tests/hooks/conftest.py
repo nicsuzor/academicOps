@@ -1,15 +1,11 @@
 """Shared conftest for hooks tests.
 
-Sets gate mode env vars at module level so they are available during
-test collection, before any test module imports gate_config.py.
+Gate modes are resolved from $AOPS_POLECAT_CONFIG / $AOPS_SESSIONS/polecat.yaml
+via lib/polecat_config.py — NOT from env vars. The root tests/conftest.py sets
+AOPS_POLECAT_CONFIG to polecat/defaults/polecat.yaml.example at collection time
+so all hooks tests have a valid config without per-test setup.
+
+Tests that need specific gate modes write a temporary polecat.yaml and point
+AOPS_POLECAT_CONFIG at it via monkeypatch (see test_gate_verdicts.py for the
+canonical pattern).
 """
-
-import os
-
-# gate_config.py reads these at module level with os.environ[] (no default).
-# They must be set before any test module that imports hooks.router or
-# hooks.gate_config is collected by pytest.
-os.environ.setdefault("HANDOVER_GATE_MODE", "warn")
-os.environ.setdefault("QA_GATE_MODE", "block")
-os.environ.setdefault("ENFORCER_GATE_MODE", "block")
-os.environ.setdefault("HYDRATION_GATE_MODE", "off")

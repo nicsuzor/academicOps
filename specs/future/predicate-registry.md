@@ -1,0 +1,184 @@
+---
+id: predicate-registry
+title: Predicate Registry
+type: spec
+category: architecture
+status: inbox
+tier: core
+depends_on: [workflow-constraints]
+created: 2026-01-23
+tags: [spec, architecture, predicates, constraints]
+related: [workflow-constraints, prompt-hydrator]
+note: "Future direction — connects to RBG agent axiom enforcement and constraint-based workflow checking"
+---
+
+# Predicate Registry
+
+## Giving Effect
+
+- [[specs/workflow-constraints.md]] - Constraint specification referencing this registry
+- [[specs/future/constraint-checking-tests.md]] - Test specification for predicate validation
+- [[specs/enforcement.md]] - Runtime enforcement layer (gates, detection, review)
+- [[agents/rbg.md]] - The Judge: axiom compliance checking uses predicate-like reasoning
+- [[agents/enforcer.md]] - Periodic compliance audit (potential consumer of formal predicates)
+
+Standard predicate definitions for workflow constraint checking. Provides the semantic foundation for expressing workflow constraints as logical statements rather than procedural steps.
+
+## Purpose
+
+Workflows define constraints using predicates like `tests_exist`, `plan_approved`, etc. This registry defines:
+
+1. What each predicate means
+2. How to verify it at planning time (static check)
+3. How to verify it at execution time (runtime check)
+
+## User Expectations
+
+As the semantic foundation for workflow enforcement, the Predicate Registry must satisfy these core expectations:
+
+1. **Deterministic Definitions**: Users expect each predicate to have a single, unambiguous meaning. `tests_pass` must consistently mean "zero exit code from the primary test runner," regardless of the workflow context.
+2. **Static & Dynamic Verifiability**: Every predicate must be verifiable at two distinct phases:
+   - **Planning (Static)**: Can the hydrator find a step in the proposed plan that _intends_ to satisfy the predicate?
+   - **Execution (Dynamic)**: Can the executor empirically confirm the system state matches the predicate?
+3. **Transparent Failure Modes**: When a constraint fails, the user expects to see exactly which predicate(s) failed and why. Errors should not be opaque; they should point to the missing file, the failing test, or the missing plan step.
+4. **Tool-Agnostic Semantics**: Predicates should describe the _intent_ (e.g., `tests_pass`) rather than the _implementation_ (e.g., `run_pytest_exit_0`), allowing the underlying tools to change without breaking workflow definitions.
+5. **Fail-Closed Security**: If a predicate cannot be evaluated due to environmental issues (e.g., missing tool, permission error), it must be treated as `FALSE` to prevent accidental constraint bypass.
+6. **Human-in-the-loop for Heuristics**: For predicates requiring qualitative judgment (e.g., `minimal_implementation`), users expect the system to flag the check for human review or provide a soft recommendation rather than making an autonomous, potentially incorrect verdict.
+
+## Connection to RBG and Enforcement Architecture
+
+The predicate registry formalises what the RBG agent already does instinctively — checking whether axioms and constraints are satisfied. Currently, RBG applies axioms qualitatively (reading the conversation and judging compliance). The predicate registry would provide a structured vocabulary for expressing these checks, enabling:
+
+- **Composable constraints** in workflow definitions (`BEFORE commit: tests_pass AND critic_reviewed`)
+- **Mechanical verification** where possible (test predicates, file predicates)
+- **Qualitative verification** delegated to RBG/enforcer where judgment is required (heuristic predicates)
+- **Transparent audit trails** showing exactly which predicates passed/failed and why
+
+## Predicate Categories
+
+### Test Predicates
+
+| Predicate          | Meaning                                     | Planning Check                              | Runtime Check                                            |
+| ------------------ | ------------------------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| `tests_exist`      | Test files exist for the feature/bug        | Plan has "Write test" or "Create test" step | grep finds `def test_` or `test(` in relevant test files |
+| `tests_pass`       | All relevant tests pass                     | Plan has "Run tests" step expecting success | pytest/test runner exit code == 0                        |
+| `tests_fail`       | Tests fail (expected before implementation) | Plan expects tests to fail after writing    | pytest/test runner exit code != 0                        |
+| `tests_still_pass` | Tests pass after change (no regression)     | Plan has "Verify no regressions" step       | Full test suite passes, not just new tests               |
+| `no_regressions`   | No existing tests broken                    | Plan has regression check                   | Compare test results before/after                        |
+
+### Approval Predicates
+
+| Predicate         | Meaning                                | Planning Check                                                                       | Runtime Check                                                        |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `plan_approved`   | Implementation plan has human approval | Plan references approved plan or has approval step                                   | Task body contains "## Approved Plan" or user said "approved"/"lgtm" |
+| `critic_reviewed` | Critic agent has reviewed              | Plan includes `Task(subagent_type='critic', ...)` or `Task(subagent_type='qa', ...)` | Critic agent was spawned and returned verdict                        |
+| `review_approved` | Human review task completed            | Plan has "Await review approval" step                                                | Review task status == "done"                                         |
+| `user_approved`   | User explicitly approved action        | N/A (runtime only)                                                                   | User message matches approval pattern                                |
+
+### Task State Predicates
+
+| Predicate                 | Meaning                       | Planning Check                                 | Runtime Check                             |
+| ------------------------- | ----------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| `task_claimed`            | Task is bound to session      | Plan has task update with status="in_progress" | Task exists with status="in_progress"     |
+| `one_task_in_progress`    | Only one task active          | Plan doesn't claim multiple tasks              | MCP query shows exactly one active task   |
+| `task_exists`             | Task exists in system         | Plan references task ID                        | `get_task(id)` succeeds                   |
+| `implementation_complete` | All implementation steps done | All implementation TodoWrite items present     | All implementation todos marked completed |
+
+### Content Predicates
+
+| Predicate                  | Meaning                    | Planning Check                        | Runtime Check                            |
+| -------------------------- | -------------------------- | ------------------------------------- | ---------------------------------------- |
+| `user_story_captured`      | User story documented      | Plan has "Capture user story" step    | Task body contains "## User Story"       |
+| `requirements_documented`  | Requirements specified     | Plan has "Document requirements" step | Task body contains "## Requirements"     |
+| `success_criteria_defined` | Acceptance criteria listed | Acceptance Criteria section in plan   | Task body contains "## Success Criteria" |
+| `experiment_plan_exists`   | Experiment documented      | Plan references experiment task       | Task with tag "experiment" exists        |
+
+### File/Code Predicates
+
+| Predicate                | Meaning               | Planning Check                    | Runtime Check                      |
+| ------------------------ | --------------------- | --------------------------------- | ---------------------------------- |
+| `file_exists`            | Specified file exists | N/A (runtime only)                | Glob/Read succeeds                 |
+| `file_modified`          | File was changed      | Plan has Edit/Write step for file | Git diff shows changes             |
+| `changes_committed`      | Changes in git        | Plan has commit step              | Git status clean                   |
+| `no_uncommitted_changes` | Working tree clean    | N/A (runtime only)                | Git status shows nothing to commit |
+
+### Workflow State Predicates
+
+| Predicate                   | Meaning                      | Planning Check                | Runtime Check                        |
+| --------------------------- | ---------------------------- | ----------------------------- | ------------------------------------ |
+| `modifying_framework`       | Changes affect aops-core/    | Task involves framework files | Files touched include "aops-core/"   |
+| `modifying_python`          | Changes affect .py files     | Task involves Python code     | Files touched have .py extension     |
+| `blocked_on_infrastructure` | External dependency blocking | N/A (runtime only)            | Error indicates missing tool/service |
+| `requirements_unclear`      | Ambiguity in requirements    | N/A (runtime only)            | Clarifying question needed           |
+
+## Usage in Constraint Checking
+
+### Planning Time (Hydrator)
+
+The hydrator checks predicates by examining the proposed TodoWrite plan:
+
+```
+Constraint: BEFORE implement: tests_exist AND tests_fail
+
+Planning Check:
+1. Find "implement" step in TodoWrite
+2. Find "write test" step
+3. Verify "write test" comes before "implement"
+4. Verify plan expects tests to fail (not pass) after writing
+```
+
+### Runtime (Executor)
+
+The executor verifies predicates during execution:
+
+```
+Constraint: BEFORE commit: tests_pass
+
+Runtime Check:
+1. Before commit step, run pytest
+2. Verify exit code == 0
+3. If fails, halt (don't proceed to commit)
+```
+
+## Predicate Composition
+
+Predicates can be combined with AND/OR:
+
+| Composite                        | Meaning                                        |
+| -------------------------------- | ---------------------------------------------- |
+| `tests_exist AND tests_fail`     | Tests written AND they fail (TDD red phase)    |
+| `tests_pass AND critic_reviewed` | Tests green AND critic approved                |
+| `plan_approved OR user_approved` | Either formal plan approval OR inline approval |
+
+## Heuristic Predicates
+
+Some predicates require human judgment and cannot be automatically verified:
+
+| Predicate                  | Why Heuristic                      | How to Handle                     |
+| -------------------------- | ---------------------------------- | --------------------------------- |
+| `minimal_implementation`   | Subjective - "just enough to pass" | Flag for review, don't auto-fail  |
+| `single_behavior_per_test` | Judgment call on test scope        | Provide guidance, not enforcement |
+| `good_commit_message`      | Style/quality judgment             | Critic can review, not block      |
+
+For heuristic predicates, the hydrator should:
+
+1. Include the check in the plan as a recommendation
+2. Note it as "requires human review" if violated
+3. Not block the plan automatically
+
+## Adding New Predicates
+
+When adding a predicate to a workflow:
+
+1. **Define it here** with meaning, planning check, and runtime check
+2. **Categorize it** (test, approval, task state, content, file/code, workflow state, or heuristic)
+3. **Specify composition rules** if it combines with other predicates
+4. **Update the hydrator** if new check logic is needed
+
+## Related Documents
+
+- [[workflow-constraints]] - Constraint specification format
+- [[enforcement]] - Runtime enforcement architecture (layers 1-5)
+- [[agents/rbg.md]] - The Judge: qualitative axiom compliance
+- [[agents/enforcer.md]] - Periodic compliance auditor (potential predicate consumer)
+- [[specs/ultra-vires-enforcer.md]] - Enforcer behaviour specification

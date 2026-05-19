@@ -231,6 +231,24 @@ The single canonical definition of priority. Other framework documents MUST link
 
 ---
 
+## Severity Ladder (SEV0–SEV4)
+
+Severity is the SRE-style impact ladder for `type: target` nodes — the terminal obligations the rest of the graph protects. It is **not** a generic importance signal for tasks. The single canonical scale; framework documents MUST link here rather than redefine these levels locally. See [[../../../../projects/aops/specs/pkb/multi-parent.md]] §1.2 for the full target-node specification.
+
+| Level | Name       | Example                                                                                          |
+| ----- | ---------- | ------------------------------------------------------------------------------------------------ |
+| SEV0  | Negligible | Minor annoyance; no consequence beyond self. **Default for tasks.**                              |
+| SEV1  | Low        | Small reputational or time cost.                                                                 |
+| SEV2  | Moderate   | Meaningful commitment; recoverable if missed.                                                    |
+| SEV3  | High       | Serious consequence; hard to recover.                                                            |
+| SEV4  | Terminal   | Job loss, bankruptcy, severe health, legal. Lexicographic — any SEV4-committed target dominates. |
+
+**Severity lives on targets, not tasks.** `compute_focus_scores` adds a flat bonus of `+5 000 / +10 000 / +20 000 / +100 000` for SEV1–4 to _any_ node carrying the field. That bonus is calibrated for terminal obligations and will invert the ready queue if applied to ordinary tasks. Tasks inherit urgency from targets via `contributes_to` edges (weighted by Birnbaum importance and discounted by slack), not by carrying severity directly. See [[../../planner/SKILL.md#severity-assignment-rules]] for filing guidance.
+
+`goal_type` (`committed` / `aspirational` / `learning`) modifies how severity propagates: only `committed` targets receive the SEV4 lexicographic override. `aspirational` and `learning` use linear scalar weighting — moonshots cannot hijack the focus queue.
+
+---
+
 ## Status Values and Transitions
 
 | Status        | Meaning                                                                          |

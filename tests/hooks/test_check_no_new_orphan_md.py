@@ -65,6 +65,9 @@ def mod():
         "CHANGELOG.md",
         "GEMINI.md",
         "INSTALL.md",
+        # specs/ is the canonical in-tree location for framework specifications
+        "specs/new-design.md",
+        "specs/sub/dir/deep.md",
     ],
 )
 def test_allowed_paths(mod, path):
@@ -91,9 +94,6 @@ def test_allowed_paths(mod, path):
         # arbitrary new top-level dir
         "notes/findings.md",
         "scratch/idea.md",
-        # specs/ is no longer a canonical location — specs live in the brain PKB
-        "specs/new-design.md",
-        "specs/sub/dir/deep.md",
     ],
 )
 def test_blocked_paths(mod, path):

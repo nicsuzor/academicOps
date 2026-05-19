@@ -7,7 +7,9 @@ defaults from one YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path
 named by ``AOPS_POLECAT_CONFIG``).
 
 Per AXIOMS A14 (fail-fast) and A16 (DRY, no defaults, no backwards-compat):
-- Missing file ⇒ ``RuntimeError``. No silent fallback to baked-in defaults.
+- Missing file ⇒ stderr warning + built-in defaults (see ``BUILTIN_SESSION_DEFAULTS``).
+  This supports fresh-install machines where polecat.yaml has not been created yet.
+  A present-but-malformed file still hard-fails (A14).
 - No legacy env-var override paths. ``AOPS_POLECAT_CONFIG`` is the only env
   var that *names* the config; every config *value* lives in the YAML.
 - CLI flags override the loaded config in-process; they do not mutate it.
@@ -215,6 +217,60 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
     return out
 
 
+# =============================================================================
+# BUILT-IN DEFAULTS
+# =============================================================================
+# Used when no polecat.yaml is found (fresh install / minimal test environments
+# that have not set up $AOPS_SESSIONS). These values are the same as the
+# example YAML defaults. YAML config always overrides them — they are never
+# silently preferred over explicit configuration.
+#
+# Gate modes: all 'warn' except hydration (off). This is the safe-minimum
+# posture: warnings appear in context so the agent sees them, but nothing is
+# blocked on a machine that has no config yet.
+
+BUILTIN_GATES = GatesConfig(
+    handover="warn",
+    qa="warn",
+    enforcer="warn",
+    hydration="off",
+    ida="warn",
+    enforcer_threshold=50,
+)
+
+BUILTIN_SESSION_DEFAULTS = SessionDefaults(
+    hooks_enabled=True,
+    claude_model="claude-sonnet-4-6",
+    gemini_model="gemini-2.5-pro",
+    debug=False,
+    gates=BUILTIN_GATES,
+)
+
+
+def _builtin_config() -> PolecatConfig:
+    """Return a minimal PolecatConfig using built-in defaults (no YAML needed)."""
+    return PolecatConfig(
+        session_defaults=BUILTIN_SESSION_DEFAULTS,
+        crew_defaults={"hooks_enabled": False},
+        run_defaults={},
+        docker=DockerConfig(image="ghcr.io/nicsuzor/aops-crew"),
+        external_agents={},
+        source_path=Path("<builtin>"),
+    )
+
+
+def _warn_no_config(detail: str) -> None:
+    import sys
+
+    print(
+        f"[aops-core] WARNING: {detail}\n"
+        "Using built-in defaults (all gates 'warn'). "
+        "Copy polecat/defaults/polecat.yaml.example to "
+        "$AOPS_SESSIONS/polecat.yaml to configure.",
+        file=sys.stderr,
+    )
+
+
 def _resolve_config_path(explicit: Path | None = None) -> Path:
     if explicit is not None:
         return explicit
@@ -233,17 +289,38 @@ def _resolve_config_path(explicit: Path | None = None) -> Path:
 
 
 def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
-    """Load and validate ``polecat.yaml``. Hard-fails on any problem.
+    """Load and validate ``polecat.yaml``.
+
+    When no config file can be located (env vars unset or default path absent),
+    returns built-in defaults and emits a stderr warning — no traceback.  This
+    supports fresh-install machines where polecat.yaml has not yet been created.
+
+    If a file IS found but is malformed, hard-fails (A14 fail-fast principle):
+    a broken config is an active error, not a missing-config situation.
 
     Pass ``path`` to bypass env-var resolution (used by tests).
     """
-    cfg_path = _resolve_config_path(Path(path) if isinstance(path, str) else path)
+    explicit_path = Path(path) if isinstance(path, str) else path
+
+    try:
+        cfg_path = _resolve_config_path(explicit_path)
+    except RuntimeError as e:
+        # Neither AOPS_POLECAT_CONFIG nor AOPS_SESSIONS is set and no explicit
+        # path was given — no config available at all (fresh install).
+        _warn_no_config(str(e))
+        return _builtin_config()
+
     if not cfg_path.exists():
-        raise RuntimeError(
-            f"polecat config: file not found at {cfg_path}.\n"
-            "Copy polecat/defaults/polecat.yaml.example into "
-            "$AOPS_SESSIONS/polecat.yaml and edit to taste."
-        )
+        if explicit_path is not None:
+            # Caller explicitly requested a path that doesn't exist — hard fail.
+            raise RuntimeError(
+                f"polecat config: file not found at {cfg_path}.\n"
+                "Copy polecat/defaults/polecat.yaml.example into "
+                "$AOPS_SESSIONS/polecat.yaml and edit to taste."
+            )
+        # Default path resolved from env vars but file is absent — fresh install.
+        _warn_no_config(f"polecat config: file not found at {cfg_path}.")
+        return _builtin_config()
     with open(cfg_path) as f:
         raw = yaml.safe_load(f)
     if not isinstance(raw, dict):
