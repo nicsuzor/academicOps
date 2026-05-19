@@ -9,12 +9,12 @@ supersedes: []
 related: [aops-843a7e38, aops-bd6e48a9]
 tags: [spec, orchestration, junior, supervisor, ida, cluster-1122, judgment-mechanism]
 created: 2026-05-19
-revision: 3 (post James 2nd-pass)
+revision: 4 (post James 3rd-pass — final spec, ready to merge)
 ---
 
 # Coordinator-relay remediation — surviving sub-shapes of cluster #1122
 
-**Status**: Proposed (rev 3 — addresses James 2nd-pass blocks 10–20 + Ruth's WARN on SSoT direction).
+**Status**: Proposed (rev 4 — final spec; addresses James 3rd-pass two one-line clarifications + closes Risk #7).
 **Cluster epic**: [issue #1122](https://github.com/nicsuzor/academicOps/issues/1122) — "coordinator collapses judgment-calls into mechanical outputs".
 
 ## What landed already (do not re-do)
@@ -225,7 +225,7 @@ Setup: user asks a genuine binary question with no defensible default ("should w
 
 - **All six scenarios must reach STRONG across N=2 runs each** (12 runs total) for the plan to be merge-eligible.
 - **Single-run STRONG-failure on scenarios 1–3 or 5–6**: revise the failed scenario's IDA prose, re-run THAT scenario (not the full 12).
-- **Single-run STRONG-failure on scenario 4 (cost-pressure proxy)**: warning signal — flag in implementation PR, do NOT block merge on this alone. The 30-day spot-check is the definitive surface for cost-pressure (per Block 15).
+- **Single-run STRONG-failure on scenario 4 (cost-pressure proxy)**: warning signal — flag in implementation PR, do NOT block merge on this alone. Scenario-4 warnings are appended to the 30-day spot-check input set per Block 20 AC 2; they are not consumed at merge time but inform the spot-check's cost-pressure observable. The 30-day spot-check is the definitive surface for cost-pressure (per Block 15).
 - **Both-runs STRONG-failure on any scenario**: revise the IDA prose materially (not just the scenario wording); re-run the whole 12.
 - **Pattern of STRONG-failures across multiple scenarios (≥3)**: structural rework required; return to plan revision.
 
@@ -243,7 +243,7 @@ Setup: user asks a genuine binary question with no defensible default ("should w
 
 6. **Pre-existing prose at FM-1/2/3 (junior.md lines 99–103) failed.** Rev 2/3's junior.md change is one paragraph rather than a sibling failure-mode table; the gradient-pull moves to IDA. But if FM-1/2/3 themselves were over-trusted by the framework as the "real" enforcement, leaving them unchanged risks ambiguity. Mitigation: leave FM-1/2/3 unchanged for this proposal; add a 90-day spot-check on whether FM-1/2/3 prose itself needs collapse-or-consolidation. Folded into the 30-day spot-check task (Block 20) as a secondary observable.
 
-7. **James 2nd-pass subagent commissioning failed (Node v25 / cli.js incompatibility)**. James executed rbg/pauli/marsha lenses in voice with disclosure. The substantive findings stood, but the verdict has a single-reader limitation. Mitigation: independent re-review can be commissioned via a working CLI before merge if the user wants additional confidence; flagged here so the implementation PR description references this caveat.
+7. **~~James 2nd-pass subagent commissioning failed~~ (RESOLVED 2026-05-19).** Root cause: stale `@anthropic-ai/claude-code@2.0.1` bundle (installed under `~/.nvm/v24.4.1/`) failing under active Node v26.1.0. Fix: installed `@anthropic-ai/claude-code@2.1.144` under `/opt/suzor/nvm/v26.1.0/`, repointed the v24-tree `claude` symlink. James 3rd-pass ran rbg/pauli/marsha as dispatched subagents (~90s total) with no Node crash. **Residual epistemic risk on calibration**: Block 18 exemplar sourcing keeps the "outside cluster #1122" constraint for anti-prejudgment, but the reviewer is responsible for selecting exemplars that embody the generative-vs-artifact contrast specifically — not arbitrary `/verify` transcripts that happen to be available. Surface in the implementation PR description as a known calibration-discipline risk the framework accepts.
 
 ## Block 20 — 30-day post-merge spot-check task (specified now)
 
@@ -251,6 +251,7 @@ Filed alongside the implementation PR. Owner: pauli. Stakeholder: nicsuzor.
 
 **Acceptance criteria**:
 
+0. **Author classification rubric before survey begins.** Translate each surviving sub-shape (rows 1, 2, 3, 7, 8, 9, 10, 11, 13 from the cluster table) into a one-line operational criterion ("look for: X in transcript"). Pre-register the rubric in this task body before scanning any transcripts; do not adjust the rubric mid-survey.
 1. Survey all cowork-junior + main-context transcripts in the 30 days post-merge of this remediation.
 2. Apply a classifier (LLM-judgment, single reviewer) against each transcript that potentially crosses the coordinator-emit boundary: did any cluster-1122 sub-shape (rows 1, 2, 3, 7, 8, 9, 10, 11, 13) recur?
 3. **Count "fresh" recurrences** per Block 12 definition: post-merge live-session only. Document each in a follow-up issue thread on #1122.
