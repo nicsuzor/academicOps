@@ -8,6 +8,7 @@ from textwrap import dedent
 
 import pytest
 from lib.polecat_config import (
+    BUILTIN_SESSION_DEFAULTS,
     CONFIG_PATH_ENV,
     PolecatConfig,
     load_polecat_config,
@@ -178,11 +179,14 @@ def test_aops_sessions_default(tmp_path: Path, monkeypatch) -> None:
     assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
 
 
-def test_unset_env_hard_fails(monkeypatch) -> None:
+def test_unset_env_returns_builtin_defaults(monkeypatch) -> None:
     monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
     monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-    with pytest.raises(RuntimeError, match=r"\$AOPS_SESSIONS is not set"):
-        load_polecat_config()
+    cfg = load_polecat_config()
+    assert isinstance(cfg, PolecatConfig)
+    assert cfg.source_path.name == "<builtin>"
+    assert cfg.session_defaults == BUILTIN_SESSION_DEFAULTS
+    assert cfg.session_defaults.gates.handover == "warn"
 
 
 def test_dataclasses_are_frozen(cfg_path: Path) -> None:

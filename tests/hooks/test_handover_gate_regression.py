@@ -29,7 +29,6 @@ def _reinit_gates_with_defaults():
 
 @pytest.fixture
 def router(monkeypatch):
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
     _reinit_gates_with_defaults()
     monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
     return HookRouter()
