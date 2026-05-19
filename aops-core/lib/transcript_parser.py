@@ -521,7 +521,7 @@ def parse_thread_pickup_section(text: str) -> dict[str, str] | None:
         line = line.strip()
         if not line:
             continue
-        m = re.match(r"^[-*]\s*(?:\*\*)?([^:]+?)(?:\*\*)?:\s*(.*)$", line)
+        m = re.match(r"^[-*]\s*(?:\*\*)?(.+?)(?:\*\*)?:\s*(.*)$", line)
         if m:
             threads[m.group(1).strip()] = m.group(2).strip()
 

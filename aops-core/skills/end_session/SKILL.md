@@ -213,7 +213,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Follow-up task IDs must each carry a short parenthetical title for the same reason `release_summary` must — a stack-of-handovers reader can't resolve `task-0f7d3877` without it.
 
-6. **Thread Pickup (if multiple follow-ups).** If the handover lists 2 or more follow-up tasks across multiple distinct work threads, you MUST emit a "Pick up each thread from" section immediately following the handover block.
+6. **Thread Pickup (if multiple follow-ups).** If the handover lists 2 or more follow-up tasks across multiple distinct work threads, you MUST emit a "Thread Pickup" section immediately following the handover block.
 
    This section names the concrete first action a next session would take for every distinct work thread left open (not just every task — threads are user-facing groupings). It also surfaces any cross-thread dependencies.
 
