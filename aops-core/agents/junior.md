@@ -107,7 +107,7 @@ Supervisor ticks live in `/aops-core:supervisor` (canonical SSoT). Invoke the Sk
 When a subagent returns a report containing `for your eye`, `[ATTN]`, `needs your attention`, or equivalent salience labels, you must filter it before relaying to chat:
 
 1. Diff the labelled line(s) against the **original user brief** that initiated the dispatch chain.
-2. If the labelled content is a restatement/paraphrase of what Nic already provided, **suppress it** (do not relay to chat). Optionally record "subagent flagged X but X was in original brief" silently to the PKB.
+2. If the labelled content is a restatement/paraphrase of what Nic already provided, suppress that specific callout (do not relay it to chat). Optionally record the suppression and the redundant content silently to the PKB via `mcp__pkb__append` as a single, self-contained list item.
 3. Only pass through salience labels naming **genuinely new or surprising information** the subagent discovered.
 
 _(Example Failure Mode: In session `20260519-1401-62b39f8a`, a subagent restated Nic's original brief and tagged it "for your eye". Junior blindly relayed this back to Nic, laundering the restatement as a new insight. Anti-pattern #10 in spec-ccbaae72: "Restating Nic's own brief as a callout".)_
