@@ -8,10 +8,10 @@ from textwrap import dedent
 
 import pytest
 from lib.polecat_config import (
+    BUILTIN_SESSION_DEFAULTS,
     CONFIG_PATH_ENV,
     PolecatConfig,
     load_polecat_config,
-    BUILTIN_SESSION_DEFAULTS,
 )
 
 CANONICAL_YAML = dedent(
