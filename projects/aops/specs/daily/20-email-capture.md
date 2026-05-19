@@ -18,11 +18,11 @@ The skill writes PKB tasks itself (action items) and returns structured data for
 
 ## Invocation forms
 
-| Form              | Behaviour                                                                                                  |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| `/email`          | Interactive mode — present FYI items inline, ask before archiving.                                         |
-| `/email --daily`  | Daily mode — return structured `EmailCapture` (see 00-architecture.md). Caller (typically `/daily`) decides on archive confirmation. |
-| `/email --clean`  | Aggressive cleanup mode — for explicit "clear out my inbox" requests. Skips interactive confirmation; archives anything matching the safe-archive patterns. Behaviour as in the 2026-05-19 QUT inbox run. |
+| Form             | Behaviour                                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/email`         | Interactive mode — present FYI items inline, ask before archiving.                                                                                                                                        |
+| `/email --daily` | Daily mode — return structured `EmailCapture` (see 00-architecture.md). Caller (typically `/daily`) decides on archive confirmation.                                                                      |
+| `/email --clean` | Aggressive cleanup mode — for explicit "clear out my inbox" requests. Skips interactive confirmation; archives anything matching the safe-archive patterns. Behaviour as in the 2026-05-19 QUT inbox run. |
 
 ## Workflow (high-level)
 

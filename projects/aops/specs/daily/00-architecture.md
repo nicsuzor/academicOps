@@ -3,6 +3,7 @@
 **Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `projects/aops/specs/daily/00-architecture.md` via PR.
 
 **Sibling specs**:
+
 - [10-daily-orchestrator.md](10-daily-orchestrator.md) — `/daily` skill (aops-core)
 - [20-email-capture.md](20-email-capture.md) — `/email` workflow (aops-tools)
 - [30-news-briefing.md](30-news-briefing.md) — `/news-briefing` workflow (aops-tools)
@@ -15,33 +16,33 @@ Define the daily-note pipeline as a single coherent system: which component owns
 ## Pipeline
 
 ```
-                  ┌──────────────────────────────────────────────┐
-                  │           /daily  (aops-core)                │
-                  │           orchestrator + composer            │
-                  │                                              │
-                  │   1. Pull state (PRs, tasks, calendar)       │
-                  │   2. Call workflows in parallel:             │
-                  │        ├── /email --daily                    │
-                  │        ├── /news-briefing --daily            │
-                  │        └── /remember mobile-captures         │
-                  │   3. Compose daily note (markdown)           │
-                  │   4. (optional) /daily-pdf --bundle          │
-                  └─┬────────────┬─────────────┬─────────┬───────┘
-                    │            │             │         │
-                    ▼            ▼             ▼         ▼
-              aops-tools    aops-tools    aops-core   aops-tools
-              /email        /news-briefing /remember  daily-pdf
+    ┌──────────────────────────────────────────────┐
+    │           /daily  (aops-core)                │
+    │           orchestrator + composer            │
+    │                                              │
+    │   1. Pull state (PRs, tasks, calendar)       │
+    │   2. Call workflows in parallel:             │
+    │        ├── /email --daily                    │
+    │        ├── /news-briefing --daily            │
+    │        └── /remember mobile-captures         │
+    │   3. Compose daily note (markdown)           │
+    │   4. (optional) /daily-pdf --bundle          │
+    └─┬────────────┬─────────────┬─────────┬───────┘
+      │            │             │         │
+      ▼            ▼             ▼         ▼
+aops-tools    aops-tools    aops-core   aops-tools
+/email        /news-briefing /remember  daily-pdf
 ```
 
 ## Components and their homes
 
-| Component         | Plugin     | Why                                                                                                                                                      |
-| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/daily`          | aops-core  | Owns daily-note structure (SSoT). Non-fungible — the daily note is the agent's working memory. Stable across versions.                                  |
-| `/remember`       | aops-core  | Memory primitive. Non-fungible epistemic infrastructure.                                                                                                |
-| `/email`          | aops-tools | Outlook-MCP-dependent. Replaceable if better mail integration arrives. Domain workflow on a fungible tool surface.                                       |
-| `/news-briefing`  | aops-tools | Outlook-MCP-dependent. Editorial curation is a content workflow, not framework infrastructure. Replaceable.                                              |
-| daily-pdf-render  | aops-tools | Built on top of the existing `/pdf` tool. Optional output format.                                                                                       |
+| Component        | Plugin     | Why                                                                                                                    |
+| ---------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `/daily`         | aops-core  | Owns daily-note structure (SSoT). Non-fungible — the daily note is the agent's working memory. Stable across versions. |
+| `/remember`      | aops-core  | Memory primitive. Non-fungible epistemic infrastructure.                                                               |
+| `/email`         | aops-tools | Outlook-MCP-dependent. Replaceable if better mail integration arrives. Domain workflow on a fungible tool surface.     |
+| `/news-briefing` | aops-tools | Outlook-MCP-dependent. Editorial curation is a content workflow, not framework infrastructure. Replaceable.            |
+| daily-pdf-render | aops-tools | Built on top of the existing `/pdf` tool. Optional output format.                                                      |
 
 This split applies the [aops-tools convention](../../../../aops-tools/GEMINI.md): aops-core provides non-fungible epistemic infrastructure; aops-tools provides optional domain skills that can be replaced when better external solutions arrive. See [50-aops-core-vs-tools.md](50-aops-core-vs-tools.md) for the migration plan and rationale (separate doc to keep this one focused on the steady-state design).
 
@@ -105,9 +106,9 @@ Returned by `/news-briefing --daily`. Single field:
 ```yaml
 markdown: |
   <300–500 word thematic briefing>
-  
+
   ---
-  
+
   _N newsletters reviewed: <publication list>. Last 24h._
 ```
 
@@ -123,15 +124,15 @@ See [40-pdf-render.md](40-pdf-render.md) for the workflow.
 
 ## Trigger surfaces
 
-| Trigger phrase / command | Resolves to                                              |
-| ------------------------ | -------------------------------------------------------- |
-| `/daily`, "daily note"   | `/daily` skill (aops-core)                              |
-| `/email`, "process inbox" | `/email` skill (aops-tools)                            |
-| `/email --daily`         | `/email` skill (aops-tools), returns `EmailCapture`     |
-| `/news-briefing`         | `/news-briefing` skill (aops-tools), inline markdown    |
-| `/news-briefing --daily` | `/news-briefing` skill, returns `NewsBriefing.markdown` |
-| `/daily --pdf`           | `/daily` runs, then `/daily-pdf --bundle` (aops-tools)  |
-| `/daily-pdf`             | direct PDF render of existing daily note                |
+| Trigger phrase / command  | Resolves to                                             |
+| ------------------------- | ------------------------------------------------------- |
+| `/daily`, "daily note"    | `/daily` skill (aops-core)                              |
+| `/email`, "process inbox" | `/email` skill (aops-tools)                             |
+| `/email --daily`          | `/email` skill (aops-tools), returns `EmailCapture`     |
+| `/news-briefing`          | `/news-briefing` skill (aops-tools), inline markdown    |
+| `/news-briefing --daily`  | `/news-briefing` skill, returns `NewsBriefing.markdown` |
+| `/daily --pdf`            | `/daily` runs, then `/daily-pdf --bundle` (aops-tools)  |
+| `/daily-pdf`              | direct PDF render of existing daily note                |
 
 ## DRY discipline
 

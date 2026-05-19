@@ -213,7 +213,21 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Follow-up task IDs must each carry a short parenthetical title for the same reason `release_summary` must — a stack-of-handovers reader can't resolve `task-0f7d3877` without it.
 
-6. **Halt.** Nothing follows the handover block.
+6. **Thread Pickup (if multiple follow-ups).** If the handover lists 2 or more follow-up tasks across multiple distinct work threads, you MUST emit a "Thread Pickup" section immediately following the handover block.
+
+   This section names the concrete first action a next session would take for every distinct work thread left open (not just every task — threads are user-facing groupings). It also surfaces any cross-thread dependencies.
+
+   Example:
+   ```markdown
+   ### Thread Pickup
+
+   - **Thread A**: apply combined revision list captured in transcript
+   - **Thread D**: `/supervisor aops-7bb863b4` first because it unblocks Layer 0/1/2 of Thread A
+   ```
+
+   Do not emit this section if the session leaves one or zero follow-up tasks open.
+
+7. **Halt.** Nothing follows the handover and thread pickup blocks.
 
 ## What this skill does NOT do
 

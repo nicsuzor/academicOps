@@ -20,11 +20,11 @@ This is the editorial layer that turns "10 newsletters arrived" into "here is wh
 
 ## Invocation forms
 
-| Form                       | Behaviour                                                                              |
-| -------------------------- | -------------------------------------------------------------------------------------- |
-| `/news-briefing`           | Interactive — print briefing inline in chat.                                           |
-| `/news-briefing --daily`   | Daily mode — return `NewsBriefing.markdown` for `/daily` to splice into note.          |
-| `/news-briefing --save`    | Write to `$ACA_DATA/daily/YYYYMMDD-news-briefing.md` as a standalone artefact.        |
+| Form                     | Behaviour                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `/news-briefing`         | Interactive — print briefing inline in chat.                                   |
+| `/news-briefing --daily` | Daily mode — return `NewsBriefing.markdown` for `/daily` to splice into note.  |
+| `/news-briefing --save`  | Write to `$ACA_DATA/daily/YYYYMMDD-news-briefing.md` as a standalone artefact. |
 
 When the caller (e.g. `/daily`) supplies an explicit output path, write to that path. See SKILL.md § Output destination for harness-override clause.
 
@@ -32,15 +32,15 @@ When the caller (e.g. `/daily`) supplies an explicit output path, write to that 
 
 Detail in SKILL.md; this spec carries the contract.
 
-| Phase | Step                                | Output                                         |
-| ----- | ----------------------------------- | ---------------------------------------------- |
-| **P1**| Inventory newsletter-shaped email   | List of candidate items with metadata          |
-| **P2**| Classify (newsletter / noise / amb) | Filtered list, 10–20 newsletter items typical  |
-| **P3**| Fetch bodies                        | Plain-text bodies for newsletter items         |
-| **P4**| Extract items per newsletter        | Per-newsletter: lead + ≤4 secondary items      |
-| **P5**| Cluster by theme                    | Topic buckets across newsletters               |
-| **P6**| Draft briefing                      | Lead-with-most-interesting; thematic, ~400wd   |
-| **P7**| Cut pass                            | Drop weakest item if >550 words                |
+| Phase  | Step                                | Output                                        |
+| ------ | ----------------------------------- | --------------------------------------------- |
+| **P1** | Inventory newsletter-shaped email   | List of candidate items with metadata         |
+| **P2** | Classify (newsletter / noise / amb) | Filtered list, 10–20 newsletter items typical |
+| **P3** | Fetch bodies                        | Plain-text bodies for newsletter items        |
+| **P4** | Extract items per newsletter        | Per-newsletter: lead + ≤4 secondary items     |
+| **P5** | Cluster by theme                    | Topic buckets across newsletters              |
+| **P6** | Draft briefing                      | Lead-with-most-interesting; thematic, ~400wd  |
+| **P7** | Cut pass                            | Drop weakest item if >550 words               |
 
 ## Fitness contract
 

@@ -478,6 +478,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     outputs = parse_output_section(text)
     tasks_worked = parse_tasks_worked_section(text)
     references = parse_identifier_precis_pairs(reflection_text)
+    thread_pickup = parse_thread_pickup_section(text)
     quality_warnings = assess_reflection_quality(reflection_text, outputs, tasks_worked, references)
 
     if outputs is not None:
@@ -490,8 +491,41 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
         result["references"] = references
     if quality_warnings:
         result["quality_warnings"] = quality_warnings
+    if thread_pickup:
+        result["thread_pickup"] = thread_pickup
 
     return result
+
+
+def parse_thread_pickup_section(text: str) -> dict[str, str] | None:
+    """Parse Thread Pickup section from markdown text.
+
+    Extracts thread pickup instructions as a mapping from thread name to action.
+
+    Args:
+        text: Markdown text that may contain a Thread Pickup section
+
+    Returns:
+        Dict mapping thread names to instructions, or None if not found
+    """
+    _SECTION_END = r"(?=\n#{1,6}\s|\n---|\Z)"
+    pattern = rf"#{{2,6}} Thread Pickup[^\S\n]*\n(.*?){_SECTION_END}"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        return None
+
+    pickup_text = match.group(1)
+    threads = {}
+
+    for line in pickup_text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r"^[-*]\s*(?:\*\*)?(.+?)(?:\*\*)?:\s*(.*)$", line)
+        if m:
+            threads[m.group(1).strip()] = m.group(2).strip()
+
+    return threads if threads else None
 
 
 def parse_session_handover(text: str) -> dict[str, Any] | None:
@@ -554,6 +588,11 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
         "branch": raw_fields.get("branch"),
         "handover": True,  # Marker for handover-originated insights
     }
+
+    thread_pickup = parse_thread_pickup_section(text)
+    if thread_pickup:
+        reflection["thread_pickup"] = thread_pickup
+
     return reflection
 
 
@@ -1088,6 +1127,8 @@ def reflection_to_insights(
         result["references"] = reflection.get("references", [])
     if reflection.get("quality_warnings"):
         result["quality_warnings"] = reflection["quality_warnings"]
+    if "thread_pickup" in reflection:
+        result["thread_pickup"] = reflection["thread_pickup"]
 
     # Timeline events for path reconstruction (optional)
     if timeline_events:
