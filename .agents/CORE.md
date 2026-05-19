@@ -4,11 +4,11 @@ This project contains the **academicOps** framework itself. You are currently wo
 
 ### Where to find documentation
 
-**Always check the PKB first** for design intent, feature specs, methodology, or architecture decisions. The canonical home is `brain/projects/aops/specs/`. Source code tells you what the system does _now_; specs tell you why and what it should do.
+**Always check the specs directory first** for design intent, feature specs, methodology, or architecture decisions. The canonical home is `specs/`. Source code tells you what the system does _now_; specs tell you why and what it should do.
 
 Specifically for this project:
 
-- Specs: [[INDEX|brain/projects/aops/specs/INDEX]] (MOC) — read this first when scoping any change
+- Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
 - Project hub: [[aops|brain/projects/aops/aops]]
 - Vision: [[vision|brain/projects/aops/vision]] (where applicable)
 - Canonical taxonomy: `~/src/academicOps/aops-core/skills/remember/references/TAXONOMY.md`
@@ -39,7 +39,7 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 - **.agents/**: Instructions for working on the framework
 - **aops-core/**: Framework core (hooks, enforcement, skills)
 - **aops-tools/**: Additional tools and utilities
-- **brain PKB (project: aops)**: Framework specifications and architecture (specs do not live in-tree)
+- **specs/**: Framework specifications and architecture
 - **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
 
 ## Core Agents
@@ -108,3 +108,4 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Drive-by fix policy:** Bundle an unrelated fix into the current PR only when ALL of: (a) it is blocking your PR from merging (e.g. CI failure that's not your fault), (b) the fix is trivial and obvious, and (c) you can describe it in one sentence in the PR description. Otherwise, file a separate task — don't expand the PR scope.
 
 See [[README.md]] for framework usage documentation.
+ocumentation.

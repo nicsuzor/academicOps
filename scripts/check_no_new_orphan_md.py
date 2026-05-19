@@ -15,6 +15,7 @@ Canonical locations (allowed adds):
 - aops-core/.claude-plugin/**/*.md   plugin metadata
 - tests/**/*.md                      test fixtures + evidentiary data
 - templates/**/*.md                  scaffold templates
+- specs/**/*.md                      specifications and architecture
 - .agents/**/*.md                    project-local rules + status
 - .github/**/*.md                    GitHub-surface docs
 - README.md, CHANGELOG.md, GEMINI.md, INSTALL.md  at repo root only
@@ -42,6 +43,7 @@ ALLOWED_PATTERNS = [
     "aops-core/.claude-plugin/**/*.md",
     "tests/**/*.md",
     "templates/**/*.md",
+    "specs/**/*.md",
     ".agents/**/*.md",
     ".github/**/*.md",
 ]
@@ -121,9 +123,9 @@ def main(argv: list[str]) -> int:
         "Canonical locations for new .md files:\n"
         "  - aops-core/skills/**/*.md     tests/**/*.md\n"
         "  - aops-core/agents/**/*.md     templates/**/*.md\n"
-        "  - aops-core/workflows/**/*.md  .agents/**/*.md\n"
-        "  - aops-core/commands/**/*.md   .github/**/*.md\n"
-        "  - aops-core/hooks/**/*.md\n"
+        "  - aops-core/workflows/**/*.md  specs/**/*.md\n"
+        "  - aops-core/commands/**/*.md   .agents/**/*.md\n"
+        "  - aops-core/hooks/**/*.md      .github/**/*.md\n"
         "  - aops-core/<UPPERCASE>.md     README.md / CHANGELOG.md (root)\n"
         "\n"
         "If this addition is legitimate, surface it to the user; once\n"
