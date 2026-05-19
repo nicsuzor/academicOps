@@ -112,12 +112,17 @@ class TestBuildDockerCmd:
         w_idx = docker_cmd.cmd.index("-w")
         assert docker_cmd.cmd[w_idx + 1] == "/workspace"
 
-    def test_forwards_anthropic_api_key(self):
+    def test_does_not_forward_anthropic_api_key(self):
+        """ANTHROPIC_API_KEY must NOT be forwarded — Claude auth is OAuth-only
+        per aops-06ab3ee0. A host with ANTHROPIC_API_KEY set should not leak it
+        into the worker (and the env-map.conf entry was deliberately removed)."""
         env = {"ANTHROPIC_API_KEY": "sk-test-123"}
         cmd = self._build(env=env)
-        assert "-e" in cmd
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "ANTHROPIC_API_KEY=sk-test-123" in env_args
+        for arg in env_args:
+            assert not arg.startswith("ANTHROPIC_API_KEY="), (
+                f"ANTHROPIC_API_KEY must not be forwarded; got {arg}"
+            )
 
     def test_forwards_claude_code_oauth_token(self):
         env = {"CLAUDE_CODE_OAUTH_TOKEN": "oauth-test-token"}
@@ -441,61 +446,83 @@ class TestBuildDockerCmd:
                 )
 
 
-class TestClaudeStagedConfig:
-    """Tests for the staged .claude.json written by _build_docker_cmd."""
+class TestClaudeAuthEnvOnly:
+    """Claude auth must be env-var only: no `.claude.json`/`.credentials.json`/
+    `settings.json` staging from the host. See aops-06ab3ee0."""
 
     @pytest.fixture(autouse=True)
     def _patch_remote_daemon(self):
         with patch("cli._is_remote_daemon", return_value=False):
             yield
 
-    def test_workspace_trust_flags_from_template(self, tmp_path):
-        """Staged .claude.json comes from polecat/defaults/claude-headless.json.
-
-        The host's ~/.claude.json is NOT merged in — staging is a clean copy
-        of the bundled template. This is the no-inline-configs invariant.
-        """
-        # Seed a host file that should NOT influence the staged copy.
+    def test_no_claude_auth_files_staged(self, tmp_path):
+        """Host `.claude.json`, `.claude/.credentials.json`, and
+        `.claude/settings.json` must NOT be copied into the staging dir."""
+        # Seed all three host files that the old code path would have staged.
         (tmp_path / ".claude.json").write_text(
-            json.dumps({"bypassPermissionsModeAccepted": False, "someKey": "value"})
+            json.dumps({"oauthAccount": {"emailAddress": "host@example.com"}})
+        )
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / ".credentials.json").write_text('{"token": "host-token"}')
+        (claude_dir / "settings.json").write_text("{}")
+
+        with patch("cli.Path.home", return_value=tmp_path):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+
+        assert docker_cmd.staging_dir is not None
+        # None of the host auth files should appear in the staging dir.
+        assert not (docker_cmd.staging_dir / ".claude.json").exists(), (
+            "staged .claude.json leaked host auth — must be env-var only"
+        )
+        assert not (docker_cmd.staging_dir / ".claude" / ".credentials.json").exists(), (
+            "staged .credentials.json leaked host auth — must be env-var only"
+        )
+        assert not (docker_cmd.staging_dir / ".claude" / "settings.json").exists(), (
+            "staged settings.json leaked host config — must be env-var only"
         )
 
-        with patch("cli.Path.home", return_value=tmp_path):
-            docker_cmd = _build_docker_cmd(
-                cli_tool="claude",
-                work_dir=Path("/tmp/worktree"),
-                env={},
-                agent_cmd=["claude", "--dangerously-skip-permissions"],
-                is_interactive=False,
-            )
 
-        assert docker_cmd.staging_dir is not None
-        staged = json.loads((docker_cmd.staging_dir / ".claude.json").read_text())
-        workspace = staged["projects"]["/workspace"]
-        assert workspace["hasTrustDialogAccepted"] is True
-        assert workspace["hasCompletedProjectOnboarding"] is True
-        assert staged["bypassPermissionsModeAccepted"] is True
-        # Host-side keys are deliberately NOT preserved.
-        assert "someKey" not in staged
+class TestRequireClaudeOauth:
+    """Pre-flight: polecat must fail fast when CLAUDE_CODE_OAUTH_TOKEN is unset."""
 
-    def test_workspace_trust_flags_without_source(self, tmp_path):
-        """Staged .claude.json is created with trust flags even when ~/.claude.json is absent."""
-        with patch("cli.Path.home", return_value=tmp_path):
-            docker_cmd = _build_docker_cmd(
-                cli_tool="claude",
-                work_dir=Path("/tmp/worktree"),
-                env={},
-                agent_cmd=["claude", "--dangerously-skip-permissions"],
-                is_interactive=False,
-            )
+    def test_exits_when_oauth_token_missing_for_claude(self, monkeypatch, capsys):
+        from cli import _require_claude_oauth_or_exit
 
-        assert docker_cmd.staging_dir is not None
-        staged_path = docker_cmd.staging_dir / ".claude.json"
-        assert staged_path.exists(), "staged .claude.json must be created even without source"
-        staged = json.loads(staged_path.read_text())
-        workspace = staged["projects"]["/workspace"]
-        assert workspace["hasTrustDialogAccepted"] is True
-        assert workspace["hasCompletedProjectOnboarding"] is True
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+        with pytest.raises(SystemExit) as excinfo:
+            _require_claude_oauth_or_exit("claude")
+        assert excinfo.value.code == 4
+        stderr = capsys.readouterr().err
+        assert "CLAUDE_CODE_OAUTH_TOKEN" in stderr
+        assert "claude setup-token" in stderr
+
+    def test_passes_when_oauth_token_set_for_claude(self, monkeypatch):
+        from cli import _require_claude_oauth_or_exit
+
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "fake-token")
+        # Must return None without raising.
+        assert _require_claude_oauth_or_exit("claude") is None
+
+    def test_noop_for_gemini(self, monkeypatch):
+        from cli import _require_claude_oauth_or_exit
+
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+        # Gemini path must not be gated on Claude token.
+        assert _require_claude_oauth_or_exit("gemini") is None
+
+    def test_noop_for_shell(self, monkeypatch):
+        from cli import _require_claude_oauth_or_exit
+
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+        # Shell mode (interactive) doesn't run an autonomous claude worker.
+        assert _require_claude_oauth_or_exit("shell") is None
 
 
 class TestFindDockerSock:
