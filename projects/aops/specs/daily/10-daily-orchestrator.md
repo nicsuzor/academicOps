@@ -37,15 +37,15 @@ When invoked at start-of-day (or on demand):
 
 Order of sections in the `DailyNote` is **fixed** because Nic skims top-to-bottom:
 
-| # | Section | Why this position |
-|---|---|---|
-| 1 | Today's calendar | Time-anchored — must see first |
-| 2 | What needs attention | Email/captures — highest-friction items today |
-| 3 | News briefing | Editorial — read with coffee, sets context |
-| 4 | Active work | Reference — checked when planning blocks of work |
-| 5 | Work log | Append-only journal — bottom |
+| # | Section              | Why this position                                |
+| - | -------------------- | ------------------------------------------------ |
+| 1 | Today's calendar     | Time-anchored — must see first                   |
+| 2 | What needs attention | Email/captures — highest-friction items today    |
+| 3 | News briefing        | Editorial — read with coffee, sets context       |
+| 4 | Active work          | Reference — checked when planning blocks of work |
+| 5 | Work log             | Append-only journal — bottom                     |
 
-The news briefing sits in position 3, between immediate-action items (above) and reference state (below). This placement was decided in the 2026-05-19 design pass — rationale: briefing is *contextual*, not *actionable*; placing it between the two categories signals "this is for orientation, not for tasking".
+The news briefing sits in position 3, between immediate-action items (above) and reference state (below). This placement was decided in the 2026-05-19 design pass — rationale: briefing is _contextual_, not _actionable_; placing it between the two categories signals "this is for orientation, not for tasking".
 
 ## What `/daily` does NOT do
 
@@ -59,12 +59,12 @@ This is the core/tools split applied: `/daily` (core) is the workflow plumbing; 
 
 ## Invocation
 
-| Form | Behaviour |
-|---|---|
-| `/daily` | Build/update today's note; print summary line to chat |
-| `/daily --pdf` | Same + render PDF bundle |
+| Form                        | Behaviour                                                     |
+| --------------------------- | ------------------------------------------------------------- |
+| `/daily`                    | Build/update today's note; print summary line to chat         |
+| `/daily --pdf`              | Same + render PDF bundle                                      |
 | `/daily --refresh-briefing` | Re-run only the `/news-briefing` step and update that section |
-| `/daily --refresh-email` | Re-run only the `/email --daily` step |
+| `/daily --refresh-email`    | Re-run only the `/email --daily` step                         |
 
 ## Fitness rubric reference
 

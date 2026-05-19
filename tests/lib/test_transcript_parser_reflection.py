@@ -451,3 +451,39 @@ class TestSessionHandoverHeadingLevels:
         text = "# Session Handover" + self._BODY
         result = parse_session_handover(text)
         assert result is None
+
+
+class TestThreadPickup:
+    def test_parses_thread_pickup(self):
+        from lib.transcript_parser import parse_thread_pickup_section
+
+        text = """
+### Session Handover
+- **Summary**: foo
+
+### Thread Pickup
+- **Thread A**: do x
+- **Thread B**: do y
+"""
+        result = parse_thread_pickup_section(text)
+        assert result is not None
+        assert result["Thread A"] == "do x"
+        assert result["Thread B"] == "do y"
+
+    def test_parses_thread_pickup_inline_in_handover(self):
+        from lib.transcript_parser import parse_session_handover
+
+        text = """
+### Session Handover
+- **Session ID**: 123
+- **Summary**: foo
+
+### Thread Pickup
+- **Thread A**: do x
+- **Thread B**: do y
+"""
+        result = parse_session_handover(text)
+        assert result is not None
+        assert "thread_pickup" in result
+        assert result["thread_pickup"]["Thread A"] == "do x"
+        assert result["thread_pickup"]["Thread B"] == "do y"

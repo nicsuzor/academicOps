@@ -30,6 +30,7 @@ additive — missing fields do not fail validation, they emit warnings.
 | `tasks_worked`         | `list[TaskWorked]` | Source-of-truth list of session task activity.                                        |
 | `references`           | `list[Reference]`  | Identifier+precis pairs found anywhere in the reflection body.                        |
 | `quality_warnings`     | `list[str]`        | Non-fatal quality issues — missing blocks, bare ids, feature-suggestion smell.        |
+| `thread_pickup`        | `dict[str, str]`   | Per-thread pickup instructions extracted from `### Thread Pickup` block (if present). |
 
 A session is _never_ silently dropped because of missing fields. If a block
 is missing, the warning is added to `quality_warnings` and surfaced on

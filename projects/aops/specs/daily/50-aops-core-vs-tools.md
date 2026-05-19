@@ -23,25 +23,25 @@ Where multiple answers apply, the test resolves to whichever side has the strong
 
 ## Current allocations — audit
 
-| Skill / command          | Current home   | Should be      | Why                                                                                                |
-| ------------------------ | -------------- | -------------- | -------------------------------------------------------------------------------------------------- |
-| `/daily`                 | aops-core      | aops-core ✓    | Owns daily-note structure (SSoT).                                                                  |
-| `/remember`              | aops-core      | aops-core ✓    | Memory primitive — non-fungible.                                                                   |
-| `/pull`, `/q`            | aops-core      | aops-core ✓    | PKB task interaction primitives.                                                                   |
-| `/end-session`, `/dump`  | aops-core      | aops-core ✓    | Session lifecycle primitives.                                                                      |
-| `/email`                 | aops-core      | **aops-tools** | Outlook-MCP-dependent. Domain workflow on a swappable surface.                                     |
-| `/news-briefing` (new)   | (drafted core) | **aops-tools** | Outlook-MCP-dependent. Editorial curation is a content workflow.                                   |
-| `daily-pdf` (new)        | (n/a)          | aops-tools     | Built on `aops-tools/pdf`. Output-format adapter.                                                  |
-| `aops-tools:pdf`         | aops-tools     | aops-tools ✓   | Output adapter — already correct.                                                                  |
-| `aops-tools:extract`     | aops-tools     | aops-tools ✓   | Input adapter.                                                                                     |
-| `aops-tools:diagram`     | aops-tools     | aops-tools ✓   | Output adapter.                                                                                    |
-| `aops-tools:deep-research` | aops-tools   | aops-tools ✓   | External-tool wrapper.                                                                             |
+| Skill / command            | Current home   | Should be      | Why                                                              |
+| -------------------------- | -------------- | -------------- | ---------------------------------------------------------------- |
+| `/daily`                   | aops-core      | aops-core ✓    | Owns daily-note structure (SSoT).                                |
+| `/remember`                | aops-core      | aops-core ✓    | Memory primitive — non-fungible.                                 |
+| `/pull`, `/q`              | aops-core      | aops-core ✓    | PKB task interaction primitives.                                 |
+| `/end-session`, `/dump`    | aops-core      | aops-core ✓    | Session lifecycle primitives.                                    |
+| `/email`                   | aops-core      | **aops-tools** | Outlook-MCP-dependent. Domain workflow on a swappable surface.   |
+| `/news-briefing` (new)     | (drafted core) | **aops-tools** | Outlook-MCP-dependent. Editorial curation is a content workflow. |
+| `daily-pdf` (new)          | (n/a)          | aops-tools     | Built on `aops-tools/pdf`. Output-format adapter.                |
+| `aops-tools:pdf`           | aops-tools     | aops-tools ✓   | Output adapter — already correct.                                |
+| `aops-tools:extract`       | aops-tools     | aops-tools ✓   | Input adapter.                                                   |
+| `aops-tools:diagram`       | aops-tools     | aops-tools ✓   | Output adapter.                                                  |
+| `aops-tools:deep-research` | aops-tools     | aops-tools ✓   | External-tool wrapper.                                           |
 
 Three migrations needed: `/email` (core → tools), `/news-briefing` (land in tools, not core), `daily-pdf` (new in tools).
 
 ## Why `/email` is tools, not core
 
-It's tempting to treat `/email` as core because email-to-task capture *feels* foundational. The test reveals it isn't:
+It's tempting to treat `/email` as core because email-to-task capture _feels_ foundational. The test reveals it isn't:
 
 - **Primary abstraction owned**: none. PKB task creation belongs to PKB primitives; email I/O belongs to the Outlook MCP. `/email` is just orchestration between two existing primitives.
 - **External dependency**: yes — Outlook MCP, which is itself a fungible adapter (Nic could move to Gmail; the framework should not need a core rewrite).

@@ -14,12 +14,12 @@ The bundle is **for reading away from the laptop** — morning coffee on the dec
 
 ## Invocation forms
 
-| Form                           | Behaviour                                                              |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `/daily-pdf`                   | Render today's PDF from the existing daily note. Fails if no note.    |
-| `/daily-pdf YYYY-MM-DD`        | Render a specific past day's PDF.                                     |
-| `/daily-pdf --bundle`          | Called by `/daily --pdf` — renders after the orchestrator updates note.|
-| `/daily-pdf --open`            | Render then open in the system PDF viewer (macOS `open`, Linux `xdg-open`). |
+| Form                    | Behaviour                                                                   |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `/daily-pdf`            | Render today's PDF from the existing daily note. Fails if no note.          |
+| `/daily-pdf YYYY-MM-DD` | Render a specific past day's PDF.                                           |
+| `/daily-pdf --bundle`   | Called by `/daily --pdf` — renders after the orchestrator updates note.     |
+| `/daily-pdf --open`     | Render then open in the system PDF viewer (macOS `open`, Linux `xdg-open`). |
 
 ## Pipeline
 
