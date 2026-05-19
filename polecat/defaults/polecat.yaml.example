@@ -143,8 +143,10 @@ crew_names:
 #
 #   AOPS_BOT_GH_TOKEN     Bot PAT for credential isolation (issue #581).
 #                         Mapped to GH_TOKEN and GITHUB_TOKEN inside containers.
-#   ANTHROPIC_API_KEY     Anthropic API auth.
-#   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth credential.
+#   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth credential. The ONLY supported
+#                            Claude auth mechanism — `.credentials.json` and
+#                            `ANTHROPIC_API_KEY` paths were removed
+#                            (aops-06ab3ee0). Generate via `claude setup-token`.
 #   GEMINI_API_KEY        Gemini API auth.
 #   PKB_MCP_URL           PKB MCP HTTP endpoint.
 #   PKB_MCP_TOKEN         PKB MCP auth token.
