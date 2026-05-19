@@ -109,7 +109,6 @@ jobs:
           PR_NUM="${{ inputs.pr_number }}"
           echo "Manual override: processing PR #$PR_NUM immediately"
 
-          HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
           DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
 
           # Dispatch merge-prep
@@ -214,9 +213,16 @@ jobs:
 
             REQUALIFIED=false
             if [ "$MP_STATUS" = "success" ]; then
-              # Check for CHANGES_REQUESTED reviews that arrived after merge-prep
-              # set success (race condition: Axiom Review triggered by merge-prep's
-              # own commits can finish after merge-prep declares success)
+              # Re-qualify conditions for a PR that already passed merge-prep:
+              #   (a) Late CHANGES_REQUESTED review arrived (race: Axiom Review
+              #       triggered by merge-prep's own commits can finish after
+              #       merge-prep declares success).
+              #   (b) Base branch advanced and the PR is now CONFLICTING. Cron
+              #       is the ONLY trigger that catches this — workflow_run is
+              #       `branches-ignore: main`, so a merge into main never re-evaluates
+              #       other open PRs. Without this check, conflicts introduced by
+              #       concurrent merges silently strand the PR forever.
+
               MP_CREATED=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
                 --jq '[.[] | select(.context == "merge-prep-status" and .state == "success")] | sort_by(.created_at) | last | .created_at' \
                 2>/dev/null || echo "")
@@ -232,8 +238,20 @@ jobs:
               if [ "$LATE_CR" -gt 0 ]; then
                 echo "  RE-QUALIFY: $LATE_CR CHANGES_REQUESTED review(s) arrived after merge-prep succeeded"
                 REQUALIFIED=true
-              else
-                echo "  SKIP: merge-prep-status is success (already processed, no late reviews)"
+              fi
+
+              # Check mergeability: only `CONFLICTING` re-qualifies. `UNKNOWN` means
+              # GitHub hasn't computed it yet (lazy) — skip this tick, next cron
+              # will retry once it settles. Treating UNKNOWN as a trigger would
+              # cause spurious agent runs on every dispatch.
+              MERGEABLE=$(gh pr view "$PR_NUM" --repo "$REPO" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+              if [ "$MERGEABLE" = "CONFLICTING" ]; then
+                echo "  RE-QUALIFY: PR became CONFLICTING after merge-prep succeeded (base advanced)"
+                REQUALIFIED=true
+              fi
+
+              if [ "$REQUALIFIED" = "false" ]; then
+                echo "  SKIP: merge-prep-status is success (mergeable=$MERGEABLE, no late reviews)"
                 continue
               fi
             fi
@@ -254,7 +272,7 @@ jobs:
             fi
 
             echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
-            echo "$PR_NUM|$HEAD_REF" >> /tmp/qualifying_prs.txt
+            echo "$PR_NUM" >> /tmp/qualifying_prs.txt
           done
 
       - name: Dispatch merge-prep for oldest qualifying PR
@@ -271,7 +289,7 @@ jobs:
           # 1 running + 1 pending per group — dispatching N runs discards N-2.
           # The cron (30 min) and workflow_run triggers ensure the next PR gets
           # picked up after the current one finishes.
-          IFS='|' read -r PR_NUM HEAD_REF < /tmp/qualifying_prs.txt
+          PR_NUM=$(head -n 1 /tmp/qualifying_prs.txt)
 
           TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
           echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying)"
