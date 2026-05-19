@@ -97,7 +97,7 @@ Use for every decision the supervisor would otherwise inline: "what should I dis
 
 **Brief shape:** epic ID + role (`preflight` | `react`) + (for `react`) one-line context (work item ID, exit signal).
 
-**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[SURFACES.md#tldr-matrix]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
+**Scope:** PKB-side judgment — task readiness, decomposability, dependency state, worker selection ([[SURFACES.md#tldr-matrix]]), Critic Gate for high-blast-radius tasks, A8 scan on any draft body she writes (canonical list at [[instructions/decomposition-and-review#a8-prose-scan-mandatory-before-posting-any-decomposition]]), RBG pre-flight check (invoke RBG inline to review the proposed decomposition for axiom violations A1–A8 before creating tasks). Pauli does NOT run shell commands, probe hosts, or test environment capabilities in the supervisor context.
 
 **Pre-flight shape (Decision Tree)**:
 Before dispatch, Pauli runs a pre-flight validation. Use the Design/Research variant if task `type` or `kind` is design/spec/research, OR if the AC indicates creating a new file/design doc/spec. Otherwise, use the Code/Edit variant.
