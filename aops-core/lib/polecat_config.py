@@ -7,7 +7,9 @@ defaults from one YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path
 named by ``AOPS_POLECAT_CONFIG``).
 
 Per AXIOMS A14 (fail-fast) and A16 (DRY, no defaults, no backwards-compat):
-- Missing file ⇒ ``RuntimeError``. No silent fallback to baked-in defaults.
+- Missing file ⇒ stderr warning + built-in defaults (see ``BUILTIN_SESSION_DEFAULTS``).
+  This supports fresh-install machines where polecat.yaml has not been created yet.
+  A present-but-malformed file still hard-fails (A14).
 - No legacy env-var override paths. ``AOPS_POLECAT_CONFIG`` is the only env
   var that *names* the config; every config *value* lives in the YAML.
 - CLI flags override the loaded config in-process; they do not mutate it.
