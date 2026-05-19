@@ -43,7 +43,7 @@ If the bound task is genuinely complete, do **not** use /dump — use /end-sessi
      - **Next**: the single next concrete action to pick up.
      - **Watch out**: any in-flight side-effects (uncommitted files, running processes, half-applied migrations, modified remote state, locks held). One line per item.
 
-   If no task is bound, call `mcp__pkb__create_task` with a one-sentence title and the resume content as the body, then proceed.
+   If no task is bound, call `mcp__pkb__create_task` with a one-sentence title, the resume content as the body, and `parent="adhoc-sessions"` (the default catch-all parent for resume/handover tasks), then proceed.
 
 2. **Emit the handover block.** Exactly this shape, no prose before or after:
 
