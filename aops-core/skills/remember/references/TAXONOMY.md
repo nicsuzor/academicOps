@@ -180,6 +180,16 @@ contributes_to:
 
 ---
 
+## Default Fallback Parent
+
+Every task in the PKB must have a parent. When creating a task, agents and scripts should resolve the most contextually appropriate parent (such as the active epic or project root).
+
+However, during emergency session handovers, bails (`/dump`), or when capturing ad-hoc work where no parent is obvious, the `adhoc-sessions` node is the **default catch-all parent for resume/handover tasks**.
+
+Skills like `/dump` or `/end-session` that need to rapidly persist a loose thread must use `parent="adhoc-sessions"` rather than failing or omitting the parent field.
+
+---
+
 ## Edge Semantics and Cycle Policy
 
 The graph is **directed but not required to be acyclic**. Cycles are a feature for some edge types and a pathology for others.
