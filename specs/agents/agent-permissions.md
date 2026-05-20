@@ -13,7 +13,7 @@ created: 2026-04-23
 
 **Status**: Draft. Sibling to [[agent-authority]]. Implementation tracked under parent `task-d380d98f`.
 
-**Sibling spec (frontmatter schema)**: [[agent-authority]] (`specs/agents/agent-authority.md`) — the agent frontmatter schema, canonical tool naming, skill/sub-agent delegation rules, and the non-transit principle. Together with this file it constitutes the single logical spec for agent permissions. That file owns the structural schema; this file owns the four concrete axes (tools / mcp_servers / bash_scopes / file_access) and their lint requirements. Read both together.
+**Sibling spec (frontmatter schema)**: [[agent-authority]] (`specs/agents/agent-authority.md`) — the agent frontmatter schema, canonical tool naming, skill/sub-agent delegation rules, and the non-transit principle. Together with this file it constitutes the single logical spec for agent permissions. That file owns the structural schema; this file owns the four concrete axes (tools / mcpServers / bashScopes / fileAccess) and their lint requirements. Read both together.
 
 **Operative state** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each individual agent holds. This spec defines the four-axis schema; the per-agent files are the binding declarations against that schema.
 

@@ -27,7 +27,7 @@ type: spec
 
 **Status**: Proposed. Audit and lint tooling tracked under `task-d380d98f`.
 
-**Sibling spec (envelope axes)**: [[agent-permissions]] (`specs/agents/agent-permissions.md`) — the four-axis permissions surface (tools / mcp_servers / bash_scopes / file_access). Together with this file it constitutes the single logical spec for agent permissions. This file owns the frontmatter schema, canonical tool naming, skill/sub-agent delegation rules, and the non-transit principle. The sibling file owns the concrete axes and their lint requirements. Read both together.
+**Sibling spec (envelope axes)**: [[agent-permissions]] (`specs/agents/agent-permissions.md`) — the four-axis permissions surface (tools / mcpServers / bashScopes / fileAccess). Together with this file it constitutes the single logical spec for agent permissions. This file owns the frontmatter schema, canonical tool naming, skill/sub-agent delegation rules, and the non-transit principle. The sibling file owns the concrete axes and their lint requirements. Read both together.
 
 **Operative state** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each individual agent holds. This spec defines the schema; the per-agent files are the binding declarations against that schema.
 
@@ -230,7 +230,7 @@ Every agent file is audited against this spec. The compliance matrix lives at `s
 
 ## Relation to Other Specs
 
-- **`specs/agents/agent-permissions.md`** — Sibling spec. Owns the four-axis permissions envelope (tools / mcp_servers / bash_scopes / file_access). Together with this file it constitutes the single logical spec for agent permissions.
+- **`specs/agents/agent-permissions.md`** — Sibling spec. Owns the four-axis permissions envelope (tools / mcpServers / bashScopes / fileAccess). Together with this file it constitutes the single logical spec for agent permissions.
 - **`specs/enforcement/ultra-vires-enforcer.md`** — The enforcer reads the declared authority from this spec's frontmatter and flags deviations in session narratives.
 - **`specs/future/skill-delegation.md`** — Refines invocation mechanics (Skill / Agent / direct prompt), nested delegation, context-passing contract, and orchestrator spawn matrices on top of this authority envelope.
 - **`specs/agents/orchestrator-boundary.md`** — The CLI orchestrator's allow/deny tables are one specific instance of a declared authority envelope.
