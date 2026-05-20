@@ -11,7 +11,13 @@ created: 2026-04-23
 
 # Agent Permissions — Design
 
-**Status**: Draft. Sibling to `specs/agent-authority.md`. Implementation tracked under parent `task-d380d98f`.
+**Status**: Draft. Sibling to [[agent-authority]]. Implementation tracked under parent `task-d380d98f`.
+
+**Sibling spec (frontmatter schema)**: [[agent-authority]] (`specs/agents/agent-authority.md`) — the agent frontmatter schema, canonical tool naming, skill/sub-agent delegation rules, and the non-transit principle. Together with this file it constitutes the single logical spec for agent permissions. That file owns the structural schema; this file owns the four concrete axes (tools / mcpServers / bashScopes / fileAccess) and their lint requirements. Read both together.
+
+**Operative state** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each individual agent holds. This spec defines the four-axis schema; the per-agent files are the binding declarations against that schema.
+
+**Audit-artifact** (current-state snapshot): `.agents/AGENT-TOOLS.md` is the mechanical dump generated from the per-agent frontmatter for at-a-glance comparison. It is not a writeable source — drift is reported by it, not declared in it.
 
 ## Problem
 
@@ -19,7 +25,7 @@ Framework agents have organically accumulated permissions through implicit conve
 
 The deeper problem is not technical. It is that **AI agents are biased toward action**. Left to their own devices, they expand scope, they find helpful shortcuts, they do things adjacent to the task because they seem useful. A well-meaning agent that writes to a file it was not supposed to touch is not a security incident — it is a planning failure. The permissions model is how we make "scope" visible before a task runs, not after.
 
-This spec and `specs/agent-authority.md` together constitute the framework's answer to that problem. `agent-authority.md` defines the conceptual envelope: which agents may spawn which, which skills are permitted, what it means for authority not to transit through spawning. This spec narrows to the _permissions surface_: which specific tools, servers, command families, and filesystem regions an agent may reach.
+This spec and [[agent-authority]] together constitute the framework's answer to that problem. `agent-authority.md` defines the conceptual envelope: which agents may spawn which, which skills are permitted, what it means for authority not to transit through spawning. This spec narrows to the _permissions surface_: which specific tools, servers, command families, and filesystem regions an agent may reach.
 
 ## Design Philosophy
 
@@ -87,13 +93,13 @@ The permission axes combine into recognisable patterns. These are not formal typ
 
 **Task executor.** Has `Read`, `Write`, `Edit`, `Bash` with `git:read`, `git:write`, `gh:write`, plus `file_access` scoped to the relevant directories. Can do real work within a bounded scope. Most polecat workers.
 
-**Orchestrator.** Has `Agent`, `Skill`, broad tool access, `bash_scopes: [unrestricted]` (declared explicitly). Can spawn sub-agents and route to skills. Bounded by the spawning rules in `agent-authority.md`, not by tool restriction. James and the supervisor skill run at this level.
+**Orchestrator.** Has `Agent`, `Skill`, broad tool access, `bash_scopes: [unrestricted]` (declared explicitly). Can spawn sub-agents and route to skills. Bounded by the spawning rules in [[agent-authority]], not by tool restriction. James and the supervisor skill run at this level.
 
 These profiles inform how to read an agent file quickly. A worker agent with `unrestricted` bash is anomalous. An orchestrator without `Agent` is probably misconfigured.
 
 ## Frontmatter Schema (Reference)
 
-Agent files live under `aops-core/agents/<name>.md`. The full authority schema (including `skills`, `subagents`, `model`, `permissionMode`) is defined in `specs/agent-authority.md`. This spec owns the four permissions fields:
+Agent files live under `aops-core/agents/<name>.md`. The full authority schema (including `skills`, `subagents`, `model`, `permissionMode`) is defined in [[agent-authority]] (`specs/agents/agent-authority.md`). This spec owns the four permissions fields:
 
 ```yaml
 # From agent-authority.md (required context):
@@ -129,13 +135,13 @@ This is a design choice, not a constraint imposed by the harness. It means:
 
 - **Delegation is routing, not elevation.** A parent that needs broader action routes to an agent that declared that authority, not to a child it tries to endow at runtime.
 - **Permission scope is auditable from the file.** You can answer "what can this agent do?" by reading one file. You never need to trace the spawning chain.
-- **Skills are bounded differently from sub-agents.** A skill invoked via the `Skill` tool runs inside the calling agent's turn. Its effective tool set is the _intersection_ of what the skill needs and what the agent declared. Skills are library code in the caller's frame. Sub-agents are separate processes with their own frames. See `specs/agent-authority.md` §Skill Delegation.
+- **Skills are bounded differently from sub-agents.** A skill invoked via the `Skill` tool runs inside the calling agent's turn. Its effective tool set is the _intersection_ of what the skill needs and what the agent declared. Skills are library code in the caller's frame. Sub-agents are separate processes with their own frames. See [[agent-authority]] §Skill Delegation.
 
 The only thing that transits from parent to child is the prompt — the context the parent chooses to pass. That is the bridging channel. Everything else is the child's own declaration.
 
 ## Relation to the Ultra-Vires Enforcer
 
-`specs/ultra-vires-enforcer.md` defines the L4 post-hoc reviewer that reads session narratives and flags activity outside declared authority. This spec feeds it directly: the agent's frontmatter is the enforcer's ground truth. A call to any tool, server, bash family, or filesystem path outside the declared set is a Type C (mechanical overreach) flag.
+`specs/enforcement/ultra-vires-enforcer.md` defines the L4 post-hoc reviewer that reads session narratives and flags activity outside declared authority. This spec feeds it directly: the agent's frontmatter is the enforcer's ground truth. A call to any tool, server, bash family, or filesystem path outside the declared set is a Type C (mechanical overreach) flag.
 
 The permissions layer is declarative; the enforcer is observational. Neither alone is sufficient. A declaration without observation drifts silently — agents start doing things outside their envelope and no one notices. Observation without a declaration has nothing to enforce against — the reviewer cannot tell drift from legitimate evolution.
 
@@ -154,7 +160,7 @@ L5 is the hard edge. A declaration cannot re-open a path that an L5 hook blocks.
 - **Rate and quota limits.** These are harness budgets, not permission decisions.
 - **Prompt content review.** That is rbg's and the enforcer's domain.
 - **Per-operation timeouts.** Harness-level concern, independent of the permissions surface.
-- **Runtime user approval prompts.** The `permissionMode` field (in `agent-authority.md`) is a hint to the harness about interactive approval UX. It is orthogonal to the declarative permissions defined here.
+- **Runtime user approval prompts.** The `permissionMode` field (in [[agent-authority]]) is a hint to the harness about interactive approval UX. It is orthogonal to the declarative permissions defined here.
 - **Cross-repo permissions.** Each repo's agent files are scoped to that repo. Multi-repo coordination happens through the polecat dispatch layer, not through permissions extension.
 
 ## Open Questions
@@ -167,10 +173,10 @@ L5 is the hard edge. A declaration cannot re-open a path that an L5 hook blocks.
 
 ## Cross-References
 
-- `specs/agent-authority.md` — Authority envelope: skill delegation, sub-agent spawning, non-transit rule. This spec narrows to the four permissions axes.
-- `specs/ultra-vires-enforcer.md` — Consumes this spec's schema as the ground-truth reference for detecting permission violations.
-- `specs/enforcement.md` — Five-layer enforcement model; this spec operates at L3 (structural declaration) and feeds L4/L5.
-- `specs/polecat-system.md` — Enforces `file_access` and `bash_scopes` at the worktree boundary for remote agent tasks.
+- [[agent-authority]] (`specs/agents/agent-authority.md`) — Sibling spec. Authority envelope: frontmatter schema, skill delegation, sub-agent spawning, non-transit rule. This spec narrows to the four permissions axes.
+- `specs/enforcement/ultra-vires-enforcer.md` — Consumes this spec's schema as the ground-truth reference for detecting permission violations.
+- `specs/enforcement/enforcement.md` — Five-layer enforcement model; this spec operates at L3 (structural declaration) and feeds L4/L5.
+- `specs/agents/polecat-system.md` — Enforces `file_access` and `bash_scopes` at the worktree boundary for remote agent tasks.
 - `task-1939d819` — Persona/knowledge/authority unification. This spec supplies the permissions layer; that task owns persona and knowledge layers.
 - `task-4a6eb501` — Orchestrator boundary enforcement. Consumes `bash_scopes` and `tools` declared here.
 - `task-b5fec0b5` — Framework structure formalisation; owns the migration of existing agent files to comply with this spec.
