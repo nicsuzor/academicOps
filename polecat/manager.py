@@ -2301,6 +2301,16 @@ class PolecatManager:
         # Validate task ID before using in filesystem path and git branch name
         validate_task_id_or_raise(task_id)
 
+        # Crew workers are task-less named ephemeral agents — they live under
+        # crew_dir/<name>/, not polecats_dir/<task_id>/, and have no PKB entry.
+        # If the caller passes a crew name here (e.g. via a direct API call that
+        # bypasses the CLI crew-path check), delegate to nuke_crew so cleanup
+        # succeeds rather than failing on task lookup.
+        crew_path = self.crew_dir / task_id
+        if crew_path.exists():
+            self.nuke_crew(task_id, force=force)
+            return
+
         # We need the task to know which repo it came from, but if we don't have it
         # (e.g. CLI just passed an ID), we might have to guess or search.
         # For simplicity, let's look up the task.
