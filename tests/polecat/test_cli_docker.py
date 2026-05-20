@@ -376,6 +376,32 @@ class TestBuildDockerCmd:
         assert "SSH_AUTH_SOCK=" in env_args
         assert "SSH_AUTH_SOCK=/tmp/host-ssh-agent.sock" not in env_args
 
+    def test_forwards_hook_log_path_when_set(self):
+        """AOPS_HOOK_LOG_PATH from a dispatching session must reach the container."""
+        env = {"AOPS_HOOK_LOG_PATH": "/tmp/session/hooks.jsonl"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "AOPS_HOOK_LOG_PATH=/tmp/session/hooks.jsonl" in env_args
+
+    def test_does_not_forward_hook_log_path_when_unset(self):
+        """AOPS_HOOK_LOG_PATH must not be emitted when absent — hooks auto-compute it."""
+        cmd = self._build(env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert not any(a.startswith("AOPS_HOOK_LOG_PATH=") for a in env_args)
+
+    def test_forwards_gate_file_enforcer_when_set(self):
+        """AOPS_GATE_FILE_ENFORCER from a dispatching session must reach the container."""
+        env = {"AOPS_GATE_FILE_ENFORCER": "/tmp/session/enforcer.md"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "AOPS_GATE_FILE_ENFORCER=/tmp/session/enforcer.md" in env_args
+
+    def test_does_not_forward_gate_file_enforcer_when_unset(self):
+        """AOPS_GATE_FILE_ENFORCER must not be emitted when absent — hooks auto-compute it."""
+        cmd = self._build(env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert not any(a.startswith("AOPS_GATE_FILE_ENFORCER=") for a in env_args)
+
     def test_no_gate_mode_env_vars_emitted(self):
         """Gate modes live in polecat.yaml; legacy *_GATE_MODE env vars are
         no longer forwarded into containers — even when the host happens to
