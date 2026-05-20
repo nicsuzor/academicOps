@@ -286,6 +286,14 @@ play here for historical reasons:
   with the action tier than with the cost tier; not used for blocking
   decisions.
 
+| Action    | Definition         | Released when             |
+| :-------- | :----------------- | :------------------------ |
+| inject    | info into context  | n/a — non-blocking        |
+| advisory  | verdict for caller | caller integrates verdict |
+| warn      | gate warning       | n/a — agent proceeds      |
+| block     | pauses progress    | gate condition met        |
+| hard-deny | rejects call       | not released              |
+
 The two vocabularies are not in conflict: the cost ladder ranks *how
 expensive a mechanism is to maintain and run*, while the action vocabulary
 describes *what the mechanism does in the moment it fires*. Most rows
@@ -368,8 +376,8 @@ tables above.
 | Pipeline     | linter / branch prot                 | block      | merge          | active                                                                                                     |
 | Pipeline     | loop detector                        | hard-deny  | merge-prep     | active                                                                                                     |
 | Pipeline     | admin approval                       | block      | merge          | active                                                                                                     |
-| Linting      | rules 6-9 (skill/agent)              | error      | Pre-commit/PR  | active — linter: aops-core/lib/lint_axiom_refs.py                                                          |
-| Linting      | permissions-lint                     | error      | PR push        | planned                                                                                                    |
+| Linting      | rules 6-9 (skill/agent)              | block      | Pre-commit/PR  | active — linter: aops-core/lib/lint_axiom_refs.py                                                          |
+| Linting      | permissions-lint                     | block      | PR push        | planned                                                                                                    |
 | Supervisor   | plan-review gate                     | block      | post-decomp    | active                                                                                                     |
 | H91 Deadline | HEURISTICS.md                        | inject     | always-on      | active                                                                                                     |
 | H91 Deadline | `rbg` review                         | advisory   | review-time    | active                                                                                                     |
