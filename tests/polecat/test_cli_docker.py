@@ -817,6 +817,40 @@ class TestMakeWorkerEnv:
         env = _make_worker_env()
         assert env.get("GH_PROMPT_DISABLED") == "1"
 
+    def test_forwards_hook_log_path_when_set(self):
+        """AOPS_HOOK_LOG_PATH propagates to non-Docker workers via agent-env-map.conf."""
+        with patch.dict(os.environ, {"AOPS_HOOK_LOG_PATH": "/tmp/session/hooks.jsonl"}):
+            from cli import _make_worker_env
+
+            env = _make_worker_env()
+        assert env.get("AOPS_HOOK_LOG_PATH") == "/tmp/session/hooks.jsonl"
+
+    def test_does_not_forward_hook_log_path_when_unset(self):
+        """AOPS_HOOK_LOG_PATH must not be set in worker env when absent from host."""
+        env_without = {k: v for k, v in os.environ.items() if k != "AOPS_HOOK_LOG_PATH"}
+        with patch.dict(os.environ, env_without, clear=True):
+            from cli import _make_worker_env
+
+            env = _make_worker_env()
+        assert "AOPS_HOOK_LOG_PATH" not in env
+
+    def test_forwards_gate_file_enforcer_when_set(self):
+        """AOPS_GATE_FILE_ENFORCER propagates to non-Docker workers via agent-env-map.conf."""
+        with patch.dict(os.environ, {"AOPS_GATE_FILE_ENFORCER": "/tmp/session/enforcer.md"}):
+            from cli import _make_worker_env
+
+            env = _make_worker_env()
+        assert env.get("AOPS_GATE_FILE_ENFORCER") == "/tmp/session/enforcer.md"
+
+    def test_does_not_forward_gate_file_enforcer_when_unset(self):
+        """AOPS_GATE_FILE_ENFORCER must not be set in worker env when absent from host."""
+        env_without = {k: v for k, v in os.environ.items() if k != "AOPS_GATE_FILE_ENFORCER"}
+        with patch.dict(os.environ, env_without, clear=True):
+            from cli import _make_worker_env
+
+            env = _make_worker_env()
+        assert "AOPS_GATE_FILE_ENFORCER" not in env
+
 
 class TestDetectSystemTimezone:
     """Tests for _detect_system_timezone."""
