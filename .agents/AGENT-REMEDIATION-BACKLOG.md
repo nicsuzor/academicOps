@@ -26,5 +26,10 @@ This backlog lists the actions required to bring all agents and skills into full
 
 Based on `.agents/AGENT-TOOLS.md`:
 
-- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).
-- **Edit Tool**: Evaluate if `junior.md` needs `Edit`.
+- **Exclusivity Enforcement (PKB destructive tools — BLOCKED, needs ownership decision)**: `EXCLUSIVE_INTENT` in `scripts/audit_agent_compliance.py` marks `bulk_reparent`, `batch_archive`, and `merge_node` as pauli-exclusive. However:
+  - `tests/test_junior_tools.py` is an explicit regression test asserting junior MUST hold these three tools (added by merged PR #758).
+  - `aops-core/skills/planner/SKILL.md`, `remember/SKILL.md`, and `sleep/SKILL.md` all list these tools in their `allowed-tools`; junior drives these skills.
+  - Stripping the tools from junior breaks the planner/remember/sleep workflows.
+
+  **Decision needed (assignee: nic):** either (a) accept these are shared between pauli + junior and update `EXCLUSIVE_INTENT` to remove the exclusivity claim, (b) move the destructive operations into a sub-skill that only pauli drives and update planner/remember/sleep to dispatch instead of call directly, or (c) some other reorganisation.
+- **Edit Tool**: `EXCLUSIVE_INTENT` marks `Edit` as rbg-exclusive but junior also holds it. The intent's own comment says "we just track the tool for now"; this row is aspirational, not enforced.
