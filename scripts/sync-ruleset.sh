@@ -99,9 +99,9 @@ fi
 
 echo "Applying ruleset update..."
 set +e
-RESULT=$(echo "$PAYLOAD" | gh api "repos/$REPO/rulesets/$RULESET_ID" \
+RESULT=$(echo "$PAYLOAD" | GH_NO_UPDATE_NOTIFIER=1 gh api "repos/$REPO/rulesets/$RULESET_ID" \
   -X PUT \
-  --input - 2>&1)
+  --input -)
 API_EXIT=$?
 set -e
 
