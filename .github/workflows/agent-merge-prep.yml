@@ -423,11 +423,43 @@ jobs:
           )"
           fi
 
+      - name: Ensure terminal status on pipeline failure
+        if: always() && (failure() || cancelled())
+        env:
+          FALLBACK_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            export GH_TOKEN="$FALLBACK_TOKEN"
+          fi
+          REPO="${{ github.repository }}"
+          HEAD_SHA="${{ env.REVIEWED_SHA }}"
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA="${{ steps.pr-info.outputs.sha }}"
+          fi
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid' 2>/dev/null || true)
+          fi
+
+          if [ -n "$HEAD_SHA" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="error" \
+              -f context="merge-prep-status" \
+              -f description="Pipeline failed early or was cancelled" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+          fi
+
       - name: Clear running status
         if: always()
+        env:
+          FALLBACK_TOKEN: ${{ github.token }}
         run: |
-          gh api "repos/${{ github.repository }}/statuses/$REVIEWED_SHA" \
-            -f state="success" \
-            -f context="merge-prep-running" \
-            -f description="Merge prep run finished" \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -z "$GH_TOKEN" ]; then
+            export GH_TOKEN="$FALLBACK_TOKEN"
+          fi
+          if [ -n "$REVIEWED_SHA" ]; then
+            gh api "repos/${{ github.repository }}/statuses/$REVIEWED_SHA" \
+              -f state="success" \
+              -f context="merge-prep-running" \
+              -f description="Merge prep run finished" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+          fi
