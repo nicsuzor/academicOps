@@ -368,7 +368,7 @@ Every disposition must be decidable in < 30 seconds by a fresh agent. If longer:
 
 ```bash
 gh issue list --repo nicsuzor/academicOps --state open --limit 100 \
-  --search 'sort:created-asc -label:triaged-stale -label:triaged-duplicate -label:triaged-evidence-bump -label:triaged-single -label:triaged-epic -label:triaged-defer' \
+  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-duplicate -label:triaged-evidence-bump -label:triaged-single -label:triaged-epic -label:triaged-defer' \
   --json number,title,labels,createdAt,updatedAt,comments,body \
   > /tmp/issue-sweep-batch.json
 # Client-side sort: criticality-desc, age-asc. Take top 20.
@@ -434,7 +434,8 @@ The output of this step feeds the disposition decision in the rubric below (most
 - #X → "<title>" (XS)
 Confirm batch? [y / edit / defer all]
 
-### Consolidate / Evidence bump
+### Close (stale) / Consolidate / Evidence bump
+- Close (stale): #P
 - Close duplicate: #R → bumps #S
 - Evidence bump (leave open): #T → bumps #U
 Confirm? [y / edit]
