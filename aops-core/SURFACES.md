@@ -49,10 +49,10 @@ The orchestrator's current daily-driver surface. Claude Code runs **directly ins
 - **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`) via Tailscale from the container — load via `ToolSearch select:mcp__plugin_aops-core_pkb__*` since they are deferred. Other MCPs depend on the crew launch config; verify per-session.
 - **Gates active**: Per `polecat.yaml crew_defaults` overlay + `gates.*`.
 - **Worker dispatch**: Direct — invoke polecat via `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py <subcommand> ...`. Can launch Jules via `pkb task | jules new --repo`. Can launch GHA via `gh workflow run`. No SSH hop required; no `ssh wsl` aliases.
-- **Canonical polecat invocation** (from `junior/.agents/CORE.md`): always use the direct `uv` form — `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py run -t <task-id> -p <project> --model <name>`. Do **not** use the `polecat` / `pc` shell aliases — they live in interactive zsh only and load a different env. Polecat must self-configure from `polecat.yaml`.
-- **Editing the canonical aops repo**: Do not edit `$AOPS` (`/home/nic/src/academicOps`) directly from this orchestrator container. Framework-file edits go through the PKB-task → polecat-worker → PR loop. Stealth edits from the orchestrator bypass review.
+- **Canonical polecat invocation** (from `~/junior/.agents/CORE.md`): always use the direct `uv` form — `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py run -t <task-id> -p <project> --model <name>`. Do **not** use the `polecat` / `pc` shell aliases — they live in interactive zsh only and load a different env. Polecat must self-configure from `polecat.yaml`.
+- **Editing the canonical aops repo**: Do not edit `$AOPS` (`~/src/academicOps`) directly from this orchestrator container. Framework-file edits go through the PKB-task → polecat-worker → PR loop. Stealth edits from the orchestrator bypass review.
 - **Known traps**:
-  - **Mount scope is narrow but not single-folder**: `/workspace` is the persistent working tree; `~/junior/` is mounted; `~/src/academicOps` and `~/brain` are reachable for the canonical repo edits surfaced via PKB tasks. Other container paths are ephemeral.
+  - **Mount scope is narrow but not single-folder**: `/workspace` is the persistent working tree; `~/junior/` is mounted; `~/src/academicOps` and `~/brain` are reachable to support framework operations and task inspection. Other container paths are ephemeral.
   - **Obsolete bootstrap**: `~/junior/bootstrap.sh` is left over from the retired Mac → SSH → WSL model; do not run it.
   - **PKB indexing lag** — `create_task` returns before the task is searchable; confirm with `get_task` before dispatching a polecat that needs to find it.
   - **Background-subagent file outputs are invisible to Nic** — if you delegate, summarise inline. Filenames are traceability, not deliverables.
@@ -312,6 +312,6 @@ The Claude.app-hosted orchestrator environment Nic used as his daily driver for 
 - `polecat-system` PKB spec — deep lifecycle, refinery, dispatch internals
 - `execution-environments` PKB doc — older GHA-vs-local framing (subsumed here; consider deprecating)
 - `infrastructure` PKB doc — machines, services, named agents, repos
-- `junior/.agents/CORE.md` — WSL-crew-container-specific orientation (the in-surface CLAUDE.md for this orchestrator surface; source of truth for the 2026-05-19 architecture change)
+- `~/junior/.agents/CORE.md` — WSL-crew-container-specific orientation (the in-surface CLAUDE.md for this orchestrator surface; source of truth for the 2026-05-19 architecture change)
 - [aops-2b8dd7a7] — the SSoT epic this doc is one deliverable of
 - [aops-e6a80f83] — the Phase A2 task that reconciled the Cowork → WSL-crew rewrite (2026-05-20)
