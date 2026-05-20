@@ -353,13 +353,14 @@ mkdir -p ~/.aops/sessions/reviews
 
 ### Disposition rubric
 
-| Disposition      | Criterion                                                                                                                | Action                                                           | Label             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------- |
-| `close-as-stale` | > 90d + no recent comments + root cause fixed, OR describes behaviour framework no longer has (verifiable by cheap grep) | `gh issue close` with comment citing fix                         | `triaged-stale`   |
-| `comment-only`   | Volume bump on duplicate or related open issue                                                                           | Comment on canonical, close duplicate                            | `triaged-comment` |
-| `single-task`    | Atomic: AC clear, ≤ 3 files, one obvious implementation, no cross-component coordination                                 | File polecat task with `Closes #N`                               | `triaged-single`  |
-| `fix-epic`       | Multi-step, multi-file, or design-required                                                                               | Propose to user; on `y`: create epic + decompose, leave `queued` | `triaged-epic`    |
-| `defer`          | Real but blocked or low-criticality                                                                                      | Apply `triaged-defer` + `revisit-by-YYYY-MM-DD` comment          | `triaged-defer`   |
+| Disposition             | Criterion                                                                                                                | Action                                                           | Label                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------- |
+| `close-as-stale`        | > 90d + no recent comments + root cause fixed, OR describes behaviour framework no longer has (verifiable by cheap grep) | `gh issue close` with comment citing fix                         | `triaged-stale`         |
+| `consolidate-duplicate` | Volume bump on duplicate issue                                                                                           | Close duplicate; MUST comment citing canonical via `#N`          | `triaged-duplicate`     |
+| `evidence-bump`         | Volume bump accumulating evidence on a related open issue (e.g. fix-epic)                                                | Leave open; MUST comment citing canonical via `#N`               | `triaged-evidence-bump` |
+| `single-task`           | Atomic: AC clear, ≤ 3 files, one obvious implementation, no cross-component coordination                                 | File polecat task with `Closes #N`                               | `triaged-single`        |
+| `fix-epic`              | Multi-step, multi-file, or design-required                                                                               | Propose to user; on `y`: create epic + decompose, leave `queued` | `triaged-epic`          |
+| `defer`                 | Real but blocked or low-criticality                                                                                      | Apply `triaged-defer` + `revisit-by-YYYY-MM-DD` comment          | `triaged-defer`         |
 
 Every disposition must be decidable in < 30 seconds by a fresh agent. If longer: "Needs human triage."
 
@@ -367,7 +368,7 @@ Every disposition must be decidable in < 30 seconds by a fresh agent. If longer:
 
 ```bash
 gh issue list --repo nicsuzor/academicOps --state open --limit 100 \
-  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-single -label:triaged-epic -label:triaged-defer' \
+  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-duplicate -label:triaged-evidence-bump -label:triaged-single -label:triaged-epic -label:triaged-defer' \
   --json number,title,labels,createdAt,updatedAt,comments,body \
   > /tmp/issue-sweep-batch.json
 # Client-side sort: criticality-desc, age-asc. Take top 20.
@@ -416,7 +417,7 @@ only mode allowed to author it.
    - **Rule absent** — name the rule before naming the mechanism. Phrase it as a sentence the user could quote. Then ask which tier it belongs at, defaulting to L0/L1 unless the CBA forces a higher placement.
 5. **Default cheap, escalate reluctantly.** ENFORCEMENT-MAP.md:27 names the dominant failure mode: jumping to L3+ when the actual fix is L1 propagation. Most A7 recurrences are L1 propagation failures; assume the same here unless evidence contradicts.
 6. **Cite the row.** The disposition proposal must name either the row of ENFORCEMENT-MAP.md the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into `aops-core/agents/marsha.md` lines XX–YY, citing existing axiom A8" is.
-7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `comment-only` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
+7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `consolidate-duplicate` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
 
 The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and corrective scope. User-directed dispositions still include cost-ladder reasoning (citing the user's directive as the evidence base in place of recurrence links).
 
@@ -433,8 +434,10 @@ The output of this step feeds the disposition decision in the rubric below (most
 - #X → "<title>" (XS)
 Confirm batch? [y / edit / defer all]
 
-### Close / comment-only
-- Close (stale): #P  - Comment + close duplicate: #R → bumps #S
+### Close (stale) / Consolidate / Evidence bump
+- Close (stale): #P
+- Close duplicate: #R → bumps #S
+- Evidence bump (leave open): #T → bumps #U
 Confirm? [y / edit]
 
 ### Needs human triage
@@ -445,8 +448,9 @@ Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gat
 
 ### 4. Execute (low blast-radius first)
 
-Order: comment-only → close-stale → defer → single-task → fix-epic.
+Order: consolidate-duplicate → evidence-bump → close-stale → defer → single-task → fix-epic.
 
+- **consolidate-duplicate**: MUST verify target duplicate is `state: closed` post-application, unless explicit carve-out. Workers verify before reporting `Done`.
 - **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
 - **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
 - Stamp `triaged-*` label after each confirmed action.
