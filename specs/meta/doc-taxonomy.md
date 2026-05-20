@@ -44,7 +44,7 @@ Live in-repo at `.agents/AGENT-*.md` by default.
 
 ## Docs — for humans using the framework
 
-Top-level entry points: `README.md`, `INSTALL.md`, `CHANGELOG.md`, `GEMINI.md`.
+Top-level entry points: README.md, INSTALL.md, CHANGELOG.md.
 
 **Generally contain**: how to install, how to use, what's changed, where to find more.
 
