@@ -117,6 +117,35 @@ Read ALL reviews from every source — our agents, Gemini, Copilot, human review
 
 Do not make changes that alter the PR's original intent.
 
+### Human Reviewer Feedback: Intent, Not Surface Words
+
+**The most common revision failure is surface-only delta** — applying the narrowest change that literally matches the reviewer's words instead of the change the reviewer intended.
+
+**Rule: Before applying any human reviewer request, state the inferred intent in one sentence.**
+
+Then identify **all surface forms** of that intent in the artifact, not just the cited line or element. A concept spans multiple files, sections, headers, introductory paragraphs, and callouts. Removing only what the reviewer literally named leaves every other expression of the same concept in place — and the reviewer will ask again.
+
+**Required method for every human CHANGES_REQUESTED review:**
+
+1. **State intent** — one sentence: _"The reviewer wants me to ___."_ Write this intent at the concept level, not the word level.
+2. **Find all surface forms** — search the entire PR diff (and the files it touches) for every expression of that concept: tables, paragraphs, section headings, comments, variable names, prose framing. List them explicitly.
+3. **Apply at the intent level** — fix every surface form, not just the cited location.
+4. **Verify completeness** — read the relevant files after your edit to confirm no surface form remains.
+
+**Repeat-Request Escalation Rule:** If the same reviewer raises the same issue after you already "addressed" it, this is strong evidence of surface-only delta — you fixed the literal words but left the concept in place. Do **not** re-justify the same partial fix. Either:
+
+- (a) Identify which surface forms you missed and remove them now, or
+- (b) Halt with a precise description of what remains and why you cannot resolve it.
+
+**Worked example — PR #974 (the routing table incident):**
+
+| Round | Reviewer request                                   | What was done             | What should have been done                                                                                                                                                                            |
+| ----- | -------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | "remove the WORKERS.md routing table and language" | Removed the table element | State intent: _"remove all content presenting this document as a routing/dispatch reference."_ Find surface forms: table, framing intro, section header, callouts using routing language. Remove all. |
+| 2     | same request (repeated)                            | Made another narrow fix   | Presume surface-only delta — scan for every remaining expression of routing-document framing                                                                                                          |
+| 3     | same request (repeated)                            | Another narrow fix        | Escalate: "I see I have not removed this completely. Here is what remains: [list]. I am removing all of it now."                                                                                      |
+| —     | User deleted 174 lines manually                    | —                         | Root cause: agent matched literal words, not the concept. Three rounds of rework; user had to act themselves.                                                                                         |
+
 ## 4. Dismissing CHANGES_REQUESTED Reviews
 
 After fixing or responding to each `CHANGES_REQUESTED` review:
