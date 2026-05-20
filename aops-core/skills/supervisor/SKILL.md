@@ -410,15 +410,15 @@ If dispatch is blocked → file a refinement task. If a phase is complete but th
 
 - **Gemini 429/QUOTA_EXHAUSTED ≠ Claude hard-quota.** When a Gemini polecat exits with code 1 and the stdout tail shows `429 QUOTA_EXHAUSTED`, the reflex is to treat it as a session-locking quota event (like Claude's hard `overloaded_error` that can lock out a session for hours). **This is wrong for Gemini.** Gemini's `429 QUOTA_EXHAUSTED` is a transient rate-limit signal — the Gemini client handles it by backing off and retrying. A polecat exit on `429` is almost always polecat's **45-minute `max-time` wall-clock limit killing the worker**, not a Gemini quota exhaustion.
 
-  **Diagnosis tree** — before switching workers, ask in order:
+  **Diagnosis tree** — when a Gemini polecat exits with code 1, route to pauli (`role=react`). The supervisor MUST NOT read transcripts directly; pauli checks in order:
   1. Did the task genuinely need more than 45 minutes? (Large refactor, many files, waiting on slow tools.) → The worker ran out of time, not quota. The task itself may need decomposition.
-  2. Was the worker stuck in a retry/feedback loop? (Pauli transcript shows repeated tool calls on the same file, repeated test failures.) → File a fix-task describing the loop; re-dispatch with clearer scope.
+  2. Was the worker stuck in a retry/feedback loop? (Polecat transcript shows repeated tool calls on the same file, repeated test failures.) → File a fix-task describing the loop; re-dispatch with clearer scope.
   3. Did the transcript show real `429` back-pressure before the timeout? (Multiple backoff-wait messages in the last 10 minutes of the log.) → Rate-limit is real but the session is not locked; re-dispatch after a short wait.
   4. None of the above → treat as a transient timeout; re-dispatch the same task with the same Gemini worker.
 
-  **Recovery options that actually work:**
+  **Pauli `react` verdicts that work for this pattern:**
   - Re-dispatch the same task with `--gemini` (same worker). The Gemini rate-limit window resets; a fresh session will not replay the `429`.
   - Decompose the task if it is genuinely large (> 45 min of real work). Do not decompose reactively when the timeout is an infrastructure artefact.
-  - Do **not** reflexively switch to Claude. Worker substitution is a [Halt-on-substitute](#halt-on-substitute) event — it requires explicit human direction, not a supervisor heuristic.
+  - Do **not** recommend switching to Claude. Worker substitution is a [Halt-on-substitute](#halt-on-substitute) event — it requires explicit human direction, not a supervisor heuristic.
 
   _Upstream fix_: structured exit metadata per issue #487 (polecat post-mortem diagnostics) would expose the real termination signal (timeout vs. rate-limit vs. task failure) without reading raw stdout tails. Until that lands, the diagnosis tree above is the canonical path.
