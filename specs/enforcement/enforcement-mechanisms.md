@@ -12,7 +12,7 @@ tags: [enforcement, reference, mechanisms]
 
 > **Design-narrative companion, not the operative catalogue.** This file
 > is keyed to the L0–L11 pipeline view in `specs/enforcement/enforcement.md`
-> — a useful frame for thinking about *when* a mechanism fires. **No
+> — a useful frame for thinking about _when_ a mechanism fires. **No
 > blocking rule cites L0–L11 or the base/middle/tip pyramid.** The
 > operative catalogue for add/escalate/remove decisions is the L0–L7
 > cost ladder in **`.agents/ENFORCEMENT-MAP.md`**, which `rbg` blocks on
@@ -20,7 +20,7 @@ tags: [enforcement, reference, mechanisms]
 > details (trigger, location, scope, status); reach for the operative
 > state file when you need the current cost-ladder ranking.
 
-This is the per-mechanism detail catalogue referenced from `specs/enforcement/enforcement.md` §6. For the design statement — why enforcement is shaped the way it is, how the pipeline and pyramid views relate, and how the evidence loop closes — read `specs/enforcement/enforcement.md` first. For the operative state catalogue keyed by mechanism × rule, read `.agents/ENFORCEMENT-MAP.md`.
+This is the per-mechanism detail catalogue referenced from `specs/enforcement/enforcement.md` §6. For the design statement — why enforcement is shaped the way it is, how the pipeline and pyramid views relate, and how the evidence loop closes — read `specs/enforcement/enforcement.md` first. For the operative state catalogue keyed by mechanism × rule, read `.agents/ENFORCEMENT-MAP.md`. For the per-gate runtime catalogue (5-question template: what / where / how-configured / how-verify / how-debug for each session-time gate), see [`aops-core/GATES.md`](../../aops-core/GATES.md).
 
 Entries below use the fixed schema declared in `specs/enforcement/enforcement.md` §6 and are organised by **pipeline layer** (L0 → L11 → Evidence loop), not by pyramid tier. Mechanisms that span pyramid tiers (e.g. `/dump` runs as middle-tier during normal handover, tip-tier when the handover gate blocks Stop) carry both tiers with a conditional clause. Status fields are derived from source files where observable; unverifiable fields are flagged "verify".
 

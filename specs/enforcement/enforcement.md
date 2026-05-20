@@ -17,8 +17,8 @@ tags: [enforcement, compliance, framework-architecture, verification]
 > uses the **L0–L7 cost ladder**. `rbg` blocks on the L0–L7 cost ladder via
 > P#65; **no blocking decision uses the L0–L11 pipeline view or the
 > base/middle/tip pyramid below**. Both views remain in this document as
-> useful conceptual frames for reasoning about *when* a mechanism fires
-> and *how* it sits architecturally — they do not score severity, and
+> useful conceptual frames for reasoning about _when_ a mechanism fires
+> and _how_ it sits architecturally — they do not score severity, and
 > they are not the catalogue.
 
 **Purpose.** This document is the design statement for how the aops framework enforces its rules and maintains quality. Enforcement is **responsive, proportionate, and evidence-driven**: most work happens cheaply and constantly at the base of the pyramid; heavier measures escalate only when lower layers produce evidence they are insufficient.
@@ -30,6 +30,7 @@ tags: [enforcement, compliance, framework-architecture, verification]
 - **`specs/enforcement/enforcement-mechanisms.md`** — per-mechanism reference catalogue keyed to the L0–L11 pipeline view (spec companion to this file; design narrative, not operative). When to reach for it: the schema-shaped details (trigger, location, scope, status) for a single mechanism.
 - **`specs/enforcement/ultra-vires-enforcer.md`** — design doc for the specific internal mechanism: the `enforcer` agent (formerly `custodiet`) plus its PreToolUse gate.
 - **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `.agents/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
+- **`aops-core/GATES.md`** — **state SSoT** for the runtime gate catalogue (the five session-time gates: what each is, where it lives in source, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it). When to reach for it: a forensic-debug question about a specific gate (e.g. "is the `ida` gate firing in this session?").
 
 ## Two views of the same mechanisms
 
@@ -38,7 +39,7 @@ The framework has ~40 distinct enforcement mechanisms. Two independent organisin
 1. **The pipeline (temporal view).** When in the flow of work does a mechanism fire? Capture → hydration → decomposition → execution → handover → review → merge → follow-up → evidence loop. The mermaid graph in §3 shows this. Labels are `L0`–`L11`, one per pipeline layer.
 2. **The pyramid (escalation view).** How frequently does a mechanism fire, and how invasive is it when it does? Base (high-volume, cheap, non-blocking) → middle (moderate, triggered, warns or opens gates) → tip (rare, heavy, blocks or requires human). The tier table in §4 shows this.
 
-These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may be base-tier (runs every tool call, cheap) or middle-tier (triggered on threshold). The L-number is cross-reference, not a tier criterion. *And neither L-number nor pyramid tier is used by any blocking rule* — when an enforcement change needs ranking, use the cost ladder in `.agents/ENFORCEMENT-MAP.md`.
+These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may be base-tier (runs every tool call, cheap) or middle-tier (triggered on threshold). The L-number is cross-reference, not a tier criterion. _And neither L-number nor pyramid tier is used by any blocking rule_ — when an enforcement change needs ranking, use the cost ladder in `.agents/ENFORCEMENT-MAP.md`.
 
 When reasoning about a framework change, use the pipeline to decide _when_ the intervention fires and the pyramid to decide _how invasive_ it should be — then translate the decision into a cost-ladder row in the operative state file.
 
@@ -101,12 +102,12 @@ Full catalogue of mechanisms per layer: **see `specs/enforcement/enforcement-mec
 
 **Responsive regulation theory.** The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The pyramid makes this choice architecture explicit.
 
-**Reminder.** The base/middle/tip tiers below are descriptive — they characterise the frequency × invasiveness of a mechanism. They are **not** the operative cost ladder. When a PR adds or escalates a mechanism, the cost-benefit reasoning happens against the L0–L7 ladder in `.agents/ENFORCEMENT-MAP.md`, not against base/middle/tip. Use this pyramid to explain *why* a mechanism sits where it does in the cost ladder, not to score it.
+**Reminder.** The base/middle/tip tiers below are descriptive — they characterise the frequency × invasiveness of a mechanism. They are **not** the operative cost ladder. When a PR adds or escalates a mechanism, the cost-benefit reasoning happens against the L0–L7 ladder in `.agents/ENFORCEMENT-MAP.md`, not against base/middle/tip. Use this pyramid to explain _why_ a mechanism sits where it does in the cost ladder, not to score it.
 
 The L-numbers in the table below are pipeline cross-reference, not tier criteria. Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
 | Tier       | Definition                                                             | Mechanisms (with pipeline layer cross-reference)                                                                                                                                                                                                                                                                                                                                                                                                |
-| ---------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Base**   | High-volume, low-invasiveness, non-blocking, runs constantly           | lightweight hydrator (L1), skills routing table (L1), CLAUDE.md / AGENTS.md load (L1), gate status strip (L1), session_env_setup (L1), unified logger (L6), task-file append (L6), session logs (L6), task template conventions (L2)                                                                                                                                                                                                            |
 | **Middle** | Moderate volume, triggered by threshold or event, warns or opens gates | hydration gate (L4), enforcer gate (L4), enforcer subagent invocation (L7), QA gate — planned (L4), /planner decomposition checks (L2), proof-of-compliance tool fields (L2), rbg subagent invocation (L7), qa / marsha subagent invocation (L7), james orchestration (L9), pr-reviewer GHA (L9), agent-enforcer GHA (L9), linter workflows (L9), commit gate (L8), CC auto-mode classifier `soft_deny` rules (L4 — surfaces permission prompt) |
 | **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), agent-merge-prep auto-merge (L10), branch protection (L10), loop detector (L10), project-owner / admin approval (L10), CC auto-mode classifier `block` rules (L4 — pre-execution hard-deny)                                                                                                                                  |

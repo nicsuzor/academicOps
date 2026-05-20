@@ -10,6 +10,8 @@ tags: [framework, agent-behavior, guardrails, enforcement, enforcer]
 
 # Ultra Vires Enforcer
 
+> **Spec, not state.** This file is the **design rationale** for the enforcer agent + PreToolUse gate (why ultra vires matters, failure categories, invocation points, output format). For the **operative runtime catalogue** of the enforcer gate (configuration paths, verification commands, debug procedures, custodiet→enforcer rename mapping) see [`aops-core/GATES.md#enforcer-gate`](../../aops-core/GATES.md#enforcer-gate). For the operative cost-ladder catalogue, see `.agents/ENFORCEMENT-MAP.md`.
+
 **Status**: Active — unified gate system implemented.
 **Scope**: Narrow. This spec covers the specific internal mechanism at pipeline layer L4 / L7 of `specs/enforcement.md` — the `enforcer` agent (Haiku) and its PreToolUse gate. It is not the whole pyramid, and it is not a statement about enforcement in general. For the design statement, see `specs/enforcement.md`.
 

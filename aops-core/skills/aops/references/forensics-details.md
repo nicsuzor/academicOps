@@ -8,7 +8,9 @@ description: How to read hook JSONL logs, diagnose gate failures, trace session 
 
 # Session Hook Forensics — Detailed Procedures
 
-This reference provides the specific knowledge needed to diagnose hook and gate behavior from raw session artifacts. For hook architecture and I/O schemas, see [[hooks]]. For general framework debugging, see [[debug-details]].
+> **Scope split with `GATES.md`.** This file is the **JSONL forensics procedure** — how to read raw hook log files and diagnose specific session artifacts. For the **catalogue of which gates exist, how each is configured, and how to verify it's firing**, see [`aops-core/GATES.md`](../../../GATES.md) (the canonical state SSoT). For hook architecture and I/O schemas, see [[hooks]]. For general framework debugging, see [[debug-details]].
+
+This reference provides the specific knowledge needed to diagnose hook and gate behavior from raw session artifacts.
 
 ## Hook JSONL Schema
 
