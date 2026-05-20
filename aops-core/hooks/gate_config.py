@@ -384,7 +384,10 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "Skill": (("skill",), True),
     # Gemini CLI
     "delegate_to_agent": (("name", "agent_name"), False),
-    "invoke_agent": (("agent_name", "name", "subagent_type", "agent", "agent_type"), False),  # Gemini CLI >= ~0.40
+    "invoke_agent": (
+        ("agent_name", "name", "subagent_type", "agent", "agent_type"),
+        False,
+    ),  # Gemini CLI >= ~0.40
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
     "aops_core_enforcer": ((), False),
