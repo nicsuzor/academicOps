@@ -432,7 +432,8 @@ gh label create "triage:needs-judgment" --color "fbca04" --description "Human-au
 
 # Issue-sweep dispositions (consumed by aops-core/skills/survey, sweep mode)
 gh label create "triaged-stale"   --color "ededed" --description "Sweep: closed as stale"            --force
-gh label create "triaged-comment" --color "ededed" --description "Sweep: merged into canonical"     --force
+gh label create "triaged-duplicate" --color "ededed" --description "Sweep: merged into canonical"     --force
+gh label create "triaged-evidence-bump" --color "ededed" --description "Sweep: evidence added to canonical" --force
 gh label create "triaged-single"  --color "ededed" --description "Sweep: filed as single polecat task" --force
 gh label create "triaged-epic"    --color "ededed" --description "Sweep: filed as fix-epic"         --force
 gh label create "triaged-defer"   --color "ededed" --description "Sweep: deferred; revisit-by date set" --force
