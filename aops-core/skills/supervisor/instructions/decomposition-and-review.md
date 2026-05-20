@@ -39,6 +39,7 @@ isolation").
 5. Check for **Star Pattern** (P#101): if parent or proposal has >5 direct children, group under intermediate epics.
 6. Check for **Depth** (P#110): Multi-session projects should target a hierarchy of Project → Epic → Task → Action.
 7. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
+   7a. **Multi-agent review gate (default, mandatory)**: bake review subtasks into the decomposition per the canonical spec in [[../../planner/workflows/decompose#core-process]] step 13 — for each new epic, a `james review (pauli + rbg + revise)` blocker; for each new standalone task, a `pauli + rbg` first / `james` last subtask pair. State only the artifact and link to parent; do not inline methodology. This is independent of the supervisor's Phase 2 plan-review (which reviews the supervisor's proposal); these subtasks review the resulting work.
 8. **Post-decomposition self-checks** (run BEFORE finalizing):
    a. For each **decision** subtask: "What information does the user need to make this decision?" — if no upstream prep task exists, create one and add it to `depends_on`
    b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`

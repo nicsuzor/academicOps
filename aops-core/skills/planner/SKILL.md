@@ -197,6 +197,7 @@ Break validated epics into structured task trees.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
 11. **RBG pre-flight check**: invoke RBG inline to review the proposed decomposition for axiom violations (A1–A8) before creating tasks.
 12. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
+13. **Multi-agent review gate (default, mandatory)**: for each new epic, file a `james review (pauli + rbg + revise)` subtask that blocks epic promotion to `ready`; for each new standalone task, file `pauli + rbg review of planned approach` as the first subtask and `james review of work against original instructions, user intent, and project rules` as the last subtask. State only the artifact and link to parent — do not inline methodology. See [[workflows/decompose#core-process]] step 13 for the full spec.
 
 ### Promotion gate: inbox → ready
 
@@ -207,6 +208,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 3. **Acceptance criteria — first-class, on the node body**: A `## Acceptance Criteria` H2 block with discrete, falsifiable statements.
 4. **Verification task — separate node, linked**: A child task with `tag: lens: verification` and `depends_on: [<execution-children>]`. Use `verification-template.md`.
 5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
+6. **Multi-agent review gate satisfied**: the epic carries a `james review (pauli + rbg + revise)` blocker subtask, and any standalone tasks created in this decomposition carry the `pauli + rbg` first / `james` last subtask pair. Promotion is gated on the review subtasks reaching `done`, not merely on existing.
 
 **Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing the rationale for promotion.
 
@@ -217,6 +219,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 - All tasks together must achieve the original epic (completeness). Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
 - Every task must be completable in a single session (actionability).
 - Every epic must include at least one QA/review task (verification).
+- **Multi-agent review gate is default, not optional**: every new epic carries a `james` review blocker; every new standalone task carries a `pauli + rbg` first / `james` last review pair. The user is often not the right substantive reviewer — peer agents are. Do not skip this even when the user looks ready to approve.
 - Tasks must be self-contained for handoff (P#120) — include context, decisions, constraints, data findings.
 - **Map unknowns**: Before planning execution, classify unknowns as researchable, internal, or probeable (Step 3). Build appropriate evidence-gathering or spike tasks. High uncertainty on the parent signals a need for more probeable tasks.
 - **Cross-cutting impact & prerequisites**: Every decomposition must check what other projects depend on what's changing AND what must be true before the change is useful (Step 4). Create tasks in affected projects, not just under this epic. Use `list_tasks(project=<project-id>)` to scope per-project queries — do not infer project membership from ID prefixes or by walking parent chains.
