@@ -2971,6 +2971,17 @@ def nuke(ctx, target, force, allow_unpushed):
                 f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
             )
             sys.exit(1)
+        except ValueError as e:
+            # nuke_worktree raises ValueError when it cannot resolve the repo path.
+            # This can happen when the target is a crew name whose directory no
+            # longer exists (auto-nuked at session end) — hint the user.
+            print(f"Error: {e}", file=sys.stderr)
+            print(
+                f"Hint: if '{target}' was a crew worker, it may have already been "
+                f"auto-cleaned at session end. Check with: polecat list-crew",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
