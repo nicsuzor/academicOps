@@ -196,8 +196,9 @@ Break validated epics into structured task trees.
 9. Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 10. **Set subtask priority to P3 by default.** Do not propagate the parent's priority to children, and do not infer priority from subtask content. Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[#priority-assignment-rules]].
 11. **RBG pre-flight check**: invoke RBG inline to review the proposed decomposition for axiom violations (A1–A8) before creating tasks.
-12. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
-13. **Multi-agent review gate (default, mandatory)**: for each new epic, file a `james review (pauli + rbg + revise)` subtask that blocks epic promotion to `ready`; for each new standalone task, file `pauli + rbg review of planned approach` as the first subtask and `james review of work against original instructions, user intent, and project rules` as the last subtask. State only the artifact and link to parent — do not inline methodology. See [[workflows/decompose#core-process]] step 13 for the full spec.
+12. **Apply the [Decision Surfacing Heuristic](#decision-surfacing-heuristic)** before drafting any user-facing "design conversation" or ratification message. Classify every open decision as DECIDE / DEFER / SURFACE; resolve DECIDE-class items in the relevant task body with brief reasoning, mark DEFER-class items with their unblock condition, and surface ONLY genuine SURFACE-class items. Bundling DECIDE-class items with SURFACE-class items into one ratification message trains rubber-stamping and is the failure mode this step exists to prevent (issue #816).
+13. Create in PKB via `mcp__pkb__decompose_task(parent_id, subtasks)`.
+14. **Multi-agent review gate (default, mandatory)**: for each new epic, file a `james review (pauli + rbg + revise)` subtask that blocks epic promotion to `ready`; for each new standalone task, file `pauli + rbg review of planned approach` as the first subtask and `james review of work against original instructions, user intent, and project rules` as the last subtask. State only the artifact and link to parent — do not inline methodology. See [[workflows/decompose#core-process]] step 14 for the full spec.
 
 ### Promotion gate: inbox → ready
 
