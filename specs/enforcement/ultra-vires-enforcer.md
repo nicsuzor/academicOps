@@ -284,6 +284,6 @@ See `aops-core/.claude-plugin/plugin.json` (`autoMode` key) for the rule set and
 - `aops-core/AXIOMS.md` — P#4 (Do One Thing), P#22 (Acceptance Criteria Own Success), P#7 (Fail-Fast), P#17 (Verify First), P#49 (No Shitty NLP), P#78 (Right Tool)
 - `.agents/rules/HEURISTICS.md` — H31 (No LLM Calls in Hooks)
 - `specs/enforcement.md` — design statement
-- `specs/enforcement-map.md` — failure-mode registry
+- `.agents/ENFORCEMENT-MAP.md` — operative state catalogue (SSoT; redirect stub remains at `specs/enforcement/enforcement-map.md`)
 - `specs/enforcement-mechanisms.md` — per-mechanism catalogue
 - [CC Auto Mode engineering post](https://www.anthropic.com/engineering/claude-code-auto-mode)

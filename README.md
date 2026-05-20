@@ -100,7 +100,7 @@ Hooks make every session framework-aware without manual setup:
 - **Transcript capture**: records sessions for reflection
 - **Cross-device sync**: git-based, runs on cron
 
-Each runtime mechanism, its hook event, scope, and tier is tracked in [specs/enforcement-map.md](specs/enforcement-map.md). Mechanisms move down the enforcement pyramid (block → warn → hint → instruction) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6).
+Each runtime mechanism, its hook event, scope, and cost-ladder tier is tracked in [.agents/ENFORCEMENT-MAP.md](.agents/ENFORCEMENT-MAP.md) — the operative SSoT for enforcement. Mechanisms move down the cost ladder (L0–L7) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6). For the design rationale (pipeline view, pyramid view, evidence loop) see [specs/enforcement/enforcement.md](specs/enforcement/enforcement.md).
 
 ### 4. Async quality assurance (GitHub)
 

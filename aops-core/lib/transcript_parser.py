@@ -2588,7 +2588,7 @@ class SessionProcessor:
                     if entry.type == "summary":
                         summary_text = entry.content.get("summary", "Claude Code Session")
                         session_summary = SessionSummary(uuid=session_uuid, summary=summary_text)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, KeyError, AttributeError, TypeError, ValueError):
                     continue
 
         # Create default summary if none found

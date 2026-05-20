@@ -2,6 +2,7 @@
 title: Framework Constraints
 type: instructions
 created: 2026-02-23
+modified: 2026-05-20
 ---
 
 # Framework Constraints
@@ -15,17 +16,15 @@ Hard rules for aops framework internals. Enforced by pre-commit hooks where poss
 
 ## Agent permission envelopes
 
-Each core agent in `aops-core/agents/` has a defined permission envelope: what it may **read**, **write**, and **shell out to**, plus which **subagents** and **skills** it may invoke. The envelope is declared in the agent's frontmatter (`tools:` allowlist) and reinforced in the agent body (role, deny-overrides, delegation rules).
-
-This is the SSoT for per-agent authority. Extends the principles in `.agents/ENFORCEMENT-MAP.md` (which catalogues the _mechanisms_) into the specifics of _who_ is permitted _what_.
-
-| Agent  | Role            | Read   | Write                                                      | Bash                                                                          | Subagents                 | Skills                                             | Hard denies                                                             |
-| ------ | --------------- | ------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
-| james  | Orchestrator    | `**/*` | _none_ (synthesises only)                                  | orchestration-only; delegates shell to subagents                              | rbg, pauli, marsha        | as needed                                          | filesystem writes; direct implementation                                |
-| pauli  | PKB curator     | `**/*` | _none on disk_ (PKB writes go through MCP)                 | _none_                                                                        | _none_                    | remember, planner, strategic-review                | shell; filesystem writes                                                |
-| rbg    | Judge / editor  | `**/*` | `**/*.md`, `**/*.py`, `**/*.yaml`, `**/*.yml`, `**/*.json` | _none_ (intentionally non-shelling — string-edit only)                        | _none_                    | _none_                                             | `**/.env*`, `**/secrets/**`; shell                                      |
-| marsha | QA / verifier   | `**/*` | _none_ ("Modify code yourself — report only")              | `pytest`, `ruff`, `fs:read`, `net:http`, `pkg:install`, `git:read`, `gh:read` | rbg                       | qa                                                 | source writes; `git:write`; `gh:write`                                  |
-| junior | Router / butler | `**/*` | `.agents/CAPABILITIES.md`, `.agents/README.md` only        | `git:read`, `gh:read`, `fs:read`, narrow `fs:write`                           | james, rbg, marsha, pauli | aops, planner, qa, research, dump, daily, remember | `.agents/CORE.md`, `.agents/BUTLER.md`, `.agents/rules/**`; `git:write` |
+> **Redirect.** This file no longer carries an authoritative envelope table. The previous table here drifted from the per-agent declarations it was meant to summarise, which is how three places to look becomes one wrong answer per writer.
+>
+> Agent permissions live in three documents — one per category in `specs/meta/doc-taxonomy.md`:
+>
+> - **Spec** (the schema and axes): [[agent-authority]] (`specs/agents/agent-authority.md`) + [[agent-permissions]] (`specs/agents/agent-permissions.md`). Together one logical spec.
+> - **State** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter. The operative SSoT for what each agent holds.
+> - **Audit-artifact** (current-state snapshot): `.agents/AGENT-TOOLS.md`. Generated dump for at-a-glance comparison against per-agent frontmatter; drift is reported here, not declared here.
+>
+> To answer "what tools does agent X hold", read `aops-core/agents/<X>.md`. To answer "what is the envelope schema", read the spec pair. To answer "is the corpus currently in drift", read `.agents/AGENT-TOOLS.md`.
 
 ## GitHub actions
 
