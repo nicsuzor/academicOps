@@ -91,6 +91,7 @@ class PkbClient:
         self._url = url
         self._session_id: str | None = None
         self._id = 0
+        self._last_error: str | None = None
         self._initialize()
 
     def _next_id(self) -> int:
@@ -158,6 +159,7 @@ class PkbClient:
     def call_tool(self, name: str, arguments: dict) -> Any:
         """Call an MCP tool and return the parsed JSON content."""
         start_time = time.perf_counter()
+        self._last_error = None
         try:
             resp = self._post(
                 {
@@ -175,6 +177,7 @@ class PkbClient:
                 err = resp["error"] or {}
                 code = err.get("code", "?")
                 msg = err.get("message", str(err))
+                self._last_error = msg
                 print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
                 return None
 
@@ -184,6 +187,7 @@ class PkbClient:
                 err_text = "unknown error"
                 if content:
                     err_text = content[0].get("text", "unknown error")
+                self._last_error = err_text
                 print(f"PKB error ({name}): {err_text}", file=sys.stderr)
                 return None
 
@@ -255,6 +259,58 @@ def _get_client() -> PkbClient:
             )
         _client = PkbClient(url)
     return _client
+
+
+def _extract_id_from_binding_error(error_text: str) -> str | None:
+    """Extract a task ID from a mem indexer 'not yet visible in the graph' error.
+
+    Error format (from mcp_server.rs handle_create_task):
+      create_task wrote <path> but the new node is not yet visible in the
+      graph (id=<task-id>). Underlying lookup error: ...
+    """
+    m = re.search(r"\(id=([a-z0-9][a-z0-9-]+)\)", error_text)
+    if m:
+        return m.group(1)
+    m = re.search(r"Task not found: ([a-z0-9][a-z0-9-]+)", error_text)
+    if m:
+        return m.group(1)
+    return None
+
+
+def _poll_until_bound(client: PkbClient, task_id: str, timeout_secs: float = 10) -> str | None:
+    """Poll get_task until the task is visible in the graph or the timeout elapses.
+
+    Called after create_task returns the 'not yet visible in the graph' error.
+    The file is on disk; we just need the indexer to bind the ID.
+
+    Returns the task ID on success, raises RuntimeError on timeout.
+    """
+    print(
+        f"PKB indexer binding lag for {task_id} — file written, polling get_task "
+        f"(SLA: {timeout_secs:.0f}s). Root cause: concurrent graph rebuild race "
+        f"in mem server. See mem#XXX for the fix.",
+        file=sys.stderr,
+    )
+    deadline = time.time() + timeout_secs
+    while time.time() < deadline:
+        time.sleep(1)
+        data = client.call_tool("get_task", {"id": task_id})
+        if data and isinstance(data, dict):
+            fm = data.get("frontmatter", {})
+            if fm.get("id"):
+                print(
+                    f"PKB indexer bound {task_id} (recovered after polling)",
+                    file=sys.stderr,
+                )
+                return fm["id"]
+    raise RuntimeError(
+        f"create_task wrote {task_id!r} to disk but the PKB indexer did not bind it "
+        f"within {timeout_secs:.0f}s. This is a known mem server bug: concurrent "
+        f"Tier-1 graph rebuilds can overwrite each other's node insertions, leaving "
+        f"the ID unresolvable until the next full graph rebuild. "
+        f"Workaround: restart the PKB server or run `pkb reindex`. "
+        f"The task file is on disk and will reappear after reindex."
+    )
 
 
 def _parse_task_ids_from_markdown(text: str) -> list[str]:
@@ -382,7 +438,8 @@ def create_task(
             "checklists in the body. See: Nectar incident."
         )
 
-    result = _get_client().call_tool("create_task", params)
+    client = _get_client()
+    result = client.call_tool("create_task", params)
     if result and isinstance(result, dict):
         fm = result.get("frontmatter")
         if not fm or not fm.get("id"):
@@ -391,6 +448,18 @@ def create_task(
                 f"is the server running nicsuzor/mem#194? Got: {result!r}"
             )
         return fm["id"]
+
+    # create_task returned None (tool-level error). Check whether the mem
+    # indexer's graph-binding step silently failed after writing the file.
+    # Error signature: "not yet visible in the graph (id=<task-id>)".
+    # Root cause: concurrent Tier-1 graph rebuilds race on the nodes snapshot,
+    # causing one rebuild to overwrite another's node insertion. See mem#XXX.
+    last_error = getattr(client, "_last_error", None) or ""
+    if "not yet visible in the graph" in last_error or "retry get_task" in last_error.lower():
+        task_id = _extract_id_from_binding_error(last_error)
+        if task_id:
+            return _poll_until_bound(client, task_id, timeout_secs=10)
+
     return str(result) if result else None
 
 
