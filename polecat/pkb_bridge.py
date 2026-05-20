@@ -268,16 +268,16 @@ def _extract_id_from_binding_error(error_text: str) -> str | None:
       create_task wrote <path> but the new node is not yet visible in the
       graph (id=<task-id>). Underlying lookup error: ...
     """
-    m = re.search(r"\(id=([a-z0-9][a-z0-9-]+)\)", error_text)
+    m = re.search(r"\(id=\b([a-z0-9][a-z0-9_-]+)\b\)", error_text)
     if m:
         return m.group(1)
-    m = re.search(r"Task not found: ([a-z0-9][a-z0-9-]+)", error_text)
+    m = re.search(r"Task not found: \b([a-z0-9][a-z0-9_-]+)\b", error_text)
     if m:
         return m.group(1)
     return None
 
 
-def _poll_until_bound(client: PkbClient, task_id: str, timeout_secs: float = 10) -> str | None:
+def _poll_until_bound(client: PkbClient, task_id: str, timeout_secs: float = 10) -> str:
     """Poll get_task until the task is visible in the graph or the timeout elapses.
 
     Called after create_task returns the 'not yet visible in the graph' error.
@@ -288,21 +288,23 @@ def _poll_until_bound(client: PkbClient, task_id: str, timeout_secs: float = 10)
     print(
         f"PKB indexer binding lag for {task_id} — file written, polling get_task "
         f"(SLA: {timeout_secs:.0f}s). Root cause: concurrent graph rebuild race "
-        f"in mem server. See mem#XXX for the fix.",
+        f"in mem server.",
         file=sys.stderr,
     )
-    deadline = time.time() + timeout_secs
-    while time.time() < deadline:
-        time.sleep(1)
+    deadline = time.monotonic() + timeout_secs
+    while True:
         data = client.call_tool("get_task", {"id": task_id})
         if data and isinstance(data, dict):
-            fm = data.get("frontmatter", {})
+            fm = data.get("frontmatter") or {}
             if fm.get("id"):
                 print(
                     f"PKB indexer bound {task_id} (recovered after polling)",
                     file=sys.stderr,
                 )
                 return fm["id"]
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(1)
     raise RuntimeError(
         f"create_task wrote {task_id!r} to disk but the PKB indexer did not bind it "
         f"within {timeout_secs:.0f}s. This is a known mem server bug: concurrent "

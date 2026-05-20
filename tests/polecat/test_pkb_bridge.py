@@ -609,7 +609,7 @@ class TestPollUntilBound:
 
         with (
             patch("polecat.pkb_bridge.time.sleep"),
-            patch("polecat.pkb_bridge.time.time", side_effect=[0, 5, 5]),
+            patch("polecat.pkb_bridge.time.monotonic", return_value=0),
         ):
             result = _poll_until_bound(client, "aops-abc123", timeout_secs=10)
 
@@ -626,7 +626,7 @@ class TestPollUntilBound:
 
         with (
             patch("polecat.pkb_bridge.time.sleep"),
-            patch("polecat.pkb_bridge.time.time", side_effect=[0, 3, 6, 6]),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 3]),
         ):
             result = _poll_until_bound(client, "aops-abc123", timeout_secs=10)
 
@@ -637,10 +637,10 @@ class TestPollUntilBound:
         client = MagicMock()
         client.call_tool.return_value = None
 
-        # time.time() returns 0 to set deadline, then 11 to immediately fail the while check
+        # monotonic: 0 sets deadline=10, 11 trips the deadline check
         with (
             patch("polecat.pkb_bridge.time.sleep"),
-            patch("polecat.pkb_bridge.time.time", side_effect=[0, 11]),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 11]),
         ):
             with pytest.raises(RuntimeError, match="did not bind it within"):
                 _poll_until_bound(client, "aops-abc123", timeout_secs=10)
@@ -651,7 +651,7 @@ class TestPollUntilBound:
 
         with (
             patch("polecat.pkb_bridge.time.sleep"),
-            patch("polecat.pkb_bridge.time.time", side_effect=[0, 11]),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 11]),
         ):
             with pytest.raises(RuntimeError, match="pkb reindex"):
                 _poll_until_bound(client, "aops-abc123", timeout_secs=10)
