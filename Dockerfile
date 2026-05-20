@@ -111,7 +111,9 @@ ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
 # Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
 RUN claude plugin marketplace add ${AOPS_REPO_URL} \
     && claude plugin marketplace update academicOps \
-    && claude plugin install aops-core@academicOps
+    && claude plugin install aops-core@academicOps \
+    && (claude plugin install aops-tools@academicOps \
+        || echo "  Warning: aops-tools install failed — plugin may not be in marketplace yet")
 
 # Install pkb binary from nicsuzor/mem releases.
 # Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
