@@ -75,7 +75,7 @@ The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
 - [[enforcement-mechanisms]] — Concrete mechanisms per layer
-- [[enforcement-map]] — Which mechanism enforces which rule
+- [[enforcement-map]] — Redirect stub → operative SSoT at `.agents/ENFORCEMENT-MAP.md`
 - [[enforcement-aops-recommender]] — The aops-recommender pattern
 - [[hook-router]] — Hook dispatching
 - [[ultra-vires-enforcer]] — Authority envelope checker
