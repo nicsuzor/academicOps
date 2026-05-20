@@ -31,10 +31,10 @@ The mechanics _can_ be made to work, but they couple every container that wants 
 Lifecycle:
 
 1. Orchestrator inside the parent container resolves the task to dispatch.
-2. It opens an SSH session to the host (`host.docker.internal` or a configured `POLECAT_HOST`).
-3. The remote command is `tmux new-session -d -s polecat-<task-id> 'polecat run <args>'`.
+2. It invokes the in-container wrapper script, which opens an SSH session to the host (`host.docker.internal` or a configured `POLECAT_HOST`).
+3. The remote command checks for an existing session first (idempotency: re-dispatch of a running task is a no-op), then runs `tmux new-session -d -s polecat-<task-id> 'env POLECAT_HOME=... AOPS_SESSIONS=... polecat run <args>'`. Required host-side env vars (`POLECAT_HOME`, `AOPS_SESSIONS`, `PKB_MCP_URL`, etc.) are explicitly forwarded in the command — tmux sessions do not inherit SSH session environment variables.
 4. Orchestrator disconnects. Parent container can die freely — the tmux session and the polecat-spawned worker container remain.
-5. To observe progress, the orchestrator (or any successor) re-attaches via `ssh host -t tmux attach -t polecat-<task-id>`, or reads logs/sessions at the canonical host paths.
+5. To observe progress, the orchestrator (or any successor) re-attaches via `ssh host -t tmux attach -t polecat-<task-id>`, or reads logs/sessions at the canonical host paths. (If `authorized_keys` `command="…"` restriction is in use, re-attachment must go through the wrapper or use a separate unrestricted key — see Required Surface Area §4.)
 
 ## Why this beats DinD
 
@@ -50,12 +50,12 @@ Per-container, one-time setup:
 1. SSH client present (already in worker Dockerfile via `openssh-client`).
 2. SSH key with permission to run `polecat run` on the host. Stored as a staged file (same mechanism as Claude credentials at `/tmp/staging`).
 3. Host reachability — `host.docker.internal` on Mac/Windows; explicit `POLECAT_HOST` on Linux.
-4. Host-side `sshd` accepting the worker's key, restricted via `authorized_keys` `command="…"` to the polecat dispatch wrapper (no general shell access).
+4. Host-side `sshd` accepting the worker's key. `authorized_keys` `command="…"` restriction to a host-side dispatch wrapper is optional security hardening. Without it, the in-container wrapper sends the `tmux` command directly (simpler; default for initial rollout). If `command="…"` is used: (a) the host wrapper must parse restricted inputs and construct the `tmux` command internally — never exec `SSH_ORIGINAL_COMMAND` directly to avoid shell injection; (b) the same key cannot serve the unrestricted `tmux attach` call in Step 5; use a separate observability key or extend the wrapper to handle both dispatch and re-attach requests via `SSH_ORIGINAL_COMMAND` parsing.
 5. Host-side `tmux` installed (universally available; no action needed in most environments).
 
 Per-dispatch:
 
-- A thin wrapper script (`scripts/polecat-dispatch-via-ssh.sh`) invoked by the in-container orchestrator. Takes the task spec on stdin, formats the SSH command, returns the tmux session name.
+- A thin in-container wrapper script (`scripts/polecat-dispatch-via-ssh.sh`) invoked by the orchestrator. Reads the task spec from stdin, constructs the SSH remote command (`tmux new-session ...` with explicit env-var forwarding and idempotency check), executes SSH, and returns the derived tmux session name to the caller.
 
 ## Non-goals
 
