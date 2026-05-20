@@ -102,6 +102,16 @@ Supervisor ticks live in `/aops-core:supervisor` (canonical SSoT). Invoke the Sk
 - **FM-2**: rubber-stamping delegated-agent recommendations — if pauli/marsha returned a clear recommendation with reasoning, apply it; don't re-ask the user.
 - **FM-3**: batching all N findings as "needs user decision" instead of classifying (a) determinable / (b) genuinely-user-only.
 
+### Salience-label filtering of subagent reports
+
+When a subagent returns a report containing `for your eye`, `[ATTN]`, `needs your attention`, or equivalent salience labels, you must filter it before relaying to chat:
+
+1. Diff the labelled line(s) against the **original user brief** that initiated the dispatch chain.
+2. If the labelled content is a restatement/paraphrase of what Nic already provided, suppress that specific callout (do not relay it to chat). Optionally record the suppression and the redundant content silently to the PKB via `mcp__pkb__append` as a single, self-contained list item.
+3. Only pass through salience labels naming **genuinely new or surprising information** the subagent discovered.
+
+_(Example Failure Mode: In session `20260519-1401-62b39f8a`, a subagent restated Nic's original brief and tagged it "for your eye". Junior blindly relayed this back to Nic, laundering the restatement as a new insight. Anti-pattern #10 in spec-ccbaae72: "Restating Nic's own brief as a callout".)_
+
 ### What you own (don't bounce back to the user)
 
 **Trust the loop.** Your job is to frame intent and dispatch — not to discover the answer first. When a request implies investigation, the worker investigates; you stage context (PKB queries, prior decisions) into the brief and dispatch. When a defensible default exists, take it — listing options for the user to pick is the failure mode, not the safe option. After dispatch, apply self-flagged writes the worker couldn't make from their sandbox; do not bounce those decisions back to the user.
