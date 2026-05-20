@@ -47,20 +47,21 @@ version: 2.0.0
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
-11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children, and do NOT infer priority from subtask content (e.g., "this looks important, mark it P1"). Only elevate a subtask above P3 if the user explicitly signals urgency for that specific subtask. See [[../SKILL.md#priority-assignment-rules]] for the full rule.
+11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children or infer priority from subtask content. Only elevate above P3 if the user explicitly signals urgency. See [[../SKILL.md#priority-assignment-rules]].
 
-12. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
+12. **Apply the Decision Surfacing Heuristic** — Before drafting any user-facing "design conversation" or ratification message, classify each open decision as DECIDE / DEFER / SURFACE per [[../SKILL.md#decision-surfacing-heuristic]]. Bundling DECIDE-class items with SURFACE-class items trains rubber-stamping (issue #816).
+13. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
 
-13. **Apply Multi-agent Review Gate (default, mandatory)** — For each proposed epic, file ONE blocking `james review of <epic-title> (pauli + rbg + revise)` child (epic stays `inbox` until it lands). For each proposed standalone task, file `pauli + rbg review of planned approach` as the first subtask (execution children `depends_on` it) and `james review of work against original instructions, user intent, and project rules` as the last subtask (`depends_on` execution children). State only the artifact and link to parent; defer methodology to the agents' framework instructions. Stacks with — does not replace — the lens-based profile in step 14.
+14. **Apply Multi-agent Review Gate (default, mandatory)** — For each proposed epic, file ONE blocking `james review of <epic-title> (pauli + rbg + revise)` child (epic stays `inbox` until it lands). For each proposed standalone task, file `pauli + rbg review of planned approach` as the first subtask (execution children `depends_on` it) and `james review of work against original instructions, user intent, and project rules` as the last subtask (`depends_on` execution children). State only the artifact and link to parent; defer methodology to the agents' framework instructions. Stacks with — does not replace — the lens-based profile in step 15.
 
-14. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Tag with `lens: <name>` (use `aops-core/skills/planner/references/verification-template.md` as a base).
+15. **Apply Review Profile** — Create SEPARATE child subtasks for review based on work type. Tag with `lens: <name>` (use `aops-core/skills/planner/references/verification-template.md` as a base).
     - **Methodology/Analysis**: Agent methodology critique followed by binary Human "accept/redesign" approval (`assignee="nic"`). Block promotion on these.
     - **Citation-heavy Writing**: Citation verification & Argument review (runs AFTER execution, does not block promotion).
     - **Outbound Comms**: Alignment, Quality, & Voice review (runs AFTER execution, does not block promotion).
     - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution, does not block promotion).
     - **Exploratory**: _Escape Hatch_ — Create minimal verification tasks and do not block promotion to ready for exploratory work.
 
-15. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`.
+16. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`.
 
 ## Hierarchy and Depth
 
@@ -72,14 +73,13 @@ version: 2.0.0
 
 Epic: "Add user authentication" using `feature-dev` workflow:
 
-| Workflow Step              | Task(s)                                      |
-| -------------------------- | -------------------------------------------- |
-| 1. Understand Requirements | Write auth acceptance criteria (planning)    |
-| 2. Propose Plan            | Design auth architecture doc (planning)      |
-| 3. Draft Tests             | Write auth unit tests (execution)            |
-| 4. Implement               | Implement auth middleware (execution)        |
-| 5. Verify Feature          | Run integration tests, review (verification) |
-| 6. Submit PR               | Create PR, address review (verification)     |
+| Workflow Step              | Task(s)                                               |
+| -------------------------- | ----------------------------------------------------- |
+| 1. Understand Requirements | Write auth acceptance criteria (planning)             |
+| 2. Propose Plan            | Design auth architecture doc (planning)               |
+| 3. Draft Tests             | Write auth unit tests (execution)                     |
+| 4. Implement               | Implement auth middleware (execution)                 |
+| 5. Verify & Submit         | Run integration tests, review, open PR (verification) |
 
 ## Task Handoff Quality (P#120)
 
@@ -94,7 +94,7 @@ Tasks will be picked up by a **different agent** with only the task body as cont
 ## Critical Rules
 
 - **Completeness & Actionability**: All tasks together must achieve the original epic; every task must be completable in a single session.
-- **Verification**: Every epic must include at least one QA/review task. The Multi-agent Review Gate (step 13) is the default and is non-optional — `james` blocker on every new epic; `pauli + rbg` first / `james` last on every new standalone task. The user is often not the right substantive reviewer; do not skip the gate just because they look ready to approve.
+- **Verification**: Every epic must include at least one QA/review task. The Multi-agent Review Gate (step 14) is the default and is non-optional — `james` blocker on every new epic; `pauli + rbg` first / `james` last on every new standalone task. The user is often not the right substantive reviewer; do not skip the gate just because they look ready to approve.
 - **Conservative expansion**: If a task can be done in one sitting, don't decompose further.
 - **Graph placement & drift**: Every task must be parented under a live epic with dependencies. When upstream work changes scope, update affected task bodies.
 - **No parallel tracking**: After creating subtasks, remove any `- [ ]` checklists from the parent body that duplicate the subtask graph. Replace with a summary reference (e.g., "Decomposed into N subtasks — see children"). Body checklists and subtask graphs inevitably diverge over time.

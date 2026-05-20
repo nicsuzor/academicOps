@@ -877,19 +877,19 @@ class TestBuildAuditSessionContext:
 class TestExtractGateContextExceptionHandling:
     """Tests for extract_gate_context exception handling."""
 
-    def test_corrupt_jsonl_logs_error(self, tmp_path, caplog):
-        """Corrupt JSONL that passes existence check but fails parsing logs error."""
-        import logging
+    def test_corrupt_jsonl_handled_gracefully(self, tmp_path):
+        """Corrupt JSONL that passes existence check is handled gracefully.
 
+        Per fix #314: per-line exceptions are caught in _parse_jsonl_file so
+        corrupt entries are silently skipped rather than propagating an error.
+        extract_gate_context therefore returns an empty result, not an exception.
+        """
         from lib.session_reader import extract_gate_context
 
         transcript = tmp_path / "corrupt.jsonl"
         # message: null triggers AttributeError in Entry.from_dict
         transcript.write_text('{"type": "user", "message": null}\n')
 
-        with caplog.at_level(logging.ERROR, logger="lib.session_reader"):
-            result = extract_gate_context(transcript, include={"prompts"})
-
-        # Should return empty dict gracefully and log the error
-        assert result == {}
-        assert any("extract_gate_context failed" in r.message for r in caplog.records)
+        # Should return empty dict gracefully (corrupt line skipped)
+        result = extract_gate_context(transcript, include={"prompts"})
+        assert result == {} or result.get("prompts") == []

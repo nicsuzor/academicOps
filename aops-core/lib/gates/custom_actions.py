@@ -135,8 +135,29 @@ def execute_custom_action(
     before returning. Policy templates depend on this metric being present.
     """
     if name == "prepare_compliance_report":
-        temp_path = create_audit_file(ctx.session_id, "enforcer", ctx)
-        state.metrics["temp_path"] = str(temp_path)
+        # Memoized audit file: avoid re-parsing the full transcript when it
+        # hasn't grown since the last compliance check.  Stores the transcript
+        # byte size at last parse in state.metrics["transcript_parse_pos"].
+        # If the audit file already exists at the same transcript size, reuse
+        # it instead of rebuilding. (#331 O(n²) token cost)
+        transcript_path_str = ctx.transcript_path or ctx.raw_input.get("transcript_path")
+        existing_temp = state.metrics.get("temp_path")
+        stored_pos = state.metrics.get("transcript_parse_pos", -1)
+        reuse = False
+        if transcript_path_str and existing_temp:
+            transcript_file = Path(transcript_path_str)
+            if transcript_file.exists() and Path(existing_temp).exists():
+                current_size = transcript_file.stat().st_size
+                if current_size == stored_pos:
+                    reuse = True
+                    temp_path = Path(existing_temp)
+
+        if not reuse:
+            temp_path = create_audit_file(ctx.session_id, "enforcer", ctx)
+            state.metrics["temp_path"] = str(temp_path)
+            if transcript_path_str:
+                tf = Path(transcript_path_str)
+                state.metrics["transcript_parse_pos"] = tf.stat().st_size if tf.exists() else -1
 
         registry = TemplateRegistry.instance()
         instruction = registry.render("enforcer.instruction", {"temp_path": str(temp_path)})
@@ -145,6 +166,16 @@ def execute_custom_action(
             system_message=f"Compliance report ready: {temp_path}",
             context_injection=instruction,
         )
+
+    if name == "update_todo_in_progress":
+        # Track whether the agent currently has an in-progress todo item.
+        # Called via PostToolUse trigger on TodoWrite. (#319 mid-work false BLOCK)
+        todos = ctx.tool_input.get("todos", []) if isinstance(ctx.tool_input, dict) else []
+        has_in_progress = any(
+            isinstance(t, dict) and t.get("status") == "in_progress" for t in todos
+        )
+        state.metrics["has_in_progress_todo"] = has_in_progress
+        return None
 
     if name == "set_handover_invoked":
         session_state.state["handover_skill_invoked"] = True

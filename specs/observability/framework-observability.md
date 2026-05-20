@@ -254,7 +254,7 @@ To add a new observable pattern:
    - Update `reflection_to_insights()` to include it
 
 5. **Update enforcement-map** - If observable enables new enforcement:
-   - Add entry to [[enforcement-map|indices/enforcement-map.md]]
+   - Add entry to `.agents/ENFORCEMENT-MAP.md` (operative SSoT)
    - Document the enforcement point
 
 ## Design Principles

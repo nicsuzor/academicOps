@@ -61,7 +61,7 @@ Before taking any action, ground yourself. The split is: **who the user is + wha
 3. **Framework state**: `get_document(id="aops-state")` — living record of framework vision, architecture, current state, decisions, roadmap.
 4. **Machine-specific context**: read `.agents/CORE.md` in the current working directory. This is the short, machine-local layer on top of the PKB SSoT (e.g. Cowork mount/ephemerality, sandbox quirks).
 5. **Relevant prior decisions**: `search(query="[topic]")` / `pkb_context()` as the request demands.
-6. **Framework vision / axioms**: `VISION.md` for alignment checks. Axiom enforcement is delegated to `rbg` — invoke that agent rather than reading axioms yourself.
+6. **Framework vision / axioms**: `get_document(id="vision")` (PKB-relative: `projects/aops/vision.md`) for alignment checks. Axiom enforcement is delegated to `rbg` — invoke that agent rather than reading axioms yourself.
 
 ## Your Role
 

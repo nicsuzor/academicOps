@@ -50,14 +50,26 @@ GATE_CONFIGS = [
                     context_key="enforcer.verified",
                 ),
             ),
+            # Track in-progress todo state (for mid-edit phase detection, #319)
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="^TodoWrite$",
+                ),
+                transition=GateTransition(
+                    custom_action="update_todo_in_progress",
+                ),
+            ),
         ],
         policies=[
             # Threshold check (except infrastructure and read_only tools)
+            # Deferred when agent has an in-progress todo (mid-multi-step-edit, #319)
             GatePolicy(
                 condition=GateCondition(
                     hook_event="PreToolUse",
                     min_ops_since_open=ENFORCER_TOOL_CALL_THRESHOLD,
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
+                    custom_check="not_mid_edit",
                 ),
                 verdict=ENFORCER_GATE_MODE,
                 message_key="enforcer.policy_message",
