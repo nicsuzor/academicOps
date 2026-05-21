@@ -58,6 +58,10 @@ A task requires critic-gated dispatch when the action is irreversible or has a b
 
 The supervisor main agent runs the dispatch. See the **Canonical Dispatch Template** in `SKILL.md` for the exact Bash invocation.
 
+**Compose-then-Dispatch Separation (mandatory).** The tick that dispatches a worker MUST NOT also be the tick that authored or substantively refined the `## Dispatch Brief`. If pauli's work this tick included writing or reshaping the brief — filtering inherited prose, narrowing scope to the worker shape, rewriting AC — the verdict is `brief drafted on <task-id>; dispatch next tick` and the supervisor exits with a `brief_drafted` Pattern Memory row. Dispatch is the next tick's responsibility, in a fresh main-agent context that reads the persisted brief from PKB. See [[../SKILL#compose-then-dispatch-separation]] for the rationale (A17 propagated to the dispatch surface) and [[../../aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]] for the canonical doctrine.
+
+This is not a gate or verdict on brief shape — pauli is not grading the brief and deciding whether to allow dispatch. It is a workflow boundary: composition and dispatch are different ticks in different contexts. There is no PASS / REWRITE / HALT check inserted between them.
+
 **Task Body Anti-Pattern (Verify Before Naming):** If you have to look up paths to fill the body, you're doing the worker's job. Apply the Task-Body Authoring Discipline ([[../../aops/references/authoring-discipline]]): **intent + AC, not prescription**. Any cited tool, file, or agent MUST be empirically verifiable; if you are unsure, mark it as "polecat to verify" or omit the specific name entirely.
 
 **Jules notes**: For Jules (asynchronous, runs on Google infrastructure), pipe task context:

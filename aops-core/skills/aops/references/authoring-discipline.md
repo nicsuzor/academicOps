@@ -1,6 +1,6 @@
 # Task-Body Authoring Discipline: Trust the Worker
 
-This document defines the canonical doctrine for authoring task bodies, epic decompositions, and dispatch briefs across the academicOps framework. It applies to all skills and agents that create or decompose work for downstream execution (e.g., `/planner`, `/supervisor`, `/issue-sweep`).
+This document defines the canonical doctrine for authoring task bodies, epic decompositions, and dispatch briefs across the academicOps framework. It applies to all skills and agents that create or decompose work for downstream execution (e.g., `/planner`, `/supervisor`, junior coordinator, `/issue-sweep`).
 
 ## 1. Intent + Acceptance Criteria, Not Prescription
 
@@ -20,7 +20,35 @@ Do not invent phantom approval gates. The framework has a canonical review pipel
 - When a worker is executing a task or epic, they should complete their work and submit it to the canonical review surface (the PR diff IS the approval surface). Stating "the worker will draft X and surface it for user review before proceeding" substitutes the worker's judgment with fake review theatre, burning polecat-nights waiting for humans.
 - **Trust polecat depth, throttle polecat width.** Give each polecat a substantive chunk of work (a complete feature, a full refactor) and trust them to execute it fully instead of micro-decomposing it for them.
 
-## 3. Decision Surfacing Heuristic (FM-2 Avoidance)
+## 3. Compose-then-Dispatch Separation (A17 propagated to the dispatch surface)
+
+_A17 (Recusal) governs framework-change authoring: the agent that lived through the failure may not author the rule. The same structural property must hold for worker dispatch: the agent that composed the brief should not, in the same in-context invocation, also perform the dispatch. The composing impulse and the dispatching impulse are the same impulse — same model, same context window — and same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
+
+The canonical happy path for any non-trivial worker dispatch (polecat or polecat-equivalent execution) is **two contexts, mediated by PKB**:
+
+1. **Compose** — author the brief into a PKB task body (intent + AC; the principles in §§1–2 above). Persist. Exit the composing invocation.
+2. **Dispatch** — a separate invocation (next supervisor tick, polecat pull cycle, or a different orchestrator-context dispatch step) reads the brief fresh from PKB and ships the worker. The dispatching actor does not inherit the composer's in-context reasoning trace.
+
+This is a **workflow shape, not a verdict gate.** There is no PASS/REWRITE/HALT check interposed between compose and dispatch; the structural distinctness is delivered by the context boundary itself. PKB is the persistent intermediary; the freshness of the dispatcher's read is the cure.
+
+**Operational rules**:
+
+- **Surface-by-surface canonical pattern**: see [[../../planner/SKILL#shared-principles]] (planner is the canonical compose-only surface), [[../../supervisor/SKILL#compose-then-dispatch-separation]] (compose and dispatch never co-occur in one tick), and the junior coordinator's worker-dispatch rule (write to PKB first; dispatch by task-ID only).
+- **No fresh in-tick brief**: if the brief was just authored or substantially refined in the current invocation, that invocation exits with a "brief drafted" checkpoint. Dispatch is the next invocation's responsibility.
+- **Dispatch by task-ID, not by inlined prose**: when invoking a worker (e.g. `polecat run -t <task-id>`), the worker reads the brief from PKB. Never inline a freshly-composed brief as command arguments or sub-agent prompt text in the same context where the brief was composed.
+- **Lightweight subagent calls are not worker dispatch**: a short pauli preflight or marsha verify against an existing artifact is not the surface this rule targets. The rule targets sustained worker execution (polecat-equivalent) where the brief is the primary input.
+- **If the brief is already a stable PKB artifact** (authored in a prior tick / session and unchanged in the current invocation), the current invocation MAY dispatch it. The constraint is on co-occurrence of authoring and dispatching, not on dispatching pre-existing briefs.
+
+**Why this works without a gate**: the dispatcher reads the brief fresh, with no inheritance of the composer's prescriptive impulse. If the brief is well-shaped (intent + AC), dispatch proceeds; if it is not, the dispatcher's normal attention (the same kind of judgment a human dispatcher applies on read) is sufficient — and the brief is now a visible artifact in PKB rather than transient in-context prose, making it auditable by any subsequent reader. The composer who knows their brief will be read by a fresh actor (not blindly executed by the same impulse that authored it) writes with awareness that the brief must stand on its own.
+
+**Axiom interactions**:
+
+- **A17 (Recusal)**: this rule IS A17 propagated to the dispatch surface — the agent that composed must not own the dispatch. The framework-change variant requires a detached author; the dispatch variant requires a detached dispatcher.
+- **A8 (Halt on failure)**: this rule does NOT introduce a gate, a verdict, or a HALT mechanism. There is no "skip dispatch if brief is prescriptive" branch. The dispatching actor either dispatches or routes through the normal A7 Edge 2 escalation if it cannot — it does not invent a new halt condition.
+- **A7 Edge 3 (No Shitty NLP)**: the dispatcher's judgment of brief shape, if it forms one at all, is qualitative LLM judgment — never a regex or keyword check. There is no "scan for `/home/` paths" or "grep for 'DO NOT'" rule attached to this workflow.
+- **A11 (Full Observability)**: the brief is a visible PKB artifact at the moment of handoff. Any subsequent reader (user, reviewer, audit) can see what was authored and what was dispatched without reading transcripts.
+
+## 4. Decision Surfacing Heuristic (FM-2 Avoidance)
 
 Do not surface pseudo-decisions to the user. Surfacing trivial choices trains the user to rubber-stamp and erodes the signal of genuine asks.
 

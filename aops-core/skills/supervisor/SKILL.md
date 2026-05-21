@@ -61,7 +61,7 @@ The main agent runs this loop **once** and exits:
 1. **ORIENT** — `mcp__pkb__get_task(<epic-id>)`. Read the body only.
 2. **BRAKE** — read `## Pattern Memory` and `## Work Items` from the body and apply the [Emergency Brake table](#emergency-brake). If any rule fires, halt the epic and exit.
 3. **DECIDE** — call exactly one subagent (see [Subagent Contracts](#subagent-contracts)).
-4. **ACT** — execute the structured verdict. One Bash call (dispatch / file a fix-task) or exit.
+4. **ACT** — execute the structured verdict. One Bash call (dispatch / file a fix-task) or exit. See [Compose-then-Dispatch Separation](#compose-then-dispatch-separation): if pauli wrote or substantially refined the dispatch brief in _this_ tick, the tick exits with a `brief_drafted` checkpoint — dispatch falls to the next tick (fresh context).
 5. **CHECKPOINT** — append one Pattern Memory row to the epic body, commit and push.
 
 That is the whole loop. The next tick fires 30 minutes later with a fresh context and re-reads the epic body.
@@ -106,7 +106,9 @@ The detailed validation protocol (inputs, checks, and halt conditions) for both 
 
 **Review-lens annotations — RBG (axioms)**: Create a child subtask `lens: rbg-axiom-check` using `references/lens-templates/rbg-axiom-check.md`. Dispatch is blocked until it reaches status: done.
 
-**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `brief drafted on <task-id>; dispatch next tick`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor executes it without re-deriving the reasoning. If the verdict is incoherent (no action, or contradictory), append "pauli verdict malformed" to Pattern Memory and exit; do not improvise.
+
+**When to choose `brief drafted` over `dispatch`** (see [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)): if pauli composed or substantively refined the `## Dispatch Brief` in this tick — e.g. filtered superseded prose out of an inherited parent body, rewrote inputs to match the worker shape, added or removed AC — the brief is a fresh in-tick composition. Pauli emits `brief drafted` and the supervisor exits; the next tick reads the persisted brief fresh and dispatches. If the body's `## Dispatch Brief` is already stable PKB content from a prior tick and pauli's role this tick was preflight (PKB-side validation), pauli emits `dispatch` and the supervisor dispatches.
 
 **Brief-for-verify shape (verification brief assembly):**
 
@@ -140,6 +142,30 @@ Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>`
 
 Marsha never dispatches, never edits, never files tasks. The supervisor consumes her verdict.
 
+## Compose-then-Dispatch Separation
+
+_Canonical doctrine at [[../aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]]. This section names how it applies to the supervisor loop._
+
+**A single tick never both authors and dispatches a worker brief.** If the current tick's pauli verdict had to compose or substantively refine the dispatch brief into the task body (because the body lacked the worker-shape filtering needed for the iteration about to fire), the main agent persists the brief, appends a `brief_drafted` Pattern Memory row, and exits. Dispatch is the **next tick's** verdict — a fresh-context invocation that reads the brief from PKB without inheriting the composing tick's reasoning trace.
+
+**Heuristic for "was the brief composed in this tick"** (qualitative — pauli's judgment, not a regex on the diff):
+
+- Pauli read the body and the current `Dispatch Brief` content is unchanged from the body she pulled at ORIENT → brief is a **stable PKB artifact**; dispatch in this tick is fine.
+- Pauli rewrote, augmented, filtered superseded text out of, or otherwise actively shaped the `Dispatch Brief` for the worker that is about to be invoked → brief is a **fresh in-tick composition**; exit with `brief_drafted`, dispatch next tick.
+
+**Pauli verdict shapes that fit the separation**:
+
+- `brief drafted on <task-id>; dispatch next tick` — pauli refined or wrote the brief; main agent persists and exits.
+- `dispatch <worker> on <task-id> in <project>` — the brief was already stable PKB content; pauli's role this tick was preflight (PKB-side validation), not composition. Main agent dispatches.
+
+**What this does NOT introduce**:
+
+- No PASS / REWRITE / HALT verdict on brief shape. Pauli does not grade the brief and decide whether to allow dispatch — she observes whether the brief is a stable artifact or a fresh composition, and either dispatches or defers accordingly. There is no halt branch on "brief is prescriptive."
+- No regex or keyword scan on brief content (A7 Edge 3 — "No Shitty NLP"). The "did I just write this?" judgment is pauli's qualitative judgment of her own work in this tick, not a pattern match on tokens.
+- No new halt class in the Emergency Brake table. `brief_drafted` is a normal checkpoint class, not a brake.
+
+**Why the separation binds where L1 prose did not**: the dispatcher in tick N+1 reads the brief from PKB in a fresh main-agent context. The composer's in-tick prescriptive impulse — which L1 prose proved insufficient to constrain when composer and dispatcher were the same in-context invocation — is not carried over by construction. This is A17 (recusal) propagated one cost-ladder step into the dispatch surface; see [[../aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]] for the axiom interactions (A17 / A8 / A7 Edge 3 / A11) and the worked rationale.
+
 ## Canonical Dispatch Template
 
 The supervisor main agent executes dispatch directly using this canonical shape. It does not probe the environment first.
@@ -158,7 +184,7 @@ ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"pole
 - `--gemini` selects the Gemini CLI as the worker backend (not a model name). To specify a particular Gemini model, pair it with `--model`: `--gemini --model gemini-2.5-pro`.
 - `--opus` is not a valid flag. It does not exist in the polecat CLI and will cause an error if used. Use `--model claude-opus-4-7` instead.
 
-The supervisor pastes a `## Dispatch Brief` into the task body (via `pkb update_task`) before running the command. If the dispatch fails synchronously, or the worker fails asynchronously, the error routes to pauli in the `react` phase.
+**Brief location** — the `## Dispatch Brief` must already be in the task body before the dispatch tick fires. If pauli authored or refined it this tick, the verdict is `brief drafted` (see [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)) and the supervisor exits without running the command; dispatch is the next tick's responsibility. The supervisor's dispatch tick runs the command and does not paste new brief content. If the dispatch fails synchronously, or the worker fails asynchronously, the error routes to pauli in the `react` phase.
 
 ## Emergency Brake
 
@@ -184,7 +210,7 @@ The main agent appends one row per tick. Capped at 16 rows (drop the oldest when
 | 2026-05-08T02:43:11Z | marsha FAIL on task-abc     | verify_fail | tests red on docker |
 ```
 
-Class values used by the brake: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `react_filed_fix`, `react_halt`, `brake_fired`. Keep class names stable — the brake matches on them.
+Class values used by the brake: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `react_filed_fix`, `react_halt`, `brake_fired`. Additional non-brake class: `brief_drafted` (used when the tick composed/refined a worker brief and exited per [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)). Keep class names stable — the brake matches on them.
 
 The main agent never inspects work items by reading their task bodies; the Work Items table inside the epic body is the authoritative summary.
 
@@ -256,16 +282,17 @@ Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in 
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.
 
-| Phase      | Subagent | What happens                                                                                                                                                                                                                                                                                      |
-| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orient     | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                                                                                                                                                                                                                     |
-| Decompose  | pauli    | Pauli proposes subtasks; RBG axiom-check runs in parallel as a mandatory reviewer (verdict: OK/WARN/BLOCK gates promotion). See [[instructions/decomposition-and-review]]                                                                                                                         |
-| Review     | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`                                                                                                                                                                                                                  |
-| Dispatch   | pauli    | Pauli recommends dispatch; main agent runs the command. See [[instructions/worker-dispatch]]                                                                                                                                                                                                      |
-| Pre-verify | pauli    | Assembles the minimal verification brief — fetches the original mission brief, project context, and the spec's `## Fitness Rubric` / acceptance criteria. Strips iteration history. Produces ONE short paragraph: artifact + goal + spec link. No methodology, no dimensions, no persona prompts. |
-| Verify     | marsha   | Receives the minimal brief in fresh context. Returns PASS / FAIL / REVISE. Invokes /verify herself for methodology — the supervisor never inlines it into the brief.                                                                                                                              |
-| React      | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                                                                                                                                                                                                                                |
-| Halt       | (none)   | All work items at review surface or escalated; emit final summary; exit                                                                                                                                                                                                                           |
+| Phase      | Subagent | What happens                                                                                                                                                                                                                                                                                                         |
+| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orient     | (none)   | Main agent reads epic body; runs brake; chooses subagent role                                                                                                                                                                                                                                                        |
+| Decompose  | pauli    | Pauli proposes subtasks; RBG axiom-check runs in parallel as a mandatory reviewer (verdict: OK/WARN/BLOCK gates promotion). See [[instructions/decomposition-and-review]]                                                                                                                                            |
+| Review     | (none)   | Plan-review halt — decomposition synthesised; awaits human promotion to `queued`                                                                                                                                                                                                                                     |
+| Compose    | pauli    | Pauli authors or substantively refines the `## Dispatch Brief` in the task body (e.g. filters superseded prose, shapes for the worker's actual execution surface). Tick exits with `brief_drafted` checkpoint — no dispatch in this tick. See [Compose-then-Dispatch Separation](#compose-then-dispatch-separation). |
+| Dispatch   | pauli    | The task body already carries a stable `## Dispatch Brief` from a prior tick. Pauli preflights (PKB-side validation only — no rewriting). Main agent runs the command. See [[instructions/worker-dispatch]]                                                                                                          |
+| Pre-verify | pauli    | Assembles the minimal verification brief — fetches the original mission brief, project context, and the spec's `## Fitness Rubric` / acceptance criteria. Strips iteration history. Produces ONE short paragraph: artifact + goal + spec link. No methodology, no dimensions, no persona prompts.                    |
+| Verify     | marsha   | Receives the minimal brief in fresh context. Returns PASS / FAIL / REVISE. Invokes /verify herself for methodology — the supervisor never inlines it into the brief.                                                                                                                                                 |
+| React      | pauli    | Pauli recommends a fix-task or a halt after a FAIL                                                                                                                                                                                                                                                                   |
+| Halt       | (none)   | All work items at review surface or escalated; emit final summary; exit                                                                                                                                                                                                                                              |
 
 `Review` and `Halt` are real terminal states, not transient phases. The supervisor never finalises the deliverable itself — it hands off at the review surface. Async ownership transfers to whatever review pipeline the deliverable subworkflow defines.
 
