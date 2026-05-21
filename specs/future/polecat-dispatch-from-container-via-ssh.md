@@ -76,7 +76,7 @@ The dispatch is fit if:
 
 - Authentication: short-lived SSH cert vs. long-lived key in `authorized_keys`. Default to the latter for now (matches credential model elsewhere).
 - Should the wrapper script enforce a task-ID-derived tmux session name (predictable, re-discoverable) or generate one and return it? Default: derived.
-- Multi-tenancy: if two orchestrator containers dispatch the same task ID, tmux session names collide. Defer — same-task double-dispatch is a PKB-level concern, not a transport one.
+- Multi-tenancy: if two orchestrator containers dispatch the same task ID, the host-side wrapper should detect the existing session and return success (idempotency).
 
 ## Related kill-list
 
