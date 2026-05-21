@@ -98,18 +98,43 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 echo "Applying ruleset update..."
-RESULT=$(echo "$PAYLOAD" | gh api "repos/$REPO/rulesets/$RULESET_ID" \
+set +e
+RESULT=$(echo "$PAYLOAD" | GH_NO_UPDATE_NOTIFIER=1 gh api "repos/$REPO/rulesets/$RULESET_ID" \
   -X PUT \
-  --input - 2>&1)
+  --input -)
+API_EXIT=$?
+set -e
 
-uv run python - "$RESULT" << 'RESULT_EOF' || echo "$RESULT"
+if [[ $API_EXIT -ne 0 ]]; then
+  echo "ERROR: gh api PUT failed (exit $API_EXIT):" >&2
+  echo "$RESULT" >&2
+  echo "" >&2
+  echo "Common causes:" >&2
+  echo "  - Active gh account lacks admin on $REPO (check: gh api user --jq .login)" >&2
+  echo "  - Token missing 'admin:repo' / fine-grained 'Administration: write'" >&2
+  exit $API_EXIT
+fi
+
+if ! uv run python - "$RESULT" << 'RESULT_EOF'
 import json, sys
-d = json.loads(sys.argv[1])
+try:
+    d = json.loads(sys.argv[1])
+except json.JSONDecodeError as e:
+    print(f"ERROR: API returned non-JSON response: {e}", file=sys.stderr)
+    print(sys.argv[1], file=sys.stderr)
+    sys.exit(1)
+if "message" in d and "updated_at" not in d:
+    print(f"ERROR: API returned error: {d.get('message')}", file=sys.stderr)
+    print(json.dumps(d, indent=2), file=sys.stderr)
+    sys.exit(1)
 print("Updated successfully at:", d.get("updated_at", "?"))
 print("Rules now active:")
 for r in d.get("rules", []):
     print(f"  - {r['type']}")
 RESULT_EOF
+then
+  exit 1
+fi
 
 echo ""
 echo "NOTE: Rules not configurable via API must be verified in GitHub UI:"
