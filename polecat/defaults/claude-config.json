@@ -4,7 +4,11 @@
   "bypassPermissionsModeAccepted": true,
   "projects": {
     "/workspace": {
-      "hasTrustDialogAccepted": true
+      "hasTrustDialogAccepted": true,
+      "hasCompletedProjectOnboarding": true,
+      "hasClaudeMdExternalIncludesApproved": true,
+      "hasClaudeMdExternalIncludesWarningShown": true,
+      "projectOnboardingSeenCount": 0
     }
   }
 }
