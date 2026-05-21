@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.3.27](https://github.com/nicsuzor/academicOps/compare/v0.3.26...v0.3.27) (2026-05-21)
+
+
+### Features
+
+* **junior:** add salience-label filtering guardrail ([#1170](https://github.com/nicsuzor/academicOps/issues/1170)) ([6c7dc4b](https://github.com/nicsuzor/academicOps/commit/6c7dc4baf1f9c778cb421e97f9b2239c293bb586))
+
+
+### Bug Fixes
+
+* 1158: split issue-sweep comment-only disposition and tighten labels ([#1193](https://github.com/nicsuzor/academicOps/issues/1193)) ([b757b73](https://github.com/nicsuzor/academicOps/commit/b757b7345830f8c48f8de143fb337bb5dcea43d1))
+* 1194: crew -- -p drops the -p flag in agent invocation ([#1199](https://github.com/nicsuzor/academicOps/issues/1199)) ([5aee876](https://github.com/nicsuzor/academicOps/commit/5aee8767f1b8571fbfccd161a63741a767fb71f8))
+* 1195: nuke &lt;crew-name&gt; fails with ValueError when crew dir is absent or API bypasses CLI guard ([#1200](https://github.com/nicsuzor/academicOps/issues/1200)) ([6713615](https://github.com/nicsuzor/academicOps/commit/671361564226fc8677a133be9909621241bef64c))
+* 785: supervisor misreads Gemini 429/QUOTA_EXHAUSTED as hard quota — real cause is polecat 45-min timeout ([#1186](https://github.com/nicsuzor/academicOps/issues/1186)) ([48fff07](https://github.com/nicsuzor/academicOps/commit/48fff07b20bcc5cb2d33aaa6c2e484c351c69ecb))
+* address review feedback ([c7b76a7](https://github.com/nicsuzor/academicOps/commit/c7b76a7ea59d5eccf3913b40a98ee23dee8dfcbe))
+* **cross-repo-shim:** grant explicit permissions on dispatch/merge-prep jobs ([#1163](https://github.com/nicsuzor/academicOps/issues/1163)) ([8cef3bb](https://github.com/nicsuzor/academicOps/commit/8cef3bb4eaca834410e3a107994a6494f64e263b))
+* **custodiet:** reliability cluster — empty narratives, mid-work BLOCKs, WARN inertia, O(n²) parsing ([#1187](https://github.com/nicsuzor/academicOps/issues/1187)) ([48256b0](https://github.com/nicsuzor/academicOps/commit/48256b01aa5c1668824b4247c7f8538fa630c52c))
+* gate_config Gemini regressions + Claude folder-trust seed ([#1205](https://github.com/nicsuzor/academicOps/issues/1205)) ([a8cccef](https://github.com/nicsuzor/academicOps/commit/a8cccef54c21c13ebd14b6fb5ccee749f4b87bbe))
+* **gate-config:** bake in defaults so fresh install never tracebacks ([#1156](https://github.com/nicsuzor/academicOps/issues/1156)) ([5f72f80](https://github.com/nicsuzor/academicOps/commit/5f72f80a9a22fdf6f510324f6a6fd2d0756ece80))
+* **james:** prescribe in-process Agent() dispatch, forbid subprocess ([#1178](https://github.com/nicsuzor/academicOps/issues/1178)) ([98a0afc](https://github.com/nicsuzor/academicOps/commit/98a0afc4d4b66b2d0f00af231d3fb910b691ef79))
+* **james:** prescribe in-process Agent() dispatch, forbid subprocess ([#1178](https://github.com/nicsuzor/academicOps/issues/1178)) ([#1180](https://github.com/nicsuzor/academicOps/issues/1180)) ([f7431ff](https://github.com/nicsuzor/academicOps/commit/f7431ffbe83c8b86f41c028e164959bf46f6c446))
+* **junior:** point framework vision to PKB doc, not removed docs/VISION.md ([d5ff480](https://github.com/nicsuzor/academicOps/commit/d5ff480cdd409fd0068badf8adae29eca4fed77e))
+* **merge-prep-cron:** re-qualify success PRs when base advances and conflicts emerge ([#1168](https://github.com/nicsuzor/academicOps/issues/1168)) ([e9a2bda](https://github.com/nicsuzor/academicOps/commit/e9a2bda45883dd19ef9da92c3de7f6f33e42ca6d))
+* **merge-prep:** add intent-vs-surface guidance to stop surface-only delta revisions ([#1184](https://github.com/nicsuzor/academicOps/issues/1184)) ([fc56665](https://github.com/nicsuzor/academicOps/commit/fc566653efaecc8d82c049c1a319a08ee4d06fd3)), closes [#983](https://github.com/nicsuzor/academicOps/issues/983)
+* **pipeline:** Add terminal commit status on early pipeline failure in agent-merge-prep ([#1177](https://github.com/nicsuzor/academicOps/issues/1177)) ([32ea932](https://github.com/nicsuzor/academicOps/commit/32ea932ee08129c95193ab0977a76c97f1ee3536))
+* **pkb-bridge:** self-heal mem indexer graph-binding race in create_task ([#1189](https://github.com/nicsuzor/academicOps/issues/1189)) ([72a8038](https://github.com/nicsuzor/academicOps/commit/72a803887a59d7b5310fab8eda07e24c0835e641))
+* **planner:** reference Decision Surfacing Heuristic from decompose workflow ([6dd9ba8](https://github.com/nicsuzor/academicOps/commit/6dd9ba82de1294c365c6022c05ff76586708afa8))
+* **polecat-crew:** seed .claude.json so claude workers skip onboarding ([3f9d394](https://github.com/nicsuzor/academicOps/commit/3f9d3948a3e3db2176ce32f0608eecafd46a6903))
+* **polecat-worker:** preinstall gemini hook venv to skip cold-cache PyPI ([8601385](https://github.com/nicsuzor/academicOps/commit/8601385eb963b8838244e261cbe853dc8093ab2d))
+* **polecat:** enable aops plugins in container claude-settings.json ([#1198](https://github.com/nicsuzor/academicOps/issues/1198)) ([d2b27ad](https://github.com/nicsuzor/academicOps/commit/d2b27ad1a3de2be93501c457025adb2603ef4b3b))
+* **polecat:** record Claude Code version + e2e trust-seed runtime check ([#1220](https://github.com/nicsuzor/academicOps/issues/1220)) ([a85edc3](https://github.com/nicsuzor/academicOps/commit/a85edc3ca66aca19723bb42a1f074466e7c1f8ed))
+* replace non-canonical kb- prefix example with aops- in IDA checklist ([dabe045](https://github.com/nicsuzor/academicOps/commit/dabe045f162513e947ddef2e689331788ee64e17))
+* **supervisor:** use --model &lt;name&gt; in dispatch template, deprecate --opus/--gemini as model flags ([f23635b](https://github.com/nicsuzor/academicOps/commit/f23635b3ab0088a64856f67b4298d8a114f719ac))
+
+
+### Documentation
+
+* Compose-then-Dispatch separation (A17 propagated to dispatch surface) ([#1222](https://github.com/nicsuzor/academicOps/issues/1222)) ([1c99ebd](https://github.com/nicsuzor/academicOps/commit/1c99ebd6890df31341393408c380c37e6e1f90d8))
+* **enforcement:** collapse two enforcement-maps + three tier ladders to one (aops-3c665002) ([#1192](https://github.com/nicsuzor/academicOps/issues/1192)) ([b3f8b2e](https://github.com/nicsuzor/academicOps/commit/b3f8b2e7255e1a0df028bf86a2e4748cc1aad28b))
+* GATES.md cleanup per Pauli review ([#1218](https://github.com/nicsuzor/academicOps/issues/1218)) ([f53cdd1](https://github.com/nicsuzor/academicOps/commit/f53cdd13ac62090b155a21a1e5ad5faf13e6d5b9))
+* **planner:** add 'deliverable-producing tasks wire to class-level production target' pattern ([#1219](https://github.com/nicsuzor/academicOps/issues/1219)) ([fab96b7](https://github.com/nicsuzor/academicOps/commit/fab96b717a72a82a412884413a86e046fd26b03f))
+* **planner:** add Severity Assignment Rules + Deferring Work guidance ([#1164](https://github.com/nicsuzor/academicOps/issues/1164)) ([90784fb](https://github.com/nicsuzor/academicOps/commit/90784fba29e4bed238932ec33a0f88fc156b38aa))
+* **self-test:** add polecat session validation as §2 of 11-self-test ([#1210](https://github.com/nicsuzor/academicOps/issues/1210)) ([9c71517](https://github.com/nicsuzor/academicOps/commit/9c71517a9b9a0cef01c6ed9f487c8d12e748aa99))
+* **specs/agents:** A4 — collapse three agent-permission reps to spec pair + per-agent state + audit-artifact ([#1191](https://github.com/nicsuzor/academicOps/issues/1191)) ([a10b89e](https://github.com/nicsuzor/academicOps/commit/a10b89ebcc7a4767b3eb1aa21e359f5f057e6147))
+* **specs:** land daily-pipeline spec series (PR 1/4) ([#1155](https://github.com/nicsuzor/academicOps/issues/1155)) ([ba752e5](https://github.com/nicsuzor/academicOps/commit/ba752e5387996591e4337bb103e3d422835f0d39))
+* **supervisor:** add on-demand transcript refresh ([#1147](https://github.com/nicsuzor/academicOps/issues/1147)) ([6c971de](https://github.com/nicsuzor/academicOps/commit/6c971deeb63d6118c0572fe0d38f8d15ad7d54ea))
+* **supervisor:** replace WORKERS.md with SURFACES.md execution-surface reference ([#1148](https://github.com/nicsuzor/academicOps/issues/1148)) ([3b4518b](https://github.com/nicsuzor/academicOps/commit/3b4518b0ea0d98511580f62d32a64b3b32fd47d6))
+* **surfaces:** retire Mac Cowork→ssh-wsl, document WSL crew container as current (aops-e6a80f83) ([#1190](https://github.com/nicsuzor/academicOps/issues/1190)) ([dfe1c60](https://github.com/nicsuzor/academicOps/commit/dfe1c601bdd030347c8e0e0f5aa7af81dc18cda7))
+
 ## [0.3.26](https://github.com/nicsuzor/academicOps/compare/v0.3.25...v0.3.26) (2026-05-18)
 
 ### Features
