@@ -20,17 +20,17 @@
 
 ## TL;DR matrix
 
-| Surface                 | Engine                             | Persistence                           | Plugin source                                                                | Hook env propagation                          | Trust posture                  | Can dispatch onto                       |
-| ----------------------- | ---------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------ | --------------------------------------- |
-| WSL crew container      | Claude Code (interactive, in `polecat crew` container) | Persistent crew worktree (`/workspace`); container itself ephemeral | `dist/aops-claude/` baked into the crew Docker image | Container env at launch (no `launchctl` / `.zshenv` hop) | Orchestrator — full user trust | polecat (`run`/`crew`), Jules, GHA      |
-| Claude Code CLI on host | Claude Code                        | Persistent                            | aops-core plugin from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` | ⚠ broken — stripped (see traps)               | Full user trust                | polecat (run/crew), Jules, host shell   |
-| Gemini CLI on host      | Gemini CLI (Google)                | Persistent                            | aops-gemini extension from `nicsuzor/academicOps`                            | ⚠ unknown — verify                            | Full user trust                | polecat (run/crew --gemini), host shell |
-| `polecat run` Claude    | Claude Code (headless)             | Disposable worktree, Docker container | `dist/aops-claude/` from `nicsuzor/aops-dist` (built into image)             | `POLECAT_SESSION_TYPE=run` → run-mode gates   | Autonomous, repo-scoped        | Nothing (terminal worker)               |
-| `polecat run` Gemini    | Gemini CLI (headless)              | Disposable worktree, Docker container | `dist/aops-gemini/` from `nicsuzor/academicOps` (extension install)          | ⚠ unknown — verify                            | Autonomous, repo-scoped        | Nothing                                 |
-| `polecat crew` Claude   | Claude Code (interactive)          | Persistent crew worktree, Docker      | `dist/aops-claude/` (same as run)                                            | `POLECAT_SESSION_TYPE=crew` → crew-mode gates | Multi-agent interactive        | Sibling crew agents                     |
-| `polecat crew` Gemini   | Gemini CLI (interactive)           | Persistent crew worktree, Docker      | `dist/aops-gemini/`                                                          | ⚠ unknown — verify                            | Multi-agent interactive        | Sibling crew agents                     |
-| GHA runner              | `anthropics/claude-code-action@v1` | Transient (per job)                   | Agent prompt from `.github/agents/*.md` (no plugin)                          | Workflow `env:` block only                    | Repo-scoped, ephemeral         | Nothing                                 |
-| Jules                   | Jules (Google)                     | Google-side session, async            | Opaque (Google infra)                                                        | N/A — no host hooks                           | Google-sandboxed, async        | Nothing                                 |
+| Surface                 | Engine                                                 | Persistence                                                         | Plugin source                                                                | Hook env propagation                                     | Trust posture                  | Can dispatch onto                       |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------ | --------------------------------------- |
+| WSL crew container      | Claude Code (interactive, in `polecat crew` container) | Persistent crew worktree (`/workspace`); container itself ephemeral | `dist/aops-claude/` baked into the crew Docker image                         | Container env at launch (no `launchctl` / `.zshenv` hop) | Orchestrator — full user trust | polecat (`run`/`crew`), Jules, GHA      |
+| Claude Code CLI on host | Claude Code                                            | Persistent                                                          | aops-core plugin from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` | ⚠ broken — stripped (see traps)                          | Full user trust                | polecat (run/crew), Jules, host shell   |
+| Gemini CLI on host      | Gemini CLI (Google)                                    | Persistent                                                          | aops-gemini extension from `nicsuzor/academicOps`                            | ⚠ unknown — verify                                       | Full user trust                | polecat (run/crew --gemini), host shell |
+| `polecat run` Claude    | Claude Code (headless)                                 | Disposable worktree, Docker container                               | `dist/aops-claude/` from `nicsuzor/aops-dist` (built into image)             | `POLECAT_SESSION_TYPE=run` → run-mode gates              | Autonomous, repo-scoped        | Nothing (terminal worker)               |
+| `polecat run` Gemini    | Gemini CLI (headless)                                  | Disposable worktree, Docker container                               | `dist/aops-gemini/` from `nicsuzor/academicOps` (extension install)          | ⚠ unknown — verify                                       | Autonomous, repo-scoped        | Nothing                                 |
+| `polecat crew` Claude   | Claude Code (interactive)                              | Persistent crew worktree, Docker                                    | `dist/aops-claude/` (same as run)                                            | `POLECAT_SESSION_TYPE=crew` → crew-mode gates            | Multi-agent interactive        | Sibling crew agents                     |
+| `polecat crew` Gemini   | Gemini CLI (interactive)                               | Persistent crew worktree, Docker                                    | `dist/aops-gemini/`                                                          | ⚠ unknown — verify                                       | Multi-agent interactive        | Sibling crew agents                     |
+| GHA runner              | `anthropics/claude-code-action@v1`                     | Transient (per job)                                                 | Agent prompt from `.github/agents/*.md` (no plugin)                          | Workflow `env:` block only                               | Repo-scoped, ephemeral         | Nothing                                 |
+| Jules                   | Jules (Google)                                         | Google-side session, async                                          | Opaque (Google infra)                                                        | N/A — no host hooks                                      | Google-sandboxed, async        | Nothing                                 |
 
 > Retired surface — Mac Cowork sandbox dispatching to WSL via `ssh wsl` — is preserved at the end of this doc under "Retired surfaces" (2026-05-19). Do not consult it for current architecture.
 
@@ -40,11 +40,11 @@
 
 ### WSL crew container
 
-The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree. There is no Mac → WSL SSH hop: this container *is* the runtime that the orchestrator agent (junior) speaks from. The Mac Cowork → SSH-into-WSL model that preceded this is retired as of 2026-05-19 after the SSH-key incident (see "Retired surfaces" below).
+The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree. There is no Mac → WSL SSH hop: this container _is_ the runtime that the orchestrator agent (junior) speaks from. The Mac Cowork → SSH-into-WSL model that preceded this is retired as of 2026-05-19 after the SSH-key incident (see "Retired surfaces" below).
 
 - **Engine**: Claude Code (interactive), running inside a long-running `polecat crew` container on WSL.
 - **Persistence**: The crew worktree at `/workspace` is persistent (mounted from the WSL host). The container itself is ephemeral — anything outside `/workspace` should be treated as wiped between sessions. State that must survive lives in `/workspace` (this repo), in `~/junior/` (mounted), or in the PKB.
-- **Plugin source**: `dist/aops-claude/` baked into the crew Docker image at build time (same image as `polecat crew` Claude rows below — this surface *is* that crew). No marketplace involvement; no local-install override mechanic. Plugin version is pinned at image build until the image is rebuilt.
+- **Plugin source**: `dist/aops-claude/` baked into the crew Docker image at build time (same image as `polecat crew` Claude rows below — this surface _is_ that crew). No marketplace involvement; no local-install override mechanic. Plugin version is pinned at image build until the image is rebuilt.
 - **Hook env propagation**: The container receives env at launch (`POLECAT_SESSION_TYPE=crew`, `$AOPS_SESSIONS`, `$AOPS_POLECAT_CONFIG`, etc.) directly from the polecat launcher. There is **no `launchctl` / `.zshenv` hop** — the cross-surface env-stripping bug that bites Mac surfaces does not apply here. `gate_config.py` reads `polecat.yaml` and resolves with `for_mode("crew")`.
 - **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`) via Tailscale from the container — load via `ToolSearch select:mcp__plugin_aops-core_pkb__*` since they are deferred. Other MCPs depend on the crew launch config; verify per-session.
 - **Gates active**: Per `polecat.yaml crew_defaults` overlay + `gates.*`.
@@ -69,7 +69,7 @@ Native Claude Code installation on a developer machine (laptop, WSL, services-ne
 - **Plugin source & override behaviour**: aops-core loaded from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` (most recent dir wins). Plugin enabled per `~/.claude/settings.json` `enabledPlugins`. No marketplace-override issue on this surface.
 - **Hook env propagation**: ⚠ **Broken.** `settings.json` `env` block doesn't propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). All `*_GATE_MODE` env vars in settings.json are dead — `gate_config.py` ignores env vars by design (hard-fail policy) and reads only from `polecat.yaml` via `$AOPS_SESSIONS`. Result: gates silently fail on import if `$AOPS_SESSIONS` isn't in hook env. → see _Cross-cutting: Hook env stripping_.
 - **MCPs available**: Same set as the WSL crew container plus host-shell access. Specific MCP set depends on host's `settings.json` `mcpServers` block.
-- **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, ida/handover/custodiet/qa active per `polecat.yaml gates.*`.
+- **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, `ida` / `handover` / `enforcer` (formerly `custodiet`) / `qa` active per `polecat.yaml gates.*` — see [`GATES.md`](GATES.md) for the runtime catalogue.
 - **Worker dispatch**: Direct — can launch `pc run`, `pc crew`, `jules`, GHA workflows. The intended primary dispatcher surface alongside the WSL crew container.
 - **Known traps**:
   - Hook env stripping (see above and cross-cutting).
@@ -228,15 +228,15 @@ Tracking: archived-but-still-true [academicops-459eb8f3] and [aops-1bf76d85]. Re
 
 ### Plugin source variance
 
-| Surface                   | Where the plugin code physically lives                                                        |
-| ------------------------- | --------------------------------------------------------------------------------------------- |
-| WSL crew container        | `dist/aops-claude/` baked into the crew Docker image (same as `polecat crew` Claude)          |
-| Claude Code CLI on host   | `~/.claude/plugins/cache/academicOps/aops-core/<ver>/`; populated from marketplace            |
-| Gemini CLI on host        | `~/.gemini/extensions/aops/` (via `gemini extensions install`)                                |
-| `polecat run/crew` Claude | `dist/aops-claude/` baked into Docker image at build time                                     |
-| `polecat run/crew` Gemini | `dist/aops-gemini/` from extension install in image                                           |
-| GHA runner                | `.github/agents/*.md` agent prompts (no plugin)                                               |
-| Jules                     | Opaque (Google-side)                                                                          |
+| Surface                   | Where the plugin code physically lives                                               |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| WSL crew container        | `dist/aops-claude/` baked into the crew Docker image (same as `polecat crew` Claude) |
+| Claude Code CLI on host   | `~/.claude/plugins/cache/academicOps/aops-core/<ver>/`; populated from marketplace   |
+| Gemini CLI on host        | `~/.gemini/extensions/aops/` (via `gemini extensions install`)                       |
+| `polecat run/crew` Claude | `dist/aops-claude/` baked into Docker image at build time                            |
+| `polecat run/crew` Gemini | `dist/aops-gemini/` from extension install in image                                  |
+| GHA runner                | `.github/agents/*.md` agent prompts (no plugin)                                      |
+| Jules                     | Opaque (Google-side)                                                                 |
 
 Implication: when shipping a plugin change, multiple consumers need to pick it up via different mechanisms. PR landing isn't propagation.
 

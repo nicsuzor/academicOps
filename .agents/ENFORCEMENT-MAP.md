@@ -9,6 +9,14 @@
 > (spec companion). The pipeline view (L0–L11) and pyramid view
 > (base/middle/tip) in those spec files are **design narrative, not
 > operative tiers** — no blocking decision uses them.
+>
+> **Adjacent state SSoT.** For the runtime catalogue of each session-time
+> gate (what it is, where in source, how it's configured in `polecat.yaml`,
+> how to verify it's firing, how to debug it when it isn't) — see
+> [`aops-core/GATES.md`](../aops-core/GATES.md). The split: this file ranks
+> mechanisms on the cost ladder + maps them to axioms (the operative
+> decision register); `GATES.md` answers per-gate forensic-debug questions
+> (the "is `ida` firing in this session?" register). Both are state.
 
 Maps each mechanical enforcement mechanism to the rule(s) it enforces, its
 execution context, its failure tier, and **what it costs to run**. Updated
@@ -136,8 +144,8 @@ order-of-magnitude — measure when proposing.
 
 > **One-ladder rule.** L0–L7 above is the only operative ranking. The
 > L0–L11 pipeline view and the base/middle/tip pyramid in
-> `specs/enforcement/enforcement.md` describe *when* a mechanism fires and
-> *how* it sits architecturally; they do not score severity and no
+> `specs/enforcement/enforcement.md` describe _when_ a mechanism fires and
+> _how_ it sits architecturally; they do not score severity and no
 > blocking rule cites them. Pipeline / pyramid references in the rest of
 > this file are cross-reference annotations, not tier criteria.
 
@@ -281,7 +289,7 @@ play here for historical reasons:
 - The **L0–L7 cost ladder** (this file, above) — the operative ranking;
   used for add/escalate/remove decisions.
 - The legacy **action ladder** (`inject` → `advisory` → `warn` → `block` →
-  `hard-deny`) — descriptive: what the mechanism *does* when it fires.
+  `hard-deny`) — descriptive: what the mechanism _does_ when it fires.
   Retained in the rows below because the per-axiom view is easier to scan
   with the action tier than with the cost tier; not used for blocking
   decisions.
@@ -294,9 +302,9 @@ play here for historical reasons:
 | block     | pauses progress    | gate condition met        |
 | hard-deny | rejects call       | not released              |
 
-The two vocabularies are not in conflict: the cost ladder ranks *how
-expensive a mechanism is to maintain and run*, while the action vocabulary
-describes *what the mechanism does in the moment it fires*. Most rows
+The two vocabularies are not in conflict: the cost ladder ranks _how
+expensive a mechanism is to maintain and run_, while the action vocabulary
+describes _what the mechanism does in the moment it fires_. Most rows
 below name an action; the cost-tier of the mechanism is recorded in the
 tables above.
 

@@ -10,6 +10,8 @@ tags: []
 
 # Hook Router
 
+> **Spec, not state.** This file is the **design rationale** for the hook router (why it exists, how outputs are consolidated, plugin-scoping implications). For the **operative catalogue of which gates fire via this router** and how to verify each one, see [`aops-core/GATES.md`](../../aops-core/GATES.md). For hook infrastructure reference (router architecture, hook I/O schemas, MCP wiring) see [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md).
+
 ## Giving Effect
 
 - [[hooks/router.py]] - Single entry point that dispatches to registered sub-hooks
