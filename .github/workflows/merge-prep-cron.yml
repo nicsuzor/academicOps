@@ -1,11 +1,17 @@
-# Cron dispatcher for merge-prep: runs every 30 minutes on main,
-# plus immediately when any Phase 1 check completes on a PR branch.
+# Cron dispatcher for merge-prep: runs every 30 minutes on main.
 # Finds open PRs that qualify for merge-prep and dispatches the agent.
 #
 # Qualification criteria (label-free):
 #   - Last commit >= 15 min ago (bazaar window for bot reviews to complete)
 #   - No in-progress merge-prep run (checked via gh run list)
 #   - Not permanently halted (checked via merge-prep-status commit status)
+#
+# NOTE: The previous `workflow_run` trigger (fire on PR Review Pipeline
+# completion) was removed 2026-05-21 — it cascaded. Every merge-prep push
+# triggered the PR Pipeline → workflow_run → dispatcher → another merge-prep,
+# requalifying PRs against new SHAs faster than the bazaar window could cap.
+# Cron (30 min) + workflow_dispatch are sufficient; responsiveness loss is
+# bounded at 30 min.
 #
 # See specs/pr-pipeline.md for the full process documentation.
 
@@ -14,12 +20,6 @@ name: Merge Prep Dispatcher
 on:
   schedule:
     - cron: '*/30 * * * *'
-  workflow_run:
-    workflows:
-      - "PR Review Pipeline"
-    types: [completed]
-    branches-ignore:
-      - main
   workflow_dispatch:
     inputs:
       pr_number:
