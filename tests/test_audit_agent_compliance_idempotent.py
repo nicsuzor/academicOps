@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "audit_agent_compliance.py"
 TOOL_MATRIX = REPO_ROOT / ".agents" / "AGENT-TOOLS.md"
 COMPLIANCE_MATRIX = REPO_ROOT / ".agents" / "AGENT-COMPLIANCE-MATRIX.md"
+REMEDIATION_BACKLOG = REPO_ROOT / ".agents" / "AGENT-REMEDIATION-BACKLOG.md"
 
 
 def _run_generator() -> None:
@@ -35,10 +36,14 @@ def _run_generator() -> None:
 @pytest.fixture
 def preserve_audit_files():
     """Snapshot the audit files, restore them after the test so the working tree is unchanged."""
-    snapshots = {p: p.read_bytes() for p in (TOOL_MATRIX, COMPLIANCE_MATRIX) if p.exists()}
+    files = (TOOL_MATRIX, COMPLIANCE_MATRIX, REMEDIATION_BACKLOG)
+    snapshots = {p: p.read_bytes() for p in files if p.exists()}
     yield
-    for path, content in snapshots.items():
-        path.write_bytes(content)
+    for p in files:
+        if p in snapshots:
+            p.write_bytes(snapshots[p])
+        elif p.exists():
+            p.unlink()
 
 
 @pytest.mark.xdist_group("audit-agent-compliance")
