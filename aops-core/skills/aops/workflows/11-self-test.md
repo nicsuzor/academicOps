@@ -33,7 +33,7 @@ Separate from the in-session self-test above. Run when you need to prove that a 
    - aops-core SessionStart banner (router fired)
    - Plugin enabled in footer (not just "Anthropic marketplace installed")
    - No folder-trust dialog
-   - Not defaulted to plan mode
+   - Plan mode active (expected — `polecat crew` passes `--permission-mode=plan` explicitly; task workers deliberately do not)
 
 4. **Then exercise it** — send one prompt that invokes a skill (`/aops-core:aops`) and one that dispatches a subagent (`Agent(subagent_type='aops-core:junior')`). Both must actually run, not silently no-op.
 
