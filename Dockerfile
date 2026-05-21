@@ -89,7 +89,9 @@ ENV HOME=/home/worker \
 # CLAUDE_CODE_VERSION busts the Docker layer cache so rebuilds pick up the latest.
 # Pass --build-arg CLAUDE_CODE_VERSION=x.y.z to pin, or leave empty to get latest.
 ARG CLAUDE_CODE_VERSION
-RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && claude --version > /home/worker/.claude-code-version 2>&1 \
+    && cat /home/worker/.claude-code-version
 
 # RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
 # this layer so rebuilds always fetch the latest Rust toolchain from rustup.
