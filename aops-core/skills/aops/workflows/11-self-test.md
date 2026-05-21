@@ -25,6 +25,17 @@ Separate from the in-session self-test above. Run when you need to prove that a 
 
 **Mechanics:** drive an interactive crew under `tmux` per [[tests/harness/README.md]] — that file owns the tmux pattern, alias-resolution gotcha, and capture-pane recipe. Do not re-derive it.
 
+**Before you blame the code: is the image fresh?** If you see something that looks like a regression on a recently-merged fix, check whether the container image actually contains that fix before filing a regression:
+
+```
+docker images aops-crew --format "{{.CreatedAt}}"           # image build time
+git log -1 --format=%ci <commit-or-PR>                       # fix merge time
+# AND diff the staged settings against current main:
+docker run --rm --entrypoint cat aops-crew /home/worker/.claude/settings.json | diff - polecat/defaults/claude-settings.json
+```
+
+If the image predates the fix, or the staged file diverges from main, it's a stale image — rebuild (`make build-docker` or equivalent), don't file a regression. PRs that touch `Dockerfile`, `polecat/entrypoint.sh`, or anything baked into the image at build time CANNOT be picked up by a remount.
+
 **What to verify (signals, not steps):**
 
 - **Plugin loaded** — Claude footer should show our plugin enabled, not just "Anthropic marketplace installed". Gemini equivalent: aops extension listed in startup banner.
