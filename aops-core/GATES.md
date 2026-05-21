@@ -184,34 +184,35 @@ See [`forensics-details.md`](skills/aops/references/forensics-details.md#enforce
 
 ## `qa` gate
 
-> **TL;DR.** Completion-quality gate — blocks Stop while CLOSED until a `qa`/`marsha`/`verify` subagent runs. **Currently inert in code: there is no close trigger** (no `target_status=CLOSED` transition exists for this gate as of this writing). The gate stays OPEN and the policy never fires. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
+> **TL;DR.** Completion-quality gate — starts OPEN, closes when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when a `qa`/`marsha`/`verify` subagent runs. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
 
 ### What is it
 
-Designed as the completion-quality gate: while CLOSED, the Stop-event policy blocks (or warns) until a verifier subagent (`qa` / `verify` / `marsha`) runs to completion and reopens the gate.
+The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when a `qa` / `verify` / `marsha` subagent runs to completion. On Stop, the policy blocks (or warns) while the gate is CLOSED, requiring verification before the session can end.
 
-**Class of failure caught (when wired).** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit.
-
-**Current status.** `GATE_CONFIGS[1]` has `initial_status=OPEN` and two triggers that both target `OPEN` (SessionStart, and any verifier SubagentStart/SubagentStop/PostToolUse). **No trigger transitions to CLOSED**, so the Stop policy's `current_status=CLOSED` condition is never satisfied. The policy is dead code today. Re-enabling the gate requires a close-on-work-begin trigger analogous to `handover`'s write-tool trigger.
+**Class of failure caught.** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit.
 
 ### Where it lives
 
 | Concern           | Path                                                                               |
 | ----------------- | ---------------------------------------------------------------------------------- |
 | Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                           |
+| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                      |
+| Custom condition  | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`, shared with handover) |
 | Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md` |
 | Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                     |
 
 ### How it's configured
 
-- **Mode key**: `gates.qa` (`warn` | `block` | `off`).
-- **Reopen triggers**: subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse`. (No close trigger landed.)
-- **Policy condition**: `hook_event="Stop"` AND `current_status=CLOSED`.
+- **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
+- **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc.). Shares `is_write_tool` with handover; the bash-as-read carve-out keyed on `handover_skill_invoked` also applies, so `git status` after `/end-session` doesn't re-close the gate.
+- **Reopen trigger**: any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse`.
+- **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. `prepare_qa_review` writes a qa-context audit file into the session dir; the policy message points the agent at it.
 
 ### How to verify it's firing
 
 ```bash
-# Stop events that the qa gate blocked (expected to return nothing today)
+# Stop events that the qa gate blocked
 grep '"hook_event":"Stop"' <hooks.jsonl> \
   | jq -r 'select(.output.verdict=="deny" and (.output.system_message|test("QA|qa|marsha"))) | .logged_at'
 
@@ -222,8 +223,8 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ### How to debug when it isn't
 
-- **Not blocking despite missing verification**: this is the current state — no close trigger exists, so the gate never reaches CLOSED. Fix at source (`definitions.py:GATE_CONFIGS[1]`) by adding a close trigger; do not "verify" downstream.
-- **Subagent didn't reset**: check the spelled `subagent_type` against `^(aops-core:)?(qa|verify|marsha)$` — `aops-core:qa` and `qa` both match; `aops_core_qa` does not.
+- **Gate stays OPEN despite write activity**: confirm a task is bound (`state.main_agent.current_task` non-empty) — the `is_write_tool` carve-out treats shell tools as read-only when no task is bound. With a bound task, any write should close the gate.
+- **Subagent didn't reset**: check the spelled `subagent_type` against `^(aops-core:)?(qa|verify|marsha)$` — `aops-core:marsha` and `marsha` both match; `aops_core_marsha` does not.
 - **Mode `off`**: confirm with `from hooks.gate_config import QA_GATE_MODE`.
 
 ---

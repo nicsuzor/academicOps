@@ -354,7 +354,7 @@ tables above.
 | A7 Authority | `marsha` criterion check             | advisory   | review-time    | active                                                                                                     |
 | A7 Authority | `rbg` review                         | advisory   | review-time    | active                                                                                                     |
 | A7 Authority | pr-reviewer GHA                      | warn       | PR push        | active                                                                                                     |
-| A7 Authority | QA gate                              | block      | Stop           | planned                                                                                                    |
+| A7 Authority | QA gate                              | block      | Stop           | active — closes on `update_task in_progress` / write tool; reopens on `qa\|verify\|marsha` subagent        |
 | A8 Halt      | AXIOMS.md / CORE.md                  | inject     | always-on      | active                                                                                                     |
 | A8 Halt      | auto-mode `No Validation Bypass`     | block      | PreToolUse     | active — `--force` carve-out for benign cleanup                                                            |
 | A8 Halt      | auto-mode `Silent Workaround`        | warn       | PreToolUse     | active                                                                                                     |
@@ -394,7 +394,7 @@ tables above.
 
 - **Hydration**: parent skip cascades to child; missing hydration/commit gate bodies.
 - **Reactive**: PostToolUse on tool error is `planned` (Phase 2).
-- **QA**: gate present but requirements not codified.
+- **QA**: gate active (close-on-work-begin landed); requirements still freeform — verifier prompt reviews session narrative, no structured acceptance-criteria source yet.
 - **Settings**: global/user rules unverifiable from this repo.
 - **Evidence Loop**: Steps 4-5 (pattern detection) and Step 7 (auto-map update) partial/unbuilt.
 

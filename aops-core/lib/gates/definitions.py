@@ -79,7 +79,11 @@ GATE_CONFIGS = [
         ],
     ),
     # --- QA ---
-    # Blocks exit until planned requirements are verified by QA agent.
+    # Starts OPEN (short interactive chats don't need verification).
+    # Closes when work begins (task bound, or any write tool used) so the Stop
+    # policy can require a verifier (marsha / qa / verify) before exit.
+    # Reopens when the verifier subagent runs to completion.
+    # Policy blocks Stop when CLOSED.
     GateConfig(
         name="qa",
         description="Ensures requirements compliance before exit.",
@@ -90,7 +94,33 @@ GATE_CONFIGS = [
                 condition=GateCondition(hook_event="SessionStart"),
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
-            # QA agent verifies requirements -> Open gate
+            # Task bound: update_task with status=in_progress -> Close
+            # Work has begun, so verification will be required before exit.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="update_task",
+                    tool_input_pattern="in_progress",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                ),
+            ),
+            # Write tool used -> Close. Shares is_write_tool with handover;
+            # the bash-as-read carve-out keyed on handover_skill_invoked also
+            # applies here, so `git status` after /end-session doesn't re-close.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    custom_check="is_write_tool",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    # no message to avoid spamming on every write tool use
+                    system_message_key=None,
+                ),
+            ),
+            # Verifier subagent runs -> Open gate
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",

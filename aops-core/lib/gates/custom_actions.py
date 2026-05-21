@@ -167,6 +167,23 @@ def execute_custom_action(
             context_injection=instruction,
         )
 
+    if name == "prepare_qa_review":
+        # Build the qa-context audit file from the session transcript so the
+        # qa.policy_context template ({temp_path}) has a real file to point at.
+        # Fires on Stop while qa gate is CLOSED; no memoization since the gate
+        # only evaluates this once per Stop attempt.
+        # On failure, return None so the gate engine falls back to the policy's
+        # default verdict (block in QA_GATE_MODE) rather than bypassing the gate.
+        try:
+            temp_path = create_audit_file(ctx.session_id, "qa", ctx)
+            state.metrics["temp_path"] = str(temp_path)
+            return GateResult.allow(
+                system_message=f"QA review file ready: {temp_path}",
+            )
+        except Exception as e:
+            logger.warning("Failed to create QA audit file: %s", e)
+            return None
+
     if name == "update_todo_in_progress":
         # Track whether the agent currently has an in-progress todo item.
         # Called via PostToolUse trigger on TodoWrite. (#319 mid-work false BLOCK)
