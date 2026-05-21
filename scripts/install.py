@@ -293,15 +293,6 @@ def main():
             if item.is_file() and not item.name.startswith("."):
                 safe_symlink(item, global_commands / item.name)
 
-    # mcp_config may be under dist/antigravity or dist/aops-antigravity depending on build
-    for candidate in (
-        aops_root / "dist" / "antigravity" / "mcp_config.json",
-        aops_root / "dist" / "aops-antigravity" / "mcp_config.json",
-    ):
-        if candidate.exists():
-            safe_symlink(candidate, ag_dir / "mcp_config.json")
-            break
-
     # Check for version mismatches with installed Claude plugins
     print("\n=== Version Check ===")
     source_commit = get_git_commit_sha(aops_root)
@@ -438,6 +429,28 @@ def main():
             print(f"Warning: autoMode install failed: {e}")
     else:
         print("Warning: 'claude' executable not found. Skipping plugin installation.")
+
+    print("\n=== Phase 5: Install Antigravity 2.0 Plugins ===")
+    dist_core_ag = aops_root / "dist" / "aops-antigravity"
+    dist_tools_ag = aops_root / "dist" / "aops-tools-antigravity"
+
+    ag_plugins_dirs = [
+        Path.home() / ".gemini" / "config" / "plugins",
+        Path.home() / ".gemini" / "antigravity-cli" / "plugins",
+    ]
+
+    if dist_core_ag.exists() or dist_tools_ag.exists():
+        for plugins_dir in ag_plugins_dirs:
+            plugins_dir.mkdir(parents=True, exist_ok=True)
+
+            if dist_core_ag.exists():
+                safe_symlink(dist_core_ag, plugins_dir / "aops-core")
+
+            if dist_tools_ag.exists():
+                safe_symlink(dist_tools_ag, plugins_dir / "aops-tools")
+        print("✓ Antigravity 2.0 plugins linked")
+    else:
+        print("Warning: Antigravity 2.0 dist not found. Skipping install.")
 
 
 if __name__ == "__main__":

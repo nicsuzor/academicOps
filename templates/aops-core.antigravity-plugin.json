@@ -1,0 +1,5 @@
+{
+  "name": "aops-core",
+  "version": "${VERSION}",
+  "description": "academicOps core automation framework plugin for Antigravity 2.0"
+}

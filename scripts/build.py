@@ -921,6 +921,24 @@ def build_aops_core(
             print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
             sys.exit(1)
 
+    if platform == "antigravity":
+        src_plugin_json = aops_root / "templates" / "aops-core.antigravity-plugin.json"
+        dist_plugin_json = dist_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Generated plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
     # 4. Generate MCP Config from Template
     template_path = src_dir / "mcp.json.template"
     gemini_mcps = {}
@@ -970,6 +988,24 @@ def build_aops_core(
                         json.dump(manifest, f, indent=2)
                         f.write("\n")
                     print(f"✓ Updated {dist_extension_json} with MCP config")
+
+            # Prepare for Antigravity 2.0 Plugin
+            if platform == "antigravity":
+                servers_config = mcp_config.get("mcpServers", mcp_config)
+                # Replace variables if they came from a Claude-style template
+                ag_servers_json = json.dumps(servers_config)
+                ag_servers_json = ag_servers_json.replace(
+                    "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
+                )
+
+                ag_servers_config = json.loads(ag_servers_json)
+                ag_mcp_config = {"mcpServers": ag_servers_config}
+
+                dist_mcp_path = dist_dir / "mcp_config.json"
+                with open(dist_mcp_path, "w") as f:
+                    json.dump(ag_mcp_config, f, indent=2)
+                    f.write("\n")
+                print(f"✓ Generated mcp_config.json -> {dist_mcp_path}")
 
         except Exception as e:
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
@@ -1079,36 +1115,26 @@ def build_aops_tools(
             print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
             sys.exit(1)
 
+    # Antigravity: generate plugin.json with version injection
+    if platform == "antigravity":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.antigravity-plugin.json"
+        dist_plugin_json = dist_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Generated plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
     print(f"✓ Built {plugin_name} ({platform})")
-
-
-def build_antigravity(aops_root: Path, dist_root: Path, all_mcps: dict):
-    """Build the antigravity distribution."""
-    print("Building antigravity...")
-    ag_dist = dist_root / "aops-antigravity"
-    if ag_dist.exists():
-        shutil.rmtree(ag_dist)
-    ag_dist.mkdir(parents=True)
-
-    # 1. Global Workflows
-    global_workflows = ag_dist / "global_workflows"
-    global_workflows.mkdir()
-
-    # Copy Workflows from aops-core/workflows
-    workflows_src = aops_root / "aops-core" / "workflows"
-    if workflows_src.exists():
-        for item in workflows_src.iterdir():
-            if item.is_file() and not item.name.startswith("."):
-                safe_copy(item, global_workflows / item.name)
-
-    # Copy Commands as Workflows from aops-core/commands
-    commands_src = aops_root / "aops-core" / "commands"
-    if commands_src.exists():
-        for item in commands_src.iterdir():
-            if item.is_file() and not item.name.startswith("."):
-                safe_copy(item, global_workflows / item.name)
-
-    print("✓ Built antigravity dist")
 
 
 def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
@@ -1190,6 +1216,10 @@ def main():
     build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
 
+    # Build components (Antigravity)
+    build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
+    build_aops_tools(aops_root, dist_root, "antigravity", version)
+
     # Install PKB binary if provided
     pkb_binary = Path(args.pkb_binary) if args.pkb_binary else None
     if pkb_binary:
@@ -1198,9 +1228,7 @@ def main():
             sys.exit(1)
         install_pkb_binary(dist_root / "aops-gemini", pkb_binary)
         install_pkb_binary(dist_root / "aops-claude", pkb_binary)
-
-    # Build Antigravity (global config if needed)
-    build_antigravity(aops_root, dist_root, core_mcps_gemini)
+        install_pkb_binary(dist_root / "aops-antigravity", pkb_binary)
 
     # Generate marketplace.json for local dev and dist repo
     generate_marketplace(aops_root, dist_root, version)
