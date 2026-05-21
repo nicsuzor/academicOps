@@ -21,33 +21,30 @@ IMPORTANT: All of the information required to undertake these tasks should be pr
 
 ## 2. Polecat session validation (hooks / plugins / skills)
 
-Separate from the in-session self-test above. Run when you need to prove that a fresh `polecat crew` (Claude or Gemini) actually launches with our infrastructure attached — typically after a change to `polecat/defaults/*-settings.json`, the entrypoint, plugin packaging, or a Claude Code / Gemini CLI upgrade.
+Separate from the in-session self-test above. Run when you need to prove that a fresh `polecat crew` (Claude or Gemini) actually launches with our infrastructure attached — typically after a change to `polecat/defaults/*-settings.json`, the entrypoint, plugin packaging, or a Claude Code / Gemini CLI upgrade. Mechanics (tmux pattern, alias-resolution, `capture-pane`) live in [[tests/harness/README.md]] — don't re-derive.
 
-**Mechanics:** drive an interactive crew under `tmux` per [[tests/harness/README.md]] — that file owns the tmux pattern, alias-resolution gotcha, and capture-pane recipe. Do not re-derive it.
+### The recipe
 
-**Before you blame the code: is the image fresh?** If you see something that looks like a regression on a recently-merged fix, check whether the container image actually contains that fix before filing a regression:
+1. **Image fresh?** `docker images aops-crew --format '{{.CreatedAt}}'` vs `git log -1 --format=%ci <last polecat/defaults or Dockerfile commit>`. If older → rebuild first. Skipping this step is how you misattribute a stale image to a regression.
 
-```
-docker images aops-crew --format "{{.CreatedAt}}"           # image build time
-git log -1 --format=%ci <commit-or-PR>                       # fix merge time
-# AND diff the staged settings against current main:
-docker run --rm --entrypoint cat aops-crew /home/worker/.claude/settings.json | diff - polecat/defaults/claude-settings.json
-```
+2. **Spin Claude crew via tmux** (mechanics in `tests/harness/README.md`). Wait ~30s, `capture-pane`.
 
-If the image predates the fix, or the staged file diverges from main, it's a stale image — rebuild (`make build-docker` or equivalent), don't file a regression. PRs that touch `Dockerfile`, `polecat/entrypoint.sh`, or anything baked into the image at build time CANNOT be picked up by a remount.
+3. **Opening pane must show**:
+   - aops-core SessionStart banner (router fired)
+   - Plugin enabled in footer (not just "Anthropic marketplace installed")
+   - No folder-trust dialog
+   - Not defaulted to plan mode
 
-**What to verify (signals, not steps):**
+4. **Then exercise it** — send one prompt that invokes a skill (`/aops-core:aops`) and one that dispatches a subagent (`Agent(subagent_type='aops-core:junior')`). Both must actually run, not silently no-op.
 
-- **Plugin loaded** — Claude footer should show our plugin enabled, not just "Anthropic marketplace installed". Gemini equivalent: aops extension listed in startup banner.
-- **No folder-trust dialog** at Claude startup. If it appears, plugin loading is blocked → regression on [[aops-542d82d4]] / PR #1198.
-- **Default mode sane** — Claude should NOT come up in plan mode by default in a polecat crew session. If it does, settings template isn't being applied.
-- **SessionStart hook fired** — look for the aops-core SessionStart banner / hydration gate message in the pane, AND for a populated hooks JSONL at `~/.claude/projects/-workspace/<session>-session-hooks.jsonl` (Claude) or the Gemini-side equivalent under `$AOPS_SESSIONS`. Empty/missing JSONL = router not on the call path.
-- **Skills available** — invoke a known skill (`/aops-core:aops`, `/plan`) and confirm it actually loads. "Skill not found" or silent no-op = plugin not enabled functionally even if files exist.
-- **Subagent dispatch** — `Agent(subagent_type='aops-core:junior')` should succeed. File presence ≠ functional dispatch (see lessons in [[aops-7c45802b]]).
-- **Gate env vars forwarded** — `docker exec <ctr> env | grep -E 'AOPS_|HYDRATION_|PKB_'`. Known-broken on the `polecat run` (task worker) path; works on `crew`. Don't assume parity.
+5. **Check the hook JSONL** at `~/.claude/projects/-workspace/*-session-hooks.jsonl` inside the container — populated = hooks fully wired, empty = router not on call path.
 
-**Reference run:** [[aops-7c45802b]] is the most recent end-to-end attempt, with the lessons about why file presence is not evidence of functional loading. Read it before starting — don't repeat the discovery.
+6. **Repeat for Gemini** (`-g`).
 
-**On failure:** record findings against the relevant PR/regression task (e.g. append to [[aops-542d82d4]] for folder-trust issues) rather than opening a new task per symptom. Multiple symptoms from one root cause belong on one node.
+7. **Cleanup**: `/exit` → `tmux kill-session` → `docker stop` → `polecat nuke <crew>`. `kill-session` without `/exit` SIGKILLs the docker client and skips artifact rescue.
 
-**Cleanup:** always `/exit` the tmux session before `kill-session` — `kill-session` SIGKILLs the docker client and skips artifact rescue. Then `docker stop` any orphaned `polecat-<crew>-*` containers and `polecat nuke <crew>` to clear the worktree.
+### On failure
+
+Append evidence to the existing PR / regression task (e.g. [[aops-542d82d4]] for folder-trust) rather than opening a new task per symptom — multiple symptoms from one root cause belong on one node.
+
+**Reference run:** [[aops-7c45802b]] is the most recent end-to-end attempt, with the lessons about why file presence is not evidence of functional loading.
