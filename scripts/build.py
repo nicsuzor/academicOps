@@ -1207,7 +1207,7 @@ def main():
     generate_reusable_workflows(aops_root, dist_root)
 
     # Build components (Gemini)
-    core_mcps_gemini = build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
+    build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
