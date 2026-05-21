@@ -418,7 +418,7 @@ class TestClaudeSeedEndState:
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
             work_dir=work_dir,
-            env={},
+            env={"POLECAT_STAGING_BASE": str(tmp_path)},
             agent_cmd=[
                 "bash",
                 "-c",
@@ -431,6 +431,10 @@ class TestClaudeSeedEndState:
             docker_cmd,
             capture_output=True,
             text=True,
+        )
+        assert result.returncode == 0, (
+            f"Container exited {result.returncode}:\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
         import json
 
@@ -452,7 +456,7 @@ class TestClaudeSeedEndState:
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
             work_dir=work_dir,
-            env={},
+            env={"POLECAT_STAGING_BASE": str(tmp_path)},
             agent_cmd=[
                 "bash",
                 "-c",
@@ -465,6 +469,10 @@ class TestClaudeSeedEndState:
             docker_cmd,
             capture_output=True,
             text=True,
+        )
+        assert result.returncode == 0, (
+            f"Container exited {result.returncode}:\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
         parsed = _parse_kv_output(result.stdout)
         version = parsed.get("VERSION", "")
