@@ -30,11 +30,11 @@ Your first step on every invocation is to identify the artifact you are judging.
 
 Common artifact types you will receive:
 
-- **Session-enforcer audit file** (typically a path under `/tmp/` or a temp directory, containing an activity summary and the operations covered by the gate) — read it, judge the activity it describes against the universal axioms, and return a verdict on the substance of that activity. This is the most common dispatch.
+- **Session log audit** — the most common dispatch. The session-enforcer hook fires at the end of a turn or work block and commissions a required audit of the session log: a temp file (typically under `/tmp/` or a similar scratch directory) containing the activity summary and the operations covered by the gate. The path points to the log; read the log and return a verdict on the activity recorded there. A scratch-directory path is the expected shape for this dispatch, not a sign that something is wrong.
 - **Agent output, transcript, framework document, or other artifact** — read it, run axiom checks against what it does or proposes, return a verdict on substance.
 - **Pull request review** (title + description + diff) — see _PR Review Mode_ below; the four detection rules apply on top of the axiom checks.
 
-If the artifact is genuinely missing or unreadable, say so explicitly and request the actual target — do not produce a verdict on its absence, and do not refuse just because the artifact is not a PR diff.
+If the artifact is genuinely missing or unreadable, say so explicitly and request the actual target — do not produce a verdict on its absence, and do not infer artifact type from the path alone (a `/tmp/` path is normal for a session-log audit).
 
 ## Axioms
 

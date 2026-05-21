@@ -12,7 +12,7 @@ description: |
 
 Run the compliance check with this command:
 
-- Gemini: `aops_core_enforcer(message='Session-enforcer compliance audit. The file at {temp_path} IS the review target — read it and return a verdict on the activity described there.')`
-- Claude: `Agent(subagent_type='aops-core:rbg', prompt='Session-enforcer compliance audit. The file at {temp_path} IS the review target — read it and return a verdict on the activity described there.')`
+- Gemini: `aops_core_enforcer(message='Required audit of the session log. The file at {temp_path} is the session log — read it and return a verdict on the activity recorded there.')`
+- Claude: `Agent(subagent_type='aops-core:rbg', prompt='Required audit of the session log. The file at {temp_path} is the session log — read it and return a verdict on the activity recorded there.')`
 
-The framing inside the `prompt` / `message` argument is what the enforcer agent sees; it tells the receiver that this is a compliance audit (not a PR review) and that the file at the path is the artifact to judge, not orientation context.
+The framing inside the `prompt` / `message` argument is what the enforcer agent sees. It names the artifact (a session log), states the action (audit it), and points to the path — so the receiver isn't surprised by a `/tmp/` path and doesn't have to guess what kind of review is being asked for.
