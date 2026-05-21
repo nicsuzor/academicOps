@@ -34,8 +34,11 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
             hydration: warn|block|off
             ida: warn|block|off            # Ida B. Wells reminder gate
             enforcer_threshold: int
-    crew_defaults: {...}                          # overlay for `polecat crew`
-    run_defaults:  {...}                          # overlay for `polecat run`
+    crew_defaults:  {...}                         # overlay for `polecat crew`
+    run_defaults:   {...}                         # overlay for `polecat run`
+    local_defaults: {...}                         # overlay for local-host
+                                                  # orchestrator sessions
+                                                  # (POLECAT_SESSION_TYPE unset)
     docker:
         image: str
     external_agents:
@@ -118,6 +121,7 @@ class PolecatConfig:
     session_defaults: SessionDefaults
     crew_defaults: dict[str, Any]
     run_defaults: dict[str, Any]
+    local_defaults: dict[str, Any]
     docker: DockerConfig
     external_agents: dict[str, ExternalAgent]
     source_path: Path
@@ -127,8 +131,10 @@ class PolecatConfig:
             overlay = self.crew_defaults
         elif mode == "run":
             overlay = self.run_defaults
+        elif mode == "local":
+            overlay = self.local_defaults
         else:
-            raise ValueError(f"unknown session mode: {mode!r} (expected 'crew' or 'run')")
+            raise ValueError(f"unknown session mode: {mode!r} (expected 'crew', 'run', or 'local')")
         return _apply_overlay(self.session_defaults, overlay)
 
     def with_overrides(self, mode: str, overrides: dict[str, Any]) -> SessionDefaults:
@@ -253,6 +259,11 @@ def _builtin_config() -> PolecatConfig:
         session_defaults=BUILTIN_SESSION_DEFAULTS,
         crew_defaults={"hooks_enabled": False},
         run_defaults={},
+        # Local-host orchestrator chats (POLECAT_SESSION_TYPE unset) don't need
+        # the handover ritual — it's sized for polecat workers, not interactive
+        # in-conversation work. Bake that posture into the builtin so a fresh
+        # install with no polecat.yaml still does the right thing.
+        local_defaults={"gates": {"handover": "off"}},
         docker=DockerConfig(image="ghcr.io/nicsuzor/aops-crew"),
         external_agents={},
         source_path=Path("<builtin>"),
@@ -340,6 +351,7 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
 
     crew_defaults = _coerce_overlay(raw.get("crew_defaults"), "crew_defaults", cfg_path)
     run_defaults = _coerce_overlay(raw.get("run_defaults"), "run_defaults", cfg_path)
+    local_defaults = _coerce_overlay(raw.get("local_defaults"), "local_defaults", cfg_path)
 
     docker_raw = _require_mapping(raw, "docker", cfg_path)
     docker = DockerConfig(image=_require_str(docker_raw, "image", cfg_path))
@@ -362,6 +374,7 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
         session_defaults=session_defaults,
         crew_defaults=crew_defaults,
         run_defaults=run_defaults,
+        local_defaults=local_defaults,
         docker=docker,
         external_agents=external_agents,
         source_path=cfg_path,
@@ -396,13 +409,14 @@ def _require_bool(d: dict[str, Any], key: str, src: Path) -> bool:
 def _coerce_overlay(raw: Any, name: str, src: Path) -> dict[str, Any]:
     """Coerce a per-mode overlay block to a dict (empty if absent).
 
-    Both ``crew_defaults`` and ``run_defaults`` must exist in the YAML for
-    schema clarity, but may be empty mappings.
+    ``crew_defaults``, ``run_defaults``, and ``local_defaults`` must all exist
+    in the YAML for schema clarity, but may be empty mappings.
     """
     if raw is None:
         raise RuntimeError(
             f"polecat config: {src}: {name!r} block missing. "
-            "Both crew_defaults and run_defaults must be present (use {} for empty)."
+            "crew_defaults, run_defaults, and local_defaults must all be "
+            "present (use {} for empty)."
         )
     if not isinstance(raw, dict):
         raise RuntimeError(f"polecat config: {src}: {name!r} must be a mapping")

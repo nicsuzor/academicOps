@@ -437,7 +437,16 @@ _GATE_MODE_CACHE: dict[str, Any] = {}
 
 def _resolve_gate_modes() -> dict[str, Any]:
     if not _GATE_MODE_CACHE:
-        mode = "crew" if os.environ.get("POLECAT_SESSION_TYPE") == "crew" else "run"
+        session_type = os.environ.get("POLECAT_SESSION_TYPE")
+        if session_type == "crew":
+            mode = "crew"
+        elif session_type:
+            mode = "run"
+        else:
+            # Unset POLECAT_SESSION_TYPE => local-host orchestrator chat. The
+            # local_defaults overlay in polecat.yaml drives the posture for
+            # this surface; no Python-side override.
+            mode = "local"
         cfg = load_polecat_config().for_mode(mode)
         for const, attr in _GATE_MODE_NAMES.items():
             _GATE_MODE_CACHE[const] = getattr(cfg.gates, attr)

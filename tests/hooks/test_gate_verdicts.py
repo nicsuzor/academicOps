@@ -109,14 +109,23 @@ def _write_polecat_yaml_with_gate_modes(
     hydration: str = "off",
     ida: str = "off",
     enforcer_threshold: int = 50,
+    local_handover: str | None = None,
 ) -> Path:
     """Stage a polecat.yaml with the requested gate modes and return its path.
 
     ida defaults to "off" here so existing test scenarios that
     expect "allow" on Stop (e.g. syn-stop-all-open-allow) keep their
     invariants. Tests targeting ida behaviour pass it explicitly.
+
+    ``local_handover`` opts the test into a non-empty ``local_defaults``
+    overlay (used by tests exercising the unset-POLECAT_SESSION_TYPE path).
+    When None, ``local_defaults: {}`` is emitted.
     """
     p = tmp_path / "polecat.yaml"
+    if local_handover is None:
+        local_block = "local_defaults: {}"
+    else:
+        local_block = f'local_defaults:\n  gates:\n    handover: "{local_handover}"'
     # YAML quoted to avoid 'off'/'on' boolean coercion when callers pass them
     # via positional defaults.
     body = f"""
@@ -134,6 +143,7 @@ session_defaults:
     enforcer_threshold: {enforcer_threshold}
 crew_defaults: {{}}
 run_defaults: {{}}
+{local_block}
 docker:
   image: aops-crew
 external_agents: {{}}
@@ -230,6 +240,10 @@ def _deterministic_gate_modes(monkeypatch, tmp_path):
     Writes a deterministic polecat.yaml under tmp_path and points
     ``AOPS_POLECAT_CONFIG`` at it; the gate-mode cache in hooks.gate_config
     is invalidated before reload so the test sees the fresh values.
+
+    POLECAT_SESSION_TYPE is pinned to ``polecat`` so these tests exercise
+    the polecat-worker (run_defaults) path. The unset case (local-host
+    orchestrator) is exercised by ``TestLocalHostHandoverOverride`` below.
     """
     cfg_path = _write_polecat_yaml_with_gate_modes(
         tmp_path,
@@ -239,6 +253,7 @@ def _deterministic_gate_modes(monkeypatch, tmp_path):
         hydration="off",
     )
     monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+    monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
     _reinit_gates_with_defaults()
 
 
@@ -337,6 +352,71 @@ class TestGateModeConfigOverrides:
         assert result.verdict == expected_verdict, (
             f"{gate_name} gate with mode={mode}: "
             f"expected {expected_verdict.value}, got {result.verdict.value}"
+        )
+
+
+class TestLocalHostHandoverOverride:
+    """When POLECAT_SESSION_TYPE is unset the session is a local-host
+    orchestrator chat — not a polecat worker. The ``local_defaults`` overlay
+    in polecat.yaml drives the gate posture for this surface. The recommended
+    posture is ``handover: off`` (chat is interactive; the handover ritual
+    is overkill), but the resolver itself does no hard-coding: behaviour is
+    entirely a function of the YAML, verified by both the positive case
+    (overlay says off => off) and the negative case (overlay says block =>
+    block).
+    """
+
+    def test_local_defaults_handover_off_forces_off(self, router, monkeypatch, tmp_path):
+        """Positive: with ``local_defaults.gates.handover: off`` and
+        POLECAT_SESSION_TYPE unset, the handover gate resolves to off and
+        Stop is allowed even when the gate's policy fires.
+        """
+        # session_defaults.handover stays block to prove the overlay is what
+        # selects the off value (not falling through to session_defaults).
+        cfg_path = _write_polecat_yaml_with_gate_modes(
+            tmp_path, handover="block", local_handover="off"
+        )
+        monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("handover")
+        ctx = _make_gate_trigger_context("handover")
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is None, (
+            "local_defaults.gates.handover='off' with POLECAT_SESSION_TYPE "
+            f"unset must produce allow, got {result.verdict.value if result else 'N/A'}"
+        )
+
+    def test_local_defaults_handover_block_produces_deny(self, router, monkeypatch, tmp_path):
+        """Negative: with ``local_defaults.gates.handover: block`` and
+        POLECAT_SESSION_TYPE unset, the handover gate resolves to block.
+
+        This is the negative-control that proves the new path is genuinely
+        config-driven: it is not the old Python hard-code that forced off
+        regardless of YAML — set the overlay to block and you get block.
+        """
+        # session_defaults.handover deliberately set to ``off`` so a regression
+        # back to falling through to session_defaults would silently allow,
+        # not deny. Only a correct overlay lookup yields the expected block.
+        cfg_path = _write_polecat_yaml_with_gate_modes(
+            tmp_path, handover="off", local_handover="block"
+        )
+        monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("handover")
+        ctx = _make_gate_trigger_context("handover")
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None and result.verdict == GateVerdict.DENY, (
+            "local_defaults.gates.handover='block' with POLECAT_SESSION_TYPE "
+            "unset must produce deny, got "
+            f"{result.verdict.value if result else 'allow'}"
         )
 
 

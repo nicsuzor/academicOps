@@ -75,6 +75,7 @@ def _reinit_gates(monkeypatch, tmp_path):
         "    enforcer_threshold: 50\n"
         "crew_defaults: {}\n"
         "run_defaults: {}\n"
+        "local_defaults: {}\n"
         "docker:\n"
         "  image: aops-crew\n"
         "external_agents: {}\n"

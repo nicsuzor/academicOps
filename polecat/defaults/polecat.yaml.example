@@ -42,9 +42,16 @@ session_defaults:
     enforcer_threshold: 50
 
 # ---------------------------------------------------------------------------
-# Per-session-type overlays. Both blocks MUST exist (use {} when empty).
+# Per-session-type overlays. All three blocks MUST exist (use {} when empty).
 # Keys present here override the matching key in session_defaults for that
 # session type. Supports nested ``gates: {...}`` overrides.
+#
+# Which overlay applies is selected by $POLECAT_SESSION_TYPE:
+#   "crew"       => crew_defaults     (set by `polecat crew`)
+#   "polecat"    => run_defaults      (set by `polecat run`)
+#   unset        => local_defaults    (local-host orchestrator chat:
+#                                       Claude Code on dev machine, Mac chat,
+#                                       any interactive in-conversation work)
 # ---------------------------------------------------------------------------
 
 # `polecat crew` — interactive multi-agent sessions. Today's default mirrors
@@ -54,6 +61,15 @@ crew_defaults:
 
 # `polecat run` — autonomous workers. Hooks always on, full policy.
 run_defaults: {}
+
+# Local-host orchestrator chat (POLECAT_SESSION_TYPE unset). The chat surface
+# is interactive — the user is steering directly, so the handover ritual
+# (/end_session, /dump) is overkill for in-conversation work. Recommended
+# posture: handover off, every other gate the same as session_defaults.
+# Override any other gate here on a per-machine basis if needed.
+local_defaults:
+  gates:
+    handover: off
 
 # ---------------------------------------------------------------------------
 # Docker runtime config. The ssh / unix daemon endpoint is read by the
@@ -155,8 +171,12 @@ crew_names:
 #
 # ─── Spawn-time runtime context (set by polecat/cli.py per session) ────────
 #
-#   POLECAT_SESSION_TYPE      "crew" or "polecat" (selects per-mode YAML
-#                             overlay for gate-mode lookup).
+#   POLECAT_SESSION_TYPE      "crew", "polecat", or unset (selects per-mode
+#                             YAML overlay for gate-mode lookup).
+#                               "crew"    => crew_defaults
+#                               "polecat" => run_defaults
+#                               unset     => local_defaults (local-host
+#                                            orchestrator chat surface)
 #   POLECAT_CREW_NAME         Crew name for filenames.
 #   POLECAT_APPROVAL_MODE     "plan" when launched in plan mode (signals the
 #                             gate engine to skip the custodiet ops counter).

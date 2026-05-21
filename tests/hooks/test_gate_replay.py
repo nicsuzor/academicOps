@@ -90,6 +90,7 @@ session_defaults:
     enforcer_threshold: {enforcer_threshold}
 crew_defaults: {{}}
 run_defaults: {{}}
+local_defaults: {{}}
 docker:
   image: aops-crew
 external_agents: {{}}

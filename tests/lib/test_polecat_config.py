@@ -31,6 +31,9 @@ CANONICAL_YAML = dedent(
     crew_defaults:
       hooks_enabled: false
     run_defaults: {}
+    local_defaults:
+      gates:
+        handover: off
     docker:
       image: ghcr.io/nicsuzor/aops-crew
     external_agents:
@@ -75,6 +78,31 @@ def test_for_mode_crew_overlays_hooks(cfg_path: Path) -> None:
     assert crew.gemini_model == "gemini-2.5-pro"  # inherited
     run = cfg.for_mode("run")
     assert run.hooks_enabled is True  # falls through to session_defaults
+
+
+def test_for_mode_local_overlays_handover(cfg_path: Path) -> None:
+    """`local_defaults` overlay applies to ``for_mode("local")``.
+
+    The canonical YAML sets ``local_defaults.gates.handover: off``; the
+    overlay must override session_defaults.gates.handover (warn) for the
+    local-host orchestrator surface, while leaving every other gate at the
+    session_defaults value.
+    """
+    cfg = load_polecat_config(cfg_path)
+    local = cfg.for_mode("local")
+    assert local.gates.handover == "off"
+    # Non-overlaid gates fall through to session_defaults unchanged.
+    assert local.gates.qa == "warn"
+    assert local.gates.enforcer == "warn"
+    assert local.gates.ida == "warn"
+    assert local.gates.hydration == "off"
+    assert local.gates.enforcer_threshold == 50
+
+
+def test_for_mode_rejects_unknown_mode(cfg_path: Path) -> None:
+    cfg = load_polecat_config(cfg_path)
+    with pytest.raises(ValueError, match="unknown session mode"):
+        cfg.for_mode("orchestrator")
 
 
 def test_overrides_via_with_overrides(cfg_path: Path) -> None:
@@ -137,6 +165,7 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
                 enforcer_threshold: 50
             crew_defaults: {}
             run_defaults: {}
+            local_defaults: {}
             # docker missing
             """
         ).strip()
@@ -156,6 +185,16 @@ def test_missing_per_mode_overlay_hard_fails(tmp_path: Path) -> None:
     p = tmp_path / "polecat.yaml"
     p.write_text(CANONICAL_YAML.replace("run_defaults: {}", ""))
     with pytest.raises(RuntimeError, match="'run_defaults' block missing"):
+        load_polecat_config(p)
+
+
+def test_missing_local_defaults_hard_fails(tmp_path: Path) -> None:
+    """``local_defaults`` is required alongside ``crew_defaults`` and
+    ``run_defaults`` — all three overlay blocks must be present in the YAML
+    for schema clarity (use ``{}`` when empty)."""
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML.replace("local_defaults:\n  gates:\n    handover: off", ""))
+    with pytest.raises(RuntimeError, match="'local_defaults' block missing"):
         load_polecat_config(p)
 
 
@@ -187,6 +226,9 @@ def test_unset_env_returns_builtin_defaults(monkeypatch) -> None:
     assert cfg.source_path.name == "<builtin>"
     assert cfg.session_defaults == BUILTIN_SESSION_DEFAULTS
     assert cfg.session_defaults.gates.handover == "warn"
+    # Builtin local_defaults forces handover off so a fresh install with no
+    # polecat.yaml still gets the right local-chat posture.
+    assert cfg.for_mode("local").gates.handover == "off"
 
 
 def test_dataclasses_are_frozen(cfg_path: Path) -> None:
