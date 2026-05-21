@@ -58,6 +58,10 @@ on:
 
 jobs:
   fix:
+    # Per-run wallclock cap, GitHub-enforced (job is cancelled at the limit).
+    # Bounds the *worst-case duration of a single invocation*, not aggregate
+    # daily spend — that is driven by dispatch frequency (cron + workflow_run).
+    # Verify cap enforcement across all workflows: `scripts/check_workflow_timeout_breaches.py`.
     timeout-minutes: 45
     name: Merge Prep
     runs-on: ubuntu-latest
