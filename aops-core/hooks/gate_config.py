@@ -12,7 +12,17 @@ This module defines:
 
 import os
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Declared here so type checkers see precise types for PEP 562 lazy attrs.
+    # At runtime these names come from __getattr__ below.
+    ENFORCER_GATE_MODE: str
+    HANDOVER_GATE_MODE: str
+    QA_GATE_MODE: str
+    IDA_GATE_MODE: str
+    HYDRATION_GATE_MODE: str
+    ENFORCER_TOOL_CALL_THRESHOLD: int
 
 # =============================================================================
 # TOOL CATEGORIES
