@@ -91,12 +91,12 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 
 ### How to debug when it isn't
 
-| Failure mode                                                 | Diagnostic                                                                                                                                                                                     |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mode silently `off`                                          | `python -c "from hooks.gate_config import ENFORCER_GATE_MODE; print(ENFORCER_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                    |
-| `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap in `SURFACES.md`. |
-| Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.           |
-| Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress` (issue #319).                        |
+| Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mode silently `off`                                          | `python -c "from hooks.gate_config import ENFORCER_GATE_MODE; print(ENFORCER_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                                                                                                                    |
+| `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap in `SURFACES.md`.                                                                                                                                                                                                 |
+| Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                                                                                                                                           |
+| Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress` (issue #319).                                                                                                                                                                                                                        |
 | `enforcer` subagent dispatch doesn't reset counter           | Trigger fires on `(PreToolUse\|SubagentStart\|SubagentStop)` events when `subagent_type` matches `^(aops[-_]core[:_])?(enforcer\|rbg)$`. Check the SubagentStart JSONL entry — `aops-core:enforcer` and `enforcer` match; `aops_core_enforcer` does not. If dispatch was never emitted, check that the policy reached the block threshold (the `not_mid_edit` condition may have deferred it). |
 
 See [`forensics-details.md`](skills/aops/references/forensics-details.md#enforcer--rbg-gate) for the JSONL-level forensics procedure that complements these.
@@ -107,23 +107,26 @@ See [`forensics-details.md`](skills/aops/references/forensics-details.md#enforce
 
 ### What is it
 
-The completion-quality gate. Closes when work begins (today: opens at SessionStart and stays open unless a custom action sets it CLOSED — verify in `definitions.py`); reopens when a `qa`/`marsha`/`verify` subagent runs to completion. The Stop-event policy blocks (or warns) when the gate is CLOSED, requiring verification before the session can end.
+The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when a `qa` / `verify` / `marsha` subagent runs to completion. On Stop, the policy blocks (or warns) while the gate is CLOSED, requiring verification before the session can end.
 
 **Class of failure caught.** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit. Forces a verifier subagent to inspect the work before Stop is permitted.
 
 ### Where it lives
 
-| Concern            | Path                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| Gate definition    | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                           |
-| Templates          | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md` |
-| Verifier subagents | `aops-core/agents/marsha.md`, `aops-core/agents/qa.md` (verify present)            |
+| Concern           | Path                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                           |
+| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                      |
+| Custom condition  | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`, shared with handover) |
+| Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md` |
+| Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                     |
 
 ### How it's configured
 
 - **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
-- **Triggers**: matched on `subagent_type_pattern="^(aops-core:)?(qa|verify|marsha)$"` — any matching subagent completion opens the gate.
-- **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`.
+- **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc.). Shares `is_write_tool` with handover; the bash-as-read carve-out keyed on `handover_skill_invoked` also applies, so `git status` after `/end-session` doesn't re-close the gate.
+- **Reopen trigger**: any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse`.
+- **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. `prepare_qa_review` writes a qa-context audit file into the session dir; the policy message points the agent at it.
 
 ### How to verify it's firing
 
@@ -139,9 +142,9 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ### How to debug when it isn't
 
-- Gate stays OPEN unexpectedly: the qa gate **starts** OPEN. A custom action is required to close it (today there is no `set_status` trigger landed for qa-CLOSED; if you expect blocking on Stop, verify the trigger that closes the gate is present in `definitions.py`).
-- Subagent didn't reset: check the spelled `subagent_type` against the trigger regex — `aops-core:qa` and `qa` both match, `aops_core_qa` does not (regex uses `:`, not `_`).
-- Mode `off`: confirm with `gate_config.QA_GATE_MODE` import.
+- **Gate stays OPEN despite write activity**: confirm a task is bound (`state.main_agent.current_task` non-empty) — the `is_write_tool` carve-out treats shell tools as read-only when no task is bound. With a bound task, any write should close the gate.
+- **Subagent didn't reset**: check the spelled `subagent_type` against `^(aops-core:)?(qa|verify|marsha)$` — `aops-core:marsha` and `marsha` both match; `aops_core_marsha` does not.
+- **Mode `off`**: confirm with `from hooks.gate_config import QA_GATE_MODE`.
 
 ---
 
