@@ -382,3 +382,106 @@ class TestDockerSocketEndState:
             f"docker info failed inside container:\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Container 4: Claude Code seed and version recording (aops-542d82d4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestClaudeSeedEndState:
+    """Verify the baked-in ~/.claude.json seed and version record reach the container.
+
+    Unit-level coverage of the seed file's *source* lives in
+    tests/polecat/test_cli_docker.py::TestClaudeConfigSeed. This class confirms
+    the seed file is actually present inside a running container at the expected
+    path with the expected content, and that the Claude Code version installed
+    by the Dockerfile is recorded to a known path for regression diagnostics.
+
+    See aops-542d82d4 — folder-trust prompt was silently disabling plugins on the
+    first interactive turn; the seed file is the fix and this is the runtime guard.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _require_docker(self):
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+
+    def test_claude_json_seed_present_in_container(self, tmp_path):
+        """~/.claude.json inside the container marks /workspace as trusted."""
+        work_dir = tmp_path / "seed-test"
+        work_dir.mkdir()
+        (work_dir / "placeholder").write_text("x")
+
+        docker_cmd = _build_docker_cmd(
+            cli_tool="claude",
+            work_dir=work_dir,
+            env={"POLECAT_STAGING_BASE": str(tmp_path)},
+            agent_cmd=[
+                "bash",
+                "-c",
+                "cat ~/.claude.json",
+            ],
+            is_interactive=False,
+        )
+
+        result = _run_docker_container(
+            docker_cmd,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"Container exited {result.returncode}:\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+        import json
+
+        seed = json.loads(result.stdout)
+        assert seed.get("hasCompletedOnboarding") is True
+        assert seed.get("bypassPermissionsModeAccepted") is True
+        workspace = seed.get("projects", {}).get("/workspace", {})
+        assert workspace.get("hasTrustDialogAccepted") is True, (
+            "~/.claude.json in container must pre-trust /workspace so plugins "
+            f"load on first turn. Got: {seed.get('projects')}"
+        )
+
+    def test_claude_code_version_recorded(self, tmp_path):
+        """Dockerfile records `claude --version` to ~/.claude-code-version for diagnostics."""
+        work_dir = tmp_path / "version-test"
+        work_dir.mkdir()
+        (work_dir / "placeholder").write_text("x")
+
+        docker_cmd = _build_docker_cmd(
+            cli_tool="claude",
+            work_dir=work_dir,
+            env={"POLECAT_STAGING_BASE": str(tmp_path)},
+            agent_cmd=[
+                "bash",
+                "-c",
+                "echo VERSION=$(cat ~/.claude-code-version 2>/dev/null || echo MISSING)",
+            ],
+            is_interactive=False,
+        )
+
+        result = _run_docker_container(
+            docker_cmd,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"Container exited {result.returncode}:\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+        parsed = _parse_kv_output(result.stdout)
+        version = parsed.get("VERSION", "")
+        assert version and version != "MISSING", (
+            "Dockerfile must write `claude --version` to ~/.claude-code-version "
+            "so regressions tied to silent upstream CLI changes are diagnosable. "
+            f"Got: {result.stdout!r}"
+        )
+        # Sanity: should look like a semver-ish string (e.g. "2.1.145" or "Claude Code 2.1.145").
+        assert any(c.isdigit() for c in version), (
+            f"recorded version string should contain digits, got: {version!r}"
+        )

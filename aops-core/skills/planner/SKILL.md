@@ -168,7 +168,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 
 **Abstraction discipline**: Verify the user's level on the planning ladder (`Success → Strategy → Design → Implementation`). Don't jump right. Lock before descending.
 
-**Output is guidance, not execution.** Present the plan to the user. STOP. Do not execute recommended tasks.
+**Output is guidance, not execution.** Present the plan to the user. STOP. Do not execute recommended tasks. This is the planner-side projection of [Compose-then-Dispatch Separation](../aops/references/authoring-discipline.md#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface) — the brief lives in PKB; dispatch belongs to a different invocation in a different context.
 
 **Workflow files**: `aops-core/skills/planner/workflows/strategic-intake.md`
 
@@ -297,6 +297,26 @@ Interactive flow for densifying `contributes_to` edges on target nodes.
 - Impossible: 0.0
 
 **Workflow files**: `aops-core/skills/planner/workflows/wire-edges.md`
+
+#### Pattern: deliverable-producing tasks wire to a class-level production target
+
+When a task's deliverable is one instance of a recurring class of outputs (a release, a report, a dashboard, an external piece, etc.), wire it via `contributes_to` to a dedicated **class-level production target** for that deliverable type — not directly to a higher-level goal, to a project, or to a vague aggregate. The production target itself `contributes_to` upward toward broader goals.
+
+Why: routing through a dedicated production target (a) preserves per-instance judgment on contribution × ship-risk; (b) prevents double-counting when one output touches multiple higher-level narratives; (c) lets the target's severity propagate cleanly back to instance-tasks via focus_score; (d) models continuous production correctly — the target is durable; individual deliverables come and go. (Ref: aops-ab3b443a)
+
+Weighting: combine **potential contribution** (the axes that matter for this deliverable class — reach, impact, prestige, novelty, durability, whichever apply) with **ship risk** (current state, dependencies, stall indicators, credible path to completion) into a single `stated_weight` from the Renooij-Witteman scale above. The `justification:` field names both axes explicitly in one sentence.
+
+Worked example:
+
+```yaml
+# In a deliverable-producing task's frontmatter:
+contributes_to:
+  - to: <class-target-id>
+    stated_weight: Probable
+    justification: "<one line: contribution axis + ship-risk axis>"
+```
+
+What does NOT wire here: micro-tasks that produce parts of a single deliverable (they wire to their parent deliverable-task), review or critique tasks for others' deliverables, ad-hoc one-offs that don't belong to a recurring class, projects that _might_ yield an instance someday but have no current concrete artefact.
 
 ### maintain
 
@@ -508,6 +528,7 @@ User prompt
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 9. **Action items are graph nodes, not prose** — follow-up work outside the primary task's scope (supersession decisions, prerequisite investigations, cross-project updates, triage calls) must be created as separate linked tasks. Decision/triage → subtask or `soft_depends_on`; cross-epic → separate task with `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Never bury action items in body prose where they are invisible to the graph.
 10. **Task-Body Authoring Discipline** — Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State the artifact, the goal, and the spec link. Do NOT enumerate methodology, file paths, or "things to consider." Smart agents do better with short briefs; long briefs anchor the recipient and reduce judgement to checklist execution.
+11. **Compose-only surface** — Planner is the canonical compose-only surface. It writes task bodies (briefs) into PKB and exits. **Planner never dispatches a worker against a brief it authored in the same invocation.** Dispatch is owned by /supervisor (the next tick reads the PKB body fresh) or by the polecat pull cycle. This is the planner-side projection of [Compose-then-Dispatch Separation](../aops/references/authoring-discipline.md#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface) — A17 propagated to the dispatch surface. Planner's "exit after writing to PKB" is the cure for the same-context author-and-dispatcher failure class.
 
 ## Decision Surfacing Heuristic
 

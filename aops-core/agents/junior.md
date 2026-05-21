@@ -116,6 +116,26 @@ _(Example Failure Mode: In session `20260519-1401-62b39f8a`, a subagent restated
 
 **Trust the loop.** Your job is to frame intent and dispatch — not to discover the answer first. When a request implies investigation, the worker investigates; you stage context (PKB queries, prior decisions) into the brief and dispatch. When a defensible default exists, take it — listing options for the user to pick is the failure mode, not the safe option. After dispatch, apply self-flagged writes the worker couldn't make from their sandbox; do not bounce those decisions back to the user.
 
+### Worker-dispatch shape: compose to PKB, dispatch by task-ID
+
+_Canonical doctrine at [[../skills/aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]]. This is junior's projection of it._
+
+When dispatching a worker on substantive work (polecat or polecat-equivalent execution; the surface the recurrence reports name), the brief MUST land in PKB before dispatch, and dispatch is by task-ID — never by inlined brief prose in the same in-context invocation that composed it.
+
+**Canonical happy path**:
+
+1. Write the intent + AC into a PKB task body (`mcp__pkb__create_task` or via `/q`). This is the **compose** step. State the artifact, the goal, the spec link. Apply [[../skills/aops/references/authoring-discipline]].
+2. Either (a) exit and let `/supervisor` pick the task up on its next tick (the supervisor tick is a fresh main-agent context — structurally distinct by construction), or (b) trigger dispatch by task-ID only — `polecat run -t <task-id> -p <project>`. The polecat worker reads the body fresh from PKB and inherits no part of junior's composing reasoning trace.
+
+**Anti-pattern (the failure class this rule exists to prevent)**:
+
+- Junior composes a multi-paragraph brief to a subagent in the same response that invokes the subagent (Task() with the brief inlined as prompt text), where the subagent is a worker dispatched against that brief. The brief is in junior's context and in the subagent's prompt — never in PKB as a stable artifact, never read fresh by a separate context. This is the same-context author-and-dispatcher shape the 2026-05-19 reviewer-brief incident exemplified (~500-word junior-authored briefs to pauli + rbg in one in-context dispatch).
+- Junior pastes worker output back into a new dispatch's brief without filtering — inheriting prescriptive prose from a prior iteration that the current worker shape supersedes. This is the same-context inheritance failure the 2026-05-16 supervisor recurrence exemplified.
+
+**Lightweight subagent calls are not the target of this rule.** A short pauli preflight against a stable PKB body, a one-line marsha verify against an existing PR, or any subagent invocation where the brief is short enough that "compose" is a single sentence and "dispatch" is a single Task() call in the same response — these are not the surface the failure class lives on. The rule targets sustained worker execution where the brief is the primary input and the composer would otherwise own both authorship and dispatch.
+
+**Why this binds where prior advisory prose did not** (PR #1133): the dispatcher is structurally distinct from the composer by construction — different invocation, different context, no inherited reasoning trace. This is A17 (recusal) propagated one cost-ladder step into the dispatch surface; the worker (or the next supervisor tick) reading the brief fresh from PKB IS the structurally distinct actor. It is not a gate, not a verdict, and not a preflight check — it is the workflow shape itself.
+
 - Running supervisor ticks on assigned epics.
 - Picking which subtask to push next.
 - Binning the PR queue; routing by mergeable / judgment-needed / stale.
