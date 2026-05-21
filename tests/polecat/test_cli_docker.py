@@ -515,7 +515,15 @@ class TestClaudeConfigSeed:
         assert seed.get("bypassPermissionsModeAccepted") is True
 
     def test_seed_accepts_workspace_trust(self):
-        """New behaviour: /workspace must be pre-trusted so plugins load on first turn."""
+        """New behaviour: /workspace must be pre-trusted so plugins load on first turn.
+
+        Field set matches a freshly-trusted host project entry (verified
+        against /home/nic/brain in ~/.claude.json after clicking Trust).
+        Claude Code v2.1.146 triggers project-onboarding on the first
+        interactive launch — which itself includes a trust prompt — even
+        when hasTrustDialogAccepted is true. Seeding the full set
+        suppresses every interactive gate observed on the host.
+        """
         seed = json.loads(self.SEED_PATH.read_text())
         projects = seed.get("projects", {})
         workspace = projects.get(self.CONTAINER_WORKDIR)
@@ -523,10 +531,17 @@ class TestClaudeConfigSeed:
             f"seed must pre-populate projects['{self.CONTAINER_WORKDIR}'] "
             f"to bypass the Claude Code folder-trust prompt"
         )
-        assert workspace.get("hasTrustDialogAccepted") is True, (
-            "projects['/workspace'].hasTrustDialogAccepted must be true so "
-            "aops plugins load on the first interactive turn"
-        )
+        required = {
+            "hasTrustDialogAccepted": True,
+            "hasCompletedProjectOnboarding": True,
+            "hasClaudeMdExternalIncludesApproved": True,
+            "hasClaudeMdExternalIncludesWarningShown": True,
+        }
+        for key, expected in required.items():
+            assert workspace.get(key) is expected, (
+                f"projects['/workspace'].{key} must be {expected!r} to "
+                f"suppress the corresponding interactive gate. Got: {workspace.get(key)!r}"
+            )
 
 
 class TestRequireClaudeOauth:

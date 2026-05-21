@@ -214,12 +214,27 @@ class TestDockerEndState:
 
     # --- Group 1: Environment variable forwarding ---
 
-    def test_anthropic_api_key_reaches_container(self, env_results):
-        """ANTHROPIC_API_KEY is available inside the container."""
-        assert env_results["ANTHROPIC_API_KEY"] == "sk-test-integration-123"
+    def test_anthropic_api_key_blocked_from_container(self, env_results):
+        """ANTHROPIC_API_KEY must NOT reach the container.
+
+        Polecats authenticate Claude via CLAUDE_CODE_OAUTH_TOKEN (the
+        long-lived OAuth credential bound to the polecat identity). The
+        host user's ANTHROPIC_API_KEY belongs to that user, not the
+        polecat, and exposing it inside the container would let polecat
+        agents bill API calls against the host user's quota or pivot to
+        services keyed off that secret. The agent-env-map.conf allowlist
+        deliberately omits ANTHROPIC_API_KEY.
+        """
+        assert env_results.get("ANTHROPIC_API_KEY", "") == ""
 
     def test_oauth_token_reaches_container(self, env_results):
-        """CLAUDE_CODE_OAUTH_TOKEN is available inside the container."""
+        """CLAUDE_CODE_OAUTH_TOKEN is available inside the container.
+
+        Counterpart to test_anthropic_api_key_blocked_from_container:
+        OAuth tokens *are* forwarded (this is how Claude authenticates
+        inside the polecat). The pair guards the credential-isolation
+        contract — OAuth in, API key out.
+        """
         assert env_results["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-integration-token"
 
     def test_unlisted_keys_blocked_from_container(self, env_results):
@@ -442,10 +457,16 @@ class TestClaudeSeedEndState:
         assert seed.get("hasCompletedOnboarding") is True
         assert seed.get("bypassPermissionsModeAccepted") is True
         workspace = seed.get("projects", {}).get("/workspace", {})
-        assert workspace.get("hasTrustDialogAccepted") is True, (
-            "~/.claude.json in container must pre-trust /workspace so plugins "
-            f"load on first turn. Got: {seed.get('projects')}"
-        )
+        for key in (
+            "hasTrustDialogAccepted",
+            "hasCompletedProjectOnboarding",
+            "hasClaudeMdExternalIncludesApproved",
+            "hasClaudeMdExternalIncludesWarningShown",
+        ):
+            assert workspace.get(key) is True, (
+                f"~/.claude.json in container must seed projects['/workspace'].{key}=true "
+                f"so the corresponding interactive gate is suppressed. Got: {seed.get('projects')}"
+            )
 
     def test_claude_code_version_recorded(self, tmp_path):
         """Dockerfile records `claude --version` to ~/.claude-code-version for diagnostics."""
