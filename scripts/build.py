@@ -739,7 +739,8 @@ def build_aops_core(
 
     # 1. Copy content — everything except known exclusions
     EXCLUDED_FROM_COPY = {
-        "pyproject.toml",  # Generated with version from root
+        "pyproject.toml",  # Generated from template in 1b (version + dep list)
+        "uv.lock",  # Regenerated in 1b to stay in sync with the new pyproject
         "hooks",  # Handled separately in section 2 (Gemini hooks.json transform)
         "indices",  # PATHS.md is user config, no other generated indices
         "__pycache__",
@@ -784,11 +785,20 @@ def build_aops_core(
         if translated_count:
             print(f"  ✓ Translated tool names in {translated_count} .md files")
 
-    # 1b. Generate pyproject.toml with version from root
+    # 1b. Generate pyproject.toml and uv.lock from the inline template in
+    # this file (AOPS_CORE_PYPROJECT_TEMPLATE) — the single source of truth
+    # for shipped hook deps. The source repo intentionally has no
+    # aops-core/pyproject.toml or aops-core/uv.lock; locking always happens
+    # against the freshly-written pyproject so the two ship in lockstep.
+    # `uv sync --frozen` at runtime then installs exactly what the template
+    # declared, no drift possible.
     pyproject_content = generate_aops_core_pyproject(version)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
     print(f"  ✓ Generated pyproject.toml (v{version})")
+
+    subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
+    print("  ✓ Regenerated uv.lock from pyproject.toml")
 
     # 1b. Copy root-level scripts
     scripts_src = aops_root / "scripts"

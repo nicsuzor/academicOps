@@ -89,17 +89,17 @@ ENV HOME=/home/worker \
 # CLAUDE_CODE_VERSION busts the Docker layer cache so rebuilds pick up the latest.
 # Pass --build-arg CLAUDE_CODE_VERSION=x.y.z to pin, or leave empty to get latest.
 ARG CLAUDE_CODE_VERSION
-RUN curl -fsSL https://claude.ai/install.sh | bash \
+RUN umask 000 && curl -fsSL https://claude.ai/install.sh | bash \
     && claude --version > /home/worker/.claude-code-version 2>&1 \
     && cat /home/worker/.claude-code-version
 
 # RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
 # this layer so rebuilds always fetch the latest Rust toolchain from rustup.
 ARG RUST_CACHEBUST
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
-RUN uv tool install ruff
+RUN umask 000 && uv tool install ruff
 
 # ── Install aops framework from GitHub (same as `make install`) ──────
 # Claude plugin: installed from the GitHub repo marketplace (dist/aops-claude
@@ -111,14 +111,17 @@ RUN uv tool install ruff
 ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
 
 # Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
-RUN claude plugin marketplace add ${AOPS_REPO_URL} \
+# `git clone` inside plugin install sets 444 on git objects via chmod() — umask
+# can't override that, so do a targeted chmod after.
+RUN umask 000 && claude plugin marketplace add ${AOPS_REPO_URL} \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \
-    && claude plugin install aops-tools@academicOps
+    && claude plugin install aops-tools@academicOps \
+    && chmod -R a+rwX /home/worker/.claude
 
 # Install pkb binary from nicsuzor/mem releases.
 # Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
-RUN TMPDIR=$(mktemp -d) \
+RUN umask 000 && TMPDIR=$(mktemp -d) \
     && PLATFORM="x86_64-linux" \
     && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases \
          | jq -r '[.[] | select(.assets | map(select(.name | endswith("'"${PLATFORM}"'.tar.gz"))) | length > 0)][0].tag_name') \
@@ -130,14 +133,16 @@ RUN TMPDIR=$(mktemp -d) \
     && rm -rf "${TMPDIR}"
 
 # Install Gemini extension from GitHub repo
-RUN mkdir -p /home/worker/.gemini \
+# `gemini extensions install` git-clones the repo (444 on objects) — chmod after.
+RUN umask 000 && mkdir -p /home/worker/.gemini \
     && echo '{"/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install ${AOPS_REPO_URL} --consent --pre-release
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install ${AOPS_REPO_URL} --consent --pre-release \
+    && chmod -R a+rwX /home/worker/.gemini
 
 # Set permissive extension enablement so hooks fire for any workspace path.
 # `gemini extensions install` restricts to /home/<user>/* which doesn't match
 # mounted worktrees (e.g. /workspace, /data, or deeply nested crew paths).
-RUN if [ -f /home/worker/.gemini/extensions/extension-enablement.json ]; then \
+RUN umask 000 && if [ -f /home/worker/.gemini/extensions/extension-enablement.json ]; then \
     python3 -c "import json, pathlib; \
 p = pathlib.Path('/home/worker/.gemini/extensions/extension-enablement.json'); \
 d = json.loads(p.read_text()); \
@@ -145,16 +150,25 @@ d = json.loads(p.read_text()); \
 p.write_text(json.dumps(d, indent=2))" ; \
     fi
 
-# Pre-install the aops-core extension's uv env so the BeforeAgent hook doesn't
-# need to populate uv cache (or reach PyPI) on first invocation. router.sh
-# fast-paths to $HOOK_DIR/.venv when present. UV_PROJECT_ENVIRONMENT is unset
-# for this step so the venv lives inside the extension dir, independent of
-# /home/worker/.venv (which gets the root project deps below).
-RUN for ext in aops-core aops-tools; do \
-        if [ -f "/home/worker/.gemini/extensions/${ext}/pyproject.toml" ]; then \
-            (cd "/home/worker/.gemini/extensions/${ext}" && \
-                env -u UV_PROJECT_ENVIRONMENT uv sync --frozen && \
-                chmod -R a+rwX .venv) ; \
+# Pre-bake Python venvs for BOTH Claude plugins and Gemini extensions in one
+# pass so the BeforeAgent hook always fast-paths to $HOOK_DIR/.venv/bin/python
+# (router.sh fallback is `uv run`, which resolves the lockfile live on every
+# cold start).
+#
+# Asymmetric pre-bake (one CLI frozen, the other JIT) is a footgun: a broken
+# uv.lock ships silently on the pre-baked side while the JIT side self-heals.
+# Symmetric pre-bake + smoke test catches lock drift at build time.
+#
+# UV_PROJECT_ENVIRONMENT is unset so each venv lives inside its own plugin/
+# extension dir, independent of the root project venv at /home/worker/.venv
+# (built below).
+RUN umask 000 && set -e && \
+    for d in /home/worker/.claude/plugins/cache/academicOps/*/*/ \
+             /home/worker/.gemini/extensions/*/ ; do \
+        if [ -f "${d}pyproject.toml" ]; then \
+            (cd "$d" \
+                && env -u UV_PROJECT_ENVIRONMENT uv sync --frozen \
+                && ./.venv/bin/python -c "import psutil, pydantic, yaml") ; \
         fi ; \
     done
 
@@ -167,30 +181,28 @@ RUN for ext in aops-core aops-tools; do \
 # --extra dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
 ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
 COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
-RUN cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
+RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 
 # Install default ccstatusline and Claude Code settings.
 # These defaults are overridden at runtime if the host stages replacements.
-COPY --chown=worker:worker polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
-COPY --chown=worker:worker polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+COPY --chown=worker:worker --chmod=666 polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
 # env-only auth model (polecat/cli.py:_require_claude_oauth_or_exit) stages no
 # files, so without this seed claude regenerates a minimal .claude.json that
 # triggers onboarding even when the token is set.
-COPY --chown=worker:worker polecat/defaults/claude-config.json /home/worker/.claude.json
+COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-config.json /home/worker/.claude.json
 
 # Copy entrypoint script
-COPY --chown=worker:worker polecat/entrypoint.sh /home/worker/entrypoint.sh
-RUN chmod +x /home/worker/entrypoint.sh
+COPY --chown=worker:worker --chmod=777 polecat/entrypoint.sh /home/worker/entrypoint.sh
 
-# Make home dir and .claude writable for any UID — polecat crew runs containers
-# as the host UID (non-root), which may differ from worker UID 1000.
-RUN chmod 777 /home/worker \
-    && (chmod -R 777 /home/worker/.claude/ 2>/dev/null || true) \
-    && (chmod -R 777 /home/worker/.gemini/ 2>/dev/null || true) \
-    && (chmod -R 777 /home/worker/.cache/ 2>/dev/null || true) \
-    && chmod 666 /home/worker/.claude.json
+# Make home dir itself traversable/writable for any UID — polecat crew runs
+# containers as the host UID (non-root), which may differ from worker UID 1000.
+# Everything *under* /home/worker is already world-writable thanks to umask 000
+# in each install RUN above plus the targeted chmods for git-cloned trees, so
+# no recursive walk is needed here.
+RUN chmod 777 /home/worker
 
 # Default command and entrypoint
 ENTRYPOINT ["/home/worker/entrypoint.sh"]
