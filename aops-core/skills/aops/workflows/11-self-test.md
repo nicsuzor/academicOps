@@ -39,9 +39,13 @@ Separate from the in-session self-test above. Run when you need to prove that a 
 
 5. **Check the hook JSONL** at `~/.claude/projects/-workspace/*-session-hooks.jsonl` inside the container — populated = hooks fully wired, empty = router not on call path.
 
-6. **Repeat for Gemini** (`-g`).
+6. **PKB MCP reachable from inside the container.** Two layers:
+   - **Connectivity:** `docker exec <ctr> sh -c 'echo "$PKB_MCP_URL" && curl -sS -o /dev/null -w "%{http_code}\n" "$PKB_MCP_URL"'` — env var set, endpoint answers.
+   - **Functional:** send the agent a prompt that calls a PKB tool (`mcp__plugin_aops-core_pkb__search` for any term, or `/aops-core:aops` which loads the `aops-state` document). A "tool not found" or "connection refused" here = PKB plugin not wired, even if the Claude Code plugin loaded fine.
 
-7. **Cleanup**: `/exit` → `tmux kill-session` → `docker stop` → `polecat nuke <crew>`. `kill-session` without `/exit` SIGKILLs the docker client and skips artifact rescue.
+7. **Repeat for Gemini** (`-g`).
+
+8. **Cleanup**: `/exit` → `tmux kill-session` → `docker stop` → `polecat nuke <crew>`. `kill-session` without `/exit` SIGKILLs the docker client and skips artifact rescue.
 
 ### On failure
 
