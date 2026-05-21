@@ -298,6 +298,26 @@ Interactive flow for densifying `contributes_to` edges on target nodes.
 
 **Workflow files**: `aops-core/skills/planner/workflows/wire-edges.md`
 
+#### Pattern: deliverable-producing tasks wire to a class-level production target
+
+When a task's deliverable is one instance of a recurring class of outputs (a release, a report, a dashboard, an external piece, etc.), wire it via `contributes_to` to a dedicated **class-level production target** for that deliverable type — not directly to a higher-level goal, to a project, or to a vague aggregate. The production target itself `contributes_to` upward toward broader goals.
+
+Why: routing through a dedicated production target (a) preserves per-instance judgment on contribution × ship-risk; (b) prevents double-counting when one output touches multiple higher-level narratives; (c) lets the target's severity propagate cleanly back to instance-tasks via focus_score; (d) models continuous production correctly — the target is durable; individual deliverables come and go.
+
+Weighting: combine **potential contribution** (the axes that matter for this deliverable class — reach, impact, prestige, novelty, durability, whichever apply) with **ship risk** (current state, dependencies, stall indicators, credible path to completion) into a single `stated_weight` from the Renooij-Witteman scale above. The `why:` field names both axes explicitly in one sentence.
+
+Worked example:
+
+```yaml
+# In a deliverable-producing task's frontmatter:
+contributes_to:
+  - to: <class-target-id>
+    stated_weight: Probable
+    why: "<one line: contribution axis + ship-risk axis>"
+```
+
+What does NOT wire here: micro-tasks that produce parts of a single deliverable (they wire to their parent deliverable-task), review or critique tasks for others' deliverables, ad-hoc one-offs that don't belong to a recurring class, projects that _might_ yield an instance someday but have no current concrete artefact.
+
 ### maintain
 
 > Absorbed from: `/garden` + `/densify`
