@@ -818,6 +818,14 @@ class HookRouter:
                 output.stopReason = result.system_message
                 output.systemMessage = result.system_message
 
+            # WARN on Stop: `reason` is only surfaced when decision=="block".
+            # For approve decisions the agent never sees it, so copy the
+            # reminder into systemMessage so it lands in the agent's context
+            # regardless of block/approve. (#338 WARN inertia)
+            if result.verdict == "warn" and result.context_injection and not result.system_message:
+                output.stopReason = result.context_injection
+                output.systemMessage = result.context_injection
+
             return output
 
         output = ClaudeGeneralHookOutput()

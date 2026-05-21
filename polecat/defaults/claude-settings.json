@@ -9,5 +9,9 @@
     "environment": [],
     "allow": [],
     "soft_deny": []
+  },
+  "enabledPlugins": {
+    "aops-core@academicOps": true,
+    "aops-tools@academicOps": true
   }
 }

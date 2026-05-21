@@ -2971,6 +2971,17 @@ def nuke(ctx, target, force, allow_unpushed):
                 f"Error: Target '{target}' is not a valid crew worker or task ID.", file=sys.stderr
             )
             sys.exit(1)
+        except ValueError as e:
+            # nuke_worktree raises ValueError when it cannot resolve the repo path.
+            # This can happen when the target is a crew name whose directory no
+            # longer exists (auto-nuked at session end) — hint the user.
+            print(f"Error: {e}", file=sys.stderr)
+            print(
+                f"Hint: if '{target}' was a crew worker, it may have already been "
+                f"auto-cleaned at session end. Check with: polecat list-crew",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
@@ -3326,7 +3337,6 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 
 @main.command("c", hidden=True, context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
-@click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
@@ -3359,7 +3369,6 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 def crew_alias(
     ctx,
     target,
-    extra,
     name,
     gemini,
     interactive,
@@ -3376,7 +3385,6 @@ def crew_alias(
     ctx.invoke(
         crew,
         target=target,
-        extra=extra,
         name=name,
         gemini=gemini,
         interactive=interactive,
@@ -3393,7 +3401,6 @@ def crew_alias(
 
 @main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
-@click.argument("extra", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
 @click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
@@ -3426,7 +3433,6 @@ def crew_alias(
 def crew(
     ctx,
     target,
-    extra,
     name,
     gemini,
     interactive,
@@ -3446,7 +3452,7 @@ def crew(
     Workers are sandboxed to their clone — no operations outside it.
 
     TARGET is a project alias (e.g., aops, bm), or 'repo' for arbitrary paths.
-    If TARGET is 'repo', EXTRA is the path to the repository.
+    If TARGET is 'repo', the first argument after it is the path to the repository.
 
     Any extra arguments after '--' are passed through to the underlying agent CLI.
 
@@ -3480,11 +3486,14 @@ def crew(
             sys.exit(1)
     elif target == "repo":
         # Ad-hoc repo mode: pc crew repo /path/to/repo
-        if not extra:
+        # The repo path is the first token in agent_args; remaining tokens are
+        # forwarded to the agent CLI (same as the non-repo path).
+        if not agent_args:
             print("Error: 'repo' target requires a path argument.", file=sys.stderr)
             print("Usage: polecat crew repo /path/to/repo", file=sys.stderr)
             sys.exit(1)
-        repo_path = Path(extra).expanduser().resolve()
+        repo_path = Path(agent_args[0]).expanduser().resolve()
+        agent_args = agent_args[1:]
         try:
             slug = manager.register_adhoc_project(repo_path)
         except (FileNotFoundError, ValueError) as e:

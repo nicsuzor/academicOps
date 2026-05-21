@@ -23,6 +23,8 @@ sys.path.insert(0, str(REPO_ROOT / "polecat"))
 from polecat.pkb_bridge import (  # noqa: E402
     PkbClient,
     PkbTask,
+    _extract_id_from_binding_error,
+    _poll_until_bound,
     append,
     complete_task,
     create_task,
@@ -566,3 +568,159 @@ class TestCreateTaskPrefixConsistency:
     def test_no_id_bypasses_prefix_check(self, mock_client):
         mock_client.call_tool.return_value = self._task_response
         assert create_task(title="T", project="aops", type="task") == "task-123"
+
+
+# ---------------------------------------------------------------------------
+# Indexer binding-lag recovery tests (AC3 / AC4)
+# ---------------------------------------------------------------------------
+
+
+class TestExtractIdFromBindingError:
+    """Unit tests for _extract_id_from_binding_error."""
+
+    def test_parses_id_equals_format(self):
+        err = (
+            "create_task wrote /pkb/tasks/aops-abc123.md but the new node is not yet "
+            "visible in the graph (id=aops-abc123). Underlying lookup error: node missing."
+        )
+        assert _extract_id_from_binding_error(err) == "aops-abc123"
+
+    def test_parses_task_not_found_format(self):
+        err = "Task not found: mem-deadbeef"
+        assert _extract_id_from_binding_error(err) == "mem-deadbeef"
+
+    def test_id_equals_takes_priority_over_task_not_found(self):
+        err = "Task not found: other-id. (id=real-id123)"
+        assert _extract_id_from_binding_error(err) == "real-id123"
+
+    def test_returns_none_when_no_match(self):
+        assert _extract_id_from_binding_error("some unrelated error") is None
+
+    def test_returns_none_on_empty_string(self):
+        assert _extract_id_from_binding_error("") is None
+
+
+class TestPollUntilBound:
+    """Unit tests for _poll_until_bound."""
+
+    def test_returns_id_when_task_appears_on_first_poll(self):
+        client = MagicMock()
+        client.call_tool.return_value = {"frontmatter": {"id": "aops-abc123"}}
+
+        with (
+            patch("polecat.pkb_bridge.time.sleep"),
+            patch("polecat.pkb_bridge.time.monotonic", return_value=0),
+        ):
+            result = _poll_until_bound(client, "aops-abc123", timeout_secs=10)
+
+        assert result == "aops-abc123"
+        client.call_tool.assert_called_once_with("get_task", {"id": "aops-abc123"})
+
+    def test_retries_until_task_appears(self):
+        client = MagicMock()
+        # First poll returns None (still not bound), second returns the task
+        client.call_tool.side_effect = [
+            None,
+            {"frontmatter": {"id": "aops-abc123"}},
+        ]
+
+        with (
+            patch("polecat.pkb_bridge.time.sleep"),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 3]),
+        ):
+            result = _poll_until_bound(client, "aops-abc123", timeout_secs=10)
+
+        assert result == "aops-abc123"
+        assert client.call_tool.call_count == 2
+
+    def test_raises_on_timeout(self):
+        client = MagicMock()
+        client.call_tool.return_value = None
+
+        # monotonic: 0 sets deadline=10, 11 trips the deadline check
+        with (
+            patch("polecat.pkb_bridge.time.sleep"),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 11]),
+        ):
+            with pytest.raises(RuntimeError, match="did not bind it within"):
+                _poll_until_bound(client, "aops-abc123", timeout_secs=10)
+
+    def test_timeout_message_mentions_reindex(self):
+        client = MagicMock()
+        client.call_tool.return_value = None
+
+        with (
+            patch("polecat.pkb_bridge.time.sleep"),
+            patch("polecat.pkb_bridge.time.monotonic", side_effect=[0, 11]),
+        ):
+            with pytest.raises(RuntimeError, match="pkb reindex"):
+                _poll_until_bound(client, "aops-abc123", timeout_secs=10)
+
+
+class TestCreateTaskBindingLagRecovery:
+    """Integration tests for create_task retry path (AC3)."""
+
+    _BINDING_ERROR = (
+        "create_task wrote /pkb/tasks/aops-abc123.md but the new node is not yet "
+        "visible in the graph (id=aops-abc123). Underlying lookup error: node missing. "
+        "The file is on disk — retry get_task in a moment."
+    )
+
+    def test_recovers_when_indexer_binds_during_polling(self):
+        """create_task detects binding lag and recovers via _poll_until_bound."""
+        with patch("polecat.pkb_bridge._get_client") as mock_get_client:
+            client = MagicMock()
+            client.call_tool.return_value = None
+            client._last_error = self._BINDING_ERROR
+            mock_get_client.return_value = client
+
+            with patch(
+                "polecat.pkb_bridge._poll_until_bound", return_value="aops-abc123"
+            ) as mock_poll:
+                result = create_task(title="Binding lag test")
+
+        assert result == "aops-abc123"
+        mock_poll.assert_called_once_with(client, "aops-abc123", timeout_secs=10)
+
+    def test_raises_when_polling_times_out(self):
+        """create_task propagates RuntimeError from _poll_until_bound on timeout."""
+        with patch("polecat.pkb_bridge._get_client") as mock_get_client:
+            client = MagicMock()
+            client.call_tool.return_value = None
+            client._last_error = self._BINDING_ERROR
+            mock_get_client.return_value = client
+
+            with patch(
+                "polecat.pkb_bridge._poll_until_bound",
+                side_effect=RuntimeError("did not bind it within 10s"),
+            ):
+                with pytest.raises(RuntimeError, match="did not bind it within"):
+                    create_task(title="Binding lag timeout")
+
+    def test_returns_none_when_error_unrelated_to_binding(self):
+        """Unrelated tool errors are not retried; create_task returns None."""
+        with patch("polecat.pkb_bridge._get_client") as mock_get_client:
+            client = MagicMock()
+            client.call_tool.return_value = None
+            client._last_error = "Internal server error: database unavailable"
+            mock_get_client.return_value = client
+
+            with patch("polecat.pkb_bridge._poll_until_bound") as mock_poll:
+                result = create_task(title="Unrelated error")
+
+        assert result is None
+        mock_poll.assert_not_called()
+
+    def test_normal_success_path_unaffected(self):
+        """Successful create_task still returns the ID without polling."""
+        with patch("polecat.pkb_bridge._get_client") as mock_get_client:
+            client = MagicMock()
+            client.call_tool.return_value = {"frontmatter": {"id": "aops-abc123"}}
+            client._last_error = None
+            mock_get_client.return_value = client
+
+            with patch("polecat.pkb_bridge._poll_until_bound") as mock_poll:
+                result = create_task(title="Normal task")
+
+        assert result == "aops-abc123"
+        mock_poll.assert_not_called()

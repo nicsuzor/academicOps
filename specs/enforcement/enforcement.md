@@ -10,25 +10,37 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 # Enforcement Architecture
 
+> **Design narrative — not the operative ladder.** This file describes the
+> design rationale of the five-layer enforcement architecture (pipeline
+> view L0–L11 + pyramid view base/middle/tip + evidence loop). **The
+> operative state catalogue lives in `.agents/ENFORCEMENT-MAP.md`**, which
+> uses the **L0–L7 cost ladder**. `rbg` blocks on the L0–L7 cost ladder via
+> P#65; **no blocking decision uses the L0–L11 pipeline view or the
+> base/middle/tip pyramid below**. Both views remain in this document as
+> useful conceptual frames for reasoning about *when* a mechanism fires
+> and *how* it sits architecturally — they do not score severity, and
+> they are not the catalogue.
+
 **Purpose.** This document is the design statement for how the aops framework enforces its rules and maintains quality. Enforcement is **responsive, proportionate, and evidence-driven**: most work happens cheaply and constantly at the base of the pyramid; heavier measures escalate only when lower layers produce evidence they are insufficient.
 
-**Sibling documents.** Three specs form this package:
+**Sibling documents.**
 
-- **`specs/enforcement.md`** (this file) — the design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is.
-- **`specs/enforcement-map.md`** — current-state source of truth, keyed by **failure mode**. When to reach for it: looking up which mechanism currently catches a specific failure and what evidence supports that assignment. Changes as the framework evolves.
-- **`specs/enforcement-mechanisms.md`** — per-mechanism reference catalogue. When to reach for it: the authoritative details (trigger, location, scope, status) for a single mechanism.
-- **`specs/ultra-vires-enforcer.md`** — design doc for the specific internal mechanism: the `enforcer` agent (formerly `custodiet`) plus its PreToolUse gate.
+- **`.agents/ENFORCEMENT-MAP.md`** — **operative state catalogue** (canonical SSoT). The L0–L7 cost ladder, every runtime hook, pre-commit hook, gate, and PR-pipeline agent, plus the folded axiom-keyed cross-reference. When to reach for it: any question of the form "what is currently catching X" or "what does it cost".
+- **`specs/enforcement/enforcement.md`** (this file) — design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is.
+- **`specs/enforcement/enforcement-mechanisms.md`** — per-mechanism reference catalogue keyed to the L0–L11 pipeline view (spec companion to this file; design narrative, not operative). When to reach for it: the schema-shaped details (trigger, location, scope, status) for a single mechanism.
+- **`specs/enforcement/ultra-vires-enforcer.md`** — design doc for the specific internal mechanism: the `enforcer` agent (formerly `custodiet`) plus its PreToolUse gate.
+- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `.agents/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
 
 ## Two views of the same mechanisms
 
-The framework has ~40 distinct enforcement mechanisms. Two independent organising principles are useful for thinking about them:
+The framework has ~40 distinct enforcement mechanisms. Two independent organising principles are useful for thinking about them. **Neither is operative** — both are conceptual frames for design conversations. The operative ranking is the L0–L7 cost ladder in `.agents/ENFORCEMENT-MAP.md`.
 
 1. **The pipeline (temporal view).** When in the flow of work does a mechanism fire? Capture → hydration → decomposition → execution → handover → review → merge → follow-up → evidence loop. The mermaid graph in §3 shows this. Labels are `L0`–`L11`, one per pipeline layer.
 2. **The pyramid (escalation view).** How frequently does a mechanism fire, and how invasive is it when it does? Base (high-volume, cheap, non-blocking) → middle (moderate, triggered, warns or opens gates) → tip (rare, heavy, blocks or requires human). The tier table in §4 shows this.
 
-These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may be base-tier (runs every tool call, cheap) or middle-tier (triggered on threshold). The L-number is cross-reference, not a tier criterion.
+These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may be base-tier (runs every tool call, cheap) or middle-tier (triggered on threshold). The L-number is cross-reference, not a tier criterion. *And neither L-number nor pyramid tier is used by any blocking rule* — when an enforcement change needs ranking, use the cost ladder in `.agents/ENFORCEMENT-MAP.md`.
 
-When making a framework change, use the pipeline to decide _when_ the intervention fires; use the pyramid to decide _how heavily_ — and always prefer a base-tier intervention unless evidence from the §5 loop shows it is insufficient.
+When reasoning about a framework change, use the pipeline to decide _when_ the intervention fires and the pyramid to decide _how invasive_ it should be — then translate the decision into a cost-ladder row in the operative state file.
 
 ## §3 Pipeline view (temporal)
 
@@ -83,16 +95,18 @@ flowchart TD
 
 Edges show control-flow in the common path (top to bottom) and the three most common failure-to-evidence arcs (dotted). The evidence loop closes back to L0 because the _output_ of the loop is spec/axiom/template changes, which propagate forward through the whole pipeline from its start.
 
-Full catalogue of mechanisms per layer: **see `specs/enforcement-mechanisms.md`**.
+Full catalogue of mechanisms per layer: **see `specs/enforcement/enforcement-mechanisms.md`** (companion design-narrative spec). For the operative cost-ladder catalogue, see `.agents/ENFORCEMENT-MAP.md`.
 
 ## §4 Pyramid view (escalation)
 
 **Responsive regulation theory.** The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The pyramid makes this choice architecture explicit.
 
+**Reminder.** The base/middle/tip tiers below are descriptive — they characterise the frequency × invasiveness of a mechanism. They are **not** the operative cost ladder. When a PR adds or escalates a mechanism, the cost-benefit reasoning happens against the L0–L7 ladder in `.agents/ENFORCEMENT-MAP.md`, not against base/middle/tip. Use this pyramid to explain *why* a mechanism sits where it does in the cost ladder, not to score it.
+
 The L-numbers in the table below are pipeline cross-reference, not tier criteria. Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
 | Tier       | Definition                                                             | Mechanisms (with pipeline layer cross-reference)                                                                                                                                                                                                                                                                                                                                                                                                |
-| ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Base**   | High-volume, low-invasiveness, non-blocking, runs constantly           | lightweight hydrator (L1), skills routing table (L1), CLAUDE.md / AGENTS.md load (L1), gate status strip (L1), session_env_setup (L1), unified logger (L6), task-file append (L6), session logs (L6), task template conventions (L2)                                                                                                                                                                                                            |
 | **Middle** | Moderate volume, triggered by threshold or event, warns or opens gates | hydration gate (L4), enforcer gate (L4), enforcer subagent invocation (L7), QA gate — planned (L4), /planner decomposition checks (L2), proof-of-compliance tool fields (L2), rbg subagent invocation (L7), qa / marsha subagent invocation (L7), james orchestration (L9), pr-reviewer GHA (L9), agent-enforcer GHA (L9), linter workflows (L9), commit gate (L8), CC auto-mode classifier `soft_deny` rules (L4 — surfaces permission prompt) |
 | **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), agent-merge-prep auto-merge (L10), branch protection (L10), loop detector (L10), project-owner / admin approval (L10), CC auto-mode classifier `block` rules (L4 — pre-execution hard-deny)                                                                                                                                  |
@@ -119,13 +133,13 @@ The pyramid _learns_ by a seven-step architecture. Each step names its inputs, o
 
 **Step 6 — Human decision + implementation.** _(Implemented as the normal task flow.)_ User approves the change; an agent implements it via the usual `/q` → decomposition → execution route; spec / code / axiom is updated through PR pipeline.
 
-**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; `specs/enforcement-map.md` failure-mode row updates to reflect the new intervention. The _automatic_ map-row update is not yet wired — done manually in the PR.
+**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; `.agents/ENFORCEMENT-MAP.md` (operative state) updates to reflect the new intervention. The _automatic_ map-row update is not yet wired — done manually in the PR.
 
 **Principal gap.** Steps 4–5 are the unbuilt piece. Failure evidence is captured reliably (Step 2) and implementation flow exists (Step 6), but the _recommendation_ connecting them is aspirational. A follow-up task should scope what `/aops` needs to do — this is deliberately not resolved in Phase 1 because the scope depends on the enforcement-map structure this document is defining.
 
 ## §6 Per-mechanism reference
 
-See **`specs/enforcement-mechanisms.md`** for the authoritative catalogue. Each mechanism is documented with a fixed schema:
+See **`specs/enforcement/enforcement-mechanisms.md`** for the per-mechanism design-narrative catalogue (keyed to the L0–L11 pipeline view; not operative). For the operative cost-ladder catalogue, see `.agents/ENFORCEMENT-MAP.md`. Each mechanism is documented with a fixed schema:
 
 ```
 ### <Mechanism name>
@@ -234,10 +248,11 @@ Conclusions require `actual_state`. Anything less is a claim, not a finding.
 
 ---
 
-**Related specs**
+**Related**
 
-- `specs/enforcement-map.md` — current-state failure-mode registry
-- `specs/enforcement-mechanisms.md` — per-mechanism reference catalogue
-- `specs/ultra-vires-enforcer.md` — enforcer agent + gate internal design
-- `aops-core/AXIOMS.md` — universal axioms (read only by `rbg`)
-- `.agents/rules/HEURISTICS.md` — advisory heuristics
+- **Operative state catalogue (SSoT)**: `.agents/ENFORCEMENT-MAP.md` — L0–L7 cost ladder + every mechanism row. `rbg` blocks on it (P#65).
+- `specs/enforcement/enforcement-mechanisms.md` — per-mechanism design-narrative catalogue (companion to this file).
+- `specs/enforcement/ultra-vires-enforcer.md` — enforcer agent + gate internal design.
+- `specs/enforcement/enforcement-map.md` — redirect stub (superseded 2026-05-20 by `.agents/ENFORCEMENT-MAP.md`).
+- `aops-core/AXIOMS.md` — universal axioms (read only by `rbg`).
+- `.agents/rules/HEURISTICS.md` — advisory heuristics.
