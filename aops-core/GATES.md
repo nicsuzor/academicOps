@@ -97,7 +97,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 | `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap in `SURFACES.md`. |
 | Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.           |
 | Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress` (issue #319).                        |
-| `enforcer` subagent dispatch doesn't reset counter           | Trigger fires on `(PreToolUse                                                                                                                                                                  |
+| `enforcer` subagent dispatch doesn't reset counter           | Trigger fires on `(PreToolUse\|SubagentStart\|SubagentStop)` events when `subagent_type` matches `^(aops[-_]core[:_])?(enforcer\|rbg)$`. Check the SubagentStart JSONL entry — `aops-core:enforcer` and `enforcer` match; `aops_core_enforcer` does not. If dispatch was never emitted, check that the policy reached the block threshold (the `not_mid_edit` condition may have deferred it). |
 
 See [`forensics-details.md`](skills/aops/references/forensics-details.md#enforcer--rbg-gate) for the JSONL-level forensics procedure that complements these.
 
@@ -169,7 +169,7 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 - **Mode**: `polecat.yaml` → `session_defaults.gates.handover`.
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`).
 - **Reopen triggers**: `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$"`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`.
-- **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock. The forensics doc still references "4 denies" — verify against current `router.py` (line ~580) before quoting.
+- **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock (aops-c67313ef). `forensics-details.md` references "4 denies" — that reflects the threshold before aops-c67313ef bumped it to 5; the forensics doc should be updated separately.
 - **Bash-as-read carve-out**: once `handover_skill_invoked=True` or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump (issue aops-2283a8b0).
 
 ### How to verify it's firing
