@@ -212,3 +212,73 @@ class TestToolSearchSelectBypass:
         assert get_tool_category("Read", {"query": "select:anything"}) == "read_only"
         assert get_tool_category("Glob", {"query": "select:anything"}) == "read_only"
         assert get_tool_category("Bash", {"query": "select:anything"}) == "write"
+
+
+class TestGeminiToolCoverage:
+    """Regression guard: real Gemini-emitted tool names must be correctly categorized.
+
+    Tests cover the AC items from task aops-17e3a3b5:
+      (a) mcp_pkb_release_task  -> infrastructure
+      (b) invoke_agent          -> spawn
+      (c) unknown tool with agent_name="rbg" in tool_input -> infrastructure (structural escape hatch)
+      (d) mcp_servers does NOT match the PKB regex -> write (unknown)
+    """
+
+    def test_gemini_single_underscore_pkb_release_task(self):
+        """(a) mcp_pkb_release_task -> infrastructure via updated _PKB_PREFIX_RE."""
+        assert get_tool_category("mcp_pkb_release_task") == "infrastructure"
+
+    def test_gemini_single_underscore_pkb_create_task(self):
+        """(a) mcp_pkb_create_task -> infrastructure via updated _PKB_PREFIX_RE."""
+        assert get_tool_category("mcp_pkb_create_task") == "infrastructure"
+
+    def test_gemini_single_underscore_pbk_variant(self):
+        """(a) mcp_pbk_get_task -> infrastructure (typo-tolerant Gemini variant)."""
+        assert get_tool_category("mcp_pbk_get_task") == "infrastructure"
+
+    def test_invoke_agent_is_spawn(self):
+        """(b) invoke_agent -> spawn (Gemini CLI >= ~0.40 agent spawn tool)."""
+        assert get_tool_category("invoke_agent") == "spawn"
+
+    def test_invoke_agent_compliance_spawn_is_infrastructure(self):
+        """(b+c) invoke_agent with agent_name=rbg -> infrastructure (compliance bypass)."""
+        assert (
+            get_tool_category("invoke_agent", {"agent_name": "rbg", "prompt": "..."})
+            == "infrastructure"
+        )
+
+    def test_structural_escape_hatch_unknown_tool_with_compliance_agent_name(self):
+        """(c) Unknown tool whose tool_input names a compliance subagent -> infrastructure.
+
+        This guards against future Gemini CLI renames: even if the tool name changes,
+        passing agent_name=rbg still bypasses the gate.
+        """
+        assert (
+            get_tool_category("some_future_spawn_tool", {"agent_name": "rbg"}) == "infrastructure"
+        )
+        assert get_tool_category("some_future_spawn_tool", {"name": "enforcer"}) == "infrastructure"
+
+    def test_structural_escape_hatch_does_not_trigger_for_non_compliance_agents(self):
+        """(c-neg) tool_input with a non-compliance agent name does NOT escape to infrastructure."""
+        result = get_tool_category("some_future_spawn_tool", {"agent_name": "some_random_agent"})
+        assert result == "write"  # unknown tool stays conservative
+
+    def test_mcp_servers_does_not_match_pkb_regex(self):
+        """(d) mcp_servers must not match the PKB prefix regex."""
+        assert get_tool_category("mcp_servers") == "write"
+
+    def test_mcp_playwright_does_not_match_pkb_regex(self):
+        """(d) mcp_playwright_browser_click must not match PKB regex."""
+        # mcp__playwright__browser_click is in write; bare form is also write (unknown)
+        assert get_tool_category("mcp_playwright_browser_click") == "write"
+
+    def test_invoke_agent_in_spawn_tools(self):
+        """invoke_agent must be in SPAWN_TOOLS with correct parameter names."""
+        assert "invoke_agent" in SPAWN_TOOLS
+        param_names, is_skill = SPAWN_TOOLS["invoke_agent"]
+        assert "agent_name" in param_names
+        assert is_skill is False
+
+    def test_invoke_agent_in_spawn_category(self):
+        """invoke_agent must appear in TOOL_CATEGORIES['spawn']."""
+        assert "invoke_agent" in TOOL_CATEGORIES["spawn"]

@@ -187,7 +187,8 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "Agent",  # Claude Code: spawn subagent (current tool name)
         "Task",  # Claude Code: spawn subagent (legacy/alias)
         "Skill",  # Claude Code: invoke skill in-session
-        "delegate_to_agent",  # Gemini CLI: spawn subagent
+        "delegate_to_agent",  # Gemini CLI: spawn subagent (legacy)
+        "invoke_agent",  # Gemini CLI >= ~0.40: spawn subagent
         "activate_skill",  # Gemini CLI: invoke skill in-session
         "TaskCreate",
         "TaskUpdate",
@@ -383,6 +384,10 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     "Skill": (("skill",), True),
     # Gemini CLI
     "delegate_to_agent": (("name", "agent_name"), False),
+    "invoke_agent": (
+        ("agent_name", "name", "subagent_type", "agent", "agent_type"),
+        False,
+    ),  # Gemini CLI >= ~0.40
     "activate_skill": (("skill", "name"), True),
     # Gemini: bare agent tools (Strategy 2)
     "aops_core_enforcer": ((), False),
@@ -522,7 +527,15 @@ _PKB_OPERATIONS: dict[str, str] = {
 }
 
 # Regex to match any PKB MCP prefix variant and extract the operation name.
-_PKB_PREFIX_RE = re.compile(r"^(?:mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)__|pkb__)(.+)$")
+# Handles both Claude double-underscore (mcp__pkb__) and Gemini single-underscore
+# (mcp_pkb_) forms, plus bare pkb__ prefix.
+_PKB_PREFIX_RE = re.compile(
+    r"^(?:"
+    r"mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)__"  # Claude double-underscore
+    r"|mcp_(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)_"  # Gemini single-underscore
+    r"|pkb__"  # bare double-underscore
+    r")(.+)$"
+)
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -578,6 +591,15 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
     # Treat them as infrastructure so they bypass gates.
     if tool_name in COMPLIANCE_SUBAGENT_TYPES:
         return "infrastructure"
+
+    # Structural escape hatch: if tool_input names a compliance subagent, treat as
+    # infrastructure regardless of tool_name. Guards against future CLI tool-name
+    # renames (e.g. invoke_agent successors) leaving the framework deadlocked.
+    if isinstance(tool_input, dict):
+        for key in ("agent_name", "name", "subagent_type", "agent", "agent_type"):
+            v = tool_input.get(key)
+            if isinstance(v, str) and v.strip().lstrip("/") in COMPLIANCE_SUBAGENT_TYPES:
+                return "infrastructure"
 
     # Default: treat unknown tools as write (conservative)
     return "write"

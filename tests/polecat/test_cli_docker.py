@@ -489,6 +489,46 @@ class TestClaudeAuthEnvOnly:
         )
 
 
+class TestClaudeConfigSeed:
+    """The baked-in `.claude.json` seed must skip onboarding AND folder-trust.
+
+    The Dockerfile copies polecat/defaults/claude-config.json to /home/worker/.claude.json
+    in the image. Without the per-project hasTrustDialogAccepted flag, recent Claude Code
+    releases prompt for folder trust on the first interactive turn — and plugins
+    (aops-core@academicOps) are gated behind that acceptance, so framework hooks/skills
+    silently don't load until the user clicks Trust.
+
+    Field name parallel to the host's freshly-trusted .claude.json — verified against a
+    live trusted host file, not guessed. See aops-542d82d4.
+    """
+
+    SEED_PATH = Path(__file__).parent.parent.parent / "polecat" / "defaults" / "claude-config.json"
+    CONTAINER_WORKDIR = "/workspace"
+
+    def test_seed_exists(self):
+        assert self.SEED_PATH.exists(), f"claude-config.json seed missing at {self.SEED_PATH}"
+
+    def test_seed_skips_onboarding(self):
+        """Regression guard: onboarding must remain skipped (existing behaviour)."""
+        seed = json.loads(self.SEED_PATH.read_text())
+        assert seed.get("hasCompletedOnboarding") is True
+        assert seed.get("bypassPermissionsModeAccepted") is True
+
+    def test_seed_accepts_workspace_trust(self):
+        """New behaviour: /workspace must be pre-trusted so plugins load on first turn."""
+        seed = json.loads(self.SEED_PATH.read_text())
+        projects = seed.get("projects", {})
+        workspace = projects.get(self.CONTAINER_WORKDIR)
+        assert workspace is not None, (
+            f"seed must pre-populate projects['{self.CONTAINER_WORKDIR}'] "
+            f"to bypass the Claude Code folder-trust prompt"
+        )
+        assert workspace.get("hasTrustDialogAccepted") is True, (
+            "projects['/workspace'].hasTrustDialogAccepted must be true so "
+            "aops plugins load on the first interactive turn"
+        )
+
+
 class TestRequireClaudeOauth:
     """Pre-flight: polecat must fail fast when CLAUDE_CODE_OAUTH_TOKEN is unset."""
 
