@@ -100,8 +100,8 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
-def _write_polecat_yaml_with_gate_modes(
-    tmp_path: Path,
+def _set_gate_modes(
+    monkeypatch,
     *,
     handover: str = "warn",
     qa: str = "block",
@@ -109,37 +109,19 @@ def _write_polecat_yaml_with_gate_modes(
     hydration: str = "off",
     ida: str = "off",
     enforcer_threshold: int = 50,
-) -> Path:
-    """Stage a polecat.yaml with the requested gate modes and return its path.
+) -> None:
+    """Stamp the requested gate modes onto the environment.
 
-    ida defaults to "off" here so existing test scenarios that
-    expect "allow" on Stop (e.g. syn-stop-all-open-allow) keep their
-    invariants. Tests targeting ida behaviour pass it explicitly.
+    ida defaults to "off" here so existing test scenarios that expect
+    "allow" on Stop (e.g. syn-stop-all-open-allow) keep their invariants.
+    Tests targeting ida behaviour pass it explicitly.
     """
-    p = tmp_path / "polecat.yaml"
-    # YAML quoted to avoid 'off'/'on' boolean coercion when callers pass them
-    # via positional defaults.
-    body = f"""
-session_defaults:
-  hooks_enabled: true
-  claude_model: claude-sonnet-4-6
-  gemini_model: gemini-2.5-pro
-  debug: false
-  gates:
-    handover: "{handover}"
-    qa: "{qa}"
-    enforcer: "{enforcer}"
-    hydration: "{hydration}"
-    ida: "{ida}"
-    enforcer_threshold: {enforcer_threshold}
-crew_defaults: {{}}
-run_defaults: {{}}
-docker:
-  image: aops-crew
-external_agents: {{}}
-""".strip()
-    p.write_text(body)
-    return p
+    monkeypatch.setenv("HANDOVER_GATE_MODE", handover)
+    monkeypatch.setenv("QA_GATE_MODE", qa)
+    monkeypatch.setenv("ENFORCER_GATE_MODE", enforcer)
+    monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
+    monkeypatch.setenv("IDA_GATE_MODE", ida)
+    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(enforcer_threshold))
 
 
 def _make_session_state(scenario: dict) -> SessionState:
@@ -225,20 +207,14 @@ def _make_gate_trigger_context(gate_name: str) -> HookContext:
 
 @pytest.fixture(autouse=True)
 def _deterministic_gate_modes(monkeypatch, tmp_path):
-    """Ensure gate modes use known defaults regardless of host env.
-
-    Writes a deterministic polecat.yaml under tmp_path and points
-    ``AOPS_POLECAT_CONFIG`` at it; the gate-mode cache in hooks.gate_config
-    is invalidated before reload so the test sees the fresh values.
-    """
-    cfg_path = _write_polecat_yaml_with_gate_modes(
-        tmp_path,
+    """Ensure gate modes use known defaults regardless of host env."""
+    _set_gate_modes(
+        monkeypatch,
         handover="warn",
         qa="block",
         enforcer="block",
         hydration="off",
     )
-    monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
     _reinit_gates_with_defaults()
 
 
@@ -315,8 +291,7 @@ class TestGateModeConfigOverrides:
         self, router, monkeypatch, tmp_path, gate_name, mode, expected_verdict
     ):
         kwargs: dict[str, str] = {gate_name: mode}
-        cfg_path = _write_polecat_yaml_with_gate_modes(tmp_path, **kwargs)
-        monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+        _set_gate_modes(monkeypatch, **kwargs)
         _reinit_gates_with_defaults()
 
         state = _make_gate_trigger_state(gate_name)

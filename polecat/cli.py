@@ -316,6 +316,36 @@ def _resolve_session_config(
     return cfg, resolved
 
 
+# Env var names for the gate-mode posture forwarded into agent sessions.
+# Polecat resolves the per-mode posture from polecat.yaml here on the host;
+# the in-container hooks read these env vars directly (they never read
+# polecat.yaml).
+_GATE_ENV_VARS = (
+    "HANDOVER_GATE_MODE",
+    "QA_GATE_MODE",
+    "ENFORCER_GATE_MODE",
+    "HYDRATION_GATE_MODE",
+    "IDA_GATE_MODE",
+    "ENFORCER_TOOL_CALL_THRESHOLD",
+)
+
+
+def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-def]
+    """Stamp the resolved gate posture onto ``env`` as plain env vars.
+
+    Called by the run/crew handlers after they resolve ``session_cfg`` from
+    polecat.yaml. ``_build_docker_cmd`` forwards these vars into the
+    container. The hook stack reads them directly via ``hooks.gate_config``.
+    """
+    gates = session_cfg.gates
+    env["HANDOVER_GATE_MODE"] = gates.handover
+    env["QA_GATE_MODE"] = gates.qa
+    env["ENFORCER_GATE_MODE"] = gates.enforcer
+    env["HYDRATION_GATE_MODE"] = gates.hydration
+    env["IDA_GATE_MODE"] = gates.ida
+    env["ENFORCER_TOOL_CALL_THRESHOLD"] = str(gates.enforcer_threshold)
+
+
 def _coerce_set_value(raw: str) -> object:
     """Coerce a ``--set`` value to bool / int / str."""
     lowered = raw.lower()
@@ -1354,16 +1384,16 @@ def _build_docker_cmd(
                     if (host_path / "profiles.yml").exists():
                         cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
 
-    # Pattern-arm forwarding — POLECAT_* and AOPS_* (excluding the resolved
-    # config-path env: that is set explicitly below to point at the in-container
-    # staged polecat.yaml). Gate-mode env vars no longer exist; gate modes are
-    # resolved from polecat.yaml inside the container.
+    # Pattern-arm forwarding — POLECAT_* and AOPS_* prefix, plus the explicit
+    # gate-mode env vars stamped by ``_apply_gate_env``. Gate modes are
+    # resolved from polecat.yaml here on the host (never inside the
+    # container) and forwarded as plain env vars; hooks read them directly.
     for key, val in env.items():
         if not val or key in conf_forwards:
             continue
         if key == CONFIG_PATH_ENV:
             continue
-        if key.startswith("POLECAT_") or key.startswith("AOPS_"):
+        if key.startswith("POLECAT_") or key.startswith("AOPS_") or key in _GATE_ENV_VARS:
             cmd.extend(["-e", f"{key}={val}"])
 
     # Session storage: transcripts persist beyond container lifetime.
@@ -3749,6 +3779,7 @@ def crew(
     env["POLECAT_CREW_NAME"] = crew_name
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
+    _apply_gate_env(env, session_cfg)
     # Claude crew runs in plan mode; signal that to the gate engine so it
     # skips the custodiet ops counter (the gate must not fire when rbg
     # cannot be invoked). Suppressed for gemini / interactive shell paths.
@@ -4490,6 +4521,7 @@ def run(
     env["AOPS_TASK_ID"] = task.id
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
+    _apply_gate_env(env, session_cfg)
 
     # Resolve container memory limit and check daemon memory
     memory_limit, daemon_mem = _init_container_memory(memory, manager, env)

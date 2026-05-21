@@ -73,46 +73,22 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
-def _stage_gate_modes_yaml(tmp_path, **modes) -> Path:
-    p = tmp_path / "polecat.yaml"
-    body = """
-session_defaults:
-  hooks_enabled: true
-  claude_model: claude-sonnet-4-6
-  gemini_model: gemini-2.5-pro
-  debug: false
-  gates:
-    handover: "{handover}"
-    qa: "{qa}"
-    enforcer: "{enforcer}"
-    hydration: "{hydration}"
-    ida: "{ida}"
-    enforcer_threshold: {enforcer_threshold}
-crew_defaults: {{}}
-run_defaults: {{}}
-docker:
-  image: aops-crew
-external_agents: {{}}
-""".strip().format(
-        handover=modes.get("handover", "warn"),
-        qa=modes.get("qa", "block"),
-        enforcer=modes.get("enforcer", "block"),
-        ida=modes.get("ida", "off"),
-        hydration=modes.get("hydration", "off"),
-        enforcer_threshold=modes.get("enforcer_threshold", 50),
-    )
-    p.write_text(body)
-    return p
+def _set_gate_modes(monkeypatch, **modes) -> None:
+    monkeypatch.setenv("HANDOVER_GATE_MODE", modes.get("handover", "warn"))
+    monkeypatch.setenv("QA_GATE_MODE", modes.get("qa", "block"))
+    monkeypatch.setenv("ENFORCER_GATE_MODE", modes.get("enforcer", "block"))
+    monkeypatch.setenv("HYDRATION_GATE_MODE", modes.get("hydration", "off"))
+    monkeypatch.setenv("IDA_GATE_MODE", modes.get("ida", "off"))
+    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(modes.get("enforcer_threshold", 50)))
 
 
 @pytest.fixture(autouse=True)
 def gate_mode(monkeypatch, tmp_path):
-    """Set gate modes for all tests via polecat.yaml.
+    """Set gate modes for all tests via env vars.
 
     Yields a SimpleNamespace with gate configuration info.
     """
-    cfg_path = _stage_gate_modes_yaml(tmp_path)
-    monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg_path))
+    _set_gate_modes(monkeypatch)
     # When run inside a polecat container, POLECAT_APPROVAL_MODE=plan flips
     # the gate engine into plan mode, which skips the ops counter (see
     # lib/gates/engine.py:548). Clear it so counter-increment tests behave

@@ -56,30 +56,15 @@ def _make_ctx(**kwargs) -> HookContext:
 
 @pytest.fixture(autouse=True)
 def _reinit_gates(monkeypatch, tmp_path):
-    """Use a deterministic polecat.yaml so gate modes are known."""
+    """Use deterministic gate-mode env vars so tests are isolated from host."""
     import importlib
 
-    cfg = tmp_path / "polecat.yaml"
-    cfg.write_text(
-        "session_defaults:\n"
-        "  hooks_enabled: true\n"
-        "  claude_model: claude-sonnet-4-6\n"
-        "  gemini_model: gemini-2.5-pro\n"
-        "  debug: false\n"
-        "  gates:\n"
-        '    handover: "warn"\n'
-        '    qa: "block"\n'
-        '    enforcer: "block"\n'
-        '    hydration: "off"\n'
-        '    ida: "warn"\n'
-        "    enforcer_threshold: 50\n"
-        "crew_defaults: {}\n"
-        "run_defaults: {}\n"
-        "docker:\n"
-        "  image: aops-crew\n"
-        "external_agents: {}\n"
-    )
-    monkeypatch.setenv("AOPS_POLECAT_CONFIG", str(cfg))
+    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
+    monkeypatch.setenv("QA_GATE_MODE", "block")
+    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
+    monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
+    monkeypatch.setenv("IDA_GATE_MODE", "warn")
+    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
 
     if "hooks.gate_config" in sys.modules:
         sys.modules["hooks.gate_config"]._reset_gate_mode_cache()

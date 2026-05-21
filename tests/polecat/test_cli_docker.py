@@ -376,16 +376,18 @@ class TestBuildDockerCmd:
         assert "SSH_AUTH_SOCK=" in env_args
         assert "SSH_AUTH_SOCK=/tmp/host-ssh-agent.sock" not in env_args
 
-    def test_no_gate_mode_env_vars_emitted(self):
-        """Gate modes live in polecat.yaml; legacy *_GATE_MODE env vars are
-        no longer forwarded into containers — even when the host happens to
-        have one set, the var is not propagated.
+    def test_gate_mode_env_vars_forwarded(self):
+        """Gate modes are resolved from polecat.yaml on the host by the run /
+        crew handlers (via ``_apply_gate_env``) and stamped into the env dict
+        as plain env vars. ``_build_docker_cmd`` then forwards them into the
+        container so hooks can read them directly without ever touching
+        polecat.yaml.
         """
         env = {"HYDRATION_GATE_MODE": "off", "ENFORCER_GATE_MODE": "warn"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert not any(a.startswith("HYDRATION_GATE_MODE=") for a in env_args)
-        assert not any(a.startswith("ENFORCER_GATE_MODE=") for a in env_args)
+        assert "HYDRATION_GATE_MODE=off" in env_args
+        assert "ENFORCER_GATE_MODE=warn" in env_args
 
     @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
     def test_gemini_api_key_forwarded_for_any_cli_tool(self, cli_tool):

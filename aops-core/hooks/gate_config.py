@@ -400,59 +400,42 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 # =============================================================================
 # GATE MODES
 # =============================================================================
-# Gate enforcement modes — sourced from $AOPS_SESSIONS/polecat.yaml via
-# lib/polecat_config.py. There are no environment-variable fallbacks: missing
-# config hard-fails (A14, A16). The session mode (crew vs run) is read from
-# POLECAT_SESSION_TYPE — set by polecat when launching a container, defaults
-# to "run" when the host is itself running a hooks-bearing session (e.g.
-# Claude macOS app on a developer machine).
+# Gate enforcement modes are read directly from environment variables. The
+# polecat launcher (polecat/cli.py) resolves the per-mode posture from
+# polecat.yaml on the host and stages the values into the container as env
+# vars. Hooks never read polecat.yaml; they only read these env vars.
 #
-# Resolution is lazy (module-level ``__getattr__``, PEP 562) because callers
-# import this module at collection time, before tests can monkeypatch the
-# session env. Each name resolves on first access; subsequent accesses hit
-# the same loaded config (cached by ``load_polecat_config``-not-needed —
-# we cache here instead so tests can call ``_reset_gate_mode_cache()`` to
-# invalidate after they change the underlying config).
+# When no env var is set (e.g. host orchestrator chat, fresh-install dev
+# machine), defaults below apply: warn for human-facing gates, off for
+# hydration. These match the previous BUILTIN_GATES posture.
 
-import sys as _sys
-from pathlib import Path as _Path
-
-_ROOT_DIR = _Path(__file__).resolve().parent.parent
-if str(_ROOT_DIR) not in _sys.path:
-    _sys.path.insert(0, str(_ROOT_DIR))
-
-from lib.polecat_config import (
-    load_polecat_config,  # noqa: E402  # pyright: ignore[reportImplicitRelativeImport]
-)
-
-_GATE_MODE_NAMES = {
-    "HANDOVER_GATE_MODE": "handover",
-    "QA_GATE_MODE": "qa",
-    "ENFORCER_GATE_MODE": "enforcer",
-    "HYDRATION_GATE_MODE": "hydration",
-    "IDA_GATE_MODE": "ida",
+_GATE_MODE_DEFAULTS = {
+    "HANDOVER_GATE_MODE": "warn",
+    "QA_GATE_MODE": "warn",
+    "ENFORCER_GATE_MODE": "warn",
+    "HYDRATION_GATE_MODE": "off",
+    "IDA_GATE_MODE": "warn",
 }
-_GATE_MODE_CACHE: dict[str, Any] = {}
-
-
-def _resolve_gate_modes() -> dict[str, Any]:
-    if not _GATE_MODE_CACHE:
-        mode = "crew" if os.environ.get("POLECAT_SESSION_TYPE") == "crew" else "run"
-        cfg = load_polecat_config().for_mode(mode)
-        for const, attr in _GATE_MODE_NAMES.items():
-            _GATE_MODE_CACHE[const] = getattr(cfg.gates, attr)
-        _GATE_MODE_CACHE["ENFORCER_TOOL_CALL_THRESHOLD"] = cfg.gates.enforcer_threshold
-    return _GATE_MODE_CACHE
+_ENFORCER_THRESHOLD_DEFAULT = 50
 
 
 def _reset_gate_mode_cache() -> None:  # pyright: ignore[reportUnusedFunction]
-    """Test-only hook: drop the cached config so the next access re-reads YAML."""
-    _GATE_MODE_CACHE.clear()
+    """Back-compat no-op. Gate modes now read env vars on every access; there
+    is no cache to invalidate. Retained so older tests that call this don't
+    break."""
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
-    if name in _GATE_MODE_NAMES or name == "ENFORCER_TOOL_CALL_THRESHOLD":
-        return _resolve_gate_modes()[name]
+    if name in _GATE_MODE_DEFAULTS:
+        return os.environ.get(name, _GATE_MODE_DEFAULTS[name])
+    if name == "ENFORCER_TOOL_CALL_THRESHOLD":
+        raw = os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD")
+        if raw is None:
+            return _ENFORCER_THRESHOLD_DEFAULT
+        try:
+            return int(raw)
+        except ValueError:
+            return _ENFORCER_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
