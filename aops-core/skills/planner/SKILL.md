@@ -168,7 +168,7 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 
 **Abstraction discipline**: Verify the user's level on the planning ladder (`Success → Strategy → Design → Implementation`). Don't jump right. Lock before descending.
 
-**Output is guidance, not execution.** Present the plan to the user. STOP. Do not execute recommended tasks.
+**Output is guidance, not execution.** Present the plan to the user. STOP. Do not execute recommended tasks. This is the planner-side projection of [Compose-then-Dispatch Separation](../aops/references/authoring-discipline.md#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface) — the brief lives in PKB; dispatch belongs to a different invocation in a different context.
 
 **Workflow files**: `aops-core/skills/planner/workflows/strategic-intake.md`
 
@@ -528,6 +528,7 @@ User prompt
 8. **No parallel tracking** — never put `- [ ]` checklists in task bodies when items are tracked as subtasks; after decomposition, replace the body checklist with a reference to children
 9. **Action items are graph nodes, not prose** — follow-up work outside the primary task's scope (supersession decisions, prerequisite investigations, cross-project updates, triage calls) must be created as separate linked tasks. Decision/triage → subtask or `soft_depends_on`; cross-epic → separate task with `soft_depends_on` (unlocker) or `depends_on` (hard prerequisite). Never bury action items in body prose where they are invisible to the graph.
 10. **Task-Body Authoring Discipline** — Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State the artifact, the goal, and the spec link. Do NOT enumerate methodology, file paths, or "things to consider." Smart agents do better with short briefs; long briefs anchor the recipient and reduce judgement to checklist execution.
+11. **Compose-only surface** — Planner is the canonical compose-only surface. It writes task bodies (briefs) into PKB and exits. **Planner never dispatches a worker against a brief it authored in the same invocation.** Dispatch is owned by /supervisor (the next tick reads the PKB body fresh) or by the polecat pull cycle. This is the planner-side projection of [Compose-then-Dispatch Separation](../aops/references/authoring-discipline.md#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface) — A17 propagated to the dispatch surface. Planner's "exit after writing to PKB" is the cure for the same-context author-and-dispatcher failure class.
 
 ## Decision Surfacing Heuristic
 
