@@ -4,6 +4,12 @@ This directory is the artifact dropbox for agent-driven probes of
 `polecat crew`. There is no wrapper harness anymore (see #1110 — it was
 replaced by inline `tmux`).
 
+> This file owns the **tmux mechanics**. For the **validation workflow**
+> (what to verify, what signals indicate hooks/plugins/skills are
+> actually loaded vs. just file-present), see
+> [`aops-core/skills/aops/workflows/11-self-test.md`](../../aops-core/skills/aops/workflows/11-self-test.md)
+> § 2.
+
 For local CLI verification, drive `tmux` directly rather than using a
 wrapper. A minimal tmux pattern gives you full interactive control over
 the CLI to verify behaviours.
