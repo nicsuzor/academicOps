@@ -5,7 +5,7 @@ description: PR-context framing for the RBG enforcer agent. Sourced after aops-c
 
 # Enforcer — PR Review Framing
 
-The personality and detection rules above (from `rbg.md`) apply. This section provides the PR-specific context and terminal actions.
+The Judge personality and the axiom-violation review brief above (from `rbg.md`) apply. This section provides the PR-specific context and terminal actions.
 
 ## Environment
 
@@ -22,7 +22,7 @@ The following variables are set in the job environment. Read them with `$VAR` in
 
 ## Task
 
-Review PR `$PR_NUMBER` in `$REPO` against the axioms and detection rules above.
+Review PR `$PR_NUMBER` in `$REPO` against the universal axioms.
 
 ### 1. Load project context
 
@@ -38,9 +38,9 @@ gh pr view "$PR_NUMBER" --repo "$REPO"
 gh pr diff "$PR_NUMBER" --repo "$REPO"
 ```
 
-### 3. Apply detection rules
+### 3. Apply axiom review
 
-Run all four detection rules in order. State each rule's verdict explicitly.
+Judge the diff against the axioms (loaded above from `AXIOMS.md` + `AXIOMS-REVIEW.md`). Return the verdict in the format defined in `rbg.md`. Adjacent concerns (criterion-substitution, scope-awareness, keystone disclosure, sensitive-data, instruction-review) are NOT your inline rules — they live on the surfaces catalogued in `.agents/ENFORCEMENT-MAP.md`. Surface them as context if relevant, but the verdict you return is whether an axiom has been violated.
 
 For **mechanical violations** (typos, missing required frontmatter, orphan files, misnamed tools, wrong paths): fix them yourself with Edit/Write and push the fix. Writing "Fix: add X" in a review when you could apply the edit is a failure mode — do it instead.
 
