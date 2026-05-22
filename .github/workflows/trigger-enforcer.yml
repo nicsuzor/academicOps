@@ -12,14 +12,28 @@ name: "Trigger: Enforcer"
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
+      ref:
+        description: 'Git ref to checkout (PR head branch)'
+        required: true
+        type: string
+      sha:
+        description: 'PR head SHA'
+        required: true
+        type: string
 
 jobs:
   enforce:
     uses: ./.github/workflows/agent-enforcer.yml
     with:
-      pr_number: ${{ github.event.pull_request.number }}
-      ref: ${{ github.event.pull_request.head.ref }}
-      sha: ${{ github.event.pull_request.head.sha }}
+      pr_number: "${{ github.event.pull_request.number || inputs.pr_number }}"
+      ref: ${{ github.event.pull_request.head.ref || inputs.ref }}
+      sha: ${{ github.event.pull_request.head.sha || inputs.sha }}
     secrets:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
