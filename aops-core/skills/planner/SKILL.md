@@ -380,7 +380,7 @@ Per §2.3, missing justifications are surfaced here, not blocked at write time. 
 
 **Check 3 — SEV4 targets with weak consequence prose (advisory heuristic)**
 
-For every `type: target` node with non-terminal status (`queued`, `ready`, `in_progress`) and `severity: 4`, qualitatively assess the `consequence` prose: does it describe a concrete, serious outcome that explains why this is a severity-4 situation? If the prose is vague, abstract, or does not articulate a tangible high-stakes consequence, surface the target for user review.
+For every `type: target` node with `status` in {`queued`, `ready`, `in_progress`} and `severity: 4`, qualitatively assess the `consequence` prose: does it describe a concrete, serious outcome that explains why this is a severity-4 situation? If the prose is vague, abstract, or does not articulate a tangible high-stakes consequence, surface the target for user review.
 
 The assessment is a qualitative judgment — do not reduce it to keyword matching or regex scanning. Read the prose and ask: "Does this explain _what specifically happens_ and _why it is severe_?"
 
@@ -397,7 +397,7 @@ This is a heuristic. False positives are expected — present them as advisory, 
 
 > Spec: §6 Q4. AC#4.
 
-Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and any non-terminal status (`queued`, `ready`, `in_progress`). The cap is **2**. If `count > 2`, emit a warning.
+Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and `status` in {`queued`, `ready`, `in_progress`}. The cap is **2**. If `count > 2`, emit a warning.
 
 **Check 5 — Type/ID-prefix/Filename consistency**
 
