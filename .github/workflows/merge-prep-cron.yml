@@ -294,7 +294,15 @@ jobs:
           # 1 running + 1 pending per group — dispatching N runs discards N-2.
           # The cron (30 min) and workflow_run triggers ensure the next PR gets
           # picked up after the current one finishes.
-          PR_NUM=$(head -n 1 /tmp/qualifying_prs.txt)
+          #
+          # Pick the OLDEST qualifying PR (lowest PR number). The qualification
+          # loop above iterates `gh pr list` output, which is sorted newest-first
+          # by default, so `head -n 1` would pick the NEWEST PR — the opposite
+          # of what this step's name claims. With N qualifying PRs and a 30-min
+          # cron, that ordering starves the oldest PR for N × 30 min while newer
+          # PRs jump the queue (incident: PRs #1101/#1102/#1107 sat for 6-7h
+          # behind ~12 newer PRs on 2026-05-17, see issue #1129).
+          PR_NUM=$(sort -n /tmp/qualifying_prs.txt | head -n 1)
 
           TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
           echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying)"
