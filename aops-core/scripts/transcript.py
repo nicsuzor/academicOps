@@ -1293,12 +1293,7 @@ Examples:
                 # Rotate into transcripts/YYYY-MM/ keyed off the session start
                 # date parsed from the filename (aops-b975b185). This stays
                 # stable even when a session is re-processed later.
-                rotation_dt = extract_date_from_filename(filename) or datetime(
-                    int(date_str[:4]),
-                    int(date_str[4:6]),
-                    int(date_str[6:8]),
-                    tzinfo=UTC,
-                )
+                rotation_dt = extract_date_from_filename(filename) or datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
                 out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
                 base_name = str(out_subdir / filename)
 
@@ -1601,12 +1596,7 @@ Examples:
         # (aops-b975b185). Only rotate when the output_dir is the default
         # transcripts dir; explicit --output paths are honoured verbatim.
         if output_dir == sessions_claude:
-            rotation_dt = extract_date_from_filename(filename) or datetime(
-                int(date_str[:4]),
-                int(date_str[4:6]),
-                int(date_str[6:8]),
-                tzinfo=UTC,
-            )
+            rotation_dt = extract_date_from_filename(filename) or datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
             output_dir = ensure_rotated_dir(sessions_claude, rotation_dt)
         base_name = str(output_dir / filename)
         print(f"📛 Generated filename: {filename}")

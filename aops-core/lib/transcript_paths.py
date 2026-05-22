@@ -32,7 +32,7 @@ from pathlib import Path
 # Match a leading YYYYMMDD in a filename (used to derive the rotation bucket
 # for files already on disk). The session-naming convention prefixes every
 # artefact with this token, so it's the authoritative date for migration.
-_FILENAME_DATE_RE = re.compile(r"^(\d{4})(\d{2})\d{2}[-_]")
+_FILENAME_DATE_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})[-_]")
 
 # Match an already-rotated ``YYYY-MM`` subdir name.
 _ROTATED_DIR_RE = re.compile(r"^\d{4}-\d{2}$")
@@ -85,9 +85,7 @@ def extract_date_from_filename(name: str) -> datetime | None:
         return None
     year = int(m.group(1))
     month = int(m.group(2))
-    # day is fixed-width digits already validated by the regex; parse via the
-    # full match span so we keep one source of truth.
-    day = int(name[6:8])
+    day = int(m.group(3))
     try:
         return datetime(year, month, day, tzinfo=UTC)
     except ValueError:
@@ -112,7 +110,7 @@ def iter_rotated_files(base_dir: Path, pattern: str = "*") -> Iterator[Path]:
     state, ``summaries/`` index files) that should not be conflated with
     session artefacts.
     """
-    if not base_dir.exists():
+    if not base_dir.is_dir():
         return
     # Flat layout (legacy + active-month before rotation lands).
     for p in base_dir.glob(pattern):
