@@ -321,7 +321,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     # Strip any leaked host environment variables that hardcode paths (e.g. from polecat sessions)
     #
-    # NOTE: POLECAT_HOME is deliberately NOT scrubbed here. The
+    # NOTE: POLECAT_HOME is deliberately NOT scrubbed here (task-ac3e547b). The
     # `ensure_test_environment` fixture is function-scoped autouse, but the
     # e2e `session` fixture (tests/e2e/test_all_invocation_paths.py) is
     # class-scoped — it materialises BEFORE the function-scoped scrub runs.
