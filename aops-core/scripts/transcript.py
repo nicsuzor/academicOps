@@ -37,6 +37,10 @@ from lib.insights_generator import (  # noqa: E402
 )
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
+from lib.subagent_transcript import (  # noqa: E402
+    maybe_append_subagent_footer,
+    write_subagent_transcripts,
+)
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     UsageStats,
@@ -1044,6 +1048,49 @@ def _infer_project(
     return _resolve_project_key(clean_project) if clean_project else "unknown"
 
 
+def _emit_subagent_artifacts(
+    session_path: Path,
+    parent_session_id: str,
+    session_summary,
+    entries,
+    agent_entries,
+    processor,
+    parent_full_path: Path,
+) -> None:
+    """Emit per-subagent transcripts + insights and link from the parent.
+
+    No-op when ``agent_entries`` is empty (most sessions have zero
+    subagent invocations). Failures here are non-fatal — the parent
+    transcript has already been written by the time we run.
+    """
+    if not agent_entries:
+        return
+    try:
+        # Main thread = parent's non-sidechain entries (subagent invocations
+        # are loaded via _load_agent_files and carry is_sidechain=True on
+        # their own entries).
+        main_entries = [e for e in entries if not getattr(e, "is_sidechain", False)]
+        artifacts = write_subagent_transcripts(
+            parent_session_path=session_path,
+            parent_session_id=parent_session_id,
+            parent_summary=session_summary,
+            main_entries=main_entries,
+            agent_entries=agent_entries,
+            processor=processor,
+        )
+        if artifacts:
+            print(f"🧵 Emitted {len(artifacts)} subagent transcript(s)")
+            for art in artifacts:
+                if art.transcript_path:
+                    print(
+                        f"   ↳ {art.subagent_type or 'unknown'} ({art.child_session_id}): "
+                        f"{art.transcript_path}"
+                    )
+            maybe_append_subagent_footer(parent_full_path, artifacts)
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️  Subagent transcript emission failed: {e}", file=sys.stderr)
+
+
 def git_sync():
     """Commit and push changes in the sessions repository."""
     try:
@@ -1054,13 +1101,24 @@ def git_sync():
 
         print(f"Syncing changes in {sessions_root}...")
 
-        # Policy: only transcripts/ and summaries/ are pushed. Raw substrate
-        # (client-logs/, hooks/, polecats/, github/) is local-only — see
-        # PKB kb-d8f58167 (Session Log Observability Map).
+        # Policy: only transcripts/, summaries/, and their subagent siblings
+        # are pushed. Raw substrate (client-logs/, hooks/, polecats/, github/)
+        # is local-only — see PKB kb-d8f58167 (Session Log Observability Map).
+        # Subagent dirs (task-b483e037) follow the same policy. ``--ignore-errors``
+        # tolerates the case where a directory doesn't exist yet (e.g. a sessions
+        # repo that has never had any subagent invocations).
         subprocess.run(
-            ["git", "add", "transcripts/", "summaries/"],
+            [
+                "git",
+                "add",
+                "--ignore-errors",
+                "transcripts/",
+                "summaries/",
+                "subagent-transcripts/",
+                "subagent-summaries/",
+            ],
             cwd=str(sessions_root),
-            check=True,
+            check=False,
         )
 
         status = subprocess.run(
@@ -1374,6 +1432,17 @@ Examples:
                 file_size = abridged_path.stat().st_size
                 print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 
+                # Emit per-subagent transcripts + insights (task-b483e037)
+                _emit_subagent_artifacts(
+                    session_path=session_path,
+                    parent_session_id=session_id,
+                    session_summary=session_summary,
+                    entries=entries,
+                    agent_entries=agent_entries,
+                    processor=processor,
+                    parent_full_path=full_path,
+                )
+
                 processed += 1
 
             except Exception as e:
@@ -1575,6 +1644,17 @@ Examples:
             file_size = abridged_path.stat().st_size
             print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 
+            # Emit per-subagent transcripts + insights (task-b483e037)
+            _emit_subagent_artifacts(
+                session_path=session_path,
+                parent_session_id=sid,
+                session_summary=session_summary,
+                entries=entries,
+                agent_entries=agent_entries,
+                processor=processor,
+                parent_full_path=full_path,
+            )
+
             return 0
 
         # If output_dir not set yet (no -o specified), use default
@@ -1704,6 +1784,17 @@ Examples:
         format_markdown(abridged_path)
         file_size = abridged_path.stat().st_size
         print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
+        # Emit per-subagent transcripts + insights (task-b483e037)
+        _emit_subagent_artifacts(
+            session_path=session_path,
+            parent_session_id=session_id,
+            session_summary=session_summary,
+            entries=entries,
+            agent_entries=agent_entries,
+            processor=processor,
+            parent_full_path=full_path,
+        )
 
         return 0
 
