@@ -808,18 +808,22 @@ class HookRouter:
             output = ClaudeStopHookOutput()
 
             # Channel routing for Stop/SessionEnd (see aops-d10e7db6):
-            # - `reason` reaches the agent ONLY when decision=="block" (it is
-            #   the text Claude is told it must continue working from).
+            # - `reason` feeds the advisory to the agent when decision=="block"
+            #   (Claude Code Stop hook API: `reason` = "Feedback for Claude",
+            #   `systemMessage` = "Warning message for user", `stopReason` =
+            #   "Not shown to Claude"). This routing is per the Claude Code
+            #   Python SDK TypedDict; behaviour may differ for other clients.
             # - `stopReason` and `systemMessage` are user-visible only —
-            #   the agent never sees them on its next turn.
+            #   do NOT route advisory/recovery text here.
             #
             # Advisory/recovery context (the <SYSTEM HOOK INSTRUCTION> block)
             # MUST land in the agent's context. The only Stop channel that
             # achieves that is decision=="block" + reason. WARN-with-context
-            # therefore upgrades to a block at the output layer so the
-            # advisory reaches the agent. The internal verdict stays "warn"
-            # so the stop-block safety net (auto-approve after 5 blocks in
-            # 2 minutes) is not tripped by routine RBG advisories.
+            # therefore upgrades the *output* decision to "block" at the output
+            # layer so the advisory reaches the agent. The internal verdict
+            # stays "warn" — the stop-block safety net (auto-approve after
+            # 5 blocks in 2 minutes) keys on the internal verdict field, not
+            # on this output decision, so routine RBG advisories do not trip it.
             #
             # `additionalContext` via hookSpecificOutput is emitted
             # defensively for forward compatibility — newer Claude Code
@@ -831,31 +835,23 @@ class HookRouter:
                 output.decision = "block"
                 if ctx_inj:
                     output.reason = ctx_inj
-                # sys_msg is the short, user-facing denial summary — surface
-                # via stopReason/systemMessage (user-visible) only. Do NOT
-                # echo ctx_inj here; that's the channel that leaked to the
-                # user transcript (aops-d10e7db6).
-                if sys_msg:
-                    output.stopReason = sys_msg
-                    output.systemMessage = sys_msg
             elif result.verdict == "warn" and ctx_inj:
-                # WARN with advisory context: upgrade to block so the agent
-                # reads the advisory on its next turn. Do not surface the
-                # advisory text via stopReason/systemMessage — those go to
-                # the user, which is the bug we are fixing.
+                # Upgrade output decision to "block" so the advisory lands in
+                # the agent's context on the next turn. The internal verdict
+                # remains "warn" — only the Claude Code output decision field
+                # changes here, not the router's internal safety-net counter.
                 output.decision = "block"
                 output.reason = ctx_inj
-                if sys_msg:
-                    output.stopReason = sys_msg
-                    output.systemMessage = sys_msg
             else:
                 output.decision = "approve"
-                # Approve with no advisory context. system_message (if any)
-                # is a short user-facing note (e.g. safety-override
-                # banners) — surface via stopReason/systemMessage.
-                if sys_msg:
-                    output.stopReason = sys_msg
-                    output.systemMessage = sys_msg
+
+            # sys_msg is a short, user-facing summary (denial reason, banner).
+            # Surface via user-visible channels only. Do NOT echo ctx_inj here
+            # — that was the channel that leaked advisory text to the user
+            # transcript (aops-d10e7db6).
+            if sys_msg:
+                output.stopReason = sys_msg
+                output.systemMessage = sys_msg
 
             # Forward-compatible: also emit additionalContext for Stop.
             # Newer Claude Code versions may route this into agent context;
