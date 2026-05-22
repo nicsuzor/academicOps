@@ -74,13 +74,26 @@ class ClaudeHookSpecificOutput(BaseModel):
 class ClaudeStopHookOutput(BaseModel):
     """
     Output structure specifically for the Claude 'Stop' event.
-    Unlike other events, 'Stop' uses top-level fields instead of hookSpecificOutput.
+
+    Channel routing (per Claude Code hooks API):
+    - ``decision="block"`` + ``reason``: Claude is prevented from stopping and the
+      ``reason`` text is fed to the agent as the reason it must continue. This is
+      the only Stop-event channel that demonstrably reaches the *agent's* context
+      on the next turn.
+    - ``stopReason``, ``systemMessage``: user-visible only. The agent does NOT see
+      these on its next turn. Do NOT route advisory/recovery text here — that
+      inverts intent (the advisory leaks to the user as noise, the agent sees
+      nothing). See aops-d10e7db6.
+    - ``hookSpecificOutput.additionalContext``: emitted defensively for forward
+      compatibility — newer Claude Code versions may honour it for Stop. Older
+      versions ignore the unknown field.
     """
 
     decision: Literal["approve", "block"] | None = None
     reason: str | None = None
     stopReason: str | None = None
     systemMessage: str | None = None
+    hookSpecificOutput: ClaudeHookSpecificOutput | None = None
 
 
 class ClaudeGeneralHookOutput(BaseModel):
