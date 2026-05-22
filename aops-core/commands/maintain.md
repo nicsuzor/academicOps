@@ -84,7 +84,7 @@ False positives are expected. The user decides whether to rewrite or accept. If 
 
 > Spec: §6 Q4. AC#4 — `/maintain` mirrors `/daily`'s warning so the surface is reachable on demand without waiting for the morning briefing.
 
-Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and `status: active` (or any non-terminal status: `queued`, `ready`, `in_progress`). The cap is **2**. If `count > 2`, emit:
+Count `type: target` nodes where `goal_type: committed`, `severity: 4`, and `status` in {`queued`, `ready`, `in_progress`}. The cap is **2**. If `count > 2`, emit:
 
 ```
 SEV4-committed concurrency exceeded: N active (cap = 2). Review or downgrade.
