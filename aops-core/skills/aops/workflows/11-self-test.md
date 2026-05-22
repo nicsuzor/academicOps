@@ -81,3 +81,9 @@ Append evidence to the existing PR / regression task when one already exists (e.
 
 - [[aops-7c45802b]] — file presence is not evidence of functional loading.
 - GH #1237 — Claude plugin cache had no pre-built `.venv`, fast path missed, uv fallback hit EACCES under host UID. Caught at §2 (first UserPromptSubmit). Would have been invisible at §1 because boot signals were green.
+
+---
+
+## 3. Hook output channel routing
+
+Per-hook verification that hook output lands on the channel its design intends (user-visible vs agent-context). Walk-through, marker convention, and per-hook expected channels live in [[12-hook-routing-self-test]]. Run as part of the v0.4 release self-test pass. Regression cover for [[aops-d10e7db6]] — Stop-hook RBG advisory leaking into the user surface instead of agent context.
