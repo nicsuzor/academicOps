@@ -120,11 +120,15 @@ def _with_build_metadata(version: str, aops_root: Path) -> str:
     meta = _git_build_metadata(aops_root)
     if not meta:
         return version
-    if ".dirty" in meta and "-" not in version:
-        v_parts = version.split(".")
-        if len(v_parts) == 3 and all(p.isdigit() for p in v_parts):
-            major, minor, patch = v_parts
-            version = f"{major}.{minor}.{int(patch) + 1}-dev.0"
+    if ".dirty" in meta:
+        # git describe --dirty at a clean tag emits `v0.3.27-dirty`; strip it so
+        # the promotion check below can fire on what is still a stable base.
+        version = version.removesuffix("-dirty")
+        if "-" not in version:
+            v_parts = version.split(".")
+            if len(v_parts) == 3 and all(p.isdigit() for p in v_parts):
+                major, minor, patch = v_parts
+                version = f"{major}.{minor}.{int(patch) + 1}-dev.0"
     return f"{version}+{meta}"
 
 
