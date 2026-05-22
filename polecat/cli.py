@@ -352,8 +352,7 @@ def _resolve_model_flag(
     aliases = sorted(_CLIENT_ALIAS_MODELS)
     raise click.UsageError(
         f"--model {model_value!r}: cannot determine client. "
-        f"Use one of the aliases {aliases} (resolved from polecat.yaml "
-        "session_defaults), or pass a literal model id prefixed with "
+        f"Use one of the aliases {aliases}, or pass a literal model id prefixed with "
         "'claude-', 'opus-', 'sonnet-', 'haiku-', or 'gemini-'."
     )
 
