@@ -20,6 +20,7 @@ from typing import Any
 import lib.session_naming as session_naming
 from lib.paths import get_summaries_dir
 from lib.session_reader import extract_gate_context, find_sessions
+from lib.transcript_paths import ensure_rotated_dir, iter_rotated_files
 
 
 class InsightsValidationError(Exception):
@@ -497,7 +498,8 @@ def find_existing_insights(date: str, session_id: str, index: int | None = None)
     ]
 
     for pattern in patterns:
-        matches = list(summaries_dir.glob(pattern))
+        # Walk both flat legacy and rotated YYYY-MM/ layouts (aops-b975b185).
+        matches = list(iter_rotated_files(summaries_dir, pattern))
         if matches:
             if index is not None:
                 # Filter matches by index
@@ -594,9 +596,12 @@ def get_insights_file_path(
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
 
+    # Rotate into summaries/YYYY-MM/ keyed off session start (aops-b975b185).
+    out_dir = ensure_rotated_dir(summaries_dir, dt)
+
     if index is not None and index > 0:
-        return summaries_dir / f"{base}-{index}.json"
-    return summaries_dir / f"{base}.json"
+        return out_dir / f"{base}-{index}.json"
+    return out_dir / f"{base}.json"
 
 
 def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:

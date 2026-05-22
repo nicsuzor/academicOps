@@ -14,7 +14,6 @@ Used by:
 
 from __future__ import annotations
 
-import glob
 import itertools
 import json
 import logging
@@ -40,6 +39,7 @@ from lib.transcript_parser import (
     _summarize_tool_input,
     normalize_gemini_project,
 )
+from lib.transcript_paths import iter_rotated_files
 
 _MAX_TURNS = 5
 _PROMPT_TRUNCATE = 400  # Increased from 100 to preserve more context (validated 2026-01-11)
@@ -1365,11 +1365,11 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
     transcript_path = None
     for transcript_dir in transcript_dirs:
         if transcript_dir.exists():
-            # Match session ID in both new (v4.0.0: date-HHMM-ID-...) and old (v3.x: date-HH-proj-ID-...) formats
-            pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
-            matches = glob.glob(pattern)
+            # Match session ID in both new (v4.0.0: date-HHMM-ID-...) and old (v3.x: date-HH-proj-ID-...) formats.
+            # Walks both flat legacy and rotated YYYY-MM/ layouts (aops-b975b185).
+            matches = list(iter_rotated_files(transcript_dir, f"*-*-{session_prefix}*-abridged.md"))
             if matches:
-                transcript_path = Path(matches[0])
+                transcript_path = matches[0]
                 break
 
     # Missing transcript or session updated since last transcript
@@ -1385,9 +1385,9 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
     for insights_dir in (get_summaries_dir(), aca_data / "sessions" / "summaries"):
         if insights_dir.exists():
             # Support various formats (with/without slug, project, hour)
-            # Match anything containing the session_prefix and ending in .json
-            pattern = str(insights_dir / f"*{session_prefix}*.json")
-            matches = glob.glob(pattern)
+            # Match anything containing the session_prefix and ending in .json.
+            # Walks both flat legacy and rotated YYYY-MM/ layouts (aops-b975b185).
+            matches = list(iter_rotated_files(insights_dir, f"*{session_prefix}*.json"))
             if matches:
                 has_mining = True
                 break

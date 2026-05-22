@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from lib.paths import get_summaries_dir, get_transcripts_dir
+from lib.transcript_paths import iter_rotated_files
 
 
 class TestReflectionExtraction:
@@ -104,7 +105,7 @@ Some conversation...
         reflection_files = []
 
         if sessions_dir.exists():
-            for md_file in sessions_dir.glob("*-full.md"):
+            for md_file in iter_rotated_files(sessions_dir, "*-full.md"):
                 try:
                     content = md_file.read_text(encoding="utf-8")
                     if (
@@ -235,7 +236,7 @@ class TestSummaryRegenerationOnGrownJsonl:
         )
 
     def _read_summary(self) -> dict:
-        summaries = list(get_summaries_dir().glob(f"*{self.SESSION_ID}*.json"))
+        summaries = list(iter_rotated_files(get_summaries_dir(), f"*{self.SESSION_ID}*.json"))
         assert len(summaries) == 1, f"expected exactly one summary, got {summaries}"
         return json.loads(summaries[0].read_text(encoding="utf-8"))
 
@@ -290,7 +291,7 @@ class TestSummaryRegenerationOnGrownJsonl:
         result1 = self._run_transcript(jsonl_path, repo_root)
         assert result1.returncode == 0, result1.stderr
 
-        summaries = list(get_summaries_dir().glob(f"*{self.SESSION_ID}*.json"))
+        summaries = list(iter_rotated_files(get_summaries_dir(), f"*{self.SESSION_ID}*.json"))
         assert len(summaries) == 1
         existing_path = summaries[0]
         existing_data = json.loads(existing_path.read_text(encoding="utf-8"))

@@ -15,7 +15,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add framework roots to path for lib imports
@@ -48,6 +48,11 @@ from lib.transcript_parser import (  # noqa: E402
     infer_project_from_working_dir,
     normalize_gemini_project,
     reflection_to_insights,
+)
+from lib.transcript_paths import (  # noqa: E402
+    ensure_rotated_dir,
+    extract_date_from_filename,
+    iter_rotated_files,
 )
 
 
@@ -860,20 +865,22 @@ def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
     Returns:
         List of all matching transcript files (both -full.md and -abridged.md)
     """
-    # Search for transcripts with this session_id
+    # Search for transcripts with this session_id across both the flat legacy
+    # layout (``transcripts/<file>``) and the rotated layout
+    # (``transcripts/YYYY-MM/<file>``) introduced for aops-b975b185.
     # v4.0.0+ Pattern: YYYYMMDD-HHMM-sessionID-shortform-slug-variant.md
     # v3.7.0+ Pattern: with hour (e.g., 20260105-17-writing-3bf94f77-session-full.md)
     # Legacy Pattern: without hour (e.g., 20260105-writing-3bf94f77-session-full.md)
-    matches = []
+    matches: list[Path] = []
     for suffix in ("-full.md", "-abridged.md"):
         # Unified format with HHMM (4 digits)
-        matches.extend(out_dir.glob(f"*-????-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-????-{session_id}-*{suffix}"))
         # Format with hour (2 digits)
-        matches.extend(out_dir.glob(f"*-??-*-{session_id}-*{suffix}"))
-        matches.extend(out_dir.glob(f"*-??-*-{session_id}{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-??-*-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-??-*-{session_id}{suffix}"))
         # Legacy format without hour
-        matches.extend(out_dir.glob(f"*-{session_id}-*{suffix}"))
-        matches.extend(out_dir.glob(f"*-{session_id}{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-{session_id}{suffix}"))
     return list(set(matches))  # Deduplicate
 
 
@@ -1283,7 +1290,17 @@ Examples:
                 # Note: _output_exists() check removed - early mtime check handles
                 # both "already current" (skip) and "stale" (regenerate) cases
 
-                base_name = str(sessions_claude / filename)
+                # Rotate into transcripts/YYYY-MM/ keyed off the session start
+                # date parsed from the filename (aops-b975b185). This stays
+                # stable even when a session is re-processed later.
+                rotation_dt = extract_date_from_filename(filename) or datetime(
+                    int(date_str[:4]),
+                    int(date_str[4:6]),
+                    int(date_str[6:8]),
+                    tzinfo=UTC,
+                )
+                out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
+                base_name = str(out_subdir / filename)
 
                 # Extract and process reflection (if present)
                 # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
@@ -1580,6 +1597,17 @@ Examples:
             shortform=args.shortform,
         )
 
+        # Rotate into <output_dir>/YYYY-MM/ keyed off session start
+        # (aops-b975b185). Only rotate when the output_dir is the default
+        # transcripts dir; explicit --output paths are honoured verbatim.
+        if output_dir == sessions_claude:
+            rotation_dt = extract_date_from_filename(filename) or datetime(
+                int(date_str[:4]),
+                int(date_str[4:6]),
+                int(date_str[6:8]),
+                tzinfo=UTC,
+            )
+            output_dir = ensure_rotated_dir(sessions_claude, rotation_dt)
         base_name = str(output_dir / filename)
         print(f"📛 Generated filename: {filename}")
 
