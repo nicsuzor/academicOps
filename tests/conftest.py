@@ -320,10 +320,24 @@ def ensure_test_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
     # Strip any leaked host environment variables that hardcode paths (e.g. from polecat sessions)
+    #
+    # NOTE: POLECAT_HOME is deliberately NOT scrubbed here. The
+    # `ensure_test_environment` fixture is function-scoped autouse, but the
+    # e2e `session` fixture (tests/e2e/test_all_invocation_paths.py) is
+    # class-scoped — it materialises BEFORE the function-scoped scrub runs.
+    # Scrubbing POLECAT_HOME here creates an asymmetry where the subprocess
+    # polecat (spawned during session-setup) sees the host POLECAT_HOME (e.g.
+    # ~/.aops), while the assertion side (running in the function scope)
+    # sees only the ~/.polecat default. The sentinel lands in ~/.aops/crew/
+    # but the test searches ~/.polecat — false negative.
+    #
+    # Tests that need POLECAT_HOME isolation set it explicitly via
+    # `monkeypatch.setenv("POLECAT_HOME", str(tmp_path))` (see e.g.
+    # tests/polecat/test_worktree_exclude_refspecs.py, test_bootstrap.py).
+    # That setenv still wins after this fixture runs.
     scrub_keys = {
         "AOPS_HOOK_LOG_PATH",
         "CLAUDE_PROJECT_DIR",
-        "POLECAT_HOME",
         "AOPS_SESSION_ID",
         "AOPS_SESSION_STATE_DIR",
         "AOPS_SRC_DIR",
