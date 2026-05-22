@@ -2149,7 +2149,21 @@ class SessionProcessor:
         summary.provider = (
             summary.provider or session_naming.infer_provider_from_path(file_path) or "claude"
         )
-        summary.crew = summary.crew or os.environ.get("POLECAT_CREW_NAME")
+        # Crew identity is data-about-the-session, not data-about-the-runtime.
+        # Never fall back to POLECAT_CREW_NAME — for offline conversions (e.g.
+        # sync_gha_sessions.py running inside a crew worker), the env reflects
+        # the *transcribing* process, not the original session, and would taint
+        # GHA-sourced transcripts with a bogus crew label (issue #768).
+        #
+        # Path-based inference via infer_session_origin_from_path is the only
+        # correct signal: it returns crew=None for github/, polecats/, and
+        # gemini paths, and only sets crew when the path is under crew/<name>/.
+        # The filename-derived parsed.crew (set above) covers shortform names.
+        if not summary.crew:
+            origin = session_naming.infer_session_origin_from_path(
+                file_path, provider=summary.provider
+            )
+            summary.crew = origin.get("crew")
         if not summary.repo:
             # We can't use get_repo_name() safely here as it might be a different repo
             # than the one we are running in.
