@@ -30,7 +30,7 @@ class TestCrewAgentArgsPassthrough:
 
     def test_dash_p_reaches_agent_args(self):
         """Regression: -p was stolen by the extra positional before the fix."""
-        params = _parse_crew("-g", "aops", "--", "-p", "reply OK")
+        params = _parse_crew("--model", "gemini", "aops", "--", "-p", "reply OK")
         assert "-p" in params["agent_args"], (
             f"-p missing from agent_args={params['agent_args']!r} — "
             "the extra positional arg is probably stealing flag-shaped tokens again"
@@ -39,7 +39,7 @@ class TestCrewAgentArgsPassthrough:
 
     def test_dash_p_order_preserved(self):
         """Flag must precede its value."""
-        params = _parse_crew("-g", "aops", "--", "-p", "reply OK")
+        params = _parse_crew("--model", "gemini", "aops", "--", "-p", "reply OK")
         args = list(params["agent_args"])
         assert args.index("-p") < args.index("reply OK")
 
@@ -50,7 +50,7 @@ class TestCrewAgentArgsPassthrough:
 
     def test_target_is_correct(self):
         """target receives the project alias, not a flag token."""
-        params = _parse_crew("-g", "aops", "--", "-p", "reply OK")
+        params = _parse_crew("--model", "gemini", "aops", "--", "-p", "reply OK")
         assert params["target"] == "aops"
 
     def test_multiple_passthrough_flags(self):
