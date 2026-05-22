@@ -73,9 +73,11 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
       ```bash
       state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
-      sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID:-unknown}}"
-      binding_file="$state_dir/${sid}-bound-task.txt"
-      bound_task_id="$(cat "$binding_file" 2>/dev/null | head -n1 | tr -d '[:space:]')"
+      sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
+      bound_task_id=""
+      if [ -n "$sid" ]; then
+        bound_task_id="$(cat "$state_dir/${sid}-bound-task.txt" 2>/dev/null | head -n1 | tr -d '[:space:]')"
+      fi
       ```
 
       If `$bound_task_id` is non-empty, use it as the `id=` for `release_task` in step 3. This is the **primary signal** — prefer it over any inference from session activity.
@@ -135,7 +137,11 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    - **On success, clean up the binding file** so a subsequent `/end_session` invocation in the same session (e.g. the gate reopens after follow-up edits) doesn't re-complete the same task:
 
      ```bash
-     rm -f "$binding_file"   # $binding_file as resolved in step 0
+     sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
+     if [ -n "$sid" ]; then
+       state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
+       rm -f "$state_dir/${sid}-bound-task.txt"
+     fi
      ```
 
      Skip cleanup if `release_task` failed — the next invocation will retry against the same binding.

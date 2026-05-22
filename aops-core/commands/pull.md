@@ -50,10 +50,12 @@ After a task is claimed (either via queue selection or explicit `/pull <task-id>
 Write the claimed task ID to a per-session state file using Bash:
 
 ```bash
-state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
-mkdir -p "$state_dir"
-sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID:-unknown}}"
-printf '%s\n' "<task-id>" > "$state_dir/${sid}-bound-task.txt"
+sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
+if [ -n "$sid" ]; then
+  state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
+  mkdir -p "$state_dir"
+  printf '%s\n' "<task-id>" > "$state_dir/${sid}-bound-task.txt"
+fi
 ```
 
 Substitute `<task-id>` with the claimed task's ID. The file's lifecycle is:
@@ -62,7 +64,7 @@ Substitute `<task-id>` with the claimed task's ID. The file's lifecycle is:
 - Read by `/end_session` to determine the bound task when `$AOPS_SESSION_ID` alone is not sufficient.
 - Deleted by `/end_session` after a successful `release_task`.
 
-If `$AOPS_SESSION_ID` (or its Gemini equivalent) is not set, fall back to the literal session-id `unknown` — that's better than dropping the binding silently. The fallback file will still be picked up by the matching `/end_session` in the same session.
+If neither `$AOPS_SESSION_ID` nor `$GEMINI_SESSION_ID` is set, skip writing the binding file — it is better to fall back to ad-hoc task creation than to risk completing the wrong task due to a session ID collision from using a generic fallback filename.
 
 If a binding file already exists for this session (e.g. `/pull` invoked twice), overwrite it with the new task id — the most recent claim wins.
 
