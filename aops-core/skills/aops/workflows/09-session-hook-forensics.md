@@ -45,7 +45,7 @@ for l in sys.stdin:
    - Hook JSONL (Gemini): `~/.gemini/tmp/<workspace>/logs/<unified>-hooks.jsonl`
    - Polecat-worker hooks: `$POLECAT_HOME/polecats/<task-id>/<workspace>/<session-id>-hooks.jsonl`
    - Session state: `$AOPS_SESSION_STATE_DIR/<YYYYMMDD>-<HH>-<session-short-hash>.json`
-   - Transcript: `$AOPS_SESSIONS/transcripts/*<session-short-hash>*-full.md`
+   - Transcript: `$AOPS_SESSIONS/transcripts/{,*/}*<session-short-hash>*-full.md` (recent at top level; older sharded into `yyyy-mm/` subdirs — use `find $AOPS_SESSIONS/transcripts -name '*<session-short-hash>*-full.md'` to cover both)
    - See [[forensics-details]] for full path conventions and cross-reference guide.
    - **Note**: hooks live next to their session stream (PKB kb-d8f58167). There is no longer a flat `$AOPS_SESSIONS/hooks/` directory.
 

@@ -204,7 +204,7 @@ Common failure patterns map to axiom violations:
 
 1. **Surface**: "It wasn't run" → **Push deeper**
 2. **Git forensics**: `git log -- sessions/YYYYMMDD-daily.md` - found commits exist
-3. **Transcript search**: `grep "transcript.py" transcripts/*.md` - found invocation by Stop hook
+3. **Transcript search**: `grep -r "transcript.py" transcripts/` (recursive, covers both top-level and rotated `yyyy-mm/` subdirs) - found invocation by Stop hook
 4. **Error extraction**: Found `AttributeError: 'SessionInfo' has no 'start_time'`
 5. **Verification**: Ran code to confirm `start_time` doesn't exist on `SessionInfo`
 6. **Axiom violation**: Agent worked around error (AXIOM #8 violation) instead of halting

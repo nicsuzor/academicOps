@@ -1413,6 +1413,44 @@ def _build_docker_cmd(
         # This ensures hooks.jsonl and state JSON land in the host session_dir.
         cmd.extend(["-e", f"AOPS_SESSION_STATE_DIR={session_container_path}"])
 
+        # Stamp AOPS_HOOK_LOG_PATH and AOPS_GATE_FILE_<GATE> so they're visible
+        # to in-container subprocesses (e.g. `docker exec env`) and to gate /
+        # hook code paths that may run BEFORE the in-container SessionStart
+        # hook fires (e.g. polecat-run task workers — issue #1196). The
+        # SessionStart hook in aops-core/hooks/session_env_setup.py overrides
+        # these with session-id-anchored filenames via CLAUDE_ENV_FILE once
+        # Claude's session_id is known; until then these placeholder paths
+        # (still inside the same session-state dir) keep the env complete and
+        # are valid writable targets. Gemini sessions, which have no
+        # SessionStart hook, keep these placeholders for the whole session.
+        #
+        # Without this, the polecat-run code path silently dispatched workers
+        # with no AOPS_GATE_FILE_ENFORCER even when the host had it set under
+        # a different session — crew dispatch from an interactive Claude shell
+        # inherited the host's values, but polecat-run dispatch from cron did
+        # not. The asymmetry is what #1196 reported.
+        #
+        # Only stamp placeholders when the host env DOES NOT already provide a
+        # value — that way the existing AOPS_* prefix forwarding above wins
+        # for sessions that inherit a real, session-id-anchored value from
+        # the dispatching host (e.g. interactive Claude shell launching crew).
+        from lib.session_paths import GATE_NAMES
+
+        polecat_base = "polecat-session"
+        if not env.get("AOPS_HOOK_LOG_PATH"):
+            cmd.extend(
+                ["-e", f"AOPS_HOOK_LOG_PATH={session_container_path}/{polecat_base}-hooks.jsonl"]
+            )
+        for gate_name in GATE_NAMES:
+            gate_env = f"AOPS_GATE_FILE_{gate_name.upper()}"
+            if not env.get(gate_env):
+                cmd.extend(
+                    [
+                        "-e",
+                        f"{gate_env}={session_container_path}/{polecat_base}-{gate_name}.md",
+                    ]
+                )
+
         if session_volume:
             # For volumes, we still mount to the parent so multiple projects can coexist if needed
             vol_target = (

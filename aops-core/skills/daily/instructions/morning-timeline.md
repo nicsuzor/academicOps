@@ -25,7 +25,7 @@ The failure mode this avoids: omitting `## Today's Log` entirely on morning runs
 
 Render Morning Timeline when **all** of the following hold:
 
-1. The work date has at least one interactive session (i.e. `$AOPS_SESSIONS/transcripts/YYYYMMDD-*-abridged.md` exists where YYYYMMDD = today and the session is `client: claude-code` or `client: claude-desktop` — not a worker session).
+1. The work date has at least one interactive session (i.e. `$AOPS_SESSIONS/transcripts/{,*/}YYYYMMDD-*-abridged.md` exists where YYYYMMDD = today and the session is `client: claude-code` or `client: claude-desktop` — not a worker session). Transcripts may be at the top level (recent) or in a `yyyy-mm/` rotated subdir.
 2. No end-of-day reflection has been written for the work date yet (no `## Framework Reflection` block in the note; no `[[work-summary]]` end-of-day block).
 3. The `/daily` invocation is happening during the work day (call time is the same calendar date as the work date).
 
@@ -40,7 +40,9 @@ When any of the above fails:
 Read **abridged** transcripts only (full transcripts are too large):
 
 ```
-$AOPS_SESSIONS/transcripts/YYYYMMDD-*-abridged.md
+# Recent (today's) transcripts are at the top level; older ones are rotated into yyyy-mm/ subdirs.
+# Use a find that covers both layouts:
+find $AOPS_SESSIONS/transcripts -maxdepth 2 -name 'YYYYMMDD-*-abridged.md'
 ```
 
 Filter:
