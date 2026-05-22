@@ -130,9 +130,7 @@ def _push_stale_polecat_branch(
 
     _git(["checkout", "main"], cwd=seed)
     for i in range(commits):
-        (seed / f"main_advance_{task_id}_{i}.txt").write_text(f"main {i}\n")
-        _git(["add", "."], cwd=seed)
-        _git(["commit", "-m", f"main advance {i}"], cwd=seed)
+        _git(["commit", "--allow-empty", "-m", f"main advance {i}"], cwd=seed)
     _git(["push", "origin", "main"], cwd=seed)
 
     return branch_sha

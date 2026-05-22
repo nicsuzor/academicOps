@@ -104,11 +104,28 @@ def _git_build_metadata(aops_root: Path) -> str:
 
 
 def _with_build_metadata(version: str, aops_root: Path) -> str:
-    """Append `+g<sha>[.dirty]` if not already present."""
+    """Append `+g<sha>[.dirty]` if not already present.
+
+    If the working tree is dirty AND the input version has no pre-release
+    identifier, the dirty marker is promoted into a pre-release suffix that
+    bumps the patch (so `0.3.27` + dirty → `0.3.28-dev.0+g<sha>.dirty`).
+    Without this, a dirty build at a clean stable tag would produce e.g.
+    `0.3.27+g<sha>.dirty`, which semver §10 treats as equal precedence to
+    `0.3.27` itself — meaning a build accidentally tagged as a release
+    would beat every legitimate `-dev.N` pre-release downstream. See the
+    `v0.3.27+g39ac1ed9.dirty` release incident on nicsuzor/aops.
+    """
     if "+" in version:
         return version
     meta = _git_build_metadata(aops_root)
-    return f"{version}+{meta}" if meta else version
+    if not meta:
+        return version
+    if ".dirty" in meta and "-" not in version:
+        v_parts = version.split(".")
+        if len(v_parts) == 3 and all(p.isdigit() for p in v_parts):
+            major, minor, patch = v_parts
+            version = f"{major}.{minor}.{int(patch) + 1}-dev.0"
+    return f"{version}+{meta}"
 
 
 def get_project_version(aops_root: Path) -> str:
