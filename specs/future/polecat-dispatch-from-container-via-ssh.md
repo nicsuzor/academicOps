@@ -2,7 +2,7 @@
 id: polecat-dispatch-from-container-via-ssh
 title: Dispatching polecats from a containerised orchestrator — SSH-tmux, not DinD
 type: spec
-status: proposed
+status: accepted
 tier: core
 depends_on: []
 supersedes: [aops-junior-container-plan-section-3]
