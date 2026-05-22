@@ -390,6 +390,72 @@ class TestBuildDockerCmd:
         assert "ENFORCER_GATE_MODE=warn" in env_args
 
     @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
+    def test_hook_log_and_gate_file_env_stamped_when_host_unset(self, cli_tool):
+        """Issue #1196: polecat-run dispatched from cron has no host
+        AOPS_HOOK_LOG_PATH / AOPS_GATE_FILE_ENFORCER. _build_docker_cmd must
+        stamp placeholder paths inside the container session_state_dir so the
+        in-container env (visible to `docker exec env` and to subprocesses
+        running before SessionStart) has these vars set. Without this, the
+        run path silently degraded vs the crew path (which inherited host
+        values from an interactive Claude shell)."""
+        from lib.session_paths import GATE_NAMES
+
+        cmd = self._build(cli_tool=cli_tool, env={})
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+
+        # AOPS_SESSION_STATE_DIR must be set first (anchor for the rest).
+        state_dir_entries = [a for a in env_args if a.startswith("AOPS_SESSION_STATE_DIR=")]
+        assert len(state_dir_entries) == 1, (
+            f"Expected exactly one AOPS_SESSION_STATE_DIR entry, got: {state_dir_entries}"
+        )
+        state_dir = state_dir_entries[0].split("=", 1)[1]
+
+        # Hook log path stamped, prefixed by the container session_state_dir.
+        hook_log_entries = [a for a in env_args if a.startswith("AOPS_HOOK_LOG_PATH=")]
+        assert len(hook_log_entries) == 1, (
+            f"Expected AOPS_HOOK_LOG_PATH to be stamped, got: {hook_log_entries}"
+        )
+        assert hook_log_entries[0].startswith(f"AOPS_HOOK_LOG_PATH={state_dir}/")
+
+        # Each gate name gets a gate-file env var.
+        for gate in GATE_NAMES:
+            key = f"AOPS_GATE_FILE_{gate.upper()}"
+            gate_entries = [a for a in env_args if a.startswith(f"{key}=")]
+            assert len(gate_entries) == 1, f"Expected {key} to be stamped, got: {gate_entries}"
+            assert gate_entries[0].startswith(f"{key}={state_dir}/")
+
+    @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
+    def test_hook_log_and_gate_file_env_respect_host(self, cli_tool):
+        """When the host already supplies AOPS_HOOK_LOG_PATH /
+        AOPS_GATE_FILE_<NAME> (e.g. crew dispatched from an interactive Claude
+        shell where SessionStart already populated CLAUDE_ENV_FILE), the
+        forwarded host value must win — no placeholder collision. Docker uses
+        the LAST `-e KEY=VAL` for duplicate keys, so the placeholder must be
+        suppressed entirely when the host value is present."""
+        from lib.session_paths import GATE_NAMES
+
+        host_hook = "/home/user/.claude/projects/-w/20260522-1200-abcd-q-h-session-hooks.jsonl"
+        host_gate = "/home/user/.claude/projects/-w/20260522-1200-abcd-q-h-session-enforcer.md"
+        env = {
+            "AOPS_HOOK_LOG_PATH": host_hook,
+            **{f"AOPS_GATE_FILE_{g.upper()}": host_gate for g in GATE_NAMES},
+        }
+        cmd = self._build(cli_tool=cli_tool, env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+
+        # Host value forwarded; placeholder suppressed.
+        hook_entries = [a for a in env_args if a.startswith("AOPS_HOOK_LOG_PATH=")]
+        assert hook_entries == [f"AOPS_HOOK_LOG_PATH={host_hook}"], (
+            f"Expected host AOPS_HOOK_LOG_PATH to win, got: {hook_entries}"
+        )
+        for gate in GATE_NAMES:
+            key = f"AOPS_GATE_FILE_{gate.upper()}"
+            gate_entries = [a for a in env_args if a.startswith(f"{key}=")]
+            assert gate_entries == [f"{key}={host_gate}"], (
+                f"Expected host {key} to win, got: {gate_entries}"
+            )
+
+    @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
     def test_gemini_api_key_forwarded_for_any_cli_tool(self, cli_tool):
         """GEMINI_API_KEY is conf-driven now — forwarded for any cli_tool.
 
