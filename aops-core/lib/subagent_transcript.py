@@ -393,7 +393,7 @@ def write_subagent_transcripts(
             transcript_path=transcript_path,
         )
         try:
-            write_insights_file(insights_path, insights, session_id=None)
+            write_insights_file(insights_path, insights, session_id=invocation_id)
         except Exception:  # noqa: BLE001
             # Insights are best-effort; the transcript itself is the
             # primary artefact and must not be invalidated by an
@@ -447,9 +447,9 @@ def _inject_parent_link_into_frontmatter(
     inject = (
         f"artifact_type: subagent\n"
         f"parent_session_id: {parent_session_id}\n"
-        f"parent_session_file: {parent_session_path}\n"
+        f'parent_session_file: "{parent_session_path}"\n'
         f"invocation_id: {invocation_id}\n"
-        f"subagent_type: {subagent_type or 'unknown'}\n"
+        f'subagent_type: "{subagent_type or "unknown"}"\n'
     )
     fm = parts[1].rstrip("\n") + "\n" + inject
     return f"---\n{fm}---\n{parts[2]}"
@@ -496,10 +496,10 @@ def render_parent_subagent_footer(
         if art.transcript_path is None:
             continue
         try:
-            rel = os.path.relpath(art.transcript_path, parent_dir)
+            rel = os.path.relpath(art.transcript_path, parent_dir).replace(os.sep, "/")
         except ValueError:
             # Different drives on Windows; fall back to absolute.
-            rel = str(art.transcript_path)
+            rel = str(art.transcript_path).replace(os.sep, "/")
         ts_str = (
             art.first_timestamp.astimezone().strftime("%Y-%m-%d %H:%M")
             if art.first_timestamp
