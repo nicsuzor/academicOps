@@ -806,25 +806,60 @@ class HookRouter:
         """Format for Claude Code."""
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
+
+            # Channel routing for Stop/SessionEnd (see aops-d10e7db6):
+            # - `reason` feeds the advisory to the agent when decision=="block"
+            #   (Claude Code Stop hook API: `reason` = "Feedback for Claude",
+            #   `systemMessage` = "Warning message for user", `stopReason` =
+            #   "Not shown to Claude"). This routing is per the Claude Code
+            #   Python SDK TypedDict; behaviour may differ for other clients.
+            # - `stopReason` and `systemMessage` are user-visible only —
+            #   do NOT route advisory/recovery text here.
+            #
+            # Advisory/recovery context (the <SYSTEM HOOK INSTRUCTION> block)
+            # MUST land in the agent's context. The only Stop channel that
+            # achieves that is decision=="block" + reason. WARN-with-context
+            # therefore upgrades the *output* decision to "block" at the output
+            # layer so the advisory reaches the agent. The internal verdict
+            # stays "warn" — the stop-block safety net (auto-approve after
+            # 5 blocks in 2 minutes) keys on the internal verdict field, not
+            # on this output decision, so routine RBG advisories do not trip it.
+            #
+            # `additionalContext` via hookSpecificOutput is emitted
+            # defensively for forward compatibility — newer Claude Code
+            # versions may honour it for Stop; older versions ignore it.
+            ctx_inj = result.context_injection
+            sys_msg = result.system_message
+
             if result.verdict == "deny":
                 output.decision = "block"
+                if ctx_inj:
+                    output.reason = ctx_inj
+            elif result.verdict == "warn" and ctx_inj:
+                # Upgrade output decision to "block" so the advisory lands in
+                # the agent's context on the next turn. The internal verdict
+                # remains "warn" — only the Claude Code output decision field
+                # changes here, not the router's internal safety-net counter.
+                output.decision = "block"
+                output.reason = ctx_inj
             else:
                 output.decision = "approve"
 
-            if result.context_injection:
-                output.reason = result.context_injection
+            # sys_msg is a short, user-facing summary (denial reason, banner).
+            # Surface via user-visible channels only. Do NOT echo ctx_inj here
+            # — that was the channel that leaked advisory text to the user
+            # transcript (aops-d10e7db6).
+            if sys_msg:
+                output.stopReason = sys_msg
+                output.systemMessage = sys_msg
 
-            if result.system_message:
-                output.stopReason = result.system_message
-                output.systemMessage = result.system_message
-
-            # WARN on Stop: `reason` is only surfaced when decision=="block".
-            # For approve decisions the agent never sees it, so copy the
-            # reminder into systemMessage so it lands in the agent's context
-            # regardless of block/approve. (#338 WARN inertia)
-            if result.verdict == "warn" and result.context_injection and not result.system_message:
-                output.stopReason = result.context_injection
-                output.systemMessage = result.context_injection
+            # Forward-compatible: also emit additionalContext for Stop.
+            # Newer Claude Code versions may route this into agent context;
+            # older versions silently ignore the unknown field.
+            if ctx_inj:
+                output.hookSpecificOutput = ClaudeHookSpecificOutput(
+                    hookEventName=event, additionalContext=ctx_inj
+                )
 
             return output
 

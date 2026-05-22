@@ -239,42 +239,57 @@ class TestMidEditDeferral:
 
 
 # ===========================================================================
-# #338 – WARN inertia: WARN on Stop surfaces via systemMessage
+# #338 – WARN inertia: WARN on Stop surfaces in AGENT context, not user chat
+#
+# Originally fixed in #1187 by copying context_injection into stopReason +
+# systemMessage. That channel turned out to be user-visible only — the
+# advisory leaked to the user transcript while the agent saw nothing
+# (aops-d10e7db6). Correct routing: WARN-with-context upgrades to
+# decision="block" + reason so the agent reads the advisory on its next
+# turn. The internal verdict stays "warn" so the safety net (auto-approve
+# after 5 blocks/2min) is not tripped by routine RBG advisories.
 # ===========================================================================
 
 
 class TestWarnStopSurface:
-    """WARN verdicts on Stop events must surface content via systemMessage."""
+    """WARN verdicts on Stop events must reach the agent, not the user."""
 
-    def test_warn_stop_sets_system_message(self, router):
-        """WARN on Stop (e.g. IDA gate) must populate systemMessage."""
+    def test_warn_stop_routes_advisory_to_agent(self, router):
+        """WARN on Stop with context_injection routes to agent via decision=block + reason."""
 
-        # Build a WARN result that mimics IDA reminder
+        # Build a WARN result that mimics IDA / RBG advisory
         warn_result = GateResult.warn(
             system_message=None,
             context_injection="<SYSTEM HOOK INSTRUCTION>Proof required</SYSTEM HOOK INSTRUCTION>",
         )
-        # Simulate canonical output for Stop event
         canonical = router._gate_result_to_canonical(warn_result)
 
         output = router.output_for_claude(canonical, "Stop")
 
-        # For WARN on Stop: decision must be approve, NOT block
-        assert output.decision == "approve"
-        # Content must surface via systemMessage so agent sees it
-        assert output.systemMessage, (
-            "WARN on Stop must set systemMessage so the agent sees the reminder. "
-            f"systemMessage={output.systemMessage!r}"
+        # decision="block" is the only Stop channel that feeds text to the agent
+        assert output.decision == "block", (
+            "WARN on Stop with advisory must upgrade to decision=block so the "
+            "agent reads the advisory on its next turn (aops-d10e7db6). "
+            f"got decision={output.decision!r}"
         )
+        assert output.reason == "<SYSTEM HOOK INSTRUCTION>Proof required</SYSTEM HOOK INSTRUCTION>"
+        # Must NOT leak the advisory to user-visible channels.
+        assert output.stopReason is None or "SYSTEM HOOK INSTRUCTION" not in (
+            output.stopReason or ""
+        ), "Advisory must not leak into user-visible stopReason"
+        assert output.systemMessage is None or "SYSTEM HOOK INSTRUCTION" not in (
+            output.systemMessage or ""
+        ), "Advisory must not leak into user-visible systemMessage"
 
-    def test_warn_stop_does_not_block(self, router):
-        """WARN on Stop must approve — not block — the stop."""
+    def test_warn_stop_without_context_does_not_block(self, router):
+        """WARN on Stop without context_injection must still approve."""
         warn_result = GateResult.warn(
-            system_message=None,
-            context_injection="some reminder",
+            system_message="just a note",
+            context_injection=None,
         )
         canonical = router._gate_result_to_canonical(warn_result)
         output = router.output_for_claude(canonical, "Stop")
+        # No advisory payload → no need to upgrade to block
         assert output.decision == "approve"
 
     def test_deny_stop_still_blocks(self, router):
@@ -286,15 +301,21 @@ class TestWarnStopSurface:
         canonical = router._gate_result_to_canonical(deny_result)
         output = router.output_for_claude(canonical, "Stop")
         assert output.decision == "block"
+        # Advisory in reason (agent-visible); short summary in stopReason
+        # (user-visible).
+        assert output.reason == "please run /end-session"
+        assert output.stopReason == "Handover required"
 
-    def test_warn_stop_with_system_message_uses_stop_reason(self, router):
-        """WARN on Stop with a system_message routes it to stopReason."""
+    def test_warn_stop_with_only_system_message_user_facing(self, router):
+        """WARN on Stop with only system_message (no advisory) stays user-facing."""
         warn_result = GateResult.warn(
             system_message="Reminder: show your work",
             context_injection=None,
         )
         canonical = router._gate_result_to_canonical(warn_result)
         output = router.output_for_claude(canonical, "Stop")
+        # system_message-only WARN is a short user-facing note — no upgrade.
+        assert output.decision == "approve"
         assert output.stopReason == "Reminder: show your work"
         assert output.systemMessage == "Reminder: show your work"
 
@@ -309,6 +330,22 @@ class TestWarnStopSurface:
         assert output.hookSpecificOutput is not None
         assert output.hookSpecificOutput.additionalContext == "watch out"
         assert output.hookSpecificOutput.permissionDecision == "allow"
+
+    def test_warn_stop_emits_forward_compatible_additional_context(self, router):
+        """WARN on Stop also emits hookSpecificOutput.additionalContext for forward-compat."""
+        warn_result = GateResult.warn(
+            system_message=None,
+            context_injection="<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>",
+        )
+        canonical = router._gate_result_to_canonical(warn_result)
+        output = router.output_for_claude(canonical, "Stop")
+        # Defensive: newer Claude Code versions may honour this on Stop.
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.hookEventName == "Stop"
+        assert (
+            output.hookSpecificOutput.additionalContext
+            == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
+        )
 
 
 # ===========================================================================
