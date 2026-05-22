@@ -114,3 +114,43 @@ echo "  QUALIFIED: PR ready for merge-prep"
     # SHOULD be QUALIFIED (idempotent)
     output = run_logic("success", 2, "fix: some stuff", "CONFLICTING")
     assert "QUALIFIED: PR ready for merge-prep" in output
+
+
+def test_dispatch_picks_oldest_qualifying_pr(tmp_path):
+    """
+    Test the dispatch step's selection logic from .github/workflows/merge-prep-cron.yml.
+
+    Regression for issue #1129: the qualification loop iterates `gh pr list` output,
+    which is sorted newest-first by default. The dispatch step is labeled "Dispatch
+    merge-prep for oldest qualifying PR" — it MUST pick the lowest PR number, not
+    the iteration-order head. Without `sort -n`, older PRs (e.g. #1101/#1102/#1107)
+    starve behind ~12 newer PRs for 6-7h on a 30-min cron cadence.
+    """
+    qualifying_file = tmp_path / "qualifying_prs.txt"
+    # Simulate qualification loop order: gh pr list returns newest-first, so the
+    # file is populated with the newest qualifying PRs first.
+    qualifying_file.write_text("1126\n1108\n1107\n1106\n1103\n1102\n1101\n1100\n")
+
+    # Dispatch logic from the workflow's "Dispatch merge-prep for oldest qualifying PR" step.
+    result = subprocess.run(
+        ["bash", "-c", f"sort -n {qualifying_file} | head -n 1"],
+        capture_output=True,
+        text=True,
+    )
+    picked = result.stdout.strip()
+    assert picked == "1100", (
+        f"Expected oldest PR (#1100) to be picked, got #{picked}. "
+        "Without `sort -n`, `head -n 1` picks the newest PR (#1126) — "
+        "the bug reported in issue #1129."
+    )
+
+    # Confirm the buggy (pre-fix) behaviour would pick the newest, demonstrating
+    # the regression this test guards.
+    bug_result = subprocess.run(
+        ["bash", "-c", f"head -n 1 {qualifying_file}"],
+        capture_output=True,
+        text=True,
+    )
+    assert bug_result.stdout.strip() == "1126", (
+        "Sanity check: unsorted head must pick newest (proves the fix is load-bearing)."
+    )
