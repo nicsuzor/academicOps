@@ -67,16 +67,22 @@ jobs:
         timeout-minutes: 1
         run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
 
+      - name: Validate ruleset alignment (initial)
+        id: validate-initial
+        continue-on-error: true
+        timeout-minutes: 1
+        run: ./scripts/validate-ruleset-alignment.sh
+
       # Autofix and push if any check found problems (PRs and workflow_dispatch)
       - name: Autofix lint and formatting
-        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure')
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.validate-initial.outcome == 'failure')
         timeout-minutes: 3
         run: |
           uv run ruff check --fix || true
           uv run ruff format
 
       - name: Commit and push fixes
-        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.normalize-initial.outcome == 'failure')
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.normalize-initial.outcome == 'failure' || steps.validate-initial.outcome == 'failure')
         timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
@@ -104,3 +110,8 @@ jobs:
         if: steps.normalize-initial.outcome == 'failure'
         timeout-minutes: 1
         run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
+
+      - name: Validate ruleset alignment (final)
+        if: steps.validate-initial.outcome == 'failure'
+        timeout-minutes: 1
+        run: ./scripts/validate-ruleset-alignment.sh

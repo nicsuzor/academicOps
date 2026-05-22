@@ -454,7 +454,7 @@ The framework **does not import** or otherwise reference `examples/python-mechan
 A consumer repo installs **only the agents it wants**. Each agent has its own one-file shim. Example: install enforcer + alignment but not mechanic (consumer prefers human merge-prep):
 
 ```yaml
-# consumer-repo/.github/workflows/triggers/enforcer.yml
+# consumer-repo/.github/workflows/trigger-enforcer.yml
 name: "Trigger: Enforcer"
 on:
   pull_request:
@@ -472,7 +472,7 @@ jobs:
 ```
 
 ```yaml
-# consumer-repo/.github/workflows/triggers/alignment.yml
+# consumer-repo/.github/workflows/trigger-alignment.yml
 name: "Trigger: Alignment"
 on:
   pull_request:
@@ -488,12 +488,12 @@ jobs:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 ```
 
-The triggers/ directory is the **only** consumer-side concern. Each shim is one job, one `uses:`, one set of inputs/secrets. Add or remove an agent by adding or deleting a shim file — no wider workflow rewrite.
+The consumer places these shims directly in the `.github/workflows/` directory. **Do not use a `triggers/` subdirectory**; GitHub Actions ignores nested workflow files, which leads to silent failure (where the agent doesn't run) or loud failure (if branch protection requires the status check). Each shim is one job, one `uses:`, one set of inputs/secrets. Add or remove an agent by adding or deleting a shim file — no wider workflow rewrite.
 
-Mechanical CI is consumer-owned (§6), so consumer triggers/ also contains whatever shape that takes:
+Mechanical CI is consumer-owned (§6), so the consumer's mechanical workflow also lives in `.github/workflows/`:
 
 ```yaml
-# consumer-repo/.github/workflows/triggers/mechanical.yml
+# consumer-repo/.github/workflows/trigger-mechanical.yml
 on:
   pull_request: { types: [opened, synchronize, ready_for_review, reopened] }
 jobs:

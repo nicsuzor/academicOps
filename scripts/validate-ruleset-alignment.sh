@@ -60,6 +60,19 @@ echo ""
 
 # ── Extract job names from workflow files ────────────────────────────────────
 
+# ── Check for workflow files in subdirectories ───────────────────────────────
+echo "Checking for workflow files in subdirectories..."
+NESTED_YML=$(find "$WORKFLOWS_DIR" -mindepth 2 -name "*.yml" || true)
+if [[ -n "$NESTED_YML" ]]; then
+  echo "FAILED: GitHub Actions does not support workflow files in subdirectories."
+  echo "The following files will be silently ignored by GitHub:"
+  echo "$NESTED_YML" | while read -r f; do echo "  - $f"; done
+  echo "Fix: Move these files to the root of $WORKFLOWS_DIR."
+  exit 1
+fi
+echo "OK: No nested workflow files found."
+echo ""
+
 echo "Scanning workflow job names in $WORKFLOWS_DIR..."
 ALL_JOB_NAMES=$(grep -rh "^  [a-z].*:$\|^    name:" "$WORKFLOWS_DIR"/*.yml 2>/dev/null \
   | grep "^    name:" \
@@ -87,6 +100,19 @@ while IFS= read -r required; do
   done
 
   if [[ "$is_api_driven" == "true" ]]; then
+    if [[ "$required" == "enforcer-status" ]]; then
+      if ! grep -q "agent-enforcer.yml" "$WORKFLOWS_DIR"/*.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but no workflow in $WORKFLOWS_DIR calls agent-enforcer.yml!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    elif [[ "$required" == "alignment-status" ]]; then
+      if ! grep -q "agent-alignment.yml" "$WORKFLOWS_DIR"/*.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but no workflow in $WORKFLOWS_DIR calls agent-alignment.yml!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    fi
     echo "  ✓ '$required' — API-driven commit status (set via GitHub Statuses API, not a job name)"
     continue
   fi
