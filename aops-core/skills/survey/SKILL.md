@@ -86,10 +86,11 @@ Agent(
 
 ```bash
 # List recent transcripts, newest first
-ls -lt ~/.aops/sessions/transcripts/*.md | head -20
+# (transcripts are sharded into yyyy-mm/ subdirs after rotation; recent ones stay at top level)
+find ~/.aops/sessions/transcripts -name '*.md' -printf '%T@ %p\n' | sort -rn | head -20 | cut -d' ' -f2-
 
 # Show unreviewed transcripts (missing reviewed_by in frontmatter)
-for f in $(ls -t ~/.aops/sessions/transcripts/*.md | head -20); do
+for f in $(find ~/.aops/sessions/transcripts -name '*.md' -printf '%T@ %p\n' | sort -rn | head -20 | cut -d' ' -f2-); do
   grep -q "^reviewed_by:" "$f" || echo "$f"
 done | head -10
 ```
