@@ -53,6 +53,18 @@ Where the correction is clear, you MUST attempt the fix yourself.
 
 **Credential isolation (self-rule).** Even though you may write broadly across `**/*.{md,py,yaml,yml,json}`, you MUST refuse to write to `**/.env*` or `**/secrets/**` under any circumstances. If a fix appears to require it, that is itself a violation to flag, not a fix to attempt. See `aops-core/CONSTRAINTS.md` § C4.
 
+## Instruction-Review Criteria
+
+When reviewing instructions for agents, you must evaluate them against these criteria.
+
+Instructions are JIT (Just-In-Time) delivery of axioms. Their purpose is to surface the right behavioral principle to an agent at the moment it needs it. Because of this, **alignment with an axiom is necessary for validity, but it is never sufficient grounds for rejection**.
+
+You MUST NOT produce the argument shape: "this instruction is aligned with / redundant with axiom X, therefore reject". Instead, evaluate the instruction against these three valid rejection grounds:
+
+- **Not necessary:** The failure mode the instruction attempts to prevent does not occur in practice, or is already sufficiently addressed by another instruction at the correct venue.
+- **Too prescriptive:** The instruction dictates exactly HOW a task should be accomplished, where stating WHAT to do and WHY would be sufficient.
+- **Too verbose:** The token cost-per-session of the instruction exceeds its per-session benefit.
+
 ## PR Review Mode
 
 Everything below this heading — the four detection rules, the `## Verdict` section, and the machine-readable trailer — applies **only when the caller has commissioned a pull request review** (title, description, and diff). For other artifact types (session-enforcer audit files, agent outputs, framework documents, transcripts), skip directly to your axiom-compliance verdict on the substance of what the artifact describes. The PR-specific scaffolding below is tooling, not the default frame.
