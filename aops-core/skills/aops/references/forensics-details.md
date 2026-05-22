@@ -66,17 +66,17 @@ This is the most important field for forensics. Written by `unified_logger.py:69
 
 All session artefacts share one base name `<base> = {date}-{time}-{shorthash}-{shortform}-{slug}` where `<shortform>` is `{crew?}-{repo}-{provider}` (e.g. `gloria-academicops-gemini`):
 
-| Artifact                        | Location                           | Pattern                         |
-| ------------------------------- | ---------------------------------- | ------------------------------- |
-| Session state                   | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session.json`           |
-| Hook JSONL                      | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session-hooks.jsonl`    |
-| Enforcer audit                  | `$AOPS_SESSION_STATE_DIR/`         | `<base>-session-enforcer.md`    |
-| DEBUG_HOOKS dump                | `$AOPS_SESSION_STATE_DIR/`         | `cc_hooks_<session-uuid>.jsonl` |
-| Provider session JSONL (Claude) | `~/.claude/projects/<workspace>/`  | `<session-uuid>.jsonl`          |
-| Provider session JSONL (Gemini) | `~/.gemini/tmp/<workspace>/chats/` | `session-*.jsonl`               |
-| Transcript (full)               | `$AOPS_SESSIONS/transcripts/`      | `<base>-full.md`                |
-| Transcript (abridged)           | `$AOPS_SESSIONS/transcripts/`      | `<base>-abridged.md`            |
-| Summary                         | `$AOPS_SESSIONS/summaries/`        | `<base>.json`                   |
+| Artifact                        | Location                                                                           | Pattern                         |
+| ------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------- |
+| Session state                   | `$AOPS_SESSION_STATE_DIR/`                                                         | `<base>-session.json`           |
+| Hook JSONL                      | `$AOPS_SESSION_STATE_DIR/`                                                         | `<base>-session-hooks.jsonl`    |
+| Enforcer audit                  | `$AOPS_SESSION_STATE_DIR/`                                                         | `<base>-session-enforcer.md`    |
+| DEBUG_HOOKS dump                | `$AOPS_SESSION_STATE_DIR/`                                                         | `cc_hooks_<session-uuid>.jsonl` |
+| Provider session JSONL (Claude) | `~/.claude/projects/<workspace>/`                                                  | `<session-uuid>.jsonl`          |
+| Provider session JSONL (Gemini) | `~/.gemini/tmp/<workspace>/chats/`                                                 | `session-*.jsonl`               |
+| Transcript (full)               | `$AOPS_SESSIONS/transcripts/` or `$AOPS_SESSIONS/transcripts/<yyyy-mm>/` (rotated) | `<base>-full.md`                |
+| Transcript (abridged)           | `$AOPS_SESSIONS/transcripts/` or `$AOPS_SESSIONS/transcripts/<yyyy-mm>/` (rotated) | `<base>-abridged.md`            |
+| Summary                         | `$AOPS_SESSIONS/summaries/`                                                        | `<base>.json`                   |
 
 `$AOPS_SESSIONS` holds **only** parsed/synced outputs (transcripts, summaries) that get committed to git. Everything else — state, hook logs, gate context, debug dumps, provider's raw session stream — lives in `$AOPS_SESSION_STATE_DIR` (the per-provider tmp dir) and is not synced.
 

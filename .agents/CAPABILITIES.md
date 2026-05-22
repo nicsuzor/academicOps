@@ -27,7 +27,8 @@ Because transcripts are per-prompt, asking to find "the current transcript" requ
 **Recipe to find the most recent full transcript for a session:**
 
 ```bash
-ls -t $AOPS_SESSIONS/transcripts/*-${session_id}-*-full.md | head -n 1
+# Transcripts are sharded into yyyy-mm/ subdirs after rotation; recent ones stay at top level.
+find $AOPS_SESSIONS/transcripts -name "*-${session_id}-*-full.md" -printf '%T@ %p\n' | sort -rn | head -n 1 | cut -d' ' -f2-
 ```
 
 _(Substitute `${session_id}` with your actual 8-character session ID.)_
