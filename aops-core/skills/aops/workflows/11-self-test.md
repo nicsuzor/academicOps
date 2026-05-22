@@ -38,11 +38,12 @@ For each client (Claude default, `-g` for Gemini), walk these layers in order. S
 Spin via tmux (mechanics in `tests/harness/README.md`). Wait for the CLI to render, then `capture-pane -p -S -2000`. Look for **what would be missing if a layer were broken**, not just for the happy-path banner. Examples:
 
 - aops-core SessionStart / router banner present → router hook wired.
-- Plugin (not just "marketplace installed") shown as enabled in footer → plugin loaded, not just discovered.
 - Plan mode active (`polecat crew` passes `--permission-mode=plan`).
 - No folder-trust dialog, no onboarding prompt, no auth-pending screen.
 
 Absence of any of these is a signal — note which boot signal is missing before sending any prompt.
+
+Do NOT use footer text ("plugin enabled" vs. "marketplace installed") as a boot signal. Upstream CLIs change footer copy without semantic meaning, and the string doesn't reliably distinguish "discovered" from "loaded" anyway. Plugin-loaded is proven functionally at §4 (skill + subagent execute) and §5 (PKB MCP tool actually answers), not visually at boot (see #1197).
 
 #### 2. First UserPromptSubmit actually runs
 
