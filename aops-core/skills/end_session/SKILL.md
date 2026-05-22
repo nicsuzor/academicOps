@@ -67,6 +67,27 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
 ### 3. Full-form path (standard close)
 
+0. **Resolve the bound task** (issue #739). Before any other step, determine which task this session is closing against. Source-of-truth order:
+
+   1. **`/pull`-written binding file**. `/pull <task-id>` persists the claimed task at `$AOPS_SESSION_STATE_DIR/$AOPS_SESSION_ID-bound-task.txt` (see [[../../commands/pull.md]] Step 1.4). Read it with:
+
+      ```bash
+      state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
+      sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
+      bound_task_id=""
+      if [ -n "$sid" ]; then
+        bound_task_id="$(cat "$state_dir/${sid}-bound-task.txt" 2>/dev/null | head -n1 | tr -d '[:space:]')"
+      fi
+      ```
+
+      If `$bound_task_id` is non-empty, use it as the `id=` for `release_task` in step 3. This is the **primary signal** — prefer it over any inference from session activity.
+
+   2. **Explicit task argument**. If the user invoked `/end_session <task-id>`, that overrides any binding file.
+
+   3. **Fallback**. No binding file and no explicit arg → fall through to `release_task`'s auto-create-ad-hoc branch (current behaviour). This is the genuine "unbound session" case.
+
+   Record `$bound_task_id` (or its absence) and reuse it as the `<bound-task-id>` placeholder throughout the rest of this skill — the breadcrumb in step 2, the `id=` in step 3, and the handover block in step 5.
+
 1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work — if work is genuinely incomplete, use `/dump` instead so it is captured as a resume task rather than abandoned.
 
 2. **Update the project breadcrumb** (project → active epic → task linkage).
@@ -100,7 +121,7 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    ```
    mcp__pkb__release_task(
-     id="<task-id>",
+     id="<bound-task-id>",                    # from step 0; required if a binding exists
      status="merge_ready" | "review" | "done" | "blocked",
      session_id="$AOPS_SESSION_ID",
      pr_url="https://github.com/...",         # omit if no PR
@@ -111,7 +132,19 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    )
    ```
 
-   - **No task bound?** `release_task` auto-creates a minimal ad-hoc task under the `adhoc-sessions` root ([[T4]]). Until T4 lands, fall back to `create_task` first, then `release_task` on the new id.
+   - **Bound task resolved in step 0?** Pass it as `id=`. This is the fix for #739 — without it, sessions started via `/pull <task-id>` create stray ad-hoc records under `adhoc-sessions` instead of completing the actual epic.
+   - **No task bound** (step 0 produced no id and no explicit arg)? `release_task` auto-creates a minimal ad-hoc task under the `adhoc-sessions` root ([[T4]]). Until T4 lands, fall back to `create_task` first, then `release_task` on the new id.
+   - **On success, clean up the binding file** so a subsequent `/end_session` invocation in the same session (e.g. the gate reopens after follow-up edits) doesn't re-complete the same task:
+
+     ```bash
+     sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
+     if [ -n "$sid" ]; then
+       state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
+       rm -f "$state_dir/${sid}-bound-task.txt"
+     fi
+     ```
+
+     Skip cleanup if `release_task` failed — the next invocation will retry against the same binding.
    - **`release_summary` quality**: this field is the primary signal for the Recent Sessions dashboard, where it appears in a long stack of unrelated handovers from other sessions. **Write it for that audience — a future reader who has none of this session's context.**
 
      Three requirements:
