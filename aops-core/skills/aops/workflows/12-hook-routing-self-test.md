@@ -30,17 +30,18 @@ Authoritative source for active hooks is `aops-core/hooks/hooks.json`; channel d
 
 ## Marker convention
 
-Pick a fresh run id per session (timestamp or short uuid). Marker:
+Pick a fresh run id per session (timestamp or short uuid). Use **distinct** markers per channel so each can be verified independently and cross-talk or inversion is immediately visible:
 
 ```
-[SELFTEST-HOOK-<EVENT>-<RUN_ID>]
+[SELFTEST-HOOK-<EVENT>-SYS-<RUN_ID>]   # emitted into system_message  → user surface
+[SELFTEST-HOOK-<EVENT>-CTX-<RUN_ID>]   # emitted into context_injection → agent context
 ```
 
-Examples: `[SELFTEST-HOOK-Stop-20260522a]`, `[SELFTEST-HOOK-UserPromptSubmit-20260522a]`.
+Examples: `[SELFTEST-HOOK-Stop-SYS-20260522a]`, `[SELFTEST-HOOK-Stop-CTX-20260522a]`.
 
 **Emission options:**
 
-1. **Add a one-shot debug gate** that emits the marker into `system_message` AND `context_injection` for the target event, then remove it after the run. Highest-fidelity probe — tests both channels at once; inversion shows up immediately. **Preferred for v0.4.**
+1. **Add a one-shot debug gate** that emits the SYS marker into `system_message` and the CTX marker into `context_injection` for the target event, then remove it after the run. Distinct markers let you independently verify each channel and detect inversion (e.g. SYS landing in agent context, or CTX leaking to user surface). Use an **`allow` verdict** — a `warn` verdict on Stop events triggers a legacy fallback (router.py:825) that leaks `context_injection` to the user surface, producing a false positive for channel leakage. **Preferred for v0.4.**
 2. **Read an existing gate's payload** if one is live for the event (e.g. hydrator hint on `UserPromptSubmit`, RBG advisory on `Stop`); pick a distinctive substring from its output as the marker. No code change but coverage is limited to whatever the live gate emits.
 
 Document the temporary gate in the PR; revert before merging.
@@ -61,27 +62,29 @@ For each row in the table, in order:
    - `PreCompact` — trigger compaction (typically `/compact`).
    - `Notification` — take any action that fires the notification hook (permission prompt, idle alert — context-dependent).
    - `SessionEnd` — `/exit` or kill the session cleanly.
-3. **Observe the user surface.** Grep the transcript file (or scroll the terminal) for the marker. Record: **marker visible to user? Yes / No**.
+3. **Observe the user surface.** Grep the transcript file (or scroll the terminal) for the **SYS** marker (`[SELFTEST-HOOK-<EVENT>-SYS-<RUN_ID>]`). Also check that the **CTX** marker does _not_ appear user-side — its presence would indicate `context_injection` leaking to the user surface. Record: **SYS marker visible to user? Yes / No; CTX marker visible to user? (must be No)**.
 4. **Ask the agent explicitly** on the next turn (or, for `SessionEnd`, on the next session start that reads handover state):
 
-   > Did you receive `[SELFTEST-HOOK-<EVENT>-<RUN_ID>]` in your context (system-reminder, additionalContext, or any hook-injected block) on this turn? Yes or no — do not infer from the user message; check your actual context.
+   > Did you receive `[SELFTEST-HOOK-<EVENT>-CTX-<RUN_ID>]` in your context (system-reminder, additionalContext, or any hook-injected block) on this turn? Yes or no — do not infer from the user message; check your actual context.
 
-   The agent must answer from its actual context, not from the user's question text — the "do not infer" guard is load-bearing. Record: **marker visible to agent? Yes / No**.
+   The agent must answer from its actual context, not from the user's question text — the "do not infer" guard is load-bearing. Record: **CTX marker visible to agent? Yes / No**.
 5. **Compare against the expected channel** in the table.
 
 ## Pass / fail criterion
 
-| Expected     | Pass condition                                            |
-| ------------ | --------------------------------------------------------- |
-| `user-only`  | User: Yes. Agent: No.                                     |
-| `agent-only` | User: No. Agent: Yes.                                     |
-| `both`       | User: Yes. Agent: Yes.                                    |
-| `TBD`        | Record observed channels; do not pass or fail — escalate. |
+| Expected     | Pass condition (Option 1 — distinct markers)                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------- |
+| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                                                 |
+| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes.                              |
+| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                                                |
+| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.                                        |
+
+_Note: with Option 1 the SYS marker always appears user-side (the framework unconditionally routes `system_message` there); the diagnostic signal is whether the **CTX** marker leaks to the user surface (must never) and whether it reaches agent context (required for `agent-only` / `both`)._
 
 Any mismatch (e.g. `Stop` expected `agent-only` but marker appears user-side and not agent-side — the [[aops-d10e7db6]] inversion) is a **routing bug**, not a self-test failure. Halt the section and file a `bug` issue under [[epic-9fa15948]]: title `<EVENT>-hook output routed to <observed> channel, expected <intended>`; body must include the marker run id, the transcript excerpt, and the agent's verbatim answer. Do **not** attempt to fix routing in this session — that's a separate task in the same shape as [[aops-d10e7db6]].
 
 ## Notes for the agent running the section
 
-- You are the test instrument for half of each row. When the human asks "did you see `[SELFTEST-HOOK-X-Y]`?", answer from your **actual context**, not from your model of what should have happened. Inferring "the Stop hook is configured so I must have seen it" is exactly the failure mode this test exists to catch.
-- If your context for a turn does not include the marker, say "No, I did not receive that marker in my context on this turn" — full stop. Do not soften with "but it may have been processed elsewhere".
+- You are the test instrument for half of each row. When the human asks "did you see `[SELFTEST-HOOK-X-CTX-Y]`?", answer from your **actual context**, not from your model of what should have happened. Inferring "the Stop hook is configured so I must have seen it" is exactly the failure mode this test exists to catch.
+- If your context for a turn does not include the CTX marker, say "No, I did not receive that marker in my context on this turn" — full stop. Do not soften with "but it may have been processed elsewhere".
 - Cross-reference: the working channel-routing reference is `UserPromptSubmit`'s skills-routing-table injection (you reliably do see that). If your `UserPromptSubmit` answer pattern doesn't match the expected row, the test rig itself is broken — halt and report.
