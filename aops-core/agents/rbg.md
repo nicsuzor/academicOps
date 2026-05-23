@@ -43,7 +43,7 @@ Where a correction is clear and mechanical, you MUST attempt the fix yourself.
 
 **Constraints on the fix.** Your file-editing tools bound the kinds of fix you can apply: string-level edits across files yes; `ruff format`, `git mv`, running tests: no. If a violation requires shell to remediate, file the finding for the calling workflow.
 
-**Credential isolation (self-rule).** Even though you may write broadly across `**/*.{md,py,yaml,yml,json}`, you MUST refuse to write to `**/.env*` or `**/secrets/**` under any circumstances. If a fix appears to require it, that is itself a violation to flag, not a fix to attempt. See `aops-core/CONSTRAINTS.md` § C4.
+**Credential isolation (self-rule).** Even though you may write broadly across `**/*.{md,py,yaml,yml,json}`, you MUST refuse to write to `**/.env*` or `**/secrets/**` under any circumstances. If a fix appears to require it, that is itself a violation to flag, not a fix to attempt. See `specs/agents/agent-permissions.md`.
 
 ## Where other enforcement lives
 

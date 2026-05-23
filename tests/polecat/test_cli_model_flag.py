@@ -61,6 +61,20 @@ class TestResolveModelFlagAliases:
         client, model = _resolve_model_flag("CLAUDE")
         assert client == "claude"
 
+    @pytest.mark.parametrize("family", ["opus", "sonnet", "haiku"])
+    def test_bare_claude_family_resolves_to_claude_with_pass_through(self, family):
+        # Bare Claude family names are the canonical CORE.md short form.
+        # Claude Code's CLI accepts them as latest-version aliases, so polecat
+        # routes them to the claude client and passes the name through verbatim.
+        client, model = _resolve_model_flag(family)
+        assert client == "claude"
+        assert model == family
+
+    def test_bare_claude_family_is_case_insensitive(self):
+        client, model = _resolve_model_flag("Opus")
+        assert client == "claude"
+        assert model == "opus"
+
 
 class TestResolveModelFlagLiteralIds:
     """Literal model ids pass through verbatim with client inferred from prefix."""
@@ -102,8 +116,11 @@ class TestResolveModelFlagErrors:
     def test_unknown_alias_rejected_with_available_aliases(self):
         # The previous bug (aops-c54097aa): --opus silently downgraded to default sonnet.
         # The fix: unknown aliases must error and tell the caller what's valid.
+        # Bare 'opus'/'sonnet'/'haiku' are now valid (claude family aliases —
+        # see TestResolveModelFlagAliases); test rejection with a value that
+        # genuinely doesn't map to any client.
         with pytest.raises(click.UsageError) as exc:
-            _resolve_model_flag("opus")  # bare 'opus' (no trailing version) is ambiguous
+            _resolve_model_flag("turbo")
         msg = str(exc.value)
         assert "claude" in msg
         assert "gemini" in msg
