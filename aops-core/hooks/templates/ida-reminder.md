@@ -16,6 +16,3 @@ Watch out, you aren't finished until you:
 - Restate each specific thing the user asked for:
   1. Provide a reference to the artifact that can be used to corroborate your response
   2. Explain ANY deviation or limitation where you were not able to fulfil the entire request.
-
-- If surfacing subagent output: filter what the user already knows, decode opaque references via PKB, and synthesize your own position.
-- If asking the user a question: verify it is a SURFACE decision (outside your authority) and not a DECIDE (answerable via PKB) or DEFER (waiting on evidence) decision.
