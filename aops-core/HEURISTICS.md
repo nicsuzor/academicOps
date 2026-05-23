@@ -248,3 +248,29 @@ Trust an agent to read errors and recover instead of pre-paying the diagnostic c
 - Parent Epic: [[aops-5430c4c1]]
 - [[aops-76525b02]] (`/supervisor` rewrite): Replaced multi-gate preflight environment probes with golden-path-first dispatch, trusting the agent to recover if execution fails.
 - [[aops-5e2f018f]] (`/learn` rewrite): Removed the rigid output format, trusting the agent to surface structural causes rather than just symptom-level findings.
+
+<a id="P126"></a>
+
+## Verify Before Claiming Destructive Multi-Repo Work (P#126)
+
+A generated shell script is _your code that you have not tested_. Trusting it to perform a destructive operation — especially across multiple repositories — and reporting `done` on the strength of the user confirming they ran it is the same failure shape as claiming a fix works without running the test. The script's defects are invisible until something checks the post-state, and "the user didn't object" is not a check.
+
+**The step-back signal**: emitting more than ~30 lines of bash for a destructive op (recursive deletes, cross-repo `git rm`, mass file moves, history rewrites) is a signal to stop and ask whether a tested tool already exists. Hand-rolled shell composing `cd`, glob expansion, `$()`, and a destructive call across argument boundaries is a high-risk shape. Prefer, in order: (1) an existing framework skill, (2) a documented CLI whose behaviour is covered by its own tests (`git` itself, `rsync --dry-run`, `gh`), (3) Python with `pathlib` + a well-known library, (4) a script you have tested on the smallest unit before fanning out. The user's "use 3p standard tools that are well tested" applies as fully to shell scaffolding as to YAML parsing.
+
+**Contract for multi-repo destructive ops** — at least one of:
+
+- **(a) Pre-flight enumeration**: a `--dry-run` mode or a `find` / `git ls-files` pass that prints exactly what will be touched, surfaced for the user before any mutating call runs.
+- **(b) Post-state verification**: a check after execution that asserts the expected change landed (`git ls-tree HEAD -- <path>` empty, `git diff HEAD~1 HEAD --name-only` contains the expected paths, file counts match). The check MUST execute and its output MUST be observed; reporting completion before this is the violation.
+- **(c) Tested tooling**: defer to a third-party tool or framework skill whose behaviour is covered by tests, not by you-in-the-current-session.
+
+**When a generated script is genuinely the only path**:
+
+1. Test it on the smallest unit (one repo, one file, one path) before fanning out.
+2. Embed verification in the script itself OR run a verification step after the user reports execution.
+3. Report `done` only when verification has been observed — not when the user says "I ran it."
+
+**Reproducer (from nicsuzor/academicOps#774)**: a cleanup helper invoked as `clean_repo "$AOPS" "msg" docs/VISION.md $(ls specs/*.md)`. Bash expanded `$(ls specs/*.md)` in the _calling_ shell's cwd (`$BRAIN`, which had no `specs/` directory) before `clean_repo`'s internal `cd "$AOPS"` could change context. The glob expanded to empty; only `docs/VISION.md` reached `git rm`. Result: one of five repos silently lost a single file while 56 spec files survived. The agent reported `done` from the user confirming the script ran. The defect was caught by manual inspection two turns later.
+
+**The shape to recognise**: arguments computed in shell A passed to a function that runs in shell B with a different cwd. Globs, relative paths, and `$()` evaluate eagerly in the caller. Any one of three independent guardrails would have caught this: testing on one repo before fanning out; a post-state check (`git ls-tree HEAD specs/ | wc -l` returning 0); using `git -C "$DIR" rm specs/*.md` so the destructive call carries its own cwd instead of relying on pre-expanded arguments. None ran.
+
+**Derivation**: Extends A3 (Honest Epistemics — "verify by observation, not by reasoning") and A8 (Halt on Failure — silent skips are failures) to the agent's _own emitted code_. CORE.md already names "Look before you claim" and "Inference is not evidence"; this heuristic operationalises them at the moment of choosing between a tested tool and a bespoke shell script — the choice point where those axioms historically did not fire. Sourced from `nicsuzor/academicOps#774`.

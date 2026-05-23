@@ -72,12 +72,12 @@ For each row in the table, in order:
 
 ## Pass / fail criterion
 
-| Expected     | Pass condition (Option 1 — distinct markers)                                                                    |
-| ------------ | --------------------------------------------------------------------------------------------------------------- |
-| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                                                 |
-| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes.                              |
-| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                                                |
-| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.                                        |
+| Expected     | Pass condition (Option 1 — distinct markers)                                      |
+| ------------ | --------------------------------------------------------------------------------- |
+| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                    |
+| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes. |
+| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                   |
+| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.         |
 
 _Note: with Option 1 the SYS marker always appears user-side (the framework unconditionally routes `system_message` there); the diagnostic signal is whether the **CTX** marker leaks to the user surface (must never) and whether it reaches agent context (required for `agent-only` / `both`)._
 
