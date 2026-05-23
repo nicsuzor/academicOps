@@ -93,6 +93,81 @@ def test_does_not_misdetect_claude_jsonl(tmp_path: Path) -> None:
     assert _is_gemini_chat_jsonl(path) is False
 
 
+def test_detects_polecat_bind_mount_path(tmp_path: Path) -> None:
+    """Bind-mounted gemini chats land outside ``.gemini/tmp/``.
+
+    For polecat workers, the chats dir bind-mounts to
+    ``<sessions_repo>/polecats/<task>/<project>/chats/session-*.jsonl``
+    so the legacy path heuristic (``.gemini/tmp/`` substring) misses
+    them. Detection must work from the ``chats/session-`` shape alone.
+    """
+    chats_dir = tmp_path / "sessions" / "polecats" / "aops-7cf3cd1a" / "aops" / "chats"
+    chats_dir.mkdir(parents=True)
+    path = chats_dir / "session-2026-05-23T08-18-a5234d3e.jsonl"
+    # Real gemini files lead with a metadata header before the first role/parts line.
+    path.write_text(
+        "\n".join(
+            json.dumps(line)
+            for line in [
+                {
+                    "sessionId": "abc123",
+                    "projectHash": "deadbeef",
+                    "startTime": "2026-05-23T08:18:00Z",
+                },
+                {"$set": {"lastUpdated": "2026-05-23T08:18:01Z"}},
+                {"role": "user", "parts": [{"text": "hi"}]},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    assert _is_gemini_chat_jsonl(path) is True
+
+
+def test_detects_through_metadata_header(tmp_path: Path) -> None:
+    """First non-empty line is a Gemini metadata header — must not bail.
+
+    Real gemini chat-jsonl files start with a ``{sessionId, projectHash,
+    startTime, ...}`` header (and sometimes ``$set`` updates) before the
+    first conversational entry. The detector must skip past those to find
+    the role+parts evidence rather than declaring the file Claude-shaped.
+    """
+    path = tmp_path / "session-2026-05-23T08-18-foo123.jsonl"
+    path.write_text(
+        "\n".join(
+            json.dumps(line)
+            for line in [
+                {
+                    "sessionId": "foo123",
+                    "projectHash": "deadbeef",
+                    "startTime": "2026-05-23T08:18:00Z",
+                },
+                {"$set": {"lastUpdated": "2026-05-23T08:18:01Z"}},
+                {"role": "model", "parts": [{"text": "ack"}]},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    assert _is_gemini_chat_jsonl(path) is True
+
+
+def test_detects_message_style_schema(tmp_path: Path) -> None:
+    """Newer message-style gemini chat-jsonl ({type, content, ...}) detected."""
+    path = tmp_path / "session-msgstyle-deadbeef.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "id": "1",
+                "type": "user",
+                "timestamp": "2026-05-23T08:18:00Z",
+                "content": "hello",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    assert _is_gemini_chat_jsonl(path) is True
+
+
 def test_parses_chat_jsonl_entries(tmp_path: Path) -> None:
     path = _write_gemini_chat_jsonl(tmp_path)
     proc = SessionProcessor()

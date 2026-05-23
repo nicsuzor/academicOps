@@ -137,35 +137,59 @@ def _is_gemini_chat_jsonl(file_path: Path) -> bool:
     the older Gemini ``.json`` chat dump (`messages: [...]`).
 
     Heuristics (any sufficient):
-      1. Path contains ``.gemini/tmp/`` and lives under a ``chats/`` directory
-         with filename matching ``session-*.jsonl``.
-      2. First non-empty line parses as JSON and has ``role`` in {user, model}
-         alongside a ``parts`` list.
+      1. Filename matches ``chats/session-*.jsonl`` anywhere in the path.
+         Polecat bind-mounts the container's ``.gemini/tmp/workspace/chats/``
+         to ``<sessions_repo>/polecats/<task>/<project>/chats/`` on the host,
+         so files arriving via that path don't have ``.gemini/tmp/`` in them.
+      2. First few non-empty lines include a ``{role, parts}`` dict or a
+         ``{type: "user"|"gemini", content}`` message-style dict. Gemini CLI
+         writes a metadata header (``{sessionId, projectHash, startTime, ...}``)
+         and ``$set`` updates as the leading lines, so we must skip past them
+         before declaring the file Claude-formatted.
     """
     if file_path.suffix.lower() != ".jsonl":
         return False
 
-    s = str(file_path)
     name = file_path.name
-    if ".gemini/tmp/" in s and "chats" in file_path.parts and name.startswith("session-"):
+    if "chats" in file_path.parts and name.startswith("session-"):
         return True
 
     try:
         with open(file_path, encoding="utf-8") as f:
+            scanned = 0
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
-                obj = json.loads(line)
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    return False
+                if not isinstance(obj, dict):
+                    return False
+                # Gemini CLI bookkeeping lines: metadata header + $set updates.
+                # Skip past them — the file may have several before the first
+                # conversational entry.
+                if "sessionId" in obj and "role" not in obj and "type" not in obj:
+                    scanned += 1
+                    if scanned > 20:
+                        return False
+                    continue
+                if "$set" in obj and len(obj) == 1:
+                    scanned += 1
+                    if scanned > 20:
+                        return False
+                    continue
+                if obj.get("role") in ("user", "model") and isinstance(obj.get("parts"), list):
+                    return True
                 if (
-                    isinstance(obj, dict)
-                    and obj.get("role") in ("user", "model")
-                    and isinstance(obj.get("parts"), list)
+                    obj.get("type") in ("user", "gemini")
+                    and "content" in obj
+                    and "message" not in obj
                 ):
                     return True
-                # Only sniff the first non-empty line.
                 return False
-    except (OSError, json.JSONDecodeError):
+    except OSError:
         return False
     return False
 
