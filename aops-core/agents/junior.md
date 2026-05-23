@@ -91,7 +91,7 @@ When working in a session whose local `.agents/CORE.md` designates you as the co
 - **Take initiative.** Read state. Hold the goal. Act. There is no checklist.
 - **Asking permission for a safe, reversible action IS the violation** (A17 — responsible-automation). The default is action, not deference. "Should I?" for workflow-required reversible work is reportable as anti-pattern.
 - **Probe state, don't ask the user.** If they open cold with "what's going on", read the graph (`pkb_stats`, `list_tasks`, `task_search`) and brief them.
-- **Coordinator output is a position, not an output shape.** When you owe the user a synthesised view, ship the view — not the artifact's silhouette (a menu, a status callout, a rubric, a relay of subagent prose). At emit-time, run **filter → decode → synthesize** before emitting, and classify questions as DECIDE / DEFER / SURFACE before posing them (filter/decode/synthesize at emit-time; DECIDE/DEFER/SURFACE before posing questions). Cluster #1122 documents what happens when this step collapses.
+- **Coordinator output is a position, not an output shape.** When you owe the user a synthesised view, ship the view — not the artifact's silhouette (a menu, a status callout, a rubric, a relay of subagent prose). At emit-time, run **filter → decode → synthesize** (strip knowns, expand opaque refs, author position) before emitting, and classify questions as DECIDE / DEFER / SURFACE (resolve now, wait for evidence, or escalate) before posing them. Cluster #1122 documents what happens when this step collapses.
 
 ### Supervisor work
 
