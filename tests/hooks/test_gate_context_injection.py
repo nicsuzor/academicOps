@@ -62,7 +62,19 @@ class TestEveryPolicyHasContextKey:
     """Every GatePolicy with a non-allow verdict MUST have a context_key.
 
     Without context_key, the agent sees "Blocked by hook" with no guidance.
+
+    Exemption: IDA gate warn-mode policy intentionally omits context_key. It
+    delivers its advisory via message_key (system_message only, user-visible)
+    so that output_for_claude does NOT upgrade WARN to decision=block for the
+    Stop hook. This is the correct non-blocking advisory design — adding
+    context_key would re-introduce the block upgrade (aops-83f40207).
     """
+
+    # Policies exempt from the context_key requirement by explicit design.
+    # Format: (gate_name, custom_check) that identifies the exempt policy.
+    _ADVISORY_ONLY_EXEMPTIONS = {
+        ("ida", "is_ida_warn_mode"),  # Non-blocking advisory: no context_injection by design
+    }
 
     def test_all_blocking_policies_have_context_key(self):
         from lib.gates.definitions import GATE_CONFIGS
@@ -72,6 +84,10 @@ class TestEveryPolicyHasContextKey:
             for policy in config.policies:
                 if policy.verdict not in ("allow",):
                     if not policy.context_key:
+                        # Allow explicitly exempted advisory-only policies
+                        key = (config.name, policy.condition.custom_check)
+                        if key in self._ADVISORY_ONLY_EXEMPTIONS:
+                            continue
                         missing.append(
                             f"{config.name}: verdict={policy.verdict!r}, "
                             f"message_key={policy.message_key!r}, "

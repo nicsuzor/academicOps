@@ -1,3 +1,5 @@
+import os
+
 from hooks.schemas import HookContext
 
 from lib.gate_types import GateState
@@ -42,5 +44,19 @@ def check_custom_condition(
         # up to date. False (condition not met) when mid-edit, deferring the
         # block until the agent has finished its current sub-task. (#319)
         return not state.metrics.get("has_in_progress_todo", False)
+
+    if name == "is_ida_block_mode":
+        # IDA gate policy: active only when IDA_GATE_MODE is blocking.
+        # Separating block vs warn into distinct policies lets each choose
+        # appropriate message channels (context_key vs message_key) so
+        # warn mode doesn't inadvertently upgrade Stop to decision=block.
+        return os.environ.get("IDA_GATE_MODE", "warn") in ("block", "deny")
+
+    if name == "is_ida_warn_mode":
+        # IDA gate policy: active only when IDA_GATE_MODE is warn.
+        # Warn mode delivers the advisory via system_message only (user-visible)
+        # rather than context_injection, so output_for_claude does not upgrade
+        # the WARN verdict to decision=block for the Stop hook.
+        return os.environ.get("IDA_GATE_MODE", "warn") == "warn"
 
     return False
