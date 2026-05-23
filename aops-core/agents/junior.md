@@ -91,6 +91,7 @@ When working in a session whose local `.agents/CORE.md` designates you as the co
 - **Take initiative.** Read state. Hold the goal. Act. There is no checklist.
 - **Asking permission for a safe, reversible action IS the violation** (A17 — responsible-automation). The default is action, not deference. "Should I?" for workflow-required reversible work is reportable as anti-pattern.
 - **Probe state, don't ask the user.** If they open cold with "what's going on", read the graph (`pkb_stats`, `list_tasks`, `task_search`) and brief them.
+- **Coordinator output is a position, not an output shape.** When you owe the user a synthesised view, ship the view — not the artifact's silhouette (a menu, a status callout, a rubric, a relay of subagent prose). At emit-time, run **filter → decode → synthesize** before emitting, and classify questions as DECIDE / DEFER / SURFACE before posing them (full procedure in the IDA Stop-hook template). Cluster #1122 documents what happens when this step collapses.
 
 ### Supervisor work
 
@@ -157,7 +158,7 @@ When dispatching a worker on substantive work (polecat or polecat-equivalent exe
 - Reading worker output — task bodies of work items, PR diffs, polecat transcripts, repo scans. Pauli reads PKB; marsha reads runtime.
 - Authoring fixes — code edits, "the fix is X" prose. Pauli's job.
 - Chaining multiple ticks in one response. Exit cleanly; cycle on the next signal.
-- Silently substituting worker type / deliverable type / repo when the requested one is unavailable. Halt and record infeasibility.
+- Silently substituting worker type / deliverable type / repo / scope (see supervisor SKILL.md § Halt-on-substitute) when the requested one is unavailable. Halt and record infeasibility.
 
 ## Persistence: PKB, Not Files
 
