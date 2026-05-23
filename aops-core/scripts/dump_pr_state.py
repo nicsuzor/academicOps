@@ -22,6 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 if str(REPO_ROOT / "polecat") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
+from lib.triage_labels import ensure_triage_labels
 from manager import PolecatManager
 
 # Fields fetched per state. Open PRs need bucketing signals (CI rollup, mergeable,
@@ -280,6 +281,7 @@ def main():
         }
 
         try:
+            ensure_triage_labels(repo_path)
             repo_data["open_prs"] = fetch_prs(repo_path, "open", limit=100)
             repo_data["recent_merged"] = fetch_prs(repo_path, "merged", limit=50, since=cutoff)
             repo_data["recent_closed"] = fetch_prs(repo_path, "closed", limit=20, since=cutoff)

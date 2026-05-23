@@ -71,3 +71,41 @@ def test_find_sessions_excludes_claude_session_state_files(
         include_cowork=False,
     )
     assert result == [], f"State files must not appear as sessions; got: {result}"
+
+
+def test_find_sessions_discovers_gemini_bind_mount_chats(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Gemini polecat chats bind-mounted to the sessions repo are discoverable.
+
+    Polecat mounts ``<sessions_repo>/polecats/<task>/<project>/chats`` into
+    the container's ``/home/worker/.gemini/tmp/workspace/chats``, so the
+    chats land at the host path without any ``.gemini/tmp/`` prefix. The
+    discovery glob must still find them; this guards against a regression
+    that would silently drop transcripts (aops-7cf3cd1a / issue #1153).
+    """
+    sessions_root = tmp_path / "sessions"
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_root))
+
+    chats_dir = sessions_root / "polecats" / "aops-7cf3cd1a" / "aops" / "chats"
+    chats_dir.mkdir(parents=True)
+
+    session_id = "a5234d3e"
+    chat_file = chats_dir / f"session-2026-05-23T08-18-{session_id}.jsonl"
+    chat_file.write_text(
+        '{"role": "user", "parts": [{"text": "hi"}]}\n',
+        encoding="utf-8",
+    )
+
+    result = find_sessions(
+        claude_projects_dir=tmp_path / "no-claude",
+        include_gemini=True,
+        include_antigravity=False,
+        include_cowork=False,
+    )
+
+    session_ids = [s.session_id for s in result]
+    assert session_id in session_ids, (
+        f"Expected gemini session {session_id!r} to be discovered at "
+        f"bind-mount-source path; got: {session_ids}"
+    )

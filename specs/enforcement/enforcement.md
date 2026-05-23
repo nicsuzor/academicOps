@@ -2,7 +2,7 @@
 id: enforcement-318d578e
 title: Enforcement Architecture
 type: spec
-status: inbox
+status: ready
 tier: core
 depends_on: []
 tags: [enforcement, compliance, framework-architecture, verification]
@@ -344,4 +344,4 @@ Conclusions require `actual_state`. Anything less is a claim, not a finding.
 - [`specs/enforcement/ultra-vires-enforcer.md`](ultra-vires-enforcer.md) — enforcer agent + gate internal design.
 - [`specs/enforcement/enforcement-map.md`](enforcement-map.md) — redirect stub (superseded 2026-05-20 by `.agents/ENFORCEMENT-MAP.md`).
 - [`aops-core/AXIOMS.md`](../../aops-core/AXIOMS.md) — universal axioms (read only by `rbg`).
-- [`.agents/rules/HEURISTICS.md`](../../.agents/rules/HEURISTICS.md) — advisory heuristics.
+- [`aops-core/HEURISTICS.md`](../../aops-core/HEURISTICS.md) — advisory heuristics.

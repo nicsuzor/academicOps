@@ -136,23 +136,25 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
 
 
 def _assert_gemini_transcript(task_id: str, project: str, min_bytes: int) -> Path:
-    """Assert a Gemini ``session-*.json`` file landed on the host.
+    """Assert a Gemini ``session-*.json[l]`` file landed on the host.
 
-    Gemini CLI writes session logs to
-    ``$GEMINI_CLI_HOME/.gemini/tmp/<sha256-of-workdir>/chats/session-*.json``
-    inside the container, and polecat ``docker cp``s the contents of
-    ``/home/worker/.gemini/tmp`` to ``run_session_dir`` on the host. The
-    final layout is therefore::
+    Gemini CLI writes its chat log to
+    ``/home/worker/.gemini/tmp/workspace/chats/session-*.jsonl`` inside the
+    container. Polecat bind-mounts ``<session_dir>`` over that workspace
+    directory (and ``mkdir``s ``chats/`` ahead of the run) so files land
+    directly on the host at::
 
-        $AOPS_SESSIONS/polecats/<task_id>/<project>/<hash>/chats/session-*.json
+        $AOPS_SESSIONS/polecats/<task_id>/<project>/chats/session-*.jsonl
 
-    On re-runs there may be multiple session files; take the newest by mtime.
+    Older Gemini builds wrote a single ``session-*.json`` per session; we
+    accept both extensions and parse accordingly. On re-runs there may be
+    multiple session files; take the newest by mtime.
     """
     run_dir = _sessions_base() / "polecats" / task_id / project
     assert run_dir.is_dir(), f"Missing run dir: {run_dir}"
-    sessions = list(run_dir.rglob("session-*.json"))
+    sessions = list(run_dir.rglob("session-*.jsonl")) + list(run_dir.rglob("session-*.json"))
     assert sessions, (
-        f"No Gemini session-*.json found under {run_dir}. "
+        f"No Gemini session-*.json[l] found under {run_dir}. "
         f"Existing tree: {[str(p) for p in run_dir.rglob('*') if p.is_file()][:20]}"
     )
     path = max(sessions, key=lambda p: p.stat().st_mtime)
@@ -160,11 +162,17 @@ def _assert_gemini_transcript(task_id: str, project: str, min_bytes: int) -> Pat
     assert size >= min_bytes, (
         f"Gemini transcript {path} is {size}B, expected ≥{min_bytes}B (probably truncated)"
     )
-    # Smoke-parse: Gemini session files are a single JSON object/array, not
-    # JSONL. Parse the whole file rather than line-by-line.
-    with path.open() as f:
-        payload = json.load(f)
-    assert payload, f"Gemini transcript {path} parsed but is empty"
+    if path.suffix == ".jsonl":
+        with path.open() as f:
+            lines = [ln for ln in f if ln.strip()]
+        assert lines, f"Gemini transcript {path} is empty"
+        # Smoke-parse every line so a truncated/partial write fails loudly.
+        for ln in lines:
+            json.loads(ln)
+    else:
+        with path.open() as f:
+            payload = json.load(f)
+        assert payload, f"Gemini transcript {path} parsed but is empty"
     return path
 
 

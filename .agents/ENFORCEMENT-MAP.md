@@ -150,7 +150,6 @@ Each entry: name + position + one-line purpose + link to authoritative file. Run
 - **`qa` gate** (L3, warn) — requires verification (marsha via `/verify`) before Stop. → [`GATES.md`](../aops-core/GATES.md)
 - **`handover` gate** (L3, warn) — blocks Stop until commit + task update + framework reflection complete. → [`GATES.md`](../aops-core/GATES.md)
 - **`ida` gate** (L3, warn) — reminder to back assertions with proof and disclose skips. → [`GATES.md`](../aops-core/GATES.md)
-- **`custodiet` gate** (L4, warn) — detects scope explosion / plan-less execution. → [`GATES.md`](../aops-core/GATES.md)
 - **`aca_data_autocommit`** (L2) — auto-commits `$ACA_DATA` after state-modifying tool calls. → `aops-core/hooks/router.py:_run_aca_data_autocommit`
 - **`context-map hints`** (L1, hint) — injects doc pointers from `.agents/context-map.json` on UPS. → `aops-core/hooks/router.py:_inject_context_map_hints`
 - ~~`policy_enforcer`~~ — **retired 2026-05-15** (sandbox supersedes; `aops-e0d015d9`).
@@ -182,7 +181,7 @@ LLM agents that fire on PR events; each maps to one named GitHub status check. B
 
 - **`enforcer-status` (rbg)** (L6, block) — reviews PR diff against axioms; posts review + status on HEAD SHA (SHA-skip dedupe). → `.github/workflows/agent-enforcer.yml@enforcer-v1` + `.github/agents/enforcer.agent.md`
 - **`alignment-status` (pauli)** (L6, block) — reviews PR for alignment to PKB-recorded design intent; off-GHA dispatch via polecat. Closes v1 gap #1034. → `.github/workflows/agent-alignment.yml@alignment-v1` + `aops-core/scripts/alignment-dispatcher.sh`
-- **`mechanic-status`** (L4–L6) — mechanical only: rebase + unambiguous conflict resolution; does not approve or substitute for missing agent verdicts. → `.github/workflows/agent-mechanic.yml@mechanic-v1`
+- **`mechanic-status`** (L4–L6) — mechanical only: merge from base + unambiguous conflict resolution; does not approve or substitute for missing agent verdicts. → `.github/workflows/agent-mechanic.yml@mechanic-v1`
 - ~~v1: Author-trailer loop-skip, Triage-substitution, Loose enforcer triggers~~ — all retired Phase 1 (PR #1062); see [`pr-pipeline-v2.md`](../specs/workflows/pr-pipeline-v2.md) §3.1/§3.6/§5.
 
 ## Related

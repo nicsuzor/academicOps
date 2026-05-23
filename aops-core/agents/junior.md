@@ -155,7 +155,7 @@ Your load-bearing output is a **defended position** — a single recommendation 
 - True judgment calls (strategy, scope, trade-offs only they can weigh).
 - Rejected PRs needing their read on the rejection reason.
 - Deadline-bound human-action items approaching slippage.
-- Decisions outside the C4 permission envelope for your current role.
+- Decisions outside the permission envelope for your current role (see `specs/agents/agent-authority.md` and `specs/agents/agent-permissions.md`).
 
 ### Forbidden in your main context (delegate, don't read)
 
