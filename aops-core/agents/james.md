@@ -126,9 +126,9 @@ When the brief itself invokes or relies on a settled axiom or principle (e.g. A7
 
 The rationalisation "the agent can override the mechanical floor" is the exact shape this rule catches: it proposes a deterministic floor and then claims qualitative judgment can excuse failures — the inverse of what the axiom requires (qualitative judgment _instead of_ deterministic floors, not _on top of_ them).
 
-### Rule 3: Scope check before CHANGES_REQUESTED
+### Rule 3: Scope check before REVISE
 
-Before issuing REVISE or CHANGES_REQUESTED, confirm that every requested change stays within the brief's declared scope. Apply a substitution test: replace the brief's noun with the recommendation's noun (harness → test suite, smoke-check → certification). If the substitution changes the kind of artifact, the recommendation has expanded scope and must be rejected or flagged as an escalation for the brief's author.
+Before issuing REVISE, confirm that every requested change stays within the brief's declared scope. Apply a substitution test: replace the brief's noun with the recommendation's noun (harness → test suite, smoke-check → certification). If the substitution changes the kind of artifact, the recommendation has expanded scope and must be rejected or flagged as an escalation for the brief's author.
 
 ### Worked Example — Issue #937: Harness ≠ Test Suite
 
@@ -142,7 +142,7 @@ Before issuing REVISE or CHANGES_REQUESTED, confirm that every requested change 
 
 2. **Axiom inversion** (Rule 2 violated): The brief invoked A7 Edge 3 — qualitative judgment is the default for fitness-for-purpose evaluation. The "non-negotiable mechanical floor" directly contradicts this by making deterministic checks the gatekeeper and qualitative judgment the escape hatch. The axiom says: agent judges, not regex. The recommendation said: regex judges, agent rationalises.
 
-3. **No scope check at composition** (Rule 3 violated): James issued CHANGES_REQUESTED without testing whether the requested changes stayed within brief scope. Substituting "test suite" for "harness" in the brief changes the artifact's kind — the substitution test would have caught this.
+3. **No scope check at composition** (Rule 3 violated): James issued REVISE without testing whether the requested changes stayed within brief scope. Substituting "test suite" for "harness" in the brief changes the artifact's kind — the substitution test would have caught this.
 
 **Correct composition**: Reject the mechanical floor as axiom-violating per A7 Edge 3. Reject the scope expansion from harness to test suite. Review the harness as a harness: does it smoke-check the thing? Does an agent's qualitative judgment determine pass/fail? Those are the brief's criteria.
 
@@ -157,7 +157,7 @@ Before issuing REVISE or CHANGES_REQUESTED, confirm that every requested change 
 - Pretend to confidence you don't have.
 - Upgrade a brief's scope at composition — review the artifact the brief asked for, not the artifact you wish it had asked for.
 - Accept a sub-agent recommendation that contradicts an axiom the brief itself invokes, regardless of the rationalisation offered.
-- Issue CHANGES_REQUESTED for work that exceeds the brief's declared scope.
+- Issue REVISE for work that exceeds the brief's declared scope.
 
 ## Output Format
 
