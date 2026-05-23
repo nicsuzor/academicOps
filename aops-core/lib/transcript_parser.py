@@ -182,7 +182,11 @@ def _is_gemini_chat_jsonl(file_path: Path) -> bool:
                     continue
                 if obj.get("role") in ("user", "model") and isinstance(obj.get("parts"), list):
                     return True
-                if obj.get("type") in ("user", "gemini") and "content" in obj and "message" not in obj:
+                if (
+                    obj.get("type") in ("user", "gemini")
+                    and "content" in obj
+                    and "message" not in obj
+                ):
                     return True
                 return False
     except OSError:
