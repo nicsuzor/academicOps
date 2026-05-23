@@ -28,7 +28,7 @@ Lower numbers sit at the **wide base** (high volume, low invasiveness); higher n
 | -- | --------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | L0 | PKB note / inline comment               | ~0                                                                       | Any time                                                       |
 | L1 | Skill SKILL.md / CORE.md text           | ~50–500 tok/session × per-invoke (cached at SessionStart)                | Recurrent friction (≥3 instances) and a clear callsite         |
-| L2 | Pre-commit hook                         | ~50ms–2s wall-clock per commit                                           | Mechanical, deterministic check; no judgement                  |
+| L2 | Mechanical check (pre-commit/bridge)    | ~50ms–2s wall-clock or negligible latency                                | Mechanical, deterministic check; no judgement                  |
 | L3 | Stop-hook injection (always-on)         | ~400–4,000 tok in-window per session (compounds on repeated Stop)        | Cross-cutting + agent demonstrably forgets between turns       |
 | L4 | PreToolUse gate (`warn`)                | ~20–800 tok per fire (depends on injected template); no model dispatch   | Periodic compliance check without LLM dispatch                 |
 | L5 | PreToolUse gate (`block`)               | ~100–500 tok per block fire + tool-call latency to evaluate every call   | Hard-block needed; destructive / legal / privacy               |
