@@ -61,8 +61,8 @@ The main agent runs this loop **once** and exits:
 1. **ORIENT** — `mcp__pkb__get_task(<epic-id>)`. Read the body only.
 2. **BRAKE** — read `## Pattern Memory` and `## Work Items` from the body and apply the [Emergency Brake table](#emergency-brake). If any rule fires, halt the epic and exit.
 3. **DECIDE** — call subagent(s) to reach a structured verdict (see [Subagent Contracts](#subagent-contracts)). The default is one subagent per tick; the compose-then-dispatch shape (see [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)) is the documented exception, chaining a compose-agent and a _separate_ dispatch-agent (two independent subagent invocations) in one tick.
-4. **ACT** — evaluate the verdict's structural shape (action named, coherent, non-contradictory, no capability fabrication) per [Compose-then-Dispatch Separation § verdict structural-shape guard](#verdict-structural-shape-guard-mandatory-before-acting), then execute. One Bash call (dispatch / file a fix-task), one `mcp__pkb__create_task` call, or exit. If a verdict is malformed, append `verdict_malformed` to Pattern Memory and exit; do not improvise.
-5. **CHECKPOINT** — append one Pattern Memory row to the epic body, commit and push.
+4. **ACT** — evaluate the verdict's structural shape (see [verdict structural-shape guard](#verdict-structural-shape-guard-mandatory-before-acting)), then execute. One Bash call (dispatch / file a fix-task), one `mcp__pkb__create_task` call, or exit. If a verdict is malformed, append `verdict_fail` to Pattern Memory and exit; do not improvise.
+5. **CHECKPOINT** — append Pattern Memory row(s) to the epic body, commit and push.
 
 That is the whole loop. The next tick fires 30 minutes later with a fresh context and re-reads the epic body.
 
@@ -106,7 +106,7 @@ The detailed validation protocol (inputs, checks, and halt conditions) for both 
 
 **Review-lens annotations — RBG (axioms)**: Create a child subtask `lens: rbg-axiom-check` using `references/lens-templates/rbg-axiom-check.md`. Dispatch is blocked until it reaches status: done.
 
-**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `brief composed on <task-id>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor evaluates the verdict's structural shape per [Compose-then-Dispatch Separation § verdict structural-shape guard](#verdict-structural-shape-guard-mandatory-before-acting) before executing. If the verdict is malformed (no action, multiple competing actions, contradictory with the body, or capability-fabricated), append `verdict_malformed` to Pattern Memory and exit; do not improvise.
+**Verdict shape:** one short paragraph naming exactly one action — `dispatch <worker> on <task-id> in <project>`, `brief composed on <task-id>`, `file fix-task <title> under <parent>`, or `halt: <reason>`. The supervisor evaluates the verdict's structural shape per [Compose-then-Dispatch Separation § verdict structural-shape guard](#verdict-structural-shape-guard-mandatory-before-acting) before executing. If the verdict is malformed (no action, multiple competing actions, contradictory with the body), append `verdict_fail` to Pattern Memory and exit; do not improvise.
 
 **When to choose `brief composed` over `dispatch`** (see [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)): if pauli composed or substantively refined the `## Dispatch Brief` in this invocation — e.g. filtered superseded prose out of an inherited parent body, rewrote inputs to match the worker shape, added or removed AC — the brief is a fresh in-invocation composition. Pauli emits `brief composed` and the main agent spawns a _separate_ dispatch-agent subagent that reads the persisted brief fresh from PKB and emits its own dispatch verdict (agent-identity separation, A17 recusal). If the body's `## Dispatch Brief` is already stable PKB content from a prior invocation and pauli's role this invocation was preflight (PKB-side validation, no authoring), pauli emits `dispatch` and the main agent dispatches directly.
 
@@ -163,28 +163,18 @@ The two subagent invocations are independent contexts. The dispatch-agent does n
 
 ### Verdict structural-shape guard (mandatory before acting)
 
-The supervisor MUST evaluate every subagent verdict before executing on it. This is not rubber-stamping — it is reading the verdict's structural shape:
+The supervisor MUST evaluate every subagent verdict before acting on it:
 
-- **Action named?** Verdict must contain exactly one action: `dispatch <worker> on <task-id>`, `brief composed on <task-id>`, `file fix-task <title>`, or `halt: <reason>`. No action, or multiple competing actions → malformed.
-- **Coherent?** Verdict must be internally consistent. E.g. "dispatch on task-X" alongside "task-X is not ready" → contradictory.
-- **Contradicts the body it summarises?** A verdict claiming a state the epic body does not support (e.g. "AC met" when the body has no AC; "brief stable" when the body has no `## Dispatch Brief`) → malformed.
-- **Capability fabricated?** A verdict asserting incapability ("I cannot dispatch X") without first running the cheapest verification (`gh auth status`, `which gemini`, etc.) is FM-6 capability fabrication per [A7 Edge 2](#a7-edge-2-act-on-delegated-agent-verdicts) → malformed.
+- **Action named?** Verdict must name exactly one action: `dispatch <worker> on <task-id>`, `brief composed on <task-id>`, `file fix-task <title>`, or `halt: <reason>`.
+- **Coherent?** Verdict must be internally consistent — no competing actions, no contradictions (e.g. "dispatch on task-X" alongside "task-X is not ready").
+- **Grounded?** Verdict must not claim a state the epic body doesn't support (e.g. "brief stable" when there is no `## Dispatch Brief`).
 
-If any check fails, append `verdict_malformed` to Pattern Memory with the structural reason and exit. Do not improvise an action.
+If any check fails, append `verdict_fail` to Pattern Memory with the structural reason and exit. Do not improvise.
 
 ### Pauli verdict shapes that fit the separation
 
 - `brief composed on <task-id>` — pauli refined or wrote the brief this invocation. Main agent persists (if not already in PKB), then spawns a fresh dispatch-agent subagent.
 - `dispatch <worker> on <task-id> in <project>` — the brief was already stable PKB content; pauli's role this invocation was preflight (PKB-side validation), not composition. Main agent dispatches directly.
-
-### What this section does NOT introduce
-
-- No PASS / REWRITE / HALT grade on the brief content. The dispatch-agent forms its own dispatch judgment from the brief; it does not score the compose-agent's authorship.
-- No token-level scan on brief text (A7 Edge 3 — "No Shitty NLP"). The independence is delivered by the fresh-context subagent boundary, not by pattern-matching prose.
-- No tick boundary. Composer and dispatcher MAY fire inside one supervisor tick when they are independent subagent invocations. Tick-exit-and-defer is **not** required; it remains a legitimate fallback for genuinely large compositions where a settling pause adds value, but no rule mandates it.
-- No new halt class in the Emergency Brake table. `verdict_malformed` is a normal checkpoint class, not a brake (though a brake rule fires if it recurs ≥3× in the last 8 rows per the [Emergency Brake](#emergency-brake) recurring-failure rule).
-
-**Why agent-identity separation suffices**: the dispatch-agent runs in its own subagent context, reads the brief from PKB without inheriting the compose-agent's prescriptive impulse, and either dispatches or routes through normal escalation. This is A17 (recusal) achieved at the agent boundary — the same axiom intent fresh-tick separation chased, at lower cost (no cache miss, no scheduling lag, no surface for "did the next tick actually fire"). See [[../aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]] for the axiom interactions (A17 / A8 / A7 Edge 3 / A11) and the worked rationale.
 
 ## Canonical Dispatch Template
 
@@ -230,7 +220,7 @@ The main agent appends one row per tick. Capped at 16 rows (drop the oldest when
 | 2026-05-08T02:43:11Z | marsha FAIL on task-abc     | verify_fail | tests red on docker |
 ```
 
-Class values used by the brake: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `react_filed_fix`, `react_halt`, `brake_fired`. Additional non-brake class: `verdict_malformed` (used when a subagent verdict failed the structural-shape guard per [Compose-then-Dispatch Separation § verdict structural-shape guard](#verdict-structural-shape-guard-mandatory-before-acting); the tick exits without acting). A non-terminal `brief_composed` row MAY be appended by an in-tick compose-agent step before the dispatch-agent step appends its own row; this is bookkeeping, not a checkpoint that ends the tick. Keep class names stable — the brake matches on them.
+Class values: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `react_filed_fix`, `react_halt`, `brake_fired`, `verdict_fail` (subagent verdict failed the structural-shape guard; tick exits without acting — fires the recurring-failure brake if it appears ≥3× in 8 rows). A non-terminal `brief_composed` row MAY be appended by an in-tick compose-agent step before the dispatch-agent step appends its own row; this is bookkeeping, not a checkpoint that ends the tick. Keep class names stable — the brake matches on them.
 
 The main agent never inspects work items by reading their task bodies; the Work Items table inside the epic body is the authoritative summary.
 
