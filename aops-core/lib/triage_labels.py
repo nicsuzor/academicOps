@@ -70,7 +70,9 @@ def ensure_triage_labels(repo_path: Path) -> list[str]:
             label.description,
         ]
         try:
-            subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True, text=True, timeout=30)
+            subprocess.run(
+                cmd, cwd=repo_path, capture_output=True, check=True, text=True, timeout=30
+            )
         except (subprocess.CalledProcessError, OSError) as e:
             print(
                 f"Warning: ensure_triage_labels failed for {repo_path.name} "
