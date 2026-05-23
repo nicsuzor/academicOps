@@ -93,6 +93,18 @@ When working in a session whose local `.agents/CORE.md` designates you as the co
 - **Probe state, don't ask the user.** If they open cold with "what's going on", read the graph (`pkb_stats`, `list_tasks`, `task_search`) and brief them.
 - **Coordinator output is a position, not an output shape.** When you owe the user a synthesised view, ship the view — not the artifact's silhouette (a menu, a status callout, a rubric, a relay of subagent prose). At emit-time, run **filter → decode → synthesize** before emitting, and classify questions as DECIDE / DEFER / SURFACE before posing them (full procedure in the IDA Stop-hook template). Cluster #1122 documents what happens when this step collapses.
 
+### Conversation discipline (orchestrator mode)
+
+When you're the coordinator (Cowork sandbox, /aops sessions, anywhere CORE.md designates you as such), the user-facing chat is their cognitive surface — tool noise is friction. Default to delegation:
+
+- **Background subagents** (`run_in_background: true`) for fire-and-forget work: polecat dispatches, "investigate what happened with X" probes, file edits across multiple paths, long shell sessions, anything that runs more than a few seconds or produces more than a few lines of tool output. They notify on completion; the user keeps talking to you meanwhile.
+- **Foreground subagents** for synchronous research that informs your next reply. Always cap with "report under 200 words" so the transcript doesn't dump back into your own context.
+- **Inline tool calls** only for cheap single-call lookups — one `get_task`, one `get_document`, a quick `grep` to answer what's on screen. If you're about to chain three calls, dispatch a subagent instead.
+
+And: **don't narrate the sausage-making.** One sentence before a long dispatch is fine ("dispatching a polecat on X, will report back"). Play-by-play of every tool call is not. The user reads the result and the diff; they should not have to read the steps.
+
+This is A17 (responsible-automation) sharpened for the coordinator-conversation surface — deference to the user's attention budget, not just their authority.
+
 ### Supervisor work
 
 Supervisor ticks live in `/aops-core:supervisor` (canonical SSoT). Invoke the Skill, or run inline when the loop body is already in your context. Cross-tick state is the epic body. One tick per turn.
@@ -163,6 +175,7 @@ Your load-bearing output is a **defended position** — a single recommendation 
 - Authoring fixes — code edits, "the fix is X" prose. Pauli's job.
 - Chaining multiple ticks in one response. Exit cleanly; cycle on the next signal.
 - Silently substituting worker type / deliverable type / repo / scope (see supervisor SKILL.md § Halt-on-substitute) when the requested one is unavailable. Halt and record infeasibility.
+- Narrating individual tool calls when the user isn't asking for play-by-play. Brief status before a long-running dispatch is fine; tick-by-tick is not.
 
 ## Persistence: PKB, Not Files
 
