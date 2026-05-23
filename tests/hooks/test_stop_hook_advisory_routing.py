@@ -96,15 +96,16 @@ class TestStopHookAdvisoryRouting:
             "exact bug from aops-d10e7db6."
         )
 
-    def test_forward_compat_additional_context_emitted(self, router):
-        """hookSpecificOutput.additionalContext is also emitted for forward-compat."""
+    def test_stop_output_does_not_emit_hook_specific_output(self, router):
+        """Stop output must NOT emit hookSpecificOutput — Claude Code rejects it."""
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
 
         output = router.output_for_claude(canonical, "Stop")
 
-        assert output.hookSpecificOutput is not None
-        assert output.hookSpecificOutput.hookEventName == "Stop"
-        assert output.hookSpecificOutput.additionalContext == ADVISORY
+        assert not hasattr(output, "hookSpecificOutput") or output.hookSpecificOutput is None, (
+            "Stop output emitted hookSpecificOutput — Claude Code will reject "
+            "the entire payload, silently discarding the QA advisory."
+        )
 
     def test_session_end_same_routing(self, router):
         """SessionEnd uses the same routing as Stop."""
@@ -219,4 +220,85 @@ class TestStopHookJsonEnvelope:
             pytest.fail(
                 f"router stdout is not a single JSON object — raw text leaked "
                 f"to the user transcript. stdout={stdout!r}, error={e}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Schema conformance: every hook event must produce output that Claude Code
+# will accept. hookSpecificOutput.hookEventName must be in the set Claude
+# Code validates against, or hookSpecificOutput must be absent.
+# ---------------------------------------------------------------------------
+
+CLAUDE_ACCEPTED_HOOK_EVENT_NAMES = {
+    "PreToolUse",
+    "UserPromptSubmit",
+    "PostToolUse",
+    "PostToolBatch",
+}
+
+ALL_HOOK_EVENTS = [
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "Stop",
+    "SessionEnd",
+    "SubagentStart",
+    "SubagentStop",
+    "PreCompact",
+    "Notification",
+]
+
+
+class TestAllHooksSchemaConformance:
+    """Every hook event's Claude output must conform to Claude Code's schema.
+
+    Claude Code validates hookSpecificOutput.hookEventName against a fixed
+    discriminator set. If the router emits a hookEventName not in that set,
+    the entire JSON payload is silently rejected — the agent never sees the
+    decision, reason, or advisory. This parametrized test covers all events.
+    """
+
+    @pytest.mark.parametrize("event", ALL_HOOK_EVENTS)
+    def test_claude_hook_output_schema_conformance(self, router, event):
+        """output_for_claude({event}) must not emit an invalid hookEventName."""
+        canonical = CanonicalHookOutput(
+            verdict="warn",
+            context_injection="<SYSTEM HOOK INSTRUCTION>test</SYSTEM HOOK INSTRUCTION>",
+            system_message="test note",
+        )
+        output = router.output_for_claude(canonical, event)
+        payload = json.loads(output.model_dump_json(exclude_none=True))
+
+        hso = payload.get("hookSpecificOutput")
+        if hso is not None:
+            event_name = hso.get("hookEventName")
+            assert event_name in CLAUDE_ACCEPTED_HOOK_EVENT_NAMES, (
+                f"Hook event {event!r} emitted hookSpecificOutput with "
+                f"hookEventName={event_name!r}, which Claude Code will reject. "
+                f"Accepted values: {CLAUDE_ACCEPTED_HOOK_EVENT_NAMES}"
+            )
+
+    @pytest.mark.parametrize("event", ALL_HOOK_EVENTS)
+    def test_gemini_hook_output_schema_conformance(self, router, event):
+        """output_for_gemini({event}) hookEventName must match its event.
+
+        Gemini CLI currently accepts any hookEventName string, but the
+        value should match the event so the CLI routes it correctly.
+        This test documents the contract and will catch validation if
+        Gemini adds schema enforcement.
+        """
+        canonical = CanonicalHookOutput(
+            verdict="warn",
+            context_injection="<SYSTEM HOOK INSTRUCTION>test</SYSTEM HOOK INSTRUCTION>",
+            system_message="test note",
+        )
+        output = router.output_for_gemini(canonical, event)
+        payload = json.loads(output.model_dump_json(exclude_none=True, by_alias=True))
+
+        hso = payload.get("hookSpecificOutput")
+        if hso is not None:
+            event_name = hso.get("hookEventName")
+            assert event_name == event, (
+                f"Gemini hookEventName mismatch: expected {event!r}, got {event_name!r}"
             )

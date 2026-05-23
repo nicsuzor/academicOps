@@ -331,21 +331,19 @@ class TestWarnStopSurface:
         assert output.hookSpecificOutput.additionalContext == "watch out"
         assert output.hookSpecificOutput.permissionDecision == "allow"
 
-    def test_warn_stop_emits_forward_compatible_additional_context(self, router):
-        """WARN on Stop also emits hookSpecificOutput.additionalContext for forward-compat."""
+    def test_warn_stop_does_not_emit_hook_specific_output(self, router):
+        """WARN on Stop must NOT emit hookSpecificOutput — Claude Code rejects it."""
         warn_result = GateResult.warn(
             system_message=None,
             context_injection="<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>",
         )
         canonical = router._gate_result_to_canonical(warn_result)
         output = router.output_for_claude(canonical, "Stop")
-        # Defensive: newer Claude Code versions may honour this on Stop.
-        assert output.hookSpecificOutput is not None
-        assert output.hookSpecificOutput.hookEventName == "Stop"
-        assert (
-            output.hookSpecificOutput.additionalContext
-            == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
+        assert not hasattr(output, "hookSpecificOutput"), (
+            "ClaudeStopHookOutput should not have hookSpecificOutput field"
         )
+        assert output.decision == "block"
+        assert output.reason == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
 
 
 # ===========================================================================

@@ -67,17 +67,29 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 
 **Core skills** (non-fungible — framework operations):
 
-| Skill                | Purpose                                                             |
-| -------------------- | ------------------------------------------------------------------- |
-| `/plan`              | Effectual planning, decomposition, graph maintenance                |
-| `/aops`              | Institutional memory, framework coordination                        |
-| `/daily`             | Daily notes, briefing, progress sync                                |
-| `/learn`             | File **forensic** incident reports (facts + impact, no speculation) |
-| `/qa`                | Independent verification against acceptance criteria                |
-| `/pull` `/q` `/dump` | Task queue lifecycle                                                |
-| `/remember`          | Persist knowledge to PKB                                            |
-| `/sleep`             | Periodic consolidation, graph maintenance                           |
-| `/email`             | Email triage and task capture                                       |
+| Skill                | Purpose                                              |
+| -------------------- | ---------------------------------------------------- |
+| `/plan`              | Effectual planning, decomposition, graph maintenance |
+| `/aops`              | Institutional memory, framework coordination         |
+| `/daily`             | Daily notes, briefing, progress sync                 |
+| `/pull` `/q` `/dump` | Task queue lifecycle                                 |
+| `/remember`          | Persist knowledge to PKB                             |
+| `/sleep`             | Periodic consolidation, graph maintenance            |
+| `/email`             | Email triage and task capture                        |
+
+**Quality skills** (the QA pipeline — from instruction design through verification to post-hoc review):
+
+| Skill            | When to use                                                                |
+| ---------------- | -------------------------------------------------------------------------- |
+| `/craft`         | Before deploying instructions — reviews for shallow-execution defects      |
+| `/design-rubric` | Before building user-facing work — designs fitness criteria on the spec    |
+| `/dogfood`       | Testing instructions — delegates to a contextless agent, observes friction |
+| `/verify`        | After work is done — judgment-based QA against the spec's fitness rubric   |
+| `/learn`         | After a session — forensic transcript review, files GitHub issues          |
+| `/issue-sweep`   | Periodically — triages open issues, creates fix-epics                      |
+| `/trend-review`  | Periodically — longitudinal analysis across many sessions                  |
+
+The quality skills form a pipeline: `/craft` ensures instructions are excellent before agents execute them. `/design-rubric` ensures specs define what excellence looks like for users. `/dogfood` tests instructions against a real contextless agent. `/verify` checks the delivered artifact. `/learn` reviews transcripts after the fact and files issues. `/issue-sweep` triages those issues into fix-epics.
 
 **Domain skills** (fungible — retire when better external tools exist):
 

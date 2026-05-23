@@ -92,7 +92,12 @@ class TestRouterClaudeFormat:
     """Tests for Claude Code output format."""
 
     def test_session_start_output_format(self) -> None:
-        """SessionStart returns correct Claude format with hookSpecificOutput."""
+        """SessionStart returns Claude format WITHOUT hookSpecificOutput.
+
+        Claude Code only accepts hookSpecificOutput for PreToolUse,
+        UserPromptSubmit, PostToolUse, PostToolBatch. SessionStart must
+        not emit it — the session boot message goes via systemMessage.
+        """
         input_data = {
             "hook_event_name": "SessionStart",
             "session_id": "test-session-123",
@@ -100,11 +105,11 @@ class TestRouterClaudeFormat:
 
         output, stderr = run_router_claude(input_data)
 
-        # Claude SessionStart should have hookSpecificOutput structure
-        assert "hookSpecificOutput" in output, f"Missing hookSpecificOutput. Output: {output}"
-        hso = output["hookSpecificOutput"]
-        assert hso["hookEventName"] == "SessionStart"
-        assert "permissionDecision" in hso
+        assert "hookSpecificOutput" not in output, (
+            f"SessionStart emitted hookSpecificOutput — Claude Code will reject "
+            f"the payload. Output: {output}"
+        )
+        assert "systemMessage" in output
 
     def test_pretooluse_output_format(self) -> None:
         """PreToolUse returns correct Claude format with hookSpecificOutput."""

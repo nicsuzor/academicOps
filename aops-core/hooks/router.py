@@ -853,19 +853,17 @@ class HookRouter:
                 output.stopReason = sys_msg
                 output.systemMessage = sys_msg
 
-            # Forward-compatible: also emit additionalContext for Stop.
-            # Newer Claude Code versions may route this into agent context;
-            # older versions silently ignore the unknown field.
-            if ctx_inj:
-                output.hookSpecificOutput = ClaudeHookSpecificOutput(
-                    hookEventName=event, additionalContext=ctx_inj
-                )
-
             return output
 
         output = ClaudeGeneralHookOutput()
         if result.system_message:
             output.systemMessage = result.system_message
+
+        # Claude Code only accepts hookSpecificOutput for these events.
+        # Emitting it for other events causes the entire payload to be rejected.
+        _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
+        if event not in _CLAUDE_HSO_EVENTS:
+            return output
 
         hso = ClaudeHookSpecificOutput(hookEventName=event)
         has_hso = False
