@@ -14,7 +14,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 **What is NOT here.**
 
-- **Cost-ladder rank, axiom mapping, tier escalation rules** — see [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) (operative state SSoT for the L0–L7 cost ladder; `rbg` blocks on it via P#65).
+- **Pyramid-position assignments, axiom mapping, escalation rules** — see [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) (operative state SSoT for the L0–L7 regulatory pyramid; `rbg` blocks on it via P#65).
 - **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](skills/aops/references/hooks.md).
 - **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](skills/aops/references/forensics-details.md).
 - **Design rationale (why the gate system is shaped this way)** — see [`specs/enforcement/enforcement.md`](../specs/enforcement/enforcement.md), [`specs/enforcement/hook-router.md`](../specs/enforcement/hook-router.md), [`specs/enforcement/ultra-vires-enforcer.md`](../specs/enforcement/ultra-vires-enforcer.md), [`specs/enforcement/enforcement-mechanisms.md`](../specs/enforcement/enforcement-mechanisms.md).
@@ -368,7 +368,7 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 
 ### Authoritative on adjacent slices
 
-- [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) — operative cost-ladder catalogue (L0–L7), axiom × mechanism cross-reference, PR-pipeline agents. `rbg` blocks on it via P#65.
+- [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) — operative register: L0–L7 regulatory pyramid (Ayres & Braithwaite 1992), axiom × mechanism cross-reference, PR-pipeline agents. `rbg` blocks on it via P#65.
 - [`aops-core/skills/aops/references/hooks.md`](skills/aops/references/hooks.md) — hook router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences.
 - [`aops-core/skills/aops/references/forensics-details.md`](skills/aops/references/forensics-details.md) — JSONL log schema, per-gate forensics procedures, polecat-session identification.
 - [`polecat/defaults/polecat.yaml.example`](../polecat/defaults/polecat.yaml.example) — config schema + master environment-variable inventory.
