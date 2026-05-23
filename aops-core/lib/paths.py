@@ -227,6 +227,31 @@ def get_transcripts_dir() -> Path:
     return get_sessions_repo() / "transcripts"
 
 
+def get_subagent_transcripts_dir() -> Path:
+    """Get subagent transcripts directory ($AOPS_SESSIONS/subagent-transcripts).
+
+    Subagent (Task tool) invocations get their own transcripts in a directory
+    sibling to ``transcripts/`` so they don't pollute primary session listings
+    and can be queried independently (e.g. by ``/retro`` or trend analysis).
+
+    Both ``transcripts/`` and ``subagent-transcripts/`` follow the same
+    ``YYYY-MM/`` rotation (see ``lib.transcript_paths``). See PKB task
+    ``task-b483e037``.
+    """
+    return get_sessions_repo() / "subagent-transcripts"
+
+
+def get_subagent_summaries_dir() -> Path:
+    """Get subagent insights directory ($AOPS_SESSIONS/subagent-summaries).
+
+    Insights JSON for subagent invocations lives parallel to ``summaries/`` so
+    consumers that walk ``summaries/`` aggregate-only see parent sessions, and
+    per-subagent quality metrics (verdicts, token usage) are queryable
+    independently. See PKB task ``task-b483e037``.
+    """
+    return get_sessions_repo() / "subagent-summaries"
+
+
 def get_polecat_transcripts_dir() -> Path:
     """Get polecat transcripts directory for writing new transcripts.
 

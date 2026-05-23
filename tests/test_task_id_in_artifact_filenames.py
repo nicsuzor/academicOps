@@ -248,15 +248,15 @@ def test_no_task_id_session_file_no_task_prefix(aops_sessions, without_task_id):
 
 
 def test_existing_transcript_glob_still_matches_task_prefixed_filename(aops_sessions, with_task_id):
-    """get_session_state's transcript-discovery glob must keep matching.
+    """get_session_state's transcript-discovery walk must keep matching.
 
     session_reader uses ``*-*-{session_prefix}*-abridged.md`` to find a
     transcript by session prefix. Adding ``-task-XXXXXXXX-`` between the
-    shortform and the slug must not break that pattern.
+    shortform and the slug must not break that pattern, and the lookup must
+    walk both flat-legacy and rotated ``YYYY-MM/`` layouts (aops-b975b185).
     """
-    import glob
-
     from lib import session_naming
+    from lib.transcript_paths import iter_rotated_files
 
     timestamp = datetime(2026, 4, 30, 12, 34).astimezone()
     filename = session_naming.generate_session_filename(
@@ -267,13 +267,16 @@ def test_existing_transcript_glob_still_matches_task_prefixed_filename(aops_sess
         artifact_type="transcript-abridged",
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
-    path = aops_sessions / "transcripts" / filename
+    # Place under the rotated subdir — exercises the new layout end-to-end.
+    rotated_dir = aops_sessions / "transcripts" / "2026-04"
+    rotated_dir.mkdir(parents=True, exist_ok=True)
+    path = rotated_dir / filename
     path.write_text("# test transcript")
 
     session_prefix = SESSION_ID[:8]
-    pattern = str(aops_sessions / "transcripts" / f"*-*-{session_prefix}*-abridged.md")
-    matches = glob.glob(pattern)
-    assert str(path) in matches, (
-        f"existing find_sessions glob {pattern!r} failed to match the new "
-        f"task-prefixed transcript {path!r}"
+    matches = list(
+        iter_rotated_files(aops_sessions / "transcripts", f"*-*-{session_prefix}*-abridged.md")
+    )
+    assert path in matches, (
+        f"recursive walk failed to surface rotated transcript {path!r}; matches={matches!r}"
     )

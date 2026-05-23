@@ -15,7 +15,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add framework roots to path for lib imports
@@ -37,6 +37,10 @@ from lib.insights_generator import (  # noqa: E402
 )
 from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
+from lib.subagent_transcript import (  # noqa: E402
+    maybe_append_subagent_footer,
+    write_subagent_transcripts,
+)
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     UsageStats,
@@ -48,6 +52,11 @@ from lib.transcript_parser import (  # noqa: E402
     infer_project_from_working_dir,
     normalize_gemini_project,
     reflection_to_insights,
+)
+from lib.transcript_paths import (  # noqa: E402
+    ensure_rotated_dir,
+    extract_date_from_filename,
+    iter_rotated_files,
 )
 
 
@@ -860,20 +869,22 @@ def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
     Returns:
         List of all matching transcript files (both -full.md and -abridged.md)
     """
-    # Search for transcripts with this session_id
+    # Search for transcripts with this session_id across both the flat legacy
+    # layout (``transcripts/<file>``) and the rotated layout
+    # (``transcripts/YYYY-MM/<file>``) introduced for aops-b975b185.
     # v4.0.0+ Pattern: YYYYMMDD-HHMM-sessionID-shortform-slug-variant.md
     # v3.7.0+ Pattern: with hour (e.g., 20260105-17-writing-3bf94f77-session-full.md)
     # Legacy Pattern: without hour (e.g., 20260105-writing-3bf94f77-session-full.md)
-    matches = []
+    matches: list[Path] = []
     for suffix in ("-full.md", "-abridged.md"):
         # Unified format with HHMM (4 digits)
-        matches.extend(out_dir.glob(f"*-????-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-????-{session_id}-*{suffix}"))
         # Format with hour (2 digits)
-        matches.extend(out_dir.glob(f"*-??-*-{session_id}-*{suffix}"))
-        matches.extend(out_dir.glob(f"*-??-*-{session_id}{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-??-*-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-??-*-{session_id}{suffix}"))
         # Legacy format without hour
-        matches.extend(out_dir.glob(f"*-{session_id}-*{suffix}"))
-        matches.extend(out_dir.glob(f"*-{session_id}{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-{session_id}-*{suffix}"))
+        matches.extend(iter_rotated_files(out_dir, f"*-{session_id}{suffix}"))
     return list(set(matches))  # Deduplicate
 
 
@@ -1037,6 +1048,49 @@ def _infer_project(
     return _resolve_project_key(clean_project) if clean_project else "unknown"
 
 
+def _emit_subagent_artifacts(
+    session_path: Path,
+    parent_session_id: str,
+    session_summary,
+    entries,
+    agent_entries,
+    processor,
+    parent_full_path: Path,
+) -> None:
+    """Emit per-subagent transcripts + insights and link from the parent.
+
+    No-op when ``agent_entries`` is empty (most sessions have zero
+    subagent invocations). Failures here are non-fatal — the parent
+    transcript has already been written by the time we run.
+    """
+    if not agent_entries:
+        return
+    try:
+        # Main thread = parent's non-sidechain entries (subagent invocations
+        # are loaded via _load_agent_files and carry is_sidechain=True on
+        # their own entries).
+        main_entries = [e for e in entries if not getattr(e, "is_sidechain", False)]
+        artifacts = write_subagent_transcripts(
+            parent_session_path=session_path,
+            parent_session_id=parent_session_id,
+            parent_summary=session_summary,
+            main_entries=main_entries,
+            agent_entries=agent_entries,
+            processor=processor,
+        )
+        if artifacts:
+            print(f"🧵 Emitted {len(artifacts)} subagent transcript(s)")
+            for art in artifacts:
+                if art.transcript_path:
+                    print(
+                        f"   ↳ {art.subagent_type or 'unknown'} ({art.child_session_id}): "
+                        f"{art.transcript_path}"
+                    )
+            maybe_append_subagent_footer(parent_full_path, artifacts)
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️  Subagent transcript emission failed: {e}", file=sys.stderr)
+
+
 def git_sync():
     """Commit and push changes in the sessions repository."""
     try:
@@ -1047,13 +1101,24 @@ def git_sync():
 
         print(f"Syncing changes in {sessions_root}...")
 
-        # Policy: only transcripts/ and summaries/ are pushed. Raw substrate
-        # (client-logs/, hooks/, polecats/, github/) is local-only — see
-        # PKB kb-d8f58167 (Session Log Observability Map).
+        # Policy: only transcripts/, summaries/, and their subagent siblings
+        # are pushed. Raw substrate (client-logs/, hooks/, polecats/, github/)
+        # is local-only — see PKB kb-d8f58167 (Session Log Observability Map).
+        # Subagent dirs (task-b483e037) follow the same policy. ``--ignore-errors``
+        # tolerates the case where a directory doesn't exist yet (e.g. a sessions
+        # repo that has never had any subagent invocations).
         subprocess.run(
-            ["git", "add", "transcripts/", "summaries/"],
+            [
+                "git",
+                "add",
+                "--ignore-errors",
+                "transcripts/",
+                "summaries/",
+                "subagent-transcripts/",
+                "subagent-summaries/",
+            ],
             cwd=str(sessions_root),
-            check=True,
+            check=False,
         )
 
         status = subprocess.run(
@@ -1283,7 +1348,14 @@ Examples:
                 # Note: _output_exists() check removed - early mtime check handles
                 # both "already current" (skip) and "stale" (regenerate) cases
 
-                base_name = str(sessions_claude / filename)
+                # Rotate into transcripts/YYYY-MM/ keyed off the session start
+                # date parsed from the filename (aops-b975b185). This stays
+                # stable even when a session is re-processed later.
+                rotation_dt = extract_date_from_filename(filename) or datetime.strptime(
+                    date_str, "%Y%m%d"
+                ).replace(tzinfo=UTC)
+                out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
+                base_name = str(out_subdir / filename)
 
                 # Extract and process reflection (if present)
                 # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
@@ -1356,6 +1428,17 @@ Examples:
                 format_markdown(abridged_path)
                 file_size = abridged_path.stat().st_size
                 print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
+                # Emit per-subagent transcripts + insights (task-b483e037)
+                _emit_subagent_artifacts(
+                    session_path=session_path,
+                    parent_session_id=session_id,
+                    session_summary=session_summary,
+                    entries=entries,
+                    agent_entries=agent_entries,
+                    processor=processor,
+                    parent_full_path=full_path,
+                )
 
                 processed += 1
 
@@ -1558,6 +1641,17 @@ Examples:
             file_size = abridged_path.stat().st_size
             print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 
+            # Emit per-subagent transcripts + insights (task-b483e037)
+            _emit_subagent_artifacts(
+                session_path=session_path,
+                parent_session_id=sid,
+                session_summary=session_summary,
+                entries=entries,
+                agent_entries=agent_entries,
+                processor=processor,
+                parent_full_path=full_path,
+            )
+
             return 0
 
         # If output_dir not set yet (no -o specified), use default
@@ -1580,6 +1674,14 @@ Examples:
             shortform=args.shortform,
         )
 
+        # Rotate into <output_dir>/YYYY-MM/ keyed off session start
+        # (aops-b975b185). Only rotate when the output_dir is the default
+        # transcripts dir; explicit --output paths are honoured verbatim.
+        if output_dir == sessions_claude:
+            rotation_dt = extract_date_from_filename(filename) or datetime.strptime(
+                date_str, "%Y%m%d"
+            ).replace(tzinfo=UTC)
+            output_dir = ensure_rotated_dir(sessions_claude, rotation_dt)
         base_name = str(output_dir / filename)
         print(f"📛 Generated filename: {filename}")
 
@@ -1676,6 +1778,17 @@ Examples:
         format_markdown(abridged_path)
         file_size = abridged_path.stat().st_size
         print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
+        # Emit per-subagent transcripts + insights (task-b483e037)
+        _emit_subagent_artifacts(
+            session_path=session_path,
+            parent_session_id=session_id,
+            session_summary=session_summary,
+            entries=entries,
+            agent_entries=agent_entries,
+            processor=processor,
+            parent_full_path=full_path,
+        )
 
         return 0
 
