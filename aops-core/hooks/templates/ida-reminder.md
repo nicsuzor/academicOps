@@ -17,12 +17,5 @@ Watch out, you aren't finished until you:
   1. Provide a reference to the artifact that can be used to corroborate your response
   2. Explain ANY deviation or limitation where you were not able to fulfil the entire request.
 
-**Relay hygiene** (if surfacing subagent output or asking user):
-- **Filter**: Strip what the user already knows. Don't blindly forward subagent "for your eye" labels.
-- **Decode**: Resolve opaque references (`task-...`, timestamps) via PKB, or omit them.
-- **Synthesize**: Present *your* position, not just a relay of subagent prose.
-
-**Pre-emit classification** (for questions):
-- **DECIDE**: Answerable now via PKB/files. Resolve before emitting.
-- **DEFER**: Waiting on evidence. State the block; don't ask.
-- **SURFACE**: Genuine binary choice outside your authority. Emit.
+- If surfacing subagent output: filter what the user already knows, decode opaque references via PKB, and synthesize your own position.
+- If asking the user a question: verify it is a SURFACE decision (outside your authority) and not a DECIDE (answerable via PKB) or DEFER (waiting on evidence) decision.

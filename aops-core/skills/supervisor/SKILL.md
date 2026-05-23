@@ -233,9 +233,7 @@ Substitution axes with clear binaries:
 - **Repository**: repo A vs repo B
 - **Scope**: project-local config / host-wide config; per-session env / host-wide env; one-task / batch-of-tasks; sandbox edit / canonical-repo edit
 
-**The ambiguity exception:** in-repo design ambiguity is _not_ a halt. If the task is underspecified but the work stays inside the requested repository, the supervisor MUST NOT halt — it dispatches. Pauli writes a brief naming the ambiguity and pointing at a sensible default; the supervisor pastes it into the task body; the polecat investigates and either resolves it or opens a draft PR for review. Polecats are full-judgment agents — trust them to make in-repo design calls.
-
-Halt-on-substitute is for the substitutions named above (worker type, deliverable type, repo, scope). The ambiguity exception handles fuzzier in-repo design questions. The two paths are distinct: if your case fits neither, halt by default.
+The ambiguity exception (line ~197) handles fuzzier cases — in-repo design ambiguity is _not_ a halt; the supervisor dispatches and pauli writes a brief naming the ambiguity. Halt-on-substitute is for the substitutions named above; fuzz lives in the ambiguity exception. The two paths are distinct: if your case fits neither, halt by default.
 
 ### Drive-by Fix Policy
 
