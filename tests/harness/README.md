@@ -19,7 +19,7 @@ the CLI to verify behaviours.
 ```bash
 # 1. Spawn a detached session. Give it a large geometry so the UI renders properly.
 export TMUX_NAME="test-session-$RANDOM"
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 'polecat crew -g aops'
+tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 'polecat crew --model gemini aops'
 
 # 2. Send literal text and an Enter keystroke
 # NOTE: -l ensures special characters aren't interpreted as tmux commands

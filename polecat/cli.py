@@ -273,6 +273,90 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
 
 
+# Client-name aliases for ``--model``: when the user passes one of these
+# names, polecat both selects the matching client AND uses the model id
+# from ``polecat.yaml session_defaults.<client>_model``. Anything else is
+# treated as a literal model id and the client is inferred from the prefix
+# (``gemini-*`` → gemini, ``claude-*`` / sonnet|opus|haiku-* → claude).
+_CLIENT_ALIAS_MODELS: dict[str, str] = {
+    "gemini": "gemini",
+    "claude": "claude",
+}
+
+
+def _resolve_model_flag(
+    model_value: str | None,
+    *,
+    default_client: str = "claude",
+    interactive_shell: bool = False,
+) -> tuple[str, str | None]:
+    """Resolve a ``--model <name>`` value into (client, model_id_override).
+
+    The unified ``--model`` flag is the canonical way to pick BOTH the agent
+    client (claude vs gemini) AND the model id used inside that client. It
+    replaces the legacy ``--gemini``/``-g`` flag.
+
+    Resolution rules:
+
+    * ``None`` → ``(default_client, None)``. No override; the session config's
+      configured model for ``default_client`` is used.
+    * A client-name alias (``"claude"``, ``"gemini"``) → ``(client, None)``.
+      The client is switched; the configured ``<client>_model`` from
+      ``polecat.yaml session_defaults`` is used verbatim.
+    * A literal model id (``"claude-opus-4-7"``, ``"gemini-2.5-pro"``, etc.):
+      the client is inferred from the id prefix and the id is passed through
+      to the client CLI as ``--model <id>``.
+    * Anything else → ``click.UsageError`` naming the available aliases so the
+      caller sees exactly what they can pass.
+
+    When ``interactive_shell`` is True (e.g. ``polecat crew -i`` drops into a
+    bash shell, no agent CLI), passing ``--model`` is rejected with a
+    UsageError — no agent is launched, so a model override has nothing to
+    bind to.
+    """
+    if model_value is None:
+        return default_client, None
+    if interactive_shell:
+        raise click.UsageError(
+            "--model has no effect in interactive shell mode (no agent CLI is launched); "
+            "drop the flag or remove --interactive/-i."
+        )
+    name = model_value.strip()
+    if not name:
+        raise click.UsageError(
+            "--model requires a non-empty value. "
+            f"Aliases: {sorted(_CLIENT_ALIAS_MODELS)} or a literal model id "
+            "(e.g. claude-opus-4-7, gemini-2.5-pro)."
+        )
+
+    # Client-name aliases: pick the client, defer to config for the model id.
+    alias_lower = name.lower()
+    if alias_lower in _CLIENT_ALIAS_MODELS:
+        return _CLIENT_ALIAS_MODELS[alias_lower], None
+
+    # Literal model ids: infer client from prefix and pass through verbatim.
+    # Anthropic naming: claude-*, opus-*, sonnet-*, haiku-* (post-rebrand
+    # aliases). Google: gemini-*. Anything else is an error — silent
+    # pass-through caused the original drift (--opus → default sonnet) by
+    # forwarding unknown names to the wrong client.
+    if alias_lower.startswith("gemini-"):
+        return "gemini", name
+    if (
+        alias_lower.startswith("claude-")
+        or alias_lower.startswith("opus-")
+        or alias_lower.startswith("sonnet-")
+        or alias_lower.startswith("haiku-")
+    ):
+        return "claude", name
+
+    aliases = sorted(_CLIENT_ALIAS_MODELS)
+    raise click.UsageError(
+        f"--model {model_value!r}: cannot determine client. "
+        f"Use one of the aliases {aliases}, or pass a literal model id prefixed with "
+        "'claude-', 'opus-', 'sonnet-', 'haiku-', or 'gemini-'."
+    )
+
+
 def _resolve_session_config(
     mode: str,
     *,
@@ -291,6 +375,10 @@ def _resolve_session_config(
     ``--model`` override to the matching client field. ``--model`` with
     ``client="shell"`` is rejected (interactive shell sessions don't run an
     agent CLI).
+
+    ``model`` here is a LITERAL model id (or ``None``). Client-name alias
+    resolution happens upstream in ``_resolve_model_flag`` so this layer
+    only ever sees concrete ids.
     """
     cfg = load_polecat_config()
     overrides: dict[str, object] = {}
@@ -3406,12 +3494,20 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
 @main.command("c", hidden=True, context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
-@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
-@click.option("--model", default=None, help="Override the model (claude/gemini model id).")
+@click.option(
+    "--model",
+    default=None,
+    help=(
+        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "client and use the configured model from polecat.yaml. Literal model "
+        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
+    ),
+)
 @click.option(
     "--debug/--no-debug",
     "debug_flag",
@@ -3438,7 +3534,6 @@ def crew_alias(
     ctx,
     target,
     name,
-    gemini,
     interactive,
     resume,
     keep,
@@ -3454,7 +3549,6 @@ def crew_alias(
         crew,
         target=target,
         name=name,
-        gemini=gemini,
         interactive=interactive,
         resume=resume,
         keep=keep,
@@ -3470,12 +3564,20 @@ def crew_alias(
 @main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False, default=None)
 @click.option("--name", "-n", help="Crew name (randomly generated if not specified)")
-@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Drop into an interactive shell (no agent)")
 @click.option("--resume", "-r", help="Resume existing crew worker by name")
 @click.option("--keep", "-k", is_flag=True, help="Keep worktree even if a PR is open")
 @click.option("--memory", default=None, help="Container memory limit (e.g. 4g, 2048m)")
-@click.option("--model", default=None, help="Override the model (claude/gemini model id).")
+@click.option(
+    "--model",
+    default=None,
+    help=(
+        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "client and use the configured model from polecat.yaml. Literal model "
+        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
+    ),
+)
 @click.option(
     "--debug/--no-debug",
     "debug_flag",
@@ -3502,7 +3604,6 @@ def crew(
     ctx,
     target,
     name,
-    gemini,
     interactive,
     resume,
     keep,
@@ -3526,18 +3627,31 @@ def crew(
 
     \b
     Examples:
-        polecat crew aops             # Crew in academicOps repo
-        polecat crew bm               # Crew in buttermilk repo
-        polecat crew repo /path/to/x  # Crew in arbitrary repo
-        polecat crew -r audre         # Resume crew worker "audre"
-        polecat crew -i aops          # Interactive shell in crew container
-        polecat crew -g aops          # Gemini CLI in sandbox mode
-        polecat crew aops -- -p "do something"  # Pass args to agent CLI
+        polecat crew aops                      # Crew in academicOps repo (claude, default)
+        polecat crew bm                        # Crew in buttermilk repo
+        polecat crew repo /path/to/x           # Crew in arbitrary repo
+        polecat crew -r audre                  # Resume crew worker "audre"
+        polecat crew -i aops                   # Interactive shell in crew container
+        polecat crew --model gemini aops       # Gemini CLI in our docker container
+        polecat crew --model claude-opus-4-7 aops  # Specific Claude model
+        polecat crew aops -- -p "do something"     # Pass args to agent CLI
     """
     import subprocess
 
-    cli_tool = "gemini" if gemini else "claude"
-    _bootstrap_or_exit(client=cli_tool)
+    # Resolve --model into (client, model_id_override). The unified --model
+    # flag is the canonical way to select BOTH client (claude vs gemini) AND
+    # model id. ``interactive_shell=interactive`` rejects --model when the
+    # user is dropping into an in-container bash (no agent CLI to bind to).
+    selected_client, model_override = _resolve_model_flag(
+        model, default_client="claude", interactive_shell=interactive
+    )
+    # Interactive shell mode never launches an agent — keep cli_tool="shell"
+    # so the existing build-command branches stay correct.
+    if interactive:
+        bootstrap_client = "shell"
+    else:
+        bootstrap_client = selected_client
+    _bootstrap_or_exit(client=bootstrap_client)
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
@@ -3738,13 +3852,13 @@ def crew(
     else:
         work_dir = manager.crew_dir / crew_name
 
-    # Build agent command with isolation
+    # Build agent command with isolation. Client is resolved upstream from
+    # --model (see _resolve_model_flag above); interactive shell mode wins.
     if interactive:
         cli_tool = "shell"
-    elif gemini:
-        cli_tool = "gemini"
     else:
-        cli_tool = "claude"
+        cli_tool = selected_client
+    is_gemini = cli_tool == "gemini"
     _require_claude_oauth_or_exit(cli_tool)
     print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
@@ -3753,7 +3867,7 @@ def crew(
     cfg, session_cfg = _resolve_session_config(
         "crew",
         client=cli_tool,
-        model=model,
+        model=model_override,
         debug=debug_flag,
         set_overrides=set_overrides,
     )
@@ -3771,7 +3885,7 @@ def crew(
         # Both claude and gemini CLIs are pre-installed in the image along
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
-    elif gemini:
+    elif is_gemini:
         # Gemini: run inside our Docker container (not --sandbox, which uses
         # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
@@ -3821,7 +3935,7 @@ def crew(
     # Claude crew runs in plan mode; signal that to the gate engine so it
     # skips the custodiet ops counter (the gate must not fire when rbg
     # cannot be invoked). Suppressed for gemini / interactive shell paths.
-    if not interactive and not gemini:
+    if not interactive and not is_gemini:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
@@ -3834,7 +3948,7 @@ def crew(
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
-    if gemini:
+    if is_gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(
             env, work_dir=work_dir, hooks_enabled=session_cfg.hooks_enabled
@@ -3954,7 +4068,7 @@ def crew(
             # Claude writes to /home/worker/.claude/projects/-workspace/
             # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
             extract = []
-            if gemini:
+            if is_gemini:
                 if _is_remote_daemon():
                     extract.append(("/home/worker/.gemini/tmp/workspace", session_dir))
             else:
@@ -4154,7 +4268,6 @@ class _IssueTask:
 @click.option("--task-id", "-t", help="Specific task ID to run (skips claim)")
 @click.option("--issue", help="GitHub issue to run (owner/repo#N, URL, or #N with --project)")
 @click.option("--no-finish", is_flag=True, hidden=True, help="(Deprecated, no-op)")
-@click.option("--gemini", "-g", is_flag=True, help="Use Gemini CLI instead of Claude")
 @click.option("--interactive", "-i", is_flag=True, help="Run in interactive mode (not headless)")
 @click.option(
     "--no-auto-finish",
@@ -4171,7 +4284,16 @@ class _IssueTask:
         "PR-locked). Still claims the task to in_progress before running."
     ),
 )
-@click.option("--model", default=None, help="Override the model.")
+@click.option(
+    "--model",
+    default=None,
+    help=(
+        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "client and use the configured model from polecat.yaml. Literal model "
+        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
+    ),
+)
 @click.option(
     "--debug/--no-debug",
     "debug_flag",
@@ -4197,7 +4319,6 @@ def run(
     task_id,
     issue,
     no_finish,
-    gemini,
     interactive,
     no_auto_finish,
     memory,
@@ -4270,7 +4391,12 @@ def run(
         pass
 
     _require_pkb_url_or_exit()
-    cli_tool = "gemini" if gemini else "claude"
+    # Resolve --model into (client, model_id_override). The unified --model
+    # flag is the canonical way to select BOTH client (claude vs gemini) AND
+    # model id; it replaces the legacy --gemini/-g flag.
+    selected_client, model_override = _resolve_model_flag(model, default_client="claude")
+    cli_tool = selected_client
+    is_gemini = cli_tool == "gemini"
     _bootstrap_or_exit(client=cli_tool)
     _require_claude_oauth_or_exit(cli_tool)
 
@@ -4398,7 +4524,7 @@ def run(
         home_dir=manager.home_dir,
         project=project or task.project or "",
         caller=caller,
-        agent="gemini" if gemini else "claude",
+        agent=cli_tool,
         is_issue=is_issue,
         force=bool(force),
     )
@@ -4480,13 +4606,13 @@ def run(
     )
 
     # Step 4: Run agent in the worktree
-    # Choose CLI tool based on --gemini flag
-    cli_tool = "gemini" if gemini else "claude"
+    # cli_tool / is_gemini were resolved upstream from --model (see
+    # _resolve_model_flag at the top of run()).
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
         "run",
         client=cli_tool,
-        model=model,
+        model=model_override,
         debug=debug_flag,
         set_overrides=set_overrides,
     )
@@ -4500,7 +4626,7 @@ def run(
     print("-" * 50)
 
     # Build command - gemini and claude have different CLI interfaces
-    if gemini:
+    if is_gemini:
         # Gemini CLI — run inside our Docker container (not --sandbox, which
         # uses bind mounts that fail on WSL2/Docker Desktop).
         #
@@ -4571,7 +4697,7 @@ def run(
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
     env["AOPS_SESSION_STATE_DIR"] = str(run_session_dir)
 
-    if gemini:
+    if is_gemini:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(
             env, work_dir=worktree_path, hooks_enabled=session_cfg.hooks_enabled
@@ -4648,7 +4774,7 @@ def run(
     # Compute extract_paths for session transcript persistence.
     # Claude writes to /home/worker/.claude/projects/-workspace/
     # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
-    if gemini:
+    if is_gemini:
         if _is_remote_daemon():
             _extract = [("/home/worker/.gemini/tmp/workspace", run_session_dir)]
         else:
@@ -4682,7 +4808,7 @@ def run(
                     cwd=worktree_path,
                     env=env,
                     extract_paths=_extract,
-                    gemini=gemini,
+                    gemini=is_gemini,
                     task_id=task.id,
                 )
             else:
@@ -4702,7 +4828,7 @@ def run(
                     capture_output=True,
                     text=True,
                     extract_paths=_extract,
-                    gemini=gemini,
+                    gemini=is_gemini,
                     task_id=task.id,
                 )
             else:
