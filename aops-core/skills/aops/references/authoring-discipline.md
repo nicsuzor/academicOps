@@ -22,31 +22,21 @@ Do not invent phantom approval gates. The framework has a canonical review pipel
 
 ## 3. Compose-then-Dispatch Separation (A17 propagated to the dispatch surface)
 
-_A17 (Recusal) governs framework-change authoring: the agent that lived through the failure may not author the rule. The same structural property must hold for worker dispatch: the agent that composed the brief should not, in the same in-context invocation, also perform the dispatch. The composing impulse and the dispatching impulse are the same impulse — same model, same context window — and same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
+_A17 (Recusal) propagated to the dispatch surface: the agent that composed a brief should not, in the same invocation, also perform the dispatch. Same agent identity, same in-context reasoning trace — same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
 
-The canonical happy path for any non-trivial worker dispatch (polecat or polecat-equivalent execution) is **two contexts, mediated by PKB**:
+The canonical pattern is **two agent invocations, mediated by PKB**:
 
-1. **Compose** — author the brief into a PKB task body (intent + AC; the principles in §§1–2 above). Persist. Exit the composing invocation.
-2. **Dispatch** — a separate invocation (next supervisor tick, polecat pull cycle, or a different orchestrator-context dispatch step) reads the brief fresh from PKB and ships the worker. The dispatching actor does not inherit the composer's in-context reasoning trace.
+1. **Compose-agent** — author the brief into a PKB task body (intent + AC; the principles in §§1–2 above). Persist.
+2. **Dispatch-agent** — a _separate_ agent invocation reads the brief fresh from PKB and ships the worker.
 
-This is a **workflow shape, not a verdict gate.** There is no PASS/REWRITE/HALT check interposed between compose and dispatch; the structural distinctness is delivered by the context boundary itself. PKB is the persistent intermediary; the freshness of the dispatcher's read is the cure.
+**The load-bearing requirement is agent-identity separation, not temporal separation across ticks or sessions.** A single tick MAY chain compose-agent and dispatch-agent as two independent subagent invocations. Tick-exit-and-defer remains a legitimate fallback but is not required.
 
-**Operational rules**:
+**Rules**:
 
-- **Surface-by-surface canonical pattern**: see [[../../planner/SKILL#shared-principles]] (planner is the canonical compose-only surface), [[../../supervisor/SKILL#compose-then-dispatch-separation]] (compose and dispatch never co-occur in one tick), and the junior coordinator's worker-dispatch rule (write to PKB first; dispatch by task-ID only).
-- **No fresh in-tick brief**: if the brief was just authored or substantially refined in the current invocation, that invocation exits with a "brief drafted" checkpoint. Dispatch is the next invocation's responsibility.
-- **Dispatch by task-ID, not by inlined prose**: when invoking a worker (e.g. `polecat run -t <task-id>`), the worker reads the brief from PKB. Never inline a freshly-composed brief as command arguments or sub-agent prompt text in the same context where the brief was composed.
-- **Lightweight subagent calls are not worker dispatch**: a short pauli preflight or marsha verify against an existing artifact is not the surface this rule targets. The rule targets sustained worker execution (polecat-equivalent) where the brief is the primary input.
-- **If the brief is already a stable PKB artifact** (authored in a prior tick / session and unchanged in the current invocation), the current invocation MAY dispatch it. The constraint is on co-occurrence of authoring and dispatching, not on dispatching pre-existing briefs.
-
-**Why this works without a gate**: the dispatcher reads the brief fresh, with no inheritance of the composer's prescriptive impulse. If the brief is well-shaped (intent + AC), dispatch proceeds; if it is not, the dispatcher's normal attention (the same kind of judgment a human dispatcher applies on read) is sufficient — and the brief is now a visible artifact in PKB rather than transient in-context prose, making it auditable by any subsequent reader. The composer who knows their brief will be read by a fresh actor (not blindly executed by the same impulse that authored it) writes with awareness that the brief must stand on its own.
-
-**Axiom interactions**:
-
-- **A17 (Recusal)**: this rule IS A17 propagated to the dispatch surface — the agent that composed must not own the dispatch. The framework-change variant requires a detached author; the dispatch variant requires a detached dispatcher.
-- **A8 (Halt on failure)**: this rule does NOT introduce a gate, a verdict, or a HALT mechanism. There is no "skip dispatch if brief is prescriptive" branch. The dispatching actor either dispatches or routes through the normal A7 Edge 2 escalation if it cannot — it does not invent a new halt condition.
-- **A7 Edge 3 (No Shitty NLP)**: the dispatcher's judgment of brief shape, if it forms one at all, is qualitative LLM judgment — never a regex or keyword check. There is no "scan for `/home/` paths" or "grep for 'DO NOT'" rule attached to this workflow.
-- **A11 (Full Observability)**: the brief is a visible PKB artifact at the moment of handoff. Any subsequent reader (user, reviewer, audit) can see what was authored and what was dispatched without reading transcripts.
+- **No same-agent author-then-dispatch**: if the brief was authored or substantially refined in the current invocation, dispatch is the next agent invocation's job.
+- **Dispatch by task-ID**: invoke the worker with `polecat run -t <task-id>`; the worker reads the brief from PKB. Never inline a freshly-composed brief as prompt text in the same invocation where it was composed.
+- **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
+- **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. A malformed verdict is recorded and the tick exits; do not improvise. See [[../../supervisor/SKILL#verdict-structural-shape-guard-mandatory-before-acting]].
 
 ## 4. Decision Surfacing Heuristic (FM-2 Avoidance)
 
