@@ -283,6 +283,13 @@ _CLIENT_ALIAS_MODELS: dict[str, str] = {
     "claude": "claude",
 }
 
+# Bare Claude model-family names. Claude Code's own ``--model`` flag accepts
+# these as aliases for the latest version of each family, so polecat passes
+# them through verbatim and routes them to the claude client. This is the
+# canonical short form documented in ~/junior/.agents/CORE.md (e.g.
+# ``--model opus``).
+_CLAUDE_MODEL_FAMILIES: frozenset[str] = frozenset({"opus", "sonnet", "haiku"})
+
 
 def _resolve_model_flag(
     model_value: str | None,
@@ -303,6 +310,10 @@ def _resolve_model_flag(
     * A client-name alias (``"claude"``, ``"gemini"``) → ``(client, None)``.
       The client is switched; the configured ``<client>_model`` from
       ``polecat.yaml session_defaults`` is used verbatim.
+    * A bare Claude model-family name (``"opus"``, ``"sonnet"``, ``"haiku"``)
+      → ``("claude", <name>)``. Claude Code's CLI accepts these as aliases
+      for the latest version of each family; polecat passes them through.
+      This is the canonical short form documented in ``~/junior/.agents/CORE.md``.
     * A literal model id (``"claude-opus-4-7"``, ``"gemini-2.5-pro"``, etc.):
       the client is inferred from the id prefix and the id is passed through
       to the client CLI as ``--model <id>``.
@@ -325,14 +336,21 @@ def _resolve_model_flag(
     if not name:
         raise click.UsageError(
             "--model requires a non-empty value. "
-            f"Aliases: {sorted(_CLIENT_ALIAS_MODELS)} or a literal model id "
-            "(e.g. claude-opus-4-7, gemini-2.5-pro)."
+            f"Aliases: {sorted(_CLIENT_ALIAS_MODELS) + sorted(_CLAUDE_MODEL_FAMILIES)} "
+            "or a literal model id (e.g. claude-opus-4-7, gemini-2.5-pro)."
         )
 
     # Client-name aliases: pick the client, defer to config for the model id.
     alias_lower = name.lower()
     if alias_lower in _CLIENT_ALIAS_MODELS:
         return _CLIENT_ALIAS_MODELS[alias_lower], None
+
+    # Bare Claude model-family names (``opus``/``sonnet``/``haiku``): claude
+    # CLI accepts these as latest-version aliases. Pass through verbatim
+    # under the claude client. This is the canonical short form used by
+    # supervisors and orchestrators (see ~/junior/.agents/CORE.md).
+    if alias_lower in _CLAUDE_MODEL_FAMILIES:
+        return "claude", alias_lower
 
     # Literal model ids: infer client from prefix and pass through verbatim.
     # Anthropic naming: claude-*, opus-*, sonnet-*, haiku-* (post-rebrand
@@ -349,7 +367,7 @@ def _resolve_model_flag(
     ):
         return "claude", name
 
-    aliases = sorted(_CLIENT_ALIAS_MODELS)
+    aliases = sorted(_CLIENT_ALIAS_MODELS) + sorted(_CLAUDE_MODEL_FAMILIES)
     raise click.UsageError(
         f"--model {model_value!r}: cannot determine client. "
         f"Use one of the aliases {aliases}, or pass a literal model id prefixed with "
@@ -3503,8 +3521,9 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     default=None,
     help=(
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
-        "client and use the configured model from polecat.yaml. Literal model "
-        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client and use the configured model from polecat.yaml. Bare Claude "
+        "family names ('opus', 'sonnet', 'haiku') and literal model ids "
+        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -3573,8 +3592,9 @@ def crew_alias(
     default=None,
     help=(
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
-        "client and use the configured model from polecat.yaml. Literal model "
-        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client and use the configured model from polecat.yaml. Bare Claude "
+        "family names ('opus', 'sonnet', 'haiku') and literal model ids "
+        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -4289,8 +4309,9 @@ class _IssueTask:
     default=None,
     help=(
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
-        "client and use the configured model from polecat.yaml. Literal model "
-        "ids (e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "client and use the configured model from polecat.yaml. Bare Claude "
+        "family names ('opus', 'sonnet', 'haiku') and literal model ids "
+        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
