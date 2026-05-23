@@ -116,6 +116,7 @@ You are trusted to find what matters. Read the transcript. Find what's worth fix
 - **Look for structural causes**: If you find yourself listing the same proximate cause across multiple findings, the deeper cause is upstream. Say so explicitly. Instead of listing four separate errors, articulate the structural mis-design that caused them.
 - **Is the shape right?**: Instead of just asking "what went wrong against the framework as-is", ask "is the framework's shape correct?"
 - **Pattern recognition**: Before filing issues, look for patterns across your findings. Are these discrete bugs, or symptoms of a single misaligned rule?
+- **Instruction-quality failures**: When an agent underperformed — missed something visible in the logs, declared success prematurely, or optimised for the shallowest valid interpretation — ask whether the instruction itself was the root cause. Classify as root cause category "Instruction Gap" and note which of the seven `/craft` defects apply (compliance framing, missing artifact chain, no adversarial checks, summary-as-evidence, undefined boundary behavior, missing error lexicon, no negative verification). The fix is an instruction rewrite via `/craft audit`, not an agent behavior change.
 
 ### 3b. Forensic scope (A17 Recusal)
 
@@ -417,7 +418,7 @@ disposition. This is the work that retro is forbidden to do; sweep is the
 only mode allowed to author it.
 
 1. **Read the forensic reports.** The issue body should be a clean incident report (per A17). If it carries a "suggested axiom" or "proposed gate," strip that from your reasoning — the proposal was authored under prejudicial recency and is evidence of urgency, not of the right answer. Edit the issue to remove the stripped section and leave a comment explaining the A17 split.
-2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit. One per issue.
+2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Gap, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit. One per issue. _Instruction Gap_ means the agent's instructions were too shallow to produce excellent execution — the fix is an instruction rewrite via `/craft audit`, not a mechanism change.
 3. **Map to existing mechanisms.** Read `.agents/ENFORCEMENT-MAP.md` end-to-end (it is short by design). Grep AXIOMS.md and HEURISTICS.md for prior framing of the rule. List every existing mechanism that should plausibly have caught this failure, with its tier (L0–L7).
 4. **Classify the failure shape**:
    - **Propagation failure** — rule exists at the right tier but didn't reach this surface. Fix is L1 propagation: edit the specific skill / agent / CORE.md text that needs to carry the rule. Same tier, more callsites.

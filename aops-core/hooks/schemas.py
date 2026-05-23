@@ -84,16 +84,18 @@ class ClaudeStopHookOutput(BaseModel):
       these on its next turn. Do NOT route advisory/recovery text here — that
       inverts intent (the advisory leaks to the user as noise, the agent sees
       nothing). See aops-d10e7db6.
-    - ``hookSpecificOutput.additionalContext``: emitted defensively for forward
-      compatibility — newer Claude Code versions may honour it for Stop. Older
-      versions ignore the unknown field.
+
+    ``hookSpecificOutput`` is NOT supported for Stop events. Claude Code's schema
+    validator only accepts hookSpecificOutput for PreToolUse, UserPromptSubmit,
+    PostToolUse, and PostToolBatch. Emitting it with hookEventName="Stop" causes
+    the entire JSON payload to be rejected as invalid, silently discarding both
+    the decision and reason fields. Discovered via polecat self-test 2026-05-23.
     """
 
     decision: Literal["approve", "block"] | None = None
     reason: str | None = None
     stopReason: str | None = None
     systemMessage: str | None = None
-    hookSpecificOutput: ClaudeHookSpecificOutput | None = None
 
 
 class ClaudeGeneralHookOutput(BaseModel):

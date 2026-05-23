@@ -90,6 +90,8 @@ This phase exists because of specific, observed failures:
 
 4. **Reflect before delegating.** Read the instructions as if you knew nothing about this codebase. What's ambiguous? What requires knowledge the agent won't have?
 
+5. **Quality gate (optional).** For high-stakes instructions, invoke `/craft` author mode to check for shallow-execution vulnerabilities — compliance framing, missing artifact chains, no adversarial checks, summary-as-evidence, undefined boundary behavior. If `/craft` says REVISE, fix the instructions before spending compute on delegation.
+
 ### Phase 2: Commission Contextless Execution
 
 **Goal**: Test the instructions by delegating to an agent with NO prior context.
@@ -236,3 +238,4 @@ These were observed during dogfooding runs and should be watched for:
 - `.agents/skills/framework/workflows/10-reflective-execution.md` — the workflow version
 - `aops-core/skills/survey/SKILL.md` — retro/trend/sweep modes (tasks this skill might dogfood)
 - `aops-core/skills/verify/SKILL.md` — quality assessment (used in Phase 4)
+- `aops-core/skills/craft/SKILL.md` — instruction quality gate (pre-flight before Phase 2)
