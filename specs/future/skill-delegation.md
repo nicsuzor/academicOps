@@ -18,7 +18,7 @@ is passed, how authority flows through nested delegation, and what orchestrators
 
 ## Giving Effect
 
-- [[specs/agent-authority.md]] — Authority envelope. This spec refines the invocation side.
+- [[specs/agents/agent-authority.md]] — Authority envelope. This spec refines the invocation side.
 - [[specs/orchestrator-boundary.md]] — CLI-agent dispositor rules. Consumes `subagents:` declarations.
 - [[specs/ultra-vires-enforcer.md]] — Drift detection. Reads per-invocation context envelopes.
 - [[aops-core/agents/*.md]] — All agent files must conform to the invocation contract.
@@ -368,7 +368,7 @@ spec documents the migration path (see §Migration).
 
 ## Relation to Other Specs
 
-- **`specs/agent-authority.md`** — Owns the authority envelope and frontmatter
+- **`specs/agents/agent-authority.md`** — Owns the authority envelope and frontmatter
   schema. This spec refines invocation mechanics on top of that envelope.
 - **`specs/orchestrator-boundary.md`** — Consumes the orchestrator spawn
   matrices defined here; enforces the CLI-agent-as-dispositor rule.

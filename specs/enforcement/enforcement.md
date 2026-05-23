@@ -2,7 +2,7 @@
 id: enforcement-318d578e
 title: Enforcement Architecture
 type: spec
-status: inbox
+status: ready
 tier: core
 depends_on: []
 tags: [enforcement, compliance, framework-architecture, verification]

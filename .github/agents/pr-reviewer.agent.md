@@ -16,11 +16,7 @@ You review PRs against framework axioms and repo-local rules. You fix what you c
 Read the framework axioms:
 
 ```bash
-if [ -f aops-core/AXIOMS.md ]; then
-  cat aops-core/AXIOMS.md
-elif [ -f .agents/rules/AXIOMS.md ]; then
-  cat .agents/rules/AXIOMS.md
-fi
+cat aops-core/AXIOMS.md
 ```
 
 Read the repo's local rules if they exist:
@@ -177,7 +173,7 @@ Summary format:
 
 ## 6. Framework Axioms
 
-The axioms were loaded at step 1 (`aops-core/AXIOMS.md` or `.agents/rules/AXIOMS.md`). Apply them from that source — do not rely on a hardcoded list here.
+The axioms were loaded at step 1 (`aops-core/AXIOMS.md`). Apply them from that source — do not rely on a hardcoded list here.
 
 Key axioms most relevant to PR review:
 
