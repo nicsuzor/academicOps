@@ -148,7 +148,13 @@ You may flag the finding as severe; you may not author the legislation that seve
 
 ### 5. File issues
 
-For every **Finding** that requires action, file or update a GitHub issue. Group findings that share a structural cause into a single issue.
+For every **Finding** that requires action, file or update a GitHub issue.
+
+**Group symptoms; split causes.** Findings that are symptoms of one structural cause — where one edit would resolve all of them — collapse into one issue. Findings that are **distinct fixable causes** — even when they share a meta-class — split into one issue per cause.
+
+**Test for "distinct":** each cause must be independently fixable, meaning closable by a single PR scoped to one framework surface. Same meta-class is not the disqualifier; same fix is. If two seams collapse to the same edit, they are one issue; if they require coordinated edits across different surfaces (different skill files, different agent prose, different hook code), they are separate issues. The granularity of the issue tracker should match the granularity at which the framework actually gets fixed (one feature, one surface, one PR at a time) — so that `/issue-sweep` can rank seam-by-seam and each PR can close one issue cleanly.
+
+**Cross-link pattern.** When a meta-class spans multiple seams, the meta-class itself still earns a record: either a parent issue (with the per-seam children listed by number in its body) or, if you prefer not to file a parent, a "meta-class anchor" note inside one of the per-seam issues. Each per-seam child links back to the meta-class via `Refs #N`; the meta-class anchor links forward to each child. The children are individually rankable and individually closable; the meta-class record persists as the structural-shape memory.
 
 **Search for existing issues first** — add volume to existing ones rather than duplicating:
 
@@ -225,7 +231,8 @@ Append (do not replace) if `reviewed_by` already exists.
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | Skimming                                                                                   | Read every line                                                                                    |
 | "Overall good with minor issues"                                                           | Quote specifically                                                                                 |
-| Filing four separate issues for symptoms of the same structural flaw                       | Identify the structural flaw and file one issue mapping the symptoms back to it                    |
+| Filing four separate issues for symptoms of one structural flaw (where one edit fixes all) | Identify the structural flaw and file one issue mapping the symptoms back to it                    |
+| Bundling N distinct fixable causes into one issue because they share a meta-class          | File one issue per cause; cross-link each child to the meta-class parent (or anchor) via `Refs #N` |
 | Inventing praise                                                                           | Only genuine strengths                                                                             |
 | Reviewing your own session                                                                 | Review a DIFFERENT session                                                                         |
 | Filing > 3 issues per session                                                              | Triage first; group structural causes; cap at 3 issues                                             |
