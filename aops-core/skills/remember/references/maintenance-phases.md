@@ -183,7 +183,7 @@ What this phase adds on top is: _which_ episodic material to mine (candidacy + f
    - Meeting notes without `consolidated: YYYY-MM-DD`
    - Completed tasks with substantive body content
 
-2. **Route observations to canonical topic notes**: For each candidate, follow [[remember]]'s Canonical Topic Notes discipline — identify the first-class topic each insight is about, update the canonical note (or create one with a scaffold if missing), reconcile stale peers in the same write. Then mark the episodic source as `consolidated: YYYY-MM-DD` in its frontmatter (do NOT modify the episodic content itself).
+2. **Route observations to canonical topic notes**: For each candidate, follow [[remember]]'s Canonical Topic Notes discipline — identify the first-class topic each insight is about, update the canonical note (or create one with a scaffold if missing), reconcile stale peers in the same write. Then mark the episodic source as `consolidated: YYYY-MM-DD` and advance its `status` to `done` in its frontmatter (do NOT modify the episodic content itself).
 
 3. **Create MOCs only when warranted**: When a topic area has accumulated 5+ canonical notes and would benefit from navigation, create or update a MOC per [[remember]]'s Maps of Content guidance. Skip this step by default — MOCs are earned, not scheduled.
 
@@ -401,6 +401,10 @@ For each knowledge note created or modified in this cycle:
 - Does synthesis cite 2+ observations?
 - Are wikilinks valid (not broken)?
 - Is confidence level present and reasonable?
+
+For each episodic source consolidated in this cycle:
+
+- Is its `status` advanced from `inbox` (e.g., to `done`)?
 
 **On Failure**: log the issue in the cycle summary and flag it in the PR description. Do not try to fix content quality problems — that's the QA reviewer's job.
 

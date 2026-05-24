@@ -158,8 +158,9 @@ A canonical topic note _is_ the knowledge; a Map of Content _indexes_ related ca
 ## Workflow
 
 1. **Search first**: `mcp__pkb__search(query="topic")`. Do not `Glob` or `Grep` `$ACA_DATA/` — PKB search is authoritative and respects indexing invariants.
-2. **If match**: Extend the existing document via `mcp__pkb__append(id=..., content=...)`, or update task bodies via `mcp__pkb__update_task` for episodic additions. Do not fetch, edit locally, and rewrite.
-3. **If no match**: Create via one of:
+2. **Canonical Check Gate**: Before creating a new standalone memory, explicitly check if a canonical note already exists for this topic. If it does, you MUST append to the canonical note using `mcp__pkb__append` or update the relevant section. Do NOT create narrow observation-memos if a broader canonical note covers the topic area.
+3. **If match**: Extend the existing document via `mcp__pkb__append(id=..., content=...)`, or update task bodies via `mcp__pkb__update_task` for episodic additions. Do not fetch, edit locally, and rewrite.
+4. **If no match**: Create via one of:
 
 ```
 mcp__pkb__create(

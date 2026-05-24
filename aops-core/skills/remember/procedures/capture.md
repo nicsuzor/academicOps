@@ -9,9 +9,6 @@ tags:
   - knowledge-management
 ---
 
-<!-- NS: this should be merged into 'remember' skill -->
-<!-- @claude 2026-01-12: Issue ns-3p3 created to track merging this workflow into the remember skill -->
-
 # Capture Workflow
 
 Session mining and note creation. Silently extracts information and maintains knowledge graph.
@@ -50,8 +47,9 @@ Use `Skill(skill="remember")`. Writes go via PKB MCP only — never the filesyst
 ### Where to File (MANDATORY SEQUENCE)
 
 1. **Search first**: `mcp__pkb__search(query="topic keywords")`
-2. **If match found**: AUGMENT the existing document via `mcp__pkb__append(id=...)` — integrate info, don't append dated entries.
-3. **If no match**: Create a new TOPICAL document (not session/date file) via `mcp__pkb__create`.
+2. **Canonical Check Gate**: Check if a canonical note exists for this topic. If it does, you MUST augment the existing canonical document using `mcp__pkb__append`. Do NOT create a new observation-memo if a broader canonical note covers the topic area.
+3. **If match found**: AUGMENT the existing document via `mcp__pkb__append(id=...)` — integrate info, don't append dated entries.
+4. **If no match**: Create a new TOPICAL document (not session/date file) via `mcp__pkb__create`.
 
 ### Augment vs Concatenate
 
