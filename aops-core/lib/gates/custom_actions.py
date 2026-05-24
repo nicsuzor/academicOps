@@ -194,20 +194,4 @@ def execute_custom_action(
         state.metrics["has_in_progress_todo"] = has_in_progress
         return None
 
-    if name == "set_handover_invoked":
-        session_state.state["handover_skill_invoked"] = True
-        return None
-
-    if name == "reset_handover_invoked":
-        session_state.state["handover_skill_invoked"] = False
-        return None
-
-    if name == "set_qa_verified":
-        session_state.state["qa_verified"] = True
-        return None
-
-    if name == "reset_qa_verified":
-        session_state.state["qa_verified"] = False
-        return None
-
     return None
