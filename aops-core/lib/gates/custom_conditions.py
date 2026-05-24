@@ -25,11 +25,6 @@ def check_custom_condition(
     if name == "is_write_tool":
         from hooks.gate_config import get_tool_category
 
-        # After QA verification, all writes are exempt — prevents the QA gate
-        # from re-closing when the agent fixes issues marsha found (endless loop).
-        if session_state.state.get("qa_verified"):
-            return False
-
         # Refinement (aops-2283a8b0): treat shell tools as read-only if handover
         # was just invoked or no task is bound. This prevents the gate from
         # re-closing on discovery/status tools (e.g. git status, echo).
@@ -42,6 +37,14 @@ def check_custom_condition(
 
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
+
+    if name == "is_write_tool_unless_qa_verified":
+        # QA-gate-specific variant: delegates to is_write_tool but returns
+        # False when qa_verified is set. Scoped to the QA gate so the
+        # handover gate's is_write_tool trigger is unaffected.
+        if session_state.state.get("qa_verified"):
+            return False
+        return check_custom_condition("is_write_tool", ctx, state, session_state)
 
     if name == "not_mid_edit":
         # Defer enforcer block while agent has an in-progress todo item.

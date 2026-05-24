@@ -104,13 +104,12 @@ GATE_CONFIGS = [
                     custom_action="reset_qa_verified",
                 ),
             ),
-            # Write tool used -> Close. Shares is_write_tool with handover;
-            # the bash-as-read carve-out keyed on handover_skill_invoked also
-            # applies here, so `git status` after /end-session doesn't re-close.
+            # Write tool used -> Close. Uses QA-scoped variant that skips
+            # re-close when qa_verified is set (prevents marsha→fix→block loop).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
-                    custom_check="is_write_tool",
+                    custom_check="is_write_tool_unless_qa_verified",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,

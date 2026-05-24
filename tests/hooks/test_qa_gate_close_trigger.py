@@ -240,6 +240,28 @@ def test_qa_verified_resets_on_new_task(router):
     assert state.gates["qa"].status == GateStatus.CLOSED
 
 
+def test_qa_verified_does_not_affect_handover_gate(router):
+    """qa_verified must not prevent the handover gate from closing on writes.
+    The is_write_tool_unless_qa_verified condition is scoped to the QA gate;
+    the handover gate uses the shared is_write_tool."""
+    state = _state_with_bound_task("qa-handover-isolation")
+    state.state["qa_verified"] = True
+    state.gates["handover"] = GateState(status=GateStatus.OPEN)
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-handover-isolation",
+            hook_event="PostToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "/tmp/foo.py"},
+        ),
+        state,
+    )
+    assert state.gates["handover"].status == GateStatus.CLOSED, (
+        "qa_verified must not prevent the handover gate from closing on Edit"
+    )
+
+
 def test_stop_hook_active_bypasses_all_gates(router):
     """When stop_hook_active=True, gates must not block — prevents
     infinite retry loops in both Claude Code and Gemini CLI."""
