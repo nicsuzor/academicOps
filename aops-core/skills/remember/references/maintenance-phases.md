@@ -257,7 +257,7 @@ Match PR → task by precedence:
 Resolution:
 
 - **Merged** → `complete_task(id, completion_evidence="PR #N merged <ISO> — <url>", pr_url=<url>)`.
-- **Closed-without-merge** → re-queue to `inbox`; append reviewer comments via `mcp__pkb__append`.
+- **Closed-without-merge** → apply the [close-context routing protocol](#close-context-routing-protocol) below. Never re-queue automatically.
 - **Open** → no-op.
 - **No match** → log to ambiguous queue in artefact, surface in next `/daily`. Never invent a task.
 
@@ -269,10 +269,10 @@ Artefact written to `$ACA_DATA/state/pr-state.json`.
 
 For every task currently in `merge_ready` or `review` (cap 50 per cycle, oldest-modified first):
 
-1. **PR-status reverify.** If frontmatter has a `pr_url`, fetch the PR's current state. State `MERGED` and task not yet `done` → `complete_task`. State `CLOSED` and not merged → re-queue to `inbox`.
+1. **PR-status reverify.** If frontmatter has a `pr_url`, fetch the PR's current state. State `MERGED` and task not yet `done` → `complete_task`. State `CLOSED` and not merged → apply the close-context routing protocol (same as Activity 4a). Never re-queue automatically.
 2. **Body-vs-frontmatter drift.** If body contains `## Release: merge_ready` but no `pr_url` exists, surface as `claim-without-pr` — do not auto-act.
 3. **Worker-no-op marker.** If body contains `⚠️ Review needed (zero changes detected)` or `Worker finished without making changes`, re-queue to `inbox` with annotation.
-4. **Repeated-sweep-failure marker.** If body contains ≥3 `## 🧹 Sweep Report` entries all reading `PR Closed without merge`, re-queue to `inbox`.
+4. **Repeated-sweep-failure marker.** If body contains ≥3 `## 🧹 Sweep Report` entries all reading `PR Closed without merge`, treat as a `bad-implementation` signal when routing: include it in the context given to the routing sub-agent as strong evidence the approach keeps failing.
 
 Output a `status-drift` block in the cycle summary and in `pr-state.json` under `status_drift`.
 
@@ -287,9 +287,41 @@ For tasks transitioned `in_progress → done` since the last cycle (up to 20 per
 3. Confirm all such subtasks are in a terminal state (`done` or `cancelled` with rationale).
 4. If any subtask is missing or unresolved: surface in cycle summary under `Loop-close gaps`. **Do NOT auto-close or auto-fail — surface only.**
 
-### Re-queue policy (closed-without-merge): always to `inbox`
+### Close-context routing protocol
 
-Closed-without-merge PRs carry new counter-evidence. The planner gate exists to re-decompose: AC, named file/symbol, verification subtask, lens subtasks. Bypassing it lets stale assumptions ride.
+Applies whenever a PR was closed without merge. The action depends on close context — never defaults to re-queue.
+
+**Step 1 — Gather close context.** Collect: PR title and body, last 10 reviewer comments, review state (approved/changes-requested/dismissed), PR labels, whether the branch was deleted, and whether a repeated-sweep-failure marker exists in the task body (≥3 sweep reports reading "PR Closed without merge").
+
+**Step 2 — Invoke an agent to classify the close.** Pass the gathered context to a sub-agent. The agent must choose exactly one of:
+
+| Class                  | Signal                                                                                                                    | Action                                                                                                                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **wontfix**            | Clear "don't do this", not-planned, superseded, reviewer explicitly rejects the goal (not just implementation)            | Mark task `cancelled` (or `done` if superseded by completed sibling). Note closing PR URL + close reason in task body. Do NOT file a follow-up.                                                                                       |
+| **bad-implementation** | Ambiguous, wrong approach, reviewer rejection of approach/design, repeated failure, or "needs rethink" language           | Mark original task `cancelled` or `blocked`. File a sibling investigation task (same parent, `soft_depends_on: [<original-id>]`) summarising what went wrong and what must change before redispatching. Do NOT re-queue the original. |
+| **retry-as-is**        | Rare: unrelated infrastructure failure explicitly documented in PR comments; nothing about the task or approach was wrong | Re-queue to `inbox`. Log the justification explicitly in the sleep activity log and in the task body.                                                                                                                                 |
+
+**Agent invocation, not regex** — per No Shitty NLP (AXIOMS.md § 235). The agent reads the actual PR body and comments to make a semantic judgment. Do not string-match on "wontfix" or similar labels; the label is a signal, not the verdict.
+
+**Investigation task format (bad-implementation route):**
+
+```
+title: "Investigate: <brief description of what went wrong with <original task title>>"
+parent: <same parent as original task>
+soft_depends_on: [<original-task-id>]
+body: |
+  ## Why this investigation exists
+  PR #N for <original-task-id> (<original title>) was closed without merge.
+  Close context: <brief summary of close reason and key reviewer signals>
+
+  ## What must change before redispatching
+  <agent's assessment: what was wrong with the approach, what questions must be answered first>
+
+  ## Original task
+  [[<original-task-id>]] — left in <cancelled|blocked> state, pointer back here.
+```
+
+**Sleep activity log per task** must record: the chosen route (wontfix / bad-implementation / retry-as-is), the close reason summary, and any follow-up node created.
 
 **Time budget**: Phase 6 gets 20 minutes max (10m baseline + 5m for Activity 4a/4b + 5m for Activity 4a-bis).
 
@@ -458,7 +490,7 @@ Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on
 - Activity 1 (dedup): <N merges, M ambiguous>
 - Activity 2 (staleness): <N completed via evidence, M flagged for review, K skipped (CI guard)>
 - Activity 3 (misclassification): <N archived/reclassified, M flagged>
-- Activity 4a (PR-state sweep): <N closed by sweep, M re-queued to inbox, K ambiguous>
+- Activity 4a (PR-state sweep): <N merged→closed; for closed-without-merge: X wontfix-cancelled, Y bad-impl-investigation-filed (list task IDs), Z retry-requeued (list task IDs + justification), K ambiguous>
 - Activity 4b (gate-1 verification audit): see Loop-close gaps below
 
 ## Phase 7 — Staleness Sweep
