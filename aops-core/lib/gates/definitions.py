@@ -101,7 +101,6 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    custom_action="reset_qa_verified",
                 ),
             ),
             # Write tool used -> Close. Shares is_write_tool with handover;
@@ -127,7 +126,6 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="qa.complete",
-                    custom_action="set_qa_verified",
                 ),
             ),
             # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
@@ -142,10 +140,7 @@ GATE_CONFIGS = [
             # UserPromptSubmit -> re-arm for the next turn cycle.
             GateTrigger(
                 condition=GateCondition(hook_event="UserPromptSubmit"),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    custom_action="reset_qa_verified",
-                ),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],
         policies=[
@@ -369,6 +364,29 @@ GATE_CONFIGS = [
                 verdict="warn",
                 message_key="ida.reminder",
                 context_key="ida.reminder",
+            ),
+        ],
+    ),
+    # --- Dispatch Fidelity ---
+    # Ensures that when a subagent is dispatched with a specific tool envelope,
+    # the requested tools do not exceed the subagent's allowed whitelist.
+    # Claude SDK silently intersects tools, which masks configuration bugs.
+    # This gate blocks the dispatch with a loud error naming the dropped tools.
+    GateConfig(
+        name="dispatch_fidelity",
+        description="Ensures dispatched subagents receive the exact tool envelope requested without silent reduction.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^(Agent|Task|invoke_agent|delegate_to_agent)$",
+                    custom_check="is_dispatch_fidelity_violated",
+                ),
+                verdict="block",
+                custom_action="prepare_dispatch_fidelity_error",
+                message_key=None,
             ),
         ],
     ),

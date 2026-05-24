@@ -5,7 +5,7 @@ from hooks.schemas import HookContext
 
 logger = logging.getLogger(__name__)
 
-from lib.gate_model import GateResult
+from lib.gate_model import GateResult, GateVerdict
 from lib.gate_types import GateState
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
@@ -202,12 +202,21 @@ def execute_custom_action(
         session_state.state["handover_skill_invoked"] = False
         return None
 
-    if name == "set_qa_verified":
-        session_state.state["qa_verified"] = True
-        return None
+    if name == "prepare_dispatch_fidelity_error":
+        dropped = state.metrics.get("dropped_tools", [])
+        target = state.metrics.get("target_subagent", "subagent")
 
-    if name == "reset_qa_verified":
-        session_state.state["qa_verified"] = False
-        return None
+        msg = (
+            f"❌ **Dispatch Fidelity Error:** The tools envelope requested for '{target}' "
+            f"contains tools not allowed in its configuration. The SDK would silently drop these tools:\n"
+        )
+        for t in dropped:
+            msg += f"- `{t}`\n"
+        msg += "\nFix the subagent's allowed tools in its definition, or remove them from your `tools=[...]` array."
+
+        return GateResult(
+            verdict=GateVerdict.DENY,
+            system_message=msg,
+        )
 
     return None

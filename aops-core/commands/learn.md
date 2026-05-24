@@ -29,11 +29,11 @@ permalink: commands/learn
 
 ## Workflow
 
-Delegate to pauli with the extended tool set the survey skill requires:
+Delegate to junior with the extended tool set the survey skill requires:
 
 ```python
 Agent(
-  subagent_type='aops-core:pauli',
+  subagent_type='junior',
   prompt="""Read aops-core/skills/survey/SKILL.md. Execute in retro mode.
 
 Context from user: <paste user's invocation context here — transcript path if specified, or omit for auto-select>
@@ -54,7 +54,7 @@ Follow the canonical retro mode workflow defined in aops-core/skills/survey/SKIL
 )
 ```
 
-The dispatched pauli agent owns the session from here. The main context is clean.
+The dispatched junior agent owns the session from here. The main context is clean.
 
 ## Arguments
 
