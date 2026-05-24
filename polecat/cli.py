@@ -1568,9 +1568,16 @@ def _build_docker_cmd(
         elif session_dir:
             session_dir.mkdir(parents=True, exist_ok=True)
             if not _is_remote_daemon():
-                cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
                 if cli_tool == "gemini":
+                    # Mount the entire tmp dir so the <hash> dir is captured
+                    gemini_tmp_dir = session_dir / ".gemini-tmp"
+                    gemini_tmp_dir.mkdir(exist_ok=True)
+                    cmd.extend(["-v", f"{gemini_tmp_dir}:{container_home}/.gemini/tmp"])
+                    # Still mount session_dir so hooks land directly in session_dir
+                    cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
                     (session_dir / "chats").mkdir(exist_ok=True)
+                else:
+                    cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
     # Stage polecat.yaml into the container so hooks resolve gate modes,
     # provider lists, and any other config without re-reading host paths.
@@ -2277,15 +2284,16 @@ def _replicate_gemini_auth(
     return tmp_gemini_home
 
 
-def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
-    """Copy Gemini session transcripts from tmp auth home to persistent session_dir.
+def _extract_gemini_sessions(session_dir: Path) -> None:
+    """Copy Gemini session transcripts from .gemini-tmp to persistent session_dir.
 
-    Gemini CLI writes sessions to ``$GEMINI_CLI_HOME/.gemini/tmp/<hash>/chats/session-*.json``
-    where ``<hash>`` is a SHA256 of the working directory.  These files live inside
-    the temporary auth home that gets deleted after each run.  This function
-    extracts them to the persistent ``session_dir`` so they survive cleanup.
+    Gemini CLI writes sessions to ``/home/worker/.gemini/tmp/<hash>/chats/session-*.json``
+    where ``<hash>`` is a SHA256 of the working directory.  For local daemons this is
+    bind-mounted to ``session_dir / ".gemini-tmp"``; for remote daemons it's extracted
+    there via docker cp. This function extracts them to the persistent ``session_dir``
+    so they survive cleanup and are in the expected location.
     """
-    gemini_tmp = tmp_gemini_home / ".gemini" / "tmp"
+    gemini_tmp = session_dir / ".gemini-tmp"
     if not gemini_tmp.is_dir():
         return
 
@@ -2300,6 +2308,15 @@ def _extract_gemini_sessions(tmp_gemini_home: Path, session_dir: Path) -> None:
             # Avoid collision: prefix with parent hash dir name
             target = dest / f"{session_file.parent.parent.name}-{session_file.name}"
         shutil.copy2(session_file, target)
+
+    # Also rescue hooks/gates if they were extracted via docker cp (remote daemons)
+    # Local daemons have them bind-mounted directly to session_dir, but for remote
+    # daemons they land in .gemini-tmp/workspace.
+    workspace_dir = gemini_tmp / "workspace"
+    if workspace_dir.is_dir():
+        for f in workspace_dir.iterdir():
+            if f.is_file() and not (session_dir / f.name).exists():
+                shutil.copy2(f, session_dir / f.name)
 
 
 def _capture_artifacts(session_dir: Path, out_dir: str | Path) -> None:
@@ -4090,7 +4107,9 @@ def crew(
             extract = []
             if is_gemini:
                 if _is_remote_daemon():
-                    extract.append(("/home/worker/.gemini/tmp/workspace", session_dir))
+                    gemini_tmp_dir = session_dir / ".gemini-tmp"
+                    gemini_tmp_dir.mkdir(exist_ok=True)
+                    extract.append(("/home/worker/.gemini/tmp/.", gemini_tmp_dir))
             else:
                 extract.append(("/home/worker/.claude/projects/-workspace", session_dir))
 
@@ -4121,8 +4140,9 @@ def crew(
     finally:
         reset_terminal_title()
         # Extract Gemini session files before cleaning up
+        if is_gemini:
+            _extract_gemini_sessions(session_dir)
         if tmp_gemini_home and tmp_gemini_home.exists():
-            _extract_gemini_sessions(tmp_gemini_home, session_dir)
             shutil.rmtree(tmp_gemini_home)
         if capture_on_exit is not None:
             _capture_artifacts(session_dir, capture_on_exit)
@@ -4797,7 +4817,9 @@ def run(
     # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
     if is_gemini:
         if _is_remote_daemon():
-            _extract = [("/home/worker/.gemini/tmp/workspace", run_session_dir)]
+            gemini_tmp_dir = run_session_dir / ".gemini-tmp"
+            gemini_tmp_dir.mkdir(exist_ok=True)
+            _extract = [("/home/worker/.gemini/tmp/.", gemini_tmp_dir)]
         else:
             _extract = []
     else:
@@ -4933,8 +4955,9 @@ def run(
         if interactive:
             reset_terminal_title()
         # Extract Gemini session files before cleaning up
+        if is_gemini:
+            _extract_gemini_sessions(run_session_dir)
         if tmp_gemini_home and tmp_gemini_home.exists():
-            _extract_gemini_sessions(tmp_gemini_home, run_session_dir)
             shutil.rmtree(tmp_gemini_home)
         # Clean up temporary files created by _build_docker_cmd
         for tmp_file in tmp_files:
