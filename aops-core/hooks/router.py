@@ -669,6 +669,13 @@ class HookRouter:
         if ctx.is_subagent:
             return None
 
+        # Never block when the runtime signals a retry sequence. Both Claude
+        # Code (stop_hook_active) and Gemini CLI (stop_hook_active in
+        # AfterAgent) set this flag after an earlier block; re-blocking would
+        # loop until the runtime's own cap kills the session.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.raw_input.get("stop_hook_active"):
+            return None
+
         # Ensure subagent_type is populated for trigger evaluation.
         # normalize_input() handles this for production calls, but tests may
         # construct HookContext directly. extract_subagent_type() covers both

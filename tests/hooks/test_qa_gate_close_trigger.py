@@ -238,3 +238,24 @@ def test_qa_verified_resets_on_new_task(router):
     )
     assert state.state.get("qa_verified") is False, "qa_verified must reset when new task is bound"
     assert state.gates["qa"].status == GateStatus.CLOSED
+
+
+def test_stop_hook_active_bypasses_all_gates(router):
+    """When stop_hook_active=True, gates must not block — prevents
+    infinite retry loops in both Claude Code and Gemini CLI."""
+    state = _state_with_bound_task("qa-stop-active")
+    # Close all gates so they would normally block.
+    state.gates["qa"] = GateState(status=GateStatus.CLOSED)
+    state.gates["handover"] = GateState(status=GateStatus.CLOSED)
+
+    result = router._dispatch_gates(
+        HookContext(
+            session_id="qa-stop-active",
+            hook_event="Stop",
+            tool_name=None,
+            tool_input={},
+            raw_input={"stop_hook_active": True},
+        ),
+        state,
+    )
+    assert result is None, "stop_hook_active=True must bypass all gate evaluation"
