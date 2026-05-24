@@ -255,7 +255,8 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 
 - **Mode key**: `gates.handover` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`).
-- **Reopen triggers**: `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$"`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`.
+- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$"`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
+- **Re-arm trigger**: `UserPromptSubmit` → CLOSED.
 - **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`, set by aops-c67313ef), the gate auto-approves to prevent deadlock.
 - **Bash-as-read carve-out**: once `handover_skill_invoked=True` or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump (issue aops-2283a8b0).
 
@@ -287,15 +288,15 @@ See [`forensics-details.md`](skills/aops/references/forensics-details.md#stop--h
 
 ## `ida` gate
 
-> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires on **every** Stop event in main-agent context (no state machine, no triggers, one policy). Default `warn` — injects a context_injection asking the agent to cite proof, not reasoning. To check if it fired this session: `grep '"hook_event":"Stop"' <hooks.jsonl> | jq 'select(.output.context_injection|test("Before stopping|Ida"))'`. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
+> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Blocks once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS). Both warn and block modes inject context into the agent — Claude Code's Stop schema has no non-blocking advisory channel. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
 
 ### What is it
 
-The pre-Stop honesty reminder. On every Stop, injects a non-blocking reminder that asks the agent to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification.
+The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification. Gate opens after the first block so retried Stops pass; re-arms on UserPromptSubmit.
 
 **Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering. Targets the issues catalogued in the gate definition's docstring (#621, #563, #380, #430, #359, #798, #549, #624, #317, #100, #376, #437, #391, #416, #335, #932, #822, #714).
 
-**Why warn-only by design.** A block-tier version would force the agent to discharge the gate by writing a disclosure block, which is itself the criterion-substitution failure mode the gate is trying to prevent. If reminder-only fails to shift behaviour, the next intervention is structural (forced disclosure / mandatory review subagent), not a stricter prose gate.
+**Why block-once.** Claude Code's Stop event does not support `hookSpecificOutput` or `additionalContext` — the validator silently discards them. The only agent-visible channel on Stop is `decision: "block"` + `reason`. Non-blocking advisory injection is impossible. The block-once pattern is the minimum intervention: the agent sees the checklist once per turn and can self-correct, but is not repeatedly blocked.
 
 ### Where it lives
 
@@ -305,12 +306,13 @@ The pre-Stop honesty reminder. On every Stop, injects a non-blocking reminder th
 | Template        | `aops-core/hooks/templates/ida-reminder.md`              |
 | Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)       |
 
-Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `router.execute_hooks`). Fires on **every Stop event** in main-agent context — no subagent-skip, no threshold.
+Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `router.execute_hooks`). Fires on Stop in main-agent context — no subagent-skip, no threshold.
 
 ### How it's configured
 
 - **Mode key**: `gates.ida` (`warn` | `block` | `off`).
-- **No triggers**, one policy: `hook_event="Stop"`, verdict `warn` by default.
+- **Triggers**: (1) Stop while CLOSED → OPEN (fire-once); (2) UserPromptSubmit → CLOSED (re-arm).
+- **One policy**: `hook_event="Stop"`, `current_status=CLOSED`. Both warn and block modes inject `context_key="ida.reminder"`.
 - **Default-everywhere**: `polecat.yaml.example` ships `ida: warn`. `BUILTIN_GATES` (used when no polecat.yaml is found) also sets `ida: warn`.
 
 ### How to verify it's firing
@@ -324,7 +326,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> \
 grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq -c
 ```
 
-**Healthy fire** (mode `warn`): every Stop produces `output.verdict="warn"` (unless overridden by a stricter deny from another gate) with `output.context_injection` containing the ida-reminder template text ("Before stopping: for each claim..."). On the Claude side, `output_for_claude` copies the context_injection to `systemMessage`/`stopReason` when the verdict is `warn` and no other gate has set a system_message (`router.py:on_stop` / `output_for_claude`).
+**Healthy fire** (mode `warn`): first Stop per turn produces `output.verdict="warn"` with `output.context_injection` containing the ida-reminder template text ("Before stopping: for each claim..."). `output_for_claude` upgrades `warn + context_injection` to `decision: "block"` + `reason` so the advisory reaches the agent. Gate then opens (fire-once trigger), so subsequent Stops in the same turn produce no verdict. Re-arms on next UserPromptSubmit.
 
 ### How to debug when it isn't
 
