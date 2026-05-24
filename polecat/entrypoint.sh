@@ -34,6 +34,12 @@ fi
 export SSH_AUTH_SOCK=""
 export GIT_TERMINAL_PROMPT=0
 
+# Ensure ~/.config is traversable. Docker BuildKit --chmod=666 auto-creates
+# intermediate directories as 0644 (666 & ~umask022 = 644), which blocks
+# gh CLI from reading its config even when GH_TOKEN is set. Belt-and-suspenders
+# fix: correct at runtime so old images self-heal.
+chmod 755 "$HOME/.config" 2>/dev/null || true
+
 # Copy staged auth files into $HOME (avoids overlayfs file-mount bug on macOS
 # where chmod 777 on $HOME causes runc to treat file mounts as directories).
 # Copy staged files, overwriting image defaults. Use --no-preserve to avoid
