@@ -95,6 +95,3 @@ When /verify review of consolidation PRs reveals recurring quality issues, the /
 - [ ] Content understandable without reading source
 - [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` and `status` advanced to `done` but content unchanged
 - [ ] Superseded memories deleted; notes filed in the right directory
-      ry
-      marked `consolidated: YYYY-MM-DD` but content unchanged
-- [ ] Superseded memories deleted; notes filed in the right directory
