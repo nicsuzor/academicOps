@@ -63,7 +63,7 @@ class TestEveryPolicyHasContextKey:
 
     Without context_key, the agent sees "Blocked by hook" with no guidance.
 
-    Exemption: warn-mode policies for QA, handover (and IDA after aops-83f40207)
+    Exemption: warn-mode policies for QA, handover, IDA all
     intentionally omit context_key. They deliver their advisory via message_key
     (system_message only, user-visible) so that output_for_claude does NOT
     upgrade WARN to decision=block for the Stop hook. This is the correct
@@ -74,6 +74,7 @@ class TestEveryPolicyHasContextKey:
     # Policies exempt from the context_key requirement by explicit design.
     # Format: (gate_name, custom_check) that identifies the exempt policy.
     _ADVISORY_ONLY_EXEMPTIONS = {
+        ("ida", "is_ida_warn_mode"),  # Non-blocking advisory: no context_injection by design
         ("qa", "is_qa_warn_mode"),  # Non-blocking advisory: no context_injection by design
         (
             "handover",

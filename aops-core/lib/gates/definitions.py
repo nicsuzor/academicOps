@@ -1,6 +1,8 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
+    HANDOVER_GATE_MODE,
+    QA_GATE_MODE,
     IDA_GATE_MODE,
 )
 
@@ -268,29 +270,68 @@ GATE_CONFIGS = [
     ),
     # --- Ida ---
     # Named for Ida B. Wells — investigative journalist who built her career
-    # on documented evidence ("turn the light of truth upon them"). Non-
-    # blocking honesty reminder fired on every Stop. Targets criterion
-    # substitution, narrative-as-proof, fabricated diagnostics, skipped
-    # verification, positive-framing bias, unverified keystone assumptions,
-    # and subagent-output laundering (issues #621, #563, #380, #430, #359,
-    # #798, #549, #624, #317, #100, #376, #437, #391, #416, #335, #932,
-    # #822, #714). Mode resolved from polecat.yaml gates.ida — set to "off"
-    # to disable. Strategically warn-only: a block-tier version would force
-    # the agent to discharge the gate by writing some disclosure block,
-    # which is itself the criterion-substitution failure mode. If reminder-
-    # only fails to shift behaviour, the next intervention is structural
-    # (forced disclosure / mandatory review subagent), not a stricter prose
-    # gate.
+    # on documented evidence ("turn the light of truth upon them"). Honesty
+    # reminder with per-turn lifecycle: fires once per UPS→Stop cycle, then
+    # opens so retried Stops in the same turn are not re-blocked. Re-arms on
+    # the next UserPromptSubmit. Targets criterion substitution, narrative-as-
+    # proof, fabricated diagnostics, skipped verification, positive-framing
+    # bias, unverified keystone assumptions, and subagent-output laundering
+    # (issues #621, #563, #380, #430, #359, #798, #549, #624, #317, #100,
+    # #376, #437, #391, #416, #335, #932, #822, #714). Mode resolved from
+    # polecat.yaml gates.ida — set to "off" to disable.
+    #
+    # Lifecycle: armed (CLOSED) → fires on Stop → opens → re-armed on UPS.
+    #
+    # Warn mode (default): advisory delivered as system_message only (user-
+    # visible, non-blocking Stop). No context_injection so output_for_claude
+    # does not upgrade WARN to block. Strategically non-blocking — forcing
+    # the agent to discharge the gate by writing a disclosure block is itself
+    # the criterion-substitution failure mode.
+    #
+    # Block mode: advisory delivered as context_injection (agent-visible via
+    # reason channel), Stop blocked. Use only when passive reminders fail.
     GateConfig(
         name="ida",
         description="Reminds the agent to show proof for assertions before stopping.",
-        initial_status=GateStatus.OPEN,
-        triggers=[],
+        initial_status=GateStatus.CLOSED,  # Armed from session start
+        triggers=[
+            # On Stop (when armed/CLOSED): open gate so policy doesn't fire
+            # again in the same turn (e.g. if agent retries Stop after block).
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                ),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # On UserPromptSubmit: re-arm gate for the next turn cycle.
+            GateTrigger(
+                condition=GateCondition(hook_event="UserPromptSubmit"),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
+            ),
+        ],
         policies=[
+            # Block mode: advisory injected into agent context via reason channel.
             GatePolicy(
-                condition=GateCondition(hook_event="Stop"),
-                verdict=IDA_GATE_MODE,
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                    custom_check="is_ida_block_mode",
+                ),
+                verdict="block",
                 context_key="ida.reminder",
+            ),
+            # Warn mode: advisory as system_message only — no context_injection
+            # so output_for_claude does not upgrade WARN to decision=block.
+            # Stop is approved; the reminder is user-visible via stopReason.
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                    custom_check="is_ida_warn_mode",
+                ),
+                verdict="warn",
+                message_key="ida.reminder",
             ),
         ],
     ),

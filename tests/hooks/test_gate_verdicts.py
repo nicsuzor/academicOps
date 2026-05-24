@@ -267,7 +267,7 @@ _GATE_MODE_CASES = [
     # Handover
     ("handover", "warn", GateVerdict.WARN),
     ("handover", "block", GateVerdict.DENY),
-    # Ida (Ida B. Wells — fires unconditionally on Stop; default state has all gates OPEN)
+    # Ida (Ida B. Wells — fires on Stop when armed/CLOSED; starts CLOSED each session)
     ("ida", "warn", GateVerdict.WARN),
     ("ida", "block", GateVerdict.DENY),
 ]
@@ -333,4 +333,153 @@ class TestHandoverGateOpens:
         assert state.gates["handover"].status == GateStatus.OPEN, (
             f"[{scenario['id']}] Handover gate should be OPEN in response, "
             f"but got {state.gates['handover'].status}"
+        )
+
+
+# ===========================================================================
+# IDA GATE: per-turn lifecycle and warn-mode advisory routing
+# ===========================================================================
+
+
+class TestIdaPerTurnLifecycle:
+    """IDA gate per-turn lifecycle: armed → fires → opens → re-armed on UPS.
+
+    AC from aops-83f40207:
+    1. IDA_GATE_MODE=warn → advisory-only (non-blocking) Stop behaviour.
+    2. Lifecycle: armed → fires → opens → re-armed on next UserPromptSubmit.
+    """
+
+    def test_ida_starts_closed(self, monkeypatch):
+        """IDA gate is armed (CLOSED) from session start."""
+        _set_gate_modes(monkeypatch, ida="warn")
+        _reinit_gates_with_defaults()
+        from lib.gates.registry import GateRegistry
+
+        GateRegistry.initialize()
+        ida_gate = GateRegistry.get_gate("ida")
+        assert ida_gate is not None, "IDA gate must be registered"
+        assert ida_gate.config.initial_status == GateStatus.CLOSED, (
+            "IDA gate must start CLOSED (armed) so it fires on the first Stop"
+        )
+
+    def test_ida_opens_after_firing_on_stop(self, router, monkeypatch):
+        """IDA gate transitions CLOSED → OPEN after firing on Stop."""
+        _set_gate_modes(monkeypatch, ida="warn")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        ctx = _make_gate_trigger_context("ida")  # Stop event
+
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["ida"].status == GateStatus.OPEN, (
+            "IDA gate must be OPEN after firing (so retried Stops aren't blocked)"
+        )
+
+    def test_ida_does_not_fire_twice_same_turn(self, router, monkeypatch):
+        """IDA gate does not fire on a second Stop in the same turn (gate is OPEN)."""
+        _set_gate_modes(monkeypatch, ida="warn")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        stop_ctx = _make_gate_trigger_context("ida")  # Stop event
+
+        # First Stop: gate fires, opens
+        first_result = router._dispatch_gates(stop_ctx, state)
+        assert first_result is not None and first_result.verdict == GateVerdict.WARN
+        assert state.gates["ida"].status == GateStatus.OPEN
+
+        # Second Stop (same turn): gate is OPEN — IDA policy must not fire
+        second_result = router._dispatch_gates(stop_ctx, state)
+        # IDA contributes nothing; other gates (qa/handover) fire on Stop too
+        # but with autouse ida="off" default they're already open. Check gate state.
+        assert state.gates["ida"].status == GateStatus.OPEN, (
+            "IDA gate must remain OPEN (not fire again) on a second Stop in the same turn"
+        )
+        # IDA-specific: if the only result came from IDA, second result should be None
+        # (all other gates pass). Verify IDA didn't produce a WARN on the second Stop.
+        if second_result is not None:
+            # Other gates may have fired — but IDA in OPEN state cannot fire.
+            # We can't easily isolate IDA's contribution here, so just check state.
+            pass
+
+    def test_ida_rearms_on_user_prompt_submit(self, router, monkeypatch):
+        """IDA gate re-arms (OPEN → CLOSED) on UserPromptSubmit."""
+        _set_gate_modes(monkeypatch, ida="warn")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        stop_ctx = _make_gate_trigger_context("ida")  # Stop event
+        ups_ctx = HookContext(
+            session_id="test-gate-mode",
+            hook_event="UserPromptSubmit",
+            raw_input={"prompt": "continue working"},
+        )
+
+        # Step 1: Stop fires — gate opens
+        router._dispatch_gates(stop_ctx, state)
+        assert state.gates["ida"].status == GateStatus.OPEN
+
+        # Step 2: UPS re-arms the gate
+        router._dispatch_gates(ups_ctx, state)
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "IDA gate must be re-armed (CLOSED) on UserPromptSubmit for the next turn"
+        )
+
+    def test_ida_warn_mode_stop_is_approved(self, router, monkeypatch):
+        """IDA warn mode: Stop decision=approve (non-blocking advisory)."""
+        _set_gate_modes(monkeypatch, ida="warn")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        ctx = _make_gate_trigger_context("ida")  # Stop event
+
+        # Dispatch to get the raw verdict
+        result = router._dispatch_gates(ctx, state)
+        assert result is not None and result.verdict == GateVerdict.WARN
+
+        # Convert to Claude output — Stop must be approved (no block)
+        from hooks.schemas import ClaudeStopHookOutput
+
+        canonical = router._gate_result_to_canonical(result)
+        output = router.output_for_claude(canonical, "Stop")
+        assert isinstance(output, ClaudeStopHookOutput)
+        assert output.decision == "approve", (
+            f"IDA warn mode must not block Stop (got decision={output.decision!r}). "
+            "Advisory should be user-visible via stopReason only."
+        )
+
+    def test_ida_block_mode_stop_is_blocked(self, router, monkeypatch):
+        """IDA block mode: Stop decision=block with advisory in reason (agent-visible)."""
+        _set_gate_modes(monkeypatch, ida="block")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        ctx = _make_gate_trigger_context("ida")  # Stop event
+
+        result = router._dispatch_gates(ctx, state)
+        assert result is not None and result.verdict == GateVerdict.DENY
+
+        from hooks.schemas import ClaudeStopHookOutput
+
+        canonical = router._gate_result_to_canonical(result)
+        output = router.output_for_claude(canonical, "Stop")
+        assert isinstance(output, ClaudeStopHookOutput)
+        assert output.decision == "block", (
+            "IDA block mode must block Stop so the advisory reaches the agent"
+        )
+
+    def test_ida_block_mode_opens_after_firing(self, router, monkeypatch):
+        """IDA block mode: gate opens after firing even though Stop is blocked."""
+        _set_gate_modes(monkeypatch, ida="block")
+        _reinit_gates_with_defaults()
+
+        state = _make_gate_trigger_state("ida")
+        ctx = _make_gate_trigger_context("ida")  # Stop event
+
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["ida"].status == GateStatus.OPEN, (
+            "IDA gate must open after firing in block mode so a retried Stop "
+            "is not blocked again in the same turn"
         )

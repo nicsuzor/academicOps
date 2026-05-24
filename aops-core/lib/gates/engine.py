@@ -515,12 +515,20 @@ class GenericGate:
     def _handle_stop_event(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
-        """Shared logic for Stop-like events: check policies then evaluate triggers."""
+        """Shared logic for Stop-like events: check policies then evaluate triggers.
+
+        Triggers always run regardless of policy verdict so that per-turn gate
+        lifecycles (e.g. IDA: CLOSED→OPEN on Stop) execute even when a DENY
+        fires. Without this, DENY returns early and the gate stays closed,
+        causing it to re-block on every subsequent Stop in the same turn.
+        """
         policy_result = self._evaluate_policies(context, session_state)
+        # Always evaluate triggers — gate state transitions (e.g. IDA open)
+        # must apply even when the policy denies.
+        trigger_result = self._evaluate_triggers(context, session_state)
+
         if policy_result and policy_result.verdict == GateVerdict.DENY:
             return policy_result
-
-        trigger_result = self._evaluate_triggers(context, session_state)
 
         if policy_result and policy_result.verdict == GateVerdict.WARN:
             return policy_result
