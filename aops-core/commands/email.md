@@ -58,7 +58,7 @@ This command routes to the **[[workflows/email-capture]]** workflow.
 
 1. **Fetch**: Use `~~email.messages_list_recent` to get recent emails.
 2. **Cross-reference**: Check sent mail to avoid flagging already-handled items.
-3. **Analyze**: Categorize emails into Actionable, Important FYI, or Safe to ignore.
+3. **Analyze**: Categorize emails into Actionable, Important FYI, or Safe to ignore. **For any "Re:" message or thread, you MUST fetch and read the full body to detect decision-shaped content or deadline changes, rather than relying on subject-keyword matching.**
 4. **Capture**: Create "ready for action" tasks for actionable emails. Every task MUST contain:
    - Quoted email text (actual content, not just summary)
    - All links from the email body
