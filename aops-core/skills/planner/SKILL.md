@@ -120,6 +120,8 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 8. **Report with context tree**: Fetch siblings via `mcp__pkb__get_task_children(parent_id)` and print a compact ASCII tree showing parent + siblings + the new task(s), marking new tasks with `← NEW`. Then HALT — no execution.
 
+   **Vocabulary Boundary**: The report must be written in plain English. Framework-internal taxonomy (`react cycle`, `dismiss_if`, `polecat-side fix-task`, `DECIDE-class`) stays inside the skill bodies and must never leak into user-facing text. Where structural metadata (task IDs, PR numbers, commit hashes) is genuinely load-bearing, prefer a short link over inline jargon. Do not use 60-word run-on sentences or paste raw commit hashes.
+
    Format:
    ```
    <parent-id> (<parent title>)
@@ -559,7 +561,7 @@ _Enforces A7 Edge 2 (FM-2, FM-3, FM-4). See `aops-core/AXIOMS.md` § A7. This ap
 - Asking "do you prefer X or Y" when X is documented best practice and Y is a known failure mode.
 - Asking for input on something that requires runtime evidence before it's answerable — defer instead, or scope a spike.
 - Hiding behind "I want to be careful": if every choice is surfaced, the user is doing the planner's job. The planner adds value by absorbing decisions the framework already answers.
-- **Recording a DECIDE-class action without executing it.** "Cancel X once Y lands" / "supersede Z" / "retitle W" are actions whose decision is already made. Writing them into a task body as future work converts a DECIDE into a DEFER and leaks dead nodes into the graph. If the action is safe and unambiguous, do it in the same turn — do not narrate it as a deferred follow-up. A7 Edge 2 (FM-1) applies recursively: don't ask, don't note-for-later, just act.
+- **Recording a DECIDE-class action without executing it.** "Cancel X once Y lands" / "supersede Z" / "retitle W" are actions whose decision is already made. Writing them into a task body as future work converts a DECIDE into a DEFER and leaks dead nodes into the graph. If the action is safe and unambiguous, do it in the same turn — do not narrate it as a deferred follow-up. Body-prose is allowed only as the record AFTER the action has been executed. A7 Edge 2 (FM-1) applies recursively: don't ask, don't note-for-later, just act.
 - **Re-surfacing a delegated agent's recommendation as a sign-off gate** (A7 Edge 2 FM-2). When pauli/marsha/a subagent returns a recommendation with reasoning, you delegated the decision — execute it. Returning it to the user as "pauli recommends X, want to proceed?" is the agent rubber-stamping pattern.
 - **Self-answered rhetorical questions** (A7 Edge 2 FM-4). If you can write the answer in the same paragraph as the question, it is rhetorical. Act on the answer.
 

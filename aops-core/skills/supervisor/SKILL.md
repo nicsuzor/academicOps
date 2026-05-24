@@ -39,7 +39,7 @@ The supervisor is **decide-and-report, not ask-and-wait**. Each tick exits in ex
 
 - **silent** — tick advanced (dispatch fired, verify passed, pattern memory appended). No user-facing output beyond the checkpoint commit. The dashboard and `gh pr list` carry the signal.
 - **`[ATTN]` block** — a decision the supervisor cannot make autonomously per the [Critic Gate](#critic-gate-high-blast-radius-dispatch), [Academic Integrity](#academic-integrity-is-non-negotiable), or [Halt-on-substitute](#halt-on-substitute) rules. Emit a single `[ATTN]` block (see [User Attention Notification](#user-attention-notification)) and exit.
-- **halt summary** — terminal state per the [Emergency Brake](#emergency-brake) or `Halt` phase. One-line summary + epic status set; no question posed.
+- **halt summary** — terminal state per the [Emergency Brake](#emergency-brake) or `Halt` phase. One-line summary + epic status set; no question posed. The summary MUST be in plain English (no framework taxonomy like `react cycle` or `polecat-side`).
 
 Escalation criteria (anything outside these → decide-and-report, no `[ATTN]`):
 
@@ -367,6 +367,8 @@ suggested_response: <the supervisor's default if user says "you decide">
 - `dismiss_if` — auto-clear condition for the notification surface (e.g. "task status moves out of in_progress"). Consumed by the notification UI, not by the next supervisor tick.
 - `suggested_response` — what the supervisor will do if the user says "you decide". Required for `action_required: decision`; omit otherwise.
 
+**Vocabulary Boundary**: The `one_line` and `suggested_response` fields MUST be written in plain English. Framework-internal taxonomy (`react cycle`, `dismiss_if`, `polecat-side fix-task`, `DECIDE-class`) stays inside the skill bodies and must never leak into user-facing text. Where structural metadata (task IDs, PR numbers, commit hashes) is genuinely load-bearing, prefer a short link over inline jargon. Do not use 60-word run-on sentences or paste raw commit hashes.
+
 ### Worked example (synthetic)
 
 ```
@@ -375,7 +377,7 @@ suggested_response: <the supervisor's default if user says "you decide">
 id: task-EPICID:3
 urgency: today
 action_required: decision
-one_line: N workers exited with zero diffs on task-XXXX — abandon or re-scope?
+one_line: Workers exited with zero diffs on task-XXXX — abandon or re-scope?
 context_ref: task-XXXX
 dismiss_if: task-XXXX status moves out of in_progress
 suggested_response: file refinement task, set epic to review
