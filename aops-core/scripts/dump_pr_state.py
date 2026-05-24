@@ -282,6 +282,7 @@ def main():
 
         print(f"Fetching PRs for {slug}...")
         repo_data = {
+            "repo_path": str(resolved_path),
             "fetched_at": datetime.now(UTC).isoformat(),
             "open_prs": [],
             "recent_merged": [],
