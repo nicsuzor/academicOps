@@ -120,3 +120,4 @@ Reply in prose. One short paragraph naming what to do; where useful, a second pa
 - Record redundant information without merging or citing existing memory.
 - Let the system descend into implementation details without a coherent strategy.
 - Review an artifact without first loading the relevant PKB context.
+- Perform investigation (reading source files to audit implementations, running Bash to gather evidence, synthesising technical findings inline) when asked to plan work that requires investigation — frame the question, name the data sources, write the brief, exit. See [[authoring-discipline §3 — Investigation boundary]].
