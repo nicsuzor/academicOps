@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.30](https://github.com/nicsuzor/academicOps/compare/v0.3.29...v0.3.30) (2026-05-24)
+
+
+### Bug Fixes
+
+* **aops:** address PR [#1290](https://github.com/nicsuzor/academicOps/issues/1290) review — reframe self-test as live verification, broaden anti-synthetic prohibition ([374d492](https://github.com/nicsuzor/academicOps/commit/374d492d10c1380814de808ff0a6bbd914dc2dcf))
+* **gates:** lock gate posture at SessionStart ([#1234](https://github.com/nicsuzor/academicOps/issues/1234)) ([03154cc](https://github.com/nicsuzor/academicOps/commit/03154ccf2ce07a83f7a46f58dcc75e8781ca2cdf))
+* **gates:** lock gate posture at SessionStart, immune to mid-session env mutation ([#1234](https://github.com/nicsuzor/academicOps/issues/1234)) ([9a25448](https://github.com/nicsuzor/academicOps/commit/9a2544837689b49adbdf2eff3ca5bab341e2175c))
+* **junior:** HALT-on-MCP-gap instruction + PKB Rules in CORE.md ([2fb8527](https://github.com/nicsuzor/academicOps/commit/2fb8527200d0b20faafab0b988e74c7728fe8073))
+* **junior:** HALT-on-MCP-gap instruction in junior.md + CORE.md PKB Rules ([277701c](https://github.com/nicsuzor/academicOps/commit/277701c7fa06687ade71f6b993c81ab7686a9a7d))
+
+
+### Reverts
+
+* **gates:** remove posture-file machinery, read gate modes from os.environ ([3ca3e0d](https://github.com/nicsuzor/academicOps/commit/3ca3e0dad6b4a287c922e45b1c2e800d54c05439))
+
+
+### Documentation
+
+* **aops:** add self-test workflows 11+12 to SKILL.md routing, add transcript evaluation methodology ([2744f27](https://github.com/nicsuzor/academicOps/commit/2744f275d5f37f2f86641c23066680ed16a2037d))
+* **aops:** add self-test workflows 11+12 to SKILL.md routing, add transcript evaluation methodology ([9bf8e64](https://github.com/nicsuzor/academicOps/commit/9bf8e64b6c28e3a606e0d988eed449bd82da71c5))
+
 ## [0.3.29](https://github.com/nicsuzor/academicOps/compare/v0.3.28...v0.3.29) (2026-05-24)
 
 
