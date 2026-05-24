@@ -63,17 +63,23 @@ class TestEveryPolicyHasContextKey:
 
     Without context_key, the agent sees "Blocked by hook" with no guidance.
 
-    Exemption: IDA gate warn-mode policy intentionally omits context_key. It
-    delivers its advisory via message_key (system_message only, user-visible)
-    so that output_for_claude does NOT upgrade WARN to decision=block for the
-    Stop hook. This is the correct non-blocking advisory design — adding
-    context_key would re-introduce the block upgrade (aops-83f40207).
+    Exemption: warn-mode policies for QA, handover, IDA all
+    intentionally omit context_key. They deliver their advisory via message_key
+    (system_message only, user-visible) so that output_for_claude does NOT
+    upgrade WARN to decision=block for the Stop hook. This is the correct
+    non-blocking advisory design — adding context_key would re-introduce the
+    block upgrade (aops-d8de4a55).
     """
 
     # Policies exempt from the context_key requirement by explicit design.
     # Format: (gate_name, custom_check) that identifies the exempt policy.
     _ADVISORY_ONLY_EXEMPTIONS = {
         ("ida", "is_ida_warn_mode"),  # Non-blocking advisory: no context_injection by design
+        ("qa", "is_qa_warn_mode"),  # Non-blocking advisory: no context_injection by design
+        (
+            "handover",
+            "is_handover_warn_mode",
+        ),  # Non-blocking advisory: no context_injection by design
     }
 
     def test_all_blocking_policies_have_context_key(self):
@@ -164,8 +170,9 @@ class TestStopBlockHasContextInjection:
     Tests each gate that can block Stop independently.
     """
 
-    def test_handover_stop_block_has_context(self, router):
-        """Handover gate blocking Stop must include context_injection."""
+    def test_handover_stop_block_has_context(self, router, monkeypatch):
+        """Handover gate blocking Stop in block mode must include context_injection."""
+        monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
         state = SessionState.create("test-stop-ctx")
         state.gates["handover"].status = GateStatus.CLOSED
 
@@ -188,8 +195,9 @@ class TestStopBlockHasContextInjection:
             f"context_injection={result.context_injection!r}"
         )
 
-    def test_qa_stop_block_has_context(self, router):
-        """QA gate blocking Stop must include context_injection."""
+    def test_qa_stop_block_has_context(self, router, monkeypatch):
+        """QA gate blocking Stop in block mode must include context_injection."""
+        monkeypatch.setenv("QA_GATE_MODE", "block")
         state = SessionState.create("test-stop-ctx")
         state.close_gate("qa")
         # Provide temp_path so the qa.policy_context template can render

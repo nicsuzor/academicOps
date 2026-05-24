@@ -3,6 +3,7 @@ from hooks.gate_config import (
     ENFORCER_TOOL_CALL_THRESHOLD,
     HANDOVER_GATE_MODE,
     QA_GATE_MODE,
+    IDA_GATE_MODE,
 )
 
 from lib.gate_types import (
@@ -132,16 +133,30 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
-            # Block Stop when CLOSED
+            # Block mode: advisory injected into agent context via reason channel.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
+                    custom_check="is_qa_block_mode",
                 ),
-                verdict=QA_GATE_MODE,
+                verdict="block",
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
+            ),
+            # Warn mode: advisory as system_message only — no context_injection
+            # so output_for_claude does not upgrade WARN to decision=block.
+            # Stop is approved; the reminder is user-visible via stopReason.
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_qa_warn_mode",
+                ),
+                verdict="warn",
+                custom_action="prepare_qa_review",
+                message_key="qa.policy_message",
             ),
         ],
     ),
@@ -228,15 +243,28 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
-            # Block Stop when gate is CLOSED (handover not yet done)
+            # Block mode: advisory injected into agent context via reason channel.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
+                    custom_check="is_handover_block_mode",
                 ),
-                verdict=HANDOVER_GATE_MODE,
+                verdict="block",
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
+            ),
+            # Warn mode: advisory as system_message only — no context_injection
+            # so output_for_claude does not upgrade WARN to decision=block.
+            # Stop is approved; the reminder is user-visible via stopReason.
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_handover_warn_mode",
+                ),
+                verdict="warn",
+                message_key="handover.policy_message",
             ),
         ],
     ),
