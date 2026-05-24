@@ -1,0 +1,66 @@
+# academicOps: Allow polecat workers to use playwright MCP tools.
+#
+# Root cause (2026-05): playwright MCP server was absent from the aops-core
+# Gemini extension manifest, causing "denied by policy" on all mcp_playwright_*
+# tool calls. Fixed by adding the playwright MCP server to the extension
+# manifest (templates/aops-core.gemini-extension.json).
+#
+# This policy provides defense-in-depth: high-priority ALLOW rules override
+# any auto-saved deny rules that may exist in the user's
+# ~/.gemini/policies/auto-saved.toml from sessions before the fix shipped.
+#
+# Staged to the container's adminPolicyPaths by polecat/_replicate_gemini_auth,
+# alongside compliance-agents.toml. Admin policies take precedence over
+# extension-embedded policies (where ALLOW rules are silently ignored — see
+# issue #940 / task-8d33ea54).
+#
+# Priority 950: matches compliance-agents.toml; overrides sandbox rules (50)
+# and standard framework deny rules (100).
+
+[[rule]]
+toolName = [
+  "mcp_playwright_browser_navigate",
+  "mcp_playwright_browser_navigate_back",
+]
+decision = "allow"
+priority = 950
+description = "Allow playwright MCP navigation tools for polecat verification agents"
+
+[[rule]]
+toolName = [
+  "mcp_playwright_browser_click",
+  "mcp_playwright_browser_type",
+  "mcp_playwright_browser_press_key",
+  "mcp_playwright_browser_fill_form",
+  "mcp_playwright_browser_hover",
+  "mcp_playwright_browser_drag",
+  "mcp_playwright_browser_select_option",
+]
+decision = "allow"
+priority = 950
+description = "Allow playwright MCP interaction tools for polecat verification agents"
+
+[[rule]]
+toolName = [
+  "mcp_playwright_browser_take_screenshot",
+  "mcp_playwright_browser_snapshot",
+  "mcp_playwright_browser_evaluate",
+  "mcp_playwright_browser_console_messages",
+  "mcp_playwright_browser_network_requests",
+  "mcp_playwright_browser_wait_for",
+  "mcp_playwright_browser_tabs",
+]
+decision = "allow"
+priority = 950
+description = "Allow playwright MCP observation tools for polecat verification agents"
+
+[[rule]]
+toolName = [
+  "mcp_playwright_browser_file_upload",
+  "mcp_playwright_browser_handle_dialog",
+  "mcp_playwright_browser_close",
+  "mcp_playwright_browser_resize",
+]
+decision = "allow"
+priority = 950
+description = "Allow playwright MCP window/dialog management tools for polecat verification agents"

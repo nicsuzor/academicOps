@@ -234,6 +234,129 @@ class TestSourceManifestMcpConfig:
             "Remove it — RUST_LOG does not belong in the MCP server env block."
         )
 
+    def test_playwright_mcp_server_registered(self):
+        """'playwright' must be registered as an MCP server in the source manifest.
+
+        Regression: 2026-05 — playwright MCP server was absent from the manifest.
+        Marsha (Gemini version) lists mcp_playwright_browser_* tools, but without
+        a registered playwright MCP server every call fails with
+        "Tool execution for ... denied by policy." Fixed in PR #<N>.
+        """
+        m = self._manifest()
+        assert "playwright" in m.get("mcpServers", {}), (
+            "gemini-extension.json: 'playwright' MCP server not registered. "
+            "Gemini polecats running marsha need this server for browser verification. "
+            "Regression ledger: 2026-05 (task aops-f7c1a64e)."
+        )
+
+    def test_playwright_mcp_command_is_npx(self):
+        """playwright MCP server must launch via npx so it works without a
+        global npm install in non-Docker environments."""
+        m = self._manifest()
+        pw = m.get("mcpServers", {}).get("playwright", {})
+        assert pw.get("command") == "npx", (
+            "gemini-extension.json: playwright MCP server command should be 'npx', "
+            f"got {pw.get('command')!r}. Use npx so the package can be resolved "
+            "from the npx cache or npm registry without requiring a global install."
+        )
+
+    def test_playwright_mcp_uses_headless_flag(self):
+        """playwright MCP must run headless — no display available in worker containers."""
+        m = self._manifest()
+        args = m.get("mcpServers", {}).get("playwright", {}).get("args", [])
+        assert "--headless" in args, (
+            "gemini-extension.json: playwright MCP server args missing '--headless'. "
+            "Worker containers have no display server; headed Chromium will crash."
+        )
+
+    def test_playwright_mcp_propagates_browsers_path(self):
+        """playwright MCP must propagate PLAYWRIGHT_BROWSERS_PATH so it finds
+        the Chromium binary baked into the worker Docker image at /ms-playwright."""
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("playwright", {}).get("env", {})
+        assert "PLAYWRIGHT_BROWSERS_PATH" in env, (
+            "gemini-extension.json: PLAYWRIGHT_BROWSERS_PATH missing from playwright "
+            "MCP server env. Without this the MCP server uses the default browser "
+            "cache location (~/.cache/ms-playwright) which may not exist in the "
+            "container, causing 'browser not found' at session start."
+        )
+
+
+class TestPolechatPlaywrightPolicy:
+    """Polecat's playwright ALLOW policy exists and contains the right toolNames.
+
+    This policy is staged to the container's adminPolicyPaths at runtime by
+    _replicate_gemini_auth so it overrides any auto-saved deny rules the user
+    may have accumulated before the fix in 2026-05.
+    """
+
+    _POLICY = REPO_ROOT / "polecat" / "defaults" / "playwright-allow.toml"
+
+    @pytest.fixture(autouse=True)
+    def _require_policy(self):
+        if not self._POLICY.is_file():
+            pytest.fail(
+                f"playwright-allow.toml missing at {self._POLICY}. "
+                "This file provides defense-in-depth ALLOW rules for playwright MCP tools "
+                "in polecat admin policies. It must always exist."
+            )
+
+    def _rules(self) -> list[dict]:
+        data = tomllib.loads(self._POLICY.read_text())
+        return [r for r in data.get("rule", []) if isinstance(r, dict)]
+
+    def test_policy_has_allow_rules(self):
+        allow_rules = [r for r in self._rules() if r.get("decision") == "allow"]
+        assert allow_rules, (
+            f"{self._POLICY.name}: no 'decision = \"allow\"' rules found. "
+            "The policy must explicitly allow playwright tools."
+        )
+
+    def test_policy_covers_navigate_and_screenshot(self):
+        """Core playwright tools used by marsha must be explicitly allowed."""
+        all_tool_names: set[str] = set()
+        for rule in self._rules():
+            tn = rule.get("toolName")
+            if isinstance(tn, str):
+                all_tool_names.add(tn)
+            elif isinstance(tn, list):
+                all_tool_names.update(tn)
+        required = {"mcp_playwright_browser_navigate", "mcp_playwright_browser_take_screenshot"}
+        missing = required - all_tool_names
+        assert not missing, (
+            f"{self._POLICY.name}: required playwright tools not in ALLOW rules: {missing}. "
+            "These are the core tools used by marsha for browser verification."
+        )
+
+    def test_policy_tool_names_are_gemini_format(self):
+        """All toolNames must use the Gemini single-underscore format (mcp_<server>_<tool>).
+
+        The Gemini policy engine uses mcp_playwright_browser_navigate, not the
+        Claude double-underscore form mcp__playwright__browser_navigate.
+        """
+        bad: list[str] = []
+        for rule in self._rules():
+            tn = rule.get("toolName")
+            names = [tn] if isinstance(tn, str) else (tn if isinstance(tn, list) else [])
+            for name in names:
+                if isinstance(name, str) and "mcp__" in name:
+                    bad.append(name)
+        assert not bad, (
+            f"{self._POLICY.name}: toolNames use Claude double-underscore format: {bad}. "
+            "Gemini policy engine requires single-underscore: mcp_playwright_browser_navigate."
+        )
+
+    def test_policy_has_high_priority(self):
+        """All rules must have priority >= 950 to override auto-saved user deny rules."""
+        low_priority: list[dict] = []
+        for rule in self._rules():
+            if rule.get("decision") == "allow" and rule.get("priority", 0) < 950:
+                low_priority.append(rule)
+        assert not low_priority, (
+            f"{self._POLICY.name}: ALLOW rules with priority < 950: {low_priority}. "
+            "Priority must be >= 950 to override auto-saved deny rules (priority varies)."
+        )
+
 
 class TestDistStructure:
     """The built extension has everything `gemini-extension.json` promises."""

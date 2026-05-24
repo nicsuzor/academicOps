@@ -2262,6 +2262,11 @@ def _replicate_gemini_auth(
         raise RuntimeError(f"Missing bundled policy file: {compliance_src}")
     shutil.copy2(compliance_src, policies_dir / "compliance-agents.toml")
 
+    playwright_src = SCRIPT_DIR / "defaults" / "playwright-allow.toml"
+    if not playwright_src.exists():
+        raise RuntimeError(f"Missing bundled policy file: {playwright_src}")
+    shutil.copy2(playwright_src, policies_dir / "playwright-allow.toml")
+
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
     # and needs to write temp files (projects.json.tmp, settings updates).
