@@ -397,22 +397,40 @@ def create_task(
     # wrong project slug is permanently misidentified — all routing consumers that infer
     # project from the ID prefix will point to the wrong repo. Recurrence of #284/#1054.
     _parent = params.get("parent")
-    if _parent and not params.get("project"):
+    _explicit_project = params.get("project")
+    if _parent and (not _explicit_project or True):
+        # Fetch parent to resolve or validate project.
+        # We fetch whenever a parent is given so we can:
+        # (a) auto-inherit when project is absent, and
+        # (b) enforce that an explicitly-supplied project matches the parent's project.
+        # Both cases guard the rename-impossible constraint: task IDs embed the project
+        # slug permanently; an explicit but wrong project is just as fatal as a missing one.
         _parent_data = _get_client().call_tool("get_task", {"id": _parent})
         if _parent_data and isinstance(_parent_data, dict):
             _fm = _parent_data.get("frontmatter") or {}
-            _inherited = _fm.get("project") or _parent_data.get("project")
-            if _inherited:
-                params["project"] = _inherited
-            else:
+            _parent_project = _fm.get("project") or _parent_data.get("project")
+            if not _explicit_project:
+                # Auto-inherit path
+                if _parent_project:
+                    params["project"] = _parent_project
+                else:
+                    raise ValueError(
+                        f"create_task: parent '{_parent}' has no project field and no project "
+                        f"was specified. Task IDs embed the project slug permanently; "
+                        f"auto-inherit requires a resolvable ancestor project. "
+                        f"Walk the ancestor chain until you find a project-typed node, "
+                        f"or ask the user which project this task belongs to."
+                    )
+            elif _parent_project and _explicit_project != _parent_project:
+                # Enforce path: explicit project conflicts with parent's project
                 raise ValueError(
-                    f"create_task: parent '{_parent}' has no project field and no project "
-                    f"was specified. Task IDs embed the project slug permanently; "
-                    f"auto-inherit requires a resolvable ancestor project. "
-                    f"Walk the ancestor chain until you find a project-typed node, "
-                    f"or ask the user which project this task belongs to."
+                    f"create_task: supplied project '{_explicit_project}' does not match "
+                    f"parent '{_parent}' project '{_parent_project}'. "
+                    f"Task IDs embed the project slug permanently (rename-impossible "
+                    f"constraint); use project='{_parent_project}' to match the parent, "
+                    f"or verify you are under the correct parent."
                 )
-        else:
+        elif not _explicit_project:
             raise ValueError(
                 f"create_task: parent '{_parent}' not found in PKB — cannot auto-inherit "
                 f"project. Specify project explicitly or verify the parent ID is correct."

@@ -613,16 +613,21 @@ class TestCreateTaskProjectInheritance:
         assert task_id == "qut-abc"
         assert mock_client.call_tool.call_args_list[1][0][1]["project"] == "qut"
 
-    def test_explicit_project_skips_parent_fetch(self, mock_client):
-        """When project is explicitly provided, no extra get_task call is made."""
-        mock_client.call_tool.return_value = self._created_task
+    def test_explicit_project_matching_parent_fetches_to_validate(self, mock_client):
+        """When project is explicitly provided, parent is still fetched to enforce consistency."""
+        mock_client.call_tool.side_effect = [
+            # First call: get_task(parent) to validate project matches
+            {"frontmatter": {"id": "qut-parent", "project": "qut"}},
+            # Second call: create_task
+            self._created_task,
+        ]
         task_id = create_task(title="T", parent="qut-parent", project="qut")
         assert task_id == "qut-abc"
-        # Only one call: the create_task itself (no parent lookup)
-        mock_client.call_tool.assert_called_once_with(
-            "create_task",
-            {"title": "T", "parent": "qut-parent", "project": "qut", "priority": 3},
-        )
+        # Two calls: parent validation fetch + create_task
+        assert mock_client.call_tool.call_count == 2
+        create_call = mock_client.call_tool.call_args_list[1]
+        assert create_call[0][0] == "create_task"
+        assert create_call[0][1]["project"] == "qut"
 
     def test_parent_with_no_project_raises(self, mock_client):
         """If parent has no project field, raise with a helpful message."""
@@ -638,6 +643,32 @@ class TestCreateTaskProjectInheritance:
         mock_client.call_tool.return_value = None
         with pytest.raises(ValueError, match="not found in PKB"):
             create_task(title="T", parent="nonexistent-parent")
+
+    def test_explicit_project_mismatch_raises(self, mock_client):
+        """Explicitly-wrong project raises even when project is non-null."""
+        mock_client.call_tool.return_value = {
+            "frontmatter": {"id": "qut-parent", "project": "qut"},
+        }
+        with pytest.raises(ValueError, match="does not match parent"):
+            create_task(title="T", parent="qut-parent", project="mem")
+
+    def test_explicit_project_matching_parent_succeeds(self, mock_client):
+        """Explicit project that matches the parent's project does not raise."""
+        mock_client.call_tool.side_effect = [
+            {"frontmatter": {"id": "qut-parent", "project": "qut"}},
+            self._created_task,
+        ]
+        task_id = create_task(title="T", parent="qut-parent", project="qut")
+        assert task_id == "qut-abc"
+
+    def test_parent_with_no_project_explicit_project_passes(self, mock_client):
+        """If parent has no project but caller supplies one, no enforcement (parent unknown)."""
+        mock_client.call_tool.side_effect = [
+            {"frontmatter": {"id": "orphan-parent"}},
+            self._created_task,
+        ]
+        task_id = create_task(title="T", parent="orphan-parent", project="qut")
+        assert task_id == "qut-abc"
 
     def test_no_parent_no_project_no_inheritance(self, mock_client):
         """Without a parent, no auto-inherit attempt is made (server decides)."""
