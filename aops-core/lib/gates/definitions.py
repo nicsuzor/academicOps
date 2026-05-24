@@ -1,9 +1,6 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
-    HANDOVER_GATE_MODE,
-    QA_GATE_MODE,
-    IDA_GATE_MODE,
 )
 
 from lib.gate_types import (
