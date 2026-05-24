@@ -92,7 +92,7 @@ def _reinit_gates_with_defaults():
     sys.modules has exactly one entry per module.
     """
     if "hooks.gate_config" in sys.modules:
-        sys.modules["hooks.gate_config"]._reset_gate_mode_cache()
+        # sys.modules["hooks.gate_config"]._reset_gate_mode_cache()
         importlib.reload(sys.modules["hooks.gate_config"])
     if "lib.gates.definitions" in sys.modules:
         importlib.reload(sys.modules["lib.gates.definitions"])
