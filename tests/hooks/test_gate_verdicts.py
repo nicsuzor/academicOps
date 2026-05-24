@@ -427,7 +427,7 @@ class TestIdaPerTurnLifecycle:
         )
 
     def test_ida_warn_mode_stop_is_approved(self, router, monkeypatch):
-        """IDA warn mode: Stop decision=approve (non-blocking advisory)."""
+        """IDA warn mode: Stop decision=block (to inject advisory)."""
         _set_gate_modes(monkeypatch, ida="warn")
         _reinit_gates_with_defaults()
 
@@ -438,15 +438,15 @@ class TestIdaPerTurnLifecycle:
         result = router._dispatch_gates(ctx, state)
         assert result is not None and result.verdict == GateVerdict.WARN
 
-        # Convert to Claude output — Stop must be approved (no block)
+        # Convert to Claude output
         from hooks.schemas import ClaudeStopHookOutput
 
         canonical = router._gate_result_to_canonical(result)
         output = router.output_for_claude(canonical, "Stop")
         assert isinstance(output, ClaudeStopHookOutput)
-        assert output.decision == "approve", (
-            f"IDA warn mode must not block Stop (got decision={output.decision!r}). "
-            "Advisory should be user-visible via stopReason only."
+        assert output.decision == "block", (
+            f"IDA warn mode must block Stop (got decision={output.decision!r}) "
+            "so that the advisory lands in the agent's context."
         )
 
     def test_ida_block_mode_stop_is_blocked(self, router, monkeypatch):

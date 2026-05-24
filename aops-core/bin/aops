@@ -1,0 +1,82 @@
+#!/usr/bin/env -S uv run python
+import sys
+import os
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] != "sessions":
+        print("Usage: aops sessions")
+        sys.exit(1)
+
+    state_dir = Path.home() / ".aops" / "sessions" / "state"
+    if not state_dir.exists():
+        print("No sessions found (state directory missing).")
+        sys.exit(0)
+
+    sessions = []
+    for f in state_dir.glob("*.json"):
+        try:
+            with open(f, "r") as file:
+                data = json.load(file)
+                sessions.append(data)
+        except Exception:
+            continue
+
+    if not sessions:
+        print("No sessions found.")
+        sys.exit(0)
+
+    # Formatting
+    headers = ["SESSION", "PROJECT", "STATE", "IDLE", "SUMMARY", "NEXT_ACTION"]
+    rows = []
+
+    for s in sessions:
+        session = f"[{s.get('session', 'unknown')}]"
+        project = s.get('project', '-')
+        state = s.get('state', 'unknown')
+
+        idle_str = "unknown"
+        ts_str = s.get('last_turn_ts')
+        if ts_str:
+            try:
+                # Handle isoformat with or without Z
+                ts_str = ts_str.replace("Z", "+00:00")
+                ts = datetime.fromisoformat(ts_str)
+                # Ensure tz-aware
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                diff = (now - ts).total_seconds()
+
+                if diff < 60:
+                    idle_str = f"⏱ {int(diff)}s"
+                elif diff < 3600:
+                    idle_str = f"⏱ {int(diff // 60)}m"
+                else:
+                    idle_str = f"⏱ {int(diff // 3600)}h {int((diff % 3600) // 60)}m"
+            except Exception:
+                pass
+
+        summary = f"\"{s.get('last_summary', '')}\""
+        next_action = s.get('next_action_hint', '-') or '-'
+
+        rows.append([session, project, state, idle_str, summary, next_action])
+
+    # Calculate column widths
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, col in enumerate(row):
+            col_widths[i] = max(col_widths[i], len(str(col)))
+
+    # Print headers
+    header_fmt = "  ".join(f"{{:<{w}}}" for w in col_widths)
+    print(header_fmt.format(*headers))
+
+    # Print rows
+    for row in rows:
+        print(header_fmt.format(*row))
+
+if __name__ == "__main__":
+    main()
