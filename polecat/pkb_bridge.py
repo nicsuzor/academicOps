@@ -71,6 +71,27 @@ class PkbTask:
             return None
 
 
+# Canonical task status values (TAXONOMY.md § "Status Values and Transitions").
+# 'draft' and 'active' appear in the MCP server's own schema description but are
+# NOT valid — they are artefacts of an older API version. Any call that passes
+# them will get a server-side "Invalid status" error; we catch it here first.
+VALID_TASK_STATUSES = frozenset(
+    {
+        "inbox",
+        "ready",
+        "queued",
+        "in_progress",
+        "merge_ready",
+        "review",
+        "done",
+        "blocked",
+        "paused",
+        "someday",
+        "cancelled",
+    }
+)
+
+
 def _parse_sse_json(raw: str) -> dict | None:
     """Extract the last JSON-RPC response from an SSE stream."""
     for line in raw.splitlines():
@@ -389,6 +410,18 @@ def create_task(
     # planned and be promoted deliberately rather than inflating the active band.
     if "priority" not in params or params["priority"] is None:
         params["priority"] = 3
+
+    # Guard against invalid status values before the MCP round-trip.
+    # The MCP schema description mistakenly lists 'draft' and 'active' as valid;
+    # the server rejects both with "Invalid status: <value>".
+    status = params.get("status")
+    if status is not None and status not in VALID_TASK_STATUSES:
+        valid = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(
+            f"Invalid status for create_task: '{status}'. "
+            f"Valid values: {valid}. "
+            f"Note: 'draft' and 'active' appear in the MCP schema description but are not accepted."
+        )
 
     # Enforce type-prefix-filename consistency
     task_id = params.get("id")
