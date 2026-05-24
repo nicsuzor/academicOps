@@ -43,7 +43,7 @@ Pattern detection uses **Semantic Clustering** on the `Failure` and `Root cause`
 The `/aops` command (or sleep cycle phase) produces:
 
 1. **Briefing Note**: A markdown document for the human operator (stored in `data/brain/recommendations/`) summarizing the pattern and citing the source issues.
-2. **Draft Enforcement Change**: A proposed `git diff` for `.agents/ENFORCEMENT-MAP.md` (operative SSoT), escalating (or de-escalating) a specific row's tier.
+2. **Draft Enforcement Change**: A proposed `git diff` for `specs/ENFORCEMENT-MAP.md` (operative SSoT), escalating (or de-escalating) a specific row's tier.
 3. **PKB Task**: A new P2 task in the `aops` project: "Review Enforcement Recommendation: [Pattern Slug]".
 4. **Implementation Epic**: If the recommendation requires a new mechanism (not just a tier change), it drafts a follow-up epic.
 
@@ -56,7 +56,7 @@ The `/aops` command (or sleep cycle phase) produces:
 ### 5. Trust model: Human-in-loop?
 
 - **Autonomous Flagging**: Allowed. The system can identify patterns and stage recommendations without permission.
-- **Human Decision (MANDATORY)**: No mechanical changes to `.agents/ENFORCEMENT-MAP.md`, `AXIOMS.md`, or `RULES.md` are auto-merged.
+- **Human Decision (MANDATORY)**: No mechanical changes to `specs/ENFORCEMENT-MAP.md`, `AXIOMS.md`, or `RULES.md` are auto-merged.
 - **Enforcement**: Recommendations are staged as PRs or PKB tasks. A human must review and approve the PR to close the loop (Step 6).
 
 ### 6. Existing infrastructure to reuse
@@ -94,7 +94,7 @@ The recommender scans issues from the last 14 days:
 
 - **Recommendation**: Escalate `A8 Halt` / `auto-mode: Silent Workaround` from `warn` to `block`.
 - **Output**:
-  - Diff for `.agents/ENFORCEMENT-MAP.md`.
+  - Diff for `specs/ENFORCEMENT-MAP.md`.
   - Briefing citing #720, #725, #729.
   - PKB Task: `aops-89b501b3-a8-escalation`.
 
@@ -120,7 +120,7 @@ User runs `/pull aops-89b501b3-a8-escalation`, reviews the briefing, and merges 
 
 - [ ] Add Phase 7 to `/sleep` cycle GHA.
 - [ ] Wire recommender to stage PRs/tasks in `$ACA_DATA`.
-- [ ] Implementation of `.agents/ENFORCEMENT-MAP.md` diff generator.
+- [ ] Implementation of `specs/ENFORCEMENT-MAP.md` diff generator.
 
 ### Phase 4: Closing the loop
 

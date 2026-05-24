@@ -18,26 +18,26 @@ tags: [enforcement, compliance, framework-architecture, verification]
 > enforcement change. The **operative state register** — every
 > mechanism currently in play, its pyramid position, and the axiom-keyed
 > rule registry — lives in
-> [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md).
+> [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md).
 > `rbg` blocks on the map's currency via P#65.
 
 **Purpose.** Enforcement is **responsive, proportionate, and evidence-driven**: most work happens cheaply and constantly at the base of the pyramid; heavier measures escalate only when lower layers produce evidence they are insufficient.
 
 **Sibling documents.**
 
-- **`.agents/ENFORCEMENT-MAP.md`** — **operative state register** (canonical SSoT). Pyramid-position assignments, every runtime hook / pre-commit hook / gate / PR-pipeline agent, plus the axiom-keyed cross-reference. When to reach for it: "what is currently catching X" or "what does it cost."
+- **`specs/ENFORCEMENT-MAP.md`** — **operative state register** (canonical SSoT). Pyramid-position assignments, every runtime hook / pre-commit hook / gate / PR-pipeline agent, plus the axiom-keyed cross-reference. When to reach for it: "what is currently catching X" or "what does it cost."
 - **`specs/enforcement/enforcement.md`** (this file) — design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is; PR cost-benefit framing.
 - **`specs/enforcement/enforcement-mechanisms.md`** — per-mechanism reference catalogue keyed to the L0–L11 pipeline view (companion design-narrative spec). When to reach for it: schema-shaped details for a single mechanism.
 - **`specs/enforcement/ultra-vires-enforcer.md`** — design doc for the `enforcer` agent + PreToolUse gate.
-- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `.agents/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
-- **`aops-core/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
+- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `specs/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
+- **`specs/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
 
 ## Two views of the same mechanisms
 
 The framework has ~40 distinct enforcement mechanisms. Two organising principles are useful for thinking about them.
 
 1. **The pipeline (temporal view).** When in the flow of work does a mechanism fire? Capture → hydration → decomposition → execution → handover → review → merge → follow-up → evidence loop. The mermaid graph in §3 shows this. Labels are `L0`–`L11`, one per pipeline layer. This view answers _when_ a mechanism fires; it is not a severity tier.
-2. **The pyramid (escalation view).** Where does a mechanism sit in the regulatory pyramid (§4)? How frequently does it fire, and how invasive is it when it does? Base (high-volume, cheap, non-blocking) → middle (moderate, triggered, warns or opens gates) → tip (rare, heavy, blocks or requires human). The pyramid is the **operative framing** for add/escalate/remove decisions; positions L0–L7 in [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) are the register-of-record.
+2. **The pyramid (escalation view).** Where does a mechanism sit in the regulatory pyramid (§4)? How frequently does it fire, and how invasive is it when it does? Base (high-volume, cheap, non-blocking) → middle (moderate, triggered, warns or opens gates) → tip (rare, heavy, blocks or requires human). The pyramid is the **operative framing** for add/escalate/remove decisions; positions L0–L7 in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) are the register-of-record.
 
 These views are **orthogonal**. The same mechanism appears in both. A pipeline-L4 mechanism (soft gate) may sit at the base of the pyramid (runs every tool call, cheap) or in the middle (triggered on threshold). The pipeline L-number is cross-reference; the pyramid position is the cost-benefit assignment.
 
@@ -96,13 +96,13 @@ flowchart TD
 
 Edges show control-flow in the common path (top to bottom) and the three most common failure-to-evidence arcs (dotted). The evidence loop closes back to L0 because the _output_ of the loop is spec/axiom/template changes, which propagate forward through the whole pipeline from its start.
 
-Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** (companion). For the operative register, see [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md).
+Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** (companion). For the operative register, see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md).
 
 ## §4 Pyramid view (escalation)
 
 **Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (skills, prompts, conventions, hints) tapering to a sharp apex of rare severe responses (hard blocks, numbered axioms, branch protection, recusal-grounded recourse). The narrower the level, the more reluctantly invoked.
 
-**Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
+**Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
 
 Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
@@ -120,7 +120,7 @@ Mechanisms are placed in tiers based on **frequency of activation × invasivenes
 
 ### §4.1 PR requirements for enforcement changes
 
-This applies to PRs that **add, escalate, or remove** a row in [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) — a new gate, a position change (e.g. L1→L3), a new axiom, an additional hook firing surface, or removing one. Bug fixes within an existing enforcement surface at the same position (correcting wrong logic or wrong prose in an existing skill, agent, hook, or gate) do NOT require CBA — they need only a clear description of the bug and the corrective edit. User-directed architectural changes skip the ≥3 recurrence requirement but still require pyramid-position reasoning to document where the fix lands.
+This applies to PRs that **add, escalate, or remove** a row in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) — a new gate, a position change (e.g. L1→L3), a new axiom, an additional hook firing surface, or removing one. Bug fixes within an existing enforcement surface at the same position (correcting wrong logic or wrong prose in an existing skill, agent, hook, or gate) do NOT require CBA — they need only a clear description of the bug and the corrective edit. User-directed architectural changes skip the ≥3 recurrence requirement but still require pyramid-position reasoning to document where the fix lands.
 
 Any PR that adds, escalates, or removes enforcement MUST include a **Cost-Benefit Analysis** block in the PR body:
 
@@ -134,7 +134,7 @@ Reviewers should WARN on missing CBA, BLOCK on missing items 1, 4, or 5.
 
 ### §4.2 Worked example: A7
 
-A7 ("Exercise Authority — Calibrate Capability", `aops-core/AXIOMS.md`) sits at **L7**, the apex of the pyramid. The placement is the result of an explicit cost-benefit decision, not a default.
+A7 ("Exercise Authority — Calibrate Capability", `.agents/rules/AXIOMS.md`) sits at **L7**, the apex of the pyramid. The placement is the result of an explicit cost-benefit decision, not a default.
 
 - **Friction**: 9+ over-deference recurrences across 6 agent surfaces (issue #195 thread, issue #950, plus fresh /retro evidence from 2026-05-11 sessions).
 - **Cheaper position attempted first**: L1 (skill instruction text in CORE.md / butler.md / planner). Tried 9 times across the #195 history. Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
@@ -149,7 +149,7 @@ This serves as the template for any future L6/L7 escalation: the CBA must look l
 
 1. **Observe** failure (QA, /retro, /sleep, report).
 2. **File evidence** via `/learn`.
-3. **Locate rule** in the axiom-keyed registry in [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md).
+3. **Locate rule** in the axiom-keyed registry in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md).
 4. **Propose position change** (escalate/demote) — cite the L0–L7 pyramid position, not the action vocabulary.
 5. **Update the row** in the same PR (P#65).
 
@@ -204,7 +204,7 @@ Recency is bias. The agent that just lived through a failure proposes fixes shap
 - Propose remediations at /learn time. Just describe what happened.
 - Worry about whether their issue duplicates an existing one. The sweep agent groups by root cause and bumps volume on duplicates.
 - Choose a position (L0–L7) for any rule. The sweep agent applies the pyramid; the user gates the proposal.
-- Maintain the operative register by hand. Approved fix-epics that add or move a row update [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) as part of the change (P#65).
+- Maintain the operative register by hand. Approved fix-epics that add or move a row update [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) as part of the change (P#65).
 
 ### §5.2 Implementation status
 
@@ -222,13 +222,13 @@ Each step names its inputs, outputs, implementation status, and location.
 
 **Step 6 — Human decision + implementation.** _(Implemented as the normal task flow.)_ User approves the change; an agent implements it via the usual `/q` → decomposition → execution route; spec / code / axiom is updated through PR pipeline.
 
-**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) (operative state) updates to reflect the new intervention. The _automatic_ row update is not yet wired — done manually in the PR.
+**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) (operative state) updates to reflect the new intervention. The _automatic_ row update is not yet wired — done manually in the PR.
 
 **Principal gap.** Steps 4–5 are the unbuilt piece. Failure evidence is captured reliably (Step 2) and implementation flow exists (Step 6), but the _recommendation_ connecting them is aspirational. A follow-up task should scope what `/aops` needs to do.
 
 ## §6 Per-mechanism reference
 
-See **[`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** for the per-mechanism design-narrative catalogue (keyed to the L0–L11 pipeline view). For the operative register, see [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md). Each mechanism is documented with a fixed schema:
+See **[`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** for the per-mechanism design-narrative catalogue (keyed to the L0–L11 pipeline view). For the operative register, see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Each mechanism is documented with a fixed schema:
 
 ```
 ### <Mechanism name>
@@ -339,9 +339,9 @@ Conclusions require `actual_state`. Anything less is a claim, not a finding.
 
 **Related**
 
-- **Operative state register (SSoT)**: [`.agents/ENFORCEMENT-MAP.md`](../../.agents/ENFORCEMENT-MAP.md) — pyramid-position assignments + every mechanism row. `rbg` blocks on it (P#65).
+- **Operative state register (SSoT)**: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) — pyramid-position assignments + every mechanism row. `rbg` blocks on it (P#65).
 - [`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md) — per-mechanism design-narrative catalogue (companion to this file).
 - [`specs/enforcement/ultra-vires-enforcer.md`](ultra-vires-enforcer.md) — enforcer agent + gate internal design.
-- [`specs/enforcement/enforcement-map.md`](enforcement-map.md) — redirect stub (superseded 2026-05-20 by `.agents/ENFORCEMENT-MAP.md`).
-- [`aops-core/AXIOMS.md`](../../aops-core/AXIOMS.md) — universal axioms (read only by `rbg`).
-- [`aops-core/HEURISTICS.md`](../../aops-core/HEURISTICS.md) — advisory heuristics.
+- [`specs/enforcement/enforcement-map.md`](enforcement-map.md) — redirect stub (superseded 2026-05-20 by `specs/ENFORCEMENT-MAP.md`).
+- [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md) — universal axioms (read only by `rbg`).
+- [`.agents/rules/HEURISTICS.md`](../../.agents/rules/HEURISTICS.md) — advisory heuristics.

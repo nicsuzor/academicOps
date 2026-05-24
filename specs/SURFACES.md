@@ -311,7 +311,7 @@ The Claude.app-hosted orchestrator environment Nic used as his daily driver for 
 3. **A trap is discovered**: add it to that surface's "Known traps" _and_ (if it spans surfaces) the Cross-cutting notes section.
 4. **Cleanup lands** (e.g. hook env propagation fixed): zero out the `⚠` cells; move resolved traps to a brief "Resolved" appendix or just delete.
 5. **A surface is retired**: move its section to "Retired surfaces" with a retirement date and reason; preserve content for traceability. Do not delete history.
-6. **PKB pointer**: a thin `surfaces` PKB doc exists whose only job is vector-search discoverability — its content is just "canonical at `aops-core/SURFACES.md`" plus a paragraph excerpt. When this doc's framing changes (audience, scope), update the PKB pointer to match.
+6. **PKB pointer**: a thin `surfaces` PKB doc exists whose only job is vector-search discoverability — its content is just "canonical at `specs/SURFACES.md`" plus a paragraph excerpt. When this doc's framing changes (audience, scope), update the PKB pointer to match.
 
 ---
 

@@ -8,7 +8,7 @@ description: academicOps hook architecture, PATH bootstrap, MCP server config, a
 
 # Hooks & MCP: academicOps Reference
 
-> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`aops-core/GATES.md`](../../../GATES.md). For raw JSONL forensics, see [[forensics-details]].
+> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/GATES.md`](../../../GATES.md). For raw JSONL forensics, see [[forensics-details]].
 
 For Claude Code's hook system in general, see the [official docs](https://code.claude.com/docs/en/hooks) and [plugins reference](https://code.claude.com/docs/en/plugins-reference). This document covers the academicOps-specific implementation.
 

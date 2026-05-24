@@ -28,7 +28,7 @@ def sample_docs():
         },
         {
             "topic": "axioms",
-            "path": "aops-core/AXIOMS.md",
+            "path": ".agents/rules/AXIOMS.md",
             "description": "Inviolable principles and their logical derivations",
             "keywords": [
                 "axiom",

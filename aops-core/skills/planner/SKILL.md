@@ -537,7 +537,7 @@ User prompt
 
 ## Decision Surfacing Heuristic
 
-_Enforces A7 Edge 2 (FM-2, FM-3, FM-4). See `aops-core/AXIOMS.md` § A7. This applies the Decision Surfacing Heuristic from the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]])._
+_Enforces A7 Edge 2 (FM-2, FM-3, FM-4). See `.agents/rules/AXIOMS.md` § A7. This applies the Decision Surfacing Heuristic from the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]])._
 
 **The user's time is the scarcest resource in decomposition.** Surfacing pseudo-decisions trains the user to rubber-stamp and erodes the signal of genuine asks. Before presenting any decision to the user, classify it:
 

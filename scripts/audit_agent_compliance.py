@@ -9,9 +9,9 @@ import yaml
 CORE_AGENTS_DIR = Path("aops-core/agents")
 GH_AGENTS_DIR = Path(".github/agents")
 SKILLS_DIR = Path("aops-core/skills")
-COMPLIANCE_FILE = Path(".agents/AGENT-COMPLIANCE-MATRIX.md")
-REMEDIATION_FILE = Path(".agents/AGENT-REMEDIATION-BACKLOG.md")
-TOOL_MATRIX_FILE = Path(".agents/AGENT-TOOLS.md")
+COMPLIANCE_FILE = Path("specs/audit/AGENT-COMPLIANCE-MATRIX.md")
+REMEDIATION_FILE = Path("specs/audit/AGENT-REMEDIATION-BACKLOG.md")
+TOOL_MATRIX_FILE = Path("specs/audit/AGENT-TOOLS.md")
 
 PASCAL_TOOLS = {
     "Read",
@@ -359,7 +359,7 @@ def main():
             f.write("| `supervisor/SKILL.md` | Add `allowed-tools` block to frontmatter. |\n\n")
 
             f.write("## Tool Authority (Drift Remediation)\n\n")
-            f.write("Based on `.agents/AGENT-TOOLS.md`:\n\n")
+            f.write("Based on `specs/audit/AGENT-TOOLS.md`:\n\n")
             f.write(
                 "- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).\n"
             )

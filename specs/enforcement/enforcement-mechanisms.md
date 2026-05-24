@@ -15,12 +15,12 @@ tags: [enforcement, reference, mechanisms]
 > — a useful frame for thinking about _when_ a mechanism fires. **No
 > blocking rule cites L0–L11 or the base/middle/tip pyramid.** The
 > operative catalogue for add/escalate/remove decisions is the L0–L7
-> cost ladder in **`.agents/ENFORCEMENT-MAP.md`**, which `rbg` blocks on
+> cost ladder in **`specs/ENFORCEMENT-MAP.md`**, which `rbg` blocks on
 > via P#65. Reach for this file when you need the per-mechanism schema
 > details (trigger, location, scope, status); reach for the operative
 > state file when you need the current cost-ladder ranking.
 
-This is the per-mechanism detail catalogue referenced from `specs/enforcement/enforcement.md` §6. For the design statement — why enforcement is shaped the way it is, how the pipeline and pyramid views relate, and how the evidence loop closes — read `specs/enforcement/enforcement.md` first. For the operative state catalogue keyed by mechanism × rule, read `.agents/ENFORCEMENT-MAP.md`. For the per-gate runtime catalogue (5-question template: what / where / how-configured / how-verify / how-debug for each session-time gate), see [`aops-core/GATES.md`](../../aops-core/GATES.md).
+This is the per-mechanism detail catalogue referenced from `specs/enforcement/enforcement.md` §6. For the design statement — why enforcement is shaped the way it is, how the pipeline and pyramid views relate, and how the evidence loop closes — read `specs/enforcement/enforcement.md` first. For the operative state catalogue keyed by mechanism × rule, read `specs/ENFORCEMENT-MAP.md`. For the per-gate runtime catalogue (5-question template: what / where / how-configured / how-verify / how-debug for each session-time gate), see [`specs/GATES.md`](../../specs/GATES.md).
 
 Entries below use the fixed schema declared in `specs/enforcement/enforcement.md` §6 and are organised by **pipeline layer** (L0 → L11 → Evidence loop), not by pyramid tier. Mechanisms that span pyramid tiers (e.g. `/dump` runs as middle-tier during normal handover, tip-tier when the handover gate blocks Stop) carry both tiers with a conditional clause. Status fields are derived from source files where observable; unverifiable fields are flagged "verify".
 
@@ -606,7 +606,7 @@ Mechanisms below are aspirational, partial, or cannot be fully verified from the
 - **Inbox-default status** — policy is real (tasks capture without status default to inbox) but the enforcement is inside the PKB server, not verifiable from this repo tree.
 - **Gate status strip** — rendering path not isolated to one module; spread across template registry + hydrator; needs a single reference location to be citable.
 - **Workflow composition (L3)** — named as a pipeline layer for spec consistency; no concrete mechanism yet (`specs/enforcement.md` §9, Phase 3 placeholder).
-- **Automatic `.agents/ENFORCEMENT-MAP.md` row updates** — evidence-loop Step 7 currently requires a manual map-row update in the closing PR.
+- **Automatic `specs/ENFORCEMENT-MAP.md` row updates** — evidence-loop Step 7 currently requires a manual map-row update in the closing PR.
 - **Branch protection / admin approval** — configured in GitHub, not in-repo; presence assumed but not verifiable from the file tree.
 - **settings.json deny rules** — this repo's `.claude/settings.json` currently lists only `allow` entries; any deny/deny-by-default policy must come from user/global settings, and is therefore out-of-tree and unverifiable here.
 - **framework-health.yml / validate-ruleset.yml** — workflow files exist; their enforcement shape (what they block on, how loud they warn) not inspected in this pass.
@@ -615,7 +615,7 @@ Mechanisms below are aspirational, partial, or cannot be fully verified from the
 
 **Related**
 
-- **Operative state catalogue (SSoT)**: `.agents/ENFORCEMENT-MAP.md` — L0–L7 cost ladder + every mechanism row. `rbg` blocks on it (P#65).
+- **Operative state catalogue (SSoT)**: `specs/ENFORCEMENT-MAP.md` — L0–L7 cost ladder + every mechanism row. `rbg` blocks on it (P#65).
 - `specs/enforcement/enforcement.md` — design statement (read first).
-- `specs/enforcement/enforcement-map.md` — redirect stub (superseded 2026-05-20 by `.agents/ENFORCEMENT-MAP.md`).
+- `specs/enforcement/enforcement-map.md` — redirect stub (superseded 2026-05-20 by `specs/ENFORCEMENT-MAP.md`).
 - `specs/enforcement/ultra-vires-enforcer.md` — enforcer agent + gate internal design.

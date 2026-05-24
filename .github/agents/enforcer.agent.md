@@ -40,7 +40,7 @@ gh pr diff "$PR_NUMBER" --repo "$REPO"
 
 ### 3. Apply axiom review
 
-Judge the diff against the axioms (loaded above from `AXIOMS.md` + `AXIOMS-REVIEW.md`). Return the verdict in the format defined in `rbg.md`. Adjacent concerns (criterion-substitution, scope-awareness, keystone disclosure, sensitive-data, instruction-review) are NOT your inline rules — they live on the surfaces catalogued in `.agents/ENFORCEMENT-MAP.md`. Surface them as context if relevant, but the verdict you return is whether an axiom has been violated.
+Judge the diff against the axioms (loaded above from `AXIOMS.md` + `AXIOMS-REVIEW.md`). Return the verdict in the format defined in `rbg.md`. Adjacent concerns (criterion-substitution, scope-awareness, keystone disclosure, sensitive-data, instruction-review) are NOT your inline rules — they live on the surfaces catalogued in `specs/ENFORCEMENT-MAP.md`. Surface them as context if relevant, but the verdict you return is whether an axiom has been violated.
 
 For **mechanical violations** (typos, missing required frontmatter, orphan files, misnamed tools, wrong paths): fix them yourself with Edit/Write and push the fix. Writing "Fix: add X" in a review when you could apply the edit is a failure mode — do it instead.
 

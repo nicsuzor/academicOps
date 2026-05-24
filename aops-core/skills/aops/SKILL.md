@@ -376,7 +376,7 @@ When you encounter something you cannot derive:
 
 ### Anti-Pattern: Asking Permission for Safe Actions
 
-_Enforces A7 Edge 2 (FM-1, FM-3, FM-7). See `aops-core/AXIOMS.md` § A7._
+_Enforces A7 Edge 2 (FM-1, FM-3, FM-7). See `.agents/rules/AXIOMS.md` § A7._
 
 Asking "want me to file that?" or "should I create a task?" for any clearly-identified bug, issue, or actionable item. Invoke `/learn` for friction, or file a task directly. Nic reviews and corrects after the fact. The only actions that need confirmation are destructive or externally visible ones (send email, merge PR, push to main).
 

@@ -142,7 +142,7 @@ Skip is a **success outcome with descriptive text** — never `exit 1`. Examples
 - `failure` / "3 axiom violations — see review" (real verdict)
 - `pending` / "Agent dispatched (off-GHA)" (alignment, while pauli runs on host)
 
-### 3.3 One row in `.agents/ENFORCEMENT-MAP.md`
+### 3.3 One row in `specs/ENFORCEMENT-MAP.md`
 
 Every agent appears in the enforcement map under a new "PR-pipeline agents" section, declaring which axioms / rules / lifecycle points it covers. This is a **propagation rule**: a PR adding a new agent that omits its enforcement map row fails review by enforcer.
 
@@ -226,7 +226,7 @@ v2 closes this structurally on two fronts:
 
 ## 4. Pauli alignment surface — design
 
-This is the most novel and risky component. GHA cannot reach the Tailscale-internal PKB MCP (a Tailscale magic-DNS endpoint — see `.agents/CAPABILITIES.md` for the address), so pauli — whose value is precisely the PKB context — cannot run inside a GHA runner. Two designs were considered:
+This is the most novel and risky component. GHA cannot reach the Tailscale-internal PKB MCP (a Tailscale magic-DNS endpoint — see `specs/CAPABILITIES.md` for the address), so pauli — whose value is precisely the PKB context — cannot run inside a GHA runner. Two designs were considered:
 
 ### Option A — GHA posts pending; host-side cron (polecat) picks up and posts back
 
@@ -600,7 +600,7 @@ These are deferred for human resolution. The spec does not commit to an answer.
 - Issue #1034 — alignment review gap
 - PR #1037 — the worked example: enforcer skipped on agent HEAD, merge-prep substituted approval
 - `.github/rulesets/pr-review-and-merge.yml` (in `nicsuzor/academicOps`) — the ruleset to update in Phase 1 / Phase 3
-- `.agents/ENFORCEMENT-MAP.md` (in `nicsuzor/academicOps`) — updated alongside this spec (see "PR-pipeline agents" section)
+- `specs/ENFORCEMENT-MAP.md` (in `nicsuzor/academicOps`) — updated alongside this spec (see "PR-pipeline agents" section)
 
 ### Supersession protocol
 

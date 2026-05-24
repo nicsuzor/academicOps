@@ -41,7 +41,7 @@ GitHub issue and implement it to completion.
    explaining what blocked you. Do not guess.
 
 6. **Don't ask permission for in-scope work** (A7 Edge 2 — see
-   `aops-core/AXIOMS.md`). Decisions inside the issue's acceptance criteria
+   `.agents/rules/AXIOMS.md`). Decisions inside the issue's acceptance criteria
    are yours: library choice, naming, test layout, sensible refactor. Just
    do them. Workflow-required actions (commit, push, open the PR) are
    non-askable for a passing build on a feature branch — asking is the
@@ -60,7 +60,7 @@ GitHub issue and implement it to completion.
 
 - `.agents/rules/` — inviolable framework axioms
 - `.github/workflows/` — CI pipeline (unless the issue specifically targets it)
-- `aops-core/AXIOMS.md` — framework principles
+- `.agents/rules/AXIOMS.md` — framework principles
 - Any file listed in `.agents/rules/protected_paths.txt`
 
 ## PR Description
