@@ -2663,7 +2663,86 @@ class SessionProcessor:
             )
             entries = self._merge_cc_stop_summaries(entries)
 
+        entries = self._consolidate_hook_error_attachments(entries)
+
         return session_summary, entries, agent_entries
+
+    @staticmethod
+    def _consolidate_hook_error_attachments(entries: list[Entry]) -> list[Entry]:
+        """Collapse identical hook_non_blocking_error entries session-wide.
+
+        When every hook fails with the same traceback (e.g. an import error in
+        router.py), the JSONL contains one attachment per hook invocation —
+        easily 50+. We emit one consolidated entry at the position of the first
+        occurrence and suppress the rest.
+
+        Entries from our hook JSONL or CC's stop_hook_summary are NOT
+        consolidated — they carry richer payloads that should render
+        individually.
+        """
+        if not entries:
+            return entries
+
+        def _is_attachment_hook_error(e: Entry) -> bool:
+            return (
+                e.type == "system_reminder"
+                and e.hook_exit_code is not None
+                and e.hook_exit_code != 0
+                and not e.hook_is_cc_summary
+                and not e.hook_verdict
+                and not e.hook_system_message
+                and not e.hook_context_injection
+            )
+
+        # First pass: collect all attachment hook errors grouped by error text.
+        groups: dict[str, list[Entry]] = {}
+        for entry in entries:
+            if _is_attachment_hook_error(entry):
+                key = entry.additional_context or ""
+                groups.setdefault(key, []).append(entry)
+
+        if not groups:
+            return entries
+
+        # Build the consolidated entry for each error group. Track the UUID
+        # of the first entry so we know where to insert it.
+        first_uuids: dict[str, Entry] = {}  # error_key -> consolidated Entry
+        consumed_uuids: set[str] = set()
+        for key, group in groups.items():
+            first = group[0]
+            event_names: list[str] = []
+            for e in group:
+                name = e.hook_event_name or "Hook"
+                if name not in event_names:
+                    event_names.append(name)
+            error_text = first.additional_context or ""
+            if len(group) > 1:
+                summary = f"{len(group)} hook failures ({', '.join(event_names)})\n\n{error_text}"
+            else:
+                summary = error_text
+            consolidated = Entry(
+                type="system_reminder",
+                uuid=first.uuid,
+                parent_uuid=first.parent_uuid,
+                timestamp=first.timestamp,
+                hook_event_name=", ".join(event_names),
+                hook_exit_code=1,
+                additional_context=summary,
+            )
+            first_uuids[first.uuid] = consolidated
+            consumed_uuids.update(e.uuid for e in group)
+
+        # Second pass: emit the consolidated entry at the first occurrence,
+        # suppress all others.
+        result: list[Entry] = []
+        for entry in entries:
+            if entry.uuid in first_uuids:
+                result.append(first_uuids.pop(entry.uuid))
+            elif entry.uuid in consumed_uuids:
+                continue
+            else:
+                result.append(entry)
+        return result
 
     def _parse_antigravity_brain(
         self, brain_dir: Path
@@ -3689,7 +3768,7 @@ class SessionProcessor:
         if notification_text:
             out += _add_block("notification", notification_text, 300)
         if hook_system_message:
-            out += _add_block("", hook_system_message.strip(), 600)
+            out += _add_block("→ user", hook_system_message.strip(), 600)
         if last_assistant_tail:
             tail = last_assistant_tail
             if len(tail) > 240:
@@ -3700,7 +3779,7 @@ class SessionProcessor:
         if hook_context_injection:
             inj = hook_context_injection
             limit = 1200 if full_mode else 300
-            out += _add_block(f"injected context ({len(inj):,} chars)", inj, limit)
+            out += _add_block(f"→ agent context ({len(inj):,} chars)", inj, limit)
 
         return out + "\n"
 
