@@ -101,6 +101,7 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
+                    custom_action="reset_qa_verified",
                 ),
             ),
             # Write tool used -> Close. Shares is_write_tool with handover;
@@ -126,6 +127,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="qa.complete",
+                    custom_action="set_qa_verified",
                 ),
             ),
             # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
@@ -140,7 +142,10 @@ GATE_CONFIGS = [
             # UserPromptSubmit -> re-arm for the next turn cycle.
             GateTrigger(
                 condition=GateCondition(hook_event="UserPromptSubmit"),
-                transition=GateTransition(target_status=GateStatus.CLOSED),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    custom_action="reset_qa_verified",
+                ),
             ),
         ],
         policies=[

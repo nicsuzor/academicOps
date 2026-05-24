@@ -202,4 +202,12 @@ def execute_custom_action(
         session_state.state["handover_skill_invoked"] = False
         return None
 
+    if name == "set_qa_verified":
+        session_state.state["qa_verified"] = True
+        return None
+
+    if name == "reset_qa_verified":
+        session_state.state["qa_verified"] = False
+        return None
+
     return None

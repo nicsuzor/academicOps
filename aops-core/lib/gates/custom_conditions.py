@@ -25,6 +25,11 @@ def check_custom_condition(
     if name == "is_write_tool":
         from hooks.gate_config import get_tool_category
 
+        # After QA verification, all writes are exempt — prevents the QA gate
+        # from re-closing when the agent fixes issues marsha found (endless loop).
+        if session_state.state.get("qa_verified"):
+            return False
+
         # Refinement (aops-2283a8b0): treat shell tools as read-only if handover
         # was just invoked or no task is bound. This prevents the gate from
         # re-closing on discovery/status tools (e.g. git status, echo).

@@ -155,3 +155,86 @@ def test_bash_after_handover_does_not_close_qa(router):
     assert state.gates["qa"].status == GateStatus.OPEN, (
         "Post-handover bash should not re-close the qa gate"
     )
+
+
+def test_write_after_marsha_does_not_reclose_qa(router):
+    """Regression: writes after marsha verification must not re-close the QA
+    gate. Without the qa_verified latch, the is_write_tool trigger re-closes
+    the gate, causing an endless marsha → fix → Stop-blocked loop."""
+    state = _state_with_bound_task("qa-loop")
+
+    # 1. Close the gate via a write (work begins).
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-loop",
+            hook_event="PostToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "/tmp/foo.py"},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED
+
+    # 2. Marsha runs — gate opens, qa_verified flag set.
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-loop",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:marsha",
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.OPEN
+    assert state.state.get("qa_verified") is True
+
+    # 3. Agent writes code to fix marsha's findings — gate must stay OPEN.
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-loop",
+            hook_event="PostToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "/tmp/foo.py"},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.OPEN, (
+        "Write after marsha must not re-close the qa gate"
+    )
+
+
+def test_qa_verified_resets_on_user_prompt(router):
+    """qa_verified flag resets on UserPromptSubmit so the gate re-arms."""
+    state = _state_with_bound_task("qa-reset")
+    state.state["qa_verified"] = True
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-reset",
+            hook_event="UserPromptSubmit",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    assert state.state.get("qa_verified") is False, "qa_verified must reset on new user prompt"
+
+
+def test_qa_verified_resets_on_new_task(router):
+    """qa_verified flag resets when a new task is bound (new work cycle)."""
+    state = _state_with_bound_task("qa-newtask")
+    state.state["qa_verified"] = True
+    state.gates["qa"] = GateState(status=GateStatus.OPEN)
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-newtask",
+            hook_event="PostToolUse",
+            tool_name="update_task",
+            tool_input={"id": "task-new", "status": "in_progress"},
+        ),
+        state,
+    )
+    assert state.state.get("qa_verified") is False, "qa_verified must reset when new task is bound"
+    assert state.gates["qa"].status == GateStatus.CLOSED
