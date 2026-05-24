@@ -61,6 +61,10 @@ except ImportError as e:
 
 DEBUG_LOG_DIR = Path("/tmp")
 
+# Key used in SessionState.state for the context-map hint cache.
+# Declared as a constant to avoid typo-based key collisions in the untyped dict.
+_CONTEXT_MAP_CACHE_KEY = "context_map_cache"
+
 
 def _debug_log_path(session_id: str | None) -> Path:
     """Return per-session debug log path.
@@ -477,30 +481,56 @@ class HookRouter:
             print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
 
         # Context map: match user prompt against .agents/context-map.json
-        self._inject_context_map_hints(ctx, merged_result)
+        self._inject_context_map_hints(ctx, state, merged_result)
 
     def _inject_context_map_hints(
-        self, ctx: HookContext, merged_result: CanonicalHookOutput
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
         """Inject .agents/context-map.json entries as context hints.
 
         Looks for context-map.json in the working directory (ctx.cwd) only.
         Injects the full entry list so the LLM can decide relevance (P#49).
+
+        Result is cached in state.state[_CONTEXT_MAP_CACHE_KEY] per session.
+        The hook router is subprocess-per-invocation, so state.state persistence
+        (written to disk at end of execute_hooks) provides session-level scope.
+        Cache is keyed by (cwd, mtime) — invalidates on file change or cwd change.
         """
         try:
-            from lib.context_map import format_context_hints, load_context_map
-
             if not ctx.cwd:
                 return
             repo_root = Path(ctx.cwd)
-            if not (repo_root / ".agents" / "context-map.json").exists():
+            map_path = repo_root / ".agents" / "context-map.json"
+            if not map_path.exists():
                 return
 
-            docs = load_context_map(repo_root)
-            if not docs:
+            try:
+                current_mtime = map_path.stat().st_mtime
+            except OSError:
                 return
 
-            hint = format_context_hints(docs)
+            # Serve from session cache if cwd and mtime still match
+            cache = state.state.get(_CONTEXT_MAP_CACHE_KEY)
+            if (
+                cache is not None
+                and cache.get("cwd") == str(ctx.cwd)
+                and cache.get("mtime") == current_mtime
+            ):
+                hint = cache["hint"]
+            else:
+                from lib.context_map import format_context_hints, load_context_map
+
+                docs = load_context_map(repo_root)
+                if not docs:
+                    return
+                hint = format_context_hints(docs)
+                if hint:
+                    state.state[_CONTEXT_MAP_CACHE_KEY] = {
+                        "cwd": str(ctx.cwd),
+                        "mtime": current_mtime,
+                        "hint": hint,
+                    }
+
             if hint:
                 if merged_result.context_injection:
                     merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
@@ -619,6 +649,9 @@ class HookRouter:
 
         # Session env setup on start
         if ctx.hook_event == "SessionStart":
+            # Clear context-map cache so a restarted session with the same
+            # session_id doesn't serve hints built for a prior working directory.
+            state.state.pop(_CONTEXT_MAP_CACHE_KEY, None)
             try:
                 from hooks.session_env_setup import run_session_env_setup
 
