@@ -133,39 +133,7 @@ Entry ID: [entry_id]
 
 #### Downloading Attachments via `messages_download_attachments` — Path Pre-Flight (MANDATORY)
 
-When attachment retrieval is actioned (not during initial email triage), call `messages_download_attachments` **only after** completing the following path pre-flight check. Skipping this check causes silent failure or writes to the wrong location when the omcp server and the calling host run on different operating systems.
-
-**Pre-flight procedure**:
-
-1. **Detect host OS** — run `Bash("uname -s 2>/dev/null || python3 -c 'import sys; print(sys.platform)'")`
-   - Returns `Linux`, `Darwin`, etc. → POSIX host
-   - Returns `win32` → Windows host
-
-2. **Detect `download_dir` path style**:
-   - POSIX path: starts with `/` (e.g. `/home/nic/Downloads`)
-   - Windows path: starts with a drive letter and backslash (e.g. `C:\Users\nic\Downloads`) or UNC prefix (`\\server\share`)
-
-3. **If path style does not match host OS → stop and report the error below. Do not call `messages_download_attachments`.**
-
-Silent path translation (e.g. swapping `/` for `\`) is **not permitted** — translated paths cannot be verified without a second round-trip and may silently produce wrong results.
-
-**Actionable error messages**:
-
-- POSIX path on a Windows host:
-  > `download_dir "/home/nic/Downloads" is a POSIX path but this host is Windows. Use a Windows path like "C:\Users\nic\Downloads\attachments" instead.`
-
-- Windows path on a POSIX host:
-  > `download_dir "C:\Users\nic\Downloads" is a Windows path but this host is POSIX (linux). Use a POSIX path like "/home/nic/Downloads/attachments" instead.`
-
-**Examples**:
-
-| Host OS | `download_dir`           | Result                                |
-| ------- | ------------------------ | ------------------------------------- |
-| Linux   | `/home/nic/Downloads`    | ✓ Proceed                             |
-| macOS   | `/Users/nic/Downloads`   | ✓ Proceed                             |
-| Windows | `C:\Users\nic\Downloads` | ✓ Proceed                             |
-| Linux   | `C:\Users\nic\Downloads` | ✗ Reject — Windows path on POSIX host |
-| Windows | `/home/nic/Downloads`    | ✗ Reject — POSIX path on Windows host |
+Before calling `messages_download_attachments`, verify that `download_dir` uses the path style matching the host OS (POSIX paths on Linux/macOS, Windows paths on Windows). If the path style conflicts with the detected OS, report the mismatch to the user and stop. Do not silently translate path separators — translated paths cannot be verified without a second round-trip and may silently produce wrong results.
 
 ## Step 8: Presentation and Summary
 
