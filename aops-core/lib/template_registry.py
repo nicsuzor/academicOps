@@ -208,10 +208,17 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
     # --- Ida (Ida B. Wells — proof-of-claim reminder) gate ---
     "ida.reminder": TemplateSpec(
         name="ida.reminder",
-        category=TemplateCategory.USER_MESSAGE,
+        category=TemplateCategory.CONTEXT_INJECTION,
         filename="ida-reminder.md",
         required_vars=(),
-        description="Non-blocking honesty reminder surfaced on Stop",
+        description="Agent-facing honesty check injected into context on Stop",
+    ),
+    "ida.policy_message": TemplateSpec(
+        name="ida.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="ida-policy-message.md",
+        required_vars=(),
+        description="Short user-facing message when Ida gate fires on Stop",
     ),
 }
 
