@@ -10,7 +10,6 @@ This module defines:
 
 """
 
-import os
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -427,12 +426,6 @@ _GATE_MODE_DEFAULTS = {
     "IDA_GATE_MODE": "warn",
 }
 _ENFORCER_THRESHOLD_DEFAULT = 50
-
-
-def _reset_gate_mode_cache() -> None:  # pyright: ignore[reportUnusedFunction]
-    """Back-compat no-op. Gate modes now read env vars on every access; there
-    is no cache to invalidate. Retained so older tests that call this don't
-    break."""
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs

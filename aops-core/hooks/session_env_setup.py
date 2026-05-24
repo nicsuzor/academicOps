@@ -161,17 +161,12 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 5. Gate modes are no longer persisted as env vars — they live in
-    # $AOPS_SESSIONS/polecat.yaml and every hook reads them via
-    # lib.polecat_config. Removing this section is the load-bearing piece of
-    # the env-var → config-file migration.
-
-    # 6. Apply agent-env-map.conf credential isolation mappings (issue #581).
+    # 5. Apply agent-env-map.conf credential isolation mappings (issue #581).
     # We split this into two pieces:
     # - Literals (TARGET:=VALUE) and resolved env-to-env mappings go into the
     #   `persist` dict for normal `export TARGET=value` writes.
     # - Env-to-env mappings (TARGET=SOURCE) are ALSO written as deferred shell
-    #   exports via append_shell_lines (see step 6c). This handles the case
+    #   exports via append_shell_lines (see step 5c). This handles the case
     #   where SOURCE is set by the user's shell profile (e.g., ~/.zshenv) and
     #   thus visible to the shell-snapshot-sourced bash, but NOT to the
     #   Python hook (which inherits the launchd env on macOS Claude Desktop).
@@ -184,7 +179,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist.update(get_env_mapping_persist_dict())
 
-    # 6b. Force SSH→HTTPS rewrite for GitHub URLs AND override the credential
+    # 5b. Force SSH→HTTPS rewrite for GitHub URLs AND override the credential
     # helper for github.com so the user's `~/.gitconfig` host-specific helper
     # (`!gh auth git-credential`) doesn't shadow the bot-PAT helper.
     #
@@ -281,7 +276,7 @@ Today's note has not been populated yet. Run `/daily` to update.
     # mappings that resolved at hook time).
     set_persistent_env(persist)
 
-    # 6c. Write deferred-shell exports for env-to-env mappings so SOURCE vars
+    # 5c. Write deferred-shell exports for env-to-env mappings so SOURCE vars
     # set by the user's shell snapshot (e.g., AOPS_BOT_GH_TOKEN from ~/.zshenv)
     # propagate to TARGET. These lines append AFTER set_persistent_env's writes,
     # so they overwrite/refine the resolved values when the shell evaluates.

@@ -58,6 +58,7 @@ def check_custom_condition(
         # rather than context_injection, so output_for_claude does not upgrade
         # the WARN verdict to decision=block for the Stop hook.
         return os.environ.get("IDA_GATE_MODE", "warn") == "warn"
+
     if name == "is_qa_block_mode":
         # QA gate policy: active only when QA_GATE_MODE is blocking.
         # Separating block vs warn into distinct policies lets each choose
