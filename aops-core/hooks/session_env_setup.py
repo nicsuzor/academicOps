@@ -161,10 +161,20 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
-    # 5. Gate modes are no longer persisted as env vars — they live in
-    # $AOPS_SESSIONS/polecat.yaml and every hook reads them via
-    # lib.polecat_config. Removing this section is the load-bearing piece of
-    # the env-var → config-file migration.
+    # 5. Lock gate posture at SessionStart (fix for GitHub issue #1234).
+    # Snapshot current gate modes (stamped at container launch by polecat's
+    # _apply_gate_env, or from the user's shell environment) into a read-only
+    # JSON file. All hook gate checks read from this file via lib.gate_posture,
+    # so subsequent agent writes to CLAUDE_ENV_FILE cannot weaken enforcement.
+    try:
+        from lib.gate_posture import POSTURE_FILE_ENV, write_posture_file
+
+        posture_file = status_dir / "gate-posture.json"
+        write_posture_file(posture_file)
+        persist[POSTURE_FILE_ENV] = str(posture_file)
+        messages.append(f"Gate posture: locked at {posture_file.name}")
+    except Exception as e:
+        messages.append(f"Gate posture: lock failed ({e})")
 
     # 6. Apply agent-env-map.conf credential isolation mappings (issue #581).
     # We split this into two pieces:

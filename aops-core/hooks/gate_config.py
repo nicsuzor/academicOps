@@ -10,7 +10,6 @@ This module defines:
 
 """
 
-import os
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -426,22 +425,32 @@ _GATE_MODE_DEFAULTS = {
     "HYDRATION_GATE_MODE": "off",
     "IDA_GATE_MODE": "warn",
 }
+# Maps the long env-var-style names to the short keys used in the posture file.
+_LONG_TO_SHORT: dict[str, str] = {
+    "HANDOVER_GATE_MODE": "handover",
+    "QA_GATE_MODE": "qa",
+    "ENFORCER_GATE_MODE": "enforcer",
+    "HYDRATION_GATE_MODE": "hydration",
+    "IDA_GATE_MODE": "ida",
+}
 _ENFORCER_THRESHOLD_DEFAULT = 50
 
 
 def _reset_gate_mode_cache() -> None:  # pyright: ignore[reportUnusedFunction]
-    """Back-compat no-op. Gate modes now read env vars on every access; there
-    is no cache to invalidate. Retained so older tests that call this don't
-    break."""
+    """Back-compat no-op. Retained so older tests that call this don't break."""
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
     if name in _GATE_MODE_DEFAULTS:
-        return os.environ.get(name, _GATE_MODE_DEFAULTS[name])
+        # Read from posture file first (locked at SessionStart, issue #1234).
+        # Falls back to os.environ for backward compat / no-posture-file envs.
+        from lib.gate_posture import get_gate_mode
+
+        return get_gate_mode(_LONG_TO_SHORT[name])
     if name == "ENFORCER_TOOL_CALL_THRESHOLD":
-        raw = os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD")
-        if raw is None:
-            return _ENFORCER_THRESHOLD_DEFAULT
+        from lib.gate_posture import get_gate_mode
+
+        raw = get_gate_mode("enforcer_threshold")
         try:
             return int(raw)
         except ValueError:
