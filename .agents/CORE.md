@@ -34,6 +34,10 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 - **Tool Failures**: If a tool doesn't work as documented, report the failure — do not invent alternatives.
 - **Ambiguity**: If instructions conflict or are ambiguous, ask for clarification.
 
+## PKB Rules
+
+If a PKB operation is needed and the MCP verb does not exist, HALT and report. Do not invent a shell-out, an SSH escape, or a file write. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via the existing `create_task` verb. The 2026-05-19 incident established that routing around the PKB MCP is a security incident — see [[aops-18572bc0]] §5.
+
 ## Key Components
 
 - **.agents/**: Instructions for working on the framework
