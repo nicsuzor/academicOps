@@ -390,7 +390,36 @@ def create_task(
     if "priority" not in params or params["priority"] is None:
         params["priority"] = 3
 
-    # Enforce type-prefix-filename consistency
+    # Auto-inherit project from parent when not specified.
+    # Rename-impossible constraint: the project slug is embedded in the task ID at
+    # creation time (e.g. project=mem → ID prefix mem-…). update_task can change
+    # the project frontmatter field but cannot rename the ID. A task created with the
+    # wrong project slug is permanently misidentified — all routing consumers that infer
+    # project from the ID prefix will point to the wrong repo. Recurrence of #284/#1054.
+    _parent = params.get("parent")
+    if _parent and not params.get("project"):
+        _parent_data = _get_client().call_tool("get_task", {"id": _parent})
+        if _parent_data and isinstance(_parent_data, dict):
+            _fm = _parent_data.get("frontmatter") or {}
+            _inherited = _fm.get("project") or _parent_data.get("project")
+            if _inherited:
+                params["project"] = _inherited
+            else:
+                raise ValueError(
+                    f"create_task: parent '{_parent}' has no project field and no project "
+                    f"was specified. Task IDs embed the project slug permanently; "
+                    f"auto-inherit requires a resolvable ancestor project. "
+                    f"Walk the ancestor chain until you find a project-typed node, "
+                    f"or ask the user which project this task belongs to."
+                )
+        else:
+            raise ValueError(
+                f"create_task: parent '{_parent}' not found in PKB — cannot auto-inherit "
+                f"project. Specify project explicitly or verify the parent ID is correct."
+            )
+
+    # Enforce type-prefix-filename consistency.
+    # The project slug in the ID prefix CANNOT be corrected after creation (see above).
     task_id = params.get("id")
     task_type = params.get("type", "task")
     project = params.get("project")

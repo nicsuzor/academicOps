@@ -46,6 +46,26 @@ If a PKB operation is needed and the MCP verb does not exist, HALT and report. D
 - **specs/**: Framework specifications and architecture
 - **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
 
+## Component Topology
+
+Use this table to route `/q` captures and task decompositions to the correct `project` field. The `project` field drives polecat repo cloning and is **embedded permanently in task IDs** — getting it wrong creates tasks with the wrong ID prefix that cannot be renamed after creation.
+
+| Task subject                                                            | Correct `project` | Wrong default |
+| ----------------------------------------------------------------------- | ----------------- | ------------- |
+| PKB MCP server code, knowledge graph internals, brain/                  | `mem`             | `aops`        |
+| aops-core skills, hooks, gates, plugin packaging                        | `aops`            | —             |
+| Polecat sandbox, container forwarding, agent-env-map                    | `aops`            | —             |
+| Daily notes, $ACA_DATA layout, PKB content (not code)                   | `mem`             | `aops`        |
+| Teaching tasks, course prep, QUT unit coordination, student interaction | `qut`             | `mem`         |
+
+**Resolution order when the table is ambiguous or the subject is not listed**:
+
+1. Look up the parent task via `get_task` and inherit its `project` field.
+2. If the parent has no `project`, walk the ancestor chain until you find a project-typed node.
+3. If the ancestor chain has no project, **STOP and ask the user** — do not default to any project slug.
+
+**Rename-impossible constraint**: `update_task` can change the `project` frontmatter field but cannot rename the task ID. An ID like `mem-abc123` permanently signals `project=mem` to all routing consumers even after the frontmatter is corrected. File the task with the right project the first time.
+
 ## Core Agents
 
 The framework uses named agents with distinct personalities and areas of expertise to provide qualitative judgment and oversight.
