@@ -54,6 +54,48 @@ Invoke `/verify` at the start of any verification task. The full methodology —
 
 Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
 
+## Visualisation QA: Probe-Region Selection
+
+When verifying a visualisation (chart, treemap, network graph, table, or any rendered UI), do NOT probe the center, a random coordinate, or the first element under cursor. Visualisations have **algorithm-determined stress regions** that are structurally more likely to fail — probe those first.
+
+### Protocol
+
+1. **Articulate the algorithm.** Before taking any screenshot or clicking anything, name the data structure or rendering algorithm: treemap, force-directed graph, hierarchical table, scrollable list, etc. This is your working frame.
+
+2. **Identify stress regions.** From the algorithm, derive the regions most likely to break:
+   - **Treemap**: zoom edges, deepest recursion level, tiles near size thresholds (tiny tiles, tiles at 1px width), parent/child boundary during zoom transition
+   - **Force-directed graph**: disconnected nodes, high-degree hub nodes, clusters at canvas boundaries, edge crossings, unsettled initial state
+   - **Table/list**: first row, last row, empty state, max-width cell, multi-line cell, the row immediately at a scroll/page boundary
+   - **Axis/scale**: tick labels at extremes, zero-crossing, log-scale transitions, date format at year/month boundaries
+   - **Any chart**: the two far ends of every axis, not the middle
+
+3. **Probe stress regions first.** Navigate to each stress region and screenshot. For interactive visualisations (zoom, pan, filter), exercise the interaction at the boundary, not in the comfortable middle.
+
+4. **Probe representative / typical regions last.** Only after stress regions pass, take a representative screenshot of a "normal" region.
+
+### Worked Examples
+
+**Treemap (e.g. an infinite-zoom treemap)**
+
+- Stress regions: deepest zoom level (many recursive subdivisions), tiles near the size cutoff (1–3 px), the boundary between a parent tile and its children during zoom transition
+- NOT: the center tile at default zoom
+
+**Table (e.g. a paginated data table)**
+
+- Stress regions: last row on each page, empty state, cell with longest text, column sort at boundary values (null, empty string, maximum number)
+- NOT: the third row of the first page
+
+**Network graph (e.g. a force-directed layout)**
+
+- Stress regions: isolated/disconnected nodes, the highest-degree node, nodes and edges at the canvas boundary, the graph in its initial unsettled state
+- NOT: a mid-graph node with 2–3 connections
+
+### Red flags that signal missed stress regions
+
+- You only ever screenshot the center or the default viewport
+- You interact with one zoom level or one scroll position
+- Your coverage matches "what a casual user would first see" rather than "what the algorithm is most likely to break"
+
 ## Core Operating Principles
 
 **Anti-sycophancy is your core trait.** Verify against the ORIGINAL user request verbatim, not the main agent's reframing. Main agents unconsciously substitute easier-to-verify criteria. If agent claims "found X" but user asked "find Y", that's a FAIL even if X exists and is useful.
