@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -12,6 +12,7 @@ CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
 DIST_REPO := nicsuzor/aops
 DIST_REPO_URL := https://github.com/$(DIST_REPO)
 GEMINI_REMOTE_URL := https://github.com/nicsuzor/aops.git
+AGY_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-core
 
 # Extension names
 GEMINI_EXT_NAME := aops-core
@@ -51,6 +52,7 @@ help:
 	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
 	@echo "  make install-gemini - Install Gemini extensions from main repo"
+	@echo "  make install-agy   - Install plugin into Antigravity CLI (agy)"
 	@echo "  make install-windows - (WSL only) Install into Windows-side Claude/Gemini if present"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -113,6 +115,7 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@command gemini extensions install $(DIST_DIR)/aops-tools-gemini --consent || echo "  ⚠️ Gemini aops-tools install failed"
+	@$(MAKE) install-agy
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
@@ -140,7 +143,7 @@ install-hooks:
 # can't add custom marketplaces, so the Cowork plugin must be uploaded manually
 # via the Claude desktop app (Customize → Add plugins → Upload a file). Run
 # `make package-cowork` to produce the zip, then upload it through the UI.
-install: ensure-docker install-claude install-gemini install-windows install-crontab
+install: ensure-docker install-claude install-gemini install-agy install-windows install-crontab
 	@$(MAKE) report-versions
 
 ensure-docker:
@@ -213,6 +216,35 @@ install-gemini:
 	echo "✓ Gemini CLI aops-core extension installed"
 	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
 		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
+
+# Install into Antigravity CLI (agy). Unlike gemini/claude which have their own
+# plugin install commands, agy reads plugins from a flat directory.
+# If dist/aops-antigravity exists (local dev build), use it directly.
+# Otherwise, download the latest release tarball from GitHub.
+AGY_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-antigravity-latest.tar.gz
+
+install-agy:
+	@if ! command -v agy >/dev/null 2>&1; then \
+		echo "  (agy not found on PATH — skipping Antigravity install)"; \
+		exit 0; \
+	fi
+	@echo "Installing aops plugin into Antigravity CLI (agy)..."
+	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
+		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
+		rm -rf "$(AGY_PLUGIN_DIR)"; \
+		cp -r "$(DIST_DIR)/aops-antigravity" "$(AGY_PLUGIN_DIR)"; \
+	else \
+		echo "  Source: $(AGY_RELEASE_URL)"; \
+		rm -rf "$(AGY_PLUGIN_DIR)"; \
+		mkdir -p "$(AGY_PLUGIN_DIR)"; \
+		curl -fsSL "$(AGY_RELEASE_URL)" | tar -xz -C "$(AGY_PLUGIN_DIR)"; \
+	fi
+	@echo "  Target: $(AGY_PLUGIN_DIR)"
+	@echo "✓ Antigravity CLI plugin installed"
+	@if [ -f "$(HOME)/.gemini/config/mcp_config.json" ] && [ ! -s "$(HOME)/.gemini/config/mcp_config.json" ]; then \
+		echo '{}' > "$(HOME)/.gemini/config/mcp_config.json"; \
+		echo "  ✓ Fixed empty mcp_config.json"; \
+	fi
 
 # Optional: install into Windows-side Claude/Gemini when invoked from WSL.
 # Silently no-ops outside WSL or when no Windows binaries are found.

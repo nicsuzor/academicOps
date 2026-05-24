@@ -379,6 +379,66 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
+def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
+    """Transform hooks.json for Antigravity CLI (agy).
+
+    Antigravity uses Claude Code-style event names (PreToolUse, PostToolUse, etc.)
+    but needs ${extensionPath} instead of ${CLAUDE_PLUGIN_ROOT} for path references.
+    """
+    try:
+        with open(src_path) as f:
+            config = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Warning: Could not read hooks.json: {e}")
+        return
+
+    if "hooks" not in config:
+        print("Warning: hooks.json has no 'hooks' key")
+        return
+
+    VALID_AGY_EVENTS = (
+        "PreToolUse",
+        "PostToolUse",
+        "PreInvocation",
+        "PostInvocation",
+    )
+
+    src_hooks = config["hooks"]
+    agy_hooks: dict = {}
+
+    for event, hook_list in src_hooks.items():
+        if event.endswith("-disabled"):
+            continue
+        if event not in VALID_AGY_EVENTS:
+            continue
+
+        transformed_hooks = []
+        for hook_entry in hook_list:
+            new_entry = {}
+            for key, value in hook_entry.items():
+                if key == "hooks":
+                    new_hooks = []
+                    for hook in value:
+                        new_hook = dict(hook)
+                        if "command" in new_hook:
+                            cmd = new_hook["command"]
+                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                            new_hook["command"] = cmd
+                        new_hooks.append(new_hook)
+                    new_entry[key] = new_hooks
+                else:
+                    new_entry[key] = value
+            transformed_hooks.append(new_entry)
+
+        if transformed_hooks:
+            agy_hooks[event] = transformed_hooks
+
+    with open(dst_path, "w") as f:
+        json.dump({"hooks": agy_hooks}, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated Antigravity hooks.json with {len(agy_hooks)} events")
+
+
 def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     """Validate and transform frontmatter to comply with Gemini agent schema.
 
@@ -841,8 +901,8 @@ def build_aops_core(
     hooks_dst.mkdir(parents=True)
     if hooks_src.exists():
         for item in hooks_src.iterdir():
-            if item.name == "hooks.json" and platform == "gemini":
-                # Handle hooks.json separately for Gemini
+            if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
+                # Handle hooks.json separately for Gemini/Antigravity
                 continue
             if item.name == "gemini":
                 # Don't copy gemini/ subdirectory
@@ -851,11 +911,17 @@ def build_aops_core(
             # might need them in dist_dir/hooks/hooks.json
             safe_copy(item, content_dir / "hooks" / item.name)
 
-    # Generate Gemini-compatible hooks.json in dist_dir/hooks/ for discovery
+    # Generate platform-compatible hooks.json
     if platform == "gemini":
         hooks_json_src = hooks_src / "hooks.json"
         if hooks_json_src.exists():
             _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
+    elif platform == "antigravity":
+        # Antigravity uses Claude Code event names (PreToolUse, PostToolUse, etc.)
+        # but needs ${extensionPath} instead of ${CLAUDE_PLUGIN_ROOT}
+        hooks_json_src = hooks_src / "hooks.json"
+        if hooks_json_src.exists():
+            _generate_antigravity_hooks_json(hooks_json_src, dist_dir / "hooks.json")
 
     # 2b. Copy Gemini context file (referenced by gemini-extension.json as
     # contextFileName). It lives at the repo root, not inside aops-core/.
