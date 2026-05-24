@@ -130,6 +130,17 @@ Must exit 0 for JSON to be processed:
 }
 ```
 
+**Platform constraint (confirmed 2026-05-24, Claude Code + Gemini CLI):** Stop events do **not** support `hookSpecificOutput` or `additionalContext`. The validator silently discards the entire payload if those fields are present. The only agent-visible channel on Stop is `decision: "block"` + `reason`. `systemMessage` and `stopReason` are user-visible only — the agent never sees them.
+
+| Field                | `decision: "block"`              | `decision: "approve"` |
+| -------------------- | -------------------------------- | --------------------- |
+| `reason`             | Fed to agent as next instruction | Silently discarded    |
+| `systemMessage`      | Shown to user only               | Shown to user only    |
+| `stopReason`         | Shown to user only               | Shown to user only    |
+| `hookSpecificOutput` | **Not supported**                | **Not supported**     |
+
+**Consequence:** non-blocking advisory injection on Stop is impossible. To make the agent see a Stop advisory, you must `decision: "block"` — the agent is forced to re-emit. The academicOps gates use a **block-once** pattern: block on the first Stop in a turn (gate opens via trigger), then approve subsequent Stops. The gate re-arms on `UserPromptSubmit`.
+
 **Router warning**: `merge_outputs` must preserve `decision`, `reason`, `stopReason` — these are NOT in `hookSpecificOutput`.
 
 ### additionalContext triggers tool use

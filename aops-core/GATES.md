@@ -26,7 +26,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `enforcer` | Periodic compliance / ultra-vires drift        | PreToolUse @ threshold | `warn`  | counter     |
 | `qa`       | "Done" claimed without verification            | Stop while CLOSED      | `warn`  | open/closed |
 | `handover` | Exit without commit / task update / reflection | Stop while CLOSED      | `warn`  | open/closed |
-| `ida`      | Honesty / criterion-substitution at Stop       | Stop (every)           | `warn`  | none        |
+| `ida`      | Honesty / criterion-substitution at Stop       | Stop (once/turn)       | `warn`  | open/closed |
 
 Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py).
 
@@ -188,7 +188,7 @@ See [`forensics-details.md`](skills/aops/references/forensics-details.md#enforce
 
 ### What is it
 
-The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when a `qa` / `verify` / `marsha` subagent runs to completion. On Stop, the policy blocks (or warns) while the gate is CLOSED, requiring verification before the session can end.
+The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when a `qa` / `verify` / `marsha` subagent runs to completion. On Stop, the policy blocks once per turn while the gate is CLOSED — the gate opens after the first block (fire-once trigger) and re-arms on UserPromptSubmit. Both warn and block modes inject the advisory into the agent's context (Claude Code's Stop schema has no non-blocking advisory channel).
 
 **Class of failure caught.** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit.
 
@@ -206,7 +206,8 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 
 - **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc.). Shares `is_write_tool` with handover; the bash-as-read carve-out keyed on `handover_skill_invoked` also applies, so `git status` after `/end-session` doesn't re-close the gate.
-- **Reopen trigger**: any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse`.
+- **Reopen triggers**: (1) any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
+- **Re-arm trigger**: `UserPromptSubmit` → CLOSED.
 - **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. `prepare_qa_review` writes a qa-context audit file into the session dir; the policy message points the agent at it.
 
 ### How to verify it's firing
@@ -231,11 +232,11 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `handover` gate
 
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes. Blocks (or warns) on Stop while CLOSED. Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
+> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Both warn and block modes inject advisory into agent context. Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
 
 ### What is it
 
-The exit-discipline gate. Starts OPEN (short interactive chats don't require handover). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when the `/end-session` (canonical) or `/dump` (emergency) skill completes. On Stop, the policy blocks (or warns) while the gate is CLOSED.
+The exit-discipline gate. Starts OPEN (short interactive chats don't require handover). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when the `/end-session` (canonical) or `/dump` (emergency) skill completes. On Stop, the policy blocks once per turn while the gate is CLOSED — the gate opens after the first block (fire-once trigger) and re-arms on UserPromptSubmit. Both warn and block modes inject the advisory into the agent's context.
 
 **Class of failure caught.** Uncommitted changes lost at exit, task left without a status update, no framework reflection captured.
 

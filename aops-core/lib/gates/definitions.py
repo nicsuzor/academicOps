@@ -128,6 +128,20 @@ GATE_CONFIGS = [
                     system_message_key="qa.complete",
                 ),
             ),
+            # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
+            # the same turn passes through without re-blocking.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                ),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # UserPromptSubmit -> re-arm for the next turn cycle.
+            GateTrigger(
+                condition=GateCondition(hook_event="UserPromptSubmit"),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
+            ),
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
@@ -142,9 +156,10 @@ GATE_CONFIGS = [
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
             ),
-            # Warn mode: advisory as system_message only — no context_injection
-            # so output_for_claude does not upgrade WARN to decision=block.
-            # Stop is approved; the reminder is user-visible via stopReason.
+            # Warn mode: block-once — advisory injected into agent context via
+            # the warn+context_injection upgrade path in output_for_claude().
+            # Gate opens on first Stop (fire-once trigger above) so subsequent
+            # Stops in the same turn are not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -154,6 +169,7 @@ GATE_CONFIGS = [
                 verdict="warn",
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
+                context_key="qa.policy_context",
             ),
         ],
     ),
@@ -238,6 +254,20 @@ GATE_CONFIGS = [
                     custom_action="set_handover_invoked",
                 ),
             ),
+            # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
+            # the same turn passes through without re-blocking.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                ),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # UserPromptSubmit -> re-arm for the next turn cycle.
+            GateTrigger(
+                condition=GateCondition(hook_event="UserPromptSubmit"),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
+            ),
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
@@ -251,9 +281,10 @@ GATE_CONFIGS = [
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
-            # Warn mode: advisory as system_message only — no context_injection
-            # so output_for_claude does not upgrade WARN to decision=block.
-            # Stop is approved; the reminder is user-visible via stopReason.
+            # Warn mode: block-once — advisory injected into agent context via
+            # the warn+context_injection upgrade path in output_for_claude().
+            # Gate opens on first Stop (fire-once trigger above) so subsequent
+            # Stops in the same turn are not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -262,6 +293,7 @@ GATE_CONFIGS = [
                 ),
                 verdict="warn",
                 message_key="handover.policy_message",
+                context_key="stop.handover_block",
             ),
         ],
     ),
@@ -279,14 +311,15 @@ GATE_CONFIGS = [
     #
     # Lifecycle: armed (CLOSED) → fires on Stop → opens → re-armed on UPS.
     #
-    # Warn mode (default): advisory delivered as system_message only (user-
-    # visible, non-blocking Stop). No context_injection so output_for_claude
-    # does not upgrade WARN to block. Strategically non-blocking — forcing
-    # the agent to discharge the gate by writing a disclosure block is itself
-    # the criterion-substitution failure mode.
+    # Warn mode (default): block-once per turn. Advisory delivered as
+    # context_injection so it reaches the agent via the warn+ctx_inj upgrade
+    # path in output_for_claude(). Gate opens on first Stop (fire-once trigger)
+    # so subsequent Stops in the same turn pass. Re-arms on UserPromptSubmit.
+    # Claude Code's Stop schema does not support hookSpecificOutput, so
+    # context_injection via decision=block+reason is the only agent-visible
+    # channel — non-blocking advisory injection on Stop does not exist.
     #
-    # Block mode: advisory delivered as context_injection (agent-visible via
-    # reason channel), Stop blocked. Use only when passive reminders fail.
+    # Block mode: same context_injection path, same fire-once lifecycle.
     GateConfig(
         name="ida",
         description="Reminds the agent to show proof for assertions before stopping.",
@@ -318,9 +351,10 @@ GATE_CONFIGS = [
                 verdict="block",
                 context_key="ida.reminder",
             ),
-            # Warn mode: advisory as system_message only — no context_injection
-            # so output_for_claude does not upgrade WARN to decision=block.
-            # Stop is approved; the reminder is user-visible via stopReason.
+            # Warn mode: block-once — advisory injected into agent context via
+            # the warn+context_injection upgrade path in output_for_claude().
+            # Gate opens on first Stop (fire-once trigger above) so subsequent
+            # Stops in the same turn are not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -329,6 +363,7 @@ GATE_CONFIGS = [
                 ),
                 verdict="warn",
                 message_key="ida.reminder",
+                context_key="ida.reminder",
             ),
         ],
     ),
