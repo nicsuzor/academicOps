@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.29](https://github.com/nicsuzor/academicOps/compare/v0.3.28...v0.3.29) (2026-05-24)
+
+
+### Features
+
+* **transcripts:** rotate into yyyy-mm subfolders (aops-b975b185) ([3a43adb](https://github.com/nicsuzor/academicOps/commit/3a43adbcd4d11a513d854605e3a9414481fb607c))
+
+
+### Bug Fixes
+
+* add brief-scope discipline to James review composition ([cd169be](https://github.com/nicsuzor/academicOps/commit/cd169be219403693e5deaca5deb48cf1ea12a6ed)), closes [#937](https://github.com/nicsuzor/academicOps/issues/937)
+* add subprocess timeout and broaden exception handling in ensure_triage_labels ([346203e](https://github.com/nicsuzor/academicOps/commit/346203e33c4ebd47795c5b03207113f3a1080a67))
+* **gates:** IDA warn-mode bug + per-turn gate lifecycle ([7d16d90](https://github.com/nicsuzor/academicOps/commit/7d16d902a8ed521eec70d73d23211074defb268a))
+* **gates:** IDA warn-mode bug + per-turn lifecycle (aops-83f40207) ([110d72e](https://github.com/nicsuzor/academicOps/commit/110d72edc2a9164e28766be2e8a7f04ba22e8b76))
+* **gates:** QA + handover warn-mode blocks Stop (aops-d8de4a55) ([eab16c5](https://github.com/nicsuzor/academicOps/commit/eab16c592910f82a65e5b6dc1133bbae7bebc495))
+* **gates:** QA + handover warn-mode blocks Stop (same bug as IDA aops-83f40207) ([0923f2b](https://github.com/nicsuzor/academicOps/commit/0923f2bfe45faf8e2b23739d58fab4dfdbad9312))
+* **polecat:** accept bare 'opus'/'sonnet'/'haiku' for --model ([b97a595](https://github.com/nicsuzor/academicOps/commit/b97a59522051298b67de8839153b91335741530b))
+* **polecat:** accept bare 'opus'/'sonnet'/'haiku' for --model ([545a0ad](https://github.com/nicsuzor/academicOps/commit/545a0adf080281867c8e0c3fbefcbed2c95e89fb))
+* prefer parent issue over anchor-in-child for meta-class cross-linking ([6480472](https://github.com/nicsuzor/academicOps/commit/6480472f47046cddf885604a0299401503394499))
+* remove invalid hookSpecificOutput from non-accepted hook events ([577dbd0](https://github.com/nicsuzor/academicOps/commit/577dbd09af67bf8e2823ee666a6f6f56bd3c77b8))
+* remove invalid hookSpecificOutput from non-accepted hook events ([0681318](https://github.com/nicsuzor/academicOps/commit/06813183cfadb88c66ded53f3675fe37c9d883b0))
+* simplify compose-then-dispatch sections and rename verdict_malformed to verdict_fail ([712ee4d](https://github.com/nicsuzor/academicOps/commit/712ee4d694cf691156ff048c20d0051fadff8655))
+* **transcripts:** detect gemini chat-jsonl at bind-mount-source paths ([09b35e0](https://github.com/nicsuzor/academicOps/commit/09b35e0c8f40de8c31b5fa0de9b807f96688b7ac))
+* **transcripts:** detect gemini chat-jsonl at bind-mount-source paths ([afe55a3](https://github.com/nicsuzor/academicOps/commit/afe55a33129bce56e8c1ebd693c19652f8017097)), closes [#1153](https://github.com/nicsuzor/academicOps/issues/1153)
+* **transcripts:** exclude Claude-shaped entries from message-style schema detection ([bddf316](https://github.com/nicsuzor/academicOps/commit/bddf316ee0bf3b3a909cfba2876a9ebf14fc0d03))
+
+
+### Documentation
+
+* add conversation discipline and narration guard to junior agent ([#1279](https://github.com/nicsuzor/academicOps/issues/1279)) ([fb749c6](https://github.com/nicsuzor/academicOps/commit/fb749c69b86e84ffcced4a505a9d8f474ccd4b6a))
+
 ## [0.3.28](https://github.com/nicsuzor/academicOps/compare/v0.3.27...v0.3.28) (2026-05-23)
 
 
