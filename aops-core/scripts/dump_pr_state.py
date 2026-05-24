@@ -266,11 +266,19 @@ def main():
         "repos": {},
     }
 
+    seen_paths = set()
+
     for slug, proj in manager.projects.items():
         repo_path = proj.get("path")
         if not repo_path or not repo_path.exists():
             print(f"Skipping {slug}: path not found or doesn't exist", file=sys.stderr)
             continue
+
+        resolved_path = repo_path.resolve()
+        if resolved_path in seen_paths:
+            print(f"Skipping {slug}: repo {resolved_path} already processed", file=sys.stderr)
+            continue
+        seen_paths.add(resolved_path)
 
         print(f"Fetching PRs for {slug}...")
         repo_data = {
