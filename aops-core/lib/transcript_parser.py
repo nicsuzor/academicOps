@@ -58,6 +58,26 @@ _GENERIC_CONTAINERS = {
 }
 
 
+def _get_session_id_from_path(session_path: Path) -> str | None:
+    """Extract 8-char session ID from a session filename.
+
+    Handles Claude (UUID.jsonl), Gemini (session-YYYY-MM-DDThh-mm-<8hex>.jsonl),
+    and polecat naming (YYYYMMDD-HHMM-<8hex>-...-session.json).
+    """
+    name = session_path.stem
+    if session_path.is_dir():
+        return name[:8] if name else None
+    # Gemini: session-2026-05-19T11-54-e015b808
+    if name.startswith("session-") and "-" in name:
+        return name.split("-")[-1][:8]
+    # Polecat: 20260523-2029-ba992e1b-workspace-gemini-...
+    parts = name.split("-")
+    if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+        return parts[2][:8]
+    # Claude: UUID
+    return name[:8] if name else None
+
+
 def _is_worktree_basename(name: str) -> bool:
     """True if `name` looks like a worktree directory's basename.
 
@@ -2172,6 +2192,29 @@ class SessionProcessor:
                 file_path, load_agents=load_agents, load_hooks=load_hooks
             )
 
+        # 2b. Load hook entries for non-Claude parsers (Gemini, Antigravity).
+        # Claude's _parse_jsonl_file already loads hooks internally; the others
+        # don't, so hook failures and gate output are invisible in their
+        # transcripts without this.
+        _claude_loaded_hooks = not (
+            file_path.is_dir()
+            or file_path.suffix.lower() == ".json"
+            or file_path.name == "audit.jsonl"
+            or _is_gemini_chat_jsonl(file_path)
+        )
+        if load_hooks and not _claude_loaded_hooks:
+            hook_entries: list[Entry] = []
+            for hook_file in self._find_hook_files(file_path):
+                hook_entries.extend(self._load_hook_entries(hook_file))
+            if hook_entries:
+                entries.extend(hook_entries)
+                entries.sort(
+                    key=lambda e: e.timestamp
+                    if e.timestamp
+                    else datetime.min.replace(tzinfo=UTC),
+                )
+            entries = self._consolidate_hook_error_attachments(entries)
+
         # 3. Augment summary with metadata from filename and environment
         if parsed:
             summary.machine = summary.machine or parsed.machine
@@ -2921,13 +2964,25 @@ class SessionProcessor:
         ``YYYYMMDD-HHMM-…-hooks.jsonl``), so a multi-minute session has
         multiple files. We return every file whose first matching record
         points at ``session_file_path``.
+
+        Gemini sessions don't populate ``transcript_path`` in hook logs, so
+        we also fall back to matching by ``session_short_hash`` against the
+        8-char session ID extracted from the session filename.
         """
         session_path = Path(session_file_path)
         target = str(session_file_path)
 
+        # Extract 8-char session ID for fallback matching (Gemini hooks have
+        # transcript_path=None but do carry session_short_hash).
+        session_id = _get_session_id_from_path(session_path)
+
         # Hooks are stored in {project_dir}-hooks/ (sibling directory with -hooks suffix)
         project_dir = session_path.parent
         hooks_sibling = project_dir.parent / (project_dir.name + "-hooks")
+
+        # For Gemini chat files under chats/, also search the grandparent
+        # where polecat places hook files alongside session metadata.
+        grandparent = session_path.parent.parent
 
         search_locations = [
             hooks_sibling,  # New Claude Code location: {project}-hooks/
@@ -2935,6 +2990,8 @@ class SessionProcessor:
             session_path.parent / "hooks",  # Test location
             Path.home() / ".cache" / "aops" / "sessions",  # Legacy location
         ]
+        if grandparent != project_dir and grandparent.exists():
+            search_locations.append(grandparent)
 
         matches: list[Path] = []
         seen: set[Path] = set()
@@ -2953,7 +3010,16 @@ class SessionProcessor:
                                 continue
                             try:
                                 data = json.loads(line)
-                                if data.get("transcript_path") == target:
+                                tp = data.get("transcript_path")
+                                if tp == target:
+                                    matches.append(hook_file)
+                                    seen.add(hook_file)
+                                    break
+                                if (
+                                    not tp
+                                    and session_id
+                                    and data.get("session_short_hash") == session_id
+                                ):
                                     matches.append(hook_file)
                                     seen.add(hook_file)
                                     break
