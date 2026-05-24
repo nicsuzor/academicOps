@@ -414,8 +414,12 @@ def create_task(
     # Guard against invalid status values before the MCP round-trip.
     # The MCP schema description mistakenly lists 'draft' and 'active' as valid;
     # the server rejects both with "Invalid status: <value>".
-    status = params.get("status")
-    if status is not None and status not in VALID_TASK_STATUSES:
+    # Default to 'inbox' per TAXONOMY.md. The MCP server mistakenly defaults
+    # to 'draft' which it then rejects; we override it here.
+    params["status"] = params.get("status") or "inbox"
+
+    status = params["status"]
+    if status not in VALID_TASK_STATUSES:
         valid = ", ".join(sorted(VALID_TASK_STATUSES))
         raise ValueError(
             f"Invalid status for create_task: '{status}'. "
