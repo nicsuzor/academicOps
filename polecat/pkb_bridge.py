@@ -398,7 +398,7 @@ def create_task(
     # project from the ID prefix will point to the wrong repo. Recurrence of #284/#1054.
     _parent = params.get("parent")
     _explicit_project = params.get("project")
-    if _parent and (not _explicit_project or True):
+    if _parent:
         # Fetch parent to resolve or validate project.
         # We fetch whenever a parent is given so we can:
         # (a) auto-inherit when project is absent, and
