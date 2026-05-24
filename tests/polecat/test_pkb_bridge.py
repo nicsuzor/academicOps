@@ -74,7 +74,7 @@ def test_complete_task_positional_id(mock_client):
 
     complete_task("task-1")
 
-    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+    mock_client.call_tool.assert_any_call("complete_task", {"id": "task-1"})
 
 
 def test_complete_task_named_id(mock_client):
@@ -82,7 +82,7 @@ def test_complete_task_named_id(mock_client):
 
     complete_task(id="task-1")
 
-    mock_client.call_tool.assert_called_once_with("complete_task", {"id": "task-1"})
+    mock_client.call_tool.assert_any_call("complete_task", {"id": "task-1"})
 
 
 def test_create_task_with_title(mock_client):
@@ -396,7 +396,10 @@ class TestReleaseTaskPRURLGate:
                 summary="done",
                 pr_url="not a url",
             )
-        mock_client.call_tool.assert_not_called()
+        # Ensure release_task tool was not called
+        assert not any(
+            call[0][0] == "release_task" for call in mock_client.call_tool.call_args_list
+        )
 
     def test_fabricated_org_rejected_when_gh_fails(self, mock_client, monkeypatch):
         """The cheryl 2026-04-18 incident: bogus org. gh exits non-zero → raise."""
@@ -415,7 +418,10 @@ class TestReleaseTaskPRURLGate:
                     summary="done",
                     pr_url="https://github.com/academic-ops/academicOps/commit/9841e951",
                 )
-        mock_client.call_tool.assert_not_called()
+        # Ensure release_task tool was not called
+        assert not any(
+            call[0][0] == "release_task" for call in mock_client.call_tool.call_args_list
+        )
 
     def test_valid_pr_url_passes_and_reaches_mcp(self, mock_client, monkeypatch):
         monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)

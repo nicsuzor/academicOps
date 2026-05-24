@@ -37,6 +37,7 @@ class PkbTask:
         self.tags: list = fm.get("tags") or []
         self.depends_on: list = data.get("depends_on") or []
         self.soft_depends_on: list = fm.get("soft_depends_on") or []
+        self.children: list = data.get("children") or []
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
@@ -362,6 +363,19 @@ def complete_task(
     final_id = task_id or id
     if not final_id:
         raise ValueError("Task ID must be provided")
+
+    task = get_task(final_id)
+    if task and getattr(task, "children", None):
+        open_children = []
+        for child in task.children:
+            if child.get("status") not in ("done", "cancelled", "superseded", "archived"):
+                open_children.append(child.get("id"))
+        if open_children:
+            raise ValueError(
+                f"Cannot complete task {final_id} because children are not in terminal states: "
+                f"{', '.join(map(str, open_children))}"
+            )
+
     params: dict[str, Any] = {"id": final_id}
     if completion_evidence:
         params["completion_evidence"] = completion_evidence
@@ -516,6 +530,19 @@ def release_task(
     Validation failures raise ``PRURLValidationError``; the MCP call is not
     made and the task stays in its pre-release state.
     """
+    if status in ("done", "cancelled", "superseded", "merge_ready"):
+        task = get_task(task_id)
+        if task and getattr(task, "children", None):
+            open_children = []
+            for child in task.children:
+                if child.get("status") not in ("done", "cancelled", "superseded", "archived"):
+                    open_children.append(child.get("id"))
+            if open_children:
+                raise ValueError(
+                    f"Cannot close task {task_id} because children are not in terminal states: "
+                    f"{', '.join(map(str, open_children))}"
+                )
+
     if pr_url:
         from polecat.validation import verify_pr_url_live
 

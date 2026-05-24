@@ -117,7 +117,9 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
    Skip silently when: no bound task, no project can be resolved (via ancestor or slug), or the project field doesn't resolve to a slug in `$AOPS_SESSIONS/polecat.yaml`. Do not block the session close on a missing breadcrumb target.
 3. **Call `release_task` once, with the full session payload.**
 
-   _Pre-check if `AOPS_GATE_PRS_GREEN=1`: before calling `release_task`, confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure. (This gate must run before the terminal call — halting after `release_task` is too late.)_
+   _Pre-check children_: before calling `release_task` to transition the task to a terminal state (`done`, `cancelled`, `superseded`, or `merge_ready`), you MUST read the task using `mcp__pkb__get_task` and verify its `children[]` array. If any child is NOT in a terminal state (`done`, `cancelled`, `superseded`, or `archived`), you MUST REFUSE to close the task. Halt the session close and either surface the issue to the user, or resolve the children first.
+
+   _Pre-check if `AOPS_GATE_PRS_GREEN=1`_: before calling `release_task`, confirm all PRs you opened or touched this session are CI-green. If any are red, halt close and surface the failure. (This gate must run before the terminal call — halting after `release_task` is too late.)
 
    ```
    mcp__pkb__release_task(
