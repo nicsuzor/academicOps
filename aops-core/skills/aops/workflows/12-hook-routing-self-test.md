@@ -28,18 +28,17 @@ Authoritative source for active hooks is `aops-core/hooks/hooks.json`; channel d
 | `Notification`     | user-only  | Notifications are by definition a user-surface event (desktop / `ntfy`); no agent action expected.                            |
 | `SessionEnd`       | agent-only | Same dispatch shape as `Stop` (`router.py:807`); cleanup advisory belongs in the next session's handover read, not on exit.   |
 
-## Marker convention
+## Verification approach
 
-Pick a fresh run id per session (timestamp or short uuid). Use **distinct** markers per channel so each can be verified independently and cross-talk or inversion is immediately visible:
+This self-test verifies that gates **already configured** behave correctly in production. For each hook event:
 
-```
-[SELFTEST-HOOK-<EVENT>-SYS-<RUN_ID>]   # emitted into system_message  → user surface
-[SELFTEST-HOOK-<EVENT>-CTX-<RUN_ID>]   # emitted into context_injection → agent context
-```
+1. **Check what's live**: read `hooks.json` and the corresponding gate implementation to identify which gates are active for the event.
+2. **Check it's configured right**: verify the gate's intended output channels (`system_message`, `context_injection`, or both) match the expected-channel matrix in the table above.
+3. **Check it routes correctly**: trigger the hook in a real session (walk-through below) or inspect completed session artifacts (post-hoc evaluation below), and confirm the gate's output landed on the correct channel(s) — and did not leak to unintended channels.
 
-Examples: `[SELFTEST-HOOK-Stop-SYS-20260522a]`, `[SELFTEST-HOOK-Stop-CTX-20260522a]`.
+Pick a distinctive substring from a live gate's output as the identifier for tracing through transcripts. For example, if the `Stop` hook's RBG advisory contains `"response-readiness"`, use that string to verify which channels it appeared on. Each hook event should have a recognisable payload that can be traced through the hooks JSONL and transcript JSONL.
 
-**Emission options:** (1) **One-shot debug gate** (preferred): emit SYS into `system_message` and CTX into `context_injection`; use `allow` verdict — `warn` on Stop triggers a legacy fallback (router.py:825) that leaks `context_injection`, producing a false positive. Remove after the run; document in PR. (2) **Read existing gate payload**: pick a distinctive substring from a live gate's output as the marker. Limited to whatever the live gate emits.
+**Caution on Stop-event verdicts**: a warn verdict on Stop events triggers a legacy fallback (router.py:838, see issue #1042) that leaks `context_injection` to the user surface, producing a false positive. When interpreting results for Stop hooks, check the verdict type and account for this known interaction.
 
 ## Walk-through
 
@@ -47,7 +46,7 @@ Run interactively in a fresh Claude session (`polecat crew` or local); one human
 
 For each row in the table, in order:
 
-1. **Pick the run id** for the session (one id covers all hooks in this run).
+1. **Identify live gate payloads**: before starting, read `hooks.json` and the active gate implementations to know what each hook emits into `system_message` and `context_injection`. These are the payloads you will trace through the session.
 2. **Trigger the hook** — actions per event:
    - `SessionStart` — start the session; the first agent turn captures this.
    - `UserPromptSubmit` — type any prompt (the act of submitting fires the hook).
@@ -57,44 +56,44 @@ For each row in the table, in order:
    - `PreCompact` — trigger compaction (typically `/compact`).
    - `Notification` — take any action that fires the notification hook (permission prompt, idle alert — context-dependent).
    - `SessionEnd` — `/exit` or kill the session cleanly.
-3. **Observe the user surface.** Grep the transcript file (or scroll the terminal) for the **SYS** marker (`[SELFTEST-HOOK-<EVENT>-SYS-<RUN_ID>]`). Also check that the **CTX** marker does _not_ appear user-side — its presence would indicate `context_injection` leaking to the user surface. Record: **SYS marker visible to user? Yes / No; CTX marker visible to user? (must be No)**.
+3. **Observe the user surface.** Scroll the terminal (or review the transcript file) for `system_message` content from the gate — i.e., the payload the gate is configured to emit. Check whether the gate's `context_injection` content also appeared user-side — its presence would indicate a channel leak. Record: **system_message visible to user? Yes / No; context_injection content visible to user? (must be No for agent-only hooks)**.
 4. **Ask the agent explicitly** on the next turn (or, for `SessionEnd`, on the next session start that reads handover state):
 
-   > Did you receive `[SELFTEST-HOOK-<EVENT>-CTX-<RUN_ID>]` in your context (system-reminder, additionalContext, or any hook-injected block) on this turn? Yes or no — do not infer from the user message; check your actual context.
+   > Did you receive the [hook name]'s context_injection payload in your context (system-reminder, additionalContext, or any hook-injected block) on this turn? Yes or no — do not infer from the user message; check your actual context.
 
-   The agent must answer from its actual context, not from the user's question text — the "do not infer" guard is load-bearing. Record: **CTX marker visible to agent? Yes / No**.
+   The agent must answer from its actual context, not from the user's question text — the "do not infer" guard is load-bearing. Record: **context_injection visible to agent? Yes / No**.
 5. **Compare against the expected channel** in the table.
 
 ## Pass / fail criterion
 
-| Expected     | Pass condition (Option 1 — distinct markers)                                      |
-| ------------ | --------------------------------------------------------------------------------- |
-| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                    |
-| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes. |
-| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                   |
-| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.         |
+| Expected     | Pass condition                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user-only`  | `system_message` content user-side: Yes. `context_injection` content user-side: **No**. `context_injection` agent-side: No.                    |
+| `agent-only` | `system_message` content user-side: Yes. `context_injection` content user-side: **No** (inversion guard). `context_injection` agent-side: Yes. |
+| `both`       | `system_message` content user-side: Yes. `context_injection` content user-side: **No**. `context_injection` agent-side: Yes.                   |
+| `TBD`        | Record all observed content and surfaces; do not pass or fail — escalate.                                                                      |
 
-_Note: with Option 1 the SYS marker always appears user-side (the framework unconditionally routes `system_message` there); the diagnostic signal is whether the **CTX** marker leaks to the user surface (must never) and whether it reaches agent context (required for `agent-only` / `both`)._
+_Note: the framework unconditionally routes `system_message` to the user surface; the diagnostic signal is whether `context_injection` content leaks to the user surface (must never) and whether it reaches agent context (required for `agent-only` / `both`)._
 
-Any mismatch (e.g. `Stop` expected `agent-only` but marker appears user-side and not agent-side — the [[aops-d10e7db6]] inversion) is a **routing bug**, not a self-test failure. Halt the section and file a `bug` issue under [[epic-9fa15948]]: title `<EVENT>-hook output routed to <observed> channel, expected <intended>`; body must include the marker run id, the transcript excerpt, and the agent's verbatim answer. Do **not** attempt to fix routing in this session — that's a separate task in the same shape as [[aops-d10e7db6]].
+Any mismatch (e.g. `Stop` expected `agent-only` but `context_injection` appears user-side and not agent-side — the [[aops-d10e7db6]] inversion) is a **routing bug**, not a self-test failure. Halt the section and file a `bug` issue under [[epic-9fa15948]]: title `<EVENT>-hook output routed to <observed> channel, expected <intended>`; body must include the session id, the transcript excerpt, and the agent's verbatim answer. Do **not** attempt to fix routing in this session — that's a separate task in the same shape as [[aops-d10e7db6]].
 
 ## Post-hoc transcript evaluation
 
-When no human observer is available, verify channel routing from completed session artifacts. First confirm the plugin version matches the version under test (check SessionStart log entry or plugin manifest) — a stale cached plugin invalidates the run.
+The standard verification method: always verify from completed session artifacts. First confirm the plugin version matches the version under test (check SessionStart log entry or plugin manifest) — a stale cached plugin invalidates the run. The agent performing this evaluation must **read and evaluate** the hooks JSONL and transcript JSONL content directly — there are no markers, status lines, or grep-friendly output to search for. Read the actual payload content from each hook event and judge whether it appeared on the correct channel(s).
 
-1. **Hooks JSONL** (`~/.claude/projects/-workspace/*-session-hooks.jsonl`): each line records one hook event with `event`, `verdict`, `system_message` (user surface), and `context_injection` (agent context). Compare populated channels against the expected-channel matrix above — non-empty `system_message` for an `agent-only` hook, or missing `context_injection` for `agent-only`/`both`, is a routing bug.
-2. **Transcript JSONL** (`~/.claude/projects/-workspace/*-transcript.jsonl`): search assistant turns for `system-reminder` blocks containing the `context_injection` content from step 1. Presence confirms the agent-side channel is working.
-3. **Cross-reference**: for each hook event, check (a) `context_injection` content appears in transcript system-reminders (agent context confirmed), (b) `system_message` content appears in user-visible output (user surface confirmed), (c) `context_injection` content does NOT appear in user-visible output (leakage — the [[aops-d10e7db6]] inversion pattern).
+1. **Hooks JSONL** (`~/.claude/projects/-workspace/*-session-hooks.jsonl`): each line records one hook event with `event`, `verdict`, `system_message` (user surface), and `context_injection` (agent context). Read each event and evaluate the populated channels against the expected-channel matrix above — non-empty `system_message` for an `agent-only` hook, or missing `context_injection` for `agent-only`/`both`, is a routing bug.
+2. **Transcript JSONL** (`~/.claude/projects/-workspace/*-transcript.jsonl`): read assistant turns and evaluate whether `system-reminder` blocks contain the `context_injection` content from step 1. Presence confirms the agent-side channel is working.
+3. **Cross-reference**: for each hook event, evaluate (a) `context_injection` content appears in transcript system-reminders (agent context confirmed), (b) `system_message` content appears in user-visible output (user surface confirmed), (c) `context_injection` content does NOT appear in user-visible output (leakage — the [[aops-d10e7db6]] inversion pattern).
 4. Record results per the pass/fail criterion above. File routing bugs the same way.
 
 Use transcript evaluation for auditing past sessions and batch regression checks. Use the interactive walk-through for first-time hook verification and release gates.
 
-## Anti-pattern: synthetic stdin testing
+## Anti-pattern: synthetic testing
 
-Synthetic stdin piping to `router.py` cannot verify runtime channel-routing gaps. The test exists to catch the gap between "Python code produces correct JSON" and "the runtime delivers it to the correct surface." That gap lives in the CLI's hook protocol and channel-dispatch code — none exercised by stdin. An agent that defaults to synthetic testing commits a methodology-substitution failure: the result would not have caught [[aops-d10e7db6]]. Always use the interactive walk-through or transcript evaluation above.
+**No synthetic testing in this workflow.** This self-test exists to verify live, runtime behavior — the gap between "Python code produces correct JSON" and "the runtime delivers it to the correct surface." That gap lives in the CLI's hook protocol and channel-dispatch code, and no synthetic approach exercises it: not stdin piping, not unit-test harnesses, not mock hook events, not injected test payloads. If you want synthetic tests, run the pytest suite — that is a different workflow with a different purpose. An agent that substitutes any form of synthetic testing for the live verification defined here commits a methodology-substitution failure: the result would not have caught [[aops-d10e7db6]]. This workflow tests real production behavior only.
 
 ## Notes for the agent running the section
 
-- You are the test instrument for half of each row. When the human asks "did you see `[SELFTEST-HOOK-X-CTX-Y]`?", answer from your **actual context**, not from your model of what should have happened. Inferring "the Stop hook is configured so I must have seen it" is exactly the failure mode this test exists to catch.
-- If your context for a turn does not include the CTX marker, say "No, I did not receive that marker in my context on this turn" — full stop. Do not soften with "but it may have been processed elsewhere".
+- You are the test instrument for half of each row. When asked whether you received a hook's `context_injection` payload, answer from your **actual context**, not from your model of what should have happened. Inferring "the Stop hook is configured so I must have seen it" is exactly the failure mode this test exists to catch.
+- If your context for a turn does not include the expected payload, say "No, I did not receive that content in my context on this turn" — full stop. Do not soften with "but it may have been processed elsewhere".
 - Cross-reference: the working channel-routing reference is `UserPromptSubmit`'s skills-routing-table injection (you reliably do see that). If your `UserPromptSubmit` answer pattern doesn't match the expected row, the test rig itself is broken — halt and report.
