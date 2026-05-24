@@ -188,6 +188,17 @@ State goes through the PKB. Don't create STATUS.md / BUTLER.md / personal memory
 
 After any significant interaction, update `aops-state` with what changed.
 
+### PKB Gap Behaviour (HALT rule)
+
+If a PKB operation is needed and no MCP verb exists for it:
+
+1. **HALT immediately.** Do not continue the attempted operation.
+2. **Emit**: `[ATTN] PKB verb missing: <verb> for <operation>` — this line must appear in the transcript so the gap can be audited post-hoc.
+3. **File a follow-up task** via `create_task` (an existing MCP verb) so the gap is tracked and can be closed.
+4. **Report** the gap to the user.
+
+**Never invent a shell-out, an SSH escape, or a file write as a substitute.** Routing around the PKB MCP is a security incident, not a solution — see [[aops-18572bc0]] §5 (2026-05-19 silent-bypass incident).
+
 ### Inventory docs (the carve-out)
 
 Files under `$ACA_DATA/.agents/` are checked-in orientation docs for future agents — not session state. They are the exception to the rule above. Keep them current as a duty, not on request:
