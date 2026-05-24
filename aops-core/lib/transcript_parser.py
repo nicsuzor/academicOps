@@ -1680,6 +1680,19 @@ class Entry:
             model=model,
         )
 
+        # Promote hook_non_blocking_error attachments to system_reminder so
+        # they flow through the same hook rendering pipeline as our-log and
+        # CC stop_hook_summary entries. Without this, failed hooks that CC
+        # records as attachments are silently dropped from transcripts.
+        if entry.type == "attachment":
+            att = data.get("attachment", {})
+            if isinstance(att, dict) and att.get("type") == "hook_non_blocking_error":
+                entry.type = "system_reminder"
+                entry.hook_event_name = att.get("hookEvent") or att.get("hookName", "Hook")
+                entry.hook_exit_code = 1
+                stderr = att.get("stderr", "")
+                entry.additional_context = f"errors: {[stderr]}" if stderr else ""
+
         # Extract hook data from system_reminder entries
         if entry.type == "system_reminder":
             hook_output = data.get("hookSpecificOutput", {})

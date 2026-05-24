@@ -10,6 +10,7 @@ This module defines:
 
 """
 
+import os
 import re
 from typing import TYPE_CHECKING, Any
 
