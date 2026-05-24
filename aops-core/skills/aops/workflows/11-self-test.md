@@ -17,6 +17,12 @@ Testing the four layers of session infrastructure. For each layer, verify it fir
 
 IMPORTANT: All required information should be in context at startup, within hooks, and in referred files. If insufficient, HALT and report FAILURE to provide adequate instruction. Do NOT guess or seek out information that should have been provided.
 
+## Step 0: Verify hooks are operational in THIS session
+
+Before testing any specific hook behavior, verify that hooks are actually running. Read your own session transcript JSONL (for background jobs: `$CLAUDE_JOB_DIR/../<session-id>.jsonl`; for interactive sessions: `~/.claude/projects/<project-dir>/<session-id>.jsonl`). Search for records containing `"hook_non_blocking_error"`. If any exist, hooks are broken — the attachment's `stderr` field contains the crash traceback. **HALT and report the hook failure before proceeding.**
+
+The hooks JSONL (`*-session-hooks.jsonl`) is written by the router AFTER successful hook processing. When hooks crash at import time (e.g., `NameError`, `ImportError` in the router or its dependencies), this file is never created. The session transcript JSONL is the ground-truth artifact for hook crash detection — it records `hook_non_blocking_error` attachments written by the CLI itself, not by the router.
+
 ---
 
 ## 2. Polecat session validation
@@ -35,7 +41,7 @@ Walk layers in order; stop at first failure:
 
 **§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:junior')`. Verify visible output, not just return.
 
-**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4.
+**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. **Absence of hooks JSONL does not distinguish "log path misconfigured" from "hooks crashing at import time."** If missing or empty, also check the session transcript JSONL for `hook_non_blocking_error` attachment records — these are written by the CLI (not the router) when a hook process exits non-zero, and the `stderr` field contains the crash traceback.
 
 **§6 Cleanup** — `/exit` → `tmux kill-session` → `polecat nuke <crew>`. Repeat for other client.
 
@@ -63,6 +69,8 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 | `PreCompact`       | TBD        | No active gate; flag any payload and escalate                            |
 | `Notification`     | user-only  | By definition a user-surface event                                       |
 | `SessionEnd`       | agent-only | Cleanup advisory for next session; same dispatch as Stop (router.py:807) |
+
+**Pre-flight: confirm hooks are executing.** Before verifying channel routing, confirm that at least one hook event has been processed successfully. Check the hooks JSONL for any entry with a successful verdict. If no such entry exists, or if the hooks JSONL is absent, check the session transcript JSONL for `hook_non_blocking_error` records. If hooks are not running at all, this workflow cannot produce valid routing results — halt and diagnose per Step 0 above. Total hook failure reads as "no findings" in this section, which is the wrong answer.
 
 **Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers legacy fallback (router.py:838, #1042) leaking `context_injection` to user — false positive; check verdict type.
 
