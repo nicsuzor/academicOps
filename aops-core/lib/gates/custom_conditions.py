@@ -1,3 +1,5 @@
+import os
+
 from hooks.schemas import HookContext
 
 from lib.gate_types import GateState
@@ -42,5 +44,30 @@ def check_custom_condition(
         # up to date. False (condition not met) when mid-edit, deferring the
         # block until the agent has finished its current sub-task. (#319)
         return not state.metrics.get("has_in_progress_todo", False)
+
+    if name == "is_qa_block_mode":
+        # QA gate policy: active only when QA_GATE_MODE is blocking.
+        # Separating block vs warn into distinct policies lets each choose
+        # appropriate message channels (context_key vs message_key) so
+        # warn mode doesn't inadvertently upgrade Stop to decision=block.
+        return os.environ.get("QA_GATE_MODE", "warn") in ("block", "deny")
+
+    if name == "is_qa_warn_mode":
+        # QA gate policy: active only when QA_GATE_MODE is warn.
+        # Warn mode delivers the advisory via system_message only (user-visible)
+        # rather than context_injection, so output_for_claude does not upgrade
+        # the WARN verdict to decision=block for the Stop hook.
+        return os.environ.get("QA_GATE_MODE", "warn") == "warn"
+
+    if name == "is_handover_block_mode":
+        # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking.
+        # Same split pattern as QA and IDA gates.
+        return os.environ.get("HANDOVER_GATE_MODE", "warn") in ("block", "deny")
+
+    if name == "is_handover_warn_mode":
+        # Handover gate policy: active only when HANDOVER_GATE_MODE is warn.
+        # Warn mode delivers the advisory via system_message only so Stop is
+        # not upgraded to decision=block by output_for_claude.
+        return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
 
     return False
