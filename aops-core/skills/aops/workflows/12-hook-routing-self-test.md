@@ -39,12 +39,7 @@ Pick a fresh run id per session (timestamp or short uuid). Use **distinct** mark
 
 Examples: `[SELFTEST-HOOK-Stop-SYS-20260522a]`, `[SELFTEST-HOOK-Stop-CTX-20260522a]`.
 
-**Emission options:**
-
-1. **Add a one-shot debug gate** that emits the SYS marker into `system_message` and the CTX marker into `context_injection` for the target event, then remove it after the run. Distinct markers let you independently verify each channel and detect inversion (e.g. SYS landing in agent context, or CTX leaking to user surface). Use an **`allow` verdict** — a `warn` verdict on Stop events triggers a legacy fallback (router.py:825) that leaks `context_injection` to the user surface, producing a false positive for channel leakage. **Preferred for v0.4.**
-2. **Read an existing gate's payload** if one is live for the event (e.g. hydrator hint on `UserPromptSubmit`, RBG advisory on `Stop`); pick a distinctive substring from its output as the marker. No code change but coverage is limited to whatever the live gate emits.
-
-Document the temporary gate in the PR; revert before merging.
+**Emission options:** (1) **One-shot debug gate** (preferred): emit SYS into `system_message` and CTX into `context_injection`; use `allow` verdict — `warn` on Stop triggers a legacy fallback (router.py:825) that leaks `context_injection`, producing a false positive. Remove after the run; document in PR. (2) **Read existing gate payload**: pick a distinctive substring from a live gate's output as the marker. Limited to whatever the live gate emits.
 
 ## Walk-through
 
@@ -72,16 +67,31 @@ For each row in the table, in order:
 
 ## Pass / fail criterion
 
-| Expected     | Pass condition (Option 1 — distinct markers)                                                                    |
-| ------------ | --------------------------------------------------------------------------------------------------------------- |
-| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                                                 |
-| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes.                              |
-| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                                                |
-| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.                                        |
+| Expected     | Pass condition (Option 1 — distinct markers)                                      |
+| ------------ | --------------------------------------------------------------------------------- |
+| `user-only`  | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: No.                    |
+| `agent-only` | SYS user-side: Yes. CTX user-side: **No** (inversion guard). CTX agent-side: Yes. |
+| `both`       | SYS user-side: Yes. CTX user-side: **No**. CTX agent-side: Yes.                   |
+| `TBD`        | Record all observed markers and surfaces; do not pass or fail — escalate.         |
 
 _Note: with Option 1 the SYS marker always appears user-side (the framework unconditionally routes `system_message` there); the diagnostic signal is whether the **CTX** marker leaks to the user surface (must never) and whether it reaches agent context (required for `agent-only` / `both`)._
 
 Any mismatch (e.g. `Stop` expected `agent-only` but marker appears user-side and not agent-side — the [[aops-d10e7db6]] inversion) is a **routing bug**, not a self-test failure. Halt the section and file a `bug` issue under [[epic-9fa15948]]: title `<EVENT>-hook output routed to <observed> channel, expected <intended>`; body must include the marker run id, the transcript excerpt, and the agent's verbatim answer. Do **not** attempt to fix routing in this session — that's a separate task in the same shape as [[aops-d10e7db6]].
+
+## Post-hoc transcript evaluation
+
+When no human observer is available, verify channel routing from completed session artifacts. First confirm the plugin version matches the version under test (check SessionStart log entry or plugin manifest) — a stale cached plugin invalidates the run.
+
+1. **Hooks JSONL** (`~/.claude/projects/-workspace/*-session-hooks.jsonl`): each line records one hook event with `event`, `verdict`, `system_message` (user surface), and `context_injection` (agent context). Compare populated channels against the expected-channel matrix above — non-empty `system_message` for an `agent-only` hook, or missing `context_injection` for `agent-only`/`both`, is a routing bug.
+2. **Transcript JSONL** (`~/.claude/projects/-workspace/*-transcript.jsonl`): search assistant turns for `system-reminder` blocks containing the `context_injection` content from step 1. Presence confirms the agent-side channel is working.
+3. **Cross-reference**: for each hook event, check (a) `context_injection` content appears in transcript system-reminders (agent context confirmed), (b) `system_message` content appears in user-visible output (user surface confirmed), (c) `context_injection` content does NOT appear in user-visible output (leakage — the [[aops-d10e7db6]] inversion pattern).
+4. Record results per the pass/fail criterion above. File routing bugs the same way.
+
+Use transcript evaluation for auditing past sessions and batch regression checks. Use the interactive walk-through for first-time hook verification and release gates.
+
+## Anti-pattern: synthetic stdin testing
+
+Synthetic stdin piping to `router.py` cannot verify runtime channel-routing gaps. The test exists to catch the gap between "Python code produces correct JSON" and "the runtime delivers it to the correct surface." That gap lives in the CLI's hook protocol and channel-dispatch code — none exercised by stdin. An agent that defaults to synthetic testing commits a methodology-substitution failure: the result would not have caught [[aops-d10e7db6]]. Always use the interactive walk-through or transcript evaluation above.
 
 ## Notes for the agent running the section
 
