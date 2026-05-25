@@ -298,7 +298,7 @@ Applies whenever a PR was closed without merge. The action depends on close cont
 | Class                  | Signal                                                                                                                    | Action                                                                                                                                                                                                                                |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **wontfix**            | Clear "don't do this", not-planned, superseded, reviewer explicitly rejects the goal (not just implementation)            | Mark task `cancelled` (or `done` if superseded by completed sibling). Note closing PR URL + close reason in task body. Do NOT file a follow-up.                                                                                       |
-| **bad-implementation** | Ambiguous, wrong approach, reviewer rejection of approach/design, repeated failure, or "needs rethink" language           | Mark original task `cancelled` or `blocked`. File a sibling investigation task (same parent, `soft_depends_on: [<original-id>]`) summarising what went wrong and what must change before redispatching. Do NOT re-queue the original. |
+| **bad-implementation** | Ambiguous, wrong approach, reviewer rejection of approach/design, repeated failure, or "needs rethink" language           | Mark original task `cancelled`. File a sibling investigation task (same parent, `soft_depends_on: [<original-id>]`) summarising what went wrong and what must change before redispatching. Do NOT re-queue the original. |
 | **retry-as-is**        | Rare: unrelated infrastructure failure explicitly documented in PR comments; nothing about the task or approach was wrong | Re-queue to `inbox`. Log the justification explicitly in the sleep activity log and in the task body.                                                                                                                                 |
 
 **Agent invocation, not regex** — per No Shitty NLP (AXIOMS.md § 235). The agent reads the actual PR body and comments to make a semantic judgment. Do not string-match on "wontfix" or similar labels; the label is a signal, not the verdict.
@@ -307,6 +307,7 @@ Applies whenever a PR was closed without merge. The action depends on close cont
 
 ```
 title: "Investigate: <brief description of what went wrong with <original task title>>"
+type: task
 parent: <same parent as original task>
 soft_depends_on: [<original-task-id>]
 body: |
@@ -318,7 +319,7 @@ body: |
   <agent's assessment: what was wrong with the approach, what questions must be answered first>
 
   ## Original task
-  [[<original-task-id>]] — left in <cancelled|blocked> state, pointer back here.
+  [[<original-task-id>]] — left in cancelled state, pointer back here.
 ```
 
 **Sleep activity log per task** must record: the chosen route (wontfix / bad-implementation / retry-as-is), the close reason summary, and any follow-up node created.
