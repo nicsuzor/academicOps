@@ -71,6 +71,7 @@ CLAUDE_TOOL_NAME_MAP = {
     "browser_resize": "browser_resize",
 }
 
+
 def _validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     errors = []
     if "name" not in frontmatter or not frontmatter["name"]:
@@ -78,18 +79,24 @@ def _validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     else:
         name = frontmatter["name"]
         if not re.match(r"^[a-z0-9_-]+$", name):
-            errors.append(f"Invalid name '{name}': must be lowercase with only letters, numbers, hyphens, and underscores")
+            errors.append(
+                f"Invalid name '{name}': must be lowercase with only letters, numbers, hyphens, and underscores"
+            )
 
     if "description" not in frontmatter or not frontmatter["description"]:
         errors.append("Missing required field: description")
 
     if errors:
-        raise ValueError(f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors))
+        raise ValueError(
+            f"Agent '{filename}' schema validation failed:\n  - " + "\n  - ".join(errors)
+        )
 
     if "kind" not in frontmatter:
         frontmatter["kind"] = "local"
     elif frontmatter["kind"] not in ("local", "remote"):
-        raise ValueError(f"Agent '{filename}': kind must be 'local' or 'remote', got '{frontmatter['kind']}'")
+        raise ValueError(
+            f"Agent '{filename}': kind must be 'local' or 'remote', got '{frontmatter['kind']}'"
+        )
 
     CLAUDE_TO_GEMINI_MODEL = {
         "opus": "gemini-3-pro-preview",
@@ -110,12 +117,22 @@ def _validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
     if "timeout_mins" not in frontmatter:
         frontmatter["timeout_mins"] = 5
 
-    GEMINI_ALLOWED_KEYS = {"name", "description", "kind", "tools", "model", "temperature", "max_turns", "timeout_mins"}
+    GEMINI_ALLOWED_KEYS = {
+        "name",
+        "description",
+        "kind",
+        "tools",
+        "model",
+        "temperature",
+        "max_turns",
+        "timeout_mins",
+    }
     for key in list(frontmatter.keys()):
         if key not in GEMINI_ALLOWED_KEYS:
             del frontmatter[key]
 
     return frontmatter
+
 
 def gemini_agent_schema(content: str, ctx: dict) -> str:
     parts = content.split("---", 2)
@@ -148,6 +165,7 @@ def gemini_agent_schema(content: str, ctx: dict) -> str:
     frontmatter = _validate_gemini_agent_schema(frontmatter, ctx.get("filename", "agent"))
     new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
     return f"---\n{new_frontmatter}---{parts[2]}"
+
 
 def claude_agent_schema(content: str, ctx: dict) -> str:
     parts = content.split("---", 2)
