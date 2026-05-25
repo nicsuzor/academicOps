@@ -104,8 +104,10 @@ GATE_CONFIGS = [
                 ),
             ),
             # Write tool used -> Close. Shares is_write_tool with handover;
-            # the bash-as-read carve-out keyed on handover_skill_invoked also
+            # the bash-as-read carve-out keyed on handover gate sticky also
             # applies here, so `git status` after /end-session doesn't re-close.
+            # When QA is sticky (post-verification), the engine suppresses
+            # this close transition natively.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -117,7 +119,9 @@ GATE_CONFIGS = [
                     system_message_key=None,
                 ),
             ),
-            # Verifier subagent runs -> Open gate
+            # Verifier subagent runs -> Open gate (sticky until UPS).
+            # sticky_until keeps the gate open so writes to fix marsha's
+            # findings don't re-close it (prevents marsha→fix→block loop).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
@@ -126,6 +130,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="qa.complete",
+                    sticky_until=["UserPromptSubmit"],
                 ),
             ),
             # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
@@ -138,6 +143,8 @@ GATE_CONFIGS = [
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
             # UserPromptSubmit -> re-arm for the next turn cycle.
+            # Engine unsticks (sticky_until includes UPS) before this
+            # trigger evaluates, so the transition to CLOSED proceeds.
             GateTrigger(
                 condition=GateCondition(hook_event="UserPromptSubmit"),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
@@ -195,10 +202,11 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key="handover.bound",
-                    custom_action="reset_handover_invoked",
                 ),
             ),
             # Write tool used -> Close
+            # When handover is sticky (post-skill), the engine suppresses
+            # this close transition natively.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -208,10 +216,9 @@ GATE_CONFIGS = [
                     target_status=GateStatus.CLOSED,
                     # no message to avoid spamming on every write tool use
                     system_message_key=None,
-                    custom_action="reset_handover_invoked",
                 ),
             ),
-            # Handover skill completes -> Open
+            # Handover skill completes -> Open (sticky until UPS)
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
@@ -226,7 +233,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="handover.complete",
-                    custom_action="set_handover_invoked",
+                    sticky_until=["UserPromptSubmit"],
                 ),
             ),
             # Gemini slash-command injection (UserPromptSubmit containing a handover template)
@@ -238,7 +245,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="handover.complete",
-                    custom_action="set_handover_invoked",
+                    sticky_until=["UserPromptSubmit"],
                 ),
             ),
             # Gemini fallback to Pauli subagent for handover
@@ -251,7 +258,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
                     system_message_key="handover.complete",
-                    custom_action="set_handover_invoked",
+                    sticky_until=["UserPromptSubmit"],
                 ),
             ),
             # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
@@ -362,7 +369,7 @@ GATE_CONFIGS = [
                     custom_check="is_ida_warn_mode",
                 ),
                 verdict="warn",
-                message_key="ida.reminder",
+                message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
         ],

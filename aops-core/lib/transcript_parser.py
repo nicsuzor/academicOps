@@ -2209,9 +2209,7 @@ class SessionProcessor:
             if hook_entries:
                 entries.extend(hook_entries)
                 entries.sort(
-                    key=lambda e: e.timestamp
-                    if e.timestamp
-                    else datetime.min.replace(tzinfo=UTC),
+                    key=lambda e: e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC),
                 )
             entries = self._consolidate_hook_error_attachments(entries)
 
@@ -2751,7 +2749,7 @@ class SessionProcessor:
         # of the first entry so we know where to insert it.
         first_uuids: dict[str, Entry] = {}  # error_key -> consolidated Entry
         consumed_uuids: set[str] = set()
-        for key, group in groups.items():
+        for group in groups.values():
             first = group[0]
             event_names: list[str] = []
             for e in group:
