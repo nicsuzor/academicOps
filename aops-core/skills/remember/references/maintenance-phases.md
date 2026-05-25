@@ -104,7 +104,7 @@ The agent works through these in order, using judgment about what needs attentio
 | 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                              |
 | 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                     |
 | 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                                    |
-| 8     | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag                                               |
+| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (severity, stakeholder, deps, due), remove flag           |
 | 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                                    |
 | 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                                  |
 | 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                                    |
