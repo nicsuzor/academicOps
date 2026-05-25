@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
 from polecat.pkb_bridge import (  # noqa: E402
+    VALID_TASK_STATUSES,
     PkbClient,
     PkbTask,
     _extract_id_from_binding_error,
@@ -96,9 +97,9 @@ def test_create_task_with_title(mock_client):
     task_id = create_task(title="My Title")
 
     assert task_id == "task-123"
-    # New tasks default to priority 3 (planned) when not specified.
+    # New tasks default to priority 3 (planned) and status 'inbox' when not specified.
     mock_client.call_tool.assert_called_once_with(
-        "create_task", {"title": "My Title", "priority": 3}
+        "create_task", {"title": "My Title", "priority": 3, "status": "inbox"}
     )
 
 
@@ -114,7 +115,7 @@ def test_create_task_with_task_title_alias(mock_client):
 
     assert task_id == "task-123"
     mock_client.call_tool.assert_called_once_with(
-        "create_task", {"title": "My Title", "priority": 3}
+        "create_task", {"title": "My Title", "priority": 3, "status": "inbox"}
     )
 
 
@@ -129,7 +130,9 @@ def test_create_task_explicit_priority_preserved(mock_client):
     task_id = create_task(title="Urgent", priority=0)
 
     assert task_id == "task-123"
-    mock_client.call_tool.assert_called_once_with("create_task", {"title": "Urgent", "priority": 0})
+    mock_client.call_tool.assert_called_once_with(
+        "create_task", {"title": "Urgent", "priority": 0, "status": "inbox"}
+    )
 
 
 def test_update_task_positional_id(mock_client):
@@ -678,6 +681,20 @@ class TestCreateTaskProjectInheritance:
         # Only one call — no parent lookup
         mock_client.call_tool.assert_called_once()
 
+    def test_inherits_project_from_ancestor_chain(self, mock_client):
+        """Walk the ancestor chain if the direct parent has no project."""
+        mock_client.call_tool.side_effect = [
+            # Call 1: get_task(sub-epic) -> no project, but has a parent
+            {"frontmatter": {"id": "sub-epic", "parent": "root-project"}},
+            # Call 2: get_task(root-project) -> has project
+            {"frontmatter": {"id": "root-project", "project": "qut"}},
+            # Call 3: create_task
+            self._created_task,
+        ]
+        task_id = create_task(title="Deep subtask", parent="sub-epic")
+        assert task_id == "qut-abc"
+        assert mock_client.call_tool.call_args_list[2][0][1]["project"] == "qut"
+
 
 # ---------------------------------------------------------------------------
 # Indexer binding-lag recovery tests (AC3 / AC4)
@@ -833,3 +850,56 @@ class TestCreateTaskBindingLagRecovery:
 
         assert result == "aops-abc123"
         mock_poll.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Status validation tests — guards against invalid status values at create time
+# ---------------------------------------------------------------------------
+
+
+class TestCreateTaskStatusValidation:
+    """create_task raises ValueError for status values not in VALID_TASK_STATUSES.
+
+    The MCP schema description mistakenly lists 'draft' (as default) and 'active'
+    as accepted values; the server rejects both. This guard fires before the MCP
+    round-trip so agents get a clear, actionable error.
+    """
+
+    _task_response = {
+        "frontmatter": {"id": "task-123"},
+        "body": "",
+        "path": "/tasks/task-123.md",
+    }
+
+    def test_rejects_active(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid status for create_task: 'active'"):
+            create_task(title="T", status="active")
+
+    def test_rejects_draft(self, mock_client):
+        with pytest.raises(ValueError, match="Invalid status for create_task: 'draft'"):
+            create_task(title="T", status="draft")
+
+    def test_error_message_names_valid_values(self, mock_client):
+        with pytest.raises(ValueError, match="inbox"):
+            create_task(title="T", status="active")
+
+    def test_error_message_hints_at_mcp_schema_artefact(self, mock_client):
+        with pytest.raises(ValueError, match="'draft' and 'active' appear in the MCP schema"):
+            create_task(title="T", status="active")
+
+    def test_accepts_all_valid_statuses(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        for status in VALID_TASK_STATUSES:
+            assert create_task(title="T", status=status) == "task-123"
+
+    def test_accepts_inbox(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T", status="inbox") == "task-123"
+
+    def test_accepts_ready(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T", status="ready") == "task-123"
+
+    def test_no_status_bypasses_check(self, mock_client):
+        mock_client.call_tool.return_value = self._task_response
+        assert create_task(title="T") == "task-123"

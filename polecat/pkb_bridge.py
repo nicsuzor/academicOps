@@ -71,6 +71,27 @@ class PkbTask:
             return None
 
 
+# Canonical task status values (TAXONOMY.md § "Status Values and Transitions").
+# 'draft' and 'active' appear in the MCP server's own schema description but are
+# NOT valid — they are artefacts of an older API version. Any call that passes
+# them will get a server-side "Invalid status" error; we catch it here first.
+VALID_TASK_STATUSES = frozenset(
+    {
+        "inbox",
+        "ready",
+        "queued",
+        "in_progress",
+        "merge_ready",
+        "review",
+        "done",
+        "blocked",
+        "paused",
+        "someday",
+        "cancelled",
+    }
+)
+
+
 def _parse_sse_json(raw: str) -> dict | None:
     """Extract the last JSON-RPC response from an SSE stream."""
     for line in raw.splitlines():
@@ -399,42 +420,62 @@ def create_task(
     _parent = params.get("parent")
     _explicit_project = params.get("project")
     if _parent:
-        # Fetch parent to resolve or validate project.
-        # We fetch whenever a parent is given so we can:
-        # (a) auto-inherit when project is absent, and
-        # (b) enforce that an explicitly-supplied project matches the parent's project.
-        # Both cases guard the rename-impossible constraint: task IDs embed the project
-        # slug permanently; an explicit but wrong project is just as fatal as a missing one.
-        _parent_data = _get_client().call_tool("get_task", {"id": _parent})
-        if _parent_data and isinstance(_parent_data, dict):
-            _fm = _parent_data.get("frontmatter") or {}
-            _parent_project = _fm.get("project") or _parent_data.get("project")
-            if not _explicit_project:
-                # Auto-inherit path
-                if _parent_project:
-                    params["project"] = _parent_project
-                else:
+        # Walk the ancestor chain until we find a node with a project field set.
+        # Checked on every call (even when project is explicit) to enforce consistency:
+        # an explicit but wrong project is just as fatal as a missing one.
+        curr_id: str | None = _parent
+        visited: set[str] = set()
+        _resolved_project: str | None = None
+        while curr_id and curr_id not in visited:
+            visited.add(curr_id)
+            _data = _get_client().call_tool("get_task", {"id": curr_id})
+            if not _data or not isinstance(_data, dict):
+                if curr_id == _parent and not _explicit_project:
                     raise ValueError(
-                        f"create_task: parent '{_parent}' has no project field and no project "
-                        f"was specified. Task IDs embed the project slug permanently; "
-                        f"auto-inherit requires a resolvable ancestor project. "
-                        f"Walk the ancestor chain until you find a project-typed node, "
-                        f"or ask the user which project this task belongs to."
+                        f"create_task: parent '{_parent}' not found in PKB — cannot auto-inherit "
+                        f"project. Specify project explicitly or verify the parent ID is correct."
                     )
-            elif _parent_project and _explicit_project != _parent_project:
-                # Enforce path: explicit project conflicts with parent's project
+                break
+            _fm = _data.get("frontmatter") or {}
+            _resolved_project = _fm.get("project") or _data.get("project")
+            if _resolved_project:
+                break
+            curr_id = _fm.get("parent")
+
+        if not _explicit_project:
+            if _resolved_project:
+                params["project"] = _resolved_project
+            else:
                 raise ValueError(
-                    f"create_task: supplied project '{_explicit_project}' does not match "
-                    f"parent '{_parent}' project '{_parent_project}'. "
-                    f"Task IDs embed the project slug permanently (rename-impossible "
-                    f"constraint); use project='{_parent_project}' to match the parent, "
-                    f"or verify you are under the correct parent."
+                    f"create_task: parent '{_parent}' and its ancestors have no project field, "
+                    f"and no project was specified. Task IDs embed the project slug permanently; "
+                    f"auto-inherit requires a resolvable ancestor project. "
+                    f"Specify the project explicitly or ensure an ancestor has it set."
                 )
-        elif not _explicit_project:
+        elif _resolved_project and _explicit_project != _resolved_project:
             raise ValueError(
-                f"create_task: parent '{_parent}' not found in PKB — cannot auto-inherit "
-                f"project. Specify project explicitly or verify the parent ID is correct."
+                f"create_task: supplied project '{_explicit_project}' does not match "
+                f"parent '{_parent}' project '{_resolved_project}'. "
+                f"Task IDs embed the project slug permanently (rename-impossible "
+                f"constraint); use project='{_resolved_project}' to match the parent, "
+                f"or verify you are under the correct parent."
             )
+
+    # Guard against invalid status values before the MCP round-trip.
+    # The MCP schema description mistakenly lists 'draft' and 'active' as valid;
+    # the server rejects both with "Invalid status: <value>".
+    # Default to 'inbox' per TAXONOMY.md. The MCP server mistakenly defaults
+    # to 'draft' which it then rejects; we override it here.
+    params["status"] = params.get("status") or "inbox"
+
+    status = params["status"]
+    if status not in VALID_TASK_STATUSES:
+        valid = ", ".join(sorted(VALID_TASK_STATUSES))
+        raise ValueError(
+            f"Invalid status for create_task: '{status}'. "
+            f"Valid values: {valid}. "
+            f"Note: 'draft' and 'active' appear in the MCP schema description but are not accepted."
+        )
 
     # Enforce type-prefix-filename consistency.
     # The project slug in the ID prefix CANNOT be corrected after creation (see above).
