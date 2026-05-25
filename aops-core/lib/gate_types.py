@@ -36,6 +36,11 @@ class GateState(BaseModel):
     blocked: bool = False
     block_reason: str | None = None
 
+    # Sticky latch: when True, transitions targeting a different status are
+    # suppressed until an event in sticky_until_events fires.
+    sticky: bool = False
+    sticky_until_events: list[str] = Field(default_factory=list)
+
 
 class GateCondition(BaseModel):
     """Condition for a trigger or policy."""
@@ -84,6 +89,11 @@ class GateTransition(BaseModel):
 
     # Execute complex logic (e.g. generate file)
     custom_action: str | None = None
+
+    # Sticky latch: after this transition fires, suppress any subsequent
+    # transition that targets a different status until one of these hook
+    # events fires and clears the latch.
+    sticky_until: list[str] | None = None
 
 
 class GateTrigger(BaseModel):
