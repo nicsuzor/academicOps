@@ -16,19 +16,16 @@ git config --global user.email "$GIT_AUTHOR_EMAIL"
 # the container will use HTTPS for all git commands.
 git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-# Handle GitHub authentication via PAT if provided.
-# AOPS_BOT_GH_TOKEN is the primary secret; GH_TOKEN is the standard for gh CLI.
-TOKEN="${GH_TOKEN:-$AOPS_BOT_GH_TOKEN}"
-
-if [ -n "$TOKEN" ]; then
-    export GH_TOKEN="$TOKEN"
-    export GITHUB_TOKEN="$TOKEN"
-
-    # gh CLI uses GH_TOKEN from the environment automatically — no login needed.
-    # Configure a universal git credential helper for HTTPS so git push/pull
-    # works with the token. This covers both gh-aware and plain-git operations.
-    git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
+# GitHub authentication — AOPS_BOT_GH_TOKEN is the only accepted credential.
+if [ -z "$AOPS_BOT_GH_TOKEN" ]; then
+    echo "FATAL: AOPS_BOT_GH_TOKEN is not set. Polecat requires this token for GitHub access." >&2
+    exit 1
 fi
+
+export GH_TOKEN="$AOPS_BOT_GH_TOKEN"
+export GITHUB_TOKEN="$AOPS_BOT_GH_TOKEN"
+
+git config --global credential.helper "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
 
 # Enforce isolation: Disable SSH and interactive prompts.
 export SSH_AUTH_SOCK=""
