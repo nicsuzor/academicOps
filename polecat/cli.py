@@ -2012,7 +2012,7 @@ def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]
     SANDBOX_FLAGS.
     """
     extra_flags: list[str] = []
-    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    gh_token = os.environ.get("AOPS_BOT_GH_TOKEN")
     if not gh_token:
         return extra_flags
 
