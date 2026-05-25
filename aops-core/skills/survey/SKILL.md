@@ -174,11 +174,15 @@ If an existing issue (and/or PR) matches:
 ```bash
 # Delta comment on PR — actionable feedback where the fix is happening:
 gh pr comment <PR_N> --repo nicsuzor/academicOps \
-  --body "New incident (<date>) finding: [what happened]. Impact: [concrete cost]. (Cross-posted to issue #<ISSUE_N>)"
+  --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
 
 # Delta comment on issue — new incident facts only, no background recap:
 gh issue comment <ISSUE_N> --repo nicsuzor/academicOps \
-  --body "New incident (<date>): [what happened]. Impact: [concrete cost]. (Cross-posted to PR #<PR_N>)"
+  --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
+
+# If both a PR and an issue exist, append the cross-link to each body:
+#   PR body suffix:    " (Cross-posted to issue #<ISSUE_N>)"
+#   Issue body suffix: " (Cross-posted to PR #<PR_N>)"
 
 # Structural correction — edit title, body, or both:
 gh issue edit <ISSUE_N> --repo nicsuzor/academicOps --title "<new-title>" --body-file /tmp/issue-<slug>.md
