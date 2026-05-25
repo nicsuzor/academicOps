@@ -104,7 +104,7 @@ The agent works through these in order, using judgment about what needs attentio
 | 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                              |
 | 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                     |
 | 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                                    |
-| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (severity, stakeholder, deps, due), remove flag           |
+| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (consequence, stakeholder, deps, due), remove flag        |
 | 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                                    |
 | 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                                  |
 | 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                                    |
@@ -357,9 +357,9 @@ Process tasks the user has explicitly flagged for refiling. The `refile` flag me
 1. **Find flagged tasks**: Search for `refile: true` across `$ACA_DATA/tasks/`
 2. **Reparent**: Invoke `/planner` in `maintain` mode to find the correct parent/lineage.
 3. **Evaluate weight**: For each refiled task, review and fix the full weighting surface:
-   - **Severity** — read the `consequence` text. Match severity to the actual impact described (SEV0 = no consequence stated; SEV1 = minor friction; SEV2 = blocks own work; SEV3 = blocks others / institutional deadline; SEV4 = regulatory, legal, or reputational damage). If consequence text is missing but the task clearly has consequences, write it.
-   - **Stakeholder** — if someone is waiting on this task, set `stakeholder` to their name. Set `waiting_since` if the date is known or inferrable from email/context.
-   - **Priority** — verify priority matches the task's actual importance given its new parent and severity. A SEV3 task shouldn't sit at P4.
+   - **Severity** — severity lives on `type: target` nodes only (see [[TAXONOMY.md#severity-ladder-sev0sev4]]). For target nodes, read the `consequence` text and match severity to the actual impact described. If consequence text is missing, write it. For ordinary tasks, do NOT assign non-zero severity — it inverts the focus queue. If a refiled task seems SEV3-worthy, ensure the consequence prose is accurate and add `needs_triage: true` to flag possible reclassification as a target.
+   - **Stakeholder** — if someone is waiting on this task, set `stakeholder` to their name.
+   - **Priority** — priority reflects user intent, not agent estimation (see [[../../planner/SKILL.md#priority-assignment-rules]]). Do not auto-adjust priority based on severity or apparent importance. If priority seems clearly misaligned (e.g. high-impact task sitting at P4 with no user signal), add `needs_triage: true` and log the discrepancy for user review.
    - **Due date** — check whether the due date is missing, stale (past and not overdue-by-design), or obviously wrong. Fix if possible; add `needs_triage: true` if unclear.
    - **Effort** — if missing, estimate from task scope. Default 3d is often wrong for small tasks (marking = 1d, check-in = 1h).
    - **Dependencies** — if the task is clearly blocked by something, wire `depends_on` and set status to `blocked`. If it has obvious downstream dependants, wire those too.
