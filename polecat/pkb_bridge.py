@@ -353,7 +353,7 @@ def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | Non
 _TERMINAL_STATUSES = frozenset(("done", "cancelled", "superseded", "archived"))
 
 
-def _open_children(task: "PkbTask") -> list[str]:
+def _open_children(task: PkbTask) -> list[str]:
     return [
         str((c or {}).get("id", ""))
         for c in task.children
