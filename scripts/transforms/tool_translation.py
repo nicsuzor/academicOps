@@ -49,6 +49,7 @@ def _translate_tool_calls(text: str, platform: str) -> str:
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
         import re
+
         text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"mcp_\1_\2", text)
 
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
@@ -59,8 +60,10 @@ def _translate_tool_calls(text: str, platform: str) -> str:
 
     return text
 
+
 def translate_tool_calls_claude(content: str, ctx: dict) -> str:
     return _translate_tool_calls(content, "claude")
+
 
 def translate_tool_calls_gemini(content: str, ctx: dict) -> str:
     return _translate_tool_calls(content, "gemini")
