@@ -97,9 +97,9 @@ def test_create_task_with_title(mock_client):
     task_id = create_task(title="My Title")
 
     assert task_id == "task-123"
-    # New tasks default to priority 3 (planned) when not specified.
+    # New tasks default to priority 3 (planned) and status 'inbox' when not specified.
     mock_client.call_tool.assert_called_once_with(
-        "create_task", {"title": "My Title", "priority": 3}
+        "create_task", {"title": "My Title", "priority": 3, "status": "inbox"}
     )
 
 
@@ -115,7 +115,7 @@ def test_create_task_with_task_title_alias(mock_client):
 
     assert task_id == "task-123"
     mock_client.call_tool.assert_called_once_with(
-        "create_task", {"title": "My Title", "priority": 3}
+        "create_task", {"title": "My Title", "priority": 3, "status": "inbox"}
     )
 
 
@@ -130,7 +130,9 @@ def test_create_task_explicit_priority_preserved(mock_client):
     task_id = create_task(title="Urgent", priority=0)
 
     assert task_id == "task-123"
-    mock_client.call_tool.assert_called_once_with("create_task", {"title": "Urgent", "priority": 0})
+    mock_client.call_tool.assert_called_once_with(
+        "create_task", {"title": "Urgent", "priority": 0, "status": "inbox"}
+    )
 
 
 def test_update_task_positional_id(mock_client):
