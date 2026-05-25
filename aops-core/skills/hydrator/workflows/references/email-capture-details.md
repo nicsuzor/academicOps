@@ -28,11 +28,18 @@ Extract key subject words and query for replies from the user's email address. I
 
 ## Step 2: Analyze and Classify
 
-| Category           | Signals                                               | Action                           |
-| ------------------ | ----------------------------------------------------- | -------------------------------- |
-| **Actionable**     | deadline, "please", "review", "vote", direct question | Create task                      |
-| **Important FYI**  | "awarded", "accepted", "decision", from grant bodies  | Read body, extract info, present |
-| **Safe to ignore** | noreply@, newsletter, digest, automated               | Archive candidate                |
+**Mandatory Deep Inspection**: Before categorizing, you MUST retrieve and read the full message body (e.g., via `~~email.messages_get`) for any email where:
+
+1. The subject begins with `Re:` or `Fwd:`.
+2. It appears to be part of a multi-message thread.
+
+Subject-keyword matching is insufficient for these messages. You must read the body to detect if a decision was made or a hard deadline was changed.
+
+| Category           | Signals                                                                                              | Action                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **Actionable**     | deadline, "please", "review", "vote", direct question, **body contains decision or deadline change** | Create task                      |
+| **Important FYI**  | "awarded", "accepted", "decision", from grant bodies                                                 | Read body, extract info, present |
+| **Safe to ignore** | noreply@, newsletter, digest, automated                                                              | Archive candidate                |
 
 ## Step 3 & 4: Context and Categorization
 
