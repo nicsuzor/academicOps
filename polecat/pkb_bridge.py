@@ -432,6 +432,56 @@ def create_task(
     if "priority" not in params or params["priority"] is None:
         params["priority"] = 3
 
+    # Auto-inherit project from parent when not specified.
+    # Rename-impossible constraint: the project slug is embedded in the task ID at
+    # creation time (e.g. project=mem → ID prefix mem-…). update_task can change
+    # the project frontmatter field but cannot rename the ID. A task created with the
+    # wrong project slug is permanently misidentified — all routing consumers that infer
+    # project from the ID prefix will point to the wrong repo. Recurrence of #284/#1054.
+    _parent = params.get("parent")
+    _explicit_project = params.get("project")
+    if _parent:
+        # Walk the ancestor chain until we find a node with a project field set.
+        # Checked on every call (even when project is explicit) to enforce consistency:
+        # an explicit but wrong project is just as fatal as a missing one.
+        curr_id: str | None = _parent
+        visited: set[str] = set()
+        _resolved_project: str | None = None
+        while curr_id and curr_id not in visited:
+            visited.add(curr_id)
+            _data = _get_client().call_tool("get_task", {"id": curr_id})
+            if not _data or not isinstance(_data, dict):
+                if curr_id == _parent and not _explicit_project:
+                    raise ValueError(
+                        f"create_task: parent '{_parent}' not found in PKB — cannot auto-inherit "
+                        f"project. Specify project explicitly or verify the parent ID is correct."
+                    )
+                break
+            _fm = _data.get("frontmatter") or {}
+            _resolved_project = _fm.get("project") or _data.get("project")
+            if _resolved_project:
+                break
+            curr_id = _fm.get("parent")
+
+        if not _explicit_project:
+            if _resolved_project:
+                params["project"] = _resolved_project
+            else:
+                raise ValueError(
+                    f"create_task: parent '{_parent}' and its ancestors have no project field, "
+                    f"and no project was specified. Task IDs embed the project slug permanently; "
+                    f"auto-inherit requires a resolvable ancestor project. "
+                    f"Specify the project explicitly or ensure an ancestor has it set."
+                )
+        elif _resolved_project and _explicit_project != _resolved_project:
+            raise ValueError(
+                f"create_task: supplied project '{_explicit_project}' does not match "
+                f"parent '{_parent}' project '{_resolved_project}'. "
+                f"Task IDs embed the project slug permanently (rename-impossible "
+                f"constraint); use project='{_resolved_project}' to match the parent, "
+                f"or verify you are under the correct parent."
+            )
+
     # Guard against invalid status values before the MCP round-trip.
     # The MCP schema description mistakenly lists 'draft' and 'active' as valid;
     # the server rejects both with "Invalid status: <value>".
@@ -448,7 +498,8 @@ def create_task(
             f"Note: 'draft' and 'active' appear in the MCP schema description but are not accepted."
         )
 
-    # Enforce type-prefix-filename consistency
+    # Enforce type-prefix-filename consistency.
+    # The project slug in the ID prefix CANNOT be corrected after creation (see above).
     task_id = params.get("id")
     task_type = params.get("type", "task")
     project = params.get("project")

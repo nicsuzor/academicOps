@@ -83,22 +83,25 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
 
 **Workflow**:
 
-0. **Consult CORE.md Component Topology FIRST** (before any parent or project resolution). Read the project repo's `.agents/CORE.md` "Key Components" / Component Topology table to map the task's subject matter to the correct project short form. The `project` field drives polecat repo cloning — getting it wrong sends agents to the wrong repo. Examples:
+0. **Consult CORE.md Component Topology FIRST** (before any parent or project resolution). Read the project repo's `.agents/CORE.md` "Component Topology" table to map the task's subject matter to the correct project short form. The `project` field drives polecat repo cloning — getting it wrong sends agents to the wrong repo, **and is embedded permanently in the task ID** (rename-impossible constraint: see CORE.md). Examples from the table:
 
-   | Task subject                                           | Correct `project` | Wrong default |
-   | ------------------------------------------------------ | ----------------- | ------------- |
-   | PKB MCP server code, knowledge graph internals, brain/ | `mem`             | `aops`        |
-   | aops-core skills, hooks, gates, plugin packaging       | `aops`            | —             |
-   | Polecat sandbox, container forwarding, agent-env-map   | `aops`            | —             |
-   | Daily notes, $ACA_DATA layout, PKB content (not code)  | `mem`             | `aops`        |
+   | Task subject                                                            | Correct `project` | Wrong default |
+   | ----------------------------------------------------------------------- | ----------------- | ------------- |
+   | PKB MCP server code, knowledge graph internals, brain/                  | `mem`             | `aops`        |
+   | aops-core skills, hooks, gates, plugin packaging                        | `aops`            | —             |
+   | Polecat sandbox, container forwarding, agent-env-map                    | `aops`            | —             |
+   | Daily notes, $ACA_DATA layout, PKB content (not code)                   | `mem`             | `aops`        |
+   | Teaching tasks, course prep, QUT unit coordination, student interaction | `qut`             | `mem`         |
 
    **Worked example**: A `/q` request to "fix the PKB MCP `find_duplicates` tool returning empty clusters" routes to `project=mem` (the PKB MCP server lives in `nicsuzor/mem`), NOT `project=aops`. Routing to `aops` causes polecat to clone the wrong repo and the dispatched agent will fail to find the source files.
 
-   If CORE.md is missing, the table doesn't disambiguate, or the subject straddles repos, STOP and ask the user — do not default to `aops`.
+   If the topology table doesn't resolve the subject unambiguously:
+   - **First**: look up the parent task (Step 3) and inherit its `project` field. Walk the ancestor chain if the direct parent has no project.
+   - **If still unresolvable**: STOP and ask the user — do NOT default to any project slug (`aops`, `mem`, or otherwise).
 
 1. Search for duplicates and similar tasks (quick, 5 results max).
 2. **Scope check**: If similar tasks exist with high `scope`, consider if the new task should be a subtask of an existing epic rather than a new top-level task.
-3. Resolve parent per hierarchy rules, scoped to the project chosen in Step 0. **Domain check**: If the new task's content or tags suggest a different domain (e.g., teaching) than the selected parent (e.g., framework/aops), warn the user and ask for confirmation: "This looks like [domain] work, but the selected parent [parent-id] is in [parent-domain] — confirm parent?"
+3. Resolve parent per hierarchy rules, scoped to the project chosen in Step 0. **Project inheritance**: If Step 0 did not resolve the project (topology table ambiguous or no match), fetch the parent via `mcp__pkb__get_task` and read its `project` field. If the parent's project is null, walk the ancestor chain (`get_task` on each parent in turn) until you reach a node whose `project` is set. Record the resolved project for use in Step 6. If the full ancestor chain is exhausted with no project found, STOP and ask the user — do not default to any slug. **Domain check**: If the new task's content or tags suggest a different domain (e.g., teaching) than the selected parent (e.g., framework/aops), warn the user and ask for confirmation: "This looks like [domain] work, but the selected parent [parent-id] is in [parent-domain] — confirm parent?"
 4. Route assignee: `polecat` (default), `null` (judgment-required), `nic` (only if explicit).
 5. **Extract structured metadata** if mentioned in description or conversation:
    - `due`: ISO date (YYYY-MM-DD)

@@ -580,6 +580,129 @@ class TestCreateTaskPrefixConsistency:
 
 
 # ---------------------------------------------------------------------------
+# Auto-inherit project from parent (rename-impossible constraint, #284/#1054)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateTaskProjectInheritance:
+    """create_task auto-inherits project from parent when not specified.
+
+    The project slug is permanently embedded in the task ID at creation time;
+    update_task cannot rename the prefix. Getting it wrong creates a permanent
+    ID/project mismatch. This class verifies the auto-inherit guard.
+    """
+
+    _created_task = {
+        "frontmatter": {"id": "qut-abc"},
+        "body": "",
+        "path": "/tasks/qut-abc.md",
+    }
+
+    def test_inherits_project_from_parent(self, mock_client):
+        """When parent is set and project is omitted, inherit project from parent."""
+        mock_client.call_tool.side_effect = [
+            # First call: get_task(parent) to read its project
+            {"frontmatter": {"id": "qut-parent", "project": "qut"}},
+            # Second call: create_task
+            self._created_task,
+        ]
+        task_id = create_task(title="Teaching subtask", parent="qut-parent")
+        assert task_id == "qut-abc"
+        create_call = mock_client.call_tool.call_args_list[1]
+        assert create_call[0][0] == "create_task"
+        assert create_call[0][1]["project"] == "qut"
+
+    def test_project_field_at_top_level_also_inherited(self, mock_client):
+        """Inherit project from the top-level 'project' key when frontmatter lacks it."""
+        mock_client.call_tool.side_effect = [
+            {"frontmatter": {"id": "qut-parent"}, "project": "qut"},
+            self._created_task,
+        ]
+        task_id = create_task(title="Teaching subtask", parent="qut-parent")
+        assert task_id == "qut-abc"
+        assert mock_client.call_tool.call_args_list[1][0][1]["project"] == "qut"
+
+    def test_explicit_project_matching_parent_fetches_to_validate(self, mock_client):
+        """When project is explicitly provided, parent is still fetched to enforce consistency."""
+        mock_client.call_tool.side_effect = [
+            # First call: get_task(parent) to validate project matches
+            {"frontmatter": {"id": "qut-parent", "project": "qut"}},
+            # Second call: create_task
+            self._created_task,
+        ]
+        task_id = create_task(title="T", parent="qut-parent", project="qut")
+        assert task_id == "qut-abc"
+        # Two calls: parent validation fetch + create_task
+        assert mock_client.call_tool.call_count == 2
+        create_call = mock_client.call_tool.call_args_list[1]
+        assert create_call[0][0] == "create_task"
+        assert create_call[0][1]["project"] == "qut"
+
+    def test_parent_with_no_project_raises(self, mock_client):
+        """If parent has no project field, raise with a helpful message."""
+        mock_client.call_tool.return_value = {
+            "frontmatter": {"id": "orphan-parent"},
+            "body": "",
+        }
+        with pytest.raises(ValueError, match="auto-inherit requires a resolvable ancestor project"):
+            create_task(title="T", parent="orphan-parent")
+
+    def test_parent_not_found_raises(self, mock_client):
+        """If the parent task is not found, raise with a clear message."""
+        mock_client.call_tool.return_value = None
+        with pytest.raises(ValueError, match="not found in PKB"):
+            create_task(title="T", parent="nonexistent-parent")
+
+    def test_explicit_project_mismatch_raises(self, mock_client):
+        """Explicitly-wrong project raises even when project is non-null."""
+        mock_client.call_tool.return_value = {
+            "frontmatter": {"id": "qut-parent", "project": "qut"},
+        }
+        with pytest.raises(ValueError, match="does not match parent"):
+            create_task(title="T", parent="qut-parent", project="mem")
+
+    def test_explicit_project_matching_parent_succeeds(self, mock_client):
+        """Explicit project that matches the parent's project does not raise."""
+        mock_client.call_tool.side_effect = [
+            {"frontmatter": {"id": "qut-parent", "project": "qut"}},
+            self._created_task,
+        ]
+        task_id = create_task(title="T", parent="qut-parent", project="qut")
+        assert task_id == "qut-abc"
+
+    def test_parent_with_no_project_explicit_project_passes(self, mock_client):
+        """If parent has no project but caller supplies one, no enforcement (parent unknown)."""
+        mock_client.call_tool.side_effect = [
+            {"frontmatter": {"id": "orphan-parent"}},
+            self._created_task,
+        ]
+        task_id = create_task(title="T", parent="orphan-parent", project="qut")
+        assert task_id == "qut-abc"
+
+    def test_no_parent_no_project_no_inheritance(self, mock_client):
+        """Without a parent, no auto-inherit attempt is made (server decides)."""
+        mock_client.call_tool.return_value = self._created_task
+        task_id = create_task(title="Free task")
+        assert task_id == "qut-abc"
+        # Only one call — no parent lookup
+        mock_client.call_tool.assert_called_once()
+
+    def test_inherits_project_from_ancestor_chain(self, mock_client):
+        """Walk the ancestor chain if the direct parent has no project."""
+        mock_client.call_tool.side_effect = [
+            # Call 1: get_task(sub-epic) -> no project, but has a parent
+            {"frontmatter": {"id": "sub-epic", "parent": "root-project"}},
+            # Call 2: get_task(root-project) -> has project
+            {"frontmatter": {"id": "root-project", "project": "qut"}},
+            # Call 3: create_task
+            self._created_task,
+        ]
+        task_id = create_task(title="Deep subtask", parent="sub-epic")
+        assert task_id == "qut-abc"
+        assert mock_client.call_tool.call_args_list[2][0][1]["project"] == "qut"
+
+
+# ---------------------------------------------------------------------------
 # Indexer binding-lag recovery tests (AC3 / AC4)
 # ---------------------------------------------------------------------------
 
