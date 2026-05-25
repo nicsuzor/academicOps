@@ -306,8 +306,6 @@ Reason: <one-line rationale referencing the signal that put this PR into this ti
 
 Do NOT ask "Proceed?" or wait for confirmation. Commission the agents immediately.
 
-**Batch mode**: when reviewing a queue of PRs in one session, present the merge plan and batch composition up front so the user can redirect before work starts. Individual PRs within the batch do not need per-PR confirmation.
-
 ### Routing principles
 
 Two execution environments are available. Choose based on what the agent needs:
