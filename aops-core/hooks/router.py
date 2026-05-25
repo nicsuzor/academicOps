@@ -148,9 +148,9 @@ def format_gate_status_icons(state: SessionState) -> str:
                 remaining = threshold - ops
                 parts.append(f"◇ {remaining}")
 
-    # Handover: show only AFTER completion (gate OPEN + skill invoked)
+    # Handover: show only AFTER completion (gate OPEN + sticky)
     handover = state.gates.get("handover")
-    if handover and handover.status == "open" and state.state.get("handover_skill_invoked"):
+    if handover and handover.status == "open" and handover.sticky:
         parts.append("≡")
 
     # Active task
@@ -700,6 +700,13 @@ class HookRouter:
         # are invisible to gates — the parent's Agent tool call is the only
         # operation that counts.
         if ctx.is_subagent:
+            return None
+
+        # Never block when the runtime signals a retry sequence. Both Claude
+        # Code (stop_hook_active) and Gemini CLI (stop_hook_active in
+        # AfterAgent) set this flag after an earlier block; re-blocking would
+        # loop until the runtime's own cap kills the session.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.raw_input.get("stop_hook_active"):
             return None
 
         # Ensure subagent_type is populated for trigger evaluation.
