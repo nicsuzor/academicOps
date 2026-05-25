@@ -62,25 +62,11 @@ class TestEveryPolicyHasContextKey:
     """Every GatePolicy with a non-allow verdict MUST have a context_key.
 
     Without context_key, the agent sees "Blocked by hook" with no guidance.
-
-    Exemption: warn-mode policies for QA, handover, IDA all
-    intentionally omit context_key. They deliver their advisory via message_key
-    (system_message only, user-visible) so that output_for_claude does NOT
-    upgrade WARN to decision=block for the Stop hook. This is the correct
-    non-blocking advisory design — adding context_key would re-introduce the
-    block upgrade (aops-d8de4a55).
+    All block and warn policies (QA, handover, Ida) use context_key so the
+    advisory reaches the agent via the warn+ctx_inj → decision=block upgrade
+    path in output_for_claude(). message_key is a separate, short user-facing
+    summary routed to stopReason/systemMessage only.
     """
-
-    # Policies exempt from the context_key requirement by explicit design.
-    # Format: (gate_name, custom_check) that identifies the exempt policy.
-    _ADVISORY_ONLY_EXEMPTIONS = {
-        ("ida", "is_ida_warn_mode"),  # Non-blocking advisory: no context_injection by design
-        ("qa", "is_qa_warn_mode"),  # Non-blocking advisory: no context_injection by design
-        (
-            "handover",
-            "is_handover_warn_mode",
-        ),  # Non-blocking advisory: no context_injection by design
-    }
 
     def test_all_blocking_policies_have_context_key(self):
         from lib.gates.definitions import GATE_CONFIGS
@@ -90,10 +76,6 @@ class TestEveryPolicyHasContextKey:
             for policy in config.policies:
                 if policy.verdict not in ("allow",):
                     if not policy.context_key:
-                        # Allow explicitly exempted advisory-only policies
-                        key = (config.name, policy.condition.custom_check)
-                        if key in self._ADVISORY_ONLY_EXEMPTIONS:
-                            continue
                         missing.append(
                             f"{config.name}: verdict={policy.verdict!r}, "
                             f"message_key={policy.message_key!r}, "
