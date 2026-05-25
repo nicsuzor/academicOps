@@ -284,6 +284,8 @@ jobs:
           rsync -a --delete source/dist/aops-gemini/  dist-repo/aops-gemini/
           [ -d "source/dist/aops-tools-claude" ] && rsync -a --delete source/dist/aops-tools-claude/  dist-repo/aops-tools-claude/
           [ -d "source/dist/aops-tools-gemini" ] && rsync -a --delete source/dist/aops-tools-gemini/  dist-repo/aops-tools-gemini/
+          [ -d "source/dist/aops-antigravity" ] && rsync -a --delete source/dist/aops-antigravity/  dist-repo/aops-antigravity/
+          [ -d "source/dist/aops-tools-antigravity" ] && rsync -a --delete source/dist/aops-tools-antigravity/  dist-repo/aops-tools-antigravity/
 
           # gemini-extension.json must live at the dist repo ROOT — gemini CLI
           # discovers extensions by looking for that file at the repo root, not
