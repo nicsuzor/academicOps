@@ -80,16 +80,17 @@ def test_complete_task_does_not_close_handover_gate(router):
     )
 
 
-def test_handover_skill_invoked_state_transitions(router):
+def test_handover_sticky_state_transitions(router):
     """
-    Verify handover_skill_invoked state transitions:
-    1. Initially False.
-    2. Becomes True when handover skill completes.
-    3. Becomes False when a write tool is used.
-    4. Remains True when an infrastructure tool is used.
+    Verify handover gate sticky transitions:
+    1. Initially not sticky.
+    2. Becomes sticky when handover skill completes (gate OPEN).
+    3. Bash after handover does not close gate (sticky suppresses).
+    4. Edit after handover does not close gate (sticky suppresses).
+    5. UserPromptSubmit unsticks and re-arms gate.
     """
     state = SessionState.create("test-session-state")
-    assert state.state.get("handover_skill_invoked") is not True
+    assert state.gates["handover"].sticky is False
 
     # 1. Complete handover skill
     ctx = HookContext(
@@ -98,12 +99,11 @@ def test_handover_skill_invoked_state_transitions(router):
         tool_name="activate_skill",
         tool_input={"skill": "dump"},
     )
-    # router._dispatch_gates sets subagent_type from tool_input
     router._dispatch_gates(ctx, state)
-    assert state.state.get("handover_skill_invoked") is True
+    assert state.gates["handover"].sticky is True
     assert state.gates["handover"].status == GateStatus.OPEN
 
-    # 2. Use infrastructure tool (release_task)
+    # 2. Use infrastructure tool (release_task) — no effect
     ctx_infra = HookContext(
         session_id="test-session-state",
         hook_event="PostToolUse",
@@ -111,12 +111,10 @@ def test_handover_skill_invoked_state_transitions(router):
         tool_input={"id": "task-1", "status": "done"},
     )
     router._dispatch_gates(ctx_infra, state)
-    assert state.state.get("handover_skill_invoked") is True, (
-        "Infrastructure should not reset handover_skill_invoked"
-    )
+    assert state.gates["handover"].sticky is True, "Infrastructure should not affect sticky state"
     assert state.gates["handover"].status == GateStatus.OPEN
 
-    # 3. Use light write tool (Bash) - latch should keep it True
+    # 3. Use light write tool (Bash) — sticky suppresses close
     ctx_bash = HookContext(
         session_id="test-session-state",
         hook_event="PostToolUse",
@@ -124,12 +122,10 @@ def test_handover_skill_invoked_state_transitions(router):
         tool_input={"command": "echo 'checking state'"},
     )
     router._dispatch_gates(ctx_bash, state)
-    assert state.state.get("handover_skill_invoked") is True, (
-        "Light Bash should not reset handover_skill_invoked due to latch"
-    )
+    assert state.gates["handover"].sticky is True, "Bash should not clear sticky"
     assert state.gates["handover"].status == GateStatus.OPEN
 
-    # 4. Use heavy write tool (Edit) - should reset
+    # 4. Use heavy write tool (Edit) — sticky still suppresses close
     ctx_edit = HookContext(
         session_id="test-session-state",
         hook_event="PostToolUse",
@@ -137,7 +133,18 @@ def test_handover_skill_invoked_state_transitions(router):
         tool_input={"file_path": "foo.py"},
     )
     router._dispatch_gates(ctx_edit, state)
-    assert state.state.get("handover_skill_invoked") is False, (
-        "Heavy write tool should reset handover_skill_invoked"
+    assert state.gates["handover"].sticky is True, (
+        "Edit should not clear sticky (suppressed by engine)"
     )
-    assert state.gates["handover"].status == GateStatus.CLOSED
+    assert state.gates["handover"].status == GateStatus.OPEN
+
+    # 5. UserPromptSubmit unsticks and re-arms
+    ctx_ups = HookContext(
+        session_id="test-session-state",
+        hook_event="UserPromptSubmit",
+        tool_name=None,
+        tool_input={},
+    )
+    router._dispatch_gates(ctx_ups, state)
+    assert state.gates["handover"].sticky is False, "UPS must clear sticky"
+    assert state.gates["handover"].status == GateStatus.CLOSED, "UPS must re-arm gate to CLOSED"
