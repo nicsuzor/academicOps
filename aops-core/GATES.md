@@ -10,14 +10,14 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 **Scope.** Single source of truth for the gates that fire at session time through the academicOps hook router. Each gate section opens with a TL;DR answer card, then expands into where it lives, how it's configured, how to verify firing, and how to debug.
 
-**Doc category.** State, per [`specs/meta/doc-taxonomy.md`](../specs/meta/doc-taxonomy.md). Kept beside the other framework-wide state docs (`AXIOMS.md`, `SURFACES.md`, `HEURISTICS.md`, `CONSTRAINTS.md`).
+**Doc category.** State, per the doc-taxonomy spec (brain PKB). Kept beside the other framework-wide state docs (`AXIOMS.md`, `SURFACES.md`, `HEURISTICS.md`, `CONSTRAINTS.md`).
 
 **What is NOT here.**
 
-- **Pyramid-position assignments, axiom mapping, escalation rules** — see [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) (operative state SSoT for the L0–L7 regulatory pyramid; `rbg` blocks on it via P#65).
+- **Pyramid-position assignments, axiom mapping, escalation rules** — see the enforcement map (repo-level SSoT for the L0–L7 regulatory pyramid; `rbg` blocks on it via P#65).
 - **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](skills/aops/references/hooks.md).
 - **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](skills/aops/references/forensics-details.md).
-- **Design rationale (why the gate system is shaped this way)** — see [`specs/enforcement/enforcement.md`](../specs/enforcement/enforcement.md), [`specs/enforcement/hook-router.md`](../specs/enforcement/hook-router.md), [`specs/enforcement/ultra-vires-enforcer.md`](../specs/enforcement/ultra-vires-enforcer.md), [`specs/enforcement/enforcement-mechanisms.md`](../specs/enforcement/enforcement-mechanisms.md).
+- **Design rationale (why the gate system is shaped this way)** — see the enforcement specs in the brain PKB: `enforcement`, `hook-router`, `ultra-vires-enforcer`, `enforcement-mechanisms`.
 
 ## At a glance
 
@@ -32,7 +32,7 @@ Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConf
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint + context-map injection on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
-**Historical name.** `custodiet` was the previous name for the `enforcer` gate. Old references to `custodiet_*` env vars or the `custodiet` gate map one-to-one onto `enforcer`. See [`specs/enforcement/ultra-vires-enforcer.md`](../specs/enforcement/ultra-vires-enforcer.md) §rename-note.
+**Historical name.** `custodiet` was the previous name for the `enforcer` gate. Old references to `custodiet_*` env vars or the `custodiet` gate map one-to-one onto `enforcer`. See the ultra-vires-enforcer spec (brain PKB) §rename-note.
 
 **`sticky_until` (engine feature).** A `GateTransition` can carry `sticky_until: list[str]` — a list of hook events that will "unstick" the gate. When such a transition fires, the engine sets `gate.sticky = True` in GateState and suppresses any subsequent transition targeting a _different_ status. When any event in the `sticky_until` list fires, the engine clears the sticky latch before evaluating triggers, so the same event can fire a normal re-arm transition. Used by the QA and handover gates to keep the gate OPEN after verification/handover until UserPromptSubmit, replacing the previous ad-hoc `qa_verified` and `handover_skill_invoked` session-state booleans.
 
@@ -49,7 +49,7 @@ Every gate above resolves its mode through the same path. Read this section once
 - **Example / schema**: `polecat/defaults/polecat.yaml.example`.
 - **Loader**: [`lib/polecat_config.py:load_polecat_config()`](lib/polecat_config.py).
 
-For polecat sessions, `polecat.yaml` is the primary configuration source — the polecat launcher reads it and stages the resolved gate modes as environment variables into the container. For direct CLI sessions (no polecat), the plugin's built-in defaults apply; override individual gates via environment variables in your shell or per-directory CLI settings. See the [README § Gates](../README.md#gates-quality-checks) for user-facing configuration instructions.
+For polecat sessions, `polecat.yaml` is the primary configuration source — the polecat launcher reads it and stages the resolved gate modes as environment variables into the container. For direct CLI sessions (no polecat), the plugin's built-in defaults apply; override individual gates via environment variables in your shell or per-directory CLI settings. See the repo README § Gates for user-facing configuration instructions.
 
 ### Resolution path
 
@@ -389,17 +389,17 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 
 ### Authoritative on adjacent slices
 
-- [`.agents/ENFORCEMENT-MAP.md`](../.agents/ENFORCEMENT-MAP.md) — operative register: L0–L7 regulatory pyramid (Ayres & Braithwaite 1992), axiom × mechanism cross-reference, PR-pipeline agents. `rbg` blocks on it via P#65.
-- [`aops-core/skills/aops/references/hooks.md`](skills/aops/references/hooks.md) — hook router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences.
-- [`aops-core/skills/aops/references/forensics-details.md`](skills/aops/references/forensics-details.md) — JSONL log schema, per-gate forensics procedures, polecat-session identification.
-- [`polecat/defaults/polecat.yaml.example`](../polecat/defaults/polecat.yaml.example) — config schema + master environment-variable inventory.
+- Enforcement map (repo-level) — operative register: L0–L7 regulatory pyramid (Ayres & Braithwaite 1992), axiom × mechanism cross-reference, PR-pipeline agents. `rbg` blocks on it via P#65.
+- [`skills/aops/references/hooks.md`](skills/aops/references/hooks.md) — hook router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences.
+- [`skills/aops/references/forensics-details.md`](skills/aops/references/forensics-details.md) — JSONL log schema, per-gate forensics procedures, polecat-session identification.
+- `polecat/defaults/polecat.yaml.example` (repo-level) — config schema + master environment-variable inventory.
 
 ### Design rationale (specs)
 
-- [`specs/enforcement/enforcement.md`](../specs/enforcement/enforcement.md) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop.
-- [`specs/enforcement/enforcement-mechanisms.md`](../specs/enforcement/enforcement-mechanisms.md) — per-mechanism reference catalogue keyed to the L0–L11 pipeline view.
-- [`specs/enforcement/ultra-vires-enforcer.md`](../specs/enforcement/ultra-vires-enforcer.md) — design rationale for the enforcer agent + gate.
-- [`specs/enforcement/hook-router.md`](../specs/enforcement/hook-router.md) — design rationale for the hook router.
+- `enforcement` spec (brain PKB) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop.
+- `enforcement-mechanisms` spec (brain PKB) — per-mechanism reference catalogue keyed to the L0–L11 pipeline view.
+- `ultra-vires-enforcer` spec (brain PKB) — design rationale for the enforcer agent + gate.
+- `hook-router` spec (brain PKB) — design rationale for the hook router.
 
 ### Source
 
@@ -415,4 +415,4 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 
 ### Doc shape
 
-This file is a state-category SSoT per [`specs/meta/doc-taxonomy.md`](../specs/meta/doc-taxonomy.md). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for the Phase C subsystem consolidations (epic `aops-2b8dd7a7`).
+This file is a state-category SSoT per the doc-taxonomy spec (brain PKB). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for the Phase C subsystem consolidations (epic `aops-2b8dd7a7`).

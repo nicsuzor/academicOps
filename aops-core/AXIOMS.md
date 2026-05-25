@@ -106,7 +106,7 @@ The framework's failure mode is **not** over-invoking agents; it is under-invoki
 
 - **Default to agent judgment** for: classification, fitness-for-purpose review, semantic equivalence, intent inference, qualitative comparison, anything where "context dependent" is a fair answer.
 - **Default to deterministic code** for: counting, aggregation, syntactic validation, idempotent transformations, anything where the right answer is provably the same every time.
-- **When in doubt, prefer the agent path and measure cost** (see `.agents/ENFORCEMENT-MAP.md` cost ladder). A 30-second agent call beats a six-week argument over heuristic edge cases.
+- **When in doubt, prefer the agent path and measure cost** (see the enforcement map cost ladder, repo-level). A 30-second agent call beats a six-week argument over heuristic edge cases.
 - **You cannot automate a quality judgment you haven't exercised.** Before designing automated quality scaffolding, do the qualitative review yourself on real output, document the signals that distinguished good from bad, and get user validation — then decide whether automation is even needed.
 
 (This edge is the _root_; "No Shitty NLP" and "Qualitative Evaluation Over Deterministic Heuristics" below are specific applications of it.)
@@ -225,7 +225,7 @@ The split is conservative by design. The volume and direction of framework chang
 
 **Scope**: the rule applies specifically to _framework-change_ proposals — additions or modifications to axioms, gates, hooks, skill instructions, or enforcement-map placements. It does NOT slow ordinary in-task decisions, day-to-day fixes, code review on the current task, or self-correction within a working session. An agent that notices it is doing something wrong should still fix what it is doing; it just must not, in the same breath, redesign the framework around the slip.
 
-**Evidence base (future)**: cross-incident judgment is sharpened by a formal register linking each rule and enforcement mechanism to the incidents that recurred under it. Such a register is contemplated as a future artifact at the `.agents/` layer; until it lands, the detached reviewer relies on `gh issue list`, ENFORCEMENT-MAP.md row-by-row review, and prior /retro reports as proxies.
+**Evidence base (future)**: cross-incident judgment is sharpened by a formal register linking each rule and enforcement mechanism to the incidents that recurred under it. Such a register is contemplated as a future repo-level artifact; until it lands, the detached reviewer relies on `gh issue list`, enforcement map row-by-row review, and prior /retro reports as proxies.
 
 ## No mocks, no fakes, synthetic tests
 

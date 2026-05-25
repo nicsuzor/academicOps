@@ -18,13 +18,13 @@ Hard rules for aops framework internals. Enforced by pre-commit hooks where poss
 
 > **Redirect.** This file no longer carries an authoritative envelope table. The previous table here drifted from the per-agent declarations it was meant to summarise, which is how three places to look becomes one wrong answer per writer.
 >
-> Agent permissions live in three documents — one per category in `specs/meta/doc-taxonomy.md`:
+> Agent permissions live in three documents — one per category in the doc-taxonomy spec (brain PKB):
 >
-> - **Spec** (the schema and axes): [[agent-authority]] (`specs/agents/agent-authority.md`) + [[agent-permissions]] (`specs/agents/agent-permissions.md`). Together one logical spec.
+> - **Spec** (the schema and axes): [[agent-authority]] + [[agent-permissions]] (brain PKB). Together one logical spec.
 > - **State** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter. The operative SSoT for what each agent holds.
-> - **Audit-artifact** (current-state snapshot): `.agents/AGENT-TOOLS.md`. Generated dump for at-a-glance comparison against per-agent frontmatter; drift is reported here, not declared here.
+> - **Audit-artifact** (current-state snapshot): the agent-tools matrix (repo-level). Generated dump for at-a-glance comparison against per-agent frontmatter; drift is reported here, not declared here.
 >
-> To answer "what tools does agent X hold", read `aops-core/agents/<X>.md`. To answer "what is the envelope schema", read the spec pair. To answer "is the corpus currently in drift", read `.agents/AGENT-TOOLS.md`.
+> To answer "what tools does agent X hold", read `aops-core/agents/<X>.md`. To answer "what is the envelope schema", read the spec pair (brain PKB). To answer "is the corpus currently in drift", read the agent-tools matrix (repo-level).
 
 ## GitHub actions
 

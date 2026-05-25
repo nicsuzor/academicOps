@@ -23,7 +23,7 @@ permalink: commands/maintain
 
 **Purpose**: Run the target/prototype graph-hygiene checks defined by the multi-parent-edges spec and report findings. **Surface only — never block, never auto-fix.** The user (or `planner` in maintain mode) decides whether to act on each finding.
 
-> Spec: `projects/aops/specs/pkb/multi-parent-edges.md` §1.5, §2.3, §2.4, §6 Q4.
+> Spec: multi-parent-edges (brain PKB) §1.5, §2.3, §2.4, §6 Q4.
 >
 > Canonical procedure: **`aops-core/skills/planner/SKILL.md` §"Anti-Inflation Surface (Target/Prototype Graph Hygiene)"** (around the `### Anti-Inflation Surface` heading; checks 1–3 are defined verbatim there). This command orchestrates those checks; it does not redefine them.
 
@@ -94,7 +94,7 @@ If `count <= 2`, write `SEV4-committed concurrency within cap (N active, cap = 2
 
 ### 5. Type/ID-prefix/Filename consistency
 
-> Spec: `projects/aops/specs/pkb/consistency.md`. AC#5.
+> Spec: consistency (brain PKB). AC#5.
 
 List every node where the ID prefix does not match its type, or the filename stem does not match the ID:
 

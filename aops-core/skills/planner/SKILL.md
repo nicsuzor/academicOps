@@ -354,7 +354,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 ### Anti-Inflation Surface (Target/Prototype Graph Hygiene)
 
-> Spec: `projects/aops/specs/pkb/multi-parent-edges.md` §1.5, §2.3, §2.4, §6 Q4. SURFACE-only — never block tool use.
+> Spec: multi-parent-edges (brain PKB) §1.5, §2.3, §2.4, §6 Q4. SURFACE-only — never block tool use.
 
 The multi-parent-edges spec defers enforcement of consequence-prose presence, edge-justification presence, and SEV4 concurrency to review skills. `/maintain` is one of those review skills. When run, surface the following — informational lists, not gates.
 
