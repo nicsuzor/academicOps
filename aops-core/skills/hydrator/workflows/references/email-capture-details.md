@@ -138,6 +138,10 @@ Entry ID: [entry_id]
 - **Attachments**: Note attachment filenames in the task body. Do NOT download attachments to the PKB during email triage — attachment processing (download, conversion) happens later via the daily briefing workflow when the task is actioned.
 - **If the task depends on an attachment**: Flag this clearly in the Action Required section so the person pulling the task knows to retrieve it.
 
+#### Downloading Attachments via `messages_download_attachments` — Path Pre-Flight (MANDATORY)
+
+Before calling `messages_download_attachments`, verify that `download_dir` uses the path style matching the host OS (POSIX paths on Linux/macOS, Windows paths on Windows). If the path style conflicts with the detected OS, report the mismatch to the user and stop. Do not silently translate path separators — translated paths cannot be verified without a second round-trip and may silently produce wrong results.
+
 ## Step 8: Presentation and Summary
 
 Present Important FYI content, already responded items, and created tasks to the user. Use `AskUserQuestion` to confirm archiving of "safe to ignore" candidates.
