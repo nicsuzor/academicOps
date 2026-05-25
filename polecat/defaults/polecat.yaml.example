@@ -42,17 +42,27 @@ session_defaults:
     enforcer_threshold: 50
 
 # ---------------------------------------------------------------------------
-# Per-session-type overlays. Both blocks MUST exist (use {} when empty).
+# Per-session-type overlays. All blocks MUST exist (use {} when empty).
 # Keys present here override the matching key in session_defaults for that
 # session type. Supports nested ``gates: {...}`` overrides.
+#
+# For direct CLI sessions (POLECAT_SESSION_TYPE unset), no overlay is
+# applied — gate_config.py falls back to its built-in defaults (all warn,
+# hydration off). Override individual gates via env vars in your shell
+# profile or per-directory CLI settings.
 # ---------------------------------------------------------------------------
 
-# `polecat crew` — interactive multi-agent sessions. Today's default mirrors
-# the "vanilla crew" trial: hooks off, bypass permissions.
-crew_defaults:
-  hooks_enabled: false
+# `polecat crew` — interactive multi-agent sessions. Inherits
+# session_defaults; override specific gates as needed.
+crew_defaults: {}
 
 # `polecat run` — autonomous workers. Hooks always on, full policy.
+# To tighten enforcement for unsupervised sessions, replace {} with:
+#   run_defaults:
+#     gates:
+#       handover: block
+#       enforcer: block
+#       enforcer_threshold: 30
 run_defaults: {}
 
 # ---------------------------------------------------------------------------
