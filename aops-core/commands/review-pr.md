@@ -296,18 +296,17 @@ Commission Marsha when ANY of these are true:
 **Tier 0 PRs** close in Step 3 and never reach this step.
 **Tier 1 PRs** approve in Step 3 without commissioning anyone.
 
-For **Tier 2 and Tier 3**, present your plan and obtain explicit approval (Axiom P#50):
+For **Tier 2 and Tier 3**, state the triage result and proceed — the user's invocation of `/review-pr` is the authorization for the workflow it defines:
 
 ```
 Tier: $TIER
-Agents to run: RBG [+ Pauli] [+ Marsha]
+Agents: RBG [+ Pauli] [+ Marsha]
 Reason: <one-line rationale referencing the signal that put this PR into this tier>
-Proceed? (yes/no)
 ```
 
-Wait for confirmation before continuing. If the user declines, ask what they want instead.
+Do NOT ask "Proceed?" or wait for confirmation. Commission the agents immediately.
 
-**Batch mode (optional)**: when reviewing a queue of PRs in one session, the user may grant per-session authorisation covering all Tier 2 reviews in the batch. Tier 3 still confirms per PR. Do not assume batch authorisation — ask for it explicitly at the start of the session.
+**Batch mode**: when reviewing a queue of PRs in one session, present the merge plan and batch composition up front so the user can redirect before work starts. Individual PRs within the batch do not need per-PR confirmation.
 
 ### Routing principles
 
