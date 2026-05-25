@@ -5,6 +5,7 @@ Claude Code stores its JSONL one level deeper than a shallow glob reaches
 uses rglob to find JSONL files at any depth under each project directory.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ aops_core_dir = Path(__file__).parent.parent / "aops-core"
 if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
-from lib.session_reader import find_sessions
+from lib.session_reader import _load_agy_workspace_map, find_sessions
 
 
 def test_find_sessions_discovers_deeply_nested_claude_polecat_jsonl(
@@ -109,3 +110,187 @@ def test_find_sessions_discovers_gemini_bind_mount_chats(
         f"Expected gemini session {session_id!r} to be discovered at "
         f"bind-mount-source path; got: {session_ids}"
     )
+
+
+class TestAntigravityCliDiscovery:
+    """Tests for agy (antigravity-cli) session discovery."""
+
+    def test_discovers_antigravity_cli_brain_sessions(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sessions in ~/.gemini/antigravity-cli/brain/ are discovered."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        brain_dir = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "abc12345-uuid"
+        brain_dir.mkdir(parents=True)
+        (brain_dir / "task.md").write_text("# My task")
+
+        result = find_sessions(
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+
+        agy_sessions = [s for s in result if s.source == "antigravity"]
+        assert len(agy_sessions) == 1
+        assert agy_sessions[0].session_id == "abc12345"
+
+    def test_project_attribution_from_history_jsonl(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Project name derived from workspace in history.jsonl, not hardcoded."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        uuid = "deadbeef-1234-5678-9abc-def012345678"
+        brain_dir = tmp_path / ".gemini" / "antigravity-cli" / "brain" / uuid
+        brain_dir.mkdir(parents=True)
+        (brain_dir / "task.md").write_text("# Build dashboard")
+
+        history = tmp_path / ".gemini" / "antigravity-cli" / "history.jsonl"
+        history.write_text(
+            json.dumps({"conversationId": uuid, "workspace": "/home/nic/src/overwhelm-dashboard"})
+            + "\n"
+        )
+
+        result = find_sessions(
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+
+        agy_sessions = [s for s in result if s.source == "antigravity"]
+        assert len(agy_sessions) == 1
+        assert agy_sessions[0].project == "overwhelm-dashboard"
+
+    def test_project_attribution_from_last_conversations_json(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Falls back to last_conversations.json when history.jsonl is missing."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        uuid = "cafebabe-0000-1111-2222-333344445555"
+        brain_dir = tmp_path / ".gemini" / "antigravity-cli" / "brain" / uuid
+        brain_dir.mkdir(parents=True)
+        (brain_dir / "implementation_plan.md").write_text("# Plan")
+
+        cache_dir = tmp_path / ".gemini" / "antigravity-cli" / "cache"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "last_conversations.json").write_text(
+            json.dumps({"/home/nic/src/labeler": uuid})
+        )
+
+        result = find_sessions(
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+
+        agy_sessions = [s for s in result if s.source == "antigravity"]
+        assert len(agy_sessions) == 1
+        assert agy_sessions[0].project == "labeler"
+
+    def test_dedup_prefers_newer_mtime(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When same UUID exists in both old and new paths, newer mtime wins."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        uuid = "11111111-2222-3333-4444-555566667777"
+
+        old_brain = tmp_path / ".gemini" / "antigravity" / "brain" / uuid
+        old_brain.mkdir(parents=True)
+        old_file = old_brain / "task.md"
+        old_file.write_text("# Old task")
+
+        new_brain = tmp_path / ".gemini" / "antigravity-cli" / "brain" / uuid
+        new_brain.mkdir(parents=True)
+        new_file = new_brain / "task.md"
+        new_file.write_text("# New task")
+
+        import os
+        import time
+
+        past = time.time() - 3600
+        os.utime(old_file, (past, past))
+
+        result = find_sessions(
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+
+        agy_sessions = [s for s in result if s.source == "antigravity"]
+        assert len(agy_sessions) == 1
+        assert agy_sessions[0].path == new_brain
+
+    def test_fallback_project_name_when_no_workspace_data(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Falls back to 'antigravity' when no workspace mapping exists."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        brain_dir = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "nomatch-uuid"
+        brain_dir.mkdir(parents=True)
+        (brain_dir / "task.md").write_text("# Unmapped")
+
+        result = find_sessions(
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+
+        agy_sessions = [s for s in result if s.source == "antigravity"]
+        assert len(agy_sessions) == 1
+        assert agy_sessions[0].project == "antigravity"
+
+    def test_load_agy_workspace_map_empty_when_no_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Returns empty dict when no agy data files exist."""
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+        assert _load_agy_workspace_map() == {}
+
+    def test_project_filter_works_with_workspace_derived_name(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Project filter matches against workspace-derived project names."""
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+        uuid = "filterme-1234-5678-9abc-def012345678"
+        brain_dir = tmp_path / ".gemini" / "antigravity-cli" / "brain" / uuid
+        brain_dir.mkdir(parents=True)
+        (brain_dir / "task.md").write_text("# Filtered")
+
+        history = tmp_path / ".gemini" / "antigravity-cli" / "history.jsonl"
+        history.write_text(
+            json.dumps({"conversationId": uuid, "workspace": "/home/nic/src/my-project"}) + "\n"
+        )
+
+        matched = find_sessions(
+            project="my-project",
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+        assert len([s for s in matched if s.source == "antigravity"]) == 1
+
+        not_matched = find_sessions(
+            project="other-project",
+            claude_projects_dir=tmp_path / "no-claude",
+            include_gemini=False,
+            include_antigravity=True,
+            include_cowork=False,
+        )
+        assert len([s for s in not_matched if s.source == "antigravity"]) == 0

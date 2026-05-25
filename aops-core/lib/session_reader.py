@@ -1010,6 +1010,45 @@ def _extract_text_from_content(content: Any) -> str:
     return ""
 
 
+def _load_agy_workspace_map() -> dict[str, str]:
+    """Build conversation UUID → workspace path map from agy data files."""
+    result: dict[str, str] = {}
+
+    agy_dir = Path.home() / ".gemini" / "antigravity-cli"
+
+    # Primary source: history.jsonl has conversationId + workspace per prompt
+    history = agy_dir / "history.jsonl"
+    if history.exists():
+        try:
+            for line in history.read_text().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                cid = entry.get("conversationId") or entry.get("conversation_id")
+                workspace = entry.get("workspace")
+                if cid and workspace:
+                    result[cid] = workspace
+        except OSError:
+            pass
+
+    # Fallback: last_conversations.json maps workspace → most-recent UUID
+    last_convos = agy_dir / "cache" / "last_conversations.json"
+    if last_convos.exists():
+        try:
+            data = json.loads(last_convos.read_text())
+            for workspace, uuid in data.items():
+                if isinstance(uuid, str) and uuid not in result:
+                    result[uuid] = workspace
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return result
+
+
 def find_sessions(
     project: str | None = None,
     since: datetime | None = None,
@@ -1026,7 +1065,7 @@ def find_sessions(
         since: Only sessions modified after this time
         claude_projects_dir: Override default ~/.claude/projects/
         include_gemini: Whether to include sessions from ~/.gemini/tmp/
-        include_antigravity: Whether to include sessions from ~/.gemini/antigravity/brain/
+        include_antigravity: Whether to include sessions from ~/.gemini/antigravity{-cli,}/brain/
         include_cowork: Whether to include sessions from Claude Desktop Cowork
 
     Returns:
@@ -1136,49 +1175,60 @@ def find_sessions(
                     )
                 )
 
-    # 3. Find Antigravity brain sessions
+    # 3. Find Antigravity / agy brain sessions
     if include_antigravity:
-        antigravity_brain_dir = Path.home() / ".gemini" / "antigravity" / "brain"
-        if antigravity_brain_dir.exists():
-            # Antigravity structure: ~/.gemini/antigravity/brain/{uuid}/
-            # Contains: task.md, implementation_plan.md, walkthrough.md
+        uuid_to_workspace = _load_agy_workspace_map()
+
+        antigravity_brain_dirs = [
+            Path.home() / ".gemini" / "antigravity-cli" / "brain",
+            Path.home() / ".gemini" / "antigravity" / "brain",
+        ]
+
+        seen_uuids: dict[str, SessionInfo] = {}
+        for antigravity_brain_dir in antigravity_brain_dirs:
+            if not antigravity_brain_dir.exists():
+                continue
+
             for brain_dir in antigravity_brain_dir.iterdir():
                 if not brain_dir.is_dir():
                     continue
 
-                # Check if directory has any .md files (non-empty brain)
                 md_files = list(brain_dir.glob("*.md"))
                 if not md_files:
                     continue
 
-                # Session ID is the directory name (UUID)
-                session_id = brain_dir.name
-                if len(session_id) > 8:
-                    session_id = session_id[:8]
+                full_uuid = brain_dir.name
+                session_id = full_uuid[:8] if len(full_uuid) > 8 else full_uuid
 
-                # Project name from Antigravity
-                project_name = "antigravity"
+                workspace = uuid_to_workspace.get(full_uuid)
+                if workspace:
+                    project_name = Path(workspace).name
+                else:
+                    project_name = "antigravity"
 
-                # Filter by project if specified
                 if project and project.lower() not in project_name.lower():
                     continue
 
-                # Get modification time from most recently modified .md file
                 mtime = max(datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files)
 
-                # Filter by time if specified
                 if since and mtime < since:
                     continue
 
-                sessions.append(
-                    SessionInfo(
-                        path=brain_dir,  # Path to brain directory
-                        project=project_name,
-                        session_id=session_id,
-                        last_modified=mtime,
-                        source="antigravity",
-                    )
+                info = SessionInfo(
+                    path=brain_dir,
+                    project=project_name,
+                    session_id=session_id,
+                    last_modified=mtime,
+                    source="antigravity",
                 )
+
+                if full_uuid in seen_uuids:
+                    if mtime > seen_uuids[full_uuid].last_modified:
+                        seen_uuids[full_uuid] = info
+                else:
+                    seen_uuids[full_uuid] = info
+
+        sessions.extend(seen_uuids.values())
 
     # 4. Find Polecat/Crew sessions
     sessions_repo = get_sessions_repo()
