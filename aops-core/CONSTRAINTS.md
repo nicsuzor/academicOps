@@ -21,10 +21,10 @@ Hard rules for aops framework internals. Enforced by pre-commit hooks where poss
 > Agent permissions live in three documents — one per category in the doc-taxonomy spec (brain PKB):
 >
 > - **Spec** (the schema and axes): [[agent-authority]] + [[agent-permissions]] (brain PKB). Together one logical spec.
-> - **State** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter. The operative SSoT for what each agent holds.
+> - **State** (per-agent declarations): agents/<name>.md frontmatter. The operative SSoT for what each agent holds.
 > - **Audit-artifact** (current-state snapshot): the agent-tools matrix (repo-level). Generated dump for at-a-glance comparison against per-agent frontmatter; drift is reported here, not declared here.
 >
-> To answer "what tools does agent X hold", read `aops-core/agents/<X>.md`. To answer "what is the envelope schema", read the spec pair (brain PKB). To answer "is the corpus currently in drift", read the agent-tools matrix (repo-level).
+> To answer "what tools does agent X hold", read agents/<X>.md. To answer "what is the envelope schema", read the spec pair (brain PKB). To answer "is the corpus currently in drift", read the agent-tools matrix (repo-level).
 
 ## GitHub actions
 

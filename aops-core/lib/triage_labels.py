@@ -1,7 +1,7 @@
 """Canonical `triage:*` label set for repo-sync-cron PR routing.
 
 The labels in `TRIAGE_LABELS` are consumed by `apply_triage()` in
-`aops-core/scripts/dump_pr_state.py` and documented in the enforcement map
+`scripts/dump_pr_state.py` and documented in the enforcement map
 (repo-level). They must exist in every tracked repo for the routing to be
 visible — `ensure_triage_labels()` provisions them idempotently at the top
 of each cron cycle.

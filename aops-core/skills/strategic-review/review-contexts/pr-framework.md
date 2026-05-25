@@ -30,7 +30,7 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 - Does the change weaken any existing enforcement? If axioms or gates are touched, is the intent to relax or strengthen?
 - **Enforcement-change CBA** (enforcement map, repo-level): if the PR adds/modifies/removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body must contain the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (≥3 friction recurrences), 4 (ongoing cost), or 5 (reversibility).
 - **A7 Edge 3 (script abdication)**: did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? An agent invocation may be the more accurate (and sometimes cheaper) path; recommend it where applicable.
-- **PR Review Detection Rules** (see `aops-core/agents/rbg.md` → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
+- **PR Review Detection Rules** (see agents/rbg.md → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
 
 **Pauli must check:**
 
