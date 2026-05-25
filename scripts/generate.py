@@ -9,6 +9,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from manifest import MANIFEST
 from transforms import apply_transforms
@@ -188,10 +189,10 @@ def main():
     written_files = set()
 
     for rule in MANIFEST:
-        src_glob = rule["src_glob"]
-        excludes = rule.get("exclude", [])
-        transforms = rule.get("transforms", [])
-        runtimes = rule.get("runtimes", [])
+        src_glob = cast(str, rule["src_glob"])
+        excludes = cast(list[str], rule.get("exclude", []))
+        transforms = cast(list[str], rule.get("transforms", []))
+        runtimes = cast(list[str], rule.get("runtimes", []))
 
         # Find matches
         matches = list(ROOT_DIR.glob(src_glob))
