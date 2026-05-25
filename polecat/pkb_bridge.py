@@ -37,6 +37,7 @@ class PkbTask:
         self.tags: list = fm.get("tags") or []
         self.depends_on: list = data.get("depends_on") or []
         self.soft_depends_on: list = fm.get("soft_depends_on") or []
+        self.children: list = data.get("children") or []
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
@@ -370,6 +371,17 @@ def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | Non
     return PkbTask(data)
 
 
+_TERMINAL_STATUSES = frozenset(("done", "cancelled", "superseded", "archived"))
+
+
+def _open_children(task: PkbTask) -> list[str]:
+    return [
+        str((c or {}).get("id", ""))
+        for c in task.children
+        if (c or {}).get("status") not in _TERMINAL_STATUSES
+    ]
+
+
 def complete_task(
     task_id: str | None = None,
     id: str | None = None,
@@ -383,6 +395,15 @@ def complete_task(
     final_id = task_id or id
     if not final_id:
         raise ValueError("Task ID must be provided")
+
+    task = get_task(final_id)
+    if task and task.children:
+        if blocked := _open_children(task):
+            raise ValueError(
+                f"Cannot complete task {final_id} because children are not in terminal states: "
+                f"{', '.join(blocked)}"
+            )
+
     params: dict[str, Any] = {"id": final_id}
     if completion_evidence:
         params["completion_evidence"] = completion_evidence
@@ -553,6 +574,15 @@ def release_task(
     Validation failures raise ``PRURLValidationError``; the MCP call is not
     made and the task stays in its pre-release state.
     """
+    if status in ("done", "cancelled", "superseded", "merge_ready"):
+        task = get_task(task_id)
+        if task and task.children:
+            if blocked := _open_children(task):
+                raise ValueError(
+                    f"Cannot close task {task_id} because children are not in terminal states: "
+                    f"{', '.join(blocked)}"
+                )
+
     if pr_url:
         from polecat.validation import verify_pr_url_live
 
