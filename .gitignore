@@ -352,3 +352,4 @@ test_result*.json
 
 # Pre-built binaries for local hooks
 .bin/
+.antigravitycli

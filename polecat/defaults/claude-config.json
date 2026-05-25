@@ -2,6 +2,10 @@
   "hasCompletedOnboarding": true,
   "theme": "dark",
   "bypassPermissionsModeAccepted": true,
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-0000-0000-000000000001",
+    "emailAddress": "polecat-worker@headless.local"
+  },
   "projects": {
     "/workspace": {
       "hasTrustDialogAccepted": true,
