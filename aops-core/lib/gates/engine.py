@@ -227,6 +227,12 @@ class GenericGate:
                 state.last_close_turn = session_state.global_turn_count
                 state.ops_since_close = 0
 
+        # Sticky latch: lock the gate in its current status until a
+        # designated unstick event fires.
+        if transition.sticky_until:
+            state.sticky = True
+            state.sticky_until_events = list(transition.sticky_until)
+
         # Update Metrics
         if transition.reset_ops_counter:
             state.ops_since_open = 0
@@ -284,12 +290,29 @@ class GenericGate:
         """Evaluate triggers (Transitions)."""
         state = self._get_state(session_state)
 
+        # Unstick: if this event matches the gate's sticky_until list,
+        # clear the latch BEFORE evaluating triggers so the same event
+        # can fire a normal transition (e.g. UPS unsticks then re-arms).
+        if state.sticky and state.sticky_until_events:
+            if ctx.hook_event in state.sticky_until_events:
+                state.sticky = False
+                state.sticky_until_events = []
+
         messages = []
         injections = []
         transition_occurred = False
 
         for trigger in self.config.triggers:
             if self._evaluate_condition(trigger.condition, ctx, state, session_state):
+                # Sticky suppression: skip transitions targeting a different
+                # status while the gate is latched.
+                if (
+                    state.sticky
+                    and trigger.transition.target_status
+                    and trigger.transition.target_status != state.status
+                ):
+                    break
+
                 result = self._apply_transition(trigger.transition, ctx, state, session_state)
                 if result.system_message:
                     messages.append(result.system_message)
