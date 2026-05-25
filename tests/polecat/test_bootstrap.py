@@ -24,7 +24,7 @@ def test_validate_bootstrap_missing_aops(tmp_path, monkeypatch):
     monkeypatch.delenv("AOPS", raising=False)
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     with pytest.raises(BootstrapError) as exc:
         validate_bootstrap(aops_path=None)
@@ -36,7 +36,7 @@ def test_validate_bootstrap_missing_polecat_home(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS", str(tmp_path))
     monkeypatch.delenv("POLECAT_HOME", raising=False)
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     with pytest.raises(BootstrapError) as exc:
         validate_bootstrap()
@@ -48,7 +48,7 @@ def test_validate_bootstrap_missing_pkb_url(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS", str(tmp_path))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     with pytest.raises(BootstrapError) as exc:
         validate_bootstrap()
@@ -60,7 +60,7 @@ def test_validate_bootstrap_missing_axioms(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS", str(tmp_path))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     # Mock socket connection to avoid real network calls
     import socket
@@ -88,7 +88,7 @@ def test_validate_bootstrap_missing_skills(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS", str(aops_dir))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     # Mock socket connection
     import socket
@@ -119,7 +119,7 @@ def test_validate_bootstrap_success(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS", str(aops_dir))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("GH_TOKEN", "fake-token")
+    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
 
     # Mock socket connection
     import socket
