@@ -369,7 +369,7 @@ GATE_CONFIGS = [
                     custom_check="is_ida_warn_mode",
                 ),
                 verdict="warn",
-                message_key="ida.reminder",
+                message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
         ],
