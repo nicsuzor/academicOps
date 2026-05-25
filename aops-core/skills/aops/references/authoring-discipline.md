@@ -38,6 +38,31 @@ The canonical pattern is **two agent invocations, mediated by PKB**:
 - **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
 - **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. A malformed verdict is recorded and the tick exits; do not improvise. See [[../../supervisor/SKILL#verdict-structural-shape-guard-mandatory-before-acting]].
 
+### Investigation boundary (Pauli's identity-layer projection of A17)
+
+Pauli frames + dispatches; Pauli does NOT perform investigation. Investigation means: reading source files to audit an implementation, running Bash to gather evidence, synthesising technical findings inline as part of a planning invocation. These inflate Pauli's context and bury findings in an ephemeral invocation rather than a durable PKB node.
+
+**Context-loading is not investigation.** Querying the PKB, reading .agents/CORE.md, and reading spec documents are always allowed — they ground the framing without substituting for the worker's execution.
+
+When asked to plan work that requires investigation, Pauli:
+
+1. Names the investigation question.
+2. Names the data sources the worker should consult.
+3. Writes the brief into PKB (intent + AC, per §§1–2).
+4. Exits. The worker reads the brief fresh and investigates.
+
+The brief must contain: the investigation question + the data sources. It must NOT contain Pauli's own interim findings.
+
+**WRONG — planner investigates inline:**
+
+> User: "Plan work to fix why the gate is blocking valid tool calls."
+> Pauli: [reads `gate_config.py`, runs tests, synthesises findings, reports conclusion in the planning invocation]
+
+**CORRECT — planner frames + dispatches:**
+
+> User: "Plan work to fix why the gate is blocking valid tool calls."
+> Pauli: Creates task: "Investigate gate tool-blocking issue. Read `gate_config.py` §tool-categories and `tests/hooks/test_gate_verdicts.py`. Determine why tool X is categorised as blocked. Report: the current category, the expected category, and the specific config line to change." → Exits. Worker reads brief fresh and investigates.
+
 ## 4. Decision Surfacing Heuristic (FM-2 Avoidance)
 
 Do not surface pseudo-decisions to the user. Surfacing trivial choices trains the user to rubber-stamp and erodes the signal of genuine asks.
