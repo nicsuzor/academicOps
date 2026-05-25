@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Regression tests for the qa gate close-on-work-begin triggers.
+Regression tests for the qa gate close-on-work-begin triggers and sticky_until.
 
-Before this fix (PR for aops-fd1b83e0) GATE_CONFIGS[1] had no transition
-that targeted GateStatus.CLOSED, so the Stop policy's `current_status=CLOSED`
-condition was never satisfied and the gate was dead code. These tests pin
-the new close triggers: update_task→in_progress and any write tool →
-CLOSED, mirroring the handover gate's pattern.
+Before the close-trigger fix (PR for aops-fd1b83e0) GATE_CONFIGS[1] had no
+transition that targeted GateStatus.CLOSED, so the Stop policy's
+`current_status=CLOSED` condition was never satisfied and the gate was dead
+code. These tests pin the close triggers: update_task→in_progress and any
+write tool → CLOSED, mirroring the handover gate's pattern.
+
+The sticky_until mechanism (replacing the qa_verified latch) keeps the QA
+gate OPEN after verification until UserPromptSubmit, preventing the
+marsha→fix→Stop-blocked endless loop.
 """
 
 import importlib
@@ -115,6 +119,7 @@ def test_verifier_subagent_reopens_qa_gate(router):
     assert state.gates["qa"].status == GateStatus.OPEN, (
         "qa gate should reopen after a verifier subagent (marsha) runs"
     )
+    assert state.gates["qa"].sticky is True, "qa gate should be sticky after verification"
 
 
 def test_release_task_does_not_close_qa_gate(router):
@@ -139,10 +144,13 @@ def test_release_task_does_not_close_qa_gate(router):
 
 
 def test_bash_after_handover_does_not_close_qa(router):
-    """Bash treated as read after /end-session (handover_skill_invoked=True)
-    should keep qa OPEN, matching the existing is_write_tool carve-out."""
+    """Bash treated as read when handover gate is sticky (post-skill)
+    should keep qa OPEN, matching the is_write_tool carve-out."""
     state = _state_with_bound_task("qa-post-handover")
-    state.state["handover_skill_invoked"] = True
+    # Set handover gate as sticky (simulating post-/end-session state)
+    state.gates["handover"] = GateState(
+        status=GateStatus.OPEN, sticky=True, sticky_until_events=["UserPromptSubmit"]
+    )
 
     ctx = HookContext(
         session_id="qa-post-handover",
@@ -159,8 +167,8 @@ def test_bash_after_handover_does_not_close_qa(router):
 
 def test_write_after_marsha_does_not_reclose_qa(router):
     """Regression: writes after marsha verification must not re-close the QA
-    gate. Without the qa_verified latch, the is_write_tool trigger re-closes
-    the gate, causing an endless marsha → fix → Stop-blocked loop."""
+    gate. sticky_until keeps the gate open until UserPromptSubmit, preventing
+    the endless marsha → fix → Stop-blocked loop."""
     state = _state_with_bound_task("qa-loop")
 
     # 1. Close the gate via a write (work begins).
@@ -175,7 +183,7 @@ def test_write_after_marsha_does_not_reclose_qa(router):
     )
     assert state.gates["qa"].status == GateStatus.CLOSED
 
-    # 2. Marsha runs — gate opens, qa_verified flag set.
+    # 2. Marsha runs — gate opens with sticky.
     router._dispatch_gates(
         HookContext(
             session_id="qa-loop",
@@ -187,7 +195,7 @@ def test_write_after_marsha_does_not_reclose_qa(router):
         state,
     )
     assert state.gates["qa"].status == GateStatus.OPEN
-    assert state.state.get("qa_verified") is True
+    assert state.gates["qa"].sticky is True
 
     # 3. Agent writes code to fix marsha's findings — gate must stay OPEN.
     router._dispatch_gates(
@@ -204,10 +212,12 @@ def test_write_after_marsha_does_not_reclose_qa(router):
     )
 
 
-def test_qa_verified_resets_on_user_prompt(router):
-    """qa_verified flag resets on UserPromptSubmit so the gate re-arms."""
+def test_qa_sticky_clears_on_user_prompt(router):
+    """QA sticky flag clears on UserPromptSubmit so the gate re-arms."""
     state = _state_with_bound_task("qa-reset")
-    state.state["qa_verified"] = True
+    state.gates["qa"] = GateState(
+        status=GateStatus.OPEN, sticky=True, sticky_until_events=["UserPromptSubmit"]
+    )
 
     router._dispatch_gates(
         HookContext(
@@ -218,15 +228,33 @@ def test_qa_verified_resets_on_user_prompt(router):
         ),
         state,
     )
-    assert state.state.get("qa_verified") is False, "qa_verified must reset on new user prompt"
+    assert state.gates["qa"].sticky is False, "qa sticky must clear on new user prompt"
+    assert state.gates["qa"].status == GateStatus.CLOSED, (
+        "qa gate must re-arm (CLOSED) after UPS unsticks it"
+    )
 
 
-def test_qa_verified_resets_on_new_task(router):
-    """qa_verified flag resets when a new task is bound (new work cycle)."""
+def test_qa_sticky_clears_then_new_task_closes(router):
+    """After UPS unsticks QA, a new task binding closes the gate normally."""
     state = _state_with_bound_task("qa-newtask")
-    state.state["qa_verified"] = True
-    state.gates["qa"] = GateState(status=GateStatus.OPEN)
+    state.gates["qa"] = GateState(
+        status=GateStatus.OPEN, sticky=True, sticky_until_events=["UserPromptSubmit"]
+    )
 
+    # UPS unsticks and re-arms
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-newtask",
+            hook_event="UserPromptSubmit",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    assert state.gates["qa"].sticky is False
+    assert state.gates["qa"].status == GateStatus.CLOSED
+
+    # New task binding closes the gate (already closed, but verifies the path)
     router._dispatch_gates(
         HookContext(
             session_id="qa-newtask",
@@ -236,5 +264,25 @@ def test_qa_verified_resets_on_new_task(router):
         ),
         state,
     )
-    assert state.state.get("qa_verified") is False, "qa_verified must reset when new task is bound"
     assert state.gates["qa"].status == GateStatus.CLOSED
+
+
+def test_stop_hook_active_bypasses_all_gates(router):
+    """When stop_hook_active=True, gates must not block — prevents
+    infinite retry loops in both Claude Code and Gemini CLI."""
+    state = _state_with_bound_task("qa-stop-active")
+    # Close all gates so they would normally block.
+    state.gates["qa"] = GateState(status=GateStatus.CLOSED)
+    state.gates["handover"] = GateState(status=GateStatus.CLOSED)
+
+    result = router._dispatch_gates(
+        HookContext(
+            session_id="qa-stop-active",
+            hook_event="Stop",
+            tool_name=None,
+            tool_input={},
+            raw_input={"stop_hook_active": True},
+        ),
+        state,
+    )
+    assert result is None, "stop_hook_active=True must bypass all gate evaluation"
