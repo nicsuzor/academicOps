@@ -42,7 +42,9 @@ def test_crew_interactive_pops_ci():
             or mock_build_docker_cmd.call_args.args[2]
         )
         assert "CI" not in env_arg, "CI was not popped from env in interactive crew"
-        assert "NONINTERACTIVE" not in env_arg, "NONINTERACTIVE was not popped from env in interactive crew"
+        assert "NONINTERACTIVE" not in env_arg, (
+            "NONINTERACTIVE was not popped from env in interactive crew"
+        )
 
 
 def test_run_gemini_interactive_pops_ci():
@@ -86,4 +88,6 @@ def test_run_gemini_interactive_pops_ci():
             or mock_build_docker_cmd.call_args.args[2]
         )
         assert "CI" not in env_arg, "CI was not popped from env in interactive run"
-        assert "NONINTERACTIVE" not in env_arg, "NONINTERACTIVE was not popped from env in interactive run"
+        assert "NONINTERACTIVE" not in env_arg, (
+            "NONINTERACTIVE was not popped from env in interactive run"
+        )
