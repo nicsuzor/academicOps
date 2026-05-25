@@ -2315,7 +2315,10 @@ def _extract_gemini_sessions(session_dir: Path) -> None:
     workspace_dir = gemini_tmp / "workspace"
     if workspace_dir.is_dir():
         for f in workspace_dir.iterdir():
-            if f.is_file() and not (session_dir / f.name).exists():
+            # Rescue hooks/gates/state files. Skip session files (handled by rglob loop)
+            # and subdirectories. Overwrite existing files to ensure latest version
+            # is preserved on remote-daemon resume.
+            if f.is_file() and not f.name.startswith("session-"):
                 shutil.copy2(f, session_dir / f.name)
 
 
