@@ -9,6 +9,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from manifest import MANIFEST
 from transforms import apply_transforms
@@ -16,18 +17,24 @@ from transforms import apply_transforms
 ROOT_DIR = Path(__file__).parent.parent.resolve()
 DIST_DIR = ROOT_DIR / "dist"
 
+
 def sanitize_version(version: str) -> str:
     import re
+
     if "-testing." in version:
         return version.replace("-testing.", "-dev.")
     version = re.sub(r"\.dev(\d+)", r"-dev.\1", version)
     return version
 
+
 def get_git_commit_sha(root: Path) -> str:
     try:
         sha = subprocess.run(
             ["git", "rev-parse", "--short=8", "HEAD"],
-            cwd=root, capture_output=True, text=True, check=False
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if sha.returncode == 0 and sha.stdout.strip():
             return sha.stdout.strip()
@@ -35,11 +42,11 @@ def get_git_commit_sha(root: Path) -> str:
         pass
     return ""
 
+
 def get_project_version(root: Path) -> str:
     try:
         result = subprocess.run(
-            ["uv", "tree", "--depth", "0"],
-            cwd=root, capture_output=True, text=True, check=False
+            ["uv", "tree", "--depth", "0"], cwd=root, capture_output=True, text=True, check=False
         )
         if result.returncode == 0:
             for line in result.stdout.splitlines():
@@ -49,6 +56,7 @@ def get_project_version(root: Path) -> str:
     except Exception:
         pass
     return "0.1.0"
+
 
 def get_output_path(src_path: Path, runtime: str) -> Path:
     """Compute the destination path based on the source prefix."""
@@ -71,6 +79,7 @@ def get_output_path(src_path: Path, runtime: str) -> Path:
 
     return dest_root / out_rel
 
+
 def matches_exclude(path: Path, excludes: list[str]) -> bool:
     for ex in excludes:
         if path.match(ex):
@@ -78,13 +87,16 @@ def matches_exclude(path: Path, excludes: list[str]) -> bool:
         # For directory exclusions like aops-core/**/__pycache__/*
         if "__pycache__" in ex and "__pycache__" in path.parts:
             return True
-        if ".*" in ex and any(p.startswith('.') for p in path.parts):
+        if ".*" in ex and any(p.startswith(".") for p in path.parts):
             return True
     return False
 
+
 def generate_metadata(version: str, runtime: str, package: str):
     """Generate platform-specific metadata (pyproject.toml, plugin.json)."""
-    dest_root = DIST_DIR / (f"aops-{runtime}" if package == "aops-core" else f"aops-tools-{runtime}")
+    dest_root = DIST_DIR / (
+        f"aops-{runtime}" if package == "aops-core" else f"aops-tools-{runtime}"
+    )
     dest_root.mkdir(parents=True, exist_ok=True)
 
     # 1. pyproject.toml
@@ -159,9 +171,12 @@ build-backend = "hatchling.build"
         with open(claude_dir / "plugin.json", "w") as f:
             json.dump(manifest, f, indent=2)
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--clean", action="store_true", help="Clean dist directory before generating")
+    parser.add_argument(
+        "--clean", action="store_true", help="Clean dist directory before generating"
+    )
     args = parser.parse_args()
 
     if args.clean and DIST_DIR.exists():
@@ -174,10 +189,10 @@ def main():
     written_files = set()
 
     for rule in MANIFEST:
-        src_glob = rule["src_glob"]
-        excludes = rule.get("exclude", [])
-        transforms = rule.get("transforms", [])
-        runtimes = rule.get("runtimes", [])
+        src_glob = cast(str, rule["src_glob"])
+        excludes = cast(list[str], rule.get("exclude", []))
+        transforms = cast(list[str], rule.get("transforms", []))
+        runtimes = cast(list[str], rule.get("runtimes", []))
 
         # Find matches
         matches = list(ROOT_DIR.glob(src_glob))
@@ -209,6 +224,7 @@ def main():
             generate_metadata(version, rt, pkg)
 
     print(f"Generation complete. Wrote {len(written_files)} source files + metadata.")
+
 
 if __name__ == "__main__":
     main()
