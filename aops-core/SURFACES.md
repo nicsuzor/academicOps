@@ -218,9 +218,9 @@ Asynchronous Google-infra worker. Receives a task spec, returns a session URL, e
 
 ### Hook env stripping (load-bearing bug across Mac/CLI host surfaces)
 
-`settings.json`'s `env` block does NOT propagate into hook subprocesses on Mac/CLI host surfaces. `launchctl setenv` is ignored by Claude.app; `.zshenv` is partially sourced but `PATH` is overridden. `gate_config.py` (post-2026-03 cleanup) hard-fails when `$AOPS_SESSIONS` or `$AOPS_POLECAT_CONFIG` is absent — there are no env-var fallbacks by design.
+The `env` block in CLI settings does NOT propagate into hook subprocesses on Mac/CLI host surfaces. `launchctl setenv` is ignored by Claude.app; `.zshenv` is partially sourced but `PATH` is overridden. `gate_config.py` reads gate modes directly from environment variables (`os.environ.get`) with built-in defaults — it does not read `polecat.yaml` itself. The polecat launcher is the intermediary that reads `polecat.yaml` and stages the resolved modes as env vars.
 
-**Net effect**: any gate reading `polecat.yaml` crashes on hook import on Mac/CLI host surfaces. PreToolUse path appears to fire correctly (custodiet works); Stop/SessionEnd paths crash silently.
+**Net effect on direct CLI sessions**: gates fall back to built-in defaults (all `warn`, hydration `off`) since no polecat launcher sets the env vars. To override, set `*_GATE_MODE` env vars in your shell profile (`~/.zshenv` / `~/.bashrc`), not in CLI settings.
 
 **Scope**: this bug bites surfaces that go through `launchctl` / `.zshenv` to reach hook subprocesses — i.e. the Mac/CLI host surfaces above. The WSL crew container and `polecat run/crew` containers receive env directly at container launch and are **not** affected.
 
@@ -240,9 +240,17 @@ Tracking: archived-but-still-true [academicops-459eb8f3] and [aops-1bf76d85]. Re
 
 Implication: when shipping a plugin change, multiple consumers need to pick it up via different mechanisms. PR landing isn't propagation.
 
-### Mode resolution (crew vs run)
+### Mode resolution (crew vs run vs direct)
 
-`gate_config.py:432-433` reads `POLECAT_SESSION_TYPE`. Value `crew` → crew-mode overlay; anything else → run-mode overlay. The "anything else" includes the host (Claude Code CLI on laptop) — host sessions resolve to **run mode** by default, not a separate "host" mode. This is implicit; no doc names it as a design decision. The WSL crew container surface resolves to **crew mode** (it is a `polecat crew` session).
+The polecat launcher reads `POLECAT_SESSION_TYPE` and applies the corresponding overlay from `polecat.yaml` before staging env vars into the container. `gate_config.py` itself does not read `POLECAT_SESSION_TYPE` — it only reads the resulting `*_GATE_MODE` env vars.
+
+| `POLECAT_SESSION_TYPE` | Config overlay applied by launcher                   | Surfaces                                           |
+| ---------------------- | ---------------------------------------------------- | -------------------------------------------------- |
+| `crew`                 | `polecat.yaml:crew_defaults` over `session_defaults` | `polecat crew` sessions (incl. WSL crew container) |
+| `run`                  | `polecat.yaml:run_defaults` over `session_defaults`  | `polecat run` autonomous workers                   |
+| (unset)                | None — `gate_config.py` built-in defaults apply      | Direct CLI sessions (not polecat-launched)         |
+
+For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls back to its built-in defaults (all `warn`, hydration `off`). Override via env vars in your shell profile or per-directory CLI settings.
 
 ---
 

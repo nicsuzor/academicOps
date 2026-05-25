@@ -49,38 +49,55 @@ Every gate above resolves its mode through the same path. Read this section once
 - **Example / schema**: `polecat/defaults/polecat.yaml.example`.
 - **Loader**: [`lib/polecat_config.py:load_polecat_config()`](lib/polecat_config.py).
 
-`polecat.yaml` is the **only** place gate-mode values are configured. Setting `*_GATE_MODE` env vars in `~/.claude/settings.json` is a no-op — see the "Removed" section at the bottom of `polecat.yaml.example`.
+For polecat sessions, `polecat.yaml` is the primary configuration source — the polecat launcher reads it and stages the resolved gate modes as environment variables into the container. For direct CLI sessions (no polecat), the plugin's built-in defaults apply; override individual gates via environment variables in your shell or per-directory CLI settings. See the [README § Gates](../README.md#gates-quality-checks) for user-facing configuration instructions.
 
 ### Resolution path
 
+`gate_config.py` reads gate modes from **environment variables** at runtime, with hardcoded fallback defaults. The polecat launcher is the intermediary that reads `polecat.yaml` and sets these env vars:
+
 ```
-polecat.yaml gates.{name}
-  ↓ parsed by lib/polecat_config.py
-PolecatConfig.session_defaults.gates
-  ↓ .for_mode(POLECAT_SESSION_TYPE) overlay
-hooks/gate_config.py:_resolve_gate_modes()   (lazy via PEP 562 __getattr__)
-  ↓
-ENFORCER_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE, HYDRATION_GATE_MODE, IDA_GATE_MODE
-  ↓
-imported by lib/gates/definitions.py at module load
-  ↓ embedded in GatePolicy.verdict for each GateConfig
-runtime: lib/gates/engine.py:GenericGate._evaluate_policies
-  ↓
-GateResult.verdict ∈ {allow, warn, deny}
+┌─ Polecat-launched sessions ─────────────────────────────────────────┐
+│                                                                     │
+│  polecat.yaml gates.{name}                                          │
+│    ↓ parsed by lib/polecat_config.py                                │
+│  PolecatConfig.session_defaults.gates                               │
+│    ↓ .for_mode(POLECAT_SESSION_TYPE) overlay                        │
+│  polecat/cli.py stages resolved modes as env vars into container    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↓
+              *_GATE_MODE env vars in the process environment
+              (ENFORCER_GATE_MODE, QA_GATE_MODE, etc.)
+                              ↓
+┌─ All sessions (polecat or direct CLI) ──────────────────────────────┐
+│                                                                     │
+│  hooks/gate_config.py:__getattr__   (PEP 562 lazy resolution)      │
+│    reads os.environ.get(name, default)                              │
+│    ↓                                                                │
+│  imported by lib/gates/definitions.py at module load                │
+│    ↓ embedded in GatePolicy.verdict for each GateConfig             │
+│  runtime: lib/gates/engine.py:GenericGate._evaluate_policies        │
+│    ↓                                                                │
+│  GateResult.verdict ∈ {allow, warn, deny}                           │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher sets the env vars, so `gate_config.py` falls back to its built-in defaults: all gates `warn`, hydration `off`, threshold 50. To override, set the env vars in your shell profile or per-directory CLI settings.
 
 `gate_config.py` uses module-level `__getattr__` so config values are resolved lazily on first access — this is what lets tests monkeypatch the session env after the module is imported (call `_reset_gate_mode_cache()` to invalidate).
 
-### Session-type overlays
+### Session-type overlays (polecat sessions)
 
-`POLECAT_SESSION_TYPE` (set by `polecat/cli.py` at launch) selects the overlay:
+`POLECAT_SESSION_TYPE` (set by `polecat/cli.py` at launch) selects which overlay from `polecat.yaml` is applied on top of `session_defaults`:
 
-| Value         | Overlay applied to defaults                                  | Surfaces                                                    |
-| ------------- | ------------------------------------------------------------ | ----------------------------------------------------------- |
-| `crew`        | `polecat.yaml:crew_defaults` (today: `hooks_enabled: false`) | `polecat crew` interactive multi-agent sessions             |
-| (unset/`run`) | `polecat.yaml:run_defaults` (today: `{}`)                    | `polecat run` workers, host-Claude sessions, fresh installs |
+| Value   | Overlay applied to defaults                                       | Surfaces                                        |
+| ------- | ----------------------------------------------------------------- | ----------------------------------------------- |
+| `crew`  | `polecat.yaml:crew_defaults`                                      | `polecat crew` interactive multi-agent sessions |
+| `run`   | `polecat.yaml:run_defaults`                                       | `polecat run` autonomous workers                |
+| (unset) | No overlay — built-in defaults in `gate_config.py` apply directly | Direct CLI sessions (not polecat-launched)      |
 
-If unset the loader treats it as `run` — so host sessions get `run_defaults`.
+For direct CLI sessions, `POLECAT_SESSION_TYPE` is not set and polecat is not involved. The hook code reads env vars directly with its own defaults.
 
 ### Plugin cache lifecycle
 
@@ -94,9 +111,9 @@ To verify the cached copy matches source: `diff -ru ~/src/academicOps/aops-core/
 
 ### Hook env stripping (cross-cutting trap)
 
-On Claude Code CLI on host (Mac, WSL host shell): `settings.json` `env` block does **not** propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). All gate-mode env vars in `settings.json` are dead by design — `gate_config.py` reads only from `polecat.yaml`. If `$AOPS_SESSIONS` is missing from the hook env, `gate_config.py` raises at import. See [`SURFACES.md`](SURFACES.md) → "Claude Code CLI on host" → Known traps for the full trace.
+On Claude Code CLI on host (Mac, WSL host shell): the `env` block in CLI settings does **not** reliably propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). Gate-mode env vars set there may not reach the hooks. For direct CLI sessions, set gate env vars in your shell profile (`~/.zshenv`, `~/.bashrc`) instead, so they are in the process environment before Claude Code launches. See [`SURFACES.md`](SURFACES.md) → "Claude Code CLI on host" → Known traps for the full trace.
 
-The WSL crew container surface receives env directly from the polecat launcher; no `launchctl`/`.zshenv` hop, so this trap does not apply there.
+The WSL crew container and polecat-launched sessions receive env directly from the polecat launcher; no `launchctl`/`.zshenv` hop, so this trap does not apply there.
 
 ### Verifying the resolved mode at runtime
 
