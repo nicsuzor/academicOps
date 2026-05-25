@@ -83,7 +83,7 @@ From this, extract:
 - **Main CI health**: if main is already red, do NOT let a PR merge mask it. Surface it to the user.
 - **Release PRs** (`release-plz-*` branches): note their presence in the session summary, then skip. These are merged manually by the user at a time of their choosing.
 
-Present the merge plan and authorisation ask to the user. Get a single authorisation covering Tier 1 + Tier 2 for the batch; Tier 3 still confirms per PR.
+Present the merge plan to the user.
 
 ### 0b. Progress logging (mandatory)
 
