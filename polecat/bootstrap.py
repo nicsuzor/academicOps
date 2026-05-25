@@ -40,9 +40,9 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     if not pkb_url:
         errors.append("Missing required environment variable: PKB_MCP_URL")
 
-    # PAT secret (GH_TOKEN or AOPS_BOT_GH_TOKEN)
-    if not os.environ.get("GH_TOKEN") and not os.environ.get("AOPS_BOT_GH_TOKEN"):
-        errors.append("Missing PAT secret (GH_TOKEN or AOPS_BOT_GH_TOKEN)")
+    # PAT secret — only AOPS_BOT_GH_TOKEN is accepted
+    if not os.environ.get("AOPS_BOT_GH_TOKEN"):
+        errors.append("Missing required secret: AOPS_BOT_GH_TOKEN")
 
     # Client-specific auth
     if client == "gemini":
