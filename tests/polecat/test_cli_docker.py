@@ -296,10 +296,10 @@ class TestBuildDockerCmd:
         assert has_stdin, "stdin flag must be present (either -i or -it)"
         assert has_tty, "TTY flag must be present (either -t or -it)"
 
-    def test_headless_mode_has_stdin_no_tty(self):
-        """Headless mode gets -i (stdin) but not -t (no TTY)."""
+    def test_headless_mode_no_stdin_no_tty(self):
+        """Headless mode gets neither -i (stdin) nor -t (TTY)."""
         cmd = self._build()
-        assert "-i" in cmd
+        assert "-i" not in cmd
         assert "-t" not in cmd
 
     def test_mounts_docker_socket_when_present(self, tmp_path):
@@ -581,6 +581,29 @@ class TestClaudeConfigSeed:
         seed = json.loads(self.SEED_PATH.read_text())
         assert seed.get("hasCompletedOnboarding") is True
         assert seed.get("bypassPermissionsModeAccepted") is True
+
+    def test_seed_has_oauth_account(self):
+        """oauthAccount must be present to suppress the OAuth paste-back prompt.
+
+        Claude Code checks for oauthAccount in .claude.json to determine whether
+        an account has been previously configured. Without it, even when
+        CLAUDE_CODE_OAUTH_TOKEN is set in the environment, the interactive REPL
+        presents the first-run OAuth paste-back flow. The placeholder values are
+        display metadata only — actual auth uses CLAUDE_CODE_OAUTH_TOKEN. See
+        GitHub issue #938 and commit 7b4365bd (env-only auth migration).
+        """
+        seed = json.loads(self.SEED_PATH.read_text())
+        oauth_account = seed.get("oauthAccount")
+        assert oauth_account is not None, (
+            "seed must have oauthAccount to suppress the Claude Code OAuth "
+            "paste-back prompt in interactive REPL mode (issue #938)"
+        )
+        assert isinstance(oauth_account.get("accountUuid"), str), (
+            "oauthAccount.accountUuid must be a string"
+        )
+        assert isinstance(oauth_account.get("emailAddress"), str), (
+            "oauthAccount.emailAddress must be a string"
+        )
 
     def test_seed_accepts_workspace_trust(self):
         """New behaviour: /workspace must be pre-trusted so plugins load on first turn.

@@ -1331,8 +1331,8 @@ def _build_docker_cmd(
 
     # TTY allocation — flags must be separate elements so _run_docker_container
     # can detect "-i" when building the "docker start" command.
-    cmd.append("-i")
     if is_interactive:
+        cmd.append("-i")
         cmd.append("-t")
 
     # Container memory limit — prevents silent OOM kills.
@@ -2005,7 +2005,7 @@ def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]
     SANDBOX_FLAGS.
     """
     extra_flags: list[str] = []
-    gh_token = env.get("GH_TOKEN") or os.environ.get("AOPS_BOT_GH_TOKEN")
+    gh_token = os.environ.get("AOPS_BOT_GH_TOKEN")
     if not gh_token:
         return extra_flags
 
