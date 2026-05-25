@@ -58,7 +58,7 @@ MANIFEST = [
             "aops-core/**/__pycache__/*",
             "aops-core/pyproject.toml",
             "aops-core/indices/*",
-            "aops-core/.*", # .mcp.json etc
+            "aops-core/.*",  # .mcp.json etc
         ],
         "transforms": [],
         "runtimes": ["gemini", "claude"],
