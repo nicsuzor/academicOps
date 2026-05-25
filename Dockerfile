@@ -70,8 +70,11 @@ RUN npx --yes playwright@1.59.1 install-deps chromium \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Gemini CLI and code quality tools globally (Claude installed separately below)
-RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline && npm cache clean --force
+# Install Gemini CLI and code quality tools globally (Claude installed separately below).
+# @playwright/mcp: pre-baked so Gemini agents can call playwright tools without a
+# network download at session start. The aops-core Gemini extension registers it as
+# an MCP server in templates/aops-core.gemini-extension.json.
+RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
 # Create data and workspace directories, hand ownership to worker
 RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
