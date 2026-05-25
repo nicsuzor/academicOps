@@ -157,24 +157,35 @@ For every **Finding** that requires action, file or update a GitHub issue.
 
 **Cross-link pattern.** When a meta-class spans multiple seams, the meta-class itself still earns a record: preferably a parent issue (with the per-seam children listed by number in its body) or, for simpler cases, a "meta-class anchor" note inside one of the per-seam issues. Each per-seam child links back to the meta-class via `Refs #N`; the meta-class anchor links forward to each child. The children are individually rankable and individually closable; the meta-class record persists as the structural-shape memory.
 
-**Search for existing issues first** — add volume to existing ones rather than duplicating:
+**Search for existing issues and open PRs first** — add volume to existing ones rather than duplicating:
 
 ```bash
 gh issue list --repo nicsuzor/academicOps --search "<failure keywords>"
+gh pr list --search "<failure keywords>" --repo nicsuzor/academicOps
 ```
 
-If an existing issue matches:
+If an open PR addresses the issue, post your finding there (where it is most actionable). If both an issue and a PR exist, comment on both and cross-link them.
+
+If an existing issue (and/or PR) matches:
 
 - **New occurrence** (same problem, new incident): post a **delta comment** — new date, new incident facts, new impact angle only. Never restate the title, background, or anything already in the body or prior comments. One short paragraph maximum.
 - **Structural correction** (wrong framing, wrong title, analysis needs updating): use `gh issue edit` — do not comment.
 
 ```bash
-# Delta comment — new incident facts only, no background recap:
-gh issue comment <N> --repo nicsuzor/academicOps \
+# Delta comment on PR — actionable feedback where the fix is happening:
+gh pr comment <PR_N> --repo nicsuzor/academicOps \
   --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
 
+# Delta comment on issue — new incident facts only, no background recap:
+gh issue comment <ISSUE_N> --repo nicsuzor/academicOps \
+  --body "New incident (<date>): [what happened]. Impact: [concrete cost]."
+
+# If both a PR and an issue exist, append the cross-link to each body:
+#   PR body suffix:    " (Cross-posted to issue #<ISSUE_N>)"
+#   Issue body suffix: " (Cross-posted to PR #<PR_N>)"
+
 # Structural correction — edit title, body, or both:
-gh issue edit <N> --repo nicsuzor/academicOps --title "<new-title>" --body-file /tmp/issue-<slug>.md
+gh issue edit <ISSUE_N> --repo nicsuzor/academicOps --title "<new-title>" --body-file /tmp/issue-<slug>.md
 ```
 
 If no existing issue, perform root cause analysis and file:
