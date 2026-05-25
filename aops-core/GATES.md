@@ -384,7 +384,7 @@ The user-environment protection gate. Intercepts shell tool calls (Bash, run_she
 
 - **Mode key**: `gates.sentinel` (`block` | `warn` | `off`). Default: `block`.
 - **Protected paths**: `~/.gemini/extensions/`, `~/.claude/plugins/`, `~/.claude/*.json`, `~/.gemini/settings.json`, `~/.config/gemini/`. Defined in `_PROTECTED_PATH_RE` in `custom_conditions.py`.
-- **Destructive commands**: `rm`, `rmdir`, `mv`, `unlink`. Defined in `_DESTRUCTIVE_CMD_RE` in `custom_conditions.py`.
+- **Destructive commands**: `rm`, `rmdir`, `mv`, `unlink`, `truncate`. Defined in `_DESTRUCTIVE_CMD_RE` in `custom_conditions.py`.
 - **Tool scope**: `Bash`, `run_shell_command`, `shell`, `execute_code`. Non-shell tools (Edit, Write) are not covered — the Gemini TOML policy handles `write_file`/`replace` separately.
 
 ### How to verify it's firing
@@ -400,7 +400,7 @@ grep '"hook_event":"PreToolUse"' <hooks.jsonl> \
 | Failure mode             | Diagnostic                                                                                           |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- |
 | Mode silently `off`      | `python -c "from hooks.gate_config import SENTINEL_GATE_MODE; print(SENTINEL_GATE_MODE)"`            |
-| Command not caught       | Check `_DESTRUCTIVE_CMD_RE` — only `rm`, `rmdir`, `mv`, `unlink` are matched. `cp`, `chmod` are not. |
+| Command not caught       | Check `_DESTRUCTIVE_CMD_RE` — only `rm`, `rmdir`, `mv`, `unlink`, `truncate` are matched. `cp`, `chmod` are not. |
 | Path not caught          | Check `_PROTECTED_PATH_RE` — paths must match the regex. Add new patterns if needed.                 |
 | Non-Bash tool not caught | By design — sentinel only intercepts shell tools. Edit/Write are covered by the Gemini TOML policy.  |
 

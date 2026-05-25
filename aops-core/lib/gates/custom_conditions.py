@@ -6,7 +6,7 @@ from hooks.schemas import HookContext
 from lib.gate_types import GateState
 from lib.session_state import SessionState
 
-_DESTRUCTIVE_CMD_RE = re.compile(r"\b(rm|rmdir|mv|unlink)\b")
+_DESTRUCTIVE_CMD_RE = re.compile(r"\b(rm|rmdir|mv|unlink|truncate)\b", re.IGNORECASE)
 _PROTECTED_PATH_RE = re.compile(
     r"[~$/\\]*("
     r"\.gemini/extensions"
@@ -14,7 +14,8 @@ _PROTECTED_PATH_RE = re.compile(
     r"|\.claude/[^/]*\.json"
     r"|\.gemini/settings\.json"
     r"|\.config/gemini"
-    r")"
+    r")",
+    re.IGNORECASE,
 )
 
 
@@ -97,7 +98,7 @@ def check_custom_condition(
     if name == "is_destructive_env_op":
         if not isinstance(ctx.tool_input, dict):
             return False
-        command = ctx.tool_input.get("command", "")
+        command = ctx.tool_input.get("command") or ctx.tool_input.get("code", "")
         if not isinstance(command, str):
             return False
         if not _DESTRUCTIVE_CMD_RE.search(command):

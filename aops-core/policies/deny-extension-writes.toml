@@ -52,7 +52,7 @@ denyMessage = "Modifying Gemini settings.json is prohibited."
 # Protect user environment state from destructive operations
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = "(?i).*\\b(rm|mv|truncate|>)\\s+.*\\.(gemini/extensions|claude/plugins|config/gemini).*"
+commandRegex = "(?i).*(\\b(rm|mv|rmdir|unlink|truncate)|>)\\s+.*\\.(gemini/extensions|claude/plugins|config/gemini|gemini/settings\\.json|claude/.*\\.json).*"
 decision = "warn"
 priority = 100
 warnMessage = "Destructive operations on user environment paths require explicit confirmation or an evidence trail."
