@@ -25,6 +25,9 @@ def check_custom_condition(
     if name == "is_write_tool":
         from hooks.gate_config import get_tool_category
 
+        # Treat shell tools as read-only when the handover gate is sticky
+        # (post-skill) or no task is bound — prevents gates from re-closing
+        # on discovery/status commands (e.g. git status after /end-session).
         handover_state = session_state.gates.get("handover")
         if (handover_state and handover_state.sticky) or not session_state.main_agent.current_task:
             if ctx.tool_name in ("Bash", "run_shell_command", "shell", "execute_code"):
@@ -78,116 +81,5 @@ def check_custom_condition(
         # Warn mode delivers the advisory via system_message only so Stop is
         # not upgraded to decision=block by output_for_claude.
         return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
-
-    if name == "is_dispatch_fidelity_violated":
-        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
-        requested_tools = tool_input.get("tools")
-
-        # If no tools requested, there's no reduction possible.
-        if not requested_tools or not isinstance(requested_tools, list):
-            return False
-
-        from hooks.gate_config import extract_subagent_type
-
-        subagent_type, _ = extract_subagent_type(ctx.tool_name, tool_input)
-        if not subagent_type:
-            return False
-
-        import yaml
-
-        from lib.paths import get_aops_root, get_skills_dir
-
-        # Locate the subagent's definition file
-        md_file = None
-        candidates = [
-            get_aops_root() / "agents" / f"{subagent_type}.md",
-            get_skills_dir() / subagent_type / "SKILL.md",
-        ]
-
-        for candidate in candidates:
-            if candidate.exists():
-                md_file = candidate
-                break
-
-        if not md_file:
-            # If we can't find it, we can't validate it. Assume OK or let downstream handle.
-            return False
-
-        try:
-            content = md_file.read_text(encoding="utf-8")
-            parts = content.split("---", 2)
-            if len(parts) >= 3:
-                fm = yaml.safe_load(parts[1]) or {}
-            else:
-                fm = {}
-        except Exception:
-            return False
-
-        allowed_tools = fm.get("tools") or fm.get("allowed-tools") or []
-        if isinstance(allowed_tools, str):
-            allowed_tools = [t.strip() for t in allowed_tools.split(",")]
-        elif not isinstance(allowed_tools, list):
-            allowed_tools = []
-
-        # Tool name mapping: Claude Code -> Gemini/generic
-        # (We map requested Claude tools to their generic names, as .md files use generic names)
-        CLAUDE_TO_GENERIC = {
-            "Read": "read_file",
-            "Write": "write_file",
-            "Edit": "replace",
-            "Glob": "glob",
-            "Grep": "grep_search",
-            "Bash": "run_shell_command",
-            "Skill": "activate_skill",
-            "Task": "activate_skill",
-            "Agent": "activate_skill",
-            "WebFetch": "web_fetch",
-            "WebSearch": "google_web_search",
-            "browser_navigate": "navigate_page",
-            "browser_snapshot": "take_snapshot",
-            "browser_take_screenshot": "take_screenshot",
-            "browser_click": "click",
-            "browser_wait_for": "wait_for",
-            "browser_evaluate": "evaluate_script",
-            "browser_type": "type_text",
-            "browser_resize": "resize_page",
-        }
-
-        # Build the set of effective allowed tools.
-        # Note: MCP tools with mcp__ in allowed_tools might be requested as mcp_ (single underscore)
-        # or exactly match.
-        effective_allowed = set()
-        for t in allowed_tools:
-            effective_allowed.add(t)
-            if t.startswith("mcp__"):
-                # Claude might request mcp_plugin_aops-core_pkb_search
-                # while the file has mcp__plugin_aops-core_pkb__search
-                # Let's map allowed mcp__ to single underscore for robust matching
-                effective_allowed.add(t.replace("__", "_"))
-
-        # Compare requested vs allowed
-        dropped_tools = []
-        for req_tool in requested_tools:
-            # Map requested tool to generic name if it exists, else keep as is
-            generic_req = CLAUDE_TO_GENERIC.get(req_tool, req_tool)
-            # Also check if req_tool replaces __ with _
-            req_with_double = req_tool.replace("mcp_plugin_", "mcp__plugin_").replace(
-                "_pkb_", "_pkb__"
-            )
-
-            if (
-                generic_req not in effective_allowed
-                and req_tool not in effective_allowed
-                and req_with_double not in effective_allowed
-            ):
-                dropped_tools.append(req_tool)
-
-        if dropped_tools:
-            # Store for the custom action to use
-            state.metrics["dropped_tools"] = dropped_tools
-            state.metrics["target_subagent"] = subagent_type
-            return True
-
-        return False
 
     return False

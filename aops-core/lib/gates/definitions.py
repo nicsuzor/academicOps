@@ -374,27 +374,4 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- Dispatch Fidelity ---
-    # Ensures that when a subagent is dispatched with a specific tool envelope,
-    # the requested tools do not exceed the subagent's allowed whitelist.
-    # Claude SDK silently intersects tools, which masks configuration bugs.
-    # This gate blocks the dispatch with a loud error naming the dropped tools.
-    GateConfig(
-        name="dispatch_fidelity",
-        description="Ensures dispatched subagents receive the exact tool envelope requested without silent reduction.",
-        initial_status=GateStatus.OPEN,
-        triggers=[],
-        policies=[
-            GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    tool_name_pattern="^(Agent|Task|invoke_agent|delegate_to_agent)$",
-                    custom_check="is_dispatch_fidelity_violated",
-                ),
-                verdict="block",
-                custom_action="prepare_dispatch_fidelity_error",
-                message_key=None,
-            ),
-        ],
-    ),
 ]
