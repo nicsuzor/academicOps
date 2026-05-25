@@ -15,6 +15,7 @@ TRANSFORMS = {
     "gemini_hooks": gemini_hooks,
 }
 
+
 def apply_transforms(content: str, transform_names: list[str], ctx: dict) -> str:
     """Apply a list of transforms to the content."""
     for name in transform_names:
