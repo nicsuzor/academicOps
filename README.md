@@ -310,7 +310,7 @@ export ENFORCER_GATE_MODE=block     # stricter compliance checking
 
 The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `ENFORCER_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `ENFORCER_TOOL_CALL_THRESHOLD`.
 
-**3. Per-directory overrides** — to change gate behaviour for a specific project, set the environment variables in that project directory's local CLI settings (e.g., for a project where you always want handover off).
+3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See GATES.md for technical details.
 
 For the detailed gate reference (state machines, triggers, debugging), see [`aops-core/GATES.md`](aops-core/GATES.md).
 
