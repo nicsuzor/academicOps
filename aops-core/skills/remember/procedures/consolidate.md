@@ -9,7 +9,6 @@ tags: [memory, workflow, consolidation]
 # Consolidation Procedure
 
 Transform episodic memory into durable semantic knowledge. Mirrors the cognitive process of semanticization — retrieval and reprocessing drive the transformation, not passive storage.
-
 For concrete examples of good and bad consolidation output, see [[quality-exemplars]].
 
 ## Pipeline
@@ -94,5 +93,5 @@ When /verify review of consolidation PRs reveals recurring quality issues, the /
 - [ ] Every new knowledge note has `sources:` in frontmatter
 - [ ] Confidence level matches evidence strength
 - [ ] Content understandable without reading source
-- [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` but content unchanged
+- [ ] Source episodic notes marked `consolidated: YYYY-MM-DD` and `status` advanced to `done` but content unchanged
 - [ ] Superseded memories deleted; notes filed in the right directory
