@@ -427,7 +427,16 @@ class TestIdaPerTurnLifecycle:
         )
 
     def test_ida_warn_mode_stop_is_approved(self, router, monkeypatch):
-        """IDA warn mode: Stop decision=block (to inject advisory)."""
+        """IDA warn mode: Stop uses decision=block to deliver advisory to agent.
+
+        Claude Code's Stop schema has no non-blocking channel that reaches the
+        agent's context. The only way to inject advisory text is via
+        decision="block" + reason. The internal verdict stays "warn" (so the
+        safety-net block counter is not tripped), but the output decision must
+        be "block" so the advisory lands in the agent's next turn.
+
+        See output_for_claude() and definitions.py IDA comment block.
+        """
         _set_gate_modes(monkeypatch, ida="warn")
         _reinit_gates_with_defaults()
 
@@ -438,15 +447,21 @@ class TestIdaPerTurnLifecycle:
         result = router._dispatch_gates(ctx, state)
         assert result is not None and result.verdict == GateVerdict.WARN
 
-        # Convert to Claude output
+        # Convert to Claude output — warn+context_injection upgrades to block
+        # so the advisory reaches the agent via the reason channel.
         from hooks.schemas import ClaudeStopHookOutput
 
         canonical = router._gate_result_to_canonical(result)
         output = router.output_for_claude(canonical, "Stop")
         assert isinstance(output, ClaudeStopHookOutput)
         assert output.decision == "block", (
-            f"IDA warn mode must block Stop (got decision={output.decision!r}) "
-            "so that the advisory lands in the agent's context."
+            f"IDA warn mode must use decision='block' to deliver advisory to agent "
+            f"(got decision={output.decision!r}). Claude Code Stop has no non-blocking "
+            "agent-visible channel; warn+context_injection upgrades to block+reason."
+        )
+        assert output.reason, (
+            "IDA warn mode must populate reason with the advisory text "
+            "so the agent sees it on the next turn"
         )
 
     def test_ida_block_mode_stop_is_blocked(self, router, monkeypatch):
