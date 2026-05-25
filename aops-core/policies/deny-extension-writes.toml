@@ -49,10 +49,10 @@ decision = "deny"
 priority = 100
 denyMessage = "Modifying Gemini settings.json is prohibited."
 
-# Protect shell access to extension files
+# Protect user environment state from destructive operations
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = ".*\\.gemini/extensions/.*"
-decision = "deny"
+commandRegex = "(?i).*\\b(rm|mv|truncate|>)\\s+.*\\.(gemini/extensions|claude/plugins|config/gemini).*"
+decision = "warn"
 priority = 100
-denyMessage = "Modification of Gemini extensions via shell is prohibited."
+warnMessage = "Destructive operations on user environment paths require explicit confirmation or an evidence trail."

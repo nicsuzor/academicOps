@@ -1,6 +1,7 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
+    SENTINEL_GATE_MODE,
 )
 
 from lib.gate_types import (
@@ -371,6 +372,37 @@ GATE_CONFIGS = [
                 verdict="warn",
                 message_key="ida.policy_message",
                 context_key="ida.reminder",
+            ),
+        ],
+    ),
+    # --- Sentinel ---
+    # Guards user environment from destructive operations. Blocks rm/mv/rmdir
+    # on protected paths (~/.gemini/extensions/, ~/.claude/plugins/, etc.)
+    # unless the user explicitly confirms. Stateless — fires on every matching
+    # PreToolUse regardless of session state. Named for its perimeter-guard role.
+    #
+    # Origin: GitHub issue #106 — agent deleted a working Gemini extension
+    # installation without evidence it was broken. No guardrail prevented
+    # the destructive operation.
+    #
+    # Gemini CLI side: covered by aops-core/policies/deny-extension-writes.toml
+    # (Gemini policy engine). This gate covers Claude Code (and any future
+    # hook-router client).
+    GateConfig(
+        name="sentinel",
+        description="Guards user environment from destructive operations on protected paths.",
+        initial_status=GateStatus.CLOSED,
+        triggers=[],
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern="^(Bash|run_shell_command|shell|execute_code)$",
+                    custom_check="is_destructive_env_op",
+                ),
+                verdict=SENTINEL_GATE_MODE,
+                message_key="sentinel.policy_message",
+                context_key="sentinel.policy_context",
             ),
         ],
     ),

@@ -108,6 +108,7 @@ def _set_gate_modes(
     enforcer: str = "block",
     hydration: str = "off",
     ida: str = "off",
+    sentinel: str = "block",
     enforcer_threshold: int = 50,
 ) -> None:
     """Stamp the requested gate modes onto the environment.
@@ -121,6 +122,7 @@ def _set_gate_modes(
     monkeypatch.setenv("ENFORCER_GATE_MODE", enforcer)
     monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
     monkeypatch.setenv("IDA_GATE_MODE", ida)
+    monkeypatch.setenv("SENTINEL_GATE_MODE", sentinel)
     monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(enforcer_threshold))
 
 
@@ -497,4 +499,159 @@ class TestIdaPerTurnLifecycle:
         assert state.gates["ida"].status == GateStatus.OPEN, (
             "IDA gate must open after firing in block mode so a retried Stop "
             "is not blocked again in the same turn"
+        )
+
+
+# ===========================================================================
+# SENTINEL GATE: destructive operations on user environment
+# ===========================================================================
+
+
+class TestSentinelBlocksDestructiveOps:
+    """Sentinel gate blocks destructive ops on protected user-environment paths.
+
+    Origin: GitHub issue #106 — agent deleted a working Gemini extension
+    installation (~/.gemini/extensions/) without evidence.
+
+    AC: destructive ops (rm, mv, etc.) on ~/.gemini/extensions/,
+    ~/.claude/plugins/cache/, or equivalent paths require explicit user
+    confirmation OR an evidence trail.
+    """
+
+    @pytest.mark.parametrize(
+        "command,should_block",
+        [
+            ("rm -rf ~/.gemini/extensions/aops-core/", True),
+            ("rm ~/.gemini/extensions/manifest.json", True),
+            ("mv ~/.claude/plugins/cache/ /tmp/backup/", True),
+            ("rm ~/.gemini/settings.json", True),
+            ("rmdir ~/.claude/plugins/old-plugin/", True),
+            ("unlink ~/.config/gemini/config.toml", True),
+            ("rm ~/.claude/settings.json", True),
+            # Safe operations — NOT blocked
+            ("cat ~/.gemini/extensions/manifest.json", False),
+            ("ls ~/.gemini/extensions/", False),
+            ("rm some-other-file.txt", False),
+            ("rm -rf /tmp/build/", False),
+            ("git status", False),
+            ("echo hello", False),
+        ],
+        ids=[
+            "rm-rf-gemini-ext",
+            "rm-gemini-ext-file",
+            "mv-claude-plugins",
+            "rm-gemini-settings",
+            "rmdir-claude-plugin",
+            "unlink-config-gemini",
+            "rm-claude-json",
+            "cat-gemini-ext-allowed",
+            "ls-gemini-ext-allowed",
+            "rm-other-file-allowed",
+            "rm-tmp-allowed",
+            "git-status-allowed",
+            "echo-allowed",
+        ],
+    )
+    def test_sentinel_verdict(self, router, monkeypatch, command, should_block):
+        _set_gate_modes(monkeypatch, sentinel="block")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-sentinel")
+        ctx = HookContext(
+            session_id="test-sentinel",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": command},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if should_block:
+            assert result is not None, f"Sentinel should block: {command!r}"
+            assert result.verdict == GateVerdict.DENY, (
+                f"Sentinel should DENY destructive op: {command!r}, got {result.verdict.value}"
+            )
+        else:
+            if result is not None:
+                assert result.verdict != GateVerdict.DENY, (
+                    f"Sentinel should NOT block: {command!r}, got {result.verdict.value}"
+                )
+
+    def test_sentinel_off_mode_allows_all(self, router, monkeypatch):
+        """SENTINEL_GATE_MODE=off disables the gate entirely."""
+        _set_gate_modes(monkeypatch, sentinel="off")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-sentinel-off")
+        ctx = HookContext(
+            session_id="test-sentinel-off",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "rm -rf ~/.gemini/extensions/"},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                "Sentinel with mode=off must not block destructive ops"
+            )
+
+    def test_sentinel_warn_mode(self, router, monkeypatch):
+        """SENTINEL_GATE_MODE=warn produces WARN instead of DENY."""
+        _set_gate_modes(monkeypatch, sentinel="warn")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-sentinel-warn")
+        ctx = HookContext(
+            session_id="test-sentinel-warn",
+            hook_event="PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "rm -rf ~/.gemini/extensions/aops-core/"},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None, "Sentinel warn mode should produce a result"
+        assert result.verdict == GateVerdict.WARN, (
+            f"Sentinel warn mode should WARN, got {result.verdict.value}"
+        )
+
+    def test_sentinel_non_bash_tool_allowed(self, router, monkeypatch):
+        """Non-shell tools are not inspected by sentinel."""
+        _set_gate_modes(monkeypatch, sentinel="block")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-sentinel-edit")
+        ctx = HookContext(
+            session_id="test-sentinel-edit",
+            hook_event="PreToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "~/.gemini/extensions/foo.txt"},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY, (
+                "Sentinel should only inspect Bash/shell tools, not Edit"
+            )
+
+    def test_sentinel_gemini_shell_tool(self, router, monkeypatch):
+        """Sentinel also catches Gemini's run_shell_command tool."""
+        _set_gate_modes(monkeypatch, sentinel="block")
+        _reinit_gates_with_defaults()
+
+        state = SessionState.create("test-sentinel-gemini")
+        ctx = HookContext(
+            session_id="test-sentinel-gemini",
+            hook_event="PreToolUse",
+            tool_name="run_shell_command",
+            tool_input={"command": "rm -rf ~/.gemini/extensions/"},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None and result.verdict == GateVerdict.DENY, (
+            "Sentinel must block destructive ops via Gemini's run_shell_command too"
         )

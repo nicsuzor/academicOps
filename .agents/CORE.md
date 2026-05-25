@@ -133,3 +133,11 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Resume hints.** As your last act before stopping or waiting for user input, output a one-line summary prefixed with "Next Action:" or "Resume Hint:". This powers the cross-session command center.
 
 See [[README.md]] for framework usage documentation.
+
+## Extension & Plugin Guardrails (ENFORCED)
+
+If you are investigating an issue where a Gemini extension or Claude plugin is "not working":
+
+- **Inspect the build/install pipeline first** (e.g., GitHub Actions, `build-extension.yml`, `Makefile`).
+- **Do not** start by inspecting or modifying the local installation paths (`~/.gemini/extensions/`, `~/.claude/plugins/`). Gemini extensions are installed from GitHub releases via the `gemini extensions install` command, not by manually copying files to local paths.
+- **Destructive Operations Block**: Destructive operations (`rm`, `mv`, etc.) on user environment paths (`~/.gemini/extensions/`, `~/.claude/plugins/cache/`, etc.) require explicit user confirmation OR a documented evidence trail. Never wipe a working environment directory on a guess.

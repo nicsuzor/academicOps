@@ -1,9 +1,21 @@
 import os
+import re
 
 from hooks.schemas import HookContext
 
 from lib.gate_types import GateState
 from lib.session_state import SessionState
+
+_DESTRUCTIVE_CMD_RE = re.compile(r"\b(rm|rmdir|mv|unlink)\b")
+_PROTECTED_PATH_RE = re.compile(
+    r"[~$/\\]*("
+    r"\.gemini/extensions"
+    r"|\.claude/plugins"
+    r"|\.claude/[^/]*\.json"
+    r"|\.gemini/settings\.json"
+    r"|\.config/gemini"
+    r")"
+)
 
 
 def check_custom_condition(
@@ -81,5 +93,15 @@ def check_custom_condition(
         # Warn mode delivers the advisory via system_message only so Stop is
         # not upgraded to decision=block by output_for_claude.
         return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
+
+    if name == "is_destructive_env_op":
+        if not isinstance(ctx.tool_input, dict):
+            return False
+        command = ctx.tool_input.get("command", "")
+        if not isinstance(command, str):
+            return False
+        if not _DESTRUCTIVE_CMD_RE.search(command):
+            return False
+        return bool(_PROTECTED_PATH_RE.search(command))
 
     return False

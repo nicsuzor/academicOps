@@ -220,6 +220,21 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Short user-facing message when Ida gate fires on Stop",
     ),
+    # --- Sentinel gate (user-environment protection) ---
+    "sentinel.policy_message": TemplateSpec(
+        name="sentinel.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="sentinel-policy-message.md",
+        required_vars=(),
+        description="Short message when sentinel blocks a destructive op on user environment",
+    ),
+    "sentinel.policy_context": TemplateSpec(
+        name="sentinel.policy_context",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="sentinel-policy-context.md",
+        required_vars=(),
+        description="Context injection when sentinel blocks a destructive op on user environment",
+    ),
 }
 
 

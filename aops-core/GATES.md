@@ -27,6 +27,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `qa`       | "Done" claimed without verification            | Stop while CLOSED      | `warn`  | open/closed |
 | `handover` | Exit without commit / task update / reflection | Stop while CLOSED      | `warn`  | open/closed |
 | `ida`      | Honesty / criterion-substitution at Stop       | Stop (once/turn)       | `warn`  | open/closed |
+| `sentinel` | Destructive ops on user environment paths      | PreToolUse (per-call)  | `block` | stateless   |
 
 Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py).
 
@@ -354,6 +355,54 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 | Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                  |
 | Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                            |
 | Mode `warn` but no visible reminder in agent context  | Cross-check `output_for_claude` behaviour: when verdict is `warn` and no other gate set a system_message, the reminder is copied into `stopReason` + `systemMessage` (router.py near "WARN inertia #338"). If neither field is set in the JSONL output, the merge logic dropped it — file a bug. |
+
+---
+
+## `sentinel` gate
+
+> **TL;DR.** Per-call guard on destructive operations targeting user environment paths. Blocks `rm`/`mv`/`rmdir`/`unlink` on `~/.gemini/extensions/`, `~/.claude/plugins/`, `~/.claude/*.json`, `~/.gemini/settings.json`, or `~/.config/gemini/` before the command runs. Stateless — fires on every matching PreToolUse regardless of session state. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[4]`). Mode key: `gates.sentinel`.
+
+### What is it
+
+The user-environment protection gate. Intercepts shell tool calls (Bash, run_shell_command, etc.) that would destructively modify protected user environment paths — extension installations, plugin caches, and configuration files. Requires the agent to provide evidence and get explicit user confirmation before proceeding.
+
+**Class of failure caught.** Agent deletes a working extension/plugin installation without evidence it was broken, then fails to reinstall from the correct source. Origin: GitHub issue #106 — agent ran `rm -rf ~/.gemini/extensions/aops-core/` on a hunch.
+
+**Gemini CLI side.** Covered separately by `aops-core/policies/deny-extension-writes.toml` (Gemini's built-in policy engine). The sentinel gate covers Claude Code and any future hook-router client.
+
+### Where it lives
+
+| Concern          | Path                                                                    |
+| ---------------- | ----------------------------------------------------------------------- |
+| Gate definition  | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[4]`)                |
+| Custom condition | `aops-core/lib/gates/custom_conditions.py` (`is_destructive_env_op`)    |
+| Templates        | `aops-core/hooks/templates/sentinel-{policy-message,policy-context}.md` |
+| Gemini policy    | `aops-core/policies/deny-extension-writes.toml` (separate enforcement)  |
+| Agent guidance   | `.agents/CORE.md` § Extension & Plugin Guardrails                       |
+
+### How it's configured
+
+- **Mode key**: `gates.sentinel` (`block` | `warn` | `off`). Default: `block`.
+- **Protected paths**: `~/.gemini/extensions/`, `~/.claude/plugins/`, `~/.claude/*.json`, `~/.gemini/settings.json`, `~/.config/gemini/`. Defined in `_PROTECTED_PATH_RE` in `custom_conditions.py`.
+- **Destructive commands**: `rm`, `rmdir`, `mv`, `unlink`. Defined in `_DESTRUCTIVE_CMD_RE` in `custom_conditions.py`.
+- **Tool scope**: `Bash`, `run_shell_command`, `shell`, `execute_code`. Non-shell tools (Edit, Write) are not covered — the Gemini TOML policy handles `write_file`/`replace` separately.
+
+### How to verify it's firing
+
+```bash
+# PreToolUse blocks where sentinel denied
+grep '"hook_event":"PreToolUse"' <hooks.jsonl> \
+  | jq -r 'select(.output.verdict=="deny" and (.output.system_message|test("Destructive|sentinel"))) | "\(.logged_at) \(.tool_name): \(.tool_input.command[:80])"'
+```
+
+### How to debug when it isn't
+
+| Failure mode             | Diagnostic                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Mode silently `off`      | `python -c "from hooks.gate_config import SENTINEL_GATE_MODE; print(SENTINEL_GATE_MODE)"`            |
+| Command not caught       | Check `_DESTRUCTIVE_CMD_RE` — only `rm`, `rmdir`, `mv`, `unlink` are matched. `cp`, `chmod` are not. |
+| Path not caught          | Check `_PROTECTED_PATH_RE` — paths must match the regex. Add new patterns if needed.                 |
+| Non-Bash tool not caught | By design — sentinel only intercepts shell tools. Edit/Write are covered by the Gemini TOML policy.  |
 
 ---
 
