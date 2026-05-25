@@ -350,6 +350,17 @@ def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | Non
     return PkbTask(data)
 
 
+_TERMINAL_STATUSES = frozenset(("done", "cancelled", "superseded", "archived"))
+
+
+def _open_children(task: "PkbTask") -> list[str]:
+    return [
+        str((c or {}).get("id", ""))
+        for c in task.children
+        if (c or {}).get("status") not in _TERMINAL_STATUSES
+    ]
+
+
 def complete_task(
     task_id: str | None = None,
     id: str | None = None,
@@ -365,15 +376,11 @@ def complete_task(
         raise ValueError("Task ID must be provided")
 
     task = get_task(final_id)
-    if task and getattr(task, "children", None):
-        open_children = []
-        for child in task.children:
-            if child.get("status") not in ("done", "cancelled", "superseded", "archived"):
-                open_children.append(child.get("id"))
-        if open_children:
+    if task and task.children:
+        if blocked := _open_children(task):
             raise ValueError(
                 f"Cannot complete task {final_id} because children are not in terminal states: "
-                f"{', '.join(map(str, open_children))}"
+                f"{', '.join(blocked)}"
             )
 
     params: dict[str, Any] = {"id": final_id}
@@ -532,15 +539,11 @@ def release_task(
     """
     if status in ("done", "cancelled", "superseded", "merge_ready"):
         task = get_task(task_id)
-        if task and getattr(task, "children", None):
-            open_children = []
-            for child in task.children:
-                if child.get("status") not in ("done", "cancelled", "superseded", "archived"):
-                    open_children.append(child.get("id"))
-            if open_children:
+        if task and task.children:
+            if blocked := _open_children(task):
                 raise ValueError(
                     f"Cannot close task {task_id} because children are not in terminal states: "
-                    f"{', '.join(map(str, open_children))}"
+                    f"{', '.join(blocked)}"
                 )
 
     if pr_url:
