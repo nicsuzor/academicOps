@@ -188,7 +188,7 @@ RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --gr
 # Pre-create .config so Docker COPY doesn't auto-create it — BuildKit applies
 # --chmod to auto-created intermediate dirs, producing 0644 (non-traversable)
 # via umask: 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY.
-RUN mkdir -p /home/worker/.config/ccstatusline
+RUN umask 000 && mkdir -p /home/worker/.config/ccstatusline
 COPY --chown=worker:worker --chmod=666 polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
