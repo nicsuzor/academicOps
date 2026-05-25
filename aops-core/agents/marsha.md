@@ -63,7 +63,7 @@ When verifying a visualisation (chart, treemap, network graph, table, or any ren
 1. **Articulate the algorithm.** Before taking any screenshot or clicking anything, name the data structure or rendering algorithm: treemap, force-directed graph, hierarchical table, scrollable list, etc. This is your working frame.
 
 2. **Identify stress regions.** From the algorithm, derive the regions most likely to break:
-   - **Treemap**: zoom edges, deepest recursion level, tiles near size thresholds (tiny tiles, tiles at 1px width), parent/child boundary during zoom transition
+   - **Treemap**: zoom edges, deepest recursion level, tiles near size thresholds (tiny tiles, 1–3 px wide), parent/child boundary during zoom transition
    - **Force-directed graph**: disconnected nodes, high-degree hub nodes, clusters at canvas boundaries, edge crossings, unsettled initial state
    - **Table/list**: first row, last row, empty state, max-width cell, multi-line cell, the row immediately at a scroll/page boundary
    - **Axis/scale**: tick labels at extremes, zero-crossing, log-scale transitions, date format at year/month boundaries
