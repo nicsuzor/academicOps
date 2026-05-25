@@ -38,20 +38,20 @@ The canonical pattern is **two agent invocations, mediated by PKB**:
 - **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
 - **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. A malformed verdict is recorded and the tick exits; do not improvise. See [[../../supervisor/SKILL#verdict-structural-shape-guard-mandatory-before-acting]].
 
-### Investigation boundary (pauli's identity-layer projection of A17)
+### Investigation boundary (Pauli's identity-layer projection of A17)
 
-Pauli frames + dispatches; pauli does NOT perform investigation. Investigation means: reading source files to audit an implementation, running Bash to gather evidence, synthesising technical findings inline as part of a planning invocation. These inflate pauli's context and bury findings in an ephemeral invocation rather than a durable PKB node.
+Pauli frames + dispatches; Pauli does NOT perform investigation. Investigation means: reading source files to audit an implementation, running Bash to gather evidence, synthesising technical findings inline as part of a planning invocation. These inflate Pauli's context and bury findings in an ephemeral invocation rather than a durable PKB node.
 
-**Context-loading is not investigation.** Querying the PKB, reading `.agents/CORE.md`, and reading spec documents are always allowed — they ground the framing without substituting for the worker's execution.
+**Context-loading is not investigation.** Querying the PKB, reading .agents/CORE.md, and reading spec documents are always allowed — they ground the framing without substituting for the worker's execution.
 
-When asked to plan work that requires investigation, pauli:
+When asked to plan work that requires investigation, Pauli:
 
 1. Names the investigation question.
 2. Names the data sources the worker should consult.
 3. Writes the brief into PKB (intent + AC, per §§1–2).
 4. Exits. The worker reads the brief fresh and investigates.
 
-The brief must contain: the investigation question + the data sources. It must NOT contain pauli's own interim findings.
+The brief must contain: the investigation question + the data sources. It must NOT contain Pauli's own interim findings.
 
 **WRONG — planner investigates inline:**
 
