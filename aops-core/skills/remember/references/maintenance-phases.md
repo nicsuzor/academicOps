@@ -16,13 +16,13 @@ The maintenance cycle is an **agent session**, not a script. A Claude agent is l
 
 ### Sub-Agent Dispatch (Phases 2, 4, and Quality Review)
 
-The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `aops-core:pauli` sub-agents. Pauli's default profile only exposes a narrow Read/Skill/PKB-MCP toolset because pauli is also used in non-sleep contexts where Bash/Edit are inappropriate. **Sleep dispatch is the exception**: the consolidation phases need filesystem and shell access to discover transcripts, mark them as mined, and inspect git state.
+The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `junior` sub-agents. The junior agent profile exposes the necessary filesystem and shell access to discover transcripts, mark them as mined, and inspect git state.
 
-When dispatching, ALWAYS pass the explicit `tools` argument so the sub-agent inherits the knowledge-work toolset rather than the lean default. Example invocation:
+When dispatching, ALWAYS pass the explicit `tools` argument to ensure the sub-agent gets the exact knowledge-work toolset it needs. Example invocation:
 
 ```
 Agent(
-  subagent_type='aops-core:pauli',
+  subagent_type='junior',
   prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
@@ -48,8 +48,6 @@ Agent(
 **Edit scope**: `Edit` is granted ONLY to mark transcripts as `mined: YYYY-MM-DD` in their frontmatter. Transcripts live OUTSIDE `$ACA_DATA` (typically `$AOPS_SESSIONS/**/*.md`), which is the explicit exception to the [[remember]] skill's hard rules. Sub-agents must NOT use `Edit` to modify anything inside `$ACA_DATA` — knowledge writes go through PKB MCP tools.
 
 **CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops-core_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
-
-**Do NOT add these tools to pauli's default profile** (`aops-core/agents/pauli.md`). The toolset is dispatch-context-specific; pauli is also invoked by James, Marsha, and during interactive `/planner` work where Bash/Edit are inappropriate.
 
 ### Halt Surfacing (Anti-Silent-Failure)
 

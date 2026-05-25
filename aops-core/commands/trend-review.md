@@ -27,11 +27,11 @@ permalink: commands/trend-review
 
 ## Dispatch
 
-Delegate to pauli with the extended tool set the survey skill requires:
+Delegate to junior with the extended tool set the survey skill requires:
 
 ```python
 Agent(
-  subagent_type='aops-core:pauli',
+  subagent_type='junior',
   prompt="""Read aops-core/skills/survey/SKILL.md. Execute in trend mode.
 
 Context from user: <paste the review question and any parameters — component to assess, time window, success criteria, specific concern>
@@ -52,7 +52,7 @@ Follow the trend mode workflow exactly: define question → identify data source
 )
 ```
 
-The dispatched pauli agent owns the session from here. The main context is clean.
+The dispatched junior agent owns the session from here. The main context is clean.
 
 ## Arguments
 
