@@ -590,7 +590,7 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
     # 2026-05-08 found 100% of emitted handovers used `##### Session Handover`
     # while this regex only matched `###`, rendering them all parser-invisible.
     _SECTION_END = r"(?=\n#{1,6}\s|\n---|\Z)"
-    pattern = rf"#{{2,6}} Session Handover[^\S\n]*\n(.*?){_SECTION_END}"
+    pattern = rf"#{{2,6}} (?:Session|Emergency) Handover[^\S\n]*\n(.*?){_SECTION_END}"
     match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
     if not match:
         return None
@@ -601,11 +601,11 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
     # Extract fields with regex
     field_map = {
         "session_id": r"- \*\*Session ID\*\*: (.*)",
-        "task_id": r"- \*\*Primary Task\*\*: ([^\s(]+)",
+        "task_id": r"- \*\*(?:Primary|Resume) Task\*\*: ([^\s(]+)",
         "pr_url": r"- \*\*PR\*\*: (.*)",
         "branch": r"- \*\*Branch\*\*: (.*)",
         "issue_url": r"- \*\*Issue\*\*: (.*)",
-        "next_step": r"- \*\*Follow-ups\*\*: (.*)",
+        "next_step": r"- \*\*(?:Follow-ups|Next)\*\*: (.*)",
         "summary": r"- \*\*Summary\*\*: (.*)",
     }
 

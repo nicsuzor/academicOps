@@ -453,6 +453,64 @@ class TestSessionHandoverHeadingLevels:
         assert result is None
 
 
+class TestEmergencyHandoverParsing:
+    """Regression: /dump emits '##### Emergency Handover' with slightly different
+    field names (Resume Task, Next) instead of (Primary Task, Follow-ups).
+    The parser must extract these into the same schema fields.
+    """
+
+    _BODY = """\
+
+- **Session ID**: `20260525-1040-aa69d3eb`
+- **Resume Task**: `aops-40f442ab` (Pauli strategic-context injection)
+- **Branch**: `polecat/aops-40f442ab` (uncommitted: no)
+- **Next**: Refresh GitHub tokens and push
+
+### Hook: Stop ✓
+"""
+
+    def test_emergency_handover_at_h5(self):
+        text = "##### Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None, "##### Emergency Handover must parse — this is the /dump format"
+        assert result["session_id"] == "`20260525-1040-aa69d3eb`"
+        assert result["task_id"] == "`aops-40f442ab`"
+        assert result["next_step"] == "Refresh GitHub tokens and push"
+
+    def test_emergency_handover_at_h3(self):
+        text = "### Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+
+    def test_emergency_handover_at_h2(self):
+        text = "## Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+
+    def test_emergency_h1_still_rejected(self):
+        text = "# Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is None
+
+    def test_emergency_handover_maps_to_reflection_schema(self):
+        """Emergency handover result has the same schema as Session Handover."""
+        text = "##### Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+        assert result["outcome"] == "success"
+        assert result["handover"] is True
+        assert result["branch"] == "`polecat/aops-40f442ab` (uncommitted: no)"
+
+    def test_emergency_handover_without_summary_still_parses(self):
+        """Emergency Handover from /dump has no Summary field — parser must
+        still return a valid result with empty summary."""
+        text = "##### Emergency Handover" + self._BODY
+        result = parse_session_handover(text)
+        assert result is not None
+        # summary defaults to empty string when not present
+        assert result["summary"] == ""
+
+
 class TestThreadPickup:
     def test_parses_thread_pickup(self):
         from lib.transcript_parser import parse_thread_pickup_section
