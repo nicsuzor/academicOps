@@ -4037,8 +4037,9 @@ def crew(
         final_cmd = docker_cmd.cmd
     elif interactive:
         # Interactive shell: wrap in Docker container (same as Claude path)
-        # Drop CI=true so manually run CLIs don't force headless mode.
+        # Drop CI=true and NONINTERACTIVE so manually run CLIs don't force headless mode.
         env.pop("CI", None)
+        env.pop("NONINTERACTIVE", None)
         docker_cmd = _build_docker_cmd(
             "shell",
             work_dir,
@@ -4747,6 +4748,7 @@ def run(
         # sessions must stay interactive.
         if interactive:
             env.pop("CI", None)
+            env.pop("NONINTERACTIVE", None)
 
         # Wrap Gemini in our Docker container (same as Claude path).
         docker_cmd = _build_docker_cmd(

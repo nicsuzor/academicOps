@@ -42,6 +42,7 @@ def test_crew_interactive_pops_ci():
             or mock_build_docker_cmd.call_args.args[2]
         )
         assert "CI" not in env_arg, "CI was not popped from env in interactive crew"
+        assert "NONINTERACTIVE" not in env_arg, "NONINTERACTIVE was not popped from env in interactive crew"
 
 
 def test_run_gemini_interactive_pops_ci():
@@ -63,14 +64,10 @@ def test_run_gemini_interactive_pops_ci():
         mock_manager.projects = {"aops": {"repo": "test"}}
         mock_manager.home_dir = Path("/tmp/home")
 
-        ctx = run.make_context("run", ["--model", "gemini", "-i", "-t", "task-123", "-p", "aops"])
-        ctx.obj = {"home": Path("/tmp/home"), "verbose": False}
-
         mock_task = MagicMock()
         mock_task.id = "task-123"
         mock_task.project = "aops"
         mock_manager.get_task.return_value = mock_task
-        mock_manager.projects = {"aops": {"repo": "test"}}
         mock_manager.resolve_project_alias.return_value = "aops"
         mock_manager.checkout_repo.return_value = (Path("/tmp/home"), "branch")
 
@@ -89,3 +86,4 @@ def test_run_gemini_interactive_pops_ci():
             or mock_build_docker_cmd.call_args.args[2]
         )
         assert "CI" not in env_arg, "CI was not popped from env in interactive run"
+        assert "NONINTERACTIVE" not in env_arg, "NONINTERACTIVE was not popped from env in interactive run"
