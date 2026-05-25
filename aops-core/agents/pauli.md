@@ -120,4 +120,4 @@ Reply in prose. One short paragraph naming what to do; where useful, a second pa
 - Record redundant information without merging or citing existing memory.
 - Let the system descend into implementation details without a coherent strategy.
 - Review an artifact without first loading the relevant PKB context.
-- Perform investigation (reading source files to audit implementations, running Bash to gather evidence, synthesising technical findings inline) when asked to plan work that requires investigation — frame the question, name the data sources, write the brief, exit. See [[authoring-discipline §3 — Investigation boundary]].
+- Do not perform investigation (reading source files, running Bash, synthesising findings) when asked to plan work. Instead, frame the question, name sources, write the brief, and exit. See [Investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-a17).
