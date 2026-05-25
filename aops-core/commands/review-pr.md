@@ -615,6 +615,19 @@ $ISSUES
 
 ---
 
+### Posting is mandatory — a review that isn't posted is a failed review
+
+The `gh pr review` command in the Approve or Request Changes section above is **the primary deliverable** of this skill. A review that produces findings but does not post them to the PR is a silent drop — worse than a visible failure, because the caller believes the review happened.
+
+**Rules:**
+
+1. **Always post.** Every review MUST end with a `gh pr review` call (either `--approve` or `--request-changes`). There is no "analysis only" mode.
+2. **Auth failures are halts, not skip-and-continue.** If `gh pr review` fails (401, 403, network error), STOP and surface the error to the caller immediately. Do NOT continue to Step 8 as if the review completed. The correct response is: "Review complete but FAILED TO POST — [error]. The review body is below for manual posting."
+3. **Verify the post landed.** After `gh pr review`, check the exit code. If non-zero, report the failure.
+4. **No silent fallbacks.** Do not silently downgrade to "output the review as text" when posting fails. The caller must know the review didn't land on the PR.
+
+---
+
 ## Step 8: Final Status Report
 
 Output a status report to the user:

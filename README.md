@@ -235,11 +235,11 @@ command claude plugin marketplace add nicsuzor/aops
 
 ## Configuration
 
-The framework is designed to work with minimal configuration. Default values are resolved in order:
+The framework works out of the box after installation. Sensible defaults apply — all quality gates warn (agents see reminders without being blocked) and project repos are auto-discovered by convention.
 
-1. Environment variables (set in your shell or `.env.local`)
-2. `~/.env.local` file
-3. Framework defaults (e.g., local `pkb` binary for MCP)
+### Environment variables
+
+Set these in your shell profile (`~/.zshenv`, `~/.bashrc`, or equivalent):
 
 | Variable              | Purpose                                                | Default                         |
 | --------------------- | ------------------------------------------------------ | ------------------------------- |
@@ -249,10 +249,7 @@ The framework is designed to work with minimal configuration. Default values are
 | `PKB_MCP_URL`         | Endpoint for the PKB MCP server                        | (local stdio fallback)          |
 | `AOPS_POLECAT_CONFIG` | Explicit path to `polecat.yaml` (skips env resolution) | (resolved via `$AOPS_SESSIONS`) |
 
-The project registry is the checked-in `$AOPS_SESSIONS/polecat.yaml`. Path
-resolution is convention-based (`$AOPS_SRC_DIR/<repo>`); for off-convention
-repos, add a `paths:` entry to `$POLECAT_HOME/local.yaml` (the only
-machine-local config file polecat reads):
+The project registry lives in `$AOPS_SESSIONS/polecat.yaml`. Path resolution is convention-based (`$AOPS_SRC_DIR/<repo>`); for off-convention repos, add a `paths:` entry to `$POLECAT_HOME/local.yaml`:
 
 ```yaml
 # $POLECAT_HOME/local.yaml
@@ -261,11 +258,61 @@ paths:
   myproject: /opt/work/myproject
 ```
 
-To override the default MCP server (e.g., if running a remote server), add to `~/.env.local`:
+### Gates (quality checks)
+
+Gates are runtime quality checks that fire during sessions. They catch common failure modes — exiting without committing, claiming "done" without verification, scope drift in long sessions.
+
+| Gate        | What it catches                                             | Default |
+| ----------- | ----------------------------------------------------------- | ------- |
+| `ida`       | Honesty / criterion-substitution check before stopping      | `warn`  |
+| `handover`  | Exiting without committing, updating tasks, or reflecting   | `warn`  |
+| `qa`        | Claiming "done" without running verification                | `warn`  |
+| `enforcer`  | Scope drift / compliance in long-running sessions           | `warn`  |
+| `hydration` | Context injection on user prompts (reserved, not yet gated) | `off`   |
+
+Each gate runs in one of three modes: **`warn`** (reminds the agent but doesn't block), **`block`** (stops the agent until the condition is met), or **`off`** (disabled).
+
+#### How to configure gates
+
+There are three ways to configure gates, depending on how you run your sessions:
+
+**1. `polecat.yaml`** — for polecat-managed sessions (autonomous workers and crew). This is the primary configuration file:
+
+```yaml
+# $AOPS_SESSIONS/polecat.yaml
+session_defaults:
+  gates:
+    handover: warn      # warn | block | off
+    qa: warn
+    enforcer: warn
+    ida: warn
+    hydration: off
+    enforcer_threshold: 50   # write ops between enforcer checks
+
+# Override per session type
+run_defaults:             # autonomous polecat workers
+  gates:
+    handover: block       # workers must hand over before exiting
+    enforcer: block
+    enforcer_threshold: 30
+
+crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
+```
+
+See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema.
+
+**2. Environment variables** — for direct CLI sessions (Claude Code or Gemini on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
 
 ```bash
-export PKB_MCP_URL="http://localhost:3001/mcp"
+export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
+export ENFORCER_GATE_MODE=block     # stricter compliance checking
 ```
+
+The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `ENFORCER_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `ENFORCER_TOOL_CALL_THRESHOLD`.
+
+3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See GATES.md for technical details.
+
+For the detailed gate reference (state machines, triggers, debugging), see [`aops-core/GATES.md`](aops-core/GATES.md).
 
 ## Development setup
 
