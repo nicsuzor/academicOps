@@ -475,11 +475,12 @@ Order: consolidate-duplicate → evidence-bump → close-stale → defer → sin
 - **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
 - Stamp `triaged-*` label after each confirmed action.
 
-### 5. Append cycle log to loop epic
+### 5. Create per-cycle datestamped instance
 
 ```
-mcp__pkb__get_task(id="epic-a0523a25")  # read body for schema
-mcp__pkb__append(id="epic-a0523a25", content="<cycle entry per schema>")
+# The automation template creates a new task instance for this cycle
+instance = mcp__pkb__claim_task(id="epic-a0523a25")
+mcp__pkb__append(id=instance.id, content="<cycle entry per schema>")
 ```
 
 Log must include: cursor=label-based; batch size; issues processed; per-disposition lists; open count after; triaged-* totals; stopping condition met (y/n with evidence).
