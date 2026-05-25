@@ -50,5 +50,10 @@ if [ -d /tmp/staging ]; then
     done < <(find /tmp/staging -type f)
 fi
 
+# Belt-and-suspenders: ensure .config is traversable for multi-UID environments.
+# Containers built from images predating the Dockerfile umask fix may have
+# .config at 0644 (non-traversable); this self-heals them on startup.
+chmod 777 "$HOME/.config" 2>/dev/null || true
+
 # Execute the agent command (e.g., claude, gemini, bash).
 exec "$@"
