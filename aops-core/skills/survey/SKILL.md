@@ -478,9 +478,11 @@ Order: consolidate-duplicate → evidence-bump → close-stale → defer → sin
 ### 5. Create per-cycle datestamped instance
 
 ```
-# The automation template creates a new task instance for this cycle
-instance = mcp__pkb__claim_task(id="epic-a0523a25")
-mcp__pkb__append(id=instance.id, content="<cycle entry per schema>")
+# Read template for schema; create a fresh datestamped instance for this cycle
+template = mcp__pkb__get_task(id="epic-a0523a25")
+cycle_id = "epic-a0523a25-" + YYYYMMDD + "-" + HHMM  # e.g. epic-a0523a25-20260125-1430
+instance = mcp__pkb__create_task(id=cycle_id, body=template.body)
+mcp__pkb__append(id=cycle_id, content="<cycle entry per schema>")
 ```
 
 Log must include: cursor=label-based; batch size; issues processed; per-disposition lists; open count after; triaged-* totals; stopping condition met (y/n with evidence).
