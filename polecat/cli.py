@@ -4057,6 +4057,9 @@ def crew(
         final_cmd = docker_cmd.cmd
     elif interactive:
         # Interactive shell: wrap in Docker container (same as Claude path)
+        # Drop CI=true and NONINTERACTIVE so manually run CLIs don't force headless mode.
+        env.pop("CI", None)
+        env.pop("NONINTERACTIVE", None)
         docker_cmd = _build_docker_cmd(
             "shell",
             work_dir,
@@ -4761,6 +4764,14 @@ def run(
         gemini_session_id = f"{task_hash}-gemini"
         env["GEMINI_SESSION_ID"] = gemini_session_id
         env["AOPS_SESSION_ID"] = gemini_session_id
+
+        # Gemini's isHeadlessMode() forces non-interactive mode when CI=true,
+        # even with a TTY attached. _make_worker_env sets CI=true to suppress
+        # prompts in gh/git, but that breaks gemini's interactive REPL — run
+        # sessions must stay interactive.
+        if interactive:
+            env.pop("CI", None)
+            env.pop("NONINTERACTIVE", None)
 
         # Wrap Gemini in our Docker container (same as Claude path).
         docker_cmd = _build_docker_cmd(
