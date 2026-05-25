@@ -26,6 +26,7 @@ VALID_GEMINI_EVENTS = (
     "SessionEnd",
 )
 
+
 def gemini_hooks(content: str, ctx: dict) -> str:
     try:
         config = json.loads(content)
