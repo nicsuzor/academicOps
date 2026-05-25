@@ -33,7 +33,7 @@ def router():
 
 
 def test_handover_latch_bash_after_dump(router):
-    """Verify that Bash after end_session does not re-close the gate (aops-2283a8b0)."""
+    """Verify that Bash after end_session does not re-close the gate (sticky_until)."""
     session_id = "test-latch"
     state = SessionState.create(session_id)
 
@@ -47,7 +47,7 @@ def test_handover_latch_bash_after_dump(router):
     ctx_dump.subagent_type = "end_session"
     router._dispatch_gates(ctx_dump, state)
     assert state.gates["handover"].status == GateStatus.OPEN
-    assert state.state.get("handover_skill_invoked") is True
+    assert state.gates["handover"].sticky is True
 
     # 2. Run Bash
     ctx_bash = HookContext(
@@ -58,13 +58,17 @@ def test_handover_latch_bash_after_dump(router):
     )
     router._dispatch_gates(ctx_bash, state)
 
-    # Gate should stay OPEN
+    # Gate should stay OPEN (sticky suppresses close)
     assert state.gates["handover"].status == GateStatus.OPEN
-    assert state.state.get("handover_skill_invoked") is True
+    assert state.gates["handover"].sticky is True
 
 
 def test_handover_latch_edit_after_dump(router):
-    """Verify that Edit after end_session DOES re-close the gate (aops-2283a8b0)."""
+    """Verify that Edit after end_session does NOT re-close the gate (sticky_until).
+
+    With sticky_until, the gate stays open until UserPromptSubmit regardless
+    of what tools are used — the next UPS re-arms the gate for the new turn.
+    """
     session_id = "test-reclose"
     state = SessionState.create(session_id)
 
@@ -79,7 +83,7 @@ def test_handover_latch_edit_after_dump(router):
     router._dispatch_gates(ctx_dump, state)
     assert state.gates["handover"].status == GateStatus.OPEN
 
-    # 2. Run Edit
+    # 2. Run Edit — sticky suppresses close
     ctx_edit = HookContext(
         session_id=session_id,
         hook_event="PostToolUse",
@@ -88,9 +92,40 @@ def test_handover_latch_edit_after_dump(router):
     )
     router._dispatch_gates(ctx_edit, state)
 
-    # Gate should CLOSE
+    # Gate stays OPEN while sticky
+    assert state.gates["handover"].status == GateStatus.OPEN
+    assert state.gates["handover"].sticky is True
+
+
+def test_handover_unsticks_on_user_prompt(router):
+    """Verify that UserPromptSubmit unsticks and re-arms the handover gate."""
+    session_id = "test-unstick"
+    state = SessionState.create(session_id)
+
+    # 1. Open gate with end_session
+    ctx_dump = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="activate_skill",
+        tool_input={"skill": "end_session"},
+    )
+    ctx_dump.subagent_type = "end_session"
+    router._dispatch_gates(ctx_dump, state)
+    assert state.gates["handover"].status == GateStatus.OPEN
+    assert state.gates["handover"].sticky is True
+
+    # 2. UserPromptSubmit unsticks and re-arms
+    router._dispatch_gates(
+        HookContext(
+            session_id=session_id,
+            hook_event="UserPromptSubmit",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    assert state.gates["handover"].sticky is False
     assert state.gates["handover"].status == GateStatus.CLOSED
-    assert state.state.get("handover_skill_invoked") is False
 
 
 def test_bash_no_task_does_not_close_gate(router):
