@@ -296,10 +296,10 @@ class TestBuildDockerCmd:
         assert has_stdin, "stdin flag must be present (either -i or -it)"
         assert has_tty, "TTY flag must be present (either -t or -it)"
 
-    def test_headless_mode_has_stdin_no_tty(self):
-        """Headless mode gets -i (stdin) but not -t (no TTY)."""
+    def test_headless_mode_no_stdin_no_tty(self):
+        """Headless mode gets neither -i (stdin) nor -t (TTY)."""
         cmd = self._build()
-        assert "-i" in cmd
+        assert "-i" not in cmd
         assert "-t" not in cmd
 
     def test_mounts_docker_socket_when_present(self, tmp_path):
