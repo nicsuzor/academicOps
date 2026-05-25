@@ -28,9 +28,9 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 - P#99 (Delegated Authority Only): Does the new skill/agent/workflow stay within its granted authority?
 - P#31 (Acceptance Criteria Own Success): Does the PR define how to know if the change worked?
 - Does the change weaken any existing enforcement? If axioms or gates are touched, is the intent to relax or strengthen?
-- **Enforcement-change CBA** (`.agents/ENFORCEMENT-MAP.md`): if the PR adds/modifies/removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body must contain the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (≥3 friction recurrences), 4 (ongoing cost), or 5 (reversibility).
+- **Enforcement-change CBA** (enforcement map, repo-level): if the PR adds/modifies/removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body must contain the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (≥3 friction recurrences), 4 (ongoing cost), or 5 (reversibility).
 - **A7 Edge 3 (script abdication)**: did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? An agent invocation may be the more accurate (and sometimes cheaper) path; recommend it where applicable.
-- **PR Review Detection Rules** (see `aops-core/agents/rbg.md` → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
+- **PR Review Detection Rules** (see agents/rbg.md → "PR Review Detection Rules"): run all four rules — criterion-substitution, scope-awareness, unverified-keystone disclosure, sensitive-data scan — and report a per-rule verdict plus the overall verdict in the required `## Verdict` block.
 
 **Pauli must check:**
 
@@ -39,7 +39,7 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 - Negative space: what edge cases in framework behavior is this not handling?
 - Systems view: how does this interact with the hook system, the gate system, the skill discovery system?
 - Does this increase or decrease framework complexity? Is the complexity earned?
-- **Pyramid placement** (`.agents/ENFORCEMENT-MAP.md` cost ladder): did the PR escalate to a more expensive level (L3+) when a cheaper level (L1 propagation to a specific surface) would have sufficed? Most over-deference recurrences are L1 propagation failures, not L3 mechanism gaps.
+- **Pyramid placement** (enforcement map cost ladder, repo-level): did the PR escalate to a more expensive level (L3+) when a cheaper level (L1 propagation to a specific surface) would have sufficed? Most over-deference recurrences are L1 propagation failures, not L3 mechanism gaps.
 
 **Marsha (when commissioned) must:**
 

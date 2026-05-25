@@ -243,7 +243,7 @@ The single canonical definition of priority. Other framework documents MUST link
 
 ## Severity Ladder (SEV0–SEV4)
 
-Severity is the SRE-style impact ladder for `type: target` nodes — the terminal obligations the rest of the graph protects. It is **not** a generic importance signal for tasks. The single canonical scale; framework documents MUST link here rather than redefine these levels locally. See [[../../../../projects/aops/specs/pkb/multi-parent.md]] §1.2 for the full target-node specification.
+Severity is the SRE-style impact ladder for `type: target` nodes — the terminal obligations the rest of the graph protects. It is **not** a generic importance signal for tasks. The single canonical scale; framework documents MUST link here rather than redefine these levels locally. See the multi-parent spec (brain PKB) §1.2 for the full target-node specification.
 
 | Level | Name       | Example                                                                                          |
 | ----- | ---------- | ------------------------------------------------------------------------------------------------ |
