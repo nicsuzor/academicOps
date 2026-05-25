@@ -130,13 +130,13 @@ Which mechanism(s) catch a given axiom, what they do when they fire, where in th
 | Supervisor                  | plan-review gate                     | block      | post-decomp    | active                                                                                                                       |
 | H91 Deadline                | HEURISTICS.md                        | inject     | always-on      | active                                                                                                                       |
 | H91 Deadline                | `rbg` review                         | advisory   | review-time    | active                                                                                                                       |
-| R1 Judgment-call bounding   | `rbg` verdict-composition rules (R1) | advisory   | review-time    | active — "judgment call" valid only for genuine false-positives; real violation → must issue `REVISE` (issue #811)           |
-| R2 Class-instance param     | `rbg` verdict-composition rules (R2) | advisory   | review-time    | active — spot-check of one instance does not clear the class; enumerate all members before verdict (issue #794)              |
-| R3 Auto-fix process arts    | `rbg` verdict-composition rules (R3) | advisory   | review-time    | active — writing to ENFORCEMENT-MAP/design records/governance artifacts is forbidden; flag-and-return only (issue #901)      |
-| R4 Named-workflow narrowing | `rbg` verdict-composition rules (R4) | advisory   | review-time    | active — executed workflow must be superset of invoked workflow; subset → `REVISE` citing A1/A3 (issue #886)                 |
-| R5 Bot-identity collision   | PR pipeline design                   | advisory   | review-time    | active — merge-prep `APPROVED` must not silently override rbg `CHANGES_REQUESTED` under shared bot identity (issue #917)     |
-| R6 Verdict schema complete  | `rbg`/pauli verdict-composition (R6) | advisory   | review-time    | active — autonomous dispositions (close-superseded, re-decompose, discussion-PR) must be used; not `halt` (issue #956)       |
-| R7 Polecat-capability frame | pauli/supervisor dispatch rules (R7) | advisory   | pre-dispatch   | active — pre-dispatch halt on "polecat might pick wrong" is forbidden when polecat can read+investigate+file PR (issue #957) |
+| R1 Judgment-call bounding   | `rbg` review                         | advisory   | review-time    | active — "judgment call" valid only for genuine false-positives; real violation → must issue `REVISE` (issue #811)           |
+| R2 Class-instance param     | `rbg` review                         | advisory   | review-time    | active — spot-check of one instance does not clear the class; enumerate all members before verdict (issue #794)              |
+| R3 Auto-fix process arts    | `rbg` review                         | advisory   | review-time    | active — writing to ENFORCEMENT-MAP/design records/governance artifacts is forbidden; flag-and-return only (issue #901)      |
+| R4 Named-workflow narrowing | `rbg` review                         | advisory   | review-time    | active — executed workflow must be superset of invoked workflow; subset → `REVISE` citing A1/A3 (issue #886)                 |
+| R5 Bot-identity collision   | `rbg` review                         | advisory   | review-time    | active — merge-prep `APPROVED` must not silently override rbg `CHANGES_REQUESTED` under shared bot identity (issue #917)     |
+| R6 Verdict schema complete  | `rbg` review                         | advisory   | review-time    | active — autonomous dispositions (close-superseded, re-decompose, discussion-PR) must be used; not `halt` (issue #956)       |
+| R7 Polecat-capability frame | `rbg` review                         | advisory   | review-time    | active — pre-dispatch halt on "polecat might pick wrong" is forbidden when polecat can read+investigate+file PR (issue #957) |
 
 ### Known gaps (axiom-keyed view)
 

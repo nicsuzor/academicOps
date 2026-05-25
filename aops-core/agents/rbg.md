@@ -103,7 +103,7 @@ Seven recurrent failure modes that produce false verdicts. Each rule is a behavi
 
 **Worked example (recurrence):** PR #917's pipeline ran rbg first (posted `CHANGES_REQUESTED`), then ran merge-prep. Both ran as `github-actions[bot]`. GitHub's data model treats the second review from the same actor as a replacement, not an addition. Merge-prep's `APPROVED` erased the `CHANGES_REQUESTED`. The PR appeared reviewer-approved with no unresolved reviews. Branch protection passed. The defect RBG had flagged was merged without resolution.
 
-**Test:** On any PR reviewed by both merge-prep and rbg under the same bot identity, the merge-prep step must check for a prior `CHANGES_REQUESTED` before posting. If it posts `APPROVED` anyway, that is an A7 violation in the pipeline design.
+**Test:** When reviewing a PR, check whether merge-prep and rbg share a bot identity. If a prior `CHANGES_REQUESTED` review from rbg was replaced by a subsequent `APPROVED` from the same actor (merge-prep), flag it as an A7 violation: the pipeline design allowed merge-prep's approval to silently erase a standing rbg objection.
 
 ---
 
@@ -123,7 +123,7 @@ Seven recurrent failure modes that produce false verdicts. Each rule is a behavi
 
 **Worked example (recurrence):** Pauli received a decomposed subtask that required choosing between two implementation approaches. Both approaches were documented in in-repo specs with tradeoffs. Pauli issued `halt` rather than dispatching to a polecat, reasoning that "the polecat might pick the wrong approach." The polecat (a Claude Sonnet agent) had full tool access, could read both specs, could file a discussion PR if neither was clearly superior, and had done equivalent tradeoff analysis in prior sessions. The halt blocked the queue for a human decision that the polecat was fully equipped to make or escalate.
 
-**Test:** When considering whether to halt before polecat dispatch, ask: can the polecat read the relevant files and determine the right path, or file a discussion PR if not? If yes, dispatch — do not halt.
+**Test:** When reviewing a verdict or workflow trace that halted before polecat dispatch, ask: did the agent provide evidence that the polecat could not investigate? If the polecat had tool access to read relevant specs and file a discussion PR if ambiguous, the halt was an A8/A7 violation — flag it as `REVISE`.
 
 ---
 
