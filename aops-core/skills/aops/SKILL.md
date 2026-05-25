@@ -166,19 +166,20 @@ Only move to full automation once all parts work individually AND the full proce
 
 Route your task to the appropriate workflow:
 
-| If you need to...                                                   | Use workflow                                                        |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **Add a hook, skill, command, or agent**                            | [01-design-new-component](workflows/01-design-new-component.md)     |
-| **Fix something broken in the framework**                           | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)   |
-| **Test a new approach or optimization**                             | [03-experiment-design](workflows/03-experiment-design.md)           |
-| **Check for bloat or trim the framework**                           | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)   |
-| **Build a significant new feature**                                 | [05-feature-development](workflows/05-feature-development.md)       |
-| **Write or update a specification**                                 | [06-develop-specification](workflows/06-develop-specification.md)   |
-| **Record a lesson or observation**                                  | [07-learning-log](workflows/07-learning-log.md)                     |
-| **Unstick a blocked decision**                                      | [08-decision-briefing](workflows/08-decision-briefing.md)           |
-| **Diagnose hook/gate failures**                                     | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
-| **Learn from doing (dogfooding)**                                   | [10-reflective-execution](workflows/10-reflective-execution.md)     |
-| **Run a self-test of session infra or verify hook channel routing** | [11-self-test](workflows/11-self-test.md)                           |
+| If you need to...                         | Use workflow                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------- |
+| **Add a hook, skill, command, or agent**  | [01-design-new-component](workflows/01-design-new-component.md)     |
+| **Fix something broken in the framework** | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)   |
+| **Test a new approach or optimization**   | [03-experiment-design](workflows/03-experiment-design.md)           |
+| **Check for bloat or trim the framework** | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)   |
+| **Build a significant new feature**       | [05-feature-development](workflows/05-feature-development.md)       |
+| **Write or update a specification**       | [06-develop-specification](workflows/06-develop-specification.md)   |
+| **Record a lesson or observation**        | [07-learning-log](workflows/07-learning-log.md)                     |
+| **Unstick a blocked decision**            | [08-decision-briefing](workflows/08-decision-briefing.md)           |
+| **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
+| **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
+| **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                           |
+| **Verify hook output channel routing**    | [12-hook-routing-self-test](workflows/12-hook-routing-self-test.md) |
 
 ### Quick Decision Tree
 
@@ -213,8 +214,11 @@ Is infrastructure (hooks/gates) behaving unexpectedly?
 Is this work where the process itself should be examined?
   → YES: 10-reflective-execution
 
-Is this a self-test, verification of session infrastructure, or verifying hook output channel routing?
+Is this a self-test or verification of session infrastructure?
   → YES: 11-self-test
+
+Is this verifying hook output lands on the correct channel?
+  → YES: 12-hook-routing-self-test
 ```
 
 ---
@@ -382,7 +386,7 @@ Common shapes to catch (full list in A7 Edge 2): bundling 4 questions back when 
 
 _Enforces A7 Edge 2 (FM-1)._
 
-A close cousin of asking permission. "Will cancel X later" / "noting that Y should be retitled" / "DECIDE-class supersession recorded in body" — these are all forms of writing an action down instead of performing it. If the action is safe (graph hygiene, status flips on superseded tasks, retitling, repointing dependencies) and the decision is already made, executing it in the same turn IS the report; describing the deferral is not. The graph degrades faster from accumulated "decided but not done" prose than from any individual mistake — Nic can reverse a wrong cancellation; nobody can reverse a year of dead nodes.
+A close cousin of asking permission. "Will cancel X later" / "noting that Y should be retitled" / "DECIDE-class supersession recorded in body" — these are all forms of writing an action down instead of performing it. If the action is safe (graph hygiene, status flips on superseded tasks, retitling, repointing dependencies) and the decision is already made, executing it in the same turn IS the report; describing the deferral is not. Body-prose is allowed only as the record AFTER the action has been executed. The graph degrades faster from accumulated "decided but not done" prose than from any individual mistake — Nic can reverse a wrong cancellation; nobody can reverse a year of dead nodes.
 
 ### Reporting Norm: Speak Directly
 
