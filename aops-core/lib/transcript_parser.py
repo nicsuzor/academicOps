@@ -2209,9 +2209,7 @@ class SessionProcessor:
             if hook_entries:
                 entries.extend(hook_entries)
                 entries.sort(
-                    key=lambda e: e.timestamp
-                    if e.timestamp
-                    else datetime.min.replace(tzinfo=UTC),
+                    key=lambda e: e.timestamp if e.timestamp else datetime.min.replace(tzinfo=UTC),
                 )
             entries = self._consolidate_hook_error_attachments(entries)
 
