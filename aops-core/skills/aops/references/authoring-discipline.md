@@ -61,7 +61,7 @@ The brief must contain: the investigation question + the data sources. It must N
 **CORRECT — planner frames + dispatches:**
 
 > User: "Plan work to fix why the gate is blocking valid tool calls."
-> Pauli: Creates task: "Investigate gate tool-blocking issue. Read `gate_config.py` §tool-categories and `tests/hooks/test_gate_verdicts.py`. Determine why tool X is categorised as blocked. Report: the current category, the expected category, and the specific config line to change." → Exits. Worker reads brief fresh and investigates.
+> Pauli: Creates task: "Investigate gate tool-blocking issue. Read `gate_config.py` §tool-categories and `tests/hooks/test_gate_verdict_logic.py`. Determine why tool X is categorised as blocked. Report: the current category, the expected category, and the specific config line to change." → Exits. Worker reads brief fresh and investigates.
 
 ## 4. Decision Surfacing Heuristic (FM-2 Avoidance)
 

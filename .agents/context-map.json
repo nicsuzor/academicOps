@@ -119,8 +119,8 @@
     {
       "topic": "gate_tests",
       "type": "reference",
-      "path": "tests/hooks/test_gate_verdicts.py",
-      "description": "Gate verdict regression tests with JSON fixtures — covers all gate scenarios, block/warn/allow verdicts",
+      "path": "tests/hooks/test_gate_verdict_logic.py",
+      "description": "Gate verdict regression tests — parameterised mode overrides and fixture-driven scenarios for all gates",
       "keywords": ["gate", "test", "verdict", "regression", "fixture", "block", "warn", "allow", "scenario"]
     },
     {

@@ -1,11 +1,32 @@
-"""Shared conftest for hooks tests.
+"""Shared conftest for hooks tests — fixtures only.
 
-Gate modes are resolved from $AOPS_POLECAT_CONFIG / $AOPS_SESSIONS/polecat.yaml
-via lib/polecat_config.py — NOT from env vars. The root tests/conftest.py sets
-AOPS_POLECAT_CONFIG to polecat/defaults/polecat.yaml.example at collection time
-so all hooks tests have a valid config without per-test setup.
-
-Tests that need specific gate modes write a temporary polecat.yaml and point
-AOPS_POLECAT_CONFIG at it via monkeypatch (see test_gate_verdicts.py for the
-canonical pattern).
+Helpers, constants, and non-fixture functions live in gate_helpers.py.
 """
+
+import pytest
+
+from tests.hooks.gate_helpers import (
+    HookRouter,
+    reinit_gates_with_defaults,
+    set_gate_modes,
+)
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_gate_modes(monkeypatch, tmp_path):
+    """Ensure gate modes use known defaults regardless of host env."""
+    set_gate_modes(
+        monkeypatch,
+        handover="warn",
+        qa="block",
+        enforcer="block",
+        hydration="off",
+    )
+    reinit_gates_with_defaults()
+
+
+@pytest.fixture
+def router(monkeypatch):
+    """Create a HookRouter with mocked session data."""
+    monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+    return HookRouter()
