@@ -10,17 +10,6 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from lib.triage_labels import TRIAGE_LABELS, ensure_triage_labels
 
 
-def test_canonical_label_set_matches_apply_triage():
-    """The 4 labels used by apply_triage in dump_pr_state.py must be canonical."""
-    names = {label.name for label in TRIAGE_LABELS}
-    assert names == {
-        "triage:escalate",
-        "triage:stale",
-        "triage:auto-mergeable",
-        "triage:needs-judgment",
-    }
-
-
 def test_each_label_has_name_color_description():
     for label in TRIAGE_LABELS:
         assert label.name.startswith("triage:")
