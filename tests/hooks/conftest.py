@@ -13,7 +13,7 @@ from tests.hooks.gate_helpers import (
 
 
 @pytest.fixture(autouse=True)
-def _deterministic_gate_modes(monkeypatch, tmp_path):
+def _deterministic_gate_modes(monkeypatch):
     """Ensure gate modes use known defaults regardless of host env."""
     set_gate_modes(
         monkeypatch,

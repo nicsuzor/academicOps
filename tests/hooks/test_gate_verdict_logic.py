@@ -39,9 +39,7 @@ class TestGateModeConfigOverrides:
         _GATE_MODE_CASES,
         ids=[f"{g}-{m}" for g, m, _ in _GATE_MODE_CASES],
     )
-    def test_gate_mode_verdict(
-        self, router, monkeypatch, tmp_path, gate_name, mode, expected_verdict
-    ):
+    def test_gate_mode_verdict(self, router, monkeypatch, gate_name, mode, expected_verdict):
         kwargs: dict[str, str] = {gate_name: mode}
         set_gate_modes(monkeypatch, **kwargs)
         reinit_gates_with_defaults()

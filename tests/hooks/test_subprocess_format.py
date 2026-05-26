@@ -4,14 +4,11 @@ Tests that the router executes correctly as a subprocess and produces
 correct JSON for Claude Code and Gemini CLI.
 """
 
-import json
-import subprocess
-import sys
 import uuid
 
 import pytest
 
-from tests.hooks.gate_helpers import AOPS_CORE, run_router_claude, run_router_gemini
+from tests.hooks.gate_helpers import run_router_claude, run_router_gemini
 
 
 class TestRouterClaudeFormat:
@@ -124,10 +121,6 @@ class TestRouterStdoutIntegrity:
     """Stdout from the router must be a single JSON object — no raw text leakage."""
 
     def test_router_subprocess_does_not_print_advisory_outside_json(self, tmp_path):
-        router_path = AOPS_CORE / "hooks" / "router.py"
-        if not router_path.exists():
-            pytest.skip(f"router.py not found at {router_path}")
-
         payload = {
             "hook_event_name": "Stop",
             "session_id": "test-stop-envelope-d10e7db6",
@@ -136,23 +129,5 @@ class TestRouterStdoutIntegrity:
         }
         (tmp_path / "transcript.jsonl").write_text("")
 
-        result = subprocess.run(
-            [sys.executable, str(router_path), "--client", "claude"],
-            input=json.dumps(payload),
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-
-        stdout = result.stdout.strip()
-        if not stdout:
-            return
-
-        try:
-            json.loads(stdout)
-        except json.JSONDecodeError as e:
-            pytest.fail(
-                f"router stdout is not a single JSON object — raw text leaked. "
-                f"stdout={stdout!r}, error={e}"
-            )
+        # run_router_claude raises JSONDecodeError if stdout is not clean JSON
+        run_router_claude(payload)

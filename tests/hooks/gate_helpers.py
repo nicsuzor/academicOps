@@ -5,6 +5,7 @@ requires adding one entry to STOP_GATES (for stop-event gates) or the
 relevant data structure.
 """
 
+import copy
 import importlib
 import json
 import os
@@ -82,8 +83,9 @@ def flatten_scenarios(*groups: str) -> list[dict]:
     for group in groups:
         scenarios = ALL_SCENARIOS.get(group, [])
         for s in scenarios:
-            s["_group"] = group
-            result.append(s)
+            s_copy = copy.deepcopy(s)
+            s_copy["_group"] = group
+            result.append(s_copy)
     return result
 
 
