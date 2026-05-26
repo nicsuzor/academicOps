@@ -1416,7 +1416,7 @@ class PolecatManager:
         return results
 
     def claim_next_task(self, caller: str, project: str | None = None):
-        """Finds and claims the highest priority ready task."""
+        """Finds and claims the highest focus_score ready task."""
         if self.storage is not None:
             return self._claim_next_task_legacy(caller, project)
         return self._claim_next_task_pkb(caller, project)
