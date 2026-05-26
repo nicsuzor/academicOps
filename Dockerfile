@@ -104,23 +104,28 @@ RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
 
-# ── Install aops framework from GitHub (same as `make install`) ──────
-# Claude plugin: installed from the GitHub repo marketplace (dist/aops-claude
-# is committed to main by the build-extension workflow).
-# Gemini extension: installed from the GitHub repo with --pre-release.
-# pkb binary: downloaded from nicsuzor/mem releases.
-#
-# To test main before a stable release: `make prerelease && make build`
+# ── Install aops framework from GitHub ────────────────────────────────
+# Both CLIs install from a SINGLE shallow clone of the dist repo so they
+# always get the same commit. The previous approach used two independent
+# git clones that could diverge if the repo updated between them
+# (see #1384: different gate_config.py versions crashed Gemini hooks).
+# pkb binary: downloaded separately from nicsuzor/mem releases.
 ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
 
-# Install Claude plugin from GitHub marketplace (HTTPS — no SSH in containers).
-# `git clone` inside plugin install sets 444 on git objects via chmod() — umask
-# can't override that, so do a targeted chmod after.
-RUN umask 000 && claude plugin marketplace add ${AOPS_REPO_URL} \
+# Single clone → install both Claude plugin and Gemini extension from it.
+# Both CLIs internally set 444 on git objects — chmod after each install.
+RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
+    && claude plugin marketplace add /tmp/aops-dist \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \
     && claude plugin install aops-tools@academicOps \
-    && chmod -R a+rwX /home/worker/.claude
+    && chmod -R a+rwX /home/worker/.claude \
+    && mkdir -p /home/worker/.gemini \
+    && echo '{"/tmp/aops-dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
+    && chmod -R a+rwX /home/worker/.gemini \
+    && rm -rf /tmp/aops-dist
 
 # Install pkb binary from nicsuzor/mem releases.
 # Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
@@ -135,13 +140,6 @@ RUN umask 000 && TMPDIR=$(mktemp -d) \
     && chmod +x "$HOME/.local/bin/pkb" \
     && rm -rf "${TMPDIR}"
 
-# Install Gemini extension from GitHub repo
-# `gemini extensions install` git-clones the repo (444 on objects) — chmod after.
-RUN umask 000 && mkdir -p /home/worker/.gemini \
-    && echo '{"/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install ${AOPS_REPO_URL} --consent --pre-release \
-    && chmod -R a+rwX /home/worker/.gemini
-
 # Set permissive extension enablement so hooks fire for any workspace path.
 # `gemini extensions install` restricts to /home/<user>/* which doesn't match
 # mounted worktrees (e.g. /workspace, /data, or deeply nested crew paths).
@@ -152,6 +150,24 @@ d = json.loads(p.read_text()); \
 [d.__setitem__(k, {**v, 'overrides': ['*']}) for k, v in d.items()]; \
 p.write_text(json.dumps(d, indent=2))" ; \
     fi
+
+# Build-time version check: fail if Claude and Gemini hook Python sources
+# diverge. hooks.json and router.sh differ by design (platform-specific event
+# names and path variables), but .py files must be identical (see #1384).
+RUN set -e; \
+    CLAUDE_HOOKS=$(ls -d /home/worker/.claude/plugins/cache/academicOps/aops-core/*/hooks 2>/dev/null | head -1); \
+    GEMINI_HOOKS=/home/worker/.gemini/extensions/aops-core/hooks; \
+    if [ -z "$CLAUDE_HOOKS" ] || [ ! -d "$GEMINI_HOOKS" ]; then \
+        echo "FATAL: Could not find hook directories for comparison"; exit 1; \
+    fi; \
+    cd "$CLAUDE_HOOKS"; \
+    for f in *.py; do \
+        [ -f "$f" ] || continue; \
+        diff -q "$CLAUDE_HOOKS/$f" "$GEMINI_HOOKS/$f" >/dev/null 2>&1 || \
+        { echo "FATAL: hooks/$f differs between Claude plugin and Gemini extension (see #1384)"; \
+          diff "$CLAUDE_HOOKS/$f" "$GEMINI_HOOKS/$f" || true; exit 1; }; \
+    done; \
+    echo "Build check passed: hook Python sources match between Claude and Gemini"
 
 # Pre-bake Python venvs for BOTH Claude plugins and Gemini extensions in one
 # pass so the BeforeAgent hook always fast-paths to $HOOK_DIR/.venv/bin/python
