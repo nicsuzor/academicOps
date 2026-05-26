@@ -121,8 +121,9 @@ RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
     && claude plugin install aops-tools@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
-    && echo '{"/tmp/aops-dist": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist --consent --pre-release \
+    && echo '{"/tmp/aops-dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
     && chmod -R a+rwX /home/worker/.gemini \
     && rm -rf /tmp/aops-dist
 
