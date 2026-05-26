@@ -1081,8 +1081,8 @@ def build_aops_core(
                         if server in current_mcps:
                             existing = current_mcps[server]
                             existing.update({k: v for k, v in config.items() if k != "env"})
-                            existing_env = existing.get("env", {})
-                            existing_env.update(config.get("env", {}))
+                            existing_env = existing.get("env") or {}
+                            existing_env.update(config.get("env") or {})
                             if existing_env:
                                 existing["env"] = existing_env
                         else:

@@ -15,7 +15,7 @@ def claude_mcp_to_gemini(tool_name: str) -> str:
     The namespace may include a plugin prefix (plugin_<name>_<server>) which
     must be stripped to get the bare server name that Gemini registers.
     """
-    parts = tool_name.split("__")
+    parts = tool_name.split("__", 2)
     if len(parts) == 3 and parts[0] == "mcp":
         namespace, tool = parts[1], parts[2]
         m = _PLUGIN_NAMESPACE_RE.match(namespace)

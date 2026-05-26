@@ -11,12 +11,13 @@ from lib.triage_labels import TRIAGE_LABELS, ensure_triage_labels
 
 
 def test_canonical_label_set_matches_apply_triage():
-    """The 4 labels used by apply_triage in dump_pr_state.py must be canonical."""
+    """The labels used by apply_triage in dump_pr_state.py must be canonical."""
     names = {label.name for label in TRIAGE_LABELS}
     assert names == {
         "triage:escalate",
         "triage:stale",
         "triage:auto-mergeable",
+        "triage:pipeline",
         "triage:needs-judgment",
     }
 
