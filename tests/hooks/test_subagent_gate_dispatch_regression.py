@@ -1,9 +1,10 @@
 """Regression tests for subagent gate dispatch.
 
-Architecture: gates only evaluate in the main agent session. Subagent
-tool calls (is_subagent=True) are invisible to gates — _dispatch_gates()
-returns None immediately. The parent's SubagentStart/SubagentStop events
-fire in the main context (is_subagent=False) and DO trigger gate evaluation.
+Architecture: subagent tool-call events (PreToolUse/PostToolUse with
+is_subagent=True) are invisible to gates — _dispatch_gates() returns None.
+Stop/SessionEnd/SubagentStop events are exempt from this bypass so that
+session-level gates (e.g. IDA) fire even for Claude Code background agents
+which get is_subagent=True despite being independent sessions.
 
 Tests construct GenericGate instances directly from inline GateConfig objects
 to avoid the dual-module-resolution issue with GATE_CONFIGS import under pytest.
@@ -196,7 +197,7 @@ class TestSubagentGateDispatch:
 
 
 class TestSubagentGateBypass:
-    """Subagent sessions are invisible to gates — _dispatch_gates returns None."""
+    """Subagent tool-call events skip gates — _dispatch_gates returns None for PreToolUse/PostToolUse."""
 
     def test_subagent_session_returns_none(self, mock_session, test_registry):
         """Any subagent session (compliance or not) returns None from _dispatch_gates.
