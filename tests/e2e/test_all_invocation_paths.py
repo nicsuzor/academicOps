@@ -448,7 +448,7 @@ class TestAllInvocationPaths:
             crew_name,
         ]
         if backend == "gemini":
-            cmd.append("-g")
+            cmd.extend(["--model", "gemini"])
 
         cmd.append("--")
         if backend == "gemini":
@@ -556,7 +556,7 @@ class TestAllInvocationPaths:
             "--no-auto-finish",
         ]
         if backend == "gemini":
-            cmd.append("-g")
+            cmd.extend(["--model", "gemini"])
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -1080,7 +1080,7 @@ class TestPkbPersistence:
             else:
                 cmd = [polecat_bin, "run", "-t", task_id, "-p", project]
             if backend == "gemini":
-                cmd.append("-g")
+                cmd.extend(["--model", "gemini"])
 
             proc = subprocess.Popen(
                 cmd,
