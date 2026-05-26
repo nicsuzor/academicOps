@@ -222,6 +222,12 @@ Merge Prep complete. All review feedback triaged and addressed."
 
 (If self-approval or Actions-cannot-approve errors occur, log the warning and continue — do not fail.)
 
+After approving, request the maintainer as reviewer so they get the notification that the PR is ready:
+
+```bash
+gh pr edit {pr} --repo {repo} --add-reviewer nicsuzor
+```
+
 ## 9. Stop — the workflow handles graduation
 
 After §8, **exit cleanly**. Do not set commit statuses, do not dispatch other workflows, do not push further commits.
@@ -233,7 +239,7 @@ The `agent-merge-prep.yml` workflow's `Handle success` step runs after you exit.
 
 You cannot do (1) yourself — the token your action runs under lacks `statuses: write`, so any `gh api .../statuses/$SHA` call returns 403. The workflow has the right token; let it do the work.
 
-The PR will not merge until a human maintainer approves it (branch protection requires `required_approving_review_count`). Your job is to leave the PR all-green with auto-merge armed; the human is the merge gate.
+Your job is to leave the PR fully green and then approve it. Once you approve, the workflow arms auto-merge — but the PR will **not** merge until the human maintainer also approves (branch protection requires `required_approving_review_count`). Your approval plus the reviewer request (§8) is the signal that the PR is ready for the maintainer's final sign-off. Exercise full judgment on review feedback, fix issues, and get the PR to a state where the maintainer can approve without needing to investigate anything. Do not escalate to a human mid-pipeline unless you are genuinely stuck after exhausting all options per the halt criteria below.
 
 ## If blocked and cannot proceed
 
