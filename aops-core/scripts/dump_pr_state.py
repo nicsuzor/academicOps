@@ -136,8 +136,21 @@ def apply_triage(pr: dict, repo_path: Path):
         new_label = "triage:stale"
     elif branch.startswith("release") or login in ("app/github-actions", "github-actions[bot]"):
         new_label = "triage:auto-mergeable"
+    elif (
+        mergeable == "MERGEABLE"
+        and not failed_checks
+        and rollups
+        and all(
+            r.get("conclusion") in ("SUCCESS", "NEUTRAL", "SKIPPED")
+            or r.get("status") == "COMPLETED"
+            for r in rollups
+            if isinstance(r, dict)
+        )
+        and pr.get("reviewDecision") == "APPROVED"
+    ):
+        new_label = "triage:auto-mergeable"
     else:
-        new_label = "triage:needs-judgment"
+        new_label = "triage:pipeline"
 
     if new_label and new_label not in existing_triage_labels:
         cmd = ["gh", "pr", "edit", str(pr["number"]), "--add-label", new_label]

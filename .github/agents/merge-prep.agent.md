@@ -233,7 +233,7 @@ The `agent-merge-prep.yml` workflow's `Handle success` step runs after you exit.
 
 You cannot do (1) yourself — the token your action runs under lacks `statuses: write`, so any `gh api .../statuses/$SHA` call returns 403. The workflow has the right token; let it do the work.
 
-The PR will not merge until a human maintainer approves it (branch protection requires `required_approving_review_count`). Your job is to leave the PR all-green with auto-merge armed; the human is the merge gate.
+Your approval arms auto-merge. The PR will merge automatically once all required checks pass and your approval stands. Your job is to leave the PR fully green — exercise judgment on review feedback, fix issues, and approve. Do not escalate to a human unless you are genuinely stuck after exhausting all options per the halt criteria below.
 
 ## If blocked and cannot proceed
 
