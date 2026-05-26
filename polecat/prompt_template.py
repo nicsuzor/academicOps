@@ -165,7 +165,7 @@ def build_task_extras(task: dict) -> str:
     if task.get("priority") is not None:
         lines.append(f"- **Priority**: P{task['priority']}")
     if task.get("tags"):
-        lines.append(f"- **Tags**: {', '.join(task['tags'])}")
+        lines.append(f"- **Tags**: {', '.join(str(t) for t in task['tags'])}")
     if task.get("status"):
         lines.append(f"- **Status**: {task['status']}")
     pr_url = task.get("pr_url")
