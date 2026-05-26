@@ -340,7 +340,7 @@ This captures what was done so work history is never lost.
 
 ## Arguments
 
-- `/pull` - Get highest priority queued task from the global dispatch queue
+- `/pull` - Get highest `focus_score` queued task from the global dispatch queue
 - `/pull <task-id>` - Claim a specific task (or its first queued leaf if it has children)
 
 ## Implementation Note
