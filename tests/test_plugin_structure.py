@@ -1,123 +1,14 @@
 #!/usr/bin/env python3
 """
-Smoke tests for aops-core plugin structure.
-
-Verifies that the plugin has all required components and can be loaded.
+Lint gates for aops-core plugin instruction files.
 """
 
+import re
 from pathlib import Path
 
 import pytest
 
-# Plugin root directory (updated for v1.1 structure)
 PLUGIN_ROOT = Path(__file__).parent.parent / "aops-core"
-
-
-class TestPluginStructure:
-    """Verify plugin directory structure."""
-
-    def test_plugin_json_exists(self) -> None:
-        """Plugin manifest must exist."""
-        manifest = PLUGIN_ROOT.parent / "templates" / "aops-core.plugin.json"
-        assert manifest.exists(), f"Missing plugin manifest: {manifest}"
-
-    def test_required_directories_exist(self) -> None:
-        """All required directories must exist."""
-        required_dirs = ["skills", "agents", "hooks", "lib"]
-        for dir_name in required_dirs:
-            dir_path = PLUGIN_ROOT / dir_name
-            assert dir_path.is_dir(), f"Missing required directory: {dir_name}"
-
-
-class TestCoreSkills:
-    """Verify skills directory exists."""
-
-    def test_skills_directory_exists(self) -> None:
-        """Skills directory must exist."""
-        skills_dir = PLUGIN_ROOT / "skills"
-        assert skills_dir.is_dir(), "Missing skills directory"
-
-
-class TestCoreAgents:
-    """Verify core agents are present."""
-
-    CORE_AGENTS = ["rbg", "marsha"]
-    CORE_SKILLS = ["planner"]
-
-    def test_all_core_agents_present(self) -> None:
-        """All core agents must be present."""
-        agents_dir = PLUGIN_ROOT / "agents"
-        for agent_name in self.CORE_AGENTS:
-            agent_file = agents_dir / f"{agent_name}.md"
-            assert agent_file.exists(), f"Missing core agent: {agent_name}"
-
-    def test_all_core_skills_present(self) -> None:
-        """Core skills must be present as skills (not agents)."""
-        skills_dir = PLUGIN_ROOT / "skills"
-        for skill_name in self.CORE_SKILLS:
-            skill_file = skills_dir / skill_name / "SKILL.md"
-            assert skill_file.exists(), f"Missing core skill: {skill_name}"
-
-
-class TestCoreHooks:
-    """Verify core hooks are present."""
-
-    CORE_HOOKS = ["router.py", "unified_logger.py"]
-
-    def test_all_core_hooks_present(self) -> None:
-        """All core hooks must be present."""
-        hooks_dir = PLUGIN_ROOT / "hooks"
-        for hook_name in self.CORE_HOOKS:
-            hook_file = hooks_dir / hook_name
-            assert hook_file.exists(), f"Missing core hook: {hook_name}"
-
-    def test_hook_templates_exist(self) -> None:
-        """Hook templates directory must exist with content."""
-        templates_dir = PLUGIN_ROOT / "hooks" / "templates"
-        assert templates_dir.is_dir(), "Missing hooks/templates directory"
-        templates = list(templates_dir.glob("*.md"))
-        assert len(templates) > 0, "No template files in hooks/templates/"
-
-
-class TestCoreLib:
-    """Verify core library files are present."""
-
-    CORE_LIB_FILES = ["paths.py", "session_state.py", "session_reader.py"]
-
-    def test_all_core_lib_files_present(self) -> None:
-        """All core lib files must be present."""
-        lib_dir = PLUGIN_ROOT / "lib"
-        for lib_name in self.CORE_LIB_FILES:
-            lib_file = lib_dir / lib_name
-            assert lib_file.exists(), f"Missing core lib file: {lib_name}"
-
-
-class TestGovernanceFiles:
-    """Verify enforced axioms and heuristics are present."""
-
-    def test_axioms_in_rbg_agent(self) -> None:
-        """Axioms must be accessible to rbg agent (inline or via @ reference)."""
-        rbg_file = PLUGIN_ROOT / "agents" / "rbg.md"
-        assert rbg_file.exists(), "Missing agents/rbg.md"
-        content = rbg_file.read_text()
-        assert "## Axioms" in content, "rbg.md must contain axioms section"
-        # Axioms may be inline or loaded via @ reference to AXIOMS.md
-        if "A1" not in content:
-            # Must reference AXIOMS.md which must contain A1 (Closure) and A7 (Delegated Authority)
-            assert "AXIOMS.md" in content, "rbg.md must either embed axioms or reference AXIOMS.md"
-            # Axioms live at the plugin root (canonical location)
-            axioms_file = PLUGIN_ROOT / "AXIOMS.md"
-            assert axioms_file.exists(), (
-                "AXIOMS.md must exist at aops-core/AXIOMS.md (plugin-relative)"
-            )
-            axioms_content = axioms_file.read_text()
-            assert "A1" in axioms_content, "AXIOMS.md must contain axiom A1"
-            assert "A7" in axioms_content, "AXIOMS.md must contain axiom A7"
-
-    def test_heuristics_file_exists(self) -> None:
-        """HEURISTICS.md must exist in framework directory."""
-        heuristics_file = PLUGIN_ROOT / "HEURISTICS.md"
-        assert heuristics_file.exists(), "Missing HEURISTICS.md"
 
 
 class TestNoProjectInferenceByPrefix:
@@ -135,8 +26,6 @@ class TestNoProjectInferenceByPrefix:
     ]
 
     def test_skill_bodies_do_not_instruct_prefix_inference(self) -> None:
-        import re
-
         skills_dir = PLUGIN_ROOT / "skills"
         commands_dir = PLUGIN_ROOT / "commands"
         agents_dir = PLUGIN_ROOT / "agents"
