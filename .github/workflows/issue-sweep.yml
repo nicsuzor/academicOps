@@ -1,0 +1,86 @@
+name: Issue Sweep Cycle
+
+on:
+  schedule:
+    - cron: '30 2 * * *' # Daily at 02:30 UTC
+  workflow_dispatch:
+    inputs:
+      batch_limit:
+        description: 'Max issues to process per cycle'
+        required: false
+        default: '20'
+        type: string
+
+jobs:
+  issue-sweep:
+    name: Issue Sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout brain repo
+        uses: actions/checkout@v4
+
+      - name: Checkout academicOps
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AOPS_REPO }}
+          path: _aops
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install academicOps dependencies
+        working-directory: _aops
+        run: uv sync --frozen
+
+      - name: Run issue-sweep agent
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the Issue Sweep loop driver running in automation mode.
+            Read the unified survey skill for full instructions:
+              ${{ github.workspace }}/_aops/aops-core/skills/survey/SKILL.md
+
+            Execute in **sweep mode**.
+
+            ## Environment
+            - Brain repo (PKB data): ${{ github.workspace }}
+            - academicOps (code/issues): ${{ github.workspace }}/_aops
+            - Batch limit: ${{ inputs.batch_limit || 20 }} issues per cycle.
+
+            ## CI-Specific Rules & Hard Constraints
+            - **No PKB MCP server** — you are working directly with markdown files in the brain repo.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT reference mcp__pkb__* tools.
+            - **Datestamped Instances**: Since `mcp_pkb_claim_task` is unavailable, manually emulate it.
+              Create a new markdown file named `epic-a0523a25-YYYYMMDD-HHMM-ci.md` in the appropriate tasks/ directory,
+              copy the frontmatter and body from `epic-a0523a25.md`, update its ID, and append your cycle log there.
+            - **Autonomous Dispositions ONLY for Low-Risk**: You may fully execute `close-as-stale`,
+              `consolidate-duplicate`, `evidence-bump`, and `single-task` (for single-tasks, create the task file manually).
+            - **User Gate / Surfacing**: For framework-change dispositions (`fix-epic` / add-or-escalate),
+              you CANNOT ask the user interactively. Instead, surface the proposed cycle plan by appending it
+              to the current day's Daily Note (e.g. `daily-YYYYMMDD-*.md`). Do NOT execute `fix-epic` operations.
+            - **A17 Recusal**: Do not invent new rules. Use the cost-ladder review for escalation candidates.
+            - **State & Commits**: Commit changes directly to the brain repo's main branch.
+            - **Time budget**: 25 minutes. Exit cleanly when time is up.
+
+            Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
+            - Number of issues processed
+            - Disposition counts
+            - Any human-gated dispositions surfaced to the daily note.
