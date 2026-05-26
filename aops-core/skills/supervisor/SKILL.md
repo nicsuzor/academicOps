@@ -194,6 +194,8 @@ ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"pole
 - `--gemini` selects the Gemini CLI as the worker backend (not a model name). To specify a particular Gemini model, pair it with `--model`: `--gemini --model gemini-2.5-pro`.
 - `--opus` is not a valid flag. It does not exist in the polecat CLI and will cause an error if used. Use `--model claude-opus-4-7` instead.
 
+**Auto-arm notify-watch** — if this is the first polecat dispatch in an interactive (non-`/loop`) session and the docker-events Monitor is not already armed, arm it immediately after the dispatch command completes. See [In-Session Multi-Tick Supervision](#in-session-multi-tick-supervision-notify-watch) for topology detection and the canonical Monitor command. Subsequent dispatches in the same session do not re-arm.
+
 **Brief location** — the `## Dispatch Brief` must be in the task body before the dispatch command runs. If a compose-agent authored or refined it earlier in this same tick, dispatch is delegated to a _separate_ dispatch-agent subagent invocation (see [Compose-then-Dispatch Separation](#compose-then-dispatch-separation)) that reads the brief fresh from PKB and emits its own structured verdict. The main agent never composes the brief in-line and never pastes new brief content into the dispatch command. If the dispatch fails synchronously, or the worker fails asynchronously, the error routes to pauli in the `react` phase.
 
 ## Emergency Brake
@@ -392,20 +394,33 @@ If no push channel is configured, the block is terminal-only. The supervisor doe
 
 ## In-Session Multi-Tick Supervision (notify-watch)
 
-The default cadence is one tick per `/loop 30m` invocation. When the user explicitly asks for an in-session batch ("maintain N concurrent workers", "keep draining the queue this session"), the supervisor stays resident and ticks **on event** rather than on time. The event is "a worker exited" — surfaced by an OS-level stream, not by polling, and not by a bash refill loop (see Forbidden, below).
+The default cadence is one tick per `/loop 30m` invocation. In an interactive (non-`/loop`) supervisor session, arm the docker-events Monitor automatically on the **first** polecat dispatch — the supervisor then ticks **on event** rather than on time for that session. Headless / cron / `/loop`-driven ticks do NOT arm the watch: there is no persistent session for events to land in. The event is "a worker exited" — surfaced by an OS-level stream, not by polling, and not by a bash refill loop (see Forbidden, below).
 
-The canonical in-session watch is `Monitor` over `docker events`:
+> **Why auto-arm?** Users do not explicitly request an in-session batch — they dispatch a polecat and later ask "did it finish?". The previous gate (arm only on explicit batch request) left the user polling. Arming on first dispatch removes this friction without requiring any opt-in. Observed 2026-05-19: user asked "did it finish? do you get a notification when it finishes?" after a polecat dispatch; supervisor had to arm the Monitor reactively.
+
+The canonical in-session watch is `Monitor` over `docker events`. Before arming, detect the execution topology: if `docker` is directly accessible locally (run `command -v docker && docker info` quietly — succeeds in a WSL session), use plain `docker`; if the supervisor is running on a remote host (e.g. over SSH from a laptop), prefix with `ssh wsl`. Wrap the command in a reconnecting loop so the watch survives SSH drops, laptop sleep, or Wi-Fi blips without silent failure.
+
+**Local** (docker accessible directly — typical WSL session):
 
 ```
 Monitor(
   description: "polecat exits",
   persistent: true,
-  command: "docker events --filter event=die --filter 'name=polecat-' "
-           "--format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'"
+  command: "while true; do docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
 )
 ```
 
-Arm it **once**, immediately after the first DISPATCH that fills a slot in the requested concurrency window. Each `die` event for a polecat-* container emits one stdout line → one chat notification. On each notification:
+**Remote** (supervisor on a laptop or other host, docker on WSL):
+
+```
+Monitor(
+  description: "polecat exits",
+  persistent: true,
+  command: "while true; do ssh wsl docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
+)
+```
+
+Arm it **once**, immediately after the first polecat DISPATCH in an interactive session. Subsequent dispatches in the same session do NOT re-arm. Each `die` event for a polecat-* container emits one stdout line → one chat notification. On each notification:
 
 1. Identify the exited work item from the container name (`polecat-<task-id>`).
 2. Run the normal supervisor tick on that item's epic: ORIENT → BRAKE → DECIDE (marsha verify) → ACT → CHECKPOINT.
@@ -415,16 +430,16 @@ Arm it **once**, immediately after the first DISPATCH that fills a slot in the r
 
 **Crew filtering.** The crew session is also a `polecat-*` container. Filter it out at the agent layer (look up the exit's container env via `docker inspect <name>` and skip if `POLECAT_SESSION_TYPE=crew`), or refine the `--filter` to match the headless naming pattern in use.
 
-**When to stop the watch.** Call `TaskStop` on the Monitor when (a) the user-requested batch is complete, (b) all in-flight epics have reached `ready_for_user_review`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
+**When to stop the watch.** Call `TaskStop` on the Monitor when (a) all dispatched polecats are verified and resolved (the session's in-flight work is done), (b) all in-flight epics have reached `ready_for_user_review`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
 
 **Choosing between mechanisms** (see [[instructions/supervision-loop#monitoring-mechanisms]] for the table):
 
-| Situation                                    | Use this                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------- |
-| Single dispatched worker, one outcome needed | `run_in_background` Bash with an `until <ready>; do sleep 2; done` body |
-| Waiting on PR state transitions (async)      | Persistent `Monitor` on `gh pr checks` poll loop                        |
-| Truly idle, no event source                  | `ScheduleWakeup` (safety net only; ≥1800s — never 300s)                 |
-| **In-session batch with concurrency cap**    | **Persistent `Monitor` on `docker events`** (this section)              |
+| Situation                                             | Use this                                                                |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| Single dispatched worker, one outcome needed          | `run_in_background` Bash with an `until <ready>; do sleep 2; done` body |
+| Waiting on PR state transitions (async)               | Persistent `Monitor` on `gh pr checks` poll loop                        |
+| Truly idle, no event source                           | `ScheduleWakeup` (safety net only; ≥1800s — never 300s)                 |
+| **Any interactive session with a dispatched polecat** | **Persistent `Monitor` on `docker events`** (this section)              |
 
 ## Lifecycle Trigger Hooks
 
