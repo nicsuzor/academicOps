@@ -83,7 +83,7 @@ From this, extract:
 - **Main CI health**: if main is already red, do NOT let a PR merge mask it. Surface it to the user.
 - **Release PRs** (`release-plz-*` branches): note their presence in the session summary, then skip. These are merged manually by the user at a time of their choosing.
 
-Present the merge plan and authorisation ask to the user. Get a single authorisation covering Tier 1 + Tier 2 for the batch; Tier 3 still confirms per PR.
+Present the merge plan to the user.
 
 ### 0b. Progress logging (mandatory)
 
@@ -296,18 +296,15 @@ Commission Marsha when ANY of these are true:
 **Tier 0 PRs** close in Step 3 and never reach this step.
 **Tier 1 PRs** approve in Step 3 without commissioning anyone.
 
-For **Tier 2 and Tier 3**, present your plan and obtain explicit approval (Axiom P#50):
+For **Tier 2 and Tier 3**, state the triage result and proceed — the user's invocation of `/review-pr` is the authorization for the workflow it defines:
 
 ```
 Tier: $TIER
-Agents to run: RBG [+ Pauli] [+ Marsha]
+Agents: RBG [+ Pauli] [+ Marsha]
 Reason: <one-line rationale referencing the signal that put this PR into this tier>
-Proceed? (yes/no)
 ```
 
-Wait for confirmation before continuing. If the user declines, ask what they want instead.
-
-**Batch mode (optional)**: when reviewing a queue of PRs in one session, the user may grant per-session authorisation covering all Tier 2 reviews in the batch. Tier 3 still confirms per PR. Do not assume batch authorisation — ask for it explicitly at the start of the session.
+Do NOT ask "Proceed?" or wait for confirmation. Commission the agents immediately.
 
 ### Routing principles
 
