@@ -2,6 +2,28 @@ import re
 
 import yaml
 
+_PLUGIN_NAMESPACE_RE = re.compile(r"^plugin_[a-zA-Z0-9-]+_(.+)$")
+
+
+def claude_mcp_to_gemini(tool_name: str) -> str:
+    """Convert a Claude MCP tool name to Gemini format.
+
+    Claude: mcp__plugin_aops-core_pkb__get_task  (or mcp__pkb__get_task)
+    Gemini: mcp_pkb_get_task
+
+    The double underscores are structural delimiters: mcp__<namespace>__<tool>.
+    The namespace may include a plugin prefix (plugin_<name>_<server>) which
+    must be stripped to get the bare server name that Gemini registers.
+    """
+    parts = tool_name.split("__")
+    if len(parts) == 3 and parts[0] == "mcp":
+        namespace, tool = parts[1], parts[2]
+        m = _PLUGIN_NAMESPACE_RE.match(namespace)
+        server = m.group(1) if m else namespace
+        return f"mcp_{server}_{tool}"
+    return tool_name
+
+
 GEMINI_TOOL_NAME_MAP = {
     "Read": "read_file",
     "Write": "write_file",
@@ -154,7 +176,7 @@ def gemini_agent_schema(content: str, ctx: dict) -> str:
     filtered_tools = []
     seen = set()
     for t in original_tools:
-        tool_name = t.replace("__", "_")
+        tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
         mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
         if mapped is not None and mapped not in seen:
             seen.add(mapped)
