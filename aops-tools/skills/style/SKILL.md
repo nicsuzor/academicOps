@@ -1,3 +1,7 @@
+---
+description: Analyze writing samples and create a comprehensive personal writing style guide
+---
+
 # Personal Writing Style Guide Creation Assistant
 
 **Instructions for Large Language Models**
