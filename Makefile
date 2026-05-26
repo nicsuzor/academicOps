@@ -95,8 +95,10 @@ install-dev: build-dev
 	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
-	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
-	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
+	-command gemini extensions uninstall $(GEMINI_EXT_NAME) 2>/dev/null; \
+		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_EXT_NAME)"
+	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME) 2>/dev/null; \
+		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_TOOLS_EXT_NAME)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
