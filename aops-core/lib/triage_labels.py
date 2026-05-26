@@ -39,9 +39,14 @@ TRIAGE_LABELS: tuple[TriageLabel, ...] = (
         description="Routine release or bot-authored PR; safe for automatic merge.",
     ),
     TriageLabel(
+        name="triage:pipeline",
+        color="c5def5",
+        description="Merge pipeline owns this PR; no human action needed.",
+    ),
+    TriageLabel(
         name="triage:needs-judgment",
         color="0075ca",
-        description="PR requires human review and judgment before merging.",
+        description="Merge pipeline halted; PR requires human review to unblock.",
     ),
 )
 
