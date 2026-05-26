@@ -354,7 +354,7 @@ Process tasks the user has explicitly flagged for refiling. The `refile` flag me
 
 ### Steps
 
-1. **Find flagged tasks**: Search for `refile: true` across `$ACA_DATA/tasks/`
+1. **Find flagged tasks**: Search for `refile: true` across `$ACA_DATA/`
 2. **Reparent**: Invoke `/planner` in `maintain` mode to find the correct parent/lineage.
 3. **Evaluate weight**: For each refiled task, review and fix the full weighting surface:
    - **Severity** — severity lives on `type: target` nodes only (see [[TAXONOMY.md#severity-ladder-sev0sev4]]). For target nodes, read the `consequence` text and match severity to the actual impact described. If consequence text is missing, write it. For ordinary tasks, do NOT assign non-zero severity — it inverts the focus queue. If a refiled task seems SEV3-worthy, ensure the consequence prose is accurate and add `needs_triage: true` to flag possible reclassification as a target.
