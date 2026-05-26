@@ -762,5 +762,5 @@ def list_tasks(
 
 
 def get_ready_tasks(project: str | None = None) -> list[PkbTask]:
-    """Get actionable leaf tasks sorted by priority + weight."""
+    """Get actionable leaf tasks sorted by focus_score."""
     return list_tasks(status="ready", project=project)

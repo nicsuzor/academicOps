@@ -276,8 +276,12 @@ jobs:
               fi
             fi
 
-            echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
-            echo "$PR_NUM" >> /tmp/qualifying_prs.txt
+            echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep (requalified=$REQUALIFIED)"
+            if [ "$REQUALIFIED" = "true" ]; then
+              echo "$PR_NUM:force" >> /tmp/qualifying_prs.txt
+            else
+              echo "$PR_NUM" >> /tmp/qualifying_prs.txt
+            fi
           done
 
       - name: Dispatch merge-prep for oldest qualifying PR
@@ -302,10 +306,17 @@ jobs:
           # cron, that ordering starves the oldest PR for N × 30 min while newer
           # PRs jump the queue (incident: PRs #1101/#1102/#1107 sat for 6-7h
           # behind ~12 newer PRs on 2026-05-17, see issue #1129).
-          PR_NUM=$(sort -n /tmp/qualifying_prs.txt | head -n 1)
+          # File format: "PR_NUM" or "PR_NUM:force" (re-qualified PRs need force
+          # to bypass the agent's loop detection on Merge-Prep-By trailers).
+          ENTRY=$(sort -t: -k1 -n /tmp/qualifying_prs.txt | head -n 1)
+          PR_NUM="${ENTRY%%:*}"
+          FORCE_FLAG=""
+          if [ "$ENTRY" != "$PR_NUM" ]; then
+            FORCE_FLAG="-f force=true"
+          fi
 
           TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
-          echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying)"
+          echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying, force=${FORCE_FLAG:+true})"
 
           DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
 
@@ -313,6 +324,7 @@ jobs:
             --repo "$REPO" \
             --ref "$DEFAULT_BRANCH" \
             -f pr_number="$PR_NUM" \
-            -f bot_identity="$BOT_IDENTITY"
+            -f bot_identity="$BOT_IDENTITY" \
+            $FORCE_FLAG
 
           echo "  Dispatched successfully. Remaining $((TOTAL - 1)) PRs will be picked up on subsequent ticks."

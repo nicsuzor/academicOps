@@ -180,7 +180,7 @@ Each entry: name + position + one-line purpose + link to authoritative file. Run
 
 ### Scheduled batch automation
 
-- **`apply_triage` labels** (L0) — applies `triage:escalate` / `:stale` / `:auto-mergeable` / `:needs-judgment` to open PRs; opens GitHub issue for escalate-class PRs. → `aops-core/scripts/dump_pr_state.py`
+- **`apply_triage` labels** (L0) — applies `triage:escalate` / `:stale` / `:auto-mergeable` / `:pipeline` to open PRs; opens GitHub issue for escalate-class PRs. → `aops-core/scripts/dump_pr_state.py`
 
 ### PR-pipeline agents (v2)
 

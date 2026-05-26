@@ -37,5 +37,9 @@ jobs:
         timeout-minutes: 5
 
       - name: Run basedpyright
-        timeout-minutes: 3
+        timeout-minutes: 5
+        env:
+          # Cap Node.js heap at 3 GB so basedpyright fails with a clear OOM error
+          # instead of silently killing the runner (which defeats step/job timeouts).
+          NODE_OPTIONS: "--max-old-space-size=3072"
         run: uv run basedpyright

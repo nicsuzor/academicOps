@@ -16,7 +16,7 @@ accountability gaps (no PKB task record for the work).
 - For anything larger — stop, file a task, and dispatch:
 
   ```
-  create_task(title="…", project="…", priority="P2")
+  create_task(title="…", project="…")
   polecat run -t <task-id>
   ```
 

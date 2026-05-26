@@ -82,15 +82,104 @@ def test_apply_triage_label_edit_failure_is_nonfatal(tmp_path, capsys):
         "updatedAt": "2026-05-01T00:00:00Z",
     }
     err = subprocess.CalledProcessError(
-        1, ["gh", "pr", "edit", "42", "--add-label", "triage:needs-judgment"]
+        1, ["gh", "pr", "edit", "42", "--add-label", "triage:pipeline"]
     )
-    err.stderr = b"Label 'triage:needs-judgment' not found"
+    err.stderr = b"Label 'triage:pipeline' not found"
     with patch("dump_pr_state.subprocess.run", side_effect=err):
         apply_triage(pr, tmp_path)  # must not raise
 
     captured = capsys.readouterr()
     assert "Warning: label-edit failed" in captured.err
     assert "42" in captured.err
+
+
+def test_apply_triage_catchall_is_pipeline(tmp_path):
+    """Healthy PRs not matching other buckets get triage:pipeline, not needs-judgment."""
+    pr = {
+        "number": 10,
+        "labels": [],
+        "isDraft": False,
+        "mergeable": "MERGEABLE",
+        "statusCheckRollup": [],
+        "headRefName": "feature/x",
+        "author": {"login": "someuser"},
+        "updatedAt": "2026-05-25T00:00:00Z",
+    }
+    calls = []
+
+    def capture_run(cmd, **kwargs):
+        calls.append(cmd)
+        return MagicMock()
+
+    with patch("dump_pr_state.subprocess.run", side_effect=capture_run):
+        apply_triage(pr, tmp_path)
+
+    # The label-edit call should add triage:pipeline
+    label_cmd = calls[0]
+    assert "--add-label" in label_cmd
+    idx = label_cmd.index("--add-label")
+    assert label_cmd[idx + 1] == "triage:pipeline"
+
+
+def test_apply_triage_auto_mergeable_for_green_approved_pr(tmp_path):
+    """PRs that are mergeable, all-green CI, and approved get triage:auto-mergeable."""
+    pr = {
+        "number": 20,
+        "labels": [],
+        "isDraft": False,
+        "mergeable": "MERGEABLE",
+        "reviewDecision": "APPROVED",
+        "statusCheckRollup": [
+            {"name": "lint", "conclusion": "SUCCESS", "status": "COMPLETED"},
+            {"name": "test", "conclusion": "SUCCESS", "status": "COMPLETED"},
+        ],
+        "headRefName": "feature/y",
+        "author": {"login": "someuser"},
+        "updatedAt": "2026-05-25T00:00:00Z",
+    }
+    calls = []
+
+    def capture_run(cmd, **kwargs):
+        calls.append(cmd)
+        return MagicMock()
+
+    with patch("dump_pr_state.subprocess.run", side_effect=capture_run):
+        apply_triage(pr, tmp_path)
+
+    label_cmd = calls[0]
+    assert "--add-label" in label_cmd
+    idx = label_cmd.index("--add-label")
+    assert label_cmd[idx + 1] == "triage:auto-mergeable"
+
+
+def test_apply_triage_pipeline_when_not_yet_approved(tmp_path):
+    """PRs with passing CI but no approval yet get triage:pipeline (not auto-mergeable)."""
+    pr = {
+        "number": 30,
+        "labels": [],
+        "isDraft": False,
+        "mergeable": "MERGEABLE",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "statusCheckRollup": [
+            {"name": "lint", "conclusion": "SUCCESS", "status": "COMPLETED"},
+        ],
+        "headRefName": "feature/z",
+        "author": {"login": "someuser"},
+        "updatedAt": "2026-05-25T00:00:00Z",
+    }
+    calls = []
+
+    def capture_run(cmd, **kwargs):
+        calls.append(cmd)
+        return MagicMock()
+
+    with patch("dump_pr_state.subprocess.run", side_effect=capture_run):
+        apply_triage(pr, tmp_path)
+
+    label_cmd = calls[0]
+    assert "--add-label" in label_cmd
+    idx = label_cmd.index("--add-label")
+    assert label_cmd[idx + 1] == "triage:pipeline"
 
 
 def test_fetch_prs_open_prs_populated_when_triage_fails(tmp_path):

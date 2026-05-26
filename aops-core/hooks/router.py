@@ -663,10 +663,10 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # Gates only evaluate in the main agent session. Subagent tool calls
-        # are invisible to gates — the parent's Agent tool call is the only
-        # operation that counts.
-        if ctx.is_subagent:
+        # Gates only evaluate in the main agent session for tool-call events.
+        # Stop/SubagentStop are exempt: Claude Code agents (background jobs)
+        # get is_subagent=True despite being independent sessions (#19220).
+        if ctx.is_subagent and ctx.hook_event not in ("Stop", "SessionEnd", "SubagentStop"):
             return None
 
         # Never block when the runtime signals a retry sequence. Both Claude

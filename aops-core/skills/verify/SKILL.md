@@ -181,7 +181,7 @@ without adding overwhelm. Spec: <link> (Fitness Rubric + AC there).
 After a FAIL or REVISE verdict, create a follow-up task:
 
 - Title: `Address <project> QA findings`
-- Priority: P2 (P1 if core functionality broken)
+- Priority: omit (defaults to P3; priority is set by the user during triage, not by agents)
 - Body: link to verification report; AC = re-verify against the rubric and reach PASS
 
 The QA report is evidence. The task is the action. Without a task, findings rot in `eval/` and nothing changes.

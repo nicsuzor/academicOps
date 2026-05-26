@@ -357,6 +357,7 @@ GATE_CONFIGS = [
                     custom_check="is_ida_block_mode",
                 ),
                 verdict="block",
+                message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
             # Warn mode: block-once — advisory injected into agent context via
