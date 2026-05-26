@@ -1,19 +1,16 @@
-"""Test that task-notification UserPromptSubmit produces empty output.
+"""Silent/transparent events — task notifications and other no-op routing.
 
-When Claude Code sends a task-notification prompt (background task completed),
-the hook router should return an empty JSON object {} — no system message,
-no verdict, no null values. The notification is internal plumbing and the
-router should be transparent.
-
-Source payload: /tmp/stop.jsonl line 1 (session 86b2bb57).
+Events that should produce empty or minimal output from the router.
 """
 
 import json
+import uuid
 from unittest.mock import patch
 
 from hooks.router import HookRouter
 
-# Raw input exactly as captured from the UserPromptSubmit call in /tmp/stop.jsonl
+from tests.hooks.gate_helpers import run_router_claude
+
 TASK_NOTIFICATION_RAW_INPUT = {
     "permission_mode": "bypassPermissions",
     "prompt": (
@@ -34,12 +31,6 @@ class TestTaskNotificationSilent:
     """Task-notification prompts should produce empty router output."""
 
     def test_task_notification_ups_returns_empty_dict(self, monkeypatch):
-        """UserPromptSubmit for a task-notification should output {}.
-
-        The router currently emits system_message (gate status icons) and
-        hookSpecificOutput with permissionDecision for every UPS event.
-        For task-notifications this is noise — the output should be empty.
-        """
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         monkeypatch.setattr("hooks.router.persist_session_data", lambda data: None)
         monkeypatch.setattr("hooks.router.log_event_to_session", lambda *a, **kw: None)
@@ -63,3 +54,13 @@ class TestTaskNotificationSilent:
                 f"Expected empty output for task-notification UPS, got: {json.dumps(output_json, indent=2)}"
             )
             mock_log.assert_called_once_with(ctx, output=canonical)
+
+    def test_task_notification_subprocess_returns_empty(self) -> None:
+        """Task-notification via subprocess returns empty output."""
+        input_data = {
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": f"test-{uuid.uuid4()}",
+            "prompt": "<task-notification>Task completed</task-notification>",
+        }
+        output, stderr = run_router_claude(input_data)
+        assert output == {}, f"Expected empty output, got: {output}"
