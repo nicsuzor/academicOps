@@ -40,6 +40,10 @@ from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
 TEST_FIXTURE_TASK_ID = "e2e-test-fixture"
 
+# Fast/cheap Gemini model for E2E tests. Update here when the recommended
+# Flash model changes; the CLI accepts any "gemini-*" literal as a model id.
+_GEMINI_TEST_MODEL = "gemini-2.5-flash"
+
 # Mega-prompt for crew paths (passed directly via -p).
 # Must match the task body for run paths so assertions work on both.
 MEGA_PROMPT_TEMPLATE = """\
@@ -448,7 +452,7 @@ class TestAllInvocationPaths:
             crew_name,
         ]
         if backend == "gemini":
-            cmd.extend(["--model", "gemini"])
+            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         cmd.append("--")
         if backend == "gemini":
@@ -556,7 +560,7 @@ class TestAllInvocationPaths:
             "--no-auto-finish",
         ]
         if backend == "gemini":
-            cmd.extend(["--model", "gemini"])
+            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -1080,7 +1084,7 @@ class TestPkbPersistence:
             else:
                 cmd = [polecat_bin, "run", "-t", task_id, "-p", project]
             if backend == "gemini":
-                cmd.extend(["--model", "gemini"])
+                cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
             proc = subprocess.Popen(
                 cmd,
