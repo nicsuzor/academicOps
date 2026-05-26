@@ -104,7 +104,7 @@ The agent works through these in order, using judgment about what needs attentio
 | 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                              |
 | 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                     |
 | 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                                    |
-| 8     | Refile Processing           | Re-parent user-flagged tasks via /planner, remove flag                                               |
+| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (consequence, stakeholder, deps, due), remove flag        |
 | 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                                    |
 | 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                                  |
 | 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                                    |
@@ -293,11 +293,11 @@ Applies whenever a PR was closed without merge. The action depends on close cont
 
 **Step 2 — Invoke an agent to classify the close.** Pass the gathered context to a sub-agent. The agent must choose exactly one of:
 
-| Class                  | Signal                                                                                                                    | Action                                                                                                                                                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **wontfix**            | Clear "don't do this", not-planned, superseded, reviewer explicitly rejects the goal (not just implementation)            | Mark task `cancelled` (or `done` if superseded by completed sibling). Note closing PR URL + close reason in task body. Do NOT file a follow-up.                                                                                       |
+| Class                  | Signal                                                                                                                    | Action                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **wontfix**            | Clear "don't do this", not-planned, superseded, reviewer explicitly rejects the goal (not just implementation)            | Mark task `cancelled` (or `done` if superseded by completed sibling). Note closing PR URL + close reason in task body. Do NOT file a follow-up.                                                                          |
 | **bad-implementation** | Ambiguous, wrong approach, reviewer rejection of approach/design, repeated failure, or "needs rethink" language           | Mark original task `cancelled`. File a sibling investigation task (same parent, `soft_depends_on: [<original-id>]`) summarising what went wrong and what must change before redispatching. Do NOT re-queue the original. |
-| **retry-as-is**        | Rare: unrelated infrastructure failure explicitly documented in PR comments; nothing about the task or approach was wrong | Re-queue to `inbox`. Log the justification explicitly in the sleep activity log and in the task body.                                                                                                                                 |
+| **retry-as-is**        | Rare: unrelated infrastructure failure explicitly documented in PR comments; nothing about the task or approach was wrong | Re-queue to `inbox`. Log the justification explicitly in the sleep activity log and in the task body.                                                                                                                    |
 
 **Agent invocation, not regex** — per No Shitty NLP (AXIOMS.md § 235). The agent reads the actual PR body and comments to make a semantic judgment. Do not string-match on "wontfix" or similar labels; the label is a signal, not the verdict.
 
@@ -350,18 +350,30 @@ Age alone is not staleness — only artifact rot triggers demotion.
 
 ## Phase 8: Refile Processing
 
-Process tasks the user has explicitly flagged for refiling via the dashboard's REFILE button.
+Process tasks the user has explicitly flagged for refiling. The `refile` flag means "something is obviously wrong with this task" — not just parentage, but any structural or weighting problem the user spotted.
 
-1. **Find flagged tasks**: Grep for `refile: true` across `$ACA_DATA/tasks/`
-2. **Reparent each task**: Invoke `/planner` in `maintain` mode for each flagged task.
-3. **Clean up the flag**: After successful reparenting, remove the `refile` key from frontmatter.
-4. **Handle ambiguity**: If the planner cannot determine a parent, flag in cycle summary. Remove `refile: true` and add `needs_triage: true`.
+### Steps
 
-Rules:
+1. **Find flagged tasks**: Search for `refile: true` across `$ACA_DATA/`
+2. **Reparent**: Invoke `/planner` in `maintain` mode to find the correct parent/lineage.
+3. **Evaluate weight**: For each refiled task, review and fix the full weighting surface:
+   - **Severity** — severity lives on `type: target` nodes only (see [[TAXONOMY.md#severity-ladder-sev0sev4]]). For target nodes, read the `consequence` text and match severity to the actual impact described. If consequence text is missing, write it. For ordinary tasks, do NOT assign non-zero severity — it inverts the focus queue. If a refiled task seems SEV3-worthy, ensure the consequence prose is accurate and add `needs_triage: true` to flag possible reclassification as a target.
+   - **Stakeholder** — if someone is waiting on this task, set `stakeholder` to their name.
+   - **Priority** — priority reflects user intent, not agent estimation (see [[../../planner/SKILL.md#priority-assignment-rules]]). Do not auto-adjust priority based on severity or apparent importance. If priority seems clearly misaligned (e.g. high-impact task sitting at P4 with no user signal), add `needs_triage: true` and log the discrepancy for user review.
+   - **Due date** — check whether the due date is missing, stale (past and not overdue-by-design), or obviously wrong. Fix if possible; add `needs_triage: true` if unclear.
+   - **Effort** — if missing, estimate from task scope. Default 3d is often wrong for small tasks (marking = 1d, check-in = 1h).
+   - **Dependencies** — if the task is clearly blocked by something, wire `depends_on` and set status to `blocked`. If it has obvious downstream dependants, wire those too.
+   - **Tags** — ensure tags reflect the new parent lineage (e.g. `qut`, `teaching`, `llb242` for a task under Teaching & Admin > LLB242).
+4. **Clean up the flag**: After successful reparenting and weight evaluation, remove `refile: true` from frontmatter.
+5. **Handle ambiguity**: If the planner cannot determine a parent or the weight evaluation requires user judgment (e.g. unclear consequence severity, ambiguous due date), remove `refile: true` and add `needs_triage: true`. Log the specific ambiguity in the cycle summary.
+
+### Rules
 
 - **No batch limit** — these are explicit user requests; process all of them.
 - **Commits directly to main** — this is mechanical/autonomous work.
 - **Runs before Phase 9** so graph metrics reflect the refile changes.
+- **Weight evaluation uses the task's own content and context** — read the body, consequence, email thread, and parent lineage to make informed judgments. Don't just copy fields from the parent.
+- **Log changes** — for each refiled task, note what changed (parent, severity, stakeholder, etc.) in the cycle summary so the user can review.
 
 ## Phase 9: Graph Maintenance
 
