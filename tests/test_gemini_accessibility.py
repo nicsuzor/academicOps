@@ -49,7 +49,7 @@ def test_core_agent_transformation_for_gemini(agent_name):
     assert "${CLAUDE_PLUGIN_ROOT}" not in final
     assert "${extensionPath}" in final
     if "AXIOMS.md" in content:
-        assert "@${extensionPath}/AXIOMS.md" in final
+        assert "@${extensionPath}/../.agents/rules/AXIOMS.md" in final
 
 
 def test_gemini_hooks_parameter_replacement(tmp_path):
