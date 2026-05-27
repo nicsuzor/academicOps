@@ -2026,7 +2026,7 @@ def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list
                                 cmd = str(tool_input.get("command", ""))
                                 if len(cmd) > 60:
                                     cmd = cmd[:57] + "..."
-                                cmd = cmd.replace("`", "\\`")
+                                cmd = cmd.replace("`", "'")
                                 output_parts.append(f"- Bash({cmd})\n")
                             else:
                                 output_parts.append(f"- {tool_name}(...)\n")
@@ -4265,7 +4265,7 @@ class SessionProcessor:
                             content = content.rstrip("\n")
                             # Include exit code in error display
                             exit_info = f" (exit {exit_code})" if exit_code else ""
-                            error_text = str(item["error"]).replace("`", "\\`")
+                            error_text = str(item["error"]).replace("`", "'")
                             markdown += f"- **❌ ERROR{exit_info}:** {content.lstrip('- ')}: `{error_text}`\n"
                         elif include_tool_results and item.get("result"):
                             result_text = item["result"]
@@ -5000,7 +5000,7 @@ session_id: {session_uuid}
                         value = value.split("/")[-1]
                     else:
                         value = value[: max_length - 3] + "..."
-                value = value.replace('"', '\\"').replace("\n", "\\n").replace("`", "\\`")
+                value = value.replace('"', '\\"').replace("\n", "\\n").replace("`", "'")
                 args.append(f'{key}="{value}"')
             elif isinstance(value, bool):
                 args.append(f"{key}={value!s}")
