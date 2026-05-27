@@ -60,9 +60,13 @@ Each gate is a state machine driven by hook events. Forensic detail → [`specs/
 | `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Reflection before exit    |
 | `IDA_GATE_MODE`       | `warn`  | `warn`, `block`        | Honesty/proof reminder    |
 
-### Subagent enforcement gap
+### Session scope
 
-Gates and context injection are **skipped** when `ctx.is_subagent == True` (router.py lines ~456, ~669). Interactive `claude`-template sessions are classified as subagents. Only hook logging fires.
+Enforcement is **session-scoped**: every execution context with its own session ID and `SessionStart` event (interactive CLI, background jobs, polecats, GHA workflows) receives the full gate and context-injection stack. Inline subagents spawned via the `Agent` tool share the parent's session ID — gates and context injection are skipped (`ctx.is_subagent` checks in `router.py`) to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally.
+
+This is policy, not a gap. The upstream limitation is that Claude Code provides no native `agent_id` signal (`anthropics/claude-code#16424`); the framework relies on `is_subagent_session()` heuristics in `lib/hook_utils.py`, which are fragile under platform changes. When the upstream signal ships, the heuristics should be replaced.
+
+Full session taxonomy and implementation pointers: [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 
 ## Action vocabulary
 
@@ -160,7 +164,7 @@ Which mechanism(s) catch a given axiom, what they do when they fire, where in th
 - **QA**: gate active (close-on-work-begin landed); requirements still freeform — verifier prompt reviews session narrative, no structured acceptance-criteria source yet.
 - **Settings**: global/user rules unverifiable from this repo.
 - **Evidence Loop**: Steps 4-5 (pattern detection) and Step 7 (auto-map update) partial/unbuilt.
-- **Subagent enforcement**: gates and context injection skipped for `is_subagent` sessions.
+- **Subagent enforcement**: gates and context injection skipped for `is_subagent` sessions — this is by policy, not a gap. See [Session scope](#session-scope) above.
 
 ## Mechanism catalogues
 

@@ -100,6 +100,30 @@ If hooks aren't firing for an MCP tool:
 2. Check which plugin defines the hooks (`hooks/hooks.json`)
 3. Ensure they're the **same plugin**
 
+## Session Scope
+
+Enforcement hooks (gates, compliance checks, context injection) are **session-scoped**: they apply to every execution context that has its own session ID and `SessionStart` event. Inline subagents spawned via the `Agent` tool run within the parent session and share its session ID — enforcement is skipped to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally regardless of session type.
+
+### Session taxonomy
+
+| Session type          | How spawned                           | Own session ID?  | Hooks fire?                   | Gates apply?           |
+| --------------------- | ------------------------------------- | ---------------- | ----------------------------- | ---------------------- |
+| Interactive           | User starts CLI                       | Yes              | Yes                           | Yes                    |
+| Background job        | `claude --background` / CC job system | Yes              | Yes                           | Yes                    |
+| Polecat               | Polecat CLI dispatch                  | Yes              | Yes                           | Yes (per polecat.yaml) |
+| GHA workflow          | GitHub Actions                        | Yes              | Yes                           | Yes (per polecat.yaml) |
+| Inline Agent subagent | Parent uses `Agent` tool              | No — parent's ID | Fire (platform can't prevent) | **No** — skipped       |
+
+### Upstream dependency
+
+Claude Code provides no native signal to distinguish inline subagent tool calls from the parent's — all share `session_id`. The framework works around this via `is_subagent_session()` heuristics (short hex session IDs, `agent_id`/`agent_type` fields, env vars, transcript path patterns). Upstream issue: `anthropics/claude-code#16424`. When that ships, the heuristics should be replaced with the native signal.
+
+### Implementation pointers
+
+- `is_subagent_session()` in `lib/hook_utils.py` — multi-method detection heuristic
+- `ctx.is_subagent` skip in `router.py` — gates and context injection bypassed for subagent sessions
+- `COMPLIANCE_SUBAGENT_TYPES` bypass in `gate_config.py` — compliance subagent dispatches classified as infrastructure to avoid gate self-blocking
+
 ## User Expectations
 
 1. **Unified Experience**: Users expect a consistent experience across both Gemini CLI and Claude Code. The router must normalize platform-specific events and outputs so that framework behavior (blocking, warnings, context injection) feels identical regardless of the client used.
