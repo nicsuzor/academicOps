@@ -2023,8 +2023,11 @@ def _parse_subagent_output(text: str, heading_level: int = 4) -> tuple[str, list
                                 )
                                 output_parts.append(f"- {tool_name}({short_path})\n")
                             elif tool_name == "Bash":
-                                cmd = str(tool_input.get("command", ""))[:60]
-                                output_parts.append(f"- Bash({cmd}...)\n")
+                                cmd = str(tool_input.get("command", ""))
+                                if len(cmd) > 60:
+                                    cmd = cmd[:57] + "..."
+                                cmd = cmd.replace("`", "'")
+                                output_parts.append(f"- Bash({cmd})\n")
                             else:
                                 output_parts.append(f"- {tool_name}(...)\n")
 
@@ -4262,7 +4265,8 @@ class SessionProcessor:
                             content = content.rstrip("\n")
                             # Include exit code in error display
                             exit_info = f" (exit {exit_code})" if exit_code else ""
-                            markdown += f"- **❌ ERROR{exit_info}:** {content.lstrip('- ')}: `{item['error']}`\n"
+                            error_text = str(item["error"]).replace("`", "'")
+                            markdown += f"- **❌ ERROR{exit_info}:** {content.lstrip('- ')}: `{error_text}`\n"
                         elif include_tool_results and item.get("result"):
                             result_text = item["result"]
                             tool_call = content.strip().lstrip("- ").rstrip("\n")
@@ -4996,7 +5000,7 @@ session_id: {session_uuid}
                         value = value.split("/")[-1]
                     else:
                         value = value[: max_length - 3] + "..."
-                value = value.replace('"', '\\"').replace("\n", "\\n")
+                value = value.replace('"', '\\"').replace("\n", "\\n").replace("`", "'")
                 args.append(f'{key}="{value}"')
             elif isinstance(value, bool):
                 args.append(f"{key}={value!s}")
