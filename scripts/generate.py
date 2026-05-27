@@ -203,19 +203,23 @@ def main():
             if matches_exclude(match, excludes):
                 continue
 
-            content = match.read_text()
-
             for runtime in runtimes:
                 ctx = {"filename": match.name, "platform": runtime}
-                try:
-                    transformed = apply_transforms(content, transforms, ctx)
-                except Exception as e:
-                    print(f"Error transforming {match} for {runtime}: {e}")
-                    continue
-
                 out_path = get_output_path(match, runtime)
                 out_path.parent.mkdir(parents=True, exist_ok=True)
-                out_path.write_text(transformed)
+
+                if not transforms:
+                    shutil.copy2(match, out_path)
+                else:
+                    try:
+                        # Only read text if we have transforms
+                        content = match.read_text()
+                        transformed = apply_transforms(content, transforms, ctx)
+                        out_path.write_text(transformed)
+                    except Exception as e:
+                        print(f"Error transforming {match} for {runtime}: {e}")
+                        continue
+
                 written_files.add(out_path)
 
     # Generate metadata for both packages and runtimes
