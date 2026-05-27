@@ -125,14 +125,20 @@ RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
     && chmod -R a+rwX /home/worker/.gemini \
+    && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
+    && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
     && python3 -c "import json, pathlib; \
-p = pathlib.Path('/home/worker/.claude/plugins/known_marketplaces.json'); \
-d = json.loads(p.read_text()); \
-cache = '/home/worker/.claude/plugins/cache/academicOps'; \
-d['academicOps']['source']['path'] = cache; \
-d['academicOps']['installLocation'] = cache; \
-p.write_text(json.dumps(d, indent=2))"
+cache = pathlib.Path('/home/worker/.claude/plugins/cache/academicOps'); \
+km = pathlib.Path('/home/worker/.claude/plugins/known_marketplaces.json'); \
+d = json.loads(km.read_text()); \
+d['academicOps']['source']['path'] = str(cache); \
+d['academicOps']['installLocation'] = str(cache); \
+km.write_text(json.dumps(d, indent=2)); \
+mp = cache / '.claude-plugin' / 'marketplace.json'; \
+m = json.loads(mp.read_text()); \
+[p.__setitem__('source', './' + p['name'] + '/' + next((cache / p['name']).iterdir()).name) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
+mp.write_text(json.dumps(m, indent=2))"
 
 # Install pkb binary from nicsuzor/mem releases.
 # Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
