@@ -23,4 +23,4 @@ accountability gaps (no PKB task record for the work).
 Framework paths exempt from this warning: `aops-core/`, `.agents/`,
 `docs/`, `tests/`, `scripts/`, `templates/`, `polecat/`, `aops-tools/`.
 
-See [[aops-core/HEURISTICS.md#P122]].
+See heuristic P122.

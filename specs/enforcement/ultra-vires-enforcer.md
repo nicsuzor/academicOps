@@ -10,7 +10,7 @@ tags: [framework, agent-behavior, guardrails, enforcement, enforcer]
 
 # Ultra Vires Enforcer
 
-> **Spec, not state.** This file is the **design rationale** for the enforcer agent + PreToolUse gate (why ultra vires matters, failure categories, invocation points, output format). For the **operative runtime catalogue** of the enforcer gate (configuration paths, verification commands, debug procedures, custodiet→enforcer rename mapping) see [`aops-core/GATES.md#enforcer-gate`](../../aops-core/GATES.md#enforcer-gate). For the operative cost-ladder catalogue, see `.agents/ENFORCEMENT-MAP.md`.
+> **Spec, not state.** This file is the **design rationale** for the enforcer agent + PreToolUse gate (why ultra vires matters, failure categories, invocation points, output format). For the **operative runtime catalogue** of the enforcer gate (configuration paths, verification commands, debug procedures, custodiet→enforcer rename mapping) see [`specs/GATES.md#enforcer-gate`](../../specs/GATES.md#enforcer-gate). For the operative cost-ladder catalogue, see `specs/ENFORCEMENT-MAP.md`.
 
 **Status**: Active — unified gate system implemented.
 **Scope**: Narrow. This spec covers the specific internal mechanism at pipeline layer L4 / L7 of `specs/enforcement.md` — the `enforcer` agent (Haiku) and its PreToolUse gate. It is not the whole pyramid, and it is not a statement about enforcement in general. For the design statement, see `specs/enforcement.md`.
@@ -283,9 +283,9 @@ See `aops-core/.claude-plugin/plugin.json` (`autoMode` key) for the rule set and
 
 ## References
 
-- `aops-core/AXIOMS.md` — P#4 (Do One Thing), P#22 (Acceptance Criteria Own Success), P#7 (Fail-Fast), P#17 (Verify First), P#49 (No Shitty NLP), P#78 (Right Tool)
+- `.agents/rules/AXIOMS.md` — P#4 (Do One Thing), P#22 (Acceptance Criteria Own Success), P#7 (Fail-Fast), P#17 (Verify First), P#49 (No Shitty NLP), P#78 (Right Tool)
 - `.agents/rules/HEURISTICS.md` — H31 (No LLM Calls in Hooks)
 - `specs/enforcement.md` — design statement
-- `.agents/ENFORCEMENT-MAP.md` — operative state catalogue (SSoT; redirect stub remains at `specs/enforcement/enforcement-map.md`)
+- `specs/ENFORCEMENT-MAP.md` — operative state catalogue (SSoT; redirect stub remains at `specs/enforcement/enforcement-map.md`)
 - `specs/enforcement-mechanisms.md` — per-mechanism catalogue
 - [CC Auto Mode engineering post](https://www.anthropic.com/engineering/claude-code-auto-mode)

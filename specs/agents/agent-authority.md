@@ -31,7 +31,7 @@ type: spec
 
 **Operative state** (per-agent declarations): `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each individual agent holds. This spec defines the schema; the per-agent files are the binding declarations against that schema.
 
-**Audit-artifact** (current-state snapshot): `.agents/AGENT-TOOLS.md` is the mechanical dump generated from the per-agent frontmatter for at-a-glance comparison. It is not a writeable source — drift is reported by it, not declared in it.
+**Audit-artifact** (current-state snapshot): `specs/audit/AGENT-TOOLS.md` is the mechanical dump generated from the per-agent frontmatter for at-a-glance comparison. It is not a writeable source — drift is reported by it, not declared in it.
 
 ## Giving Effect
 

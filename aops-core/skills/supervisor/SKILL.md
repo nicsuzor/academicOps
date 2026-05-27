@@ -293,7 +293,7 @@ The supervisor delegates execution but never delegates **final academic judgment
 
 ### A7 Edge 2: Act on Delegated-Agent Verdicts
 
-_Enforces A7 Edge 2 (FM-1, FM-2, FM-6). See `aops-core/AXIOMS.md` § A7._
+_Enforces A7 Edge 2 (FM-1, FM-2, FM-6)._
 
 Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in the same tick. Forwarding ("subagent recommends X, want to proceed?") is FM-2 rubber-stamping. Before asserting "I can't dispatch X", run the cheapest verification (`gh auth status`, `which gemini`) — capability fabrication (FM-6) forecloses the user's override.
 

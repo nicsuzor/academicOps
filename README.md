@@ -112,7 +112,7 @@ Hooks make every session framework-aware without manual setup:
 - **Transcript capture**: records sessions for reflection
 - **Cross-device sync**: git-based, runs on cron
 
-Each runtime mechanism, its hook event, scope, and cost-ladder tier is tracked in [.agents/ENFORCEMENT-MAP.md](.agents/ENFORCEMENT-MAP.md) — the operative SSoT for enforcement. Mechanisms move down the cost ladder (L0–L7) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6). For the design rationale (pipeline view, pyramid view, evidence loop) see [specs/enforcement/enforcement.md](specs/enforcement/enforcement.md).
+Each runtime mechanism, its hook event, scope, and cost-ladder tier is tracked in [specs/ENFORCEMENT-MAP.md](specs/ENFORCEMENT-MAP.md) — the operative SSoT for enforcement. Mechanisms move down the cost ladder (L0–L7) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6). For the design rationale (pipeline view, pyramid view, evidence loop) see [specs/enforcement/enforcement.md](specs/enforcement/enforcement.md).
 
 ### 4. Async quality assurance (GitHub)
 
@@ -197,7 +197,7 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
 8. **Recusal — don't legislate from your own case** (AXIOMS § A17) — the agent that just experienced a failure is forensically authoritative but normatively recused from proposing the framework change motivated by it. Framework-change work is split in two:
    - **Incident phase** (`/learn`, `/retro`): facts, root-cause category, the rule already in place at the time (if any), and an impact statement. **No "suggested axiom", no "add a gate", no remediation.** Recency exposure is bias; the report does not propose its own remedy.
-   - **Review phase** (`/issue-sweep`): a separate, detached context reads incident reports against `.agents/ENFORCEMENT-MAP.md` and the axiom set, and is the only phase allowed to author rule changes — defaulting to the cheapest sufficient level (L0/L1 propagation), escalating only when the cost-benefit threshold (≥3 cited recurrences) is satisfied.
+   - **Review phase** (`/issue-sweep`): a separate, detached context reads incident reports against `specs/ENFORCEMENT-MAP.md` and the axiom set, and is the only phase allowed to author rule changes — defaulting to the cheapest sufficient level (L0/L1 propagation), escalating only when the cost-benefit threshold (≥3 cited recurrences) is satisfied.
 
    The evidence base for framework change is _recurrence_, not the salience of the most recent incident. A future incident register (rule ↔ mechanism ↔ incident report) will formalise this; until it lands, the detached reviewer relies on `gh issue list` and row-by-row ENFORCEMENT-MAP review.
 

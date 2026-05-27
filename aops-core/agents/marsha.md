@@ -153,4 +153,4 @@ When not to delegate:
 - The issue is a runtime behaviour gap (tests fail, UI does not render, data is wrong). Report directly.
 - The issue is criterion substitution (user asked for Y, agent delivered X). Report directly — this is QA's core remit.
 
-Axioms themselves are loaded by rbg via `@${CLAUDE_PLUGIN_ROOT}/AXIOMS.md`. If you need to read them yourself for context, read that file directly. Do not maintain a local copy.
+Axioms themselves are loaded by rbg via `@${CLAUDE_PLUGIN_ROOT}/../.agents/rules/AXIOMS.md`. If you need to read them yourself for context, read that file directly. Do not maintain a local copy.

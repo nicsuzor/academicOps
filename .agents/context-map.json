@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "spec_dirs": [],
+  "spec_dirs": ["specs/"],
   "docs": [
     {
       "topic": "project_overview",
@@ -44,7 +44,7 @@
     {
       "topic": "axioms",
       "type": "axiom",
-      "path": "aops-core/AXIOMS.md",
+      "path": ".agents/rules/AXIOMS.md",
       "description": "Inviolable principles and their logical derivations — fail-fast, DRY, verify-first, no workarounds",
       "keywords": [
         "axiom",
@@ -60,7 +60,7 @@
     {
       "topic": "axioms_review",
       "type": "axiom",
-      "path": "aops-core/AXIOMS-REVIEW.md",
+      "path": ".agents/rules/AXIOMS-REVIEW.md",
       "description": "Review questions for universal axioms — used by rbg (the Judge) for compliance auditing",
       "keywords": [
         "axiom",
@@ -75,14 +75,14 @@
     {
       "topic": "heuristics",
       "type": "heuristic",
-      "path": "aops-core/HEURISTICS.md",
+      "path": ".agents/rules/HEURISTICS.md",
       "description": "Working hypotheses validated by evidence — task management, decomposition, CLI patterns",
       "keywords": ["heuristic", "guideline", "best practice", "evidence-based", "decomposition", "task sequencing"]
     },
     {
       "topic": "constraints",
       "type": "heuristic",
-      "path": "aops-core/CONSTRAINTS.md",
+      "path": "specs/CONSTRAINTS.md",
       "description": "Hard rules for framework internals — file length limits, naming conventions, enforced by pre-commit hooks",
       "keywords": ["constraint", "hard rule", "file length", "naming", "pre-commit", "enforcement"]
     },
@@ -96,7 +96,7 @@
     {
       "topic": "enforcement_map",
       "type": "reference",
-      "path": ".agents/ENFORCEMENT-MAP.md",
+      "path": "specs/ENFORCEMENT-MAP.md",
       "description": "Maps rules to enforcement mechanisms — which rules are enforced by hooks, gates, prompts, or detection",
       "keywords": ["enforcement", "gate", "compliance", "rule", "mechanism", "blocking", "hook enforcement"]
     },
@@ -154,28 +154,28 @@
     {
       "topic": "agent_compliance",
       "type": "reference",
-      "path": ".agents/AGENT-COMPLIANCE-MATRIX.md",
+      "path": "specs/audit/AGENT-COMPLIANCE-MATRIX.md",
       "description": "Compliance matrix for agents against the Agent Authority spec — required fields, naming, referential integrity",
       "keywords": ["agent", "compliance", "authority", "matrix", "audit", "permission", "conformance"]
     },
     {
       "topic": "capabilities",
       "type": "reference",
-      "path": ".agents/CAPABILITIES.md",
+      "path": "specs/CAPABILITIES.md",
       "description": "Framework Capabilities & Artifacts — conventions, transcript naming, and finding artifacts",
       "keywords": ["capabilities", "conventions", "transcripts", "artifact", "prompt-slug", "discovery", "ls"]
     },
     {
       "topic": "agent_tools",
       "type": "reference",
-      "path": ".agents/AGENT-TOOLS.md",
+      "path": "specs/audit/AGENT-TOOLS.md",
       "description": "Authoritative agent × tool access matrix — groups tools by server, highlights exclusivity and drift",
       "keywords": ["agent", "tool", "matrix", "authority", "exclusivity", "drift", "permissions", "SSoT"]
     },
     {
       "topic": "agent_remediation",
       "type": "reference",
-      "path": ".agents/AGENT-REMEDIATION-BACKLOG.md",
+      "path": "specs/audit/AGENT-REMEDIATION-BACKLOG.md",
       "description": "Backlog of required fixes to bring agents and skills into full compliance with authority specs",
       "keywords": ["remediation", "backlog", "fix", "agent", "skill", "compliance", "priority"]
     },
@@ -185,6 +185,40 @@
       "path": "scripts/audit_agent_compliance.py",
       "description": "Generator script for agent compliance and tool matrices",
       "keywords": ["audit", "script", "generator", "matrix", "compliance", "automation"]
+    },
+    {
+      "topic": "doc_taxonomy",
+      "type": "reference",
+      "path": "specs/meta/doc-taxonomy.md",
+      "description": "Documentation typology — five classes of document (instructions, specs, state, audit-artifact, docs), their audiences, and canonical file paths",
+      "keywords": [
+        "documentation",
+        "typology",
+        "taxonomy",
+        "file type",
+        "audience",
+        "where things go",
+        "instructions",
+        "specs",
+        "state",
+        "audit",
+        "docs",
+        "classification"
+      ]
+    },
+    {
+      "topic": "gates",
+      "type": "reference",
+      "path": "specs/GATES.md",
+      "description": "Runtime gate catalogue and forensic reference — what each gate is, where it lives, how to configure/verify/debug it",
+      "keywords": ["gate", "enforcer", "qa", "handover", "ida", "hydration", "runtime", "hook", "forensic", "debug"]
+    },
+    {
+      "topic": "surfaces",
+      "type": "reference",
+      "path": "specs/SURFACES.md",
+      "description": "Execution surfaces — where Claude Code and Gemini CLI run, what each surface can do, operational facts",
+      "keywords": ["surface", "execution", "claude code", "gemini", "container", "desktop", "polecat", "environment"]
     }
   ]
 }

@@ -75,7 +75,7 @@ The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
 - [[enforcement-mechanisms]] — Concrete mechanisms per layer
-- [[enforcement-map]] — Redirect stub → operative SSoT at `.agents/ENFORCEMENT-MAP.md`
+- [[ENFORCEMENT-MAP]] — Axiom × mechanism map, gate lifecycle, pyramid positions (L0–L7)
 - [[enforcement-aops-recommender]] — The aops-recommender pattern
 - [[hook-router]] — Hook dispatching
 - [[ultra-vires-enforcer]] — Authority envelope checker

@@ -132,7 +132,7 @@ The framework improves through structured feedback loops that connect observatio
 │     - Map new rule to enforcement mechanism                             │
 │     - Document enforcement point (SessionStart, PreToolUse, etc.)       │
 │                                                                         │
-│  See: .agents/ENFORCEMENT-MAP.md (operative SSoT)                       │
+│  See: specs/ENFORCEMENT-MAP.md (operative SSoT)                       │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -311,4 +311,4 @@ The `audit` skill ensures the framework remains healthy by:
 - [[enforcement]] - Enforcement mechanism details
 - [[workflow-system-spec]] - Workflow selection and composition
 - [[commands/learn]] - The /learn command reference
-- `.agents/ENFORCEMENT-MAP.md` - Current enforcement rules (operative SSoT; redirect stub at `specs/enforcement/enforcement-map.md`)
+- `specs/ENFORCEMENT-MAP.md` - Current enforcement rules (operative SSoT; redirect stub at `specs/enforcement/enforcement-map.md`)

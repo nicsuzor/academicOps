@@ -8,7 +8,7 @@ tags: [framework, enforcement, design]
 
 # Enforcement Design
 
-**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see the brain PKB (project: aops, topic: enforcement). Universal axioms live in `aops-core/AXIOMS.md` and are loaded only by the `rbg` agent.
+**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see the brain PKB (project: aops, topic: enforcement). Universal axioms live in `.agents/rules/AXIOMS.md` and are loaded only by the `rbg` agent.
 
 ## Mechanism Ladder
 
@@ -63,7 +63,7 @@ parsing failures and break the enforcement pipeline.
 
 ### Level 1d: Structured Justification Format
 
-**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, `.agents/ENFORCEMENT-MAP.md`, hooks/*.py, settings.json deny rules).
+**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, `specs/ENFORCEMENT-MAP.md`, hooks/*.py, settings.json deny rules).
 
 **How it works**: Before any framework modification, agent must emit a structured justification block. The tight format forces explicit reasoning through each checkpoint.
 
@@ -72,12 +72,12 @@ parsing failures and break the enforcement pipeline.
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | .agents/ENFORCEMENT-MAP.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | specs/ENFORCEMENT-MAP.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
 - AXIOMS.md: [P#X, P#Y - or "not relevant"]
 - HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- .agents/ENFORCEMENT-MAP.md: [enforcement entry name - or "not relevant"]
+- specs/ENFORCEMENT-MAP.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"

@@ -1413,8 +1413,8 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
     """
     print("\nGenerating GHA agent prompts...")
     agents_src = aops_root / "aops-core" / "agents"
-    axioms_path = aops_root / "aops-core" / "AXIOMS.md"
-    axioms_review_path = aops_root / "aops-core" / "AXIOMS-REVIEW.md"
+    axioms_path = aops_root / ".agents" / "rules" / "AXIOMS.md"
+    axioms_review_path = aops_root / ".agents" / "rules" / "AXIOMS-REVIEW.md"
     gha_out = dist_root / "gha-agents"
     gha_out.mkdir(parents=True, exist_ok=True)
 
@@ -1473,7 +1473,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
             "",
             "## Framework Axioms",
             "",
-            "<!-- Source: aops-core/AXIOMS.md — regenerate via `scripts/build.py` if axioms change -->",
+            "<!-- Source: .agents/rules/AXIOMS.md — regenerate via `scripts/build.py` if axioms change -->",
             "",
             "The following principles are always active, regardless of domain context.",
             "",
@@ -1487,7 +1487,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
                 "",
                 "## Review Questions",
                 "",
-                "<!-- Source: aops-core/AXIOMS-REVIEW.md — regenerate via `scripts/build.py` if axioms change -->",
+                "<!-- Source: .agents/rules/AXIOMS-REVIEW.md — regenerate via `scripts/build.py` if axioms change -->",
                 "",
                 axioms_review_body,
                 "",

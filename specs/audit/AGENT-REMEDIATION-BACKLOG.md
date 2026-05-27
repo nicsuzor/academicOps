@@ -24,7 +24,7 @@ This backlog lists the actions required to bring all agents and skills into full
 
 ## Tool Authority (Drift Remediation)
 
-Based on `.agents/AGENT-TOOLS.md`:
+Based on `specs/audit/AGENT-TOOLS.md`:
 
 - **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).
 - **Edit Tool**: Evaluate if `junior.md` needs `Edit`.

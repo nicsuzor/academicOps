@@ -203,7 +203,7 @@ If a PKB operation is needed and no MCP verb exists for it:
 
 Files under `$ACA_DATA/.agents/` are checked-in orientation docs for future agents — not session state. They are the exception to the rule above. Keep them current as a duty, not on request:
 
-- **`.agents/CAPABILITIES.md`** — environments, plugin install state, project configs, GHA workflows per repo. Update in the same turn whenever you learn new facts about any of those. Tables over prose. Mark unverified rows ("per user; not directly probed"). Date-stamp the header on every edit.
+- **Capabilities inventory** — environments, plugin install state, project configs, GHA workflows per repo. Update in the same turn whenever you learn new facts about any of those. Tables over prose. Mark unverified rows ("per user; not directly probed"). Date-stamp the header on every edit.
 - **`.agents/CORE.md`, `.agents/BUTLER.md`, `.agents/rules/*`** — instruction docs. Don't edit these yourself unless `/learn` directs you to (per CORE.md "When corrected: invoke `/learn`").
 
 If you add a new inventory doc, add a one-line pointer to it from `.agents/README.md` and `CORE.md`'s "Where to Find Things" table so future agents can find it.
@@ -214,7 +214,7 @@ If you add a new inventory doc, add a one-line pointer to it from `.agents/READM
 - **Laptop has no Docker** — polecat / crew containers run on the WSL host (see `infrastructure` PKB doc for the user's hostname). Dispatch containerised work there, not locally.
 - **Cowork is a runtime mode, not a host** — it's a sandboxed VM/session that connects from either the laptop or WSL. Don't treat it as a separate environment to dispatch into.
 
-See `.agents/CAPABILITIES.md` for the full picture.
+See the capabilities inventory for the full picture.
 
 ## Communication Style
 

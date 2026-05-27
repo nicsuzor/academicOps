@@ -38,10 +38,10 @@ def mod():
     "path",
     [
         # framework top-level
-        "aops-core/AXIOMS.md",
+        ".agents/rules/AXIOMS.md",
         "aops-core/RULES.md",
-        "aops-core/HEURISTICS.md",
-        "aops-core/CONSTRAINTS.md",
+        ".agents/rules/HEURISTICS.md",
+        "specs/CONSTRAINTS.md",
         "aops-core/SCRIPTS.md",
         # skill / agent / workflow / command / hook content
         "aops-core/skills/remember/SKILL.md",
