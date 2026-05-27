@@ -39,7 +39,7 @@ FIXTURES_FILE = Path(__file__).parent / "fixtures" / "handover_session_type.json
 
 
 def _load_fixtures() -> dict:
-    with FIXTURES_FILE.open() as f:
+    with FIXTURES_FILE.open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -405,9 +405,7 @@ class TestHandoverPolecatLifecycle:
         )
         result = router._dispatch_gates(ctx_stop, state)
         # IDA gate may still fire (warn), but handover should not
-        if result is not None:
-            # If there's a result, it's from IDA, not handover
-            assert state.gates["handover"].status == GateStatus.OPEN
+        assert state.gates["handover"].status == GateStatus.OPEN
 
         # 5. Bash, Agent, etc — gate stays OPEN throughout
         state.main_agent.current_task = "task-456"
