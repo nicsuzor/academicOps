@@ -181,40 +181,46 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # Gate starts OPEN (so short interactive chats don't require handover).
-    # Closes when work begins (task bound or write tool used).
-    # Opens when /end-session (canonical full close) or /dump (emergency bail)
-    # skill completes — both satisfy the handover gate.
+    # Polecat/crew sessions start CLOSED (autonomous work must always hand over).
+    # Interactive sessions start OPEN (coordinator/junior doesn't need forced handover).
+    # Close triggers only fire in polecat/crew sessions.
+    # Opens when /end-session or /dump skill completes.
     # Policy blocks Stop when CLOSED.
     GateConfig(
         name="handover",
         description="Requires structured session handover before exit.",
         initial_status=GateStatus.OPEN,
+        initial_status_by_session_type={
+            "polecat": GateStatus.CLOSED,
+            "crew": GateStatus.CLOSED,
+        },
         triggers=[
             # Task bound: update_task with status=in_progress -> Close
-            # Work has begun, so handover will be required before exit.
+            # Only in polecat/crew sessions — interactive sessions (junior
+            # supervising agents) manage task state without needing handover.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="update_task",
                     tool_input_pattern="in_progress",
+                    session_type_filter=["polecat", "crew"],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key="handover.bound",
                 ),
             ),
-            # Write tool used -> Close
+            # Write tool used -> Close (polecat/crew only)
             # When handover is sticky (post-skill), the engine suppresses
             # this close transition natively.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     custom_check="is_write_tool",
+                    session_type_filter=["polecat", "crew"],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                    # no message to avoid spamming on every write tool use
                     system_message_key=None,
                 ),
             ),
@@ -270,9 +276,13 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
-            # UserPromptSubmit -> re-arm for the next turn cycle.
+            # UserPromptSubmit -> re-arm for the next turn cycle (polecat/crew only).
+            # Interactive sessions never close the handover gate.
             GateTrigger(
-                condition=GateCondition(hook_event="UserPromptSubmit"),
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    session_type_filter=["polecat", "crew"],
+                ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],

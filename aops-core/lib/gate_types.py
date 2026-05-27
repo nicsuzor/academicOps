@@ -66,6 +66,10 @@ class GateCondition(BaseModel):
         default_factory=list
     )  # Regex list: skip if any matches the prompt (stripped)
 
+    # Session type filter: condition only matches if session_type is in this list.
+    # None means no filter (matches all session types).
+    session_type_filter: list[str] | None = None
+
     # Custom logic key (resolved in engine)
     custom_check: str | None = None
 
@@ -153,6 +157,8 @@ class GateConfig(BaseModel):
 
     # Initial state
     initial_status: GateStatus = GateStatus.OPEN
+    # Session-type-specific initial status overrides (e.g. polecat → CLOSED)
+    initial_status_by_session_type: dict[str, GateStatus] = Field(default_factory=dict)
 
     # Transitions (Stateless -> State Update)
     triggers: list[GateTrigger] = Field(default_factory=list)

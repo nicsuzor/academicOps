@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 from pathlib import Path
 
@@ -26,6 +27,19 @@ def _reinit_gates_with_defaults():
     GateRegistry.initialize()
 
 
+def _make_polecat_state(session_id: str) -> SessionState:
+    """Create a polecat SessionState (handover starts CLOSED)."""
+    old = os.environ.get("POLECAT_SESSION_TYPE")
+    os.environ["POLECAT_SESSION_TYPE"] = "polecat"
+    try:
+        return SessionState.create(session_id)
+    finally:
+        if old is not None:
+            os.environ["POLECAT_SESSION_TYPE"] = old
+        else:
+            os.environ.pop("POLECAT_SESSION_TYPE", None)
+
+
 @pytest.fixture
 def router():
     _reinit_gates_with_defaults()
@@ -35,7 +49,7 @@ def router():
 def test_handover_latch_bash_after_dump(router):
     """Verify that Bash after end_session does not re-close the gate (sticky_until)."""
     session_id = "test-latch"
-    state = SessionState.create(session_id)
+    state = _make_polecat_state(session_id)
 
     # 1. Open gate with end_session
     ctx_dump = HookContext(
@@ -70,7 +84,7 @@ def test_handover_latch_edit_after_dump(router):
     of what tools are used — the next UPS re-arms the gate for the new turn.
     """
     session_id = "test-reclose"
-    state = SessionState.create(session_id)
+    state = _make_polecat_state(session_id)
 
     # 1. Open gate with end_session
     ctx_dump = HookContext(
@@ -98,9 +112,9 @@ def test_handover_latch_edit_after_dump(router):
 
 
 def test_handover_unsticks_on_user_prompt(router):
-    """Verify that UserPromptSubmit unsticks and re-arms the handover gate."""
+    """Verify that UserPromptSubmit unsticks and re-arms the handover gate (polecat)."""
     session_id = "test-unstick"
-    state = SessionState.create(session_id)
+    state = _make_polecat_state(session_id)
 
     # 1. Open gate with end_session
     ctx_dump = HookContext(
@@ -149,11 +163,12 @@ def test_bash_no_task_does_not_close_gate(router):
 
 
 def test_bash_with_task_closes_gate(router):
-    """Verify that Bash with a bound task DOES close the gate (aops-2283a8b0)."""
+    """Verify that Bash with a bound task DOES close the gate in polecat sessions."""
     session_id = "test-with-task"
-    state = SessionState.create(session_id)
+    state = _make_polecat_state(session_id)
     state.main_agent.current_task = "task-123"
-    assert state.gates["handover"].status == GateStatus.OPEN
+    # Polecat starts CLOSED; set to OPEN to test the close trigger
+    state.gates["handover"].status = GateStatus.OPEN
 
     # Run Bash
     ctx_bash = HookContext(

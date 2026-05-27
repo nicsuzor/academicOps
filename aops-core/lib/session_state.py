@@ -160,7 +160,10 @@ class SessionState(BaseModel):
 
         # Initialize gate states from gate config definitions
         for gate_config in GATE_CONFIGS:
-            instance.gates[gate_config.name] = GateState(status=gate_config.initial_status)
+            initial = gate_config.initial_status_by_session_type.get(
+                stype, gate_config.initial_status
+            )
+            instance.gates[gate_config.name] = GateState(status=initial)
 
         return instance
 

@@ -1,0 +1,484 @@
+{
+  "handover_polecat_initial_closed": [
+    {
+      "id": "live-polecat-gemini-initial-closed",
+      "description": "Polecat session (Gemini) starts with handover gate CLOSED. Real session 8182f0f2 from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "verdict": "warn",
+        "handover_initial_status": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1348-8182f0f2-junior-claude-session-hooks.jsonl",
+        "line_index": 24,
+        "session_id": "8182f0f2-06f8-45c2-8611-3888c2893b5e",
+        "logged_at": "2026-05-27T14:02:19+10:00",
+        "event_hash": "32f587fb59be7912",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-crew-initial-closed",
+      "description": "Crew session starts with handover gate CLOSED. Real session 4956077c from 2026-05-27.",
+      "session_type": "crew",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "verdict": "warn",
+        "handover_initial_status": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0839-4956077c-junior-claude-session-hooks.jsonl",
+        "line_index": 22,
+        "session_id": "4956077c-137f-4f80-9f2b-2b0b4802a98a",
+        "logged_at": "2026-05-27T08:55:16+10:00",
+        "event_hash": "ecbe1b8197a4f31a",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    }
+  ],
+  "handover_interactive_stays_open": [
+    {
+      "id": "live-interactive-initial-open",
+      "description": "Interactive session starts with handover gate OPEN. Real session 3fb9c8fc from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_initial_status": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1520-3fb9c8fc-junior-claude-session-hooks.jsonl",
+        "line_index": 2,
+        "session_id": "3fb9c8fc-530b-4521-92c5-1c5d0a7ed528",
+        "logged_at": "2026-05-27T15:22:27+10:00",
+        "event_hash": "a35126e42d4cd184",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-interactive-update-task-no-close",
+      "description": "update_task with in_progress in interactive session does NOT close handover gate. Real session 4956077c from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "adhoc-sessions-05600b96",
+        "updates": {
+          "status": "in_progress",
+          "priority": 1
+        }
+      },
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0839-4956077c-junior-claude-session-hooks.jsonl",
+        "line_index": 19,
+        "session_id": "4956077c-137f-4f80-9f2b-2b0b4802a98a",
+        "logged_at": "2026-05-27T08:54:56+10:00",
+        "event_hash": "be339e953fedc899",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-interactive-write-tool-no-close",
+      "description": "Edit in interactive session does NOT close handover gate. Real session 790d28ab from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/nic/src/academicOps/Dockerfile",
+        "old_string": "    && rm -rf /tmp/aops-dist \\",
+        "new_string": "    && cp /tmp/aops-dist/marketplace.json /home/worker/.claude/plugins/cache/academicOps/marketplace.json \\\n    && rm -r",
+        "replace_all": false
+      },
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 129,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T15:27:25+10:00",
+        "event_hash": "3c89a1684b3a5ef5",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-interactive-ups-no-rearm",
+      "description": "UserPromptSubmit in interactive session does NOT re-arm handover gate. Real session 3fb9c8fc from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1520-3fb9c8fc-junior-claude-session-hooks.jsonl",
+        "line_index": 6,
+        "session_id": "3fb9c8fc-530b-4521-92c5-1c5d0a7ed528",
+        "logged_at": "2026-05-27T15:28:21+10:00",
+        "event_hash": "d3046e993479ff7b",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-interactive-bash-no-close",
+      "description": "Bash in interactive session with bound task does NOT close handover gate. Real session 790d28ab from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /home/nic/.aops/worktrees/aops-b48c836a && git log --oneline -5 2>/dev/null",
+        "description": "Check git log in the Docker fix worktree"
+      },
+      "is_subagent": false,
+      "state_overrides": {
+        "current_task": "task-123"
+      },
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 41,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T14:46:48+10:00",
+        "event_hash": "5ed245ea3ae08a63",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    }
+  ],
+  "handover_polecat_close_triggers": [
+    {
+      "id": "live-polecat-update-task-closes",
+      "description": "update_task with in_progress in polecat session closes handover gate. Real session 4956077c from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "adhoc-sessions-05600b96",
+        "updates": {
+          "status": "in_progress",
+          "priority": 1
+        }
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0839-4956077c-junior-claude-session-hooks.jsonl",
+        "line_index": 19,
+        "session_id": "4956077c-137f-4f80-9f2b-2b0b4802a98a",
+        "logged_at": "2026-05-27T08:54:56+10:00",
+        "event_hash": "be339e953fedc899",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-polecat-write-tool-closes",
+      "description": "Edit in polecat session closes handover gate. Real session 790d28ab from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/nic/src/academicOps/Dockerfile",
+        "old_string": "    && rm -rf /tmp/aops-dist \\",
+        "new_string": "    && cp /tmp/aops-dist/marketplace.json /home/worker/.claude/plugins/cache/academicOps/marketplace.json \\\n    && rm -r",
+        "replace_all": false
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 129,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T15:27:25+10:00",
+        "event_hash": "3c89a1684b3a5ef5",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-polecat-ups-rearms",
+      "description": "UserPromptSubmit in polecat session re-arms handover gate to CLOSED. Real session 17a70e85 from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0836-17a70e85-junior-claude-session-hooks.jsonl",
+        "line_index": 1,
+        "session_id": "17a70e85-adfd-45ab-bf5a-d0f73606bdc6",
+        "logged_at": "2026-05-27T08:39:20+10:00",
+        "event_hash": "5c2953bc4b6bb3aa",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-polecat-bash-with-task-closes",
+      "description": "Bash with bound task in polecat session closes handover gate (is_write_tool fires). Real session 790d28ab from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cd /home/nic/src/academicOps && git add Dockerfile && git commit -m \"$(cat <<'EOF'\nfix(docker): copy marketplace.json to cache dir so CC validates plugins\n\nPR #1412 patched known_marketplaces.json to ",
+        "description": "Commit the fix"
+      },
+      "is_subagent": false,
+      "state_overrides": {
+        "current_task": "task-456"
+      },
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 209,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T15:36:59+10:00",
+        "event_hash": "711462ce5a95468e",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    }
+  ],
+  "handover_subagent_bypass": [
+    {
+      "id": "live-subagent-update-task-bypass-4956077c",
+      "description": "Subagent (is_subagent=True) claiming task via update_task: gates skipped entirely. Real session 4956077c from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "adhoc-sessions-05600b96",
+        "updates": {
+          "status": "in_progress",
+          "priority": 1
+        }
+      },
+      "is_subagent": true,
+      "subagent_type": "claude",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0839-4956077c-junior-claude-session-hooks.jsonl",
+        "line_index": 18,
+        "session_id": "4956077c-137f-4f80-9f2b-2b0b4802a98a",
+        "logged_at": "2026-05-27T08:54:56+10:00",
+        "event_hash": "1301003964d8f661",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-nested-subagent-launches-agent-17a70e85",
+      "description": "Nested subagent (is_subagent=True) launching another Agent: gates skipped. Real session 17a70e85 from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Retro survey: limit override failure",
+        "prompt": "Read aops-core/skills/survey/SKILL.md. Execute in retro mode.\n\nContext from user: \"this is another failure of process to...",
+        "subagent_type": "aops-core:junior",
+        "run_in_background": true
+      },
+      "is_subagent": true,
+      "subagent_type": "claude",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0836-17a70e85-junior-claude-session-hooks.jsonl",
+        "line_index": 234,
+        "session_id": "17a70e85-adfd-45ab-bf5a-d0f73606bdc6",
+        "logged_at": "2026-05-27T11:36:18+10:00",
+        "event_hash": "1a94c2e0a0beddb0",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-subagent-dispatches-polecat-bash-790d28ab",
+      "description": "Subagent dispatching polecat via Bash: gates skipped. Real session 790d28ab from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py run -t aops-b48c836a -p aops --model claude-opus-4-7 2>&1",
+        "timeout": 600000,
+        "description": "Dispatch Opus polecat for Docker marketplace cache-miss fix",
+        "run_in_background": true
+      },
+      "is_subagent": true,
+      "subagent_type": "aops-core:junior",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 14,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T14:45:29+10:00",
+        "event_hash": "c33764505bc0d8cb",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-subagent-stop-not-skipped-8182f0f2",
+      "description": "Subagent Stop event is NOT skipped (Stop exempt from subagent bypass). Real session 8182f0f2 from 2026-05-27.",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": true,
+      "gate_overrides": {
+        "handover": {
+          "status": "closed"
+        }
+      },
+      "expected": {
+        "gates_skipped": false,
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1348-8182f0f2-junior-claude-session-hooks.jsonl",
+        "line_index": 24,
+        "session_id": "8182f0f2-06f8-45c2-8611-3888c2893b5e",
+        "logged_at": "2026-05-27T14:02:19+10:00",
+        "event_hash": "32f587fb59be7912",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-subagent-subagent-stop-not-skipped",
+      "description": "SubagentStop event in subagent session is NOT skipped (SubagentStop exempt from bypass). Real session 17a70e85 from 2026-05-27.",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": true,
+      "subagent_type": "aops-core:junior",
+      "raw_input": {
+        "hook_event_name": "SubagentStop",
+        "agent_id": "a2b7efc9bdb8adc0b",
+        "agent_type": "",
+        "stop_hook_active": false,
+        "agent_transcript_path": "/home/nic/.claude/projects/-home-nic-junior/17a70e85-adfd-45ab-bf5a-d0f73606bdc6/subagents/agent-a2b7efc9bdb8adc0b.jsonl",
+        "last_assistant_message": "let's close out that james review and merge the hard-records PR"
+      },
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": false
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0836-17a70e85-junior-claude-session-hooks.jsonl",
+        "line_index": 19,
+        "session_id": "17a70e85-adfd-45ab-bf5a-d0f73606bdc6",
+        "logged_at": "2026-05-27T08:40:16+10:00",
+        "event_hash": "c06687bff079fe95",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    }
+  ],
+  "handover_stop_by_session_type": [
+    {
+      "id": "live-polecat-stop-closed-warns",
+      "description": "Polecat session Stop with handover CLOSED produces WARN (default handover mode=warn). Real session 17a70e85 from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "closed"
+        },
+        "qa": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "verdict": "warn"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-0836-17a70e85-junior-claude-session-hooks.jsonl",
+        "line_index": 18,
+        "session_id": "17a70e85-adfd-45ab-bf5a-d0f73606bdc6",
+        "logged_at": "2026-05-27T08:40:12+10:00",
+        "event_hash": "3b7f560c4e977333",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    },
+    {
+      "id": "live-interactive-stop-open-no-handover-block",
+      "description": "Interactive session Stop with handover OPEN: handover gate does not contribute a block/warn. Real session 3fb9c8fc from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": {
+          "status": "open"
+        },
+        "qa": {
+          "status": "open"
+        }
+      },
+      "expected": {
+        "handover_status_after": "open"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1520-3fb9c8fc-junior-claude-session-hooks.jsonl",
+        "line_index": 13,
+        "session_id": "3fb9c8fc-530b-4521-92c5-1c5d0a7ed528",
+        "logged_at": "2026-05-27T15:29:50+10:00",
+        "event_hash": "1a9aa165681b4b0a",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
+    }
+  ]
+}

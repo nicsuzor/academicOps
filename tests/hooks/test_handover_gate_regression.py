@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 from pathlib import Path
 
@@ -32,6 +33,19 @@ def router(monkeypatch):
     _reinit_gates_with_defaults()
     monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
     return HookRouter()
+
+
+def _make_polecat_state(session_id: str) -> SessionState:
+    """Create a polecat SessionState (handover starts CLOSED)."""
+    old = os.environ.get("POLECAT_SESSION_TYPE")
+    os.environ["POLECAT_SESSION_TYPE"] = "polecat"
+    try:
+        return SessionState.create(session_id)
+    finally:
+        if old is not None:
+            os.environ["POLECAT_SESSION_TYPE"] = old
+        else:
+            os.environ.pop("POLECAT_SESSION_TYPE", None)
 
 
 def test_release_task_does_not_close_handover_gate(router):
@@ -82,14 +96,14 @@ def test_complete_task_does_not_close_handover_gate(router):
 
 def test_handover_sticky_state_transitions(router):
     """
-    Verify handover gate sticky transitions:
-    1. Initially not sticky.
+    Verify handover gate sticky transitions (polecat session):
+    1. Initially not sticky (but CLOSED in polecat).
     2. Becomes sticky when handover skill completes (gate OPEN).
     3. Bash after handover does not close gate (sticky suppresses).
     4. Edit after handover does not close gate (sticky suppresses).
     5. UserPromptSubmit unsticks and re-arms gate.
     """
-    state = SessionState.create("test-session-state")
+    state = _make_polecat_state("test-session-state")
     assert state.gates["handover"].sticky is False
 
     # 1. Complete handover skill
