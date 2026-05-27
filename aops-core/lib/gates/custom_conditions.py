@@ -82,4 +82,7 @@ def check_custom_condition(
         # not upgraded to decision=block by output_for_claude.
         return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
 
+    if name == "has_bound_task":
+        return bool(session_state.main_agent.current_task)
+
     return False
