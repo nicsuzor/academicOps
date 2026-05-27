@@ -213,13 +213,13 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 
 ### Where it lives
 
-| Concern           | Path                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                           |
-| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                      |
-| Custom condition  | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`, shared with handover) |
-| Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md` |
-| Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                     |
+| Concern           | Path                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                                             |
+| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                                        |
+| Custom conditions | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`) |
+| Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md`                   |
+| Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                                       |
 
 ### How it's configured
 
