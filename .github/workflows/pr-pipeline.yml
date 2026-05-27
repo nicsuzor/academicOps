@@ -35,20 +35,70 @@ concurrency:
 
 jobs:
   # ─── Step 0: Initialize ──────────────────────────────────────────
-  # Set merge-prep-status to pending immediately. This ensures the PR
-  # stays "yellow" until the Merge-Prep Agent triages reviews.
+  # On opened/reopened/ready_for_review: set merge-prep-status to pending.
+  # On synchronize: carry forward a previous success unless new
+  # CHANGES_REQUESTED reviews arrived since then.
   initialize:
     if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 45
     name: Initialize
     runs-on: ubuntu-latest
     steps:
-      - name: Set pending status
+      - name: Set merge-prep status
         run: |
-          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
-            -f state="pending" \
+          NEW_SHA="${{ github.event.pull_request.head.sha }}"
+          REPO="${{ github.repository }}"
+          ACTION="${{ github.event.action }}"
+
+          set_pending() {
+            gh api "repos/${REPO}/statuses/${NEW_SHA}" \
+              -f state="pending" \
+              -f context="merge-prep-status" \
+              -f description="Waiting for bazaar window and triage..."
+          }
+
+          # For opened/reopened/ready_for_review, always start fresh
+          if [ "$ACTION" != "synchronize" ]; then
+            echo "Action is '${ACTION}' — setting pending"
+            set_pending
+            exit 0
+          fi
+
+          # synchronize: check if previous HEAD had a successful merge-prep
+          OLD_SHA="${{ github.event.before }}"
+          echo "Checking merge-prep-status on previous HEAD ${OLD_SHA}..."
+
+          PREV_STATUS=$(gh api "repos/${REPO}/commits/${OLD_SHA}/statuses" \
+            --jq '[.[] | select(.context == "merge-prep-status")] | sort_by(.updated_at) | last')
+
+          PREV_STATE=$(echo "$PREV_STATUS" | jq -r '.state // empty')
+
+          if [ "$PREV_STATE" != "success" ]; then
+            echo "Previous status was '${PREV_STATE}' — setting pending"
+            set_pending
+            exit 0
+          fi
+
+          # Previous was success — check for CHANGES_REQUESTED reviews after it
+          SUCCESS_TIME=$(echo "$PREV_STATUS" | jq -r '.updated_at')
+          echo "Previous success at ${SUCCESS_TIME} — checking for newer change requests..."
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          NEW_CHANGE_REQUESTS=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+            --jq "[.[] | select(.state == \"CHANGES_REQUESTED\" and .submitted_at > \"${SUCCESS_TIME}\")] | length")
+
+          if [ "${NEW_CHANGE_REQUESTS}" -gt 0 ]; then
+            echo "Found ${NEW_CHANGE_REQUESTS} change request(s) after previous success — setting pending"
+            set_pending
+            exit 0
+          fi
+
+          # No new change requests — carry forward success to new SHA
+          echo "No new change requests — carrying forward success to ${NEW_SHA}"
+          gh api "repos/${REPO}/statuses/${NEW_SHA}" \
+            -f state="success" \
             -f context="merge-prep-status" \
-            -f description="Waiting for bazaar window and triage..."
+            -f description="Carried forward — no new review requests"
         env:
           GH_TOKEN: ${{ github.token }}
 
