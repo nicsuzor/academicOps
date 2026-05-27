@@ -98,8 +98,11 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
         print(f"DEBUG_LOG error: {e}", file=sys.stderr)
 
 
-# Event mapping: Gemini -> Claude (internal normalization)
+# Event mapping: external client names -> internal canonical names.
+# Applied to all clients (Gemini event names passed via positional arg,
+# agy/Antigravity event names passed in the JSON payload as hook_event_name).
 GEMINI_EVENT_MAP = {
+    # Gemini CLI event names
     "SessionStart": "SessionStart",
     "BeforeTool": "PreToolUse",
     "AfterTool": "PostToolUse",
@@ -110,6 +113,9 @@ GEMINI_EVENT_MAP = {
     "PreCompress": "PreCompact",
     "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
     "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
+    # Antigravity CLI (agy) event names — mapped to canonical internal names
+    "PreInvocation": "UserPromptSubmit",  # agy: fires before each agent invocation
+    "PostInvocation": "Stop",  # agy: fires after each agent invocation
 }
 
 # --- Gate Status Display ---
