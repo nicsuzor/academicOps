@@ -23,6 +23,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 | Gate       | What it catches                                | Fires on               | Default | Stateful?   |
 | ---------- | ---------------------------------------------- | ---------------------- | ------- | ----------- |
+| `sentinel` | Destructive ops on protected env paths         | PreToolUse (stateless) | `block` | stateless   |
 | `enforcer` | Periodic compliance / ultra-vires drift        | PreToolUse @ threshold | `warn`  | counter     |
 | `qa`       | "Done" claimed without verification            | Stop while CLOSED      | `warn`  | open/closed |
 | `handover` | Exit without commit / task update / reflection | Stop while CLOSED      | `warn`  | open/closed |
@@ -135,9 +136,84 @@ If this fails, `polecat.yaml` is missing/unreadable or `$AOPS_SESSIONS` is unset
 
 ---
 
+## `sentinel` gate
+
+> **TL;DR.** Stateless PreToolUse gate that blocks destructive operations targeting protected user-environment paths before they execute. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py). Mode key: `gates.sentinel` / env var `SENTINEL_GATE_MODE` (default: `block`). Parity: [`aops-core/policies/deny-extension-writes.toml`](../aops-core/policies/deny-extension-writes.toml) mirrors these rules for Gemini CLI.
+
+### What is it
+
+A safety gate that intercepts destructive operations on protected user-environment paths before they execute. Origin: GitHub issue #106 — an agent deleted a working Gemini extension installation without evidence it was broken.
+
+**Class of failure caught.** Accidental deletion or modification of live extension, plugin, and configuration files that the framework depends on. Unlike advisory gates (warn once), this gate defaults to `block` because environment damage can be difficult to recover from.
+
+**Stateless design.** The sentinel gate has no open/close lifecycle. It fires on every matching PreToolUse event as long as `SENTINEL_GATE_MODE` is not `off`.
+
+### What it protects
+
+Protected paths (matched case-insensitively, tilde-expanded and absolute forms):
+
+| Path                      | Rationale                                      |
+| ------------------------- | ---------------------------------------------- |
+| `~/.gemini/extensions/`   | Live Gemini CLI extension installations        |
+| `~/.gemini/settings.json` | Gemini CLI global configuration                |
+| `~/.claude/plugins/`      | Claude Code plugin installations               |
+| `~/.claude/*.json`        | Claude Code config files (settings.json, etc.) |
+| `~/.config/gemini/`       | Gemini CLI config directory                    |
+
+### What triggers it
+
+**Shell tools** (`Bash`, `run_shell_command`, `shell`, `execute_code`): blocks when the command contains both a destructive verb (word-bounded, case-insensitive) AND a protected path reference.
+
+Destructive verbs: `rm`, `mv`, `rmdir`, `unlink`, `truncate`
+
+**Write-file tools** (`Edit`, `Write`, `write_file`, `replace`): blocks when the `file_path` / `path` argument resolves to a protected path. No verb check — any write to a protected path is considered destructive.
+
+### Where it lives
+
+- **Gate config**: [`lib/gates/definitions.py`](../aops-core/lib/gates/definitions.py) — `GateConfig(name="sentinel", ...)`
+- **Custom condition**: [`lib/gates/custom_conditions.py`](../aops-core/lib/gates/custom_conditions.py) — `is_destructive_env_op`
+- **Mode default**: [`hooks/gate_config.py`](../aops-core/hooks/gate_config.py) — `SENTINEL_GATE_MODE = "block"`
+- **Templates**: `hooks/templates/sentinel-policy-{message,context}.md`
+- **Gemini parity**: [`aops-core/policies/deny-extension-writes.toml`](../aops-core/policies/deny-extension-writes.toml)
+- **Tests**: `tests/hooks/test_sentinel_gate.py`
+
+### Configuration
+
+| Env var              | Values                 | Default | Effect                                                                                |
+| -------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------- |
+| `SENTINEL_GATE_MODE` | `block`, `warn`, `off` | `block` | `block`: deny the tool call; `warn`: inject advisory, allow; `off`: sentinel disabled |
+
+In `polecat.yaml`:
+
+```yaml
+gates:
+  sentinel: block   # or warn / off
+```
+
+### Verifying it is active
+
+```bash
+python -c '
+import os, sys
+sys.path.insert(0, "/path/to/aops-core")
+from hooks.gate_config import SENTINEL_GATE_MODE
+print(f"sentinel={SENTINEL_GATE_MODE}")
+'
+```
+
+### Debugging
+
+If the sentinel fires unexpectedly, check:
+
+1. Is the matched path actually protected? `_PROTECTED_PATH_RE` in `custom_conditions.py`.
+2. Is the destructive verb word-bounded? The regex uses `\b` — `rmdir` is a separate match from `rm`.
+3. To opt out for a specific session: `SENTINEL_GATE_MODE=off` in the shell env before launching.
+
+---
+
 ## `enforcer` gate
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `enforcer` or `rbg` subagent. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[0]`). Mode key: `gates.enforcer`.
+> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `enforcer` or `rbg` subagent. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.enforcer`.
 
 ### What is it
 

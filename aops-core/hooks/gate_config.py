@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     QA_GATE_MODE: str
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
+    SENTINEL_GATE_MODE: str
     ENFORCER_TOOL_CALL_THRESHOLD: int
 
 # =============================================================================
@@ -425,6 +426,9 @@ _GATE_MODE_DEFAULTS = {
     "ENFORCER_GATE_MODE": "warn",
     "HYDRATION_GATE_MODE": "off",
     "IDA_GATE_MODE": "warn",
+    # Sentinel defaults to block — this is a safety gate protecting user
+    # environment files from destructive ops, not just an advisory.
+    "SENTINEL_GATE_MODE": "block",
 }
 _ENFORCER_THRESHOLD_DEFAULT = 50
 

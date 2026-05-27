@@ -1,6 +1,7 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
+    SENTINEL_GATE_MODE,
 )
 
 from lib.gate_types import (
@@ -20,6 +21,43 @@ from lib.gate_types import (
 # to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
 GATE_CONFIGS = [
+    # --- Sentinel ---
+    # Named for its role as a guardian. Stateless PreToolUse gate that blocks
+    # destructive operations targeting protected user-environment paths before
+    # they execute. Origin: GitHub issue #106 — an agent deleted a working
+    # Gemini extension installation without evidence it was broken.
+    #
+    # Three-class protection:
+    # (1) Shell tools (Bash, run_shell_command, shell, execute_code):
+    #     blocked when command contains a destructive verb (rm, mv, rmdir,
+    #     unlink, truncate) AND a protected path reference.
+    # (2) Write-file tools (Edit, Write, write_file, replace):
+    #     blocked when the target file_path/path resolves to a protected path.
+    # No state transitions — the gate is always armed. Mode default: block.
+    GateConfig(
+        name="sentinel",
+        description="Blocks destructive operations targeting protected user-environment paths.",
+        initial_status=GateStatus.OPEN,
+        triggers=[],  # Stateless — no open/close lifecycle
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    # Covers shell tools and write-file tools (Claude + Gemini names).
+                    # tool_name_pattern is an early-exit optimisation; the
+                    # custom check also validates tool_name internally.
+                    tool_name_pattern=(
+                        r"^(?:Bash|run_shell_command|shell|execute_code"
+                        r"|Edit|Write|write_file|replace)$"
+                    ),
+                    custom_check="is_destructive_env_op",
+                ),
+                verdict=SENTINEL_GATE_MODE,
+                message_key="sentinel.policy_message",
+                context_key="sentinel.policy_context",
+            ),
+        ],
+    ),
     # --- Enforcer ---
     GateConfig(
         name="enforcer",
