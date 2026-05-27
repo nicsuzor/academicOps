@@ -62,9 +62,9 @@ Each gate is a state machine driven by hook events. Forensic detail → [`specs/
 
 ### Session scope
 
-Enforcement is **session-scoped**: every execution context with its own session ID and `SessionStart` event (interactive CLI, background jobs, polecats, GHA workflows) receives the full gate and context-injection stack. Inline subagents spawned via the `Agent` tool share the parent's session ID — gates and context injection are skipped (`ctx.is_subagent` checks in `router.py`) to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally.
+Enforcement is **session-scoped**: every execution context with its own session ID and `SessionStart` event (interactive CLI, background jobs, polecats, GHA workflows) receives the full gate and context-injection stack. Inline subagents spawned via the `Agent` tool share the parent's session ID — gates and context injection are skipped (`ctx.is_subagent` checks in `hooks/router.py`) to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally.
 
-This is policy, not a gap. The upstream limitation is that Claude Code provides no native `agent_id` signal (`anthropics/claude-code#16424`); the framework relies on `is_subagent_session()` heuristics in `lib/hook_utils.py`, which are fragile under platform changes. When the upstream signal ships, the heuristics should be replaced.
+This is policy, not a gap. Claude Code v2.1.69+ (2026-03-05) includes `agent_id` and `agent_type` in hook payloads for subagent-originated tool calls; `is_subagent_session()` in `lib/hook_utils.py` uses these as its primary detection method. Heuristic fallbacks remain for Gemini CLI, which does not provide equivalent fields.
 
 Full session taxonomy and implementation pointers: [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 

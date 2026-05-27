@@ -114,15 +114,15 @@ Enforcement hooks (gates, compliance checks, context injection) are **session-sc
 | GHA workflow          | GitHub Actions                        | Yes              | Yes                           | Yes (per polecat.yaml) |
 | Inline Agent subagent | Parent uses `Agent` tool              | No — parent's ID | Fire (platform can't prevent) | **No** — skipped       |
 
-### Upstream dependency
+### Detection mechanism
 
-Claude Code provides no native signal to distinguish inline subagent tool calls from the parent's — all share `session_id`. The framework works around this via `is_subagent_session()` heuristics (short hex session IDs, `agent_id`/`agent_type` fields, env vars, transcript path patterns). Upstream issue: `anthropics/claude-code#16424`. When that ships, the heuristics should be replaced with the native signal.
+Claude Code v2.1.69+ (2026-03-05) includes `agent_id` and `agent_type` in hook payloads for subagent-originated tool calls. Absence of these fields indicates the main agent. `is_subagent_session()` uses this as its primary detection method; heuristic fallbacks (short hex session IDs, env vars, transcript path patterns) remain for Gemini CLI, which does not provide equivalent fields.
 
 ### Implementation pointers
 
 - `is_subagent_session()` in `lib/hook_utils.py` — multi-method detection heuristic
-- `ctx.is_subagent` skip in `router.py` — gates and context injection bypassed for subagent sessions
-- `COMPLIANCE_SUBAGENT_TYPES` bypass in `gate_config.py` — compliance subagent dispatches classified as infrastructure to avoid gate self-blocking
+- `ctx.is_subagent` skip in `hooks/router.py` — gates and context injection bypassed for subagent sessions
+- `COMPLIANCE_SUBAGENT_TYPES` bypass in `hooks/gate_config.py` — compliance subagent dispatches classified as infrastructure to avoid gate self-blocking
 
 ## User Expectations
 
