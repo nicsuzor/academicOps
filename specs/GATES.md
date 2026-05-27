@@ -28,7 +28,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `handover` | Exit without commit / task update / reflection | Stop while CLOSED      | `warn`  | open/closed |
 | `ida`      | Honesty / criterion-substitution at Stop       | Stop (once/turn)       | `warn`  | open/closed |
 
-Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py).
+Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint + context-map injection on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
