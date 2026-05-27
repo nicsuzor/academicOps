@@ -403,7 +403,7 @@ class TestHandoverPolecatLifecycle:
             session_id="test-interactive-lifecycle",
             hook_event="Stop",
         )
-        result = router._dispatch_gates(ctx_stop, state)
+        router._dispatch_gates(ctx_stop, state)
         # IDA gate may still fire (warn), but handover should not
         assert state.gates["handover"].status == GateStatus.OPEN
 
