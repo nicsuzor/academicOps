@@ -125,7 +125,14 @@ RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
     && chmod -R a+rwX /home/worker/.gemini \
-    && rm -rf /tmp/aops-dist
+    && rm -rf /tmp/aops-dist \
+    && python3 -c "import json, pathlib; \
+p = pathlib.Path('/home/worker/.claude/plugins/known_marketplaces.json'); \
+d = json.loads(p.read_text()); \
+cache = '/home/worker/.claude/plugins/cache/academicOps'; \
+d['academicOps']['source']['path'] = cache; \
+d['academicOps']['installLocation'] = cache; \
+p.write_text(json.dumps(d, indent=2))"
 
 # Install pkb binary from nicsuzor/mem releases.
 # Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
