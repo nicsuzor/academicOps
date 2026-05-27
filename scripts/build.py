@@ -19,6 +19,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.append(str(SCRIPT_DIR / "lib"))
 
+sys.path.insert(0, str(SCRIPT_DIR))
+
 try:
     from build_utils import (
         convert_mcp_to_gemini,
@@ -27,6 +29,7 @@ try:
         safe_symlink,
         write_plugin_version,
     )
+    from transforms.agent_schema import claude_mcp_to_gemini
 except ImportError as e:
     # Fallback if running from a different location without setting path correctly
     # or if lib structure is not yet fully set up in development
@@ -599,8 +602,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = []
             for t in tools_list:
-                # Convert double underscores to single underscores for Gemini MCP tool names
-                tool_name = t.replace("__", "_")
+                tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
                 filtered.append(GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name))
             frontmatter["tools"] = filtered  # Convert to list for Gemini schema
             # Remove 'color' field - not supported by Gemini CLI
@@ -618,9 +620,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         filtered_tools: list[str] = []
         seen: set[str] = set()
         for t in original_tools:
-            # Convert double underscores to single underscores for Gemini MCP tool names
-            tool_name = t.replace("__", "_")
-            # Remap to Gemini tool name if mapping exists, otherwise keep as-is
+            tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
             mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
             if mapped is not None and mapped not in seen:
                 seen.add(mapped)
@@ -773,10 +773,11 @@ def translate_tool_calls(text: str, platform: str) -> str:
         # Replace Claude plugin path variable with Gemini equivalent
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
-        # Convert mcp__server__tool to mcp_server_tool in body (matches frontmatter)
-        import re
-
-        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"mcp_\1_\2", text)
+        text = re.sub(
+            r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
+            lambda m: claude_mcp_to_gemini(m.group(0)),
+            text,
+        )
 
         # Task(subagent_type=...) -> activate_skill(name=...)
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
@@ -1076,7 +1077,17 @@ def build_aops_core(
                     with open(dist_extension_json) as f:
                         manifest = json.load(f)
                     current_mcps = manifest.get("mcpServers", {})
-                    manifest["mcpServers"] = {**current_mcps, **gemini_mcps}
+                    for server, config in gemini_mcps.items():
+                        if server in current_mcps:
+                            existing = current_mcps[server]
+                            existing.update({k: v for k, v in config.items() if k != "env"})
+                            existing_env = existing.get("env") or {}
+                            existing_env.update(config.get("env") or {})
+                            if existing_env:
+                                existing["env"] = existing_env
+                        else:
+                            current_mcps[server] = config
+                    manifest["mcpServers"] = current_mcps
 
                     # MCP server arguments from mcp.json.template use ${extensionPath}
                     # which is correct since plugin content is at the root

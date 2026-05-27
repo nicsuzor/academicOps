@@ -448,43 +448,43 @@ class TestRouterToolNames:
 
 
 # ---------------------------------------------------------------------------
-# Slow tier — requires the claude CLI. No native `validate` subcommand exists
-# for Claude Code extensions, so this tier is a binary-presence smoke test.
+# Slow tier — requires the claude CLI.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.slow
 @pytest.mark.integration
-class TestClaudeCliSmoke:
-    """Smoke test: the `claude` binary is present and can start.
+class TestClaudePluginValidate:
+    """Ground truth: `claude plugin validate --strict` passes on the built dist.
 
-    Unlike Gemini, Claude Code has no `claude extensions validate` subcommand.
-    The fast-tier static analysis above is therefore the primary correctness
-    gate. This class exists for symmetry and to catch PATH / install issues
-    before they're mistaken for extension bugs.
+    This is the Claude Code equivalent of `gemini extensions validate` — it
+    validates the plugin manifest, agent schemas, skill metadata, and rejects
+    unknown fields under --strict. This is the definitive gate: whatever Claude
+    Code rejects at install time, this catches before release.
     """
 
     @pytest.fixture(scope="class")
-    def version_output(self) -> subprocess.CompletedProcess[str]:
+    def validate_output(self) -> subprocess.CompletedProcess[str]:
         _require_dist()
         if not _claude_available():
             pytest.skip("claude CLI not on PATH")
         return subprocess.run(
-            [shutil.which("claude") or "claude", "--version"],
+            [shutil.which("claude") or "claude", "plugin", "validate", "--strict", str(DIST)],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=60,
             check=False,
         )
 
-    def test_binary_exits_cleanly(self, version_output):
-        assert version_output.returncode == 0, (
-            f"`claude --version` exited {version_output.returncode}.\n"
-            f"stderr: {version_output.stderr}"
+    def test_exits_cleanly(self, validate_output):
+        assert validate_output.returncode == 0, (
+            f"`claude plugin validate --strict` exited {validate_output.returncode}.\n"
+            f"stdout: {validate_output.stdout}\n"
+            f"stderr: {validate_output.stderr}"
         )
 
-    def test_version_string_present(self, version_output):
-        combined = version_output.stdout + version_output.stderr
-        assert re.search(r"\d+\.\d+", combined), (
-            f"`claude --version` produced no version string. stdout: {version_output.stdout}"
+    def test_no_validation_failed(self, validate_output):
+        combined = validate_output.stdout + validate_output.stderr
+        assert "Validation failed" not in combined, (
+            f"`claude plugin validate --strict` reported failure:\n{combined}"
         )

@@ -1,3 +1,6 @@
+from .agent_schema import claude_mcp_to_gemini
+
+
 def _translate_tool_calls(text: str, platform: str) -> str:
     """Translate abstract tool calls to platform-specific names."""
     # 1. Platform-specific mappings
@@ -50,7 +53,11 @@ def _translate_tool_calls(text: str, platform: str) -> str:
 
         import re
 
-        text = re.sub(r"mcp__([a-zA-Z0-9_-]+)__([a-zA-Z0-9_-]*)", r"mcp_\1_\2", text)
+        text = re.sub(
+            r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
+            lambda m: claude_mcp_to_gemini(m.group(0)),
+            text,
+        )
 
         text = text.replace("Task(subagent_type=", "activate_skill(name=")
         text = text.replace("Skill(skill=", "activate_skill(name=")

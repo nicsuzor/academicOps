@@ -400,6 +400,45 @@ class TestDistStructure:
         assert not broken, f"GEMINI.md references missing files: {broken}"
 
 
+class TestDistMcpConfig:
+    """The built gemini-extension.json preserves MCP env vars from the base template."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        _require_dist()
+
+    def _manifest(self) -> dict:
+        import json
+
+        return json.loads((DIST / "gemini-extension.json").read_text())
+
+    def test_pkb_env_not_empty(self):
+        """The build must not wipe env vars from the base template via shallow merge."""
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("pkb", {}).get("env", {})
+        assert env, (
+            "dist gemini-extension.json: pkb MCP server has empty env. "
+            "The build's MCP merge wiped env vars from the base template. "
+            "PKB_MCP_URL and ACA_DATA should be preserved."
+        )
+
+    def test_pkb_mcp_url_in_dist(self):
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("pkb", {}).get("env", {})
+        assert "PKB_MCP_URL" in env, (
+            "dist gemini-extension.json: PKB_MCP_URL missing from pkb env. "
+            "The build merge must preserve env vars from the base template."
+        )
+
+    def test_playwright_env_in_dist(self):
+        m = self._manifest()
+        env = m.get("mcpServers", {}).get("playwright", {}).get("env", {})
+        assert "PLAYWRIGHT_BROWSERS_PATH" in env, (
+            "dist gemini-extension.json: PLAYWRIGHT_BROWSERS_PATH missing from playwright env. "
+            "The build merge must preserve env vars from the base template."
+        )
+
+
 class TestAgentSchema:
     """Every built agent loads cleanly under the Gemini schema."""
 
@@ -431,20 +470,44 @@ class TestAgentSchema:
 
     @pytest.mark.parametrize("agent_file", _iter_agent_files(), ids=lambda p: p.name)
     def test_tool_names_valid(self, agent_file: Path):
-        """Each tool is a Gemini builtin or MCP-prefixed."""
+        """Each tool is a Gemini builtin or MCP-prefixed (single underscore only)."""
         fm = _parse_frontmatter(agent_file)
         tools = fm.get("tools", [])
         if isinstance(tools, str):
             tools = [t.strip() for t in tools.split(",") if t.strip()]
-        bad = [
-            t
-            for t in tools
-            if t not in GEMINI_BUILTIN_TOOLS and not t.startswith(("mcp_", "mcp__"))
-        ]
+        bad = [t for t in tools if t not in GEMINI_BUILTIN_TOOLS and not t.startswith("mcp_")]
         assert not bad, (
             f"{agent_file.name}: invalid tool names {bad}. "
             f"Gemini will reject with 'tools.N: Invalid tool name'. "
             f"Add to the GEMINI_TOOL_NAME_MAP in scripts/build.py or drop from source."
+        )
+
+    @pytest.mark.parametrize("agent_file", _iter_agent_files(), ids=lambda p: p.name)
+    def test_no_double_underscores_in_tool_names(self, agent_file: Path):
+        """Double underscores are Claude's MCP delimiter and must not appear in Gemini builds."""
+        fm = _parse_frontmatter(agent_file)
+        tools = fm.get("tools", [])
+        if isinstance(tools, str):
+            tools = [t.strip() for t in tools.split(",") if t.strip()]
+        bad = [t for t in tools if "__" in t]
+        assert not bad, (
+            f"{agent_file.name}: tool names contain double underscores (Claude format): {bad}. "
+            f"The build transform should convert mcp__plugin_aops-core_pkb__<tool> "
+            f"to mcp_pkb_<tool>."
+        )
+
+    @pytest.mark.parametrize("agent_file", _iter_agent_files(), ids=lambda p: p.name)
+    def test_no_plugin_namespace_in_tool_names(self, agent_file: Path):
+        """Claude plugin namespace prefix must be stripped from Gemini tool names."""
+        fm = _parse_frontmatter(agent_file)
+        tools = fm.get("tools", [])
+        if isinstance(tools, str):
+            tools = [t.strip() for t in tools.split(",") if t.strip()]
+        bad = [t for t in tools if "plugin_" in t]
+        assert not bad, (
+            f"{agent_file.name}: tool names contain Claude plugin namespace: {bad}. "
+            f"Gemini registers MCP servers by bare name (e.g. 'pkb'), not the Claude "
+            f"plugin-namespaced form (e.g. 'plugin_aops-core_pkb')."
         )
 
     @pytest.mark.parametrize("agent_file", _iter_agent_files(), ids=lambda p: p.name)
@@ -481,7 +544,7 @@ class TestPolicyTomls:
                 if (
                     isinstance(name, str)
                     and name not in GEMINI_BUILTIN_TOOLS
-                    and not name.startswith(("mcp_", "mcp__"))
+                    and not name.startswith("mcp_")
                 ):
                     offenders.append((toml_path.relative_to(DIST), name))
         assert not offenders, (

@@ -12,10 +12,5 @@
     "framework",
     "workflow"
   ],
-  "mcpServers": "./.mcp.json",
-  "autoMode": {
-    "environment": [],
-    "allow": [],
-    "soft_deny": []
-  }
+  "mcpServers": "./.mcp.json"
 }
