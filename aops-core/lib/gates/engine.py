@@ -94,6 +94,11 @@ class GenericGate:
         if condition.exclude_if_subagent and ctx.is_subagent:
             return False
 
+        # 3.55 Session type filter
+        if condition.session_type_filter:
+            if session_state.session_type not in condition.session_type_filter:
+                return False
+
         # 3.6 Prompt exclude patterns
         if condition.prompt_exclude_patterns:
             prompt = ctx.raw_input.get("prompt", "").strip()

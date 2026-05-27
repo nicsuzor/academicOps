@@ -1,0 +1,309 @@
+{
+  "handover_polecat_initial_closed": [
+    {
+      "id": "live-polecat-gemini-initial-closed",
+      "description": "Polecat session (Gemini) starts with handover gate CLOSED. Real session 1853c8c7 from 2026-05-27.",
+      "session_type": "polecat",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "verdict": "warn",
+        "handover_initial_status": "closed"
+      }
+    },
+    {
+      "id": "live-crew-initial-closed",
+      "description": "Crew session starts with handover gate CLOSED.",
+      "session_type": "crew",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "verdict": "warn",
+        "handover_initial_status": "closed"
+      }
+    }
+  ],
+  "handover_interactive_stays_open": [
+    {
+      "id": "live-interactive-initial-open",
+      "description": "Interactive session starts with handover gate OPEN.",
+      "session_type": "interactive",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_initial_status": "open"
+      }
+    },
+    {
+      "id": "live-interactive-update-task-no-close",
+      "description": "update_task with in_progress in interactive session does NOT close handover gate. Real session 790d28ab supervising agents.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "adhoc-sessions-05600b96",
+        "updates": { "status": "in_progress", "priority": 1 }
+      },
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      }
+    },
+    {
+      "id": "live-interactive-write-tool-no-close",
+      "description": "Edit in interactive session does NOT close handover gate.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/nic/junior/CLAUDE.md",
+        "old_string": "test",
+        "new_string": "test2"
+      },
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      }
+    },
+    {
+      "id": "live-interactive-ups-no-rearm",
+      "description": "UserPromptSubmit in interactive session does NOT re-arm handover gate.",
+      "session_type": "interactive",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      }
+    },
+    {
+      "id": "live-interactive-bash-no-close",
+      "description": "Bash in interactive session with bound task does NOT close handover gate.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git status"
+      },
+      "is_subagent": false,
+      "state_overrides": {
+        "current_task": "task-123"
+      },
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "open"
+      }
+    }
+  ],
+  "handover_polecat_close_triggers": [
+    {
+      "id": "live-polecat-update-task-closes",
+      "description": "update_task with in_progress in polecat session closes handover gate.",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "aops-b48c836a",
+        "updates": { "status": "in_progress" }
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": { "status": "open" }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      }
+    },
+    {
+      "id": "live-polecat-write-tool-closes",
+      "description": "Edit in polecat session closes handover gate.",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/nic/src/academicOps/aops-core/hooks/router.py",
+        "old_string": "placeholder",
+        "new_string": "updated"
+      },
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": { "status": "open" }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      }
+    },
+    {
+      "id": "live-polecat-ups-rearms",
+      "description": "UserPromptSubmit in polecat session re-arms handover gate to CLOSED.",
+      "session_type": "polecat",
+      "hook_event": "UserPromptSubmit",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": { "status": "open" }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      }
+    },
+    {
+      "id": "live-polecat-bash-with-task-closes",
+      "description": "Bash with bound task in polecat session closes handover gate (is_write_tool fires).",
+      "session_type": "polecat",
+      "hook_event": "PostToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "git commit -m 'fix: update gate logic'"
+      },
+      "is_subagent": false,
+      "state_overrides": {
+        "current_task": "task-456"
+      },
+      "gate_overrides": {
+        "handover": { "status": "open" }
+      },
+      "expected": {
+        "handover_status_after": "closed"
+      }
+    }
+  ],
+  "handover_subagent_bypass": [
+    {
+      "id": "live-subagent-update-task-bypass-4956077c",
+      "description": "Subagent (is_subagent=True) claiming task via update_task: gates skipped entirely. Real session 4956077c from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "mcp__plugin_aops-core_pkb__update_task",
+      "tool_input": {
+        "id": "adhoc-sessions-05600b96",
+        "updates": { "status": "in_progress", "priority": 1 }
+      },
+      "is_subagent": true,
+      "subagent_type": "claude",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      }
+    },
+    {
+      "id": "live-nested-subagent-launches-agent-17a70e85",
+      "description": "Nested subagent (is_subagent=True) launching another Agent: gates skipped. Real session 17a70e85 from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Retro survey: limit override failure",
+        "prompt": "Read aops-core/skills/survey/SKILL.md. Execute in retro mode...",
+        "subagent_type": "aops-core:junior",
+        "run_in_background": true
+      },
+      "is_subagent": true,
+      "subagent_type": "claude",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      }
+    },
+    {
+      "id": "live-subagent-dispatches-polecat-bash-790d28ab",
+      "description": "Subagent dispatching polecat via Bash: gates skipped. Real session 790d28ab from 2026-05-27.",
+      "hook_event": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py run -t aops-b48c836a -p aops --model claude-opus-4-7 2>&1",
+        "timeout": 600000,
+        "description": "Dispatch Opus polecat for Docker marketplace cache-miss fix",
+        "run_in_background": true
+      },
+      "is_subagent": true,
+      "subagent_type": "aops-core:junior",
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": true
+      }
+    },
+    {
+      "id": "live-subagent-stop-not-skipped-8182f0f2",
+      "description": "Subagent Stop event is NOT skipped (Stop exempt from subagent bypass). Real session 8182f0f2 from 2026-05-27.",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": true,
+      "gate_overrides": {
+        "handover": { "status": "closed" }
+      },
+      "expected": {
+        "gates_skipped": false,
+        "verdict": "warn"
+      }
+    },
+    {
+      "id": "live-subagent-subagent-stop-not-skipped",
+      "description": "SubagentStop event in subagent session is NOT skipped (SubagentStop exempt from bypass).",
+      "hook_event": "SubagentStop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": true,
+      "subagent_type": "aops-core:junior",
+      "raw_input": {
+        "hook_event_name": "SubagentStop",
+        "agent_id": "a2b7efc9bdb8adc0b",
+        "agent_type": "",
+        "stop_hook_active": false,
+        "agent_transcript_path": "/home/nic/.claude/projects/-home-nic-junior/17a70e85/subagents/agent-a2b7efc9bdb8adc0b.jsonl",
+        "last_assistant_message": "let's close out that james review..."
+      },
+      "gate_overrides": {},
+      "expected": {
+        "gates_skipped": false
+      }
+    }
+  ],
+  "handover_stop_by_session_type": [
+    {
+      "id": "live-polecat-stop-closed-warns",
+      "description": "Polecat session Stop with handover CLOSED produces WARN (default handover mode=warn).",
+      "session_type": "polecat",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": { "status": "closed" },
+        "qa": { "status": "open" }
+      },
+      "expected": {
+        "verdict": "warn"
+      }
+    },
+    {
+      "id": "live-interactive-stop-open-no-handover-block",
+      "description": "Interactive session Stop with handover OPEN: handover gate does not contribute a block/warn.",
+      "session_type": "interactive",
+      "hook_event": "Stop",
+      "tool_name": null,
+      "tool_input": {},
+      "is_subagent": false,
+      "gate_overrides": {
+        "handover": { "status": "open" },
+        "qa": { "status": "open" }
+      },
+      "expected": {
+        "handover_status_after": "open"
+      }
+    }
+  ]
+}
