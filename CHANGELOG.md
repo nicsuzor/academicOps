@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.3.32](https://github.com/nicsuzor/academicOps/compare/v0.3.31...v0.3.32) (2026-05-28)
+
+
+### Features
+
+* **antigravity:** map UserPromptSubmit/Stop to PreInvocation/PostInvocation in agy build ([#1421](https://github.com/nicsuzor/academicOps/issues/1421)) ([a47ad7a](https://github.com/nicsuzor/academicOps/commit/a47ad7ad164bfaa3309e5600a7514af3392b2a6c))
+* **build:** ship aops-cowork as a separate plugin with PKB-native task-list sync ([a19169d](https://github.com/nicsuzor/academicOps/commit/a19169d64d46a96b3c9be7f0da40185dbfe9e267))
+* **gates:** add sentinel gate for destructive env-op protection ([#1424](https://github.com/nicsuzor/academicOps/issues/1424)) ([24d9628](https://github.com/nicsuzor/academicOps/commit/24d96280b0049b313acbae587d23fb8171c17861))
+
+
+### Bug Fixes
+
+* address review feedback ([d8a08f7](https://github.com/nicsuzor/academicOps/commit/d8a08f7691d5c1353ac7646571552f52e7ac28ee))
+* correct loop_detector source citation to agent-merge-prep.yml ([82126ae](https://github.com/nicsuzor/academicOps/commit/82126ae55e6c83bea5d343b7b8dbcf7b3ba359b0))
+* **cowork-sync:** correct get_task_children param to id (was parent_id) ([bbcce5b](https://github.com/nicsuzor/academicOps/commit/bbcce5b58c51ae5e463e1804f85e92e2f710f113))
+* **docker:** replace invalid for-loop one-liner with list comprehension ([#1417](https://github.com/nicsuzor/academicOps/issues/1417)) ([87e59ab](https://github.com/nicsuzor/academicOps/commit/87e59ab8aaf46f40f094ba4ad6cdf0b25d753aa8))
+* **gates:** QA gate closes on task-claim only, not write-tool use ([#1418](https://github.com/nicsuzor/academicOps/issues/1418)) ([44cb0d8](https://github.com/nicsuzor/academicOps/commit/44cb0d80584a8931ae224d99d655905b88ddf53e))
+* **hooks:** stop harness worktrees from pushing to main ([b993c1e](https://github.com/nicsuzor/academicOps/commit/b993c1ebdb00b63ea0fd40bae2ce55aaf113a300))
+* **hooks:** stop harness worktrees from pushing to main ([6bb4293](https://github.com/nicsuzor/academicOps/commit/6bb42937423789e645cb2b42048a18b42c0bdbcf))
+* **session-env:** use AOPS_BOT_GH_TOKEN exclusively for GitHub auth, fail-closed ([fa231e6](https://github.com/nicsuzor/academicOps/commit/fa231e6b1e65fb811e37fe57bd74110f37759180))
+
+
+### Code Refactoring
+
+* **hooks:** use invoke_agent for Gemini enforcer/qa calls ([#1419](https://github.com/nicsuzor/academicOps/issues/1419)) ([b61d483](https://github.com/nicsuzor/academicOps/commit/b61d483c52124d99cb4365ae27eae636c378d8a7))
+
+
+### Documentation
+
+* **self-test:** add plugin pre-check and permission mode guidance to §2 ([#1422](https://github.com/nicsuzor/academicOps/issues/1422)) ([68912c0](https://github.com/nicsuzor/academicOps/commit/68912c02d05bee3486e9965be9b0605fd8fbc4c1))
+
+
+### Tests
+
+* fix stale ANTHROPIC_API_KEY forwarding assertion ([d3a9b3d](https://github.com/nicsuzor/academicOps/commit/d3a9b3d5666f1a4f405a4151296785d1550b366c))
+* verify agent vs user hook content routing across all events ([#1420](https://github.com/nicsuzor/academicOps/issues/1420)) ([f2b9697](https://github.com/nicsuzor/academicOps/commit/f2b969761b3b29a792d7522244078832bf9ff10f))
+
 ## [0.3.31](https://github.com/nicsuzor/academicOps/compare/v0.3.30...v0.3.31) (2026-05-27)
 
 
