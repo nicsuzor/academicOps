@@ -127,6 +127,15 @@ def check_installed_plugin_version(
         if plugin_key not in plugins:
             return (True, None)
 
+        installed = plugins[plugin_key]
+        installed_commit = installed.get("source_commit")
+        if installed_commit == source_commit:
+            return (True, installed_commit)
+        return (False, installed_commit)
+
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return (True, None)one)
+
         installs = plugins[plugin_key]
         if not installs:
             return (True, None)
