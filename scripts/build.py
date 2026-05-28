@@ -82,7 +82,11 @@ def sanitize_version(version: str) -> str:
 _COWORK_OPEN = "<!-- cowork:only -->"
 _COWORK_CLOSE = "<!-- /cowork:only -->"
 _COWORK_BLOCK_RE = re.compile(
-    r"\n*[ \t]*" + re.escape(_COWORK_OPEN) + r"[ \t]*\n(.*?)\n*[ \t]*" + re.escape(_COWORK_CLOSE) + r"[ \t]*\n*",
+    r"\n*[ \t]*"
+    + re.escape(_COWORK_OPEN)
+    + r"[ \t]*\n(.*?)\n*[ \t]*"
+    + re.escape(_COWORK_CLOSE)
+    + r"[ \t]*\n*",
     re.DOTALL,
 )
 

@@ -2,6 +2,7 @@
 
 Guards against the 'cowork-only content leaks into Claude/Gemini builds' failure mode.
 """
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -64,4 +65,6 @@ def test_trailing_whitespace_on_markers_handled() -> None:
     close_marker = _build._COWORK_CLOSE + "  "
     text = f"before\n\n{open_marker}\ncowork-only paragraph\n{close_marker}\n\nafter\n"
     result = _build._process_cowork_markers(text, "claude")
-    assert "cowork-only paragraph" not in result, "trailing whitespace on markers caused content leak"
+    assert "cowork-only paragraph" not in result, (
+        "trailing whitespace on markers caused content leak"
+    )
