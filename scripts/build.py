@@ -58,6 +58,20 @@ CLAUDE_TO_GEMINI_EVENTS = {
     "AfterAgent": "AfterAgent",
 }
 
+# Directory/file names that are local build detritus and must never be packaged
+# into a plugin artifact. mypy/ruff/pytest caches in particular contain files
+# with characters (e.g. '@') that the Cowork upload validator rejects as
+# "invalid characters" in the zip path.
+BUILD_DETRITUS_NAMES = {
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".venv",
+    ".git",
+    ".DS_Store",
+}
+
 
 def sanitize_version(version: str) -> str:
     """Sanitize version for semver compliance.
@@ -989,6 +1003,10 @@ def build_aops_core(
     hooks_dst.mkdir(parents=True)
     if hooks_src.exists():
         for item in hooks_src.iterdir():
+            if item.name in BUILD_DETRITUS_NAMES:
+                # safe_copy's ignore filters children, not a top-level cache dir
+                # passed as src — skip detritus dirs here so they never enter the build.
+                continue
             if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
                 # Handle hooks.json separately for Gemini/Antigravity
                 continue
@@ -1850,15 +1868,7 @@ def package_artifacts(
 
     # Filter for packaging to exclude noise
     def _source_filter(tarinfo):
-        exclude = [
-            ".venv",
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".git",
-        ]
-        if any(x in tarinfo.name for x in exclude):
+        if any(part in BUILD_DETRITUS_NAMES for part in Path(tarinfo.name).parts):
             return None
         return tarinfo
 
@@ -1943,7 +1953,7 @@ def package_artifacts(
         with zipfile.ZipFile(cowork_zip, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(cowork_dir.rglob("*")):
                 rel = path.relative_to(cowork_dir)
-                if any(part in {".git", "__pycache__", ".DS_Store"} for part in rel.parts):
+                if any(part in BUILD_DETRITUS_NAMES for part in rel.parts):
                     continue
                 zf.write(path, arcname=str(rel))
         print(f"  ✓ Packaged {cowork_zip.name} (Cowork manual upload)")
