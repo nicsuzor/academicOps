@@ -229,7 +229,7 @@ Branch protection AND-gates each `<agent>-status` directly — no LLM judgment i
 | `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment             | `.github/workflows/agent-alignment.yml@alignment-v1`            |
 | `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only           | `.github/workflows/agent-mechanic.yml@mechanic-v1`              |
 | branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                       |
-| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state   | `.github/workflows/loop-detector.yml`                           |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state   | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
 | ~~v1 agents~~      | —  | —      | **Retired Phase 1** (PR #1062)                        | [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md) §3.1/§3.6/§5 |
 
 ## Related
