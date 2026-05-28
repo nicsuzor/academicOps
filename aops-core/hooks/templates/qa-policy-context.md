@@ -14,7 +14,7 @@ You must invoke the **marsha** agent (using the `/verify` skill) to verify plann
 **Instruction**:
 Run verification with this command:
 
-- Gemini: `aops_core_marsha(message='{temp_path}\n\nInvoke /verify for methodology.')`
+- Gemini: `invoke_agent(agent_name='marsha', prompt='{temp_path}\n\nInvoke /verify for methodology.')`
 - Claude: `Agent(subagent_type='aops-core:marsha', prompt='{temp_path}\n\nInvoke /verify for methodology.')`
 - Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.
 
