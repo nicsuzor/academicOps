@@ -137,7 +137,7 @@ d['academicOps']['installLocation'] = str(cache); \
 km.write_text(json.dumps(d, indent=2)); \
 mp = cache / '.claude-plugin' / 'marketplace.json'; \
 m = json.loads(mp.read_text()); \
-for p in m.get('plugins', []): p_dir = cache / p['name']; p.update({'source': './' + p['name'] + '/' + next((d.name for d in p_dir.iterdir() if d.is_dir()), '')}) if p_dir.is_dir() else None; \
+[p.__setitem__('source', './' + p['name'] + '/' + next((e.name for e in (cache / p['name']).iterdir() if e.is_dir()), '')) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
 mp.write_text(json.dumps(m, indent=2))"
 
 # Install pkb binary from nicsuzor/mem releases.
