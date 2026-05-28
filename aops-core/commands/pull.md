@@ -68,6 +68,27 @@ If neither `$AOPS_SESSION_ID` nor `$GEMINI_SESSION_ID` is set, skip writing the 
 
 If a binding file already exists for this session (e.g. `/pull` invoked twice), overwrite it with the new task id — the most recent claim wins.
 
+<!-- cowork:only -->
+
+### Step 1.4c: Mirror the claimed task onto the native task list (Cowork)
+
+This step is required on Cowork and stripped from all other builds of aops-core. Cowork forces work to flow through the harness-native task list (`TaskCreate` / `TaskUpdate` / `TaskList`); without mirroring, the agent loses the harness's "currently working on" affordance and the user sees an empty list while the PKB row is in_progress.
+
+Invoke the cowork-sync mirror procedure with the claimed task id:
+
+1. Load the deferred task tools once per session: `ToolSearch(query="select:TaskCreate,TaskUpdate,TaskList,TaskGet", max_results=4)`. Skip if already loaded earlier in this session.
+2. **Retire any prior native parent** carried over from an earlier `/pull` in the same session. Run `TaskList()` and, for each native task whose `description` starts with `PKB` AND whose status is not already `completed`/`deleted`, call `TaskUpdate(taskId=t.id, status="deleted")`. This prevents the native list from accumulating stale `in_progress` shells across re-pulls. Do NOT echo these deletions to PKB — native retirement is a UI-only cleanup; PKB state for the previous claim is whatever `/pull` Step 1 / `release_task` left it.
+3. Apply the **Mirror procedure (PKB → native)** from [[../skills/cowork-sync/SKILL.md#mirror-procedure-pkb--native]] with `pkb_id="<bound-task-id>"`. That procedure:
+   - Creates one native task for the claimed PKB parent (description carries `PKB <id> — <title>` so per-completion and final-reconciliation sync can find it).
+   - If the PKB task has children, mirrors each child as a separate native task and wires `addBlocks` so the parent only unblocks once children complete.
+   - Marks the native parent `in_progress` to reflect the claim.
+4. From this point on, **every time the agent ticks a native task to `completed`** it MUST follow the **Per-completion sync** procedure from [[../skills/cowork-sync/SKILL.md#per-completion-sync-native--pkb-during-the-session]] — `TaskUpdate(status="completed")` paired with the matching `mcp__pkb__complete_task` call (excluding the bound parent, which is deferred to `/end_session`). This is the user-visible synchronization: each task completion echoes to PKB immediately, not at session close.
+5. Do NOT call `mcp__pkb__update_task` from inside the claim itself — `/pull` Step 1 already wrote `status=in_progress` to PKB for the bound task.
+
+If `TaskCreate` is unavailable after the ToolSearch (e.g. running this skill on a non-cowork surface that ships the cowork variant by accident), skip the mirror with a one-line note and continue. The downstream final-reconciliation in `/end_session` is a no-op when no native tasks were created.
+
+<!-- /cowork:only -->
+
 ### Step 1.5: Inject Soft Dependency Context (Advisory)
 
 After claiming, check if the task has `soft_depends_on` relationships:

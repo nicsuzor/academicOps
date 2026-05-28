@@ -74,6 +74,32 @@ def sanitize_version(version: str) -> str:
     return version
 
 
+# Cowork-only content markers. Skill and command sources wrap Cowork-specific
+# instructions in <!-- cowork:only --> ... <!-- /cowork:only -->. The cowork
+# build keeps the content (drops the markers); every other build drops both
+# the markers and the content. See aops-core/skills/cowork-sync/SKILL.md for
+# the runtime semantics these blocks describe.
+_COWORK_OPEN = "<!-- cowork:only -->"
+_COWORK_CLOSE = "<!-- /cowork:only -->"
+_COWORK_BLOCK_RE = re.compile(
+    r"\n*" + re.escape(_COWORK_OPEN) + r"\n(.*?)\n*" + re.escape(_COWORK_CLOSE) + r"\n*",
+    re.DOTALL,
+)
+
+
+def _process_cowork_markers(text: str, platform: str) -> str:
+    """Apply cowork-only marker handling for the given build platform.
+
+    - platform == "cowork": replace the block with its content (markers stripped,
+      surrounded by one blank line so neighbouring sections stay separated).
+    - any other platform: remove the markers AND the content between them, leaving
+      a single blank line where the block used to be.
+    """
+    if platform == "cowork":
+        return _COWORK_BLOCK_RE.sub(lambda m: "\n\n" + m.group(1).strip() + "\n\n", text)
+    return _COWORK_BLOCK_RE.sub("\n\n", text)
+
+
 def _git_build_metadata(aops_root: Path) -> str:
     """SemVer build metadata (`+g<sha>[.dirty]`) for the current HEAD, or ''.
 
@@ -798,13 +824,26 @@ def build_aops_core(
     platform: str = "gemini",
     version: str = "0.1.0",
 ):
-    """Build the aops-core extension for a specific platform."""
+    """Build the aops-core extension for a specific platform.
+
+    Supported platforms: "claude", "gemini", "antigravity", "cowork".
+    The "cowork" platform is a sibling of "claude" — same plugin layout
+    (`.claude-plugin/plugin.json` + `.mcp.json`) but with cowork-only skill
+    content kept (markers stripped), the cowork-sync skill included, and a
+    distinct plugin manifest naming the artifact `aops-cowork`.
+    """
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
     src_dir = aops_root / plugin_name
 
+    # Cowork is built like Claude (same plugin contract, MCP layout, tool name
+    # transforms). transform_platform is what we hand to agent/tool transformers
+    # so the agent tools and tool-name translations match the Claude rules.
+    transform_platform = "claude" if platform == "cowork" else platform
+
     # Platform-specific dist dir. New naming: use 'aops-{platform}' as the dist folder
-    # so consumers see 'aops-gemini' / 'aops-claude' instead of 'aops-core-gemini'.
+    # so consumers see 'aops-gemini' / 'aops-claude' / 'aops-cowork' instead of
+    # 'aops-core-gemini'.
     dist_dir = dist_root / f"aops-{platform}"
 
     # Content goes directly into dist_dir (no nested subfolder)
@@ -838,13 +877,22 @@ def build_aops_core(
             for agent_file in src_item.glob("*.md"):
                 content = agent_file.read_text()
                 # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                content = transform_agent_for_platform(content, platform, agent_file.name)
+                content = transform_agent_for_platform(content, transform_platform, agent_file.name)
                 # Translate tool calls in body text
-                content = translate_tool_calls(content, platform)
+                content = translate_tool_calls(content, transform_platform)
                 (dst / agent_file.name).write_text(content)
             print(f"  ✓ Translated and copied agents -> {dst}")
         else:
             safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a-pre. Drop the cowork-sync skill on every platform except cowork.
+    # The skill describes the PKB ↔ native task-list mirror that only Cowork's
+    # harness uses; the same source file would be misleading on claude/gemini/agy.
+    if platform != "cowork":
+        cowork_sync_dir = content_dir / "skills" / "cowork-sync"
+        if cowork_sync_dir.exists():
+            shutil.rmtree(cowork_sync_dir)
+            print(f"  - Dropped cowork-sync skill (not for {platform})")
 
     # 1a. Post-copy: translate tool names in all .md files for Gemini
     # Agents get transform_agent_for_platform above (frontmatter + body);
@@ -866,6 +914,23 @@ def build_aops_core(
                 translated_count += 1
         if translated_count:
             print(f"  ✓ Translated tool names in {translated_count} .md files")
+
+    # 1a-cowork. Process cowork-only markers across every .md file copied above.
+    # For platform == "cowork", the markers are stripped and the wrapped content
+    # is kept; for every other platform, both the markers and the content go away.
+    # Agent files were copied via a separate text path, so we cover them here too.
+    cowork_processed = 0
+    for md_file in content_dir.rglob("*.md"):
+        original = md_file.read_text()
+        if _COWORK_OPEN not in original:
+            continue
+        processed = _process_cowork_markers(original, platform)
+        if processed != original:
+            md_file.write_text(processed)
+            cowork_processed += 1
+    if cowork_processed:
+        verb = "kept" if platform == "cowork" else "stripped"
+        print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
 
     # 1b. Generate pyproject.toml and uv.lock from the inline template in
     # this file (AOPS_CORE_PYPROJECT_TEMPLATE) — the single source of truth
@@ -992,8 +1057,14 @@ def build_aops_core(
             print(f"Error: {src_extension_json} not found.", file=sys.stderr)
             sys.exit(1)
 
-    if platform == "claude":
-        src_plugin_json = aops_root / "templates" / "aops-core.plugin.json"
+    if platform in ("claude", "cowork"):
+        # Both use the same plugin contract (.claude-plugin/plugin.json); cowork
+        # ships from a distinct template so its `name`, `description`, and
+        # keywords are tuned for the Cowork variant.
+        template_name = (
+            "aops-core.cowork-plugin.json" if platform == "cowork" else "aops-core.plugin.json"
+        )
+        src_plugin_json = aops_root / "templates" / template_name
         dist_plugin_dir = dist_dir / ".claude-plugin"
         dist_plugin_json = dist_plugin_dir / "plugin.json"
         if src_plugin_json.exists():
@@ -1053,8 +1124,10 @@ def build_aops_core(
             else:
                 mcp_config = mcp_template
 
-            # Write .mcp.json to dist only
-            if platform == "claude":
+            # Write .mcp.json for Claude-shaped builds (claude + cowork).
+            # Cowork uses the same plugin contract: a single `.mcp.json` at the
+            # archive root, pointed to by `plugin.json.mcpServers`.
+            if platform in ("claude", "cowork"):
                 claude_mcp_config = mcp_template.get("claude", mcp_template)
                 dist_mcp_path = dist_dir / ".mcp.json"
                 with open(dist_mcp_path, "w") as f:
@@ -1135,6 +1208,21 @@ def build_aops_core(
                 env=os.environ,
                 check=False,
             )
+        # Strip cowork-only blocks from generated .toml files. The convert
+        # script reads from `aops-core/commands/*.md` source — bypassing the
+        # staged copies that were already stripped by the cowork-marker pass —
+        # so without this post-step the markers leak into the Gemini TOML.
+        toml_stripped = 0
+        for toml_file in commands_dist.glob("*.toml"):
+            original = toml_file.read_text()
+            if _COWORK_OPEN not in original:
+                continue
+            processed = _process_cowork_markers(original, platform)
+            if processed != original:
+                toml_file.write_text(processed)
+                toml_stripped += 1
+        if toml_stripped:
+            print(f"  ✓ Stripped cowork-only blocks in {toml_stripped} .toml command(s)")
         # Remove .md command files for Gemini (uses TOML format)
         for md_file in commands_dist.glob("*.md"):
             md_file.unlink()
@@ -1320,6 +1408,10 @@ def main():
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
 
+    # Build components (Cowork) — Claude-shaped plugin layout, manifest pinned
+    # to `aops-cowork`, cowork-only blocks kept, cowork-sync skill included.
+    build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)
+
     # Build aops-tools (domain skills package)
     build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
@@ -1336,6 +1428,7 @@ def main():
             sys.exit(1)
         install_pkb_binary(dist_root / "aops-gemini", pkb_binary)
         install_pkb_binary(dist_root / "aops-claude", pkb_binary)
+        install_pkb_binary(dist_root / "aops-cowork", pkb_binary)
         install_pkb_binary(dist_root / "aops-antigravity", pkb_binary)
 
     # Generate marketplace.json for local dev and dist repo
@@ -1683,6 +1776,12 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
 
     Reads the template from templates/marketplace.json and produces two outputs:
     1. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
+
+    aops-cowork is deliberately NOT advertised in the marketplace: Cowork on
+    personal Anthropic accounts has no marketplace mechanism, so the plugin is
+    shipped exclusively as `aops-cowork-v{version}.zip` for manual upload via
+    Customize → Add plugins → Upload a file. The aops-core entry in
+    templates/marketplace.json continues to point at the Claude Code CLI build.
     """
     template_path = aops_root / "templates" / "marketplace.json"
     if not template_path.exists():
@@ -1805,24 +1904,33 @@ def package_artifacts(
         print(f"  ✓ Packaged {tools_claude_archive.name}")
         safe_symlink(tools_claude_archive, dist_root / "aops-tools-claude-latest.tar.gz")
 
-    # 3. aops-core-v{version}.zip — manual upload artifact for Cowork.
+    # 3. aops-cowork-v{version}.zip — manual upload artifact for Cowork.
     # Cowork on personal Anthropic accounts has no marketplace; users upload
     # plugins via Customize → Add plugins → Upload a file. The validator
     # requires `.claude-plugin/plugin.json` at the archive root, so zip from
-    # *inside* the plugin directory rather than from its parent. Cowork
-    # silently drops hooks and Python scripts it can't execute, so the same
-    # full aops-core build (dist/aops-claude/) is shipped to both Claude Code
-    # CLI and Cowork — no stripped-down variant.
-    claude_dir = dist_root / "aops-claude"
-    if claude_dir.exists():
-        cowork_zip = dist_root / f"aops-core-v{fs_version}.zip"
+    # *inside* the plugin directory rather than from its parent.
+    #
+    # The cowork build is a separate plugin (`aops-cowork`) — Claude-shaped
+    # layout but with cowork-only skill blocks kept and the `cowork-sync`
+    # skill included. See `build_aops_core(platform="cowork", ...)`. The legacy
+    # filename `aops-core-v{version}.zip` is kept as a symlink so existing
+    # download URLs continue to resolve.
+    cowork_dir = dist_root / "aops-cowork"
+    if cowork_dir.exists():
+        cowork_zip = dist_root / f"aops-cowork-v{fs_version}.zip"
         with zipfile.ZipFile(cowork_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-            for path in sorted(claude_dir.rglob("*")):
-                rel = path.relative_to(claude_dir)
+            for path in sorted(cowork_dir.rglob("*")):
+                rel = path.relative_to(cowork_dir)
                 if any(part in {".git", "__pycache__", ".DS_Store"} for part in rel.parts):
                     continue
                 zf.write(path, arcname=str(rel))
         print(f"  ✓ Packaged {cowork_zip.name} (Cowork manual upload)")
+        safe_symlink(cowork_zip, dist_root / "aops-cowork-latest.zip")
+        # Backward-compat alias for the historical aops-core-v*.zip name and
+        # its 'latest' symlink. The aops-core-latest.zip name was the
+        # marketing surface before the cowork plugin was split out.
+        legacy_zip = dist_root / f"aops-core-v{fs_version}.zip"
+        safe_symlink(cowork_zip, legacy_zip)
         safe_symlink(cowork_zip, dist_root / "aops-core-latest.zip")
 
     # 4. aops-antigravity-v{version}.tar.gz

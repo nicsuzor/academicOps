@@ -88,6 +88,25 @@ Otherwise, use the **Full-form** path. There is no longer a "Short-form" interac
 
    Record `$bound_task_id` (or its absence) and reuse it as the `<bound-task-id>` placeholder throughout the rest of this skill — the breadcrumb in step 2, the `id=` in step 3, and the handover block in step 5.
 
+<!-- cowork:only -->
+
+0.5. **Reconcile the native task list with PKB (Cowork only — safety net)**. This step is stripped from all non-cowork builds.
+
+Under the normal flow, each native task completion was already echoed to PKB at the moment the agent ticked it — that is the per-completion sync in [[../../skills/cowork-sync/SKILL.md#per-completion-sync-native--pkb-during-the-session]]. This step is the safety net: it catches any native completions that errored out of their paired PKB write, or any drift introduced by a code path that bypassed the per-completion echo.
+
+1. Load the deferred task tools if they have not been loaded yet this session: `ToolSearch(query="select:TaskList,TaskGet", max_results=2)`.
+2. Call `TaskList()` and apply the **Final reconciliation (native → PKB, at session close)** procedure from [[../../skills/cowork-sync/SKILL.md#final-reconciliation-native--pkb-at-session-close]]. In summary:
+   - For each native task whose `description` carries `PKB <id>` AND whose `status == completed`:
+     - If the id matches the bound parent (`<bound-task-id>`): skip — the `release_task` call in Step 3 below handles it.
+     - Otherwise (a mirrored child): read the PKB row first with `mcp__pkb__get_task`. If already terminal (`done`/`cancelled`/`superseded`/`archived`), skip — per-completion sync already handled it. Otherwise call `mcp__pkb__complete_task(id="<pkb-child-id>", summary="reconciled at session close")`. This is the safety net firing.
+   - Native tasks with no `PKB <id>` in their description are session-local working notes; leave them alone.
+   - Native tasks in `deleted` (the cowork analogue of cancellation) are NOT echoed — PKB cancellation is a separate, deliberate decision.
+3. Do not delete or rewrite native tasks — the native list dies with the session.
+
+If `TaskList` is unavailable (somehow running the cowork build outside Cowork), skip this step silently and continue.
+
+<!-- /cowork:only -->
+
 1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work — if work is genuinely incomplete, use `/dump` instead so it is captured as a resume task rather than abandoned.
 
 2. **Update the project breadcrumb** (project → active epic → task linkage).
