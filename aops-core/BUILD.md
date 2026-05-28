@@ -27,19 +27,35 @@ End-users install from `nicsuzor/aops` (the dist repo). They never touch `academ
 
 `scripts/build.py` reads from the source layout and writes to `dist/`. Mapping:
 
-| Source                                              | Claude artifact                                | Gemini artifact                                |
-| --------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| `aops-core/skills/`, `agents/`, `commands/`, `lib/` | `dist/aops-claude/<same>/`                     | `dist/aops-gemini/<same>/` (skills mostly)     |
-| `aops-core/hooks/hooks.json`                        | `dist/aops-claude/hooks/hooks.json` (verbatim) | transformed via `_generate_gemini_hooks_json`  |
-| `aops-core/mcp.json.template`                       | `dist/aops-claude/.mcp.json`                   | merged into `gemini-extension.json.mcpServers` |
-| `templates/aops-core.plugin.json`                   | `dist/aops-claude/.claude-plugin/plugin.json`  | (not used)                                     |
-| `templates/aops-core.gemini-extension.json`         | (not used)                                     | `dist/aops-gemini/gemini-extension.json`       |
-| `templates/marketplace.json`                        | `dist/.claude-plugin/marketplace.json`         | (not used)                                     |
-| `GEMINI.md` + imports                               | (not used)                                     | `dist/aops-gemini/GEMINI.md` + resolved files  |
+| Source                                              | Claude artifact                                | Cowork artifact                                                                   | Gemini artifact                                |
+| --------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `aops-core/skills/`, `agents/`, `commands/`, `lib/` | `dist/aops-claude/<same>/`                     | `dist/aops-cowork/<same>/` (cowork-only blocks kept; `cowork-sync` skill present) | `dist/aops-gemini/<same>/` (skills mostly)     |
+| `aops-core/hooks/hooks.json`                        | `dist/aops-claude/hooks/hooks.json` (verbatim) | `dist/aops-cowork/hooks/hooks.json` (verbatim; Cowork ignores at runtime)         | transformed via `_generate_gemini_hooks_json`  |
+| `aops-core/mcp.json.template`                       | `dist/aops-claude/.mcp.json`                   | `dist/aops-cowork/.mcp.json`                                                      | merged into `gemini-extension.json.mcpServers` |
+| `templates/aops-core.plugin.json`                   | `dist/aops-claude/.claude-plugin/plugin.json`  | (not used)                                                                        | (not used)                                     |
+| `templates/aops-core.cowork-plugin.json`            | (not used)                                     | `dist/aops-cowork/.claude-plugin/plugin.json`                                     | (not used)                                     |
+| `templates/aops-core.gemini-extension.json`         | (not used)                                     | (not used)                                                                        | `dist/aops-gemini/gemini-extension.json`       |
+| `templates/marketplace.json`                        | `dist/.claude-plugin/marketplace.json`         | (not advertised; Cowork is upload-only)                                           | (not used)                                     |
+| `GEMINI.md` + imports                               | (not used)                                     | (not used)                                                                        | `dist/aops-gemini/GEMINI.md` + resolved files  |
 
-`build.py` also injects the version into every manifest, strips marketplace-only fields (`source`, `category`) from the plugin manifest (CC bug [#26555](https://github.com/anthropics/claude-code/issues/26555) — leak causes "Unrecognized keys" validation error), and packages `aops-core-v{version}.zip` for Cowork manual upload (same `aops-claude/` payload).
+`build.py` also injects the version into every manifest, strips marketplace-only fields (`source`, `category`) from the plugin manifest (CC bug [#26555](https://github.com/anthropics/claude-code/issues/26555) — leak causes "Unrecognized keys" validation error), and packages `aops-cowork-v{version}.zip` (plus a legacy `aops-core-v{version}.zip` symlink) for Cowork manual upload.
 
 `aops-tools` is a separate, lightweight plugin: skills only, no hooks/agents/MCP. Built from `aops-tools/` with its own `templates/aops-tools.*` manifests.
+
+## The cowork build variant
+
+`aops-cowork` is a separate plugin built from the same `aops-core/` source tree. It is Claude-shaped (same `.claude-plugin/plugin.json` + `.mcp.json` layout) but ships **three** cowork-specific differences:
+
+1. **Distinct plugin manifest.** Built from `templates/aops-core.cowork-plugin.json` rather than `templates/aops-core.plugin.json` — the manifest names the plugin `aops-cowork` and tunes the description/keywords. This lets Cowork installs coexist with Claude Code CLI installs without colliding.
+2. **`cowork-sync` skill included.** The skill at `aops-core/skills/cowork-sync/SKILL.md` describes the PKB → native task list mirror that the Cowork harness depends on. The build strips it from every other platform's output: the helper has no analogue outside Cowork.
+3. **Cowork-only blocks kept.** Source files (currently `aops-core/commands/pull.md` and `aops-core/skills/end_session/SKILL.md`) wrap Cowork-specific instructions in `<!-- cowork:only --> ... <!-- /cowork:only -->`. The cowork build strips only the marker lines (keeping the wrapped content); every other build strips both the markers and the content. The marker handling lives in `_process_cowork_markers` in `scripts/build.py`.
+
+The cowork build is invoked from `main()` as `build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)` alongside `claude`/`gemini`/`antigravity`. Output goes to `dist/aops-cowork/`; `package_artifacts` then zips that directory into `dist/aops-cowork-v{version}.zip` for manual upload. The legacy `aops-core-v{version}.zip` filename is kept as a symlink for backward compatibility with existing download URLs.
+
+To add a new cowork-only behaviour, choose the smallest surface that fits:
+
+- **A whole skill that only makes sense on Cowork** → drop it under `aops-core/skills/<name>/` and add an exclusion in `build_aops_core` mirroring the `cowork-sync` line (or, if it's a per-skill check, factor that out).
+- **A few paragraphs inside an existing skill or command** → wrap them in `<!-- cowork:only -->` markers and they will be auto-included by the cowork build and stripped from every other.
 
 ## The plugin manifest contract
 

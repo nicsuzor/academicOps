@@ -142,9 +142,12 @@ install-hooks:
 
 # Standard user install from official releases.
 # Cowork is intentionally excluded from this chain: personal Anthropic accounts
-# can't add custom marketplaces, so the Cowork plugin must be uploaded manually
-# via the Claude desktop app (Customize → Add plugins → Upload a file). Run
-# `make package-cowork` to produce the zip, then upload it through the UI.
+# can't add custom marketplaces, so the `aops-cowork` plugin must be uploaded
+# manually via the Claude desktop app (Customize → Add plugins → Upload a
+# file). Run `make package-cowork` to produce the zip, then upload it through
+# the UI. (Note: `aops-cowork` is a distinct plugin from `aops-core`, with
+# Cowork-specific behaviour for the PKB ↔ native task-list mirror — see
+# `aops-core/skills/cowork-sync/SKILL.md`.)
 install: ensure-docker install-claude install-gemini install-agy install-windows install-crontab
 	@$(MAKE) report-versions
 
@@ -173,14 +176,18 @@ install-claude:
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
 		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
-# Cowork on personal accounts has no marketplace mechanism. The same aops-core
-# plugin shipped to Claude Code CLI is uploaded to Cowork as a zip via
-# Customize → Add plugins → Upload a file. Cowork silently drops hooks and
-# Python scripts it can't run; no separate cowork-flavoured build exists.
-# The build emits the upload artifact at dist/aops-core-v{VERSION}.zip.
+# Cowork on personal accounts has no marketplace mechanism. The Cowork plugin
+# is a SEPARATE build (`aops-cowork`) from the Claude Code CLI build (`aops-core`):
+# same Claude-shaped layout, but with cowork-only skill blocks kept and the
+# `cowork-sync` skill bundled. See `build_aops_core(platform="cowork", ...)` in
+# scripts/build.py and `aops-core/skills/cowork-sync/SKILL.md` for the PKB
+# ↔ native task-list mirror behaviour. The legacy `aops-core-v{VERSION}.zip`
+# name is preserved as a symlink for backwards compatibility with any existing
+# download URLs.
 package-cowork: build-dev
 	@echo "Cowork upload package built at:"
-	@ls -1 $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | tail -1 || \
+	@ls -1 $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | tail -1 || \
+		ls -1 $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | tail -1 || \
 		echo "  (missing — check build output above)"
 	@echo ""
 	@echo "Upload via Claude desktop app:"
@@ -196,7 +203,10 @@ package-cowork-windows:
 	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
 		echo "Not on WSL — nothing to copy."; exit 0; \
 	fi; \
-	ZIP=$$(ls -1t $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | head -1); \
+	ZIP=$$(ls -1t $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | head -1); \
+	if [ -z "$$ZIP" ]; then \
+		ZIP=$$(ls -1t $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | head -1); \
+	fi; \
 	if [ -z "$$ZIP" ]; then \
 		echo "  ⚠️ No Cowork zip found in $(DIST_DIR) — run 'make package-cowork' first."; exit 1; \
 	fi; \
