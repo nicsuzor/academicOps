@@ -33,7 +33,11 @@ Walk layers in order; stop at first failure:
 
 **§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make build-docker`.
 
-**§1 Boot signals** — spin via tmux, `capture-pane -p -S -2000`. Look for router banner, plan mode, no onboarding/trust prompts. Do NOT use footer text as a boot signal (#1197).
+**§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container (and `gemini extensions list` for Gemini sessions) to verify plugins and extensions loaded correctly. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either command returns no plugins / no extensions, halt and diagnose before proceeding.
+
+**§1 Boot signals** — spin via tmux using the **same permission flags that `polecat run` uses** (auto-approval / `--dangerously-skip-permissions`, not plan mode), then `capture-pane -p -S -2000`. Look for router banner, no onboarding/trust prompts. Do NOT use footer text as a boot signal (#1197).
+
+> **Permission mode:** Crew smoke tests for autonomous-worker validation must match the production permission model — use the same flags as `polecat run` (bypass-permissions / auto-approval). **Do not start crew containers in plan mode for these tests**: plan mode does not reflect actual polecat dispatch behavior and will not catch permission-related failures. Plan mode is acceptable only when explicitly testing interactive crew workflows where human-in-the-loop approval is the intended behavior.
 
 **§2 First UserPromptSubmit** — send a trivial prompt. Hook-blocked error = hook fired and errored. Treat error text as primary evidence.
 
