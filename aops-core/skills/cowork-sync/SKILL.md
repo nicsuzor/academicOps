@@ -57,7 +57,7 @@ Input: a PKB task id with body, AC, and optional children.
 1. **Load task and children**:
    ```
    parent  = mcp__pkb__get_task(id="<pkb-id>")
-   leaves  = mcp__pkb__get_task_children(parent_id="<pkb-id>")  # if non-leaf
+   leaves  = mcp__pkb__get_task_children(id="<pkb-id>")  # if non-leaf
    ```
 2. **Create one native task for the parent** with a description that embeds the PKB id verbatim (it is the join key):
    ```
