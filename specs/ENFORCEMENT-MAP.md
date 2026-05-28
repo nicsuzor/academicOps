@@ -1,41 +1,48 @@
 # Enforcement Map
 
-> **SSoT (state).** Maps each axiom and load-bearing rule to the
-> mechanism(s) currently enforcing it — answers **how is rule X enforced
-> today?** Any PR that adds, escalates, or retires enforcement updates a
-> row here in the same change (P#65); `rbg` blocks on map currency.
+> **State.** Routing table for "how is each rule currently enforced?". Any PR that adds, escalates, or retires a mechanism updates a row here in the same change (P#65); `rbg` blocks on currency.
 >
-> Enforcement is a **regulatory pyramid** (Ayres & Braithwaite 1992,
-> _Responsive Regulation_): wide base of high-volume soft mechanisms
-> (instructions, conventions, hints), narrowing to a sharp apex of rare
-> severe responses (hard blocks, axioms, branch protection). Positions
-> **L0–L7** below mark where each mechanism sits; the width at each
-> level tracks frequency × marginal cost there. Pyramid framing,
-> escalation discipline, PR cost-benefit requirements, and the worked
-> A7 example live in
-> [`specs/enforcement/enforcement.md`](enforcement/enforcement.md).
-> This file is the operative register; that spec is the framing.
->
-> **Adjacent state SSoT.** Per-gate forensic-debug detail (source path,
-> `polecat.yaml` config, how to verify firing, how to debug) →
-> [`specs/GATES.md`](GATES.md). Both are state.
+> Framing, escalation discipline, PR cost-benefit, and the worked A7 example → [`specs/enforcement/enforcement.md`](enforcement/enforcement.md). Per-gate forensic detail (config, verify, debug) → [`specs/GATES.md`](GATES.md). Both adjacent files are state.
 
-## Pyramid positions (L0–L7)
+## Pyramid (L0–L7)
 
-Lower numbers sit at the **wide base** (high volume, low invasiveness); higher numbers sit toward the **apex** (rare, severe). Add/escalate/remove decisions cite a row of this file plus the position justifying the change. Costs are **marginal** per-fire; combine with frequency for per-session totals. Numbers are order-of-magnitude — measure when proposing.
+Rows are **mechanism categories** on a coercion-strength × frequency axis. A tier holds **multiple blocks** at the same coercion level. Axioms (rules) do **not** appear as pyramid rows — they are the *content* L1 always-on mechanisms carry. Executive/legislative distinction and escalation discipline → [`enforcement.md`](enforcement/enforcement.md) §4. Costs are order-of-magnitude per fire; combine with frequency for per-session totals.
 
-| L  | Mechanism                            | Marginal cost                               | When justified                                            |
-| -- | ------------------------------------ | ------------------------------------------- | --------------------------------------------------------- |
-| L0 | PKB note / inline comment            | ~0                                          | Any time                                                  |
-| L1 | Skill SKILL.md / CORE.md text        | ~50–500 tok/session (prompt-cached)         | Recurrent friction (≥3 instances), clear callsite         |
-| L2 | Mechanical check (pre-commit/bridge) | ~50ms–2s wall-clock                         | Mechanical, deterministic; no judgement                   |
-| L3 | Stop-hook injection (always-on)      | ~400–4k tok in-window (compounds on retry)  | Cross-cutting + agent forgets between turns               |
-| L4 | PreToolUse gate (`warn`)             | ~20–800 tok per fire; no model dispatch     | Periodic compliance check without LLM                     |
-| L5 | PreToolUse gate (`block`)            | ~100–500 tok + tool-call latency            | Hard-block needed; destructive / legal / privacy          |
-| L6 | LLM-gated hook (subagent per fire)   | ~1.5–3k tok + 5–30s latency                 | Last resort; structural fixes (L1–L3) have failed         |
-| L7 | Numbered axiom (A-tier)              | Permanent context burn (~100 lines, cached) | Must beat trained reflex; cross-cutting; primary contract |
+| L  | Class      | Mechanism categories (multiple blocks per tier)                                                                                                                                  | Marginal cost                              |
+| -- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| L0 | base       | **Authoring memory**: PKB notes · inline comments · doc-strings                                                                                                                  | ~0                                         |
+| L1 | base       | **SessionStart guaranteed reads**: CORE.md · AXIOMS.md · HEURISTICS.md · agent persona · status strip · `session_env_setup` env vars                                             | ~50–500 tok/session, prompt-cached         |
+| L2 | base       | **Lifecycle context injection**: UPS hints (`context-map.json`) · hydrator · Stop-hook reminders (IDA, QA-gate, handover-gate)                                                   | ~50–500 tok per event                      |
+| L3 | base       | **Voluntary skill invocation**: `/verify` · `/design-rubric` · `/q` · `/pull` · `/learn` · others (agent opts in)                                                                | per-skill, agent decides                   |
+| L4 | middle     | **Mechanical checks (deterministic, no LLM)**: pre-commit hooks · bridge guards · `aca_data_autocommit` · `fail_fast_watchdog` · `normalize_mcp_names` · `orchestrator_boundary` | 50ms–2s wall-clock                         |
+| L5 | middle     | **PreToolUse classifier**: auto-mode warn rules · auto-mode block rules · `policy_enforcer` hard-deny                                                                            | ~20–800 tok per fire + tool-call latency   |
+| L6 | tip        | **LLM-mediated review subagent**: `rbg` · `marsha` · `enforcer` subagent · `alignment`                                                                                           | ~1.5–3k tok + 5–30s latency                |
+| L7 | tip (apex) | **Branch protection + merge AND-gates**: branch protection rules · `loop_detector` · `<agent>-status` AND-checks · project-owner / admin approval                                | merge-blocking, irreversible at the moment |
 
-> **Anti-pattern**: jumping to L3+ when the actual failure is recurrence at a single L1 callsite. Most over-deference recurrences (issue #195) were L1 fixes that propagated incompletely, not failures of L1 as a position.
+## Lifecycle
+
+Which pyramid tiers fire at which event in the session/PR lifecycle. The pyramid says **how invasive**; the lifecycle says **when**.
+
+```mermaid
+flowchart LR
+  SS[SessionStart]            -->|L1 inject| UPS[UserPromptSubmit]
+  UPS                         -->|L2 inject| PTU[PreToolUse]
+  PTU                         -->|L4 mech / L5 classifier| TOOL[tool exec]
+  TOOL                        -->|L4 mech| PTU2[PostToolUse]
+  PTU2                        -->|L2 inject / L6 review| STOP[Stop]
+  STOP                        -->|L4 hooks| COM[commit]
+  COM                         -->|L4 / L5 / L6| PR[PR push]
+  PR                          -->|L6 LLM review| MERGE((merge))
+  MERGE                       -.->|L7 AND-gate| Done([done])
+  classDef base fill:#e6f3ff,stroke:#1e6091,color:#000
+  classDef mid  fill:#fff4d6,stroke:#a76700,color:#000
+  classDef tip  fill:#ffe1e1,stroke:#a30000,color:#000
+  class SS,UPS,STOP base
+  class PTU,PTU2,COM,PR mid
+  class MERGE tip
+```
+
+L3 (voluntary skill invocation) is omitted from the flow because it's not lifecycle-anchored — agents invoke skills mid-turn at their own discretion.
 
 ## Runtime gates
 
@@ -175,12 +182,12 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 | Mechanism             | L  | Action     | Purpose                                                | Source                                                                                   |
 | :-------------------- | :- | :--------- | :----------------------------------------------------- | :--------------------------------------------------------------------------------------- |
 | `enforcer` gate       | L6 | warn/block | Periodic axiom-compliance check via subagent           | [`ultra-vires-enforcer.md`](enforcement/ultra-vires-enforcer.md), [`GATES.md`](GATES.md) |
-| `qa` gate             | L3 | warn/block | Requires verification before Stop                      | [`GATES.md`](GATES.md)                                                                   |
-| `handover` gate       | L3 | warn/block | Blocks Stop until commit + task update + reflection    | [`GATES.md`](GATES.md)                                                                   |
-| `ida` gate            | L3 | warn       | Back assertions with proof; disclose skips             | [`GATES.md`](GATES.md)                                                                   |
+| `qa` gate             | L6 | warn/block | Requires verifier subagent before Stop                 | [`GATES.md`](GATES.md)                                                                   |
+| `handover` gate       | L6 | warn/block | Blocks Stop until commit + task update + reflection    | [`GATES.md`](GATES.md)                                                                   |
+| `ida` gate            | L2 | warn       | Stop-hook inject: back assertions with proof           | [`GATES.md`](GATES.md)                                                                   |
 | `hydration` gate      | L4 | warn       | Blocks tool calls until hydrator runs (mode-dependent) | [`GATES.md`](GATES.md)                                                                   |
-| `aca_data_autocommit` | L2 | —          | Auto-commits `$ACA_DATA` after state-modifying calls   | `aops-core/hooks/router.py:_run_aca_data_autocommit`                                     |
-| `context-map hints`   | L1 | inject     | Doc pointers from `.agents/context-map.json` on UPS    | `aops-core/hooks/router.py:_inject_context_map_hints`                                    |
+| `aca_data_autocommit` | L4 | —          | Auto-commits `$ACA_DATA` after state-modifying calls   | `aops-core/hooks/router.py:_run_aca_data_autocommit`                                     |
+| `context-map hints`   | L2 | inject     | UPS lifecycle inject from `.agents/context-map.json`   | `aops-core/hooks/router.py:_inject_context_map_hints`                                    |
 | ~~`policy_enforcer`~~ | —  | —          | **Retired 2026-05-15** (sandbox supersedes)            | `aops-e0d015d9`                                                                          |
 | ~~`commit` gate~~     | —  | —          | **Retired PR #988** (superseded by `handover`)         | —                                                                                        |
 
@@ -188,17 +195,17 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 | Hook                        | L  | Action | Purpose                                                 | Source                                 |
 | :-------------------------- | :- | :----- | :------------------------------------------------------ | :------------------------------------- |
-| `check-no-new-orphan-md`    | L2 | warn   | New `.md` outside canonical-location allowlist (R5.6)   | `scripts/check_no_new_orphan_md.py`    |
-| `check-framework-integrity` | L2 | warn   | Broken wikilinks or missing index entries               | `scripts/check_framework_integrity.py` |
-| `check-no-fallbacks`        | L2 | warn   | Silent-fallback patterns in hooks (A8 / P#8; #930)      | `scripts/check_no_fallbacks.py`        |
-| `normalize-mcp-names`       | L2 | warn   | Auto-heals Gemini-form MCP names to Claude form (#1128) | `scripts/normalize_mcp_names.py`       |
+| `check-no-new-orphan-md`    | L4 | warn   | New `.md` outside canonical-location allowlist (R5.6)   | `scripts/check_no_new_orphan_md.py`    |
+| `check-framework-integrity` | L4 | warn   | Broken wikilinks or missing index entries               | `scripts/check_framework_integrity.py` |
+| `check-no-fallbacks`        | L4 | warn   | Silent-fallback patterns in hooks (A8 / P#8; #930)      | `scripts/check_no_fallbacks.py`        |
+| `normalize-mcp-names`       | L4 | warn   | Auto-heals Gemini-form MCP names to Claude form (#1128) | `scripts/normalize_mcp_names.py`       |
 
 ### Bridge-level constraints
 
 | Constraint                 | L  | Action | Purpose                                       | Source                  |
 | :------------------------- | :- | :----- | :-------------------------------------------- | :---------------------- |
-| `create_task` prefix guard | L2 | block  | ID prefix must match task type / project slug | `polecat/pkb_bridge.py` |
-| `claude` OAUTH pre-flight  | L2 | block  | Exits 4 when `CLAUDE_CODE_OAUTH_TOKEN` unset  | `polecat/cli.py`        |
+| `create_task` prefix guard | L4 | block  | ID prefix must match task type / project slug | `polecat/pkb_bridge.py` |
+| `claude` OAUTH pre-flight  | L4 | block  | Exits 4 when `CLAUDE_CODE_OAUTH_TOKEN` unset  | `polecat/cli.py`        |
 
 ### CORE.md directives
 
@@ -218,10 +225,12 @@ Branch protection AND-gates each `<agent>-status` directly — no LLM judgment i
 
 | Agent              | L     | Action | Purpose                                         | Source                                                          |
 | :----------------- | :---- | :----- | :---------------------------------------------- | :-------------------------------------------------------------- |
-| `enforcer-status`  | L6    | block  | Reviews PR diff against axioms; SHA-skip dedupe | `.github/workflows/agent-enforcer.yml@enforcer-v1`              |
-| `alignment-status` | L6    | block  | PKB design-intent alignment; off-GHA dispatch   | `.github/workflows/agent-alignment.yml@alignment-v1`            |
-| `mechanic-status`  | L4–L6 | —      | Mechanical merge + conflict resolution only     | `.github/workflows/agent-mechanic.yml@mechanic-v1`              |
-| ~~v1 agents~~      | —     | —      | **Retired Phase 1** (PR #1062)                  | [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md) §3.1/§3.6/§5 |
+| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe | `.github/workflows/agent-enforcer.yml@enforcer-v1`              |
+| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment             | `.github/workflows/agent-alignment.yml@alignment-v1`            |
+| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only           | `.github/workflows/agent-mechanic.yml@mechanic-v1`              |
+| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                       |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state   | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
+| ~~v1 agents~~      | —  | —      | **Retired Phase 1** (PR #1062)                        | [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md) §3.1/§3.6/§5 |
 
 ## Related
 
