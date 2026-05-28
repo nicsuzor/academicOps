@@ -1,9 +1,43 @@
 import os
+import re
 
 from hooks.schemas import HookContext
 
 from lib.gate_types import GateState
 from lib.session_state import SessionState
+
+# =============================================================================
+# SENTINEL GATE — destructive-env-op detection
+# =============================================================================
+# Protected user-environment paths. Matches both tilde-expanded (~) and
+# absolute home-dir forms (/home/user or /Users/user on macOS). Case-
+# insensitive so macOS case-folded paths and adversarial mixed-case commands
+# are caught.
+_PROTECTED_PATH_RE = re.compile(
+    r"(?:~|(?:/home|/Users)/[^/\s]+)"
+    r"/\."
+    r"(?:"
+    r"gemini/extensions"  # ~/.gemini/extensions/
+    r"|gemini/settings\.json"  # ~/.gemini/settings.json
+    r"|claude/plugins"  # ~/.claude/plugins/
+    r"|claude/[^/\s]+\.json"  # ~/.claude/*.json (e.g. settings.json)
+    r"|config/gemini"  # ~/.config/gemini/
+    r")",
+    re.IGNORECASE,
+)
+
+# Destructive shell commands. Word-bounded so rm doesn't match inside rmdir
+# and vice versa; case-insensitive to block RM, Rm, TRUNCATE, etc.
+_DESTRUCTIVE_CMD_RE = re.compile(
+    r"\b(?:rm|mv|rmdir|unlink|truncate)\b",
+    re.IGNORECASE,
+)
+
+# Tool name sets for sentinel gate dispatch.
+_SENTINEL_SHELL_TOOLS: frozenset[str] = frozenset(
+    {"Bash", "run_shell_command", "shell", "execute_code"}
+)
+_SENTINEL_WRITE_FILE_TOOLS: frozenset[str] = frozenset({"Edit", "Write", "write_file", "replace"})
 
 
 def check_custom_condition(
@@ -12,6 +46,31 @@ def check_custom_condition(
     """
     Evaluate a named custom condition.
     """
+    if name == "is_destructive_env_op":
+        # Sentinel gate: block destructive ops on protected user-env paths.
+        # Shell tools: command must contain BOTH a destructive verb AND a
+        # protected path reference (and-logic to reduce false positives).
+        # Write-file tools: ANY write to a protected path is blocked —
+        # no destructive-verb check needed because the write itself is the
+        # destructive op (Edit/Write will overwrite or truncate the file).
+        tool_name = ctx.tool_name or ""
+        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+
+        if tool_name in _SENTINEL_SHELL_TOOLS:
+            command = tool_input.get("command", "")
+            if not isinstance(command, str):
+                return False
+            return bool(_DESTRUCTIVE_CMD_RE.search(command) and _PROTECTED_PATH_RE.search(command))
+
+        if tool_name in _SENTINEL_WRITE_FILE_TOOLS:
+            # file_path is Claude Code field; path is Gemini write_file field
+            file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+            if not isinstance(file_path, str):
+                return False
+            return bool(_PROTECTED_PATH_RE.search(file_path))
+
+        return False
+
     if name == "is_not_safe_toolsearch":
         # Returns False ONLY if ToolSearch is loading specific tools by name (select:*)
         # Returns True for everything else (including discovery ToolSearch)
