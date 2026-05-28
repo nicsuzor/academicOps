@@ -92,6 +92,8 @@ def ensure_worktree_push_safety(cwd: Path | str) -> str | None:
         # we don't mutate the shared repo config; fall back to local repo config
         # when the worktreeConfig extension is not enabled (push.default=current
         # is a safe default for every branch, so repo-wide is acceptable).
+        # Enable worktree-specific config so we don't pollute the shared repo config
+        _git(["config", "extensions.worktreeConfig", "true"], cwd)
         pd = _git(["config", "--worktree", "push.default", "current"], cwd)
         if pd.returncode != 0:
             pd = _git(["config", "push.default", "current"], cwd)
