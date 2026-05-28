@@ -367,9 +367,12 @@ class TestCredentialBridgeHook:
             yield env_file
 
     def test_hook_maps_bot_token_to_gh_token(self, temp_env_file, credential_markers):
-        """session_env_setup should write GH_TOKEN=bot_token to CLAUDE_ENV_FILE.
+        """Sourcing the env file with the bot token set yields GH_TOKEN=bot.
 
-        The hook reads agent-env-map.conf and persists the mapped values.
+        GH_TOKEN/GITHUB_TOKEN are now exported as deferred shell expressions
+        (`${AOPS_BOT_GH_TOKEN:-}`) rather than hook-time literals, so we verify
+        the runtime effect by sourcing the file rather than grepping for a
+        literal value.
         """
         bot = credential_markers["bot"]
 
@@ -393,13 +396,22 @@ class TestCredentialBridgeHook:
         assert result is not None
         assert result.verdict.value == "allow"
 
-        content = temp_env_file.read_text()
-        # shlex.quote leaves shell-safe strings unquoted
-        assert f"export GH_TOKEN={bot}" in content, (
-            f"Hook should write GH_TOKEN to CLAUDE_ENV_FILE.\n"
-            f"Expected: export GH_TOKEN={bot}\n"
-            f"Got: {content}"
+        # Source the env file with the bot token present, then read GH_TOKEN.
+        proc = subprocess.run(
+            [
+                "/bin/bash",
+                "-c",
+                f"export AOPS_BOT_GH_TOKEN={bot}; source {temp_env_file}; "
+                f'printf "%s\\n%s\\n" "$GH_TOKEN" "$GITHUB_TOKEN"',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
         )
+        gh, github = proc.stdout.strip().split("\n")
+        assert gh == bot, f"GH_TOKEN should resolve to bot token; got {gh!r}"
+        assert github == bot, f"GITHUB_TOKEN should resolve to bot token; got {github!r}"
 
     def test_hook_persists_ssh_isolation(self, temp_env_file):
         """session_env_setup should write SSH isolation vars to CLAUDE_ENV_FILE."""
@@ -439,13 +451,15 @@ class TestCredentialBridgeHook:
             f"Hook should rewrite SSH URLs to HTTPS.\nGot: {content}"
         )
 
-    def test_hook_does_not_map_when_bot_token_absent(self, temp_env_file):
-        """When AOPS_BOT_GH_TOKEN is not set anywhere (hook env nor shell),
-        sourcing the env file must NOT export GH_TOKEN/GITHUB_TOKEN.
+    def test_hook_fails_closed_when_bot_token_absent(self, temp_env_file):
+        """When AOPS_BOT_GH_TOKEN is absent, sourcing the env file must leave
+        GH_TOKEN/GITHUB_TOKEN EMPTY — fail-closed — and must clobber any
+        personal token that was already present in the parent env.
 
-        The hook now uses deferred shell expansion (so the env file does
-        contain a conditional line referencing GH_TOKEN), but the conditional
-        must skip when the source variable is absent at source-time.
+        This is the deliberate reversal of the prior skip-when-absent contract
+        (task-ebc758fd): on the host, skipping left an inherited personal token
+        intact. Exporting the bot token's value (empty when it is unset) both
+        fails closed and overwrites the leak.
         """
         ctx = HookContext(
             session_id="test-cred-no-bot",
@@ -467,32 +481,42 @@ class TestCredentialBridgeHook:
         ):
             run_session_env_setup(ctx, state)
 
-        # Source the env file in a clean bash subshell with AOPS_BOT_GH_TOKEN
-        # explicitly unset, then check GH_TOKEN/GITHUB_TOKEN are still unset.
+        # Source the env file with a PERSONAL token pre-set and AOPS_BOT_GH_TOKEN
+        # unset. GH_TOKEN/GITHUB_TOKEN must end up empty (personal clobbered).
         result = subprocess.run(
             [
                 "/bin/bash",
                 "-c",
-                f"unset AOPS_BOT_GH_TOKEN GH_TOKEN GITHUB_TOKEN; "
+                "unset AOPS_BOT_GH_TOKEN; "
+                "export GH_TOKEN=personal_leak GITHUB_TOKEN=personal_leak; "
                 f"source {temp_env_file}; "
-                f"echo GH_SET=${{GH_TOKEN+yes}} GITHUB_SET=${{GITHUB_TOKEN+yes}}",
+                'printf "GH=[%s]\\nGITHUB=[%s]\\n" "$GH_TOKEN" "$GITHUB_TOKEN"',
             ],
             capture_output=True,
             text=True,
             timeout=10,
             check=True,
         )
-        assert "GH_SET=yes" not in result.stdout, (
-            f"GH_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is absent.\n"
+        assert "GH=[]" in result.stdout, (
+            f"GH_TOKEN must be EMPTY (fail-closed) when AOPS_BOT_GH_TOKEN is absent.\n"
             f"Output: {result.stdout!r}"
         )
-        assert "GITHUB_SET=yes" not in result.stdout, (
-            f"GITHUB_TOKEN must NOT be exported when AOPS_BOT_GH_TOKEN is absent.\n"
+        assert "GITHUB=[]" in result.stdout, (
+            f"GITHUB_TOKEN must be EMPTY (fail-closed) when AOPS_BOT_GH_TOKEN is absent.\n"
+            f"Output: {result.stdout!r}"
+        )
+        assert "personal_leak" not in result.stdout, (
+            f"SECURITY: personal token survived into GH_TOKEN/GITHUB_TOKEN.\n"
             f"Output: {result.stdout!r}"
         )
 
     def test_hook_overrides_existing_personal_token(self, temp_env_file, credential_markers):
-        """Hook should override user's personal GH_TOKEN with bot token."""
+        """Hook should override user's personal GH_TOKEN with the bot token.
+
+        Verified by sourcing the env file with a personal token pre-set: the
+        bot token must win, and the personal value must never appear in the
+        file (it is referenced only via ${AOPS_BOT_GH_TOKEN}).
+        """
         bot = credential_markers["bot"]
         personal = credential_markers["personal"]
 
@@ -521,11 +545,27 @@ class TestCredentialBridgeHook:
             run_session_env_setup(ctx, state)
 
         content = temp_env_file.read_text()
-        # shlex.quote leaves shell-safe strings unquoted
-        assert f"export GH_TOKEN={bot}" in content
         assert personal not in content, (
             f"SECURITY: Personal token {personal!r} leaked into CLAUDE_ENV_FILE!"
         )
+
+        # Source with personal token pre-set: bot must override it.
+        proc = subprocess.run(
+            [
+                "/bin/bash",
+                "-c",
+                f"export AOPS_BOT_GH_TOKEN={bot} GH_TOKEN={personal} GITHUB_TOKEN={personal}; "
+                f"source {temp_env_file}; "
+                f'printf "%s\\n%s\\n" "$GH_TOKEN" "$GITHUB_TOKEN"',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+        gh, github = proc.stdout.strip().split("\n")
+        assert gh == bot, f"Bot token must override personal; got {gh!r}"
+        assert github == bot, f"Bot token must override personal; got {github!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -765,16 +805,22 @@ class TestCredentialHelperOverride:
         assert "GIT_CONFIG_VALUE_2=''" in contents
         # Install value must contain the bot-PAT printf
         assert 'printf "username=x-access-token' in contents
+        # The helper must read AOPS_BOT_GH_TOKEN *exclusively* — no fallback to
+        # GH_TOKEN/GITHUB_TOKEN (which could carry a personal value).
+        assert '"${AOPS_BOT_GH_TOKEN}"' in contents, (
+            "Helper must reference ${AOPS_BOT_GH_TOKEN} as the sole credential source"
+        )
+        assert "${GH_TOKEN:-" not in contents, (
+            "Helper must NOT fall back to GH_TOKEN/GITHUB_TOKEN (personal-leak vector)"
+        )
+        # gh CLI must be isolated from the user's keyring via an empty config dir.
+        assert "export GH_CONFIG_DIR=" in contents, (
+            "Hook must set GH_CONFIG_DIR to isolate gh from the user's keyring"
+        )
 
-    def test_helper_override_resolves_via_git(self, tmp_path, credential_markers):
-        """The helper override must produce the bot identity when git asks for credentials."""
-        bot = credential_markers["bot"]
-
-        # Build the same env layout session_env_setup writes.
+    def _helper_env(self, tmp_path) -> dict:
+        """Build the GIT_CONFIG_* env layer exactly as session_env_setup writes it."""
         env = os.environ.copy()
-        env["GH_TOKEN"] = bot
-        env["GITHUB_TOKEN"] = bot
-        env["AOPS_BOT_GH_TOKEN"] = bot
         env["GIT_CONFIG_COUNT"] = "4"
         env["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
         env["GIT_CONFIG_VALUE_0"] = "git@github.com:"
@@ -786,13 +832,27 @@ class TestCredentialHelperOverride:
         env["GIT_CONFIG_VALUE_3"] = (
             '!f() { test "$1" = get && '
             'printf "username=x-access-token\\npassword=%s\\n" '
-            '"${GH_TOKEN:-${GITHUB_TOKEN:-${AOPS_BOT_GH_TOKEN}}}"; }; f'
+            '"${AOPS_BOT_GH_TOKEN}"; }; f'
         )
-
-        # Force git to ignore user-config (HOME=tmp_path) so we test ONLY the
-        # GIT_CONFIG_KEY_* env layer — same layer the hook adds.
+        # Force git to ignore user-config so we test ONLY the GIT_CONFIG_KEY_*
+        # env layer — the same layer the hook adds.
         env["HOME"] = str(tmp_path)
         env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg")
+        return env
+
+    def test_helper_resolves_bot_token_exclusively(self, tmp_path, credential_markers):
+        """The helper must emit the bot PAT — reading AOPS_BOT_GH_TOKEN only.
+
+        GH_TOKEN/GITHUB_TOKEN are set to a personal marker to prove the helper
+        ignores them (no fallback chain).
+        """
+        bot = credential_markers["bot"]
+        personal = credential_markers["personal"]
+
+        env = self._helper_env(tmp_path)
+        env["AOPS_BOT_GH_TOKEN"] = bot
+        env["GH_TOKEN"] = personal
+        env["GITHUB_TOKEN"] = personal
 
         result = subprocess.run(
             ["git", "credential", "fill"],
@@ -804,10 +864,32 @@ class TestCredentialHelperOverride:
             check=True,
         )
         out = result.stdout
-        assert "username=x-access-token" in out, (
-            f"Helper override must produce x-access-token username; got:\n{out}"
+        assert "username=x-access-token" in out, f"Expected x-access-token username; got:\n{out}"
+        assert f"password={bot}" in out, "Helper must emit the bot PAT"
+        assert personal not in out, "SECURITY: personal token must NOT be emitted by the helper"
+
+    def test_helper_fails_closed_when_bot_token_empty(self, tmp_path):
+        """When AOPS_BOT_GH_TOKEN is empty, the helper must emit an EMPTY password
+        (fail-closed) rather than any fallback credential."""
+        env = self._helper_env(tmp_path)
+        env["AOPS_BOT_GH_TOKEN"] = ""
+        env["GH_TOKEN"] = "personal_leak"
+        env["GITHUB_TOKEN"] = "personal_leak"
+
+        result = subprocess.run(
+            ["git", "credential", "fill"],
+            env=env,
+            input="protocol=https\nhost=github.com\n\n",
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
         )
-        assert f"password={bot}" in out, "Helper override must produce bot PAT as password"
+        out = result.stdout
+        assert "password=\n" in out or out.rstrip().endswith("password="), (
+            f"Helper must emit empty password when bot token absent; got:\n{out}"
+        )
+        assert "personal_leak" not in out, "SECURITY: personal token leaked via helper fallback"
 
 
 # ---------------------------------------------------------------------------

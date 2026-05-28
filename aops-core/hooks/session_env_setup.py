@@ -162,16 +162,9 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 
     # 5. Apply agent-env-map.conf credential isolation mappings (issue #581).
-    # We split this into two pieces:
-    # - Literals (TARGET:=VALUE) and resolved env-to-env mappings go into the
-    #   `persist` dict for normal `export TARGET=value` writes.
-    # - Env-to-env mappings (TARGET=SOURCE) are ALSO written as deferred shell
-    #   exports via append_shell_lines (see step 5c). This handles the case
-    #   where SOURCE is set by the user's shell profile (e.g., ~/.zshenv) and
-    #   thus visible to the shell-snapshot-sourced bash, but NOT to the
-    #   Python hook (which inherits the launchd env on macOS Claude Desktop).
-    #   Without this, `GH_TOKEN=AOPS_BOT_GH_TOKEN` silently skipped because the
-    #   hook saw AOPS_BOT_GH_TOKEN as unset, even though the shell saw it.
+    # The conf is the shared source of truth (containers + tests + host).
+    # For the HOST Claude session we additionally enforce a stricter,
+    # fail-closed GitHub identity below (step 5b).
     from lib.agent_env import (
         get_env_mapping_persist_dict,
         get_env_mapping_shell_lines,
@@ -179,17 +172,33 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     persist.update(get_env_mapping_persist_dict())
 
-    # 5b. Force SSH→HTTPS rewrite for GitHub URLs AND override the credential
-    # helper for github.com so the user's `~/.gitconfig` host-specific helper
-    # (`!gh auth git-credential`) doesn't shadow the bot-PAT helper.
+    # GH_TOKEN / GITHUB_TOKEN are handled authoritatively in step 5c as
+    # deferred shell exports that track AOPS_BOT_GH_TOKEN exactly (and clobber
+    # any personal value inherited from the parent env). Drop the conf-derived
+    # hook-time values here to avoid double / divergent writes.
+    persist.pop("GH_TOKEN", None)
+    persist.pop("GITHUB_TOKEN", None)
+
+    # 5b. GitHub agent-identity isolation (fail-closed).
     #
-    # On macOS, SSH_AUTH_SOCK="" is insufficient — Keychain-stored keys bypass
-    # ssh-agent entirely. GIT_SSH_COMMAND=false blocks SSH auth, but git would
-    # still attempt SSH; the insteadOf rewrite ensures it goes straight to
-    # HTTPS. Then the credential.https://github.com.helper override resets any
-    # inherited helper (the empty value) and installs a single bot-PAT helper.
-    # Git treats `helper` as list-typed, so an empty value clears the prior
-    # list before the next entry is appended.
+    # Inside agent sessions, ALL GitHub authentication uses AOPS_BOT_GH_TOKEN
+    # and nothing else. If that token is absent, auth fails cleanly rather than
+    # silently falling back to the user's identity. Three personal-credential
+    # channels are disabled:
+    #   - SSH agent / Keychain keys → SSH_AUTH_SOCK="" + GIT_SSH_COMMAND=false
+    #     (from conf) plus the insteadOf rewrite below forces github.com to
+    #     HTTPS, so git never attempts SSH.
+    #   - ~/.gitconfig credential helper (e.g. `!gh auth git-credential`) →
+    #     overridden below: the helper list is reset to empty, then a single
+    #     helper is installed that emits the bot PAT *exclusively*. (Git treats
+    #     `helper` as list-typed, so the empty value clears the prior list.)
+    #   - gh CLI keyring / hosts.yml → GH_CONFIG_DIR points at an isolated,
+    #     session-scoped empty dir (below), so gh cannot read the user's stored
+    #     login and must use GH_TOKEN (the bot token) or fail.
+    #
+    # NB: none of this touches the user's own terminal — these vars are written
+    # only to CLAUDE_ENV_FILE, which Claude Code sources for its own tool calls.
+    # An interactive shell never sources it.
     persist["GIT_CONFIG_COUNT"] = "4"
     persist["GIT_CONFIG_KEY_0"] = "url.https://github.com/.insteadOf"
     persist["GIT_CONFIG_VALUE_0"] = "git@github.com:"
@@ -201,8 +210,28 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist["GIT_CONFIG_VALUE_3"] = (
         '!f() { test "$1" = get && '
         'printf "username=x-access-token\\npassword=%s\\n" '
-        '"${GH_TOKEN:-${GITHUB_TOKEN:-${AOPS_BOT_GH_TOKEN}}}"; }; f'
+        '"${AOPS_BOT_GH_TOKEN}"; }; f'
     )
+
+    # Isolate the gh CLI from the user's keyring / personal hosts.yml so it
+    # cannot authenticate as the user. With an empty GH_CONFIG_DIR, gh has no
+    # stored login and uses GH_TOKEN (the bot token) exclusively, or fails.
+    gh_config_dir = Path(status_dir) / "gh-config"
+    try:
+        gh_config_dir.mkdir(parents=True, exist_ok=True)
+        persist["GH_CONFIG_DIR"] = str(gh_config_dir)
+    except OSError as e:
+        print(f"WARNING: Failed to create isolated GH_CONFIG_DIR: {e}", file=sys.stderr)
+
+    # Fail-fast signal: warn loudly if the bot token isn't visible to the hook.
+    # It may still arrive via the shell snapshot (see deferred exports in 5c),
+    # so this is a warning rather than a hard block.
+    if not os.environ.get("AOPS_BOT_GH_TOKEN"):
+        messages.append(
+            "⚠️  GitHub auth: AOPS_BOT_GH_TOKEN not set in the hook environment. "
+            "git/gh will fail-closed (no personal-credential fallback). "
+            "If it is set in your shell profile it will still be picked up."
+        )
 
     # 7. Ensure required CLIs (uv, gh, etc.) are accessible in PATH.
     # Centralised in lib/path_bootstrap — shared logic with ensure-path.sh.
@@ -276,15 +305,33 @@ Today's note has not been populated yet. Run `/daily` to update.
     # mappings that resolved at hook time).
     set_persistent_env(persist)
 
-    # 5c. Write deferred-shell exports for env-to-env mappings so SOURCE vars
-    # set by the user's shell snapshot (e.g., AOPS_BOT_GH_TOKEN from ~/.zshenv)
-    # propagate to TARGET. These lines append AFTER set_persistent_env's writes,
-    # so they overwrite/refine the resolved values when the shell evaluates.
-    shell_lines = get_env_mapping_shell_lines()
-    if shell_lines:
-        append_shell_lines(
-            ["# agent-env-map.conf: deferred-shell exports (issue #581)", *shell_lines]
-        )
+    # 5c. Deferred-shell exports. SOURCE resolution is deferred to shell-source
+    # time so vars set only in the user's shell snapshot (e.g. AOPS_BOT_GH_TOKEN
+    # from ~/.zshenv, invisible to the launchd-inherited Python hook) are still
+    # picked up. Two groups:
+    #   (i)  conf-driven mappings (Gemini/PKB/etc.). GH_TOKEN/GITHUB_TOKEN are
+    #        filtered out — they are exported authoritatively in group (ii).
+    #   (ii) the fail-closed GitHub identity: GH_TOKEN and GITHUB_TOKEN track
+    #        AOPS_BOT_GH_TOKEN *exactly* (empty if it is unset/empty), which also
+    #        clobbers any personal token inherited from the parent env. These
+    #        run last, so they are authoritative.
+    conf_lines = [
+        line
+        for line in get_env_mapping_shell_lines()
+        if "export GH_TOKEN=" not in line and "export GITHUB_TOKEN=" not in line
+    ]
+    shell_lines: list[str] = []
+    if conf_lines:
+        shell_lines.append("# agent-env-map.conf: deferred-shell exports (issue #581)")
+        shell_lines.extend(conf_lines)
+    shell_lines.extend(
+        [
+            "# Fail-closed GitHub identity: bot token only (empty => auth fails).",
+            'export GH_TOKEN="${AOPS_BOT_GH_TOKEN:-}"',
+            'export GITHUB_TOKEN="${AOPS_BOT_GH_TOKEN:-}"',
+        ]
+    )
+    append_shell_lines(shell_lines)
 
     return GateResult(
         verdict=GateVerdict.ALLOW,
