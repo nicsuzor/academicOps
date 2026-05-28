@@ -77,8 +77,9 @@ GATE_CONFIGS = [
     ),
     # --- QA ---
     # Starts OPEN (short interactive chats don't need verification).
-    # Closes when work begins (task bound, or any write tool used) so the Stop
+    # Closes when a task is claimed (update_task → in_progress) so the Stop
     # policy can require a verifier (marsha / qa / verify) before exit.
+    # Sessions without a claimed task skip the QA gate entirely.
     # Reopens when the verifier subagent runs to completion.
     # Policy blocks Stop when CLOSED.
     GateConfig(
@@ -101,22 +102,6 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
-                ),
-            ),
-            # Write tool used -> Close. Shares is_write_tool with handover;
-            # the bash-as-read carve-out keyed on handover gate sticky also
-            # applies here, so `git status` after /end-session doesn't re-close.
-            # When QA is sticky (post-verification), the engine suppresses
-            # this close transition natively.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    custom_check="is_write_tool",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    # no message to avoid spamming on every write tool use
-                    system_message_key=None,
                 ),
             ),
             # Verifier subagent runs -> Open gate (sticky until UPS).
@@ -145,8 +130,13 @@ GATE_CONFIGS = [
             # UserPromptSubmit -> re-arm for the next turn cycle.
             # Engine unsticks (sticky_until includes UPS) before this
             # trigger evaluates, so the transition to CLOSED proceeds.
+            # Only re-arms when a task is bound — sessions without a
+            # claimed task skip the QA gate entirely.
             GateTrigger(
-                condition=GateCondition(hook_event="UserPromptSubmit"),
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    custom_check="has_bound_task",
+                ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],

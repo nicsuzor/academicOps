@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 """
-Regression tests for the qa gate close-on-work-begin triggers and sticky_until.
+Regression tests for the qa gate close-on-task-claim triggers and sticky_until.
 
-Before the close-trigger fix (PR for aops-fd1b83e0) GATE_CONFIGS[1] had no
-transition that targeted GateStatus.CLOSED, so the Stop policy's
-`current_status=CLOSED` condition was never satisfied and the gate was dead
-code. These tests pin the close triggers: update_task→in_progress and any
-write tool → CLOSED, mirroring the handover gate's pattern.
-
-The sticky_until mechanism (replacing the qa_verified latch) keeps the QA
-gate OPEN after verification until UserPromptSubmit, preventing the
-marsha→fix→Stop-blocked endless loop.
+The qa gate closes when a task is claimed (update_task → in_progress), NOT on
+write-tool use. Sessions without a claimed task skip the QA gate entirely.
+The verifier subagent (marsha/qa/verify) reopens it with sticky_until so
+writes to fix findings don't re-close it.
 """
 
 import importlib
@@ -48,11 +43,20 @@ def router(monkeypatch):
 
 def _state_with_bound_task(session_id: str) -> SessionState:
     state = SessionState.create(session_id)
-    # Mark a task as bound so is_write_tool's no-task carve-out doesn't apply.
     state.main_agent.current_task = "task-stub"
     state.gates["qa"] = GateState(status=GateStatus.OPEN)
     state.gates["handover"] = GateState(status=GateStatus.OPEN)
     return state
+
+
+def _state_without_task(session_id: str) -> SessionState:
+    state = SessionState.create(session_id)
+    state.gates["qa"] = GateState(status=GateStatus.OPEN)
+    state.gates["handover"] = GateState(status=GateStatus.OPEN)
+    return state
+
+
+# --- Close trigger: task-claim ---
 
 
 def test_update_task_in_progress_closes_qa_gate(router):
@@ -72,8 +76,11 @@ def test_update_task_in_progress_closes_qa_gate(router):
     )
 
 
-def test_edit_closes_qa_gate(router):
-    """Any write tool (Edit) should close the qa gate."""
+# --- Write tool does NOT close QA gate ---
+
+
+def test_edit_does_not_close_qa_gate(router):
+    """Write tools should NOT close the qa gate — only task-claim does."""
     state = _state_with_bound_task("qa-edit")
 
     ctx = HookContext(
@@ -84,22 +91,76 @@ def test_edit_closes_qa_gate(router):
     )
     router._dispatch_gates(ctx, state)
 
-    assert state.gates["qa"].status == GateStatus.CLOSED, (
-        "qa gate should close on PostToolUse(Edit) with a bound task"
+    assert state.gates["qa"].status == GateStatus.OPEN, (
+        "qa gate should NOT close on write tool — only task-claim closes it"
     )
+
+
+def test_write_without_task_claim_does_not_close_qa(router):
+    """Write tools without a task claim should not close the qa gate."""
+    state = _state_without_task("qa-no-task")
+
+    ctx = HookContext(
+        session_id="qa-no-task",
+        hook_event="PostToolUse",
+        tool_name="Write",
+        tool_input={"file_path": "/tmp/bar.py"},
+    )
+    router._dispatch_gates(ctx, state)
+
+    assert state.gates["qa"].status == GateStatus.OPEN, (
+        "qa gate must stay open when no task is claimed"
+    )
+
+
+# --- Task-claim → Stop (no verifier) → blocked ---
+
+
+def test_task_claim_then_stop_without_verifier_blocks(router, monkeypatch):
+    """After task claim, Stop without verifier should be blocked."""
+    monkeypatch.setenv("QA_GATE_MODE", "block")
+    _reinit_gates_with_defaults()
+
+    state = _state_with_bound_task("qa-block-stop")
+    state.gates["qa"].metrics["temp_path"] = "/tmp/qa-gate.md"
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-block-stop",
+            hook_event="PostToolUse",
+            tool_name="update_task",
+            tool_input={"id": "task-abc", "status": "in_progress"},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED
+
+    result = router._dispatch_gates(
+        HookContext(
+            session_id="qa-block-stop",
+            hook_event="Stop",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    assert result is not None, "Stop should be blocked when qa gate is CLOSED"
+
+
+# --- Verifier reopens ---
 
 
 def test_verifier_subagent_reopens_qa_gate(router):
     """marsha completion should reopen the qa gate after a close."""
     state = _state_with_bound_task("qa-reopen")
 
-    # Close the gate via a write.
+    # Close the gate via task claim.
     router._dispatch_gates(
         HookContext(
             session_id="qa-reopen",
             hook_event="PostToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/tmp/foo.py"},
+            tool_name="update_task",
+            tool_input={"id": "task-abc", "status": "in_progress"},
         ),
         state,
     )
@@ -122,12 +183,58 @@ def test_verifier_subagent_reopens_qa_gate(router):
     assert state.gates["qa"].sticky is True, "qa gate should be sticky after verification"
 
 
-def test_release_task_does_not_close_qa_gate(router):
-    """Infrastructure mcp tools must not close the qa gate.
+# --- After verifier, Stop should allow ---
 
-    `is_write_tool` defers to `get_tool_category`, which classifies
-    mcp__pkb__release_task as infrastructure. This pins the contract.
-    """
+
+def test_stop_allowed_after_verifier(router):
+    """After verifier runs, Stop should be allowed."""
+    state = _state_with_bound_task("qa-allow-stop")
+
+    # Close via task claim.
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-allow-stop",
+            hook_event="PostToolUse",
+            tool_name="update_task",
+            tool_input={"id": "task-abc", "status": "in_progress"},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED
+
+    # Verifier runs.
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-allow-stop",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:marsha",
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.OPEN
+
+    # Stop should pass.
+    result = router._dispatch_gates(
+        HookContext(
+            session_id="qa-allow-stop",
+            hook_event="Stop",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    has_deny = (
+        result is not None
+        and hasattr(result, "verdict")
+        and str(result.verdict) in ("deny", "GateVerdict.DENY")
+    )
+    assert not has_deny, "Stop should be allowed after verifier runs"
+
+
+def test_release_task_does_not_close_qa_gate(router):
+    """Infrastructure mcp tools must not close the qa gate."""
     state = _state_with_bound_task("qa-infra")
 
     ctx = HookContext(
@@ -143,41 +250,21 @@ def test_release_task_does_not_close_qa_gate(router):
     )
 
 
-def test_bash_after_handover_does_not_close_qa(router):
-    """Bash treated as read when handover gate is sticky (post-skill)
-    should keep qa OPEN, matching the is_write_tool carve-out."""
-    state = _state_with_bound_task("qa-post-handover")
-    # Set handover gate as sticky (simulating post-/end-session state)
-    state.gates["handover"] = GateState(
-        status=GateStatus.OPEN, sticky=True, sticky_until_events=["UserPromptSubmit"]
-    )
-
-    ctx = HookContext(
-        session_id="qa-post-handover",
-        hook_event="PostToolUse",
-        tool_name="Bash",
-        tool_input={"command": "git status"},
-    )
-    router._dispatch_gates(ctx, state)
-
-    assert state.gates["qa"].status == GateStatus.OPEN, (
-        "Post-handover bash should not re-close the qa gate"
-    )
+# --- Sticky lifecycle ---
 
 
 def test_write_after_marsha_does_not_reclose_qa(router):
-    """Regression: writes after marsha verification must not re-close the QA
-    gate. sticky_until keeps the gate open until UserPromptSubmit, preventing
-    the endless marsha → fix → Stop-blocked loop."""
+    """Writes after marsha verification must not re-close the QA gate.
+    sticky_until keeps the gate open until UserPromptSubmit."""
     state = _state_with_bound_task("qa-loop")
 
-    # 1. Close the gate via a write (work begins).
+    # 1. Close the gate via task claim.
     router._dispatch_gates(
         HookContext(
             session_id="qa-loop",
             hook_event="PostToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/tmp/foo.py"},
+            tool_name="update_task",
+            tool_input={"id": "task-abc", "status": "in_progress"},
         ),
         state,
     )
@@ -265,6 +352,28 @@ def test_qa_sticky_clears_then_new_task_closes(router):
         state,
     )
     assert state.gates["qa"].status == GateStatus.CLOSED
+
+
+# --- UPS re-arm gated on task ---
+
+
+def test_ups_does_not_rearm_qa_without_task(router):
+    """UserPromptSubmit should NOT re-arm (close) the QA gate when no task
+    is bound. Sessions without a claimed task skip the QA gate entirely."""
+    state = _state_without_task("qa-no-rearm")
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-no-rearm",
+            hook_event="UserPromptSubmit",
+            tool_name=None,
+            tool_input={},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.OPEN, (
+        "qa gate must stay OPEN on UPS when no task is bound"
+    )
 
 
 def test_stop_hook_active_bypasses_all_gates(router):

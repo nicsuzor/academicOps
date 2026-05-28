@@ -203,30 +203,30 @@ See [`forensics-details.md`](../aops-core/skills/aops/references/forensics-detai
 
 ## `qa` gate
 
-> **TL;DR.** Completion-quality gate — starts OPEN, closes when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
+> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
 
 ### What is it
 
-The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when a `qa` / `verify` / `marsha` subagent runs to completion — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that code fixes based on verification findings don't re-close the gate (preventing the marsha→fix→Stop-blocked endless loop). On Stop, the policy blocks once per turn while the gate is CLOSED — the gate opens after the first block (fire-once trigger) and re-arms on UserPromptSubmit. Both warn and block modes inject the advisory into the agent's context (Claude Code's Stop schema has no non-blocking advisory channel).
+The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when a task is claimed (`update_task` with `status=in_progress`). Sessions without a claimed task skip the QA gate entirely — no work claimed means nothing to verify. Reopens when a `qa` / `verify` / `marsha` subagent runs to completion — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that code fixes based on verification findings don't re-close the gate (preventing the marsha→fix→Stop-blocked endless loop). On Stop, the policy blocks once per turn while the gate is CLOSED — the gate opens after the first block (fire-once trigger) and re-arms on UserPromptSubmit (only when a task is bound). Both warn and block modes inject the advisory into the agent's context (Claude Code's Stop schema has no non-blocking advisory channel).
 
 **Class of failure caught.** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit.
 
 ### Where it lives
 
-| Concern           | Path                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                           |
-| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                      |
-| Custom condition  | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`, shared with handover) |
-| Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md` |
-| Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                     |
+| Concern           | Path                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                                             |
+| Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                                        |
+| Custom conditions | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`) |
+| Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md`                   |
+| Verifier subagent | `aops-core/agents/marsha.md` (the only verifier shipped today)                                       |
 
 ### How it's configured
 
 - **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
-- **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc.). Shares `is_write_tool` with handover; the bash-as-read carve-out keyed on handover gate `sticky` state also applies, so `git status` after `/end-session` doesn't re-close the gate. While QA is sticky (post-verification), close transitions are suppressed by the engine natively.
+- **Close trigger**: `update_task` PostToolUse with input matching `in_progress` (task claim). Write-tool use does not close the QA gate — only an explicit task claim activates it.
 - **Reopen triggers**: (1) any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse` with `sticky_until=["UserPromptSubmit"]`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
-- **Re-arm trigger**: `UserPromptSubmit` → clears sticky latch, then fires re-arm trigger → CLOSED.
+- **Re-arm trigger**: `UserPromptSubmit` → clears sticky latch, then fires re-arm trigger → CLOSED. Only re-arms when a task is bound (`has_bound_task` custom check) — sessions without a claimed task skip the QA gate entirely.
 - **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. `prepare_qa_review` writes a qa-context audit file into the session dir; the policy message points the agent at it.
 
 ### How to verify it's firing
@@ -243,7 +243,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ### How to debug when it isn't
 
-- **Gate stays OPEN despite write activity**: confirm a task is bound (`state.main_agent.current_task` non-empty) — the `is_write_tool` carve-out treats shell tools as read-only when no task is bound. With a bound task, any write should close the gate.
+- **Gate stays OPEN despite work activity**: the QA gate only closes on task-claim (`update_task` with `in_progress`), not on write-tool use. Confirm a task was claimed — sessions without a claimed task skip the QA gate by design.
 - **Subagent didn't reset**: check the spelled `subagent_type` against `^(aops-core:)?(qa|verify|marsha)$` — `aops-core:marsha` and `marsha` both match; `aops_core_marsha` does not.
 - **Mode `off`**: confirm with `from hooks.gate_config import QA_GATE_MODE`.
 
