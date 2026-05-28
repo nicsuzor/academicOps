@@ -233,6 +233,21 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
             "If it is set in your shell profile it will still be picked up."
         )
 
+    # 6. Push-safety guard: harness-created worktrees (claude/<codename>) are
+    # branched off origin/main, so the new branch inherits origin/main as its
+    # upstream. With a global push.default=upstream, a bare `git push` then
+    # resolves to *main* — pushing agent work straight to the default branch and
+    # bypassing PR review. Polecat fixes this at worktree-creation time; this
+    # guard covers worktrees the framework did not create. See lib/git_safety.py.
+    try:
+        from lib.git_safety import ensure_worktree_push_safety
+
+        push_safety_msg = ensure_worktree_push_safety(ctx.cwd or os.getcwd())
+        if push_safety_msg:
+            messages.append(push_safety_msg)
+    except Exception as e:
+        print(f"WARNING: push-safety guard failed: {e}", file=sys.stderr)
+
     # 7. Ensure required CLIs (uv, gh, etc.) are accessible in PATH.
     # Centralised in lib/path_bootstrap — shared logic with ensure-path.sh.
     from lib.path_bootstrap import detect_path_additions
