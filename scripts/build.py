@@ -385,8 +385,15 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
 def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
     """Transform hooks.json for Antigravity CLI (agy).
 
-    Antigravity uses Claude Code-style event names (PreToolUse, PostToolUse, etc.)
-    but needs ${extensionPath} instead of ${CLAUDE_PLUGIN_ROOT} for path references.
+    Antigravity supports only 4 hook events: PreToolUse, PostToolUse,
+    PreInvocation, PostInvocation.  It needs ${extensionPath} instead of
+    ${CLAUDE_PLUGIN_ROOT} for path references.
+
+    Event mapping (Claude Code → agy):
+      UserPromptSubmit → PreInvocation  (fires before each agent invocation)
+      Stop             → PostInvocation (fires after each agent invocation)
+
+    Events not in AGY_EVENT_MAP and not in VALID_AGY_EVENTS are dropped.
     """
     try:
         with open(src_path) as f:
@@ -399,6 +406,7 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         print("Warning: hooks.json has no 'hooks' key")
         return
 
+    # Events that agy natively supports (no name transformation needed)
     VALID_AGY_EVENTS = (
         "PreToolUse",
         "PostToolUse",
@@ -406,13 +414,23 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         "PostInvocation",
     )
 
+    # Claude Code events that must be renamed for agy compatibility
+    AGY_EVENT_MAP = {
+        "UserPromptSubmit": "PreInvocation",
+        "Stop": "PostInvocation",
+    }
+
     src_hooks = config["hooks"]
     agy_hooks: dict = {}
 
     for event, hook_list in src_hooks.items():
         if event.endswith("-disabled"):
             continue
-        if event not in VALID_AGY_EVENTS:
+
+        # Rename Claude-only events to their agy equivalents
+        output_event = AGY_EVENT_MAP.get(event, event)
+
+        if output_event not in VALID_AGY_EVENTS:
             continue
 
         transformed_hooks = []
@@ -434,7 +452,7 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
             transformed_hooks.append(new_entry)
 
         if transformed_hooks:
-            agy_hooks[event] = transformed_hooks
+            agy_hooks[output_event] = transformed_hooks
 
     with open(dst_path, "w") as f:
         json.dump({"hooks": agy_hooks}, f, indent=2)

@@ -101,3 +101,42 @@ class TestClientTypePropagation:
         )
         dumped = entry.model_dump()
         assert dumped["client_type"] == "gemini"
+
+
+class TestAntigravityEventMapping:
+    """Antigravity CLI (agy) uses PreInvocation/PostInvocation event names.
+
+    The router must normalize these to their canonical equivalents so that
+    gate logic (which checks hook_event == "UserPromptSubmit" etc.) works
+    correctly when agy fires hooks.
+
+    agy sends events via hook_event_name in the JSON payload (--client claude).
+    """
+
+    def test_pre_invocation_maps_to_user_prompt_submit(self, router):
+        """agy PreInvocation → UserPromptSubmit (fires before each agent turn)."""
+        raw = {"session_id": "test-session", "hook_event_name": "PreInvocation"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.hook_event == "UserPromptSubmit"
+
+    def test_post_invocation_maps_to_stop(self, router):
+        """agy PostInvocation → Stop (fires after each agent invocation)."""
+        raw = {"session_id": "test-session", "hook_event_name": "PostInvocation"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.hook_event == "Stop"
+
+    def test_agy_pre_tool_use_passes_through(self, router):
+        """agy PreToolUse uses same event name as Claude Code — no transform needed."""
+        raw = {"session_id": "test-session", "hook_event_name": "PreToolUse"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.hook_event == "PreToolUse"
+
+    def test_agy_post_tool_use_passes_through(self, router):
+        """agy PostToolUse uses same event name as Claude Code — no transform needed."""
+        raw = {"session_id": "test-session", "hook_event_name": "PostToolUse"}
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.hook_event == "PostToolUse"
