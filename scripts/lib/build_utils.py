@@ -49,7 +49,23 @@ def safe_copy(src: Path, dst: Path) -> None:
             src,
             dst,
             ignore=shutil.ignore_patterns(
-                ".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"
+                ".git",
+                "__pycache__",
+                ".pytest_cache",
+                ".mypy_cache",
+                ".ruff_cache",
+                ".DS_Store",
+                # Sync-tool conflict artifacts (Nextcloud/ownCloud, Syncthing) and
+                # editor/merge backups. These carry timestamps/markers that are
+                # invalid filenames on Windows and must never ship in a plugin.
+                "*.conflict-remote-*",
+                "*.conflict-local-*",
+                "*.sync-conflict-*",
+                "*.orig",
+                "*.rej",
+                "*.bak",
+                "*.swp",
+                "*~",
             ),
         )
     else:
