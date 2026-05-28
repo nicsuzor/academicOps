@@ -100,7 +100,9 @@ Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-me
 
 ## §4 Pyramid view (escalation)
 
-**Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (skills, prompts, conventions, hints) tapering to a sharp apex of rare severe responses (hard blocks, numbered axioms, branch protection, recusal-grounded recourse). The narrower the level, the more reluctantly invoked.
+**Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (always-on context injection, voluntary skill invocation, lifecycle hints) tapering to a sharp apex of rare severe responses (LLM-mediated review, branch protection, recusal-grounded recourse). The narrower the level, the more reluctantly invoked.
+
+**Executive vs legislative.** The pyramid is **executive only** — it lists the mechanisms that act on agent behaviour. Axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)) and heuristics are **legislative**: they declare what the rules are. The rules don't enforce themselves; they are *enforced by* mechanisms across multiple pyramid tiers. Numbering an axiom raises the *weight* of a rule in the L1 always-on injection mechanism — the numbering is content-weighting, not pyramid placement. Looking up "what enforces A7?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
 
 **Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
 
@@ -134,16 +136,25 @@ Reviewers should WARN on missing CBA, BLOCK on missing items 1, 4, or 5.
 
 ### §4.2 Worked example: A7
 
-A7 ("Exercise Authority — Calibrate Capability", `.agents/rules/AXIOMS.md`) sits at **L7**, the apex of the pyramid. The placement is the result of an explicit cost-benefit decision, not a default.
+A7 ("Exercise Authority — Calibrate Capability", `.agents/rules/AXIOMS.md`) is an axiom — a rule, not a pyramid position. Its **enforcement footprint** spans multiple tiers of the executive pyramid:
+
+| Tier | Mechanism enforcing A7 | What it does                                                              |
+| :--- | :--------------------- | :------------------------------------------------------------------------ |
+| L1   | AXIOMS.md inject       | Always-on prompt-cached load at SessionStart; ~100 lines per session.     |
+| L6   | `rbg` PR-time review   | Reads diff against A7; advisory verdict for the orchestrator.             |
+| L6   | `marsha` QA verifier   | Checks task-completion claims for over-deference.                         |
+| L7   | `enforcer-status` GHA  | LLM review fed into branch-protection AND-gate at merge.                  |
+
+The decision to **number** A7 (vs leaving the rule as scattered surface-text instructions) was an explicit cost-benefit decision. Numbering raises the rule's **weight inside the L1 always-on inject mechanism**; it does not move the enforcement to a different tier.
 
 - **Friction**: 9+ over-deference recurrences across 6 agent surfaces (issue #195 thread, issue #950, plus fresh /retro evidence from 2026-05-11 sessions).
-- **Cheaper position attempted first**: L1 (skill instruction text in CORE.md / butler.md / planner). Tried 9 times across the #195 history. Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
-- **Why escalation justified**: per-surface, permissively-framed L1 fixes did not beat the trained "seek confirmation" reflex. Reframing as an obligation-level axiom (L7) puts equal weight on the no-abdication direction as on the no-ultra-vires direction (the original A7).
-- **Forward cost**: A7's text is ~100 lines in always-on AXIOMS.md, prompt-cached at SessionStart. Surface citations are L1 (≤10 lines each).
-- **Future fixes** against any of A7's three edges should land at the cheapest sufficient position — usually L1 propagation into the specific failing surface, NOT additional axioms. Adding A18/A19 against the same root would repeat the failure mode this PR resolved.
+- **Cheaper position attempted first**: surface-text L1 fixes (per-skill CORE.md / butler.md / planner). Tried 9 times across the #195 history. Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
+- **Why numbering justified**: per-surface L1 surface-text fixes did not beat the trained "seek confirmation" reflex. Moving the rule into always-on AXIOMS.md (still L1 — same mechanism class) makes it cross-cutting in a way no per-surface edit could match. Numbering is the weight-raising act.
+- **Forward cost**: ~100 lines permanent in always-on AXIOMS.md, prompt-cached. Surface citations remain L1 (≤10 lines each).
+- **Future fixes** against any of A7's three edges should land at the cheapest sufficient position — usually L1 surface-text propagation, not new axioms. Adding A18/A19 against the same root would repeat the failure mode this PR resolved.
 - **Reversibility / acceptance criterion**: zero FM-1 through FM-7 recurrences across the next 5 /retro reviews. If the criterion fails, the documented contingency is L6 (pre-Stop LLM hook), per `note-23e58353`.
 
-This serves as the template for any future L6/L7 escalation: the CBA must look like this, with named prior attempts and explicit reversibility.
+This serves as the template for axiom-weight escalation: the CBA must look like this, with named prior attempts and explicit reversibility. The axiom is the rule; the pyramid tiers are the mechanisms enforcing it — confusing the two leads to inflating the axiom count rather than thickening the enforcement footprint.
 
 ### §4.3 How to update the operative register
 
