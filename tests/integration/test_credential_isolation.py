@@ -882,13 +882,19 @@ class TestGetContainerEnvForwards:
 
         assert forwards["GH_TOKEN"] == credential_markers["bot"]
 
-    def test_default_config_includes_anthropic_and_gemini_auth(self):
+    def test_default_config_includes_claude_and_gemini_auth(self):
         """The bundled agent-env-map.conf must declare Claude/Gemini auth vars,
         so `polecat run` doesn't have to hardcode them.
+
+        CLAUDE_CODE_OAUTH_TOKEN is the ONLY supported Claude auth mechanism —
+        the ANTHROPIC_API_KEY fallback was removed (see aops-06ab3ee0). Even
+        when a host shell exports ANTHROPIC_API_KEY, the conf must NOT forward
+        it into the container.
         """
         from lib.agent_env import get_container_env_forwards
 
-        # Source env has all auth tokens set with sentinel values.
+        # Source env has all auth tokens set with sentinel values, including
+        # ANTHROPIC_API_KEY — to prove it is deliberately NOT forwarded.
         source = {
             "ANTHROPIC_API_KEY": "sk-anthropic-sentinel",
             "CLAUDE_CODE_OAUTH_TOKEN": "claude-oauth-sentinel",
@@ -897,10 +903,12 @@ class TestGetContainerEnvForwards:
         }
         forwards = get_container_env_forwards(source_env=source)
 
-        assert forwards["ANTHROPIC_API_KEY"] == "sk-anthropic-sentinel"
         assert forwards["CLAUDE_CODE_OAUTH_TOKEN"] == "claude-oauth-sentinel"
         assert forwards["GEMINI_API_KEY"] == "sk-gemini-sentinel"
         assert forwards["GEMINI_SESSION_ID"] == "session-sentinel"
+        # ANTHROPIC_API_KEY fallback removed (aops-06ab3ee0) — must NOT be
+        # forwarded even when set in the host env.
+        assert "ANTHROPIC_API_KEY" not in forwards
         # SSH isolation idiom must survive any refactor.
         assert forwards["SSH_AUTH_SOCK"] == ""
         # Defence-in-depth literal.
