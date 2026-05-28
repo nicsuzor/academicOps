@@ -83,7 +83,7 @@ def ensure_worktree_push_safety(cwd: Path | str) -> str | None:
         if upstream.returncode != 0:
             return None  # no upstream configured — nothing dangerous
         upstream_ref = upstream.stdout.strip()
-        if upstream_ref not in _MAIN_UPSTREAMS:
+        if upstream_ref.split("/")[-1] not in _PROTECTED_BRANCHES:
             return None  # tracks its own branch (or something else safe)
 
         actions: list[str] = []
