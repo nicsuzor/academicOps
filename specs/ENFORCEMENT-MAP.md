@@ -6,7 +6,7 @@
 
 ## Pyramid (L0–L7)
 
-Rows are **mechanism categories** on a coercion-strength × frequency axis. A tier holds **multiple blocks** at the same coercion level. Axioms (rules) do **not** appear as pyramid rows — they are the *content* L1 always-on mechanisms carry. Executive/legislative distinction and escalation discipline → [`enforcement.md`](enforcement/enforcement.md) §4. Costs are order-of-magnitude per fire; combine with frequency for per-session totals.
+Rows are **mechanism categories** on a coercion-strength × frequency axis. A tier holds **multiple blocks** at the same coercion level. Axioms (rules) do **not** appear as pyramid rows — they are the _content_ L1 always-on mechanisms carry. Executive/legislative distinction and escalation discipline → [`enforcement.md`](enforcement/enforcement.md) §4. Costs are order-of-magnitude per fire; combine with frequency for per-session totals.
 
 | L  | Class      | Mechanism categories (multiple blocks per tier)                                                                                                                                  | Marginal cost                              |
 | -- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
@@ -223,14 +223,14 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 Branch protection AND-gates each `<agent>-status` directly — no LLM judgment in the merge gate. **Phase 1 operative (PR #1062); phases 2/3/5 pending.** Contract: [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md).
 
-| Agent              | L     | Action | Purpose                                         | Source                                                          |
-| :----------------- | :---- | :----- | :---------------------------------------------- | :-------------------------------------------------------------- |
-| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe | `.github/workflows/agent-enforcer.yml@enforcer-v1`              |
-| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment             | `.github/workflows/agent-alignment.yml@alignment-v1`            |
-| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only           | `.github/workflows/agent-mechanic.yml@mechanic-v1`              |
-| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                       |
-| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state   | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
-| ~~v1 agents~~      | —  | —      | **Retired Phase 1** (PR #1062)                        | [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md) §3.1/§3.6/§5 |
+| Agent              | L  | Action | Purpose                                                 | Source                                                                      |
+| :----------------- | :- | :----- | :------------------------------------------------------ | :-------------------------------------------------------------------------- |
+| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | `.github/workflows/agent-enforcer.yml@enforcer-v1`                          |
+| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment               | `.github/workflows/agent-alignment.yml@alignment-v1`                        |
+| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only             | `.github/workflows/agent-mechanic.yml@mechanic-v1`                          |
+| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                                     |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
+| ~~v1 agents~~      | —  | —      | **Retired Phase 1** (PR #1062)                          | [`pr-pipeline-v2.md`](workflows/pr-pipeline-v2.md) §3.1/§3.6/§5             |
 
 ## Related
 
