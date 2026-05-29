@@ -26,7 +26,7 @@ permalink: commands/pull
 
 ## Where this lives
 
-`/pull` is the **thin manual, one-shot face** of the **dispatch trigger** owned by the program/portfolio loop — `skills/program/SKILL.md`, [Tick Decision Order](../skills/program/SKILL.md#tick-decision-order) step 2 ("Dispatch trigger — the WS4 seam"). The program loop runs that trigger _continuously_ across the whole portfolio; `/pull` performs **exactly one** step of the same "choose + route the next ready task" logic by hand, for a solo session where Nic wants to nudge one dispatch without standing up the loop.
+`/pull` is the **thin manual, one-shot face** of the **dispatch trigger** owned by the program/portfolio loop — `skills/program/SKILL.md`, [Tick Decision Order](../skills/program/SKILL.md#tick-decision-order) step 2 ("Dispatch trigger — the WS4 seam"). The program loop runs that trigger _continuously_ across the whole portfolio; `/pull` performs **exactly one** step of the same "choose + route the next queued task" logic by hand, for a solo session where Nic wants to nudge one dispatch without standing up the loop.
 
 There is **no daemon and nothing auto-claims** queued work (the v0.4 "polecats auto-claim queued work" claim was overstated — James #2). A polecat only ever runs a task that was _explicitly dispatched_ to it, and it ships a PR. `/pull` is one such explicit dispatch.
 
