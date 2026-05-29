@@ -173,6 +173,7 @@ class TestSessionEnvSetup:
             "AOPS_SESSIONS": "/home/x/.polecat/sessions",
             "PKB_MCP_URL": "http://services:8026/mcp",
             "AOPS_BOT_GH_TOKEN": "ghp_present",
+            "GITHUB_ACTIONS": "",
         }
         ctx = HookContext(
             session_id="test-session-prov",

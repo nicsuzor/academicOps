@@ -497,7 +497,7 @@ def _make_worker_env(
     if container_env_forward:
         from lib.host_secrets import resolve_forward_values
 
-        for name, value in resolve_forward_values(list(container_env_forward)).items():
+        for name, value in resolve_forward_values(list(container_env_forward), source_env=env).items():
             env[name] = value
 
     # Strip ACA_DATA access unless the agent is specifically working in that repo.

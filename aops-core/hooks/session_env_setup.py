@@ -386,11 +386,12 @@ Today's note has not been populated yet. Run `/daily` to update.
         # Vars exported via deferred shell lines (e.g. AOPS_BOT_GH_TOKEN tracked
         # from the shell snapshot) are present for tool calls even if invisible
         # to this Python process. Treat AOPS_BOT_GH_TOKEN as present if it will
-        # be exported at shell-source time.
-        if any("AOPS_BOT_GH_TOKEN" in line for line in shell_lines) and os.environ.get(
-            "AOPS_BOT_GH_TOKEN"
+        # be exported at shell-source time (launchd inherits a minimal env; the
+        # deferred shell line sources the token from the user's shell profile).
+        if not provision_env.get("AOPS_BOT_GH_TOKEN") and any(
+            "AOPS_BOT_GH_TOKEN" in line for line in shell_lines
         ):
-            provision_env["AOPS_BOT_GH_TOKEN"] = os.environ["AOPS_BOT_GH_TOKEN"]
+            provision_env["AOPS_BOT_GH_TOKEN"] = "<deferred-from-shell>"
         provision_env.update(persist)
         provision_report = validate_surface(provision_env)
         messages.extend(provision_report.lines)

@@ -67,7 +67,11 @@ def load_host_secrets(env_file: Path | str | None = None) -> dict[str, str]:
         return {}
 
     result: dict[str, str] = {}
-    for line in path.read_text().splitlines():
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return {}
+    for line in content.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
