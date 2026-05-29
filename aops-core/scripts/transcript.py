@@ -46,6 +46,7 @@ from lib.transcript_parser import (  # noqa: E402
     SessionSummary,
     UsageStats,
     extract_reflection_from_entries,
+    extract_session_context,
     extract_timeline_events,
     extract_working_dir_from_content,
     extract_working_dir_from_entries,
@@ -396,12 +397,8 @@ def _save_minimal_token_summary(
 
     if session_ctx:
         for k, v in session_ctx.items():
-            if k == "git_branches":
-                insights["git_branch"] = v  # legacy or git_branch/git_branches logic
-            elif k == "permission_modes":
-                insights["permission_mode"] = v
-            elif k == "models":
-                pass  # not specifically requested to be flat key, already in token_metrics
+            if k == "models":
+                pass  # already in token_metrics by_model
             elif v is not None:
                 insights[k] = v
 
@@ -1422,8 +1419,6 @@ Examples:
                 timeline_events = extract_timeline_events(turns, session_id)
 
                 # Augment summary with explicit session metadata from entries (CC 2.1+)
-                from lib.transcript_parser import extract_session_context
-
                 session_ctx = extract_session_context(entries)
                 session_summary.session_kind = session_ctx.get("session_kind")
                 session_summary.user_type = session_ctx.get("user_type")
@@ -1456,6 +1451,7 @@ Examples:
                     session_path=session_path,
                     origin_override=session_origin,
                     session_ctx=session_ctx,
+                    session_summary=session_summary,
                 )
 
                 # Generate full version
@@ -1655,6 +1651,17 @@ Examples:
             turns = processor.group_entries_into_turns(entries, agent_entries)
             timeline_events = extract_timeline_events(turns, sid)
 
+            # Augment summary with explicit session metadata from entries (CC 2.1+)
+            session_ctx = extract_session_context(entries)
+            session_summary.session_kind = session_ctx.get("session_kind")
+            session_summary.user_type = session_ctx.get("user_type")
+            session_summary.entrypoint = session_ctx.get("entrypoint")
+            session_summary.cwd = session_ctx.get("cwd")
+            session_summary.client_version = session_ctx.get("client_version")
+            session_summary.git_branches = session_ctx.get("git_branches", [])
+            session_summary.permission_modes = session_ctx.get("permission_modes", [])
+            session_summary.models = session_ctx.get("models", [])
+
             reflection_header, _ = _process_reflection(
                 entries,
                 sid,
@@ -1669,6 +1676,8 @@ Examples:
                 provider=session_summary.provider,
                 session_path=session_path,
                 origin_override=session_origin,
+                session_ctx=session_ctx,
+                session_summary=session_summary,
             )
 
             # Generate transcripts and return
@@ -1791,6 +1800,17 @@ Examples:
         turns = processor.group_entries_into_turns(entries, agent_entries)
         timeline_events = extract_timeline_events(turns, session_id)
 
+        # Augment summary with explicit session metadata from entries (CC 2.1+)
+        session_ctx = extract_session_context(entries)
+        session_summary.session_kind = session_ctx.get("session_kind")
+        session_summary.user_type = session_ctx.get("user_type")
+        session_summary.entrypoint = session_ctx.get("entrypoint")
+        session_summary.cwd = session_ctx.get("cwd")
+        session_summary.client_version = session_ctx.get("client_version")
+        session_summary.git_branches = session_ctx.get("git_branches", [])
+        session_summary.permission_modes = session_ctx.get("permission_modes", [])
+        session_summary.models = session_ctx.get("models", [])
+
         reflection_header, _ = _process_reflection(
             entries,
             session_id,
@@ -1806,6 +1826,8 @@ Examples:
             provider=session_summary.provider,
             session_path=session_path,
             origin_override=session_origin,
+            session_ctx=session_ctx,
+            session_summary=session_summary,
         )
 
         # Generate full version

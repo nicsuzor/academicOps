@@ -1204,11 +1204,7 @@ def reflection_to_insights(
 
     if session_ctx:
         for k, v in session_ctx.items():
-            if k == "git_branches":
-                result["git_branch"] = v
-            elif k == "permission_modes":
-                result["permission_mode"] = v
-            elif k == "models":
+            if k == "models":
                 pass
             elif v is not None:
                 result[k] = v
@@ -1513,8 +1509,8 @@ class UsageStats:
         has_thinking = False
         if entry.thoughts:
             has_thinking = True
-        elif isinstance(entry.content, list):
-            for block in entry.content:
+        elif isinstance(entry.message.get("content"), list):
+            for block in entry.message["content"]:
                 if isinstance(block, dict) and block.get("type") in (
                     "thinking",
                     "redacted_thinking",
