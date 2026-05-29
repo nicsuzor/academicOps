@@ -212,6 +212,7 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
             "output_tokens",
             "cache_read_tokens",
             "cache_create_tokens",
+            "server_tool_use",
         ]
         for field in totals_numeric_fields:
             if field in totals and totals[field] is not None:
@@ -219,6 +220,13 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
                     raise InsightsValidationError(
                         f"Field 'token_metrics.totals.{field}' must be numeric"
                     )
+
+        # Validate string fields in totals
+        if "service_tier" in totals and totals["service_tier"] is not None:
+            if not isinstance(totals["service_tier"], str):
+                raise InsightsValidationError(
+                    "Field 'token_metrics.totals.service_tier' must be string"
+                )
 
     # Validate 'by_model' sub-object (optional but must be dict if present)
     if "by_model" in token_metrics:
@@ -417,12 +425,26 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         if field in insights and not isinstance(insights[field], list):
             raise InsightsValidationError(f"Field '{field}' must be an array")
 
+    # Validate optional dict fields
+    dict_fields = [
+        "gates",
+        "attribution",
+        "stop_reasons",
+        "main_agent",
+    ]
+    for field in dict_fields:
+        if field in insights and insights[field] is not None:
+            if not isinstance(insights[field], dict):
+                raise InsightsValidationError(f"Field '{field}' must be a dict")
+
     # Validate numeric fields
     numeric_fields = [
         "subagent_count",
         "enforcer_blocks",
         "acceptance_criteria_count",
         "user_mood",
+        "global_turn_count",
+        "thinking_turns",
     ]
     for field in numeric_fields:
         if field in insights and insights[field] is not None:
