@@ -30,7 +30,6 @@ from cli import (
     _is_colima_env,
     _node_version_key,
     _parse_memory_string,
-    _pass_pkb_url_sandbox,
     _replicate_gemini_auth,
     _resolve_docker_binary,
     _resolve_memory_limit,
@@ -1234,27 +1233,6 @@ class TestReplicateGeminiAuth:
         import shutil
 
         shutil.rmtree(result)
-
-
-class TestPassPkbUrlSandbox:
-    """Tests for _pass_pkb_url_sandbox — called by both crew -g and run -g."""
-
-    def test_passes_url_from_env_dict(self):
-        env: dict = {"PKB_MCP_URL": "http://localhost:8026/mcp"}
-        _pass_pkb_url_sandbox(env)
-        assert env["PKB_MCP_URL"] == "http://localhost:8026/mcp"
-
-    def test_passes_url_from_os_environ(self, monkeypatch):
-        monkeypatch.setenv("PKB_MCP_URL", "http://host:8026/mcp")
-        env: dict = {}
-        _pass_pkb_url_sandbox(env)
-        assert env["PKB_MCP_URL"] == "http://host:8026/mcp"
-
-    def test_noop_when_url_missing(self, monkeypatch):
-        monkeypatch.delenv("PKB_MCP_URL", raising=False)
-        env: dict = {}
-        _pass_pkb_url_sandbox(env)
-        assert "PKB_MCP_URL" not in env
 
 
 class TestCloneHasChanges:

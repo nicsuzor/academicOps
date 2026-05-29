@@ -429,11 +429,14 @@ jobs:
 
       - name: Ensure terminal status on pipeline failure
         if: always() && (failure() || cancelled())
-        env:
-          FALLBACK_TOKEN: ${{ github.token }}
         run: |
+          # GH_TOKEN is the bot PAT (AOPS_BOT_GH_TOKEN, job-level env). No
+          # github.token fallback (A8: no silent fallbacks). If the required
+          # secret is absent, fail loud rather than masking it with the weaker
+          # default token.
           if [ -z "$GH_TOKEN" ]; then
-            export GH_TOKEN="$FALLBACK_TOKEN"
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot post commit status. Fix the secret." >&2
+            exit 1
           fi
           REPO="${{ github.repository }}"
           HEAD_SHA="${{ env.REVIEWED_SHA }}"
@@ -454,11 +457,12 @@ jobs:
 
       - name: Clear running status
         if: always()
-        env:
-          FALLBACK_TOKEN: ${{ github.token }}
         run: |
+          # GH_TOKEN is the bot PAT (AOPS_BOT_GH_TOKEN, job-level env). No
+          # github.token fallback (A8: no silent fallbacks).
           if [ -z "$GH_TOKEN" ]; then
-            export GH_TOKEN="$FALLBACK_TOKEN"
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot clear commit status. Fix the secret." >&2
+            exit 1
           fi
           if [ -n "$REVIEWED_SHA" ]; then
             gh api "repos/${{ github.repository }}/statuses/$REVIEWED_SHA" \

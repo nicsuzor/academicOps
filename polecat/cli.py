@@ -465,7 +465,11 @@ def _coerce_set_value(raw: str) -> object:
         return raw
 
 
-def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) -> dict[str, str]:
+def _make_worker_env(
+    interactive: bool = False,
+    work_dir: Path | None = None,
+    container_env_forward: tuple[str, ...] | list[str] | None = None,
+) -> dict[str, str]:
     """Create a sanitized environment for polecat/crew worker subprocesses.
 
     Strips SSH credentials and maps git auth to the bot token, ensuring
@@ -474,9 +478,29 @@ def _make_worker_env(interactive: bool = False, work_dir: Path | None = None) ->
     rather than relying on the SessionStart hook inside the child process.
     It also ensures 'uv' and other critical binaries are in the PATH.
     It also enables 24-bit color mode if interactive is True.
+
+    ``container_env_forward`` is polecat.yaml's explicit forwarding whitelist
+    (PKB note-b5347f83, Q2): a list of var NAMES whose VALUES are resolved from
+    the host secret store (~/.env.local) at launch — *independent* of whether
+    the launching session (e.g. junior) carries them. This is how the OAuth
+    tokens reach the container without the general agent ever holding them in
+    its own session env. Resolved values are overlaid onto ``env`` so the
+    downstream ``get_container_env_forwards(env)`` emits them as ``-e`` flags.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
+
+    # Resolve the explicit container forwarding whitelist from the host secret
+    # store. ~/.env.local is authoritative; process env is the fallback (covers
+    # the GHA surface, which has no ~/.env.local but injects secrets via the
+    # process env). Empty values are skipped by resolve_forward_values.
+    if container_env_forward:
+        from lib.host_secrets import resolve_forward_values
+
+        for name, value in resolve_forward_values(
+            list(container_env_forward), source_env=env
+        ).items():
+            env[name] = value
 
     # Strip ACA_DATA access unless the agent is specifically working in that repo.
     aca_data = env.get("ACA_DATA")
@@ -1982,81 +2006,6 @@ def _run_docker_container(
             capture_output=True,
             check=False,
         )
-
-
-def _pass_pkb_url_sandbox(env: dict) -> None:
-    """Ensure PKB_MCP_URL is forwarded into the Gemini sandbox.
-
-    PKB now connects over HTTP — no data volume mount needed.
-    This helper is called from both ``crew -g`` and ``run -g``.
-    """
-    pkb_url = env.get("PKB_MCP_URL") or os.environ.get("PKB_MCP_URL")
-    if pkb_url:
-        env.setdefault("PKB_MCP_URL", pkb_url)
-
-
-def _mount_gemini_git_credentials(env: dict, tmp_files: list[Path]) -> list[str]:
-    """Mount .gitconfig and gh hosts.yml into Gemini sandbox for git push.
-
-    File-based credentials are preferred over SANDBOX_FLAGS -e for two reasons:
-    1. Security: env vars are visible in /proc/<pid>/environ and ``ps auxe``;
-       mounted files are not leaked through process listings.
-    2. Reliability: Gemini sandbox only forwards a hardcoded allowlist of env
-       vars into the container. SANDBOX_FLAGS -e is kept as belt-and-suspenders
-       but cannot be the primary mechanism.
-
-    The token is embedded directly in the gitconfig so git does not need
-    $GH_TOKEN to be present in the container environment at push time.
-
-    Returns extra_flags (list of ``-e KEY=VALUE`` strings) to append to
-    SANDBOX_FLAGS.
-    """
-    extra_flags: list[str] = []
-    gh_token = os.environ.get("AOPS_BOT_GH_TOKEN")
-    if not gh_token:
-        return extra_flags
-
-    extra_flags.extend(["-e", "GIT_ASKPASS=true"])
-    extra_flags.extend(["-e", f"GH_TOKEN={gh_token}"])
-    extra_flags.extend(["-e", f"GITHUB_TOKEN={gh_token}"])
-    extra_flags.extend(["-e", "SSH_AUTH_SOCK="])
-    extra_flags.extend(["-e", "GIT_SSH_COMMAND=false"])
-    extra_flags.extend(["-e", "GIT_TERMINAL_PROMPT=0"])
-
-    # .gitconfig with embedded credential helper
-    gitconfig = tempfile.NamedTemporaryFile(
-        suffix=".gitconfig", delete=False, mode="w", prefix="polecat-"
-    )
-    gitconfig.write(
-        "[credential]\n"
-        f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
-        '[credential "https://github.com"]\n'
-        f'\thelper = !f() {{ echo username=x-access-token; echo "password={gh_token}"; }}; f\n'
-        '[url "https://github.com/"]\n'
-        "\tinsteadOf = git@github.com:\n"
-    )
-    gitconfig.close()
-    tmp_files.append(Path(gitconfig.name))
-
-    container_gitconfig = str(Path.home() / ".gitconfig")
-    mounts = env.get("SANDBOX_MOUNTS", "")
-    new_mount = f"{gitconfig.name}:{container_gitconfig}:ro"
-    env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-    # gh CLI hosts.yml — file-based auth fallback for `gh pr create`
-    gh_hosts = tempfile.NamedTemporaryFile(
-        suffix=".yml", delete=False, mode="w", prefix="polecat-gh-hosts-"
-    )
-    gh_hosts.write(f"github.com:\n    oauth_token: {gh_token}\n    git_protocol: https\n")
-    gh_hosts.close()
-    tmp_files.append(Path(gh_hosts.name))
-
-    container_gh_hosts = str(Path.home() / ".config" / "gh" / "hosts.yml")
-    mounts = env.get("SANDBOX_MOUNTS", "")
-    new_mount = f"{gh_hosts.name}:{container_gh_hosts}:ro"
-    env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
-
-    return extra_flags
 
 
 def _replicate_gemini_auth(
@@ -3971,7 +3920,11 @@ def crew(
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=True, work_dir=work_dir)
+    env = _make_worker_env(
+        interactive=True,
+        work_dir=work_dir,
+        container_env_forward=cfg.container_env_forward,
+    )
     env["POLECAT_SESSION_TYPE"] = "crew"
     env["POLECAT_CREW_NAME"] = crew_name
     if session_cfg.debug:
@@ -4732,7 +4685,11 @@ def run(
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
-    env = _make_worker_env(interactive=interactive, work_dir=worktree_path)
+    env = _make_worker_env(
+        interactive=interactive,
+        work_dir=worktree_path,
+        container_env_forward=cfg.container_env_forward,
+    )
     env["POLECAT_SESSION_TYPE"] = "polecat"
     env["AOPS_TASK_ID"] = task.id
     if session_cfg.debug:
