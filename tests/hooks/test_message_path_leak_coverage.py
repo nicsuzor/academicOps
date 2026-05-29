@@ -516,3 +516,29 @@ class TestStopReasonIsUserVisibleAndTidy:
             f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into the "
             f"user-visible Stop reason: {output.reason[:120]!r}"
         )
+
+    # Raw agent-invocation call syntax (Gemini `invoke_agent(...)` / Claude
+    # `Agent(subagent_type=...)`) is a model-facing instruction, not something a
+    # human reading the Stop notice should see. The qa-policy-context template
+    # carried both forms verbatim; compressing it removed them. Guard against
+    # regression across every fireable Stop gate.
+    _CALL_SYNTAX = ("Agent(", "invoke_agent(")
+
+    @pytest.mark.parametrize("gate_name", _FIREABLE_STOP_GATES)
+    @pytest.mark.parametrize("mode", ["warn", "block"])
+    def test_stop_reason_has_no_agent_call_syntax(self, router, monkeypatch, gate_name, mode):
+        set_gate_modes(monkeypatch, **{gate_name: mode})
+        reinit_gates_with_defaults()
+
+        result = router._dispatch_gates(
+            make_gate_trigger_context(gate_name), make_gate_trigger_state(gate_name)
+        )
+        assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
+        output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
+
+        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+        leaked = [s for s in self._CALL_SYNTAX if s in output.reason]
+        assert not leaked, (
+            f"{gate_name} ({mode}): raw agent-invocation syntax {leaked} leaked into the "
+            f"user-visible Stop reason: {output.reason[:160]!r}"
+        )
