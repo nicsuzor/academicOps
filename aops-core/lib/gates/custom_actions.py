@@ -194,4 +194,12 @@ def execute_custom_action(
         state.metrics["has_in_progress_todo"] = has_in_progress
         return None
 
+    if name == "set_session_did_work":
+        # Mark the session as having done real work (write tool or task claim).
+        # The handover gate policies check session_did_work to decide whether
+        # a full handover is required (aops-16a15a05). Read-only sessions
+        # never trigger this action and bypass the handover gate.
+        session_state.session_did_work = True
+        return None
+
     return None

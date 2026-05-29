@@ -226,6 +226,7 @@ GATE_CONFIGS = [
             # Task bound: update_task with status=in_progress -> Close
             # Only in polecat/crew sessions — interactive sessions (junior
             # supervising agents) manage task state without needing handover.
+            # Also sets session_did_work so the Stop policy fires for this session.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -236,11 +237,13 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key="handover.bound",
+                    custom_action="set_session_did_work",
                 ),
             ),
             # Write tool used -> Close (polecat/crew only)
             # When handover is sticky (post-skill), the engine suppresses
             # this close transition natively.
+            # Also sets session_did_work so the Stop policy fires for this session.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -250,6 +253,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key=None,
+                    custom_action="set_session_did_work",
                 ),
             ),
             # Handover skill completes -> Open (sticky until UPS)
@@ -316,6 +320,8 @@ GATE_CONFIGS = [
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
+            # Exempts read-only sessions (session_did_work=False) — a session that
+            # used no write tools and claimed no task needs no handover (aops-16a15a05).
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
@@ -330,6 +336,7 @@ GATE_CONFIGS = [
             # the warn+context_injection upgrade path in output_for_claude().
             # Gate opens on first Stop (fire-once trigger above) so subsequent
             # Stops in the same turn are not re-blocked. Re-arms on UPS.
+            # Exempts read-only sessions (session_did_work=False) — same rationale.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,

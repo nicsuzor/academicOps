@@ -85,10 +85,12 @@ def _make_session_state(scenario: dict) -> SessionState:
             gate.metrics.update(overrides["metrics"])
         state.gates[gate_name] = gate
 
-    # Apply state overrides (e.g. current_task)
+    # Apply state overrides (e.g. current_task, session_did_work)
     for key, value in scenario.get("state_overrides", {}).items():
         if key == "current_task":
             state.main_agent.current_task = value
+        elif hasattr(state, key) and not key.startswith("_"):
+            setattr(state, key, value)  # typed fields like session_did_work
         else:
             state.state[key] = value
 
