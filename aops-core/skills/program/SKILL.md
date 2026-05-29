@@ -113,7 +113,7 @@ Discovery uses the same graph-probe surface as the `autonomous`-profile state pr
 
 This is the "advance the queue" residue the spec's `/pull` rework (WS4) folds in. The v0.4 claim that "polecats auto-claim queued work" was overstated (James #2): a polecat claims + runs a _dispatched_ task and ships a PR — something must still _choose and dispatch_ the next task. That chooser is this step.
 
-**Seam for WS4 (do not implement here):** WS4 will retire `/pull`'s self-execution semantics and fold its "choose the next ready task and dispatch it" residue into this step. The attachment point is decision-order step 2: WS4 should replace any standalone "advance the queue" verb with a call into this loop's dispatch-trigger step, or leave a thin `/pull`-as-dispatch-alias that delegates here. **WS2 deliberately leaves this seam unimplemented** — the dispatch trigger is _defined_ (step 2) but the `/pull` skill itself is untouched. WS4 attaches at this named anchor.
+**WS4 attachment (landed):** WS4 retired `/pull`'s self-execution semantics and folded its "choose the next ready task and dispatch it" residue here. `/pull` (`commands/pull.md`) is now a **thin one-shot alias** that performs exactly this decision — select the next ready task and route it to a surface — and then stops; it never executes the task inline. The program loop runs this trigger continuously across the portfolio; `/pull` runs it once by hand for a solo session. Both only ever _dispatch_.
 
 ## Fleet-concurrency primitives
 
@@ -133,7 +133,7 @@ The program loop has a **legitimate stop** distinct from "done" and from "not do
 | **done-pending-Nic** | Junior has done everything it can autonomously; the only remaining work is decisions/approvals/merges that are structurally Nic's (gated-repo approvals, genuine judgment calls). The loop is **autonomously complete; N items surfaced for Nic.** | `review`           |
 | **halt**             | The [Program Brake](#program-brake) fired, or an epic returned a terminal infeasibility.                                                                                                                                                           | `blocked`          |
 
-**done-pending-Nic is the load-bearing addition.** It is _not_ "not done" — junior is not failing to finish; it is _finished with its own scope_, and the residue is irreducibly human (the locked single approval is never junior's — see [Trust gate](#trust-gate)). When the loop reaches done-pending-Nic it records `## Escalations` (the N surfaced items) and sets the program to `review`, then exits. It does **not** keep re-ticking to retry the human-only residue.
+**done-pending-Nic is the load-bearing addition.** It is _not_ "not done" — junior is not failing to finish; it is _finished with its own scope_, and the residue is irreducibly human (the locked single approval is never junior's — see [Trust gate](#trust-gate-hardened--autonomous-shipping)). When the loop reaches done-pending-Nic it records `## Escalations` (the N surfaced items) and sets the program to `review`, then exits. It does **not** keep re-ticking to retry the human-only residue.
 
 > **WS7 boundary.** This WS _defines_ the done-pending-Nic **state** and the conditions that reach it. The _exit mechanism_ — how the loop is permitted to terminate against the `/goal` continuation Stop hook without wedging at the handover gate — is **WS7 (gate composition & exit semantics)**. Until WS7 lands, a program loop reaching done-pending-Nic sets the program to `review` and stops ticking; if the Stop hook re-fires it, that is the WS7 deadlock, not a program-loop bug. Record it and surface; do not paper over it with retries.
 
@@ -231,5 +231,5 @@ Where a push channel is configured, the digest pairs with a push of the highest-
 
 - **`/supervisor`** — the epic-scope loop this skill drives. Unchanged by WS2; the program loop calls it one tick at a time.
 - **`/q`** — frictionless capture (delegates to planner capture mode). Captures land in the queue; the program loop discovers them as constituent work where they bear on the release.
-- **`/pull`** — self-execution queue command. **WS4 retires its self-execution and folds its dispatch residue into [decision-order step 2](#dispatch-trigger--the-ws4-seam).** WS2 leaves `/pull` untouched.
+- **`/pull`** — the thin one-shot **dispatch alias** over this loop's [dispatch trigger](#dispatch-trigger--the-ws4-seam) (decision-order step 2). WS4 retired its old self-execution semantics: `/pull` now selects the next ready task and routes it to a surface (polecat / subagent), exactly once, then stops — it never executes inline. Use it for a single manual dispatch in a solo session; use this program loop for continuous advancement.
 - **`/daily`** — reports state and runs the [Red-CI / stuck-PR loop-closer](../daily/SKILL.md) that backstops the red-CI trust-gate posture. The program loop relies on it; it does not duplicate its sweep.

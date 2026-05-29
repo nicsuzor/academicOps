@@ -2,368 +2,85 @@
 name: pull
 type: command
 category: instruction
-description: Pull a task from queue, claim it (mark in_progress), and mark complete when done
+description: Advance the queue one step — pick the next ready task and DISPATCH it to the right surface. Never executes inline. Thin one-shot alias over the program loop's dispatch trigger.
 triggers:
   - "pull task"
   - "get work"
   - "what should I work on"
   - "next task"
-modifies_files: true
+  - "advance the queue"
+modifies_files: false
 needs_task: false
-mode: execution
+mode: dispatch
 domain:
   - operations
-allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion, mcp__pkb__get_task, mcp__pkb__get_task_children, mcp__pkb__list_tasks, mcp__pkb__update_task, mcp__pkb__complete_task, mcp__pkb__release_task
+allowed-tools: Task, Bash, Read, Grep, Skill, AskUserQuestion, mcp__pkb__get_task, mcp__pkb__get_task_children, mcp__pkb__list_tasks, mcp__pkb__update_task
 permalink: commands/pull
 ---
 
-# /pull - Pull, Claim, and Complete a Task
+# /pull — Advance the Queue One Step (Dispatch, Not Execute)
 
-**Purpose**: Get a task from the dispatch queue (status `queued`), claim it (mark status `in_progress`), and mark it complete when finished.
+**Purpose**: Pick the next ready task and **dispatch it to the right surface** (a polecat, or an in-process subagent), then stop. `/pull` does **one** dispatch step and exits. It never executes the task in this session.
 
-## Workflow
+> **What changed (WS4).** `/pull` used to mean "claim the next task and grind it inline here." That self-execution semantics is **retired** — it was the exact context-burn the north star forbids: the session that wanted to _advance_ the queue ended up _consuming_ its context on one task, shrinking its supervision breadth. The work a task needs now happens on the surface it is dispatched to (a polecat that ships a PR, or a subagent that reports back), never in the session that ran `/pull`.
 
-### Step 1: Get and Claim a Task
+## Where this lives
 
-Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: agents pull only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be claimed here — the user promotes `ready` → `queued` manually.
+`/pull` is the **thin manual, one-shot face** of the **dispatch trigger** owned by the program/portfolio loop — `skills/program/SKILL.md`, [Tick Decision Order](../skills/program/SKILL.md#tick-decision-order) step 2 ("Dispatch trigger — the WS4 seam"). The program loop runs that trigger _continuously_ across the whole portfolio; `/pull` performs **exactly one** step of the same "choose + route the next ready task" logic by hand, for a solo session where Nic wants to nudge one dispatch without standing up the loop.
 
-1. **List queued tasks**: Call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` to find dispatchable tasks. The PKB ranks results by composite `focus_score`, which embeds lexicographic severity (SEV4 dominates), priority, downstream weight, deadline urgency, stakeholder waiting, and decay — see [[multi-parent]] §7 for the canonical model.
-2. **Select task**: Pick the highest-`focus_score` task in the returned list. Do NOT rank by `urgency`, `downstream_weight`, or any single component directly — those are visible in metadata for filter/debug only; ranking always goes through `focus_score`. See [Priority Labels in TAXONOMY.md](../skills/remember/references/TAXONOMY.md#priority-labels-p0p4) for canonical label definitions (P0 = highest).
-3. **Claim task**: Call `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")` to claim it.
+There is **no daemon and nothing auto-claims** queued work (the v0.4 "polecats auto-claim queued work" claim was overstated — James #2). A polecat only ever runs a task that was _explicitly dispatched_ to it, and it ships a PR. `/pull` is one such explicit dispatch.
 
-**If a specific task ID is provided** (`/pull <task-id>`):
+## Workflow (one dispatch, then stop)
 
-1. Call `mcp__pkb__get_task(id="<task-id>")` to load it.
-2. If the task has children (leaf=false), navigate to the first queued leaf subtask instead.
-3. If the task is already `in_progress`, skip claim and proceed directly to Step 1.5.
-4. Otherwise, claim with `mcp__pkb__update_task(id="<task-id>", status="in_progress", assignee="polecat")`.
+### Step 1: Select the next ready task
 
-**If no tasks are queued**:
+Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: dispatch only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be dispatched here — the user promotes `ready` → `queued` manually.
 
-- Check active/inbox tasks for any that can be worked on.
-- If none exist, report and halt.
+- **No argument**: call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` and pick the highest-`focus_score` task. `focus_score` is the composite ranking (severity, priority, downstream weight, deadline urgency, stakeholder waiting, decay) — see [[multi-parent]] §7. Do NOT rank by any single component directly.
+- **`/pull <task-id>`**: call `mcp__pkb__get_task(id="<task-id>")`. If it has children, descend to the first `queued` leaf. Dispatch that leaf, not the parent.
+- **Nothing queued**: report "no queued tasks to dispatch" and stop. Do not reach into `ready`/`inbox` to manufacture work, and do not start doing anything yourself.
 
-### Step 1.4: Establish Session-to-Task Binding
+### Step 2: Route it to a surface (the dispatch-trigger heuristic)
 
-After a task is claimed (either via queue selection or explicit `/pull <task-id>`), persist the binding so `/end_session` can complete the right task rather than orphaning the work under `adhoc-sessions` (#739).
+Choose exactly one surface for the selected task — this is the same routing decision the program loop's decision-order step 2 makes, at one-task granularity:
 
-Write the claimed task ID to a per-session state file using Bash:
+- **Specialist sub-agent** — if the task (or its parent epic) has an `assignee` naming a specialist:
+  - `aops-core:<name>` → dispatch with `subagent_type="<name>"` (strip the prefix).
+  - `polecat` → dispatch with `subagent_type="polecat"`.
+  - Known specialists: `marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `enforcer`, `polecat`. Any value matching those namespaces is a specialist; the namespace is the trigger.
+- **Polecat** — for repo-scoped, PR-shippable work (code/docs/tests) with no named specialist. Dispatch a polecat run; it claims, runs, and ships a PR. (There is no inline `polecat finish` step here — `/pull` does not run the task, so it has nothing to finish.)
+- **Subagent (Task tool)** — for research/synthesis/triage that must return findings to this session rather than ship a PR.
+- **Defer** — if the task is not actually ready to dispatch (missing inputs, genuinely blocked, or needs human judgment to even scope), do NOT force a dispatch and do NOT execute it yourself. Record why (`mcp__pkb__update_task` with a one-line note, or surface it to Nic) and stop.
 
-```bash
-sid="${AOPS_SESSION_ID:-${GEMINI_SESSION_ID}}"
-if [ -n "$sid" ]; then
-  state_dir="${AOPS_SESSION_STATE_DIR:-$HOME/.aops/sessions}"
-  mkdir -p "$state_dir"
-  printf '%s\n' "<task-id>" > "$state_dir/${sid}-bound-task.txt"
-fi
-```
+**Dispatch brief must be self-contained** — the dispatched surface does not share this session's context. Include the task ID, title, full body, acceptance criteria, and any file paths in scope.
 
-Substitute `<task-id>` with the claimed task's ID. The file's lifecycle is:
+### Step 3: Record the dispatch and stop
 
-- Written here on claim (one file per session).
-- Read by `/end_session` to determine the bound task when `$AOPS_SESSION_ID` alone is not sufficient.
-- Deleted by `/end_session` after a successful `release_task`.
+Mark what you dispatched so the next `/pull` — or the program loop's next tick — is stateless and won't double-dispatch the same leaf:
 
-If neither `$AOPS_SESSION_ID` nor `$GEMINI_SESSION_ID` is set, skip writing the binding file — it is better to fall back to ad-hoc task creation than to risk completing the wrong task due to a session ID collision from using a generic fallback filename.
+- Claim-on-dispatch is the _surface's_ job, not `/pull`'s. When you hand a task to a polecat, the polecat claims it (`in_progress`) as it starts. Do **not** mark the task `in_progress` from this session and then walk away holding a claim you won't execute.
+- If you need a durable marker that this leaf is in-flight (e.g. for a subagent dispatch that doesn't self-claim), set `assignee` to the dispatched surface and leave a one-line note via `mcp__pkb__update_task`. Never set status to a value that implies _this_ session is doing the work.
 
-If a binding file already exists for this session (e.g. `/pull` invoked twice), overwrite it with the new task id — the most recent claim wins.
+**Then HALT.** One dispatch per `/pull`. Do not loop, do not chain a second dispatch, and do not start executing the task you just dispatched. For continuous, multi-task advancement use the **program loop** (`/program`, driven by `/loop`), which is built for stateless repeated dispatch ticks — `/pull` is deliberately one-shot.
 
-<!-- cowork:only -->
+## Anti-patterns (these are the retired behaviour — do not do them)
 
-### Step 1.4c: Mirror the claimed task onto the native task list (Cowork)
+- **Executing the task inline.** Editing files, running the task's tests, or committing its changes _in this session_ is the retired self-execution path. If you find yourself doing it, you have violated the contract — dispatch instead.
+- **Holding a claim without executing.** Marking the task `in_progress` from this session is only correct if _this session is the executing surface_ — and under WS4 it never is. Let the dispatched surface claim.
+- **Looping `/pull` to burn down the queue.** That re-creates the inline-grind treadmill one dispatch at a time. Use `/program` for sustained advancement.
+- **Decomposing/triaging-then-doing.** If the selected task needs decomposition, that is a `/supervisor` / planner concern — route it there or defer; do not decompose-then-execute inline.
 
-This step is required on Cowork and stripped from all other builds of aops-core. Cowork forces work to flow through the harness-native task list (`TaskCreate` / `TaskUpdate` / `TaskList`); without mirroring, the agent loses the harness's "currently working on" affordance and the user sees an empty list while the PKB row is in_progress.
+## Relationship to `/goal` and `/loop` (WS7 boundary — NOT built here)
 
-Invoke the cowork-sync mirror procedure with the claimed task id:
+A `/goal`- or `/loop`-driven session carries a session-scoped **Stop hook** that historically _pushed the session to keep grinding inline_ rather than dispatch-and-checkpoint. WS4 removes that push **from the `/pull` surface**: `/pull` now offers no inline-execution path for the hook to drive the session into — its only completion is a dispatch (or a clean "nothing to dispatch" stop).
 
-1. Load the deferred task tools once per session: `ToolSearch(query="select:TaskCreate,TaskUpdate,TaskList,TaskGet", max_results=4)`. Skip if already loaded earlier in this session.
-2. **Retire any prior native parent** carried over from an earlier `/pull` in the same session. Run `TaskList()` and, for each native task whose `description` starts with `PKB` AND whose status is not already `completed`/`deleted`, call `TaskUpdate(taskId=t.id, status="deleted")`. This prevents the native list from accumulating stale `in_progress` shells across re-pulls. Do NOT echo these deletions to PKB — native retirement is a UI-only cleanup; PKB state for the previous claim is whatever `/pull` Step 1 / `release_task` left it.
-3. Apply the **Mirror procedure (PKB → native)** from [[../skills/cowork-sync/SKILL.md#mirror-procedure-pkb--native]] with `pkb_id="<bound-task-id>"`. That procedure:
-   - Creates one native task for the claimed PKB parent (description carries `PKB <id> — <title>` so per-completion and final-reconciliation sync can find it).
-   - If the PKB task has children, mirrors each child as a separate native task and wires `addBlocks` so the parent only unblocks once children complete.
-   - Marks the native parent `in_progress` to reflect the claim.
-4. From this point on, **every time the agent ticks a native task to `completed`** it MUST follow the **Per-completion sync** procedure from [[../skills/cowork-sync/SKILL.md#per-completion-sync-native--pkb-during-the-session]] — `TaskUpdate(status="completed")` paired with the matching `mcp__pkb__complete_task` call (excluding the bound parent, which is deferred to `/end_session`). This is the user-visible synchronization: each task completion echoes to PKB immediately, not at session close.
-5. Do NOT call `mcp__pkb__update_task` from inside the claim itself — `/pull` Step 1 already wrote `status=in_progress` to PKB for the bound task.
-
-If `TaskCreate` is unavailable after the ToolSearch (e.g. running this skill on a non-cowork surface that ships the cowork variant by accident), skip the mirror with a one-line note and continue. The downstream final-reconciliation in `/end_session` is a no-op when no native tasks were created.
-
-<!-- /cowork:only -->
-
-### Step 1.5: Inject Soft Dependency Context (Advisory)
-
-After claiming, check if the task has `soft_depends_on` relationships:
-
-1. Read the task's `soft_depends_on` array
-2. For each soft dependency ID:
-   - Call `mcp__pkb__get_task(id="<soft-dep-id>")`
-   - If status is `done`, extract the task body for context
-   - If status is NOT done, log: "Soft dependency <id> not yet complete - proceeding without context"
-3. Present completed soft dependency context before execution:
-
-```markdown
-## Soft Dependency Context (Advisory)
-
-The following completed tasks provide informational context for this task:
-
-### [<soft-dep-id>] <title>
-
-<body excerpt or summary>
-
----
-```
-
-**Important**: Soft dependencies are ADVISORY only:
-
-- Reading them is recommended but not mandatory
-- Missing/incomplete soft deps do NOT block task execution
-- Context injection helps but agent can proceed without it
-
-### Step 1.7: Specialist Agent Dispatch (Pre-EXECUTE Short-Circuit)
-
-If the claimed task — or its parent epic — has an `assignee` that names a specialist sub-agent, the main agent MUST dispatch via the Agent tool. Do NOT fall through to Step 2 / Step 3A and execute inline.
-
-**Specialist namespaces** (match against `assignee`):
-
-- `aops-core:<name>` → dispatch with `subagent_type="<name>"` (strip the `aops-core:` prefix)
-- `polecat` (bare name) → dispatch with `subagent_type="polecat"`
-
-Known specialist names include `marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `enforcer`, `polecat`. Any value matching the namespace patterns above is treated as a specialist regardless of whether the bare name is recognised — the namespace itself is the trigger.
-
-**Dispatch:**
-
-```
-Agent(
-  subagent_type="<bare-agent-name>",
-  prompt="<self-contained brief: task ID, title, body, acceptance criteria, file paths in scope>"
-)
-```
-
-The brief must be self-contained — the dispatched agent will not have this session's context. Include the task ID, title, full body, acceptance criteria, and any file paths in scope.
-
-After dispatch, **HALT** the main agent. Do NOT continue to Step 2. The specialist owns execution and completion.
-
-If `assignee` is `null`, `nic`, missing, or anything not matching the namespaces above, continue to Step 2 normally.
-
-### Step 2: Assess Task Path - EXECUTE or TRIAGE
-
-After claiming, determine whether to execute immediately or triage first.
-
-#### EXECUTE Path (all must be true)
-
-Proceed with execution when:
-
-- **What**: Task describes specific deliverable(s)
-- **Where**: Target files/systems are known or locatable within 5 minutes
-- **Why**: Context is sufficient for implementation decisions
-- **How**: Steps are known or determinable from codebase/docs
-- **Scope**: Estimated completion within current session (or a bounded phase of a multi-session task)
-- **Blockers**: No external dependencies (human approval, external input, waiting)
-
-→ Proceed to Step 3: Execute
-
-**Multi-phase tasks**: If the task has multiple phases but one phase can be completed this session, proceed with EXECUTE for that phase. Update the task body with progress before finishing. The task stays `in_progress` for the next session to pick up.
-
-#### TRIAGE Path (any is true)
-
-Triage instead of executing when:
-
-- Task requires human judgment/approval
-- Task has unknowns requiring exploration beyond this session
-- Task is too vague to determine deliverables
-- Task depends on external input not yet available
-- Task exceeds session scope
-
-→ Proceed to Step 3: Triage
-
-### Step 3A: Execute (EXECUTE Path)
-
-Follow the task's workflow or use standard execution pattern:
-
-1. Read task body for context and acceptance criteria
-2. Implement the changes (if dogfooding, follow the [[dogfooding]] workflow alongside execution)
-3. **Verify with independent evidence** (see Step 3A.V below)
-4. Run tests if applicable
-5. Commit changes
-6. Complete task (see Step 4)
-
-### Step 3A.V: Verification Loop (P#103)
-
-Before proceeding to commit, verify the work produces **independent evidence** of correctness. Verification depth scales with complexity:
-
-**Simple tasks** (typo, config change, single-file edit):
-
-- Run tests. If they pass, proceed.
-
-**Standard tasks** (feature, refactor, straightforward bug):
-
-- Run tests AND manually verify the change does what the acceptance criteria require.
-
-**Complex tasks** (concurrency bugs, multi-component fixes, inherited work from other sessions):
-
-- Independently trace the causal chain: what was broken → why → does this fix address the actual mechanism?
-- Do NOT trust prior documentation at face value. Re-derive the conclusion from code.
-- If inheriting work: the previous session's analysis is a hypothesis, not a fact. Verify it.
-
-**QA loop**: If verification reveals gaps or doubts, loop back to step 2. Do NOT proceed to commit with unresolved questions. This loop is the difference between "tests pass" and "fix is correct."
-
-### Step 3A.1: Execute Spike/Learn Tasks
-
-For tasks with `type: learn`:
-
-1. **Investigate** per task instructions
-2. **Write findings to task body** - Use `mcp__pkb__append(id="<task-id>", content="...")` to record findings
-3. **Summarize in parent epic** - Read parent, append to "## Findings from Spikes"
-4. **Apply learnings to framework** - Before creating follow-up tasks, check if findings warrant direct changes to framework files (HEURISTICS.md, skill prompts, specs). Knowledge files alone are insufficient — if a learning points to a process improvement, change the process.
-5. **Decompose actionable items** - Create subtasks for remaining work that can't be done in this session. Resolve parent per [[references/hierarchy-quality-rules]]:
-   ```
-   mcp__pkb__create_task(
-     id="<spike-id>",
-     project="<project>",
-     parent="<resolved-parent-id>",
-     children=[
-       {"title": "[Fix] Issue 1", "type": "task", "body": "Context from spike..."},
-       {"title": "[Fix] Issue 2", "type": "task", "body": "Context from spike..."}
-     ]
-   )
-   ```
-6. **Completion loop (P#109)** - Create a verify-parent task that depends on all subtasks just created. This task confirms the spike's parent goal was fully addressed after implementation.
-7. **Complete the spike** - Decomposition IS completion for learn tasks (per P#71, P#81)
-
-### Step 3A.2: Commit Before Completion
-
-Before marking task complete, verify work is committed:
-
-1. Run `git status` - should show no uncommitted changes to tracked files
-2. If uncommitted changes exist:
-   - Stage relevant files: `git add <files>`
-   - Commit with task context: `git commit -m "feat(<area>): <task summary>"`
-3. Only after commit succeeds, proceed to Step 4
-
-**Enforcement**: Do NOT call `release_task()` until commit is verified.
-
-### Step 3B: Triage (TRIAGE Path)
-
-Take appropriate action based on what's needed:
-
-#### Option A: Assign to Role
-
-If task needs specific expertise or human judgment:
-
-```
-mcp__pkb__update_task(
-  id="<task-id>",
-  updates={"assignee": "<role>"}  # e.g., "nic", "polecat"
-)
-```
-
-**Role assignment logic:**
-
-- `assignee="nic"` - Requires human judgment, strategic decisions, or external context
-- `assignee="polecat"` - Can be automated but needs clarification on scope/approach
-- Leave unassigned if role unclear
-
-Note: Use `mcp__pkb__update_task` (not `mcp__plugin_aops-core_tasks`) for assignee support. Don't set status to "blocked" - just assign.
-
-#### Option B: Decompose into Subtasks
-
-If task is too large but scope is clear:
-
-**Architecture checkpoint (required for >3 subtasks)**: Before creating subtasks, present the architectural approach to the user — what you plan to build, how (agent prompts vs code, which patterns), and key tradeoffs. Do NOT create subtasks until the approach is confirmed. Premature decomposition before the design is stable creates waste (P#72).
-
-```
-mcp__pkb__create_task(
-  id="<parent-id>",
-  project="<project>",
-  parent="<resolved-parent-id>",
-  children=[
-    {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
-    {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},
-    {"title": "Subtask 3: [specific action]", "type": "action", "order": 2}
-  ]
-)
-```
-
-**Completion loop (P#109)**: After creating all subtasks, create one additional verify-parent task:
-
-```
-mcp__pkb__create_task(
-  title="Verify: [parent goal] fully resolved",
-  parent="<parent-id>",
-  depends_on=["subtask-1-id", "subtask-2-id", "subtask-3-id"],
-  assignee=null,
-  body="Return to original problem. Confirm goal is met or iterate."
-)
-```
-
-**Subtask explosion heuristics:**
-
-- Each subtask should pass EXECUTE criteria (15-60 min, clear deliverable)
-- Break by natural boundaries: files, features, or dependencies
-- Order subtasks logically (dependencies first)
-- Don't over-decompose: 3-7 subtasks is ideal
-- If > 7 subtasks needed, create intermediate grouping tasks
-
-#### Option C: Block for Clarification
-
-If task is fundamentally unclear:
-
-```
-mcp__pkb__update_task(
-  id="<task-id>",
-  updates={"status": "blocked", "body": "Blocked: [specific questions]. Context: [what's known so far]."}
-)
-```
-
-After triaging, **HALT** - do not proceed to execution. The task is now either assigned, decomposed, or blocked.
-
-### Step 4: Finish and Mark Ready for Merge
-
-After successful execution (EXECUTE path only), finalize the task:
-
-#### If in a Polecat Worktree
-
-Detect via: current directory is under `$POLECAT_HOME/polecat/`
-
-Run `polecat finish` via Bash:
-
-```bash
-polecat finish
-```
-
-This command:
-
-1. Auto-commits any uncommitted changes (safeguard)
-2. Pushes the branch to origin
-3. Attempts to create/update a PR (best-effort; requires GitHub CLI `gh` and may fail without aborting)
-4. Sets task status to `merge_ready` (even if PR creation/update fails)
-
-The PR review pipeline handles merge via GitHub auto-merge when a PR exists and is configured appropriately.
-
-#### If NOT in a Polecat Worktree
-
-For tasks executed outside the polecat worktree system (e.g., direct `/pull` in a normal repo), use:
-
-```
-mcp__pkb__release_task(id="<task-id>", status="done", summary="What was done and outcome")
-```
-
-If you filed a PR, use `merge_ready` instead:
-
-```
-mcp__pkb__release_task(id="<task-id>", status="merge_ready", summary="What was done", pr_url="https://...")
-```
-
-This captures what was done so work history is never lost.
-
-**Fallback**: If `mcp__pkb__release_task` is not available, use `mcp__pkb__update_task(id="<task-id>", updates={"status": "done"})` or `mcp__pkb__complete_task(id="<task-id>")`.
-
-**Note**: TRIAGE path should halt before reaching Step 4. Only EXECUTE path tasks should be finished.
+WS4 does **not** build the termination mechanism. The **legal-exit path** — how a `/goal` or `/loop` session is _permitted to terminate_ without the Stop hook forcing another empty inline retry — is **WS7's deliverable (gate composition & exit semantics)**. The named boundary: _until WS7 lands, a `/pull` that finds nothing to dispatch (or has done its one dispatch) stops; if the `/goal`/`/loop` Stop hook re-fires it into another turn, that re-fire is the WS7 deadlock to fix in WS7 — `/pull` will not paper over it by manufacturing inline work._ This mirrors the WS7 boundary the program loop already names for its done-pending-Nic terminal state (see `skills/program/SKILL.md` → Terminal states → WS7 boundary).
 
 ## Arguments
 
-- `/pull` - Get highest `focus_score` queued task from the global dispatch queue
-- `/pull <task-id>` - Claim a specific task (or its first queued leaf if it has children)
+- `/pull` — select the highest-`focus_score` queued task and dispatch it to the right surface.
+- `/pull <task-id>` — dispatch a specific task (or its first queued leaf if it has children).
 
 ## Implementation Note
 
-How you execute the task, how you verify it, how you commit/push—those are agent responsibilities, not `/pull` responsibilities. This skill just manages the queue state: get, claim, complete.
+`/pull` owns exactly one decision: _which ready task to dispatch, and to which surface._ How that surface then executes, verifies, commits, and ships — those are the surface's responsibilities, never `/pull`'s. `/pull` is queue-advancement-by-dispatch, full stop.
