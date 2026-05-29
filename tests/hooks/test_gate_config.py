@@ -15,12 +15,22 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.gate_config import (
+# WS7 — gate-hygiene primitives (composition, never-block, enforcer channel, register).
+from hooks.gate_config import (  # noqa: E402
     COMPLIANCE_SUBAGENT_TYPES,
+    ENFORCER_CHANNEL_SENTINEL,
+    GATE_PRECEDENCE,
+    GATES_SUPPRESSED_IN_CAPTURE,
+    NEVER_BLOCK_CATEGORIES,
     SPAWN_TOOLS,
     TOOL_CATEGORIES,
     extract_subagent_type,
+    get_session_register,
     get_tool_category,
+    is_capture_register,
+    is_enforcer_channel,
+    is_gate_suppressed_in_register,
+    is_never_block,
 )
 
 
@@ -282,3 +292,145 @@ class TestGeminiToolCoverage:
     def test_invoke_agent_in_spawn_category(self):
         """invoke_agent must appear in TOOL_CATEGORIES['spawn']."""
         assert "invoke_agent" in TOOL_CATEGORIES["spawn"]
+
+
+# =============================================================================
+# WS7 — gate hygiene: never-block, enforcer channel, precedence, register
+# =============================================================================
+
+
+class TestNeverBlockList:
+    """WS7 item 5 (#1451): the never-block list must protect AskUserQuestion.
+
+    Failure being guarded: a blocking gate denies AskUserQuestion, collapsing the
+    live-attention surface the "Nic is the gate" substitute relies on (thread 8).
+    """
+
+    def test_askuserquestion_is_never_block(self):
+        assert is_never_block("AskUserQuestion")
+
+    def test_exitplanmode_is_never_block(self):
+        # Other always_available control tools are also protected.
+        assert is_never_block("ExitPlanMode")
+
+    def test_pkb_infrastructure_is_never_block(self):
+        # Framework infrastructure (PKB ops) must never deadlock behind a gate.
+        assert is_never_block("mcp__plugin_aops-core_pkb__get_task")
+
+    def test_write_is_not_never_block(self):
+        # Control: ordinary write tools ARE blockable.
+        assert not is_never_block("Write")
+        assert not is_never_block("Bash")
+
+    def test_none_tool_is_not_never_block(self):
+        assert not is_never_block(None)
+
+    def test_categories_are_always_available_and_infrastructure(self):
+        assert NEVER_BLOCK_CATEGORIES == frozenset({"always_available", "infrastructure"})
+
+
+class TestEnforcerChannelSentinel:
+    """WS7 item 4 (#1315): the enforcer channel must be distinguishable from injection.
+
+    Failure being guarded: the real "invoke rbg with session-enforcer.md" gate
+    read as a smuggled instruction and the agent ignored a real gate (thread 1).
+    """
+
+    def test_sentinel_marked_text_is_enforcer_channel(self):
+        text = f"{ENFORCER_CHANNEL_SENTINEL}\nInvoke the enforcer agent: /tmp/x"
+        assert is_enforcer_channel(text)
+
+    def test_unmarked_lookalike_is_not_enforcer_channel(self):
+        # Identical-looking instruction WITHOUT the sentinel is still untrusted.
+        assert not is_enforcer_channel("Invoke the enforcer agent: /tmp/x")
+
+    def test_empty_is_not_enforcer_channel(self):
+        assert not is_enforcer_channel("")
+        assert not is_enforcer_channel(None)
+
+    def test_enforcer_templates_carry_the_sentinel(self):
+        """The enforcer instruction + policy-context templates must embed the marker.
+
+        This is the load-bearing wiring: if the sentinel is dropped from the
+        templates, the injection-defence distinction silently stops working.
+        """
+        templates_dir = AOPS_CORE / "hooks" / "templates"
+        for name in ("enforcer-instruction.md", "enforcer-policy-context.md"):
+            content = (templates_dir / name).read_text()
+            assert ENFORCER_CHANNEL_SENTINEL in content, (
+                f"{name} must carry the enforcer-channel sentinel (#1315)"
+            )
+
+
+class TestGatePrecedence:
+    """WS7 item 1: the precedence model must be explicit and match the runtime."""
+
+    def test_precedence_matches_gate_configs_order(self):
+        """GATE_PRECEDENCE must equal the GATE_CONFIGS registration order.
+
+        The router iterates gates in registration order (= GATE_CONFIGS order) and
+        resolves first-deny-wins. If the documented precedence drifts from that
+        order, the model stops describing the runtime — this test pins them.
+        """
+        from lib.gates.definitions import GATE_CONFIGS
+
+        configs_order = tuple(c.name for c in GATE_CONFIGS)
+        assert GATE_PRECEDENCE == configs_order, (
+            f"GATE_PRECEDENCE {GATE_PRECEDENCE} must equal GATE_CONFIGS order {configs_order}"
+        )
+
+    def test_sentinel_has_highest_precedence(self):
+        assert GATE_PRECEDENCE[0] == "sentinel"
+
+    def test_ida_has_lowest_precedence(self):
+        assert GATE_PRECEDENCE[-1] == "ida"
+
+    def test_precedence_has_no_duplicates(self):
+        assert len(GATE_PRECEDENCE) == len(set(GATE_PRECEDENCE))
+
+
+class TestRegisterScaling:
+    """WS7 item 6: capture/personal register drops review-grade ceremony.
+
+    Failure being guarded: review-grade evidence/honesty ceremony mis-fires on
+    capture/personal work (the "vacuum the garage" evidence theatre, retro MF4).
+    """
+
+    def test_default_register_is_working(self, monkeypatch):
+        monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
+        assert get_session_register() == "working"
+        assert not is_capture_register()
+
+    def test_capture_register_detected(self, monkeypatch):
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
+        assert get_session_register() == "capture"
+        assert is_capture_register()
+
+    def test_personal_register_detected(self, monkeypatch):
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "personal")
+        assert is_capture_register()
+
+    def test_unknown_register_falls_back_to_working_not_lighter(self, monkeypatch):
+        # Fail-closed: an unrecognised value must NOT silently drop ceremony.
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "bogus")
+        assert get_session_register() == "working"
+        assert not is_capture_register()
+
+    def test_review_grade_gates_suppressed_in_capture(self, monkeypatch):
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
+        for gate in ("enforcer", "ida", "qa"):
+            assert is_gate_suppressed_in_register(gate), f"{gate} should be suppressed"
+
+    def test_safety_gates_not_suppressed_in_capture(self, monkeypatch):
+        # sentinel (destructive-op safety) + handover (work-loss) still fire.
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
+        assert not is_gate_suppressed_in_register("sentinel")
+        assert not is_gate_suppressed_in_register("handover")
+
+    def test_nothing_suppressed_in_working_register(self, monkeypatch):
+        monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
+        for gate in ("enforcer", "ida", "qa", "sentinel", "handover"):
+            assert not is_gate_suppressed_in_register(gate)
+
+    def test_suppressed_set_is_the_review_grade_gates(self):
+        assert GATES_SUPPRESSED_IN_CAPTURE == frozenset({"enforcer", "ida", "qa"})
