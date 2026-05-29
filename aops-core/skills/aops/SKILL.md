@@ -179,7 +179,7 @@ Route your task to the appropriate workflow:
 | **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
 | **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
 | **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                           |
-| **Verify hook output channel routing**    | [11-self-test](workflows/11-self-test.md) §3                        |
+| **Verify hook output channel routing**    | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing)          |
 
 ### Quick Decision Tree
 
