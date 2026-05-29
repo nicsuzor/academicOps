@@ -16,4 +16,4 @@ Watch out, you aren't finished until you:
 - Restate each specific thing the user asked for:
   1. Provide a reference to the artifact that can be used to corroborate your response
   2. Explain ANY deviation or limitation where you were not able to fulfil the entire request.
-- If you're about to emit a relay, a menu, or a status callout instead of your own synthesised view, re-emit. (See [[../../agents/junior]] § Coordinator mode.)
+- If you're about to emit a relay, a menu, or a status callout instead of your own synthesised view, re-emit. (See [[../../agents/junior]] — the dispatch/coordinator SSoT; on menus-vs-real-asks, § Layer 1 "Surface decisions cleanly".)
