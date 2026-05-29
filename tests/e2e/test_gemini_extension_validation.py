@@ -128,7 +128,7 @@ CLI_ERROR_PATTERNS = (
 _DIST_SOURCE_DIRS = (
     REPO_ROOT / "scripts",
     REPO_ROOT / "templates",
-    REPO_ROOT / "aops-core" / "agents",
+    REPO_ROOT / "aops-core",
 )
 
 
@@ -150,6 +150,14 @@ def _check_dist_not_stale() -> None:
             continue
         for p in src_dir.rglob("*"):
             if p.is_file():
+                if (
+                    any(
+                        part in {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+                        for part in p.parts
+                    )
+                    or p.suffix in (".pyc", ".pyo", ".DS_Store")
+                ):
+                    continue
                 mt = p.stat().st_mtime
                 if mt > newest_mtime:
                     newest_mtime = mt
