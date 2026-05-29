@@ -740,12 +740,21 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 # --- Item 6: register-scaling (capture/personal) ------------------------------
 # WS6 defined three registers (capture/personal, working, review-grade) as
 # doctrine in junior.md; the enforcement is WS7's lane. The register is selected
-# per-session from the AOPS_SESSION_REGISTER env var (set by the launcher /
-# slash-command). In the capture/personal register the review-grade gates
-# (enforcer self-check, ida honesty reminder, qa verification) are suppressed —
-# a "vacuum the garage" capture must not draw a compliance audit or an honesty
-# loop (thread 10, retro MF4). The handover and sentinel gates are NOT
-# suppressed: losing a capture or running a destructive op is still real harm.
+# per-session from the AOPS_SESSION_REGISTER env var. In the capture/personal
+# register the review-grade gates (enforcer self-check, ida honesty reminder, qa
+# verification) are suppressed — a "vacuum the garage" capture must not draw a
+# compliance audit or an honesty loop (thread 10, retro MF4). The handover and
+# sentinel gates are NOT suppressed: losing a capture or running a destructive
+# op is still real harm.
+#
+# NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
+# repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
+# SessionStart hook writes it — so get_session_register() always resolves to
+# 'working' in the running system and register-scaling is dormant (fail-closed:
+# dormant means full ceremony, never less). Activating it (deciding *when* a
+# session is capture/personal and writing the var) is a separate follow-up, not
+# something this code assumes is live. The reader + engine wiring + tests are
+# correct and safe to ship ahead of the writer.
 REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
 CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
 

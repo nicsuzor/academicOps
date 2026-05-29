@@ -151,9 +151,13 @@ This is held by **branch protection requiring Nic's review** — a mechanism on 
 
 A merge-ready PR carries a documented review-agent chain (rbg/pauli/marsha) with **positive per-SHA attestation that each named reviewer actually executed against that SHA.** **Absence of a named reviewer's verdict is a FAILURE, not a pass** (retro thread 5: deep-review sat in `startup_failure` for ~a week and absence read as pass). Before the loop records a PR as merge-ready in the digest, it checks each required reviewer has a verdict _for the current head SHA_; a missing verdict makes the PR **not** merge-ready — it is surfaced as a blocked item, never silently passed. "Endorsed" means the chain ran and found no reason to block — not a rubber stamp (James #7).
 
+> **Dependency flagged (not assumed).** WS2 ships the loop's _behavioural rule_ (treat a missing per-SHA verdict as not-merge-ready), not the attestation _store_ that records "reviewer X ran against SHA Y". The presence check is only as good as the surface it reads — a review-chain artefact or PR review events keyed to the head SHA. Where that surface does not yet exist for a repo, the conservative default holds (absence = not merge-ready), but the positive-attestation guarantee is only fully real once the store exists. That store is a separate capability, not built in this PR.
+
 ### 3. Clean-build green (mechanism: clean-checkout CI, not incremental)
 
 "Fully-green" is pinned to a **clean-checkout / clean-build run, not a cached or incremental one** (retro thread 2 shipped a build-breaking Dockerfile that passed against an incremental build). The loop treats a green status as authoritative only when the green came from a clean checkout. The mechanism is the CI pipeline's clean-build configuration; the loop's rule is to not treat an incremental-only green as merge-ready.
+
+> **Dependency flagged (not assumed).** The clean-build guarantee lives in each repo's **CI configuration**, not in this skill — WS2 ships only the loop's rule (don't trust an incremental-only green). Whether a given repo's CI actually runs a clean checkout is a per-repo CI fact this loop reads, not one it enforces; where a repo's CI is incremental, the loop's authority claim is correspondingly weaker until that CI is fixed. That CI configuration is owned elsewhere, not built in this PR.
 
 ### 4. Red-CI posture (mechanism: GHA self-heal first, then /daily loop-closer)
 
