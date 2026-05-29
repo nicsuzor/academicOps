@@ -5,7 +5,11 @@ category: template
 description: |
   Full context injection when enforcer gate blocks a tool call.
   Variables: {ops_since_open}, {temp_path}
+  WS7 item 4: carries the enforcer-channel sentinel so this is recognised as a
+  first-party gate rather than a prompt injection (#1315).
 ---
+
+<!-- aops:enforcer-channel -->
 
 **ERROR:** Compliance check OVERDUE. You need to invoke the **enforcer** agent before you can use tools.
 

@@ -254,6 +254,28 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 
 **What counts as evidence**: An agent-confirmed merged PR, where the candidate was identified by one or more deterministic signals (PR number linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching branch, or PR title similar to task title). For email: an agent-confirmed sent reply where the candidate was identified by correspondent and approximate subject. A closed-but-not-merged PR is **not** evidence.
 
+### Red-CI / stuck-PR loop-closer
+
+This is the next-day backstop for the autonomous trust gate's red-CI posture (spec [[note-36c15a69]] → Modes → Autonomous → Trust gate; and `/aops-core:program` → Trust gate sub-property 4). The posture is: **a red-CI PR is first the GHA merge pipeline's job to self-heal; if it cannot, the loop must not let the PR silently stall — it converts the stuck PR into an enqueued, owned follow-up fix-task.** Never route around the failure; never merge despite red.
+
+The Task Completion Sweep above closes tasks whose work is _done_ (merged PRs). This loop-closer handles the opposite case: PRs whose work is _stuck red_ and going nowhere on their own. The two are complementary halves of "close the loop on every open PR".
+
+**Procedure** (runs after the Task Completion Sweep, reading the same `$AOPS_SESSIONS/state/pr-state.json` artefact — no fresh `gh pr list`):
+
+1. From the artefact's open-PR records, select **stuck-red candidates**: PRs with at least one `statusCheckRollup` entry where `conclusion == "FAILURE"`, AND whose `updatedAt` timestamp is more than **24h** ago. A PR that is red but has a recent `updatedAt` (a fix commit or status push arrived in the last 24h) is _self-healing in progress_ — skip it; the pipeline still owns it.
+2. For each stuck-red candidate, check whether a follow-up fix-task already exists (search `task_search` / scan the PR's linked tasks for an open `ci-fix` / `stuck-red` tagged task referencing this PR). If one exists and is still open, **do not duplicate** — leave it.
+3. Where no open follow-up exists, **file one** via `create_task`:
+   - `title`: `Fix red CI on PR #<N> — <repo>` (plain English; no raw rollup dump).
+   - `body`: the PR URL, the failing check name(s) from the artefact, the head SHA, and the originating task/epic if linked. State that the GHA self-heal did not clear it within 24h.
+   - `status`: `queued` only if the originating work was already human-approved for this repo; otherwise `ready` (so the human-gated `ready` → `queued` dispatch boundary is preserved, same as the rest of the framework).
+   - `tags`: include `ci-fix` and `stuck-red` so step 2 can dedupe on the next run.
+   - Parent it under the PR's originating epic where one is linked; otherwise file standalone in the repo's project.
+4. **Severity guard at the write boundary** (retro thread 8 / #1453 — issue-sweep inflated 100% of filed tasks): a stuck-red follow-up is a routine fix, not an emergency. File at the severity the _originating_ work carried, or default low; do not auto-inflate to SEV3/4 just because CI is red.
+5. **Never merge or close the red PR from this skill, and never disable/skip the failing check** (A8 — a failing check is a bug to fix, not a category to route around). The loop-closer's only job is to convert silence into an owned, queued fix-task.
+6. **Report** in the Work Log sweep summary: `N stuck-red PRs → follow-up fix-tasks filed`, `N already had open follow-ups (skipped)`, `N self-healing in progress (skipped)`. If `pr-state.json` is stale (>24h) or missing, report `stuck-red loop-closer: skipped — repo-sync-cron artefact stale` and take no action (same artefact-freshness rule as the rest of `/daily`).
+
+**Dependency note (surfaced, not assumed):** this loop-closer is the _backstop_ half of the red-CI posture. The _first-line_ half — the GHA merge pipeline actively self-healing a CI failure before this next-day pass runs — is a separate capability owned by the merge pipeline, not by `/daily`. If that GHA self-heal is not yet wired, the posture degrades gracefully (every stuck-red PR still becomes an owned fix-task here), but the "pipeline fixes it first" promise is not fully real until the GHA side exists. That is a flagged gap, not something this skill fabricates.
+
 > Detailed procedures for each step are in the `instructions/` subdirectory.
 
 ## Error Handling
@@ -263,6 +285,7 @@ When a data source is unavailable, skip gracefully and continue. Note the gap in
 ## Relationship to Other Skills
 
 - **`/pull`**: Starts execution. The daily note reports; `/pull` acts.
+- **`/program`**: The autonomous program/portfolio loop relies on this skill's [Red-CI / stuck-PR loop-closer](#red-ci--stuck-pr-loop-closer) as the next-day backstop for its trust-gate red-CI posture. The daily note reports and backstops; `/program` drives the release.
 - **Sleep cycle** (when implemented): Consolidates raw episodes into retrievable stores. The daily note should prefer reading consolidated state over re-processing raw sources.
 
 ## Daily Note Template (SSoT)

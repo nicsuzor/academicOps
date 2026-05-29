@@ -410,9 +410,32 @@ class GenericGate:
         """Evaluate policies (Blocking/Warning)."""
         state = self._get_state(session_state)
 
+        # WS7 item 6 — register-scaling. In the capture/personal register the
+        # review-grade gates (enforcer, ida, qa) drop their ceremony entirely so
+        # low-stakes capture/personal work isn't dragged through a compliance
+        # audit or an honesty loop (retro MF4, thread 10). Sentinel and handover
+        # still fire — losing a capture or running a destructive op is real harm.
+        from hooks.gate_config import is_gate_suppressed_in_register, is_never_block
+
+        if is_gate_suppressed_in_register(self.name):
+            return None
+
         for policy in self.config.policies:
             if self._evaluate_condition(policy.condition, ctx, state, session_state):
                 # Policy matched!
+
+                # WS7 item 5 — honour the never-block list (#1451). A never-block
+                # tool (AskUserQuestion, ExitPlanMode, PKB/spawn infrastructure)
+                # must never be denied OR warned by a gate on a PreToolUse call:
+                # denying AskUserQuestion collapses the live-attention surface the
+                # "Nic is the gate" substitute depends on. Global invariant — no
+                # individual gate overrides it. Skip the policy (fall through to
+                # the next, or to None) rather than block.
+                if ctx.hook_event == "PreToolUse" and is_never_block(
+                    ctx.tool_name,
+                    ctx.tool_input if isinstance(ctx.tool_input, dict) else None,
+                ):
+                    continue
 
                 # Custom Action (Side Effects before message rendering)
                 sys_msg_prefix = ""

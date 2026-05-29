@@ -642,3 +642,155 @@ def extract_subagent_type(
         return None, is_skill
 
     return None, False
+
+
+# =============================================================================
+# WS7 — GATE HYGIENE: never-block, precedence, register-scaling, enforcer channel
+# =============================================================================
+# Composition primitives for WS7 (gate composition & exit semantics). They do
+# NOT add gates — they make the EXISTING gates compose deterministically and stop
+# the field-validated mis-routings (no new forcing functions; gate hygiene only):
+#   - AskUserQuestion denied by a blocking gate (#1451)
+#   - the enforcer instruction read as a prompt injection (#1315)
+#   - undefined precedence when >=2 gates fire
+#   - review-grade ceremony mis-firing on capture/personal work (retro MF4)
+
+# --- Item 5: never-block list (#1451) -----------------------------------------
+# The tool categories whose tools must NEVER be denied/warned by any gate policy.
+# These are the control-plane tools the framework itself depends on — denying
+# them deadlocks the session. AskUserQuestion is the load-bearing case: it is the
+# live-attention surface the "Nic is the gate" substitute relies on, so a gate
+# that denies it collapses that substitute (#1451, thread 8). Promoting the
+# always_available + infrastructure categories to a global, gate-independent
+# never-block guarantee is the fix.
+NEVER_BLOCK_CATEGORIES: frozenset[str] = frozenset({"always_available", "infrastructure"})
+
+
+def is_never_block(tool_name: str | None, tool_input: dict[str, Any] | None = None) -> bool:
+    """Return True if the tool must never be denied/warned by any gate policy.
+
+    Consulted by the gate engine before emitting a deny/block/warn verdict on a
+    PreToolUse tool call. AskUserQuestion, ExitPlanMode, and the PKB/spawn
+    infrastructure tools are never-block (#1451). Honouring this list is a global
+    invariant — individual gates do not get to override it.
+    """
+    if not tool_name:
+        return False
+    return get_tool_category(tool_name, tool_input) in NEVER_BLOCK_CATEGORIES
+
+
+# --- Item 4: enforcer channel sentinel (#1315) --------------------------------
+# The enforcer gate injects an instruction telling the main agent to invoke rbg
+# with a session-log path. In the field this read as a prompt injection — an
+# instruction arriving mid-stream that says "now go invoke this agent" looks
+# exactly like smuggled content, so the agent correctly-but-wrongly ignored a
+# real gate (#1315, thread 1). The fix is a stable first-party marker on the
+# enforcer's own channel: text carrying this sentinel is framework-issued, not
+# untrusted input. The marker is the trust boundary — identical text WITHOUT it
+# is still treated as untrusted.
+ENFORCER_CHANNEL_SENTINEL = "<!-- aops:enforcer-channel -->"
+
+
+def is_enforcer_channel(text: str | None) -> bool:
+    """Return True if text carries the first-party enforcer-channel sentinel.
+
+    The injection defence uses this to distinguish a real enforcer-gate
+    instruction (first-party, trusted) from a look-alike smuggled instruction
+    (untrusted). Only text the framework wrapped with the sentinel passes.
+    """
+    return bool(text) and ENFORCER_CHANNEL_SENTINEL in text
+
+
+# --- Item 1: gate precedence (reviewable composition order) -------------------
+# When two or more gates fire on the same event, the outcome must be reviewable.
+# This constant makes the EXISTING composition order explicit rather than leaving
+# it an emergent property of list position. It is DESCRIPTIVE of the runtime, not
+# a redesign:
+#
+#   1. Verdict tier dominates first. The router (HookRouter._dispatch_gates) and
+#      the engine merge results DENY > WARN > ALLOW — a deny from any gate beats
+#      a warn from any other, regardless of position. "First deny wins": the
+#      first gate (in iteration order) that denies sets the verdict and the loop
+#      stops; later gates cannot downgrade it.
+#   2. Within a tier, iteration order breaks ties — and iteration order is the
+#      registration order, which is the GATE_CONFIGS list order. So the gate
+#      earlier in this tuple wins a same-tier collision.
+#
+# This tuple MUST equal the order of GATE_CONFIGS in lib/gates/definitions.py (a
+# test asserts it) so the documented precedence cannot silently drift from the
+# runtime. Earlier = higher precedence.
+#
+# The order and its rationale (highest precedence first):
+#   sentinel  — PreToolUse destructive-op safety block; protects the user's
+#               environment, never advisory. Highest-stakes forcing function.
+#   enforcer  — periodic compliance self-check (PreToolUse threshold block).
+#   qa        — verification-before-exit (Stop); ahead of handover so a missing
+#               verifier surfaces before the handover reminder.
+#   handover  — structured-handover-before-exit (Stop): prevents work loss.
+#   ida       — honesty reminder (Stop); advisory, lowest precedence.
+GATE_PRECEDENCE: tuple[str, ...] = (
+    "sentinel",
+    "enforcer",
+    "qa",
+    "handover",
+    "ida",
+)
+
+
+# --- Item 6: register-scaling (capture/personal) ------------------------------
+# WS6 defined three registers (capture/personal, working, review-grade) as
+# doctrine in junior.md; the enforcement is WS7's lane. The register is selected
+# per-session from the AOPS_SESSION_REGISTER env var. In the capture/personal
+# register the review-grade gates (enforcer self-check, ida honesty reminder, qa
+# verification) are suppressed — a "vacuum the garage" capture must not draw a
+# compliance audit or an honesty loop (thread 10, retro MF4). The handover and
+# sentinel gates are NOT suppressed: losing a capture or running a destructive
+# op is still real harm.
+#
+# NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
+# repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
+# SessionStart hook writes it — so get_session_register() always resolves to
+# 'working' in the running system and register-scaling is dormant (fail-closed:
+# dormant means full ceremony, never less). Activating it (deciding *when* a
+# session is capture/personal and writing the var) is a separate follow-up, not
+# something this code assumes is live. The reader + engine wiring + tests are
+# correct and safe to ship ahead of the writer.
+REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
+CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
+
+# Gates suppressed in the capture/personal register (the review-grade ceremony).
+GATES_SUPPRESSED_IN_CAPTURE: frozenset[str] = frozenset({"enforcer", "ida", "qa"})
+
+
+def get_session_register() -> str:
+    """Return the active session register, defaulting to 'working'.
+
+    Read from AOPS_SESSION_REGISTER. Recognised values: 'capture'/'personal'
+    (lightest), 'working' (default), 'review' (review-grade). Unknown values fall
+    back to 'working' — register-scaling never fails open onto a *lighter*
+    register, only onto the working default.
+    """
+    # os.environ.get with no default returns None when unset; we normalise that
+    # to the 'working' register explicitly (no silent empty-string fallback).
+    raw_env = os.environ.get(REGISTER_ENV_VAR)
+    raw = (raw_env or "working").strip().lower()
+    if raw in CAPTURE_REGISTER_VALUES:
+        return raw
+    if raw == "review":
+        return "review"
+    return "working"
+
+
+def is_capture_register() -> bool:
+    """Return True if the session is in the capture/personal register."""
+    return get_session_register() in CAPTURE_REGISTER_VALUES
+
+
+def is_gate_suppressed_in_register(gate_name: str) -> bool:
+    """Return True if this gate's ceremony is dropped in the current register.
+
+    In the capture/personal register the review-grade gates (enforcer, ida, qa)
+    are suppressed so low-stakes capture work drops below review-grade ceremony
+    (WS6 register model, WS7 enforcement). Sentinel and handover always fire.
+    """
+    return is_capture_register() and gate_name in GATES_SUPPRESSED_IN_CAPTURE

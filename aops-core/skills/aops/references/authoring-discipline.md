@@ -72,3 +72,7 @@ Do not surface pseudo-decisions to the user. Surfacing trivial choices trains th
 - **SURFACE:** Only surface genuine taste, scope, naming, or trade-off decisions where the user's preference is the deciding input.
 
 _Rule of thumb:_ If the question can be answered by reading the documentation, make the call. Only surface if the question can only be answered by the user's unique preference or domain authority.
+
+## 5. Verification Honesty in Completion Summaries
+
+When a worker reports what it did, the summary must keep two things apart: what it **observed this session**, and what it **inferred**. State the command (or tool call) that produced an observed result; an inferred conclusion is fine but must read as inferred, not be dressed up in observed language. Phrasing a guess as a fact ("tests pass", "the build is green") when you did not run the thing this session is the failure this principle exists to prevent — it launders an assumption into the record a reviewer trusts. This is prose, not a template: no required manifest section, no `OBSERVED`/`ASSERTED` tags, no mandatory `cmd:`/`out:` fields — just the discipline of not claiming as seen what you only assumed.
