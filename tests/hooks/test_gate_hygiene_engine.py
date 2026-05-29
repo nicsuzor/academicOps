@@ -87,18 +87,22 @@ def test_enforcer_does_not_block_askuserquestion(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_capture_register_suppresses_enforcer_block(monkeypatch):
-    """WS7 item 6: in the capture register the enforcer drops its ceremony.
+def test_capture_register_does_NOT_suppress_enforcer_block(monkeypatch):
+    """WS7 item 6 (corrected — Nic, 2026-05-30): axiom compliance is universal.
 
-    Identical overdue state + Write tool as the item-5 control (which denies);
-    only the register changed, so the deny must NOT fire.
+    The enforcer (rbg / axiom-compliance) is ALWAYS ON, every register — "axiom
+    violations are prohibited anywhere and everywhere". So an overdue enforcer
+    must STILL deny in the capture register, exactly as in the working-register
+    control. (The original WS7 cut wrongly suppressed enforcer here; only qa —
+    verification ceremony — scales down. See test_qa_suppressed_in_capture in
+    test_gate_config.py and the engine register-scaling guard.)
     """
     monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
     monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
     gate = GenericGate(_CONFIGS["enforcer"])
     result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
-    assert _verdict(result) != "deny", (
-        "capture register must suppress the enforcer review-grade block (MF4)"
+    assert _verdict(result) == "deny", (
+        "enforcer (axiom compliance) must STILL fire in the capture register"
     )
 
 

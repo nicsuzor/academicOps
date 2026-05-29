@@ -410,10 +410,12 @@ class GenericGate:
         """Evaluate policies (Blocking/Warning)."""
         state = self._get_state(session_state)
 
-        # WS7 item 6 — register-scaling. In the capture/personal register the
-        # review-grade gates (enforcer, ida, qa) drop their ceremony entirely so
-        # low-stakes capture/personal work isn't dragged through a compliance
-        # audit or an honesty loop (retro MF4, thread 10). Sentinel and handover
+        # WS7 item 6 — register-scaling. In the capture/personal register only
+        # qa (verification ceremony) drops, so low-stakes capture work isn't
+        # dragged through a verify-before-close it has no task for (retro MF4,
+        # thread 10). Honesty (ida) and axiom compliance (enforcer) do NOT scale
+        # — they stay on in every register (Nic, 2026-05-30: agents lie, and
+        # axiom violations are prohibited everywhere). Sentinel and handover also
         # still fire — losing a capture or running a destructive op is real harm.
         from hooks.gate_config import is_gate_suppressed_in_register, is_never_block
 

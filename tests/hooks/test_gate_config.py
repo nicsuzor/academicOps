@@ -416,10 +416,19 @@ class TestRegisterScaling:
         assert get_session_register() == "working"
         assert not is_capture_register()
 
-    def test_review_grade_gates_suppressed_in_capture(self, monkeypatch):
+    def test_qa_suppressed_in_capture(self, monkeypatch):
+        # qa (verification ceremony) is the only gate that scales down — and it
+        # is already task-scoped, so a no-task capture session has nothing to QA.
         monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-        for gate in ("enforcer", "ida", "qa"):
-            assert is_gate_suppressed_in_register(gate), f"{gate} should be suppressed"
+        assert is_gate_suppressed_in_register("qa")
+
+    def test_honesty_and_axioms_never_suppressed_in_capture(self, monkeypatch):
+        # Nic, 2026-05-30: ida (honesty — "agents lie to me all the time") and
+        # enforcer (axiom compliance — "prohibited anywhere and everywhere") are
+        # ALWAYS ON, including casual/capture. Only the evidence CEREMONY scales.
+        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
+        assert not is_gate_suppressed_in_register("ida"), "honesty must stay on in capture"
+        assert not is_gate_suppressed_in_register("enforcer"), "axioms must stay on in capture"
 
     def test_safety_gates_not_suppressed_in_capture(self, monkeypatch):
         # sentinel (destructive-op safety) + handover (work-loss) still fire.
@@ -432,5 +441,6 @@ class TestRegisterScaling:
         for gate in ("enforcer", "ida", "qa", "sentinel", "handover"):
             assert not is_gate_suppressed_in_register(gate)
 
-    def test_suppressed_set_is_the_review_grade_gates(self):
-        assert GATES_SUPPRESSED_IN_CAPTURE == frozenset({"enforcer", "ida", "qa"})
+    def test_suppressed_set_is_qa_only(self):
+        # Only qa scales down. ida (honesty) + enforcer (axioms) are universal.
+        assert GATES_SUPPRESSED_IN_CAPTURE == frozenset({"qa"})

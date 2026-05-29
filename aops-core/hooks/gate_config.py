@@ -740,12 +740,27 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 # --- Item 6: register-scaling (capture/personal) ------------------------------
 # WS6 defined three registers (capture/personal, working, review-grade) as
 # doctrine in junior.md; the enforcement is WS7's lane. The register is selected
-# per-session from the AOPS_SESSION_REGISTER env var. In the capture/personal
-# register the review-grade gates (enforcer self-check, ida honesty reminder, qa
-# verification) are suppressed — a "vacuum the garage" capture must not draw a
-# compliance audit or an honesty loop (thread 10, retro MF4). The handover and
-# sentinel gates are NOT suppressed: losing a capture or running a destructive
-# op is still real harm.
+# per-session from the AOPS_SESSION_REGISTER env var.
+#
+# What scales with register is the VERIFICATION ceremony (qa), NOT honesty and
+# NOT axiom compliance (Nic, 2026-05-30 — correcting the original WS6/WS7 cut):
+#   - ida (honesty reminder) is ALWAYS ON, every register including
+#     capture/personal — "agents lie to me all the time; the honesty check is
+#     the one thing I need everywhere." The original "vacuum the garage" failure
+#     (thread 10, retro MF4) was the heavyweight EVIDENCE CEREMONY mis-firing
+#     (confidence %, manufactured hypotheses), not the honesty floor; those were
+#     conflated. The fix is to scale ida's *demand* (floor everywhere, evidence
+#     manifest only at review-grade), NOT to switch ida off — so ida is never
+#     suppressed here.
+#   - enforcer (axiom-compliance / rbg) is ALWAYS ON, everywhere — "axiom
+#     violations are prohibited anywhere and everywhere." Never suppressed.
+#   - qa (verification-before-close) is the only review-grade ceremony that
+#     scales down: it is already task-scoped (fires only for a session that
+#     claimed a task, before that task closes), so a capture/personal session —
+#     which claims no task — has nothing to verify. Suppressing it here is
+#     belt-and-suspenders, aligned with "we don't need full QA all the time."
+# The handover and sentinel gates are likewise NOT suppressed: losing a capture
+# or running a destructive op is still real harm.
 #
 # NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
 # repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
@@ -758,8 +773,10 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
 CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
 
-# Gates suppressed in the capture/personal register (the review-grade ceremony).
-GATES_SUPPRESSED_IN_CAPTURE: frozenset[str] = frozenset({"enforcer", "ida", "qa"})
+# Gates suppressed in the capture/personal register. Only qa (verification
+# ceremony) scales down — honesty (ida) and axiom compliance (enforcer) are
+# always on, every register (Nic, 2026-05-30).
+GATES_SUPPRESSED_IN_CAPTURE: frozenset[str] = frozenset({"qa"})
 
 
 def get_session_register() -> str:
@@ -789,8 +806,8 @@ def is_capture_register() -> bool:
 def is_gate_suppressed_in_register(gate_name: str) -> bool:
     """Return True if this gate's ceremony is dropped in the current register.
 
-    In the capture/personal register the review-grade gates (enforcer, ida, qa)
-    are suppressed so low-stakes capture work drops below review-grade ceremony
-    (WS6 register model, WS7 enforcement). Sentinel and handover always fire.
+    In the capture/personal register only qa (verification ceremony) is
+    suppressed. Honesty (ida) and axiom compliance (enforcer) are always on,
+    every register (Nic, 2026-05-30); sentinel and handover also always fire.
     """
     return is_capture_register() and gate_name in GATES_SUPPRESSED_IN_CAPTURE
