@@ -391,6 +391,9 @@
         "logged_at": "2026-05-27T14:02:19+10:00",
         "event_hash": "32f587fb59be7912",
         "extracted_at": "2026-05-27T08:54:13Z"
+      },
+      "state_overrides": {
+        "session_did_work": true
       }
     },
     {
@@ -450,6 +453,9 @@
         "logged_at": "2026-05-27T08:40:12+10:00",
         "event_hash": "3b7f560c4e977333",
         "extracted_at": "2026-05-27T08:54:13Z"
+      },
+      "state_overrides": {
+        "session_did_work": true
       }
     },
     {

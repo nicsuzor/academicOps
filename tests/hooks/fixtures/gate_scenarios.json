@@ -329,6 +329,9 @@
       },
       "expected": {
         "verdict": "warn"
+      },
+      "state_overrides": {
+        "session_did_work": true
       }
     },
     {
