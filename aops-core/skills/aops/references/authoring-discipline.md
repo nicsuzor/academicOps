@@ -72,3 +72,35 @@ Do not surface pseudo-decisions to the user. Surfacing trivial choices trains th
 - **SURFACE:** Only surface genuine taste, scope, naming, or trade-off decisions where the user's preference is the deciding input.
 
 _Rule of thumb:_ If the question can be answered by reading the documentation, make the call. Only surface if the question can only be answered by the user's unique preference or domain authority.
+
+## 5. Worker Completion Summaries Carry a Verification Manifest (observed-vs-asserted)
+
+The dispatch contract has a return leg. A worker's completion summary — the `release_task` summary, the PR body, the handover prose the coordinator reads — is the surface on which a confident-but-wrong claim does the most damage, because the coordinator relays it onward as if it were observed. For **substantive work** (anything whose summary carries a load-bearing quantitative or structural claim: test counts, file counts, "all green", "N tasks migrated", "the suite passes"), the completion summary's expected shape is a **verification manifest**: each load-bearing claim is tagged either OBSERVED or ASSERTED.
+
+- **OBSERVED** — the worker ran the command _this session_ and is quoting the relevant output line. Tag it with the exact `cmd` and the output excerpt that supports the number. The claim is checkable against cited evidence without re-running anything.
+- **ASSERTED** — derived, recalled, inferred, or carried over from an earlier state. Not freshly observed this session. The claim is honest but unverified; it is a candidate for re-derivation.
+
+The point is not ceremony. It makes downstream re-verification **targeted instead of total**: the coordinator (and the Stop honesty-check) re-derive ASSERTED claims first and spot-check OBSERVED ones against the cited output, instead of re-running the entire suite to trust any single number. This generalises the mechanism that already worked — the Stop-hook re-derivation that caught a wrong full-suite count in session `29811931` ("841 passed" asserted, 2119 actual; filed forensically as nicsuzor/academicOps#1445) — by making it cheaper, not by adding a new gate.
+
+**Example — a worker completion summary with the manifest:**
+
+```
+## Verification manifest
+
+- OBSERVED: full suite passes.
+  cmd: `uv run pytest -q`
+  out: `2119 passed, 4 skipped in 188.31s`
+- OBSERVED: the 3 new gate tests pass.
+  cmd: `uv run pytest tests/hooks/test_gate_verdict_logic.py -q`
+  out: `3 passed in 1.04s`
+- ASSERTED: no other call sites reference the renamed helper.
+  (grep done last session, not re-run after this edit — coordinator should re-derive)
+- ASSERTED: this change is backward-compatible with the 0.3.x config schema.
+  (reasoned from the diff, not exercised against an old config)
+```
+
+Contrast the failure shape this replaces: `"Done — 841 passed, fully backward-compatible"`, where nothing distinguishes the number the worker watched scroll past from the number it half-remembered, so the only way to trust either is to re-run everything.
+
+**Authoring rule:** if you cannot cite a `cmd` + output line for a load-bearing number, it is ASSERTED — say so. Do not launder an ASSERTED claim into OBSERVED phrasing ("the suite passes") without the evidence; an unmarked claim reads as OBSERVED and that is the exact substitution this manifest exists to prevent (A8, engineering integrity). A summary with zero OBSERVED claims is a signal the work was never exercised.
+
+_The Stop honesty-check ([[../../../hooks/templates/ida-reminder]]) validates against this manifest: it targets ASSERTED claims for re-derivation first. Coordinators consuming a worker completion ([[../../supervisor/instructions/worker-dispatch#post-dispatch]]) do the same._

@@ -72,6 +72,8 @@ Stale task cleanup is periodic: `polecat reset-stalled --hours 4`
 
 Worker failures surface as missing PRs or crashed statuses. The task stays `in_progress` until reset or picked up by the react phase.
 
+**Trusting a worker completion summary (observed-vs-asserted manifest).** A substantive worker's completion summary is expected to carry a verification manifest: each load-bearing quantitative/structural claim tagged OBSERVED (with `cmd` + output excerpt the worker ran this session) or ASSERTED (derived/recalled, not freshly observed) — see [[../../aops/references/authoring-discipline#5-worker-completion-summaries-carry-a-verification-manifest-observed-vs-asserted]]. When the coordinator re-derives relayed claims (the Stop honesty-check forces this), target the ASSERTED claims first and spot-check OBSERVED ones against the cited output, rather than re-running everything. A summary that asserts a load-bearing number with no manifest is itself a signal to re-derive that number before relaying it.
+
 ### Turn Budget Exhaustion
 
 If a worker exhausts its turn budget without finishing the task, it exits cleanly (status 1) and preserves the uncommitted worktree.
