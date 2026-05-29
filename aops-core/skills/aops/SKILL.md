@@ -179,7 +179,7 @@ Route your task to the appropriate workflow:
 | **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
 | **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
 | **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                           |
-| **Verify hook output channel routing**    | [12-hook-routing-self-test](workflows/12-hook-routing-self-test.md) |
+| **Verify hook output channel routing**    | [11-self-test](workflows/11-self-test.md) §3                        |
 
 ### Quick Decision Tree
 
@@ -218,7 +218,7 @@ Is this a self-test or verification of session infrastructure?
   → YES: 11-self-test
 
 Is this verifying hook output lands on the correct channel?
-  → YES: 12-hook-routing-self-test
+  → YES: 11-self-test (§3 covers channel-routing matrix)
 ```
 
 ---
