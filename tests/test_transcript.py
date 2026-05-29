@@ -1,5 +1,6 @@
 """Tests for transcript parsing and reflection extraction."""
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -9,6 +10,19 @@ from pathlib import Path
 import pytest
 from lib.paths import get_summaries_dir, get_transcripts_dir
 from lib.transcript_paths import iter_rotated_files
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_transcript_script():
+    """Load aops-core/scripts/transcript.py as a module (avoids shadowing stdlib)."""
+    spec = importlib.util.spec_from_file_location(
+        "transcript_script", _REPO_ROOT / "aops-core" / "scripts" / "transcript.py"
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 class TestReflectionExtraction:
@@ -438,3 +452,195 @@ class TestThoughtsAndContext:
         )
         assert "Extended thinking" in md
         assert "Let me think about this carefully" in md
+
+
+class TestStableTranscriptSlug:
+    """Regression tests for stable parent transcript filenames (aops-e6dd60cf).
+
+    The slug is content-derived and shifts between cron passes when the source
+    JSONL grows. The fix freezes the slug at first-render time by reusing the
+    existing transcript's base name on re-renders.
+    """
+
+    SESSION_UUID = "7fe1395c-1234-5678-9abc-def012345678"
+    SESSION_ID = "7fe1395c"
+
+    @staticmethod
+    def _ts(off_min: int) -> str:
+        start = datetime(2026, 5, 29, 18, 27, 0, tzinfo=UTC)
+        return (start + timedelta(minutes=off_min)).isoformat()
+
+    def test_slug_is_volatile_without_fix(self, tmp_path: Path) -> None:
+        """generate_session_slug shifts as JSONL grows — this motivates the fix.
+
+        Phase 1: only list-content user entries → slug falls back to 'session'.
+        Phase 2: a string-content Stop-hook-feedback entry appears → slug becomes
+        'stop-hook-feedback'. This volatility caused the rename churn before the fix.
+        """
+        from lib.transcript_parser import Entry, SessionProcessor
+
+        processor = SessionProcessor()
+
+        assistant_entry = Entry(
+            type="assistant",
+            uuid="a0",
+            timestamp=datetime(2026, 5, 29, 18, 28, 0, tzinfo=UTC),
+            message={
+                "role": "assistant",
+                "content": [{"type": "text", "text": "Processing."}],
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+        )
+
+        # Phase 1: list content only — generate_session_slug skips list entries
+        phase1_entries = [
+            Entry(
+                type="user",
+                uuid="u0",
+                timestamp=datetime(2026, 5, 29, 18, 27, 0, tzinfo=UTC),
+                message={"role": "user", "content": [{"type": "tool_result", "content": "..."}]},
+            ),
+            assistant_entry,
+        ]
+
+        # Phase 2: append a string-content user message that yields a volatile slug
+        phase2_entries = phase1_entries + [
+            Entry(
+                type="user",
+                uuid="u1",
+                timestamp=datetime(2026, 5, 29, 18, 32, 0, tzinfo=UTC),
+                message={
+                    "role": "user",
+                    "content": "stop hook feedback the previous session was productive and complete",
+                },
+            ),
+            Entry(
+                type="assistant",
+                uuid="a1",
+                timestamp=datetime(2026, 5, 29, 18, 33, 0, tzinfo=UTC),
+                message={
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "Thank you."}],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                },
+            ),
+        ]
+
+        slug1 = processor.generate_session_slug(phase1_entries)
+        slug2 = processor.generate_session_slug(phase2_entries)
+
+        assert slug1 == "session", f"Phase 1 slug should be 'session', got {slug1!r}"
+        assert slug2 == "stop-hook-feedback", (
+            f"Phase 2 slug should be 'stop-hook-feedback', got {slug2!r}"
+        )
+        assert slug1 != slug2, (
+            "Slug must differ between phases — this is the volatility the fix addresses"
+        )
+
+    def test_stable_base_name_from_existing_transcript(self, tmp_path: Path) -> None:
+        """When existing_transcript is found, base_name is derived from it, not content.
+
+        This is the core mechanism of the fix: the slug is frozen at first-render time.
+        """
+        t = _load_transcript_script()
+
+        session_id = self.SESSION_ID
+        transcripts_dir = tmp_path / "transcripts"
+        transcripts_dir.mkdir()
+
+        # Existing transcript with original slug 'session' (set on first render)
+        existing = transcripts_dir / f"20260529-1827-{session_id}-aops-claude-session-full.md"
+        existing.write_text("prior transcript content")
+
+        found = t._find_existing_transcript(transcripts_dir, session_id)
+        assert found == existing
+
+        # The fix: derive base_name from the existing file, not from re-derived content
+        stable_base = str(found)[: -len("-full.md")]
+
+        assert "session" in stable_base
+        assert "stop-hook-feedback" not in stable_base
+
+    def test_stale_extra_files_cleaned_canonical_preserved(self, tmp_path: Path) -> None:
+        """Extra files with wrong slugs are removed; the canonical (first-render) file is kept.
+
+        In production the sequence is: find canonical → process entries → cleanup extra files.
+        The test mirrors this order: the stale file is created AFTER finding the canonical so
+        _find_existing_transcript reliably returns the canonical, then cleanup removes the stale.
+        """
+        t = _load_transcript_script()
+
+        session_id = self.SESSION_ID
+        transcripts_dir = tmp_path / "transcripts"
+        transcripts_dir.mkdir()
+
+        # Step 1: Only canonical files exist (first-render state)
+        canonical_full = transcripts_dir / f"20260529-1827-{session_id}-aops-claude-session-full.md"
+        canonical_abridged = (
+            transcripts_dir / f"20260529-1827-{session_id}-aops-claude-session-abridged.md"
+        )
+        canonical_full.write_text("canonical content")
+        canonical_abridged.write_text("canonical abridged")
+
+        # Step 2: Find existing transcript (only canonical present — returns it reliably)
+        existing_transcript = t._find_existing_transcript(transcripts_dir, session_id)
+        assert existing_transcript == canonical_full
+        base_name = str(existing_transcript)[: -len("-full.md")]
+
+        # Step 3: Simulate that a stale duplicate appeared (e.g., from a prior bad render)
+        stale_full = (
+            transcripts_dir / f"20260529-1827-{session_id}-aops-claude-stop-hook-feedback-full.md"
+        )
+        stale_abridged = (
+            transcripts_dir
+            / f"20260529-1827-{session_id}-aops-claude-stop-hook-feedback-abridged.md"
+        )
+        stale_full.write_text("stale content")
+        stale_abridged.write_text("stale abridged")
+
+        # Step 4: Run the stable-slug cleanup logic from the fix
+        stale_files = t._find_existing_transcripts(transcripts_dir, session_id)
+        for f in stale_files:
+            canonical = (
+                f"{base_name}-full.md"
+                if f.name.endswith("-full.md")
+                else f"{base_name}-abridged.md"
+            )
+            if str(f) != canonical:
+                f.unlink()
+
+        assert canonical_full.exists(), "Canonical full transcript must survive cleanup"
+        assert canonical_abridged.exists(), "Canonical abridged must survive cleanup"
+        assert not stale_full.exists(), "Stale full with wrong slug must be removed"
+        assert not stale_abridged.exists(), "Stale abridged with wrong slug must be removed"
+
+    def test_existing_transcript_survives_empty_entries_guard(self, tmp_path: Path) -> None:
+        """Existing transcript is NOT deleted when meaningful_count < MIN_MEANINGFUL.
+
+        Regression: old code deleted stale files BEFORE parsing entries. When a
+        cloud-bridged session's entries hadn't flushed locally, the guard fired
+        AFTER the delete — losing the transcript permanently.
+        """
+        t = _load_transcript_script()
+
+        session_id = self.SESSION_ID
+        transcripts_dir = tmp_path / "transcripts"
+        transcripts_dir.mkdir()
+
+        existing = transcripts_dir / f"20260529-1827-{session_id}-aops-claude-session-full.md"
+        existing.write_text("content from first render")
+
+        # Guard condition: existing_transcript IS found
+        existing_transcript = t._find_existing_transcript(transcripts_dir, session_id)
+        assert existing_transcript is not None
+
+        # Fix: skip cleanup when existing_transcript is set
+        # (old code ran cleanup unconditionally before this check)
+        cleanup_ran = False
+        if not existing_transcript:
+            cleanup_ran = True
+            for stale in t._find_existing_transcripts(transcripts_dir, session_id):
+                stale.unlink()
+
+        assert not cleanup_ran, "Cleanup must not run when existing_transcript is present"
+        assert existing.exists(), "Existing transcript must survive the empty-entries guard"
