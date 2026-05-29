@@ -43,6 +43,7 @@ from lib.subagent_transcript import (  # noqa: E402
 )
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
+    SessionSummary,
     UsageStats,
     extract_reflection_from_entries,
     extract_timeline_events,
@@ -314,6 +315,8 @@ def _save_minimal_token_summary(
     provider: str | None = None,
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
+    session_ctx: dict | None = None,
+    session_summary: SessionSummary | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -381,6 +384,44 @@ def _save_minimal_token_summary(
         "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
     }
 
+    if usage_stats:
+        insights["attribution"] = {
+            "plugins": list(usage_stats.attribution["plugins"]),
+            "skills": list(usage_stats.attribution["skills"]),
+            "mcp_servers": usage_stats.attribution["mcp_servers"],
+            "mcp_tools": usage_stats.attribution["mcp_tools"],
+        }
+        insights["stop_reasons"] = usage_stats.stop_reasons
+        insights["thinking_turns"] = usage_stats.thinking_turns
+
+    if session_ctx:
+        for k, v in session_ctx.items():
+            if k == "git_branches":
+                insights["git_branch"] = v  # legacy or git_branch/git_branches logic
+            elif k == "permission_modes":
+                insights["permission_mode"] = v
+            elif k == "models":
+                pass  # not specifically requested to be flat key, already in token_metrics
+            elif v is not None:
+                insights[k] = v
+
+    if session_summary:
+        if session_summary.session_type:
+            insights["session_type"] = session_summary.session_type
+        if session_summary.gemini_version:
+            insights["gemini_version"] = session_summary.gemini_version
+        if session_summary.details:
+            if "gates" in session_summary.details:
+                insights["gates"] = session_summary.details["gates"]
+            if "global_turn_count" in session_summary.details:
+                insights["global_turn_count"] = session_summary.details["global_turn_count"]
+            if "main_agent_todos" in session_summary.details:
+                insights["main_agent"] = {"todos": session_summary.details["main_agent_todos"]}
+            if "started_at" in session_summary.details:
+                insights["started_at"] = session_summary.details["started_at"]
+            if "ended_at" in session_summary.details:
+                insights["ended_at"] = session_summary.details["ended_at"]
+
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
@@ -447,6 +488,8 @@ def _process_reflection(
     provider: str | None = None,
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
+    session_ctx: dict | None = None,
+    session_summary: SessionSummary | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -484,6 +527,8 @@ def _process_reflection(
                 provider=provider,
                 session_path=session_path,
                 origin_override=origin_override,
+                session_ctx=session_ctx,
+                session_summary=session_summary,
             )
         return None, None
 
@@ -516,6 +561,7 @@ def _process_reflection(
                 provider=provider,
                 session_path=session_path,
                 origin_override=origin_override,
+                session_ctx=session_ctx,
             )
         )
 
@@ -1375,6 +1421,26 @@ Examples:
                 turns = processor.group_entries_into_turns(entries, agent_entries)
                 timeline_events = extract_timeline_events(turns, session_id)
 
+                # Augment summary with explicit session metadata from entries (CC 2.1+)
+                from lib.transcript_parser import extract_session_context
+
+                session_ctx = extract_session_context(entries)
+                session_summary.session_kind = session_ctx.get("session_kind")
+                session_summary.user_type = session_ctx.get("user_type")
+                session_summary.entrypoint = session_ctx.get("entrypoint")
+                session_summary.cwd = session_ctx.get("cwd")
+                session_summary.client_version = session_ctx.get("client_version")
+                session_summary.git_branches = session_ctx.get("git_branches", [])
+                session_summary.permission_modes = session_ctx.get("permission_modes", [])
+                session_summary.models = session_ctx.get("models", [])
+
+                # Fetch existing outcome if available (from insights JSON)
+                existing_path = find_existing_insights(date_iso, session_id)
+                if existing_path:
+                    existing_insights = _load_existing_insights(existing_path)
+                    if existing_insights:
+                        session_summary.outcome = existing_insights.get("outcome")
+
                 reflection_header, _ = _process_reflection(
                     entries,
                     session_id,
@@ -1389,6 +1455,7 @@ Examples:
                     provider=session_summary.provider,
                     session_path=session_path,
                     origin_override=session_origin,
+                    session_ctx=session_ctx,
                 )
 
                 # Generate full version

@@ -1045,6 +1045,8 @@ def reflection_to_insights(
     provider: str | None = None,
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
+    session_ctx: dict | None = None,
+    session_summary: SessionSummary | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -1189,6 +1191,44 @@ def reflection_to_insights(
                 break
     else:
         result["user_prompt_count"] = None
+
+    if usage_stats:
+        result["attribution"] = {
+            "plugins": list(usage_stats.attribution["plugins"]),
+            "skills": list(usage_stats.attribution["skills"]),
+            "mcp_servers": usage_stats.attribution["mcp_servers"],
+            "mcp_tools": usage_stats.attribution["mcp_tools"],
+        }
+        result["stop_reasons"] = usage_stats.stop_reasons
+        result["thinking_turns"] = usage_stats.thinking_turns
+
+    if session_ctx:
+        for k, v in session_ctx.items():
+            if k == "git_branches":
+                result["git_branch"] = v
+            elif k == "permission_modes":
+                result["permission_mode"] = v
+            elif k == "models":
+                pass
+            elif v is not None:
+                result[k] = v
+
+    if session_summary:
+        if session_summary.session_type:
+            result["session_type"] = session_summary.session_type
+        if session_summary.gemini_version:
+            result["gemini_version"] = session_summary.gemini_version
+        if session_summary.details:
+            if "gates" in session_summary.details:
+                result["gates"] = session_summary.details["gates"]
+            if "global_turn_count" in session_summary.details:
+                result["global_turn_count"] = session_summary.details["global_turn_count"]
+            if "main_agent_todos" in session_summary.details:
+                result["main_agent"] = {"todos": session_summary.details["main_agent_todos"]}
+            if "started_at" in session_summary.details:
+                result["started_at"] = session_summary.details["started_at"]
+            if "ended_at" in session_summary.details:
+                result["ended_at"] = session_summary.details["ended_at"]
 
     return result
 
@@ -1402,11 +1442,25 @@ class UsageStats:
     output_tokens: int = 0
     cache_creation_input_tokens: int = 0
     cache_read_input_tokens: int = 0
+    server_tool_use: int = 0
+    service_tier: str | None = None
 
     # Breakdowns by category
     by_model: dict[str, dict[str, int]] = field(default_factory=dict)
     by_tool: dict[str, dict[str, int]] = field(default_factory=dict)
     by_agent: dict[str, dict[str, int]] = field(default_factory=dict)
+
+    # Aggregations (CC 2.1+)
+    attribution: dict[str, Any] = field(
+        default_factory=lambda: {
+            "plugins": set(),
+            "skills": set(),
+            "mcp_servers": {},
+            "mcp_tools": {},
+        }
+    )
+    stop_reasons: dict[str, int] = field(default_factory=dict)
+    thinking_turns: int = 0
 
     # Human-attention proxies (main session only; subagent-internal entries excluded).
     # user_messages: real user-role entries excluding tool_result wrappers and meta.
@@ -1434,6 +1488,41 @@ class UsageStats:
             self.cache_creation_input_tokens += entry.cache_creation_input_tokens
         if entry.cache_read_input_tokens:
             self.cache_read_input_tokens += entry.cache_read_input_tokens
+        if entry.server_tool_use:
+            self.server_tool_use += entry.server_tool_use
+        if entry.service_tier and not self.service_tier:
+            self.service_tier = entry.service_tier
+
+        if entry.stop_reason:
+            self.stop_reasons[entry.stop_reason] = self.stop_reasons.get(entry.stop_reason, 0) + 1
+
+        if entry.attribution_plugin:
+            self.attribution["plugins"].add(entry.attribution_plugin)
+        if entry.attribution_skill:
+            self.attribution["skills"].add(entry.attribution_skill)
+        if entry.attribution_mcp_server:
+            self.attribution["mcp_servers"][entry.attribution_mcp_server] = (
+                self.attribution["mcp_servers"].get(entry.attribution_mcp_server, 0) + 1
+            )
+        if entry.attribution_mcp_tool:
+            self.attribution["mcp_tools"][entry.attribution_mcp_tool] = (
+                self.attribution["mcp_tools"].get(entry.attribution_mcp_tool, 0) + 1
+            )
+
+        # fix Claude thinking-block counting: check for type=="thinking" in content array or entry.thoughts
+        has_thinking = False
+        if entry.thoughts:
+            has_thinking = True
+        elif isinstance(entry.content, list):
+            for block in entry.content:
+                if isinstance(block, dict) and block.get("type") in (
+                    "thinking",
+                    "redacted_thinking",
+                ):
+                    has_thinking = True
+                    break
+        if has_thinking:
+            self.thinking_turns += 1
 
         # Aggregate by model
         if entry.model:
@@ -1515,6 +1604,8 @@ class UsageStats:
                 "output_tokens": self.output_tokens,
                 "cache_read_tokens": self.cache_read_input_tokens,
                 "cache_create_tokens": self.cache_creation_input_tokens,
+                "server_tool_use": self.server_tool_use,
+                "service_tier": self.service_tier,
             },
             "by_model": self.by_model,
             "by_tool": self.by_tool,
@@ -1647,12 +1738,28 @@ class Entry:
     tool_input: dict | None = None  # Tool parameters for PreToolUse/PostToolUse hooks
     agent_id: str | None = None
 
+    # Session metadata fields (CC 2.1+)
+    session_kind: str | None = None
+    user_type: str | None = None
+    entrypoint: str | None = None
+    cwd: str | None = None
+    client_version: str | None = None
+    git_branch: str | None = None
+    permission_mode: str | None = None
+    stop_reason: str | None = None
+    attribution_plugin: str | None = None
+    attribution_skill: str | None = None
+    attribution_mcp_server: str | None = None
+    attribution_mcp_tool: str | None = None
+
     # Token tracking fields
     input_tokens: int | None = None
     output_tokens: int | None = None
     cache_creation_input_tokens: int | None = None
     cache_read_input_tokens: int | None = None
     model: str | None = None
+    service_tier: str | None = None
+    server_tool_use: int | None = None
 
     # Reasoning / thinking fields
     # Gemini: list of {"subject": str, "description": str, "timestamp": str}
@@ -1680,6 +1787,11 @@ class Entry:
         cache_creation_input_tokens = usage.get("cache_creation_input_tokens")
         cache_read_input_tokens = usage.get("cache_read_input_tokens")
         model = message.get("model")
+        service_tier = usage.get("service_tier")
+        server_tool_use = usage.get("server_tool_use")
+
+        # Determine stop_reason (can be top-level or in message)
+        stop_reason = data.get("stopReason") or message.get("stop_reason")
 
         entry = cls(
             type=entry_type,
@@ -1698,6 +1810,20 @@ class Entry:
             cache_creation_input_tokens=cache_creation_input_tokens,
             cache_read_input_tokens=cache_read_input_tokens,
             model=model,
+            service_tier=service_tier,
+            server_tool_use=server_tool_use,
+            session_kind=data.get("sessionKind"),
+            user_type=data.get("userType"),
+            entrypoint=data.get("entrypoint"),
+            cwd=data.get("cwd"),
+            client_version=data.get("version"),
+            git_branch=data.get("gitBranch"),
+            permission_mode=data.get("permissionMode"),
+            stop_reason=stop_reason,
+            attribution_plugin=data.get("attributionPlugin"),
+            attribution_skill=data.get("attributionSkill"),
+            attribution_mcp_server=data.get("attributionMcpServer"),
+            attribution_mcp_tool=data.get("attributionMcpTool"),
         )
 
         # Promote hook_non_blocking_error attachments to system_reminder so
@@ -1803,6 +1929,63 @@ class SessionSummary:
     # (claude-code, claude-desktop, polecat, crew, github-actions).
     surface: str | None = None
     client: str | None = None
+
+    # Context (CC 2.1+ / Gemini)
+    session_kind: str | None = None
+    user_type: str | None = None
+    entrypoint: str | None = None
+    cwd: str | None = None
+    client_version: str | None = None
+    git_branches: list[str] = field(default_factory=list)
+    permission_modes: list[str] = field(default_factory=list)
+    models: list[str] = field(default_factory=list)
+    session_type: str | None = None
+    gemini_version: str | None = None
+    outcome: str | None = None
+
+
+def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
+    """Extract session-level metadata from entries.
+
+    Returns first-seen values for categorical fields, and unique sets
+    for fields that can change mid-session (git_branch, permission_mode, model).
+    """
+    ctx: dict[str, Any] = {
+        "session_kind": None,
+        "user_type": None,
+        "entrypoint": None,
+        "cwd": None,
+        "client_version": None,
+        "git_branches": [],
+        "permission_modes": [],
+        "models": [],
+    }
+    branches = set()
+    perms = set()
+    models = set()
+
+    for e in entries:
+        if not ctx["session_kind"] and e.session_kind:
+            ctx["session_kind"] = e.session_kind
+        if not ctx["user_type"] and e.user_type:
+            ctx["user_type"] = e.user_type
+        if not ctx["entrypoint"] and e.entrypoint:
+            ctx["entrypoint"] = e.entrypoint
+        if not ctx["cwd"] and e.cwd:
+            ctx["cwd"] = e.cwd
+        if not ctx["client_version"] and e.client_version:
+            ctx["client_version"] = e.client_version
+        if e.git_branch:
+            branches.add(e.git_branch)
+        if e.permission_mode:
+            perms.add(e.permission_mode)
+        if e.model:
+            models.add(e.model)
+
+    ctx["git_branches"] = sorted(list(branches))
+    ctx["permission_modes"] = sorted(list(perms))
+    ctx["models"] = sorted(list(models))
+    return ctx
 
 
 @dataclass
@@ -2450,6 +2633,7 @@ class SessionProcessor:
         entries: list[Entry] = []
         first_text: str | None = None
         first_ts: datetime | None = None
+        project_hash: str | None = None
 
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -2474,6 +2658,8 @@ class SessionProcessor:
             if "$set" in obj and len(obj) == 1:
                 continue
             if "sessionId" in obj and "role" not in obj and "type" not in obj:
+                if not project_hash:
+                    project_hash = obj.get("projectHash")
                 if first_ts is None:
                     st = obj.get("startTime")
                     if isinstance(st, str):
@@ -2624,10 +2810,42 @@ class SessionProcessor:
                     )
                 )
 
+        # Look for sidecar metadata in parent directory (~/.gemini/tmp/<project>/)
+        sidecar_path = None
+        for candidate in file_path.parent.parent.glob(f"*{short_id}*-session.json"):
+            sidecar_path = candidate
+            break
+
+        sidecar_data = {}
+        if sidecar_path and sidecar_path.exists():
+            try:
+                with open(sidecar_path, encoding="utf-8") as f:
+                    sidecar_data = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        details = {}
+        if sidecar_data:
+            details["gates"] = sidecar_data.get("gates")
+            details["global_turn_count"] = sidecar_data.get("global_turn_count")
+            main_agent = sidecar_data.get("main_agent", {})
+            details["main_agent_todos"] = {
+                "completed": main_agent.get("todos_completed", 0),
+                "total": main_agent.get("todos_total", 0),
+            }
+            details["started_at"] = sidecar_data.get("started_at")
+            details["ended_at"] = sidecar_data.get("ended_at")
+            if project_hash:
+                details["project_hash"] = project_hash
+
         summary = SessionSummary(
             uuid=short_id,
             summary="Gemini CLI Session",
             created_at=first_ts.isoformat() if first_ts else "",
+            session_type=sidecar_data.get("session_type"),
+            gemini_version=sidecar_data.get("version"),
+            task_id=sidecar_data.get("main_agent", {}).get("current_task"),
+            details=details,
         )
         return summary, entries, {}
 
@@ -4385,6 +4603,32 @@ class SessionProcessor:
             metadata_yaml += f"task_id: {session.task_id}\n"
         if session.slug:
             metadata_yaml += f"slug: {session.slug}\n"
+        if session.session_kind:
+            metadata_yaml += f"session_kind: {session.session_kind}\n"
+        if session.user_type:
+            metadata_yaml += f"user_type: {session.user_type}\n"
+        if session.entrypoint:
+            metadata_yaml += f"entrypoint: {session.entrypoint}\n"
+        if session.client_version:
+            metadata_yaml += f"client_version: {session.client_version}\n"
+        if session.git_branches:
+            if len(session.git_branches) == 1:
+                metadata_yaml += f"git_branch: {session.git_branches[0]}\n"
+            else:
+                metadata_yaml += f"git_branches: [{', '.join(session.git_branches)}]\n"
+        if session.permission_modes:
+            if len(session.permission_modes) == 1:
+                metadata_yaml += f"permission_mode: {session.permission_modes[0]}\n"
+            else:
+                metadata_yaml += f"permission_modes: [{', '.join(session.permission_modes)}]\n"
+        if session.models:
+            metadata_yaml += f"models: [{', '.join(session.models)}]\n"
+        if session.session_type:
+            metadata_yaml += f"session_type: {session.session_type}\n"
+        if session.gemini_version:
+            metadata_yaml += f"gemini_version: {session.gemini_version}\n"
+        if session.outcome:
+            metadata_yaml += f"outcome: {session.outcome}\n"
 
         frontmatter = f"""---
 title: "{title} ({variant})"
