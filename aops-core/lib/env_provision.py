@@ -25,12 +25,24 @@ import os
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-# ANSI styling mirrored from scripts/setup-machine.sh (single visual SSoT).
-_RED = "\033[0;31m"
-_GREEN = "\033[0;32m"
-_YELLOW = "\033[0;33m"
-_BOLD = "\033[1m"
-_NC = "\033[0m"
+# Visual style helpers live in the shared diag_style SSoT (re-exported here so
+# this module's existing internal references keep working unchanged).
+from lib.diag_style import (
+    _BOLD,
+    _GREEN,
+    _NC,
+    _RED,
+    _fail,
+    _ok,
+    section_header,
+)
+
+__all__ = [
+    "ProvisionReport",
+    "Surface",
+    "detect_surface",
+    "validate_surface",
+]
 
 
 class Surface(StrEnum):
@@ -97,18 +109,6 @@ def _redact(name: str, value: str) -> str:
     return value
 
 
-def _ok(msg: str) -> str:
-    return f"  {_GREEN}ok{_NC}    {msg}"
-
-
-def _warn(msg: str) -> str:
-    return f"  {_YELLOW}warn{_NC}  {msg}"
-
-
-def _fail(msg: str) -> str:
-    return f"  {_RED}FAIL{_NC}  {msg}"
-
-
 def validate_surface(env: dict[str, str] | None = None) -> ProvisionReport:
     """Validate required env vars for the detected surface.
 
@@ -129,7 +129,7 @@ def validate_surface(env: dict[str, str] | None = None) -> ProvisionReport:
             skipped=True,
             lines=[
                 "",
-                f"{_BOLD}── ENV provisioning ──{_NC}",
+                section_header("ENV provisioning"),
                 _ok("GHA surface: secrets injected by Actions; provisioning skipped"),
                 "",
             ],
@@ -145,7 +145,7 @@ def validate_surface(env: dict[str, str] | None = None) -> ProvisionReport:
         else:
             missing.append(name)
 
-    lines: list[str] = ["", f"{_BOLD}── ENV provisioning [host] ──{_NC}"]
+    lines: list[str] = ["", section_header("ENV provisioning", "host")]
 
     if not missing:
         lines.append(f"{_GREEN}{_BOLD}✅ ENV OK — all required vars present [host]{_NC}")

@@ -17,6 +17,7 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
+from lib.diag_style import _ok, _warn, section_header
 from lib.gate_model import GateResult, GateVerdict
 from lib.session_paths import (
     get_all_gate_file_paths,
@@ -102,27 +103,33 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     transcript_path = ctx.transcript_path or ""  # allow-fallback: status string only
 
-    # Session started messages
+    # Session block — new-style diagnostic rows (matches the ENV block grammar:
+    # leading blank line, bold ── header ──, then indented status rows).
     messages = [
-        f"Session Started: {ctx.session_id} ({short_hash})",
-        f"Version: {state.version}",
-        f"State File: {state_file_path}",
-        f"Hooks log: {hook_log_path}",
-        f"Transcript: {transcript_path}",
+        "",
+        section_header("Session"),
+        _ok(f"Session Started: {ctx.session_id} ({short_hash})"),
+        _ok(f"Version: {state.version}"),
+        _ok(f"State File: {state_file_path}"),
+        _ok(f"Hooks log: {hook_log_path}"),
+        # An empty transcript path is a fallback value — flag it as a warning.
+        _ok(f"Transcript: {transcript_path}")
+        if transcript_path
+        else _warn(f"Transcript: {transcript_path}"),
     ]
 
-    # Ensure auto mode classifier rules are installed
+    # Ensure auto mode classifier rules are installed.
     try:
         from lib.automode import install, is_installed
 
         if not is_installed():
             ok, msg = install()
             if ok:
-                messages.append(f"autoMode: {msg}")
+                messages.append(_ok(f"autoMode: {msg}"))
             else:
-                messages.append(f"autoMode: skipped ({msg})")
+                messages.append(_warn(f"autoMode: skipped ({msg})"))
     except Exception as e:
-        messages.append(f"autoMode: check failed ({e})")
+        messages.append(_warn(f"autoMode: check failed ({e})"))
 
     # 1. Persist Session ID
     # AOPS_SESSION_ID is the canonical, vendor-neutral session-id env var
@@ -240,9 +247,11 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # so this is a warning rather than a hard block.
     if not os.environ.get("AOPS_BOT_GH_TOKEN"):
         messages.append(
-            "⚠️  GitHub auth: AOPS_BOT_GH_TOKEN not set in the hook environment. "
-            "git/gh will fail-closed (no personal-credential fallback). "
-            "If it is set in your shell profile it will still be picked up."
+            _warn(
+                "GitHub auth: AOPS_BOT_GH_TOKEN not set in the hook environment. "
+                "git/gh will fail-closed (no personal-credential fallback). "
+                "If it is set in your shell profile it will still be picked up."
+            )
         )
 
     # 6. Push-safety guard: harness-created worktrees (claude/<codename>) are
@@ -256,7 +265,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
         push_safety_msg = ensure_worktree_push_safety(ctx.cwd or os.getcwd())
         if push_safety_msg:
-            messages.append(push_safety_msg)
+            messages.append(_warn(push_safety_msg))
     except Exception as e:
         print(f"WARNING: push-safety guard failed: {e}", file=sys.stderr)
 
@@ -318,15 +327,21 @@ date: {today_iso}
 Today's note has not been populated yet. Run `/daily` to update.
 """
             daily_note_path.write_text(content)
+            messages.append("")
+            messages.append(section_header("Daily note"))
             messages.append(
-                f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
+                _ok(f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)")
             )
         else:
-            messages.append(f"Daily note: {today_compact}-daily.md")
+            messages.append("")
+            messages.append(section_header("Daily note"))
+            messages.append(_ok(f"Daily note: {today_compact}-daily.md"))
 
     except Exception as e:
-        # Graceful degradation for daily note bootstrap
-        messages.append(f"Daily note: bootstrap failed ({e})")
+        # Graceful degradation for daily note bootstrap.
+        messages.append("")
+        messages.append(section_header("Daily note"))
+        messages.append(_warn(f"Daily note: bootstrap failed ({e})"))
 
     # Persist all resolved environment variables (literals and any env-to-env
     # mappings that resolved at hook time).
