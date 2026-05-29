@@ -14,7 +14,7 @@ mode: execution
 domain:
   - quality-assurance
   - operations
-allowed-tools: Agent, Bash, Read, Glob, Grep, AskUserQuestion
+allowed-tools: Agent, Bash, Read, Glob, Grep, AskUserQuestion, mcp__plugin_aops-core_pkb__create, mcp__plugin_aops-core_pkb__create_task
 version: 1.0.0
 permalink: commands/review-pr
 ---
@@ -324,6 +324,14 @@ Two execution environments are available. Choose based on what the agent needs:
 - Only dispatch to GHA if the workflow exists and is `active`
 
 **Default for this session**: Run all agents locally unless a specific GHA workflow is confirmed to exist and is appropriate. Local is simpler, works cross-repo, and gives full context.
+
+### Fallback when dispatch is structurally unavailable (#1442)
+
+If `Agent` is absent from your harness — the nested-dispatch limit that hits when this command runs inside a sub-agent that was itself dispatched (nicsuzor/academicOps#1442) — you cannot commission the readers in this step. Do NOT route around it with subprocesses (`Bash(claude -p ...)`), and do NOT fabricate reviewer voices. Surface the limit, then walk the **dispatch fallback ladder** (defined in full in `agents/james.md`):
+
+1. **Direct dispatch** — `Agent` available: commission per the routing above. Normal path.
+2. **Compose-to-PKB + top-level fan-out (preferred fallback)** — `Agent` absent but PKB reachable and you were dispatched by a caller that has dispatch. Compose the review brief to PKB (`create` a note or `create_task` carrying the PR URL + diff pointer, repo context, tier, and the per-reader instruction for each reviewer the tier calls for), then return a structured `NEEDS_TOP_LEVEL_FANOUT` signal naming that brief ID and the readers to run. The top-level coordinator fans out the independent rbg/pauli/marsha reads against the brief and feeds the returns back for synthesis (Step 5). This preserves the independent quorum; do not collapse to a single reader while this path is open.
+3. **Single-reader floor (last resort)** — neither dispatch nor top-level fan-out is reachable. Only then review single-threaded: run the reviewer frames yourself (axiom / strategic / runtime), ground each finding in the actual code, and **disclose the degradation plainly** in your posted review — name the missing quorum and cite #1442. The posted review must say it is single-reader; silent single-reader approval under James's multi-agent framing is a review failure.
 
 ### How to commission each agent
 
