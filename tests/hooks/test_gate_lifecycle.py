@@ -297,6 +297,9 @@ class TestStopDenyMaxFireDowngrade:
         """Handover block mode downgrades after N Stop blocks so Gemini can exit."""
         set_gate_modes(monkeypatch, handover="block", ida="off")
         monkeypatch.setenv("QA_GATE_MODE", "off")
+        # The handover UPS re-arm trigger has session_type_filter=["polecat","crew"],
+        # so the test needs a polecat session to re-arm correctly between turns.
+        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("handover")
