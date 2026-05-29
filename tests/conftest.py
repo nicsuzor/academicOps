@@ -313,6 +313,18 @@ def ensure_test_environment(monkeypatch, tmp_path):
         (sessions_dir / "polecat.yaml").write_text(_POLECAT_EXAMPLE.read_text())
     monkeypatch.delenv("AOPS_POLECAT_CONFIG", raising=False)
 
+    # Reset the session_naming providers cache so each test re-resolves
+    # external_agents from the test-scoped polecat.yaml.  Without this,
+    # the module-level _PROVIDERS_CACHE persists across tests in the same
+    # worker process and can be populated from a different config (e.g. from
+    # a test that runs before AOPS_SESSIONS is pointed at the seeded yaml).
+    try:
+        from lib import session_naming
+
+        session_naming._reset_providers_cache()
+    except Exception:
+        pass
+
     # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
     # This is required for hooks to run successfully under macOS Seatbelt
     uv_cache = tmp_path / "uv_cache"
