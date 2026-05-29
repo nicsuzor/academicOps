@@ -255,6 +255,16 @@ class TestContextBodyNeverLeaksToUser:
 
     @pytest.mark.parametrize("path", CONTEXT_PATHS, ids=[p.id for p in CONTEXT_PATHS])
     def test_context_body_absent_from_user_channels(self, router, path: MessagePath):
+        # Same-key paths (message_key == context_key) deliberately route ONE
+        # short status to both the user and the agent channel — the body IS the
+        # user notice, so it is expected in a user field. That pattern is
+        # covered (and asserted short) by TestEnforcerVerifiedSameKey; excluding
+        # it here keeps this sweep a pure instruction-body-leak detector.
+        if path.message_key and path.message_key == path.context_key:
+            pytest.skip(
+                f"{path.id}: same-key dual-channel status — see TestEnforcerVerifiedSameKey"
+            )
+
         canonical, rendered_ctx, _short = _build_canonical(path)
         output = router.output_for_claude(canonical, path.event)
 
@@ -464,4 +474,45 @@ class TestRealPipelineEnforcerLeak:
         assert not leaks, (
             f"LEAK [real enforcer {mode}]: context body in user field(s) "
             f"{list(leaks)}: {next(iter(leaks.values()))[:120]!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Stop `reason` is USER-VISIBLE.
+#
+# Claude Code renders a blocking Stop hook's `reason` to the user as a notice
+# (confirmed empirically: the full advisory appeared as "Stop hook error: ...").
+# There is no agent-only Stop channel, so the advisory necessarily shows. The
+# accepted contract (design decision: "beautify the visible reason") is that
+# `reason` must read as a clean human notice — it must NOT carry the raw
+# <SYSTEM HOOK INSTRUCTION> scaffold, which is a model-facing signal only.
+#
+# This is the invariant the sibling test_output_channel_routing.py misses: it
+# treats `reason` as an agent-only channel and never checks it for user-facing
+# tidiness.
+# ---------------------------------------------------------------------------
+
+
+class TestStopReasonIsUserVisibleAndTidy:
+    """The blocking Stop `reason` (shown to the user) must not contain the
+    <SYSTEM HOOK INSTRUCTION> marker scaffold."""
+
+    @pytest.mark.parametrize("gate_name", _FIREABLE_STOP_GATES)
+    @pytest.mark.parametrize("mode", ["warn", "block"])
+    def test_stop_reason_has_no_marker_scaffold(self, router, monkeypatch, gate_name, mode):
+        set_gate_modes(monkeypatch, **{gate_name: mode})
+        reinit_gates_with_defaults()
+
+        result = router._dispatch_gates(
+            make_gate_trigger_context(gate_name), make_gate_trigger_state(gate_name)
+        )
+        assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
+        output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
+
+        # These gates block (or warn-upgraded-to-block), so reason is populated
+        # and shown to the user.
+        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+        assert _MARKER_OPEN not in output.reason and _MARKER_CLOSE not in output.reason, (
+            f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into the "
+            f"user-visible Stop reason: {output.reason[:120]!r}"
         )

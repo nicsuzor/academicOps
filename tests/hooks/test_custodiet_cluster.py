@@ -272,8 +272,12 @@ class TestWarnStopSurface:
             "agent reads the advisory on its next turn (aops-d10e7db6). "
             f"got decision={output.decision!r}"
         )
-        assert output.reason == "<SYSTEM HOOK INSTRUCTION>Proof required</SYSTEM HOOK INSTRUCTION>"
-        # Must NOT leak the advisory to user-visible channels.
+        # reason is user-visible (Claude Code shows a blocking Stop reason to
+        # the user); the router strips the <SYSTEM HOOK INSTRUCTION> scaffold,
+        # leaving the advisory body for both the agent and the user notice.
+        assert output.reason == "Proof required"
+        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
+        # Must NOT leak the marker scaffold to user-visible channels.
         assert output.stopReason is None or "SYSTEM HOOK INSTRUCTION" not in (
             output.stopReason or ""
         ), "Advisory must not leak into user-visible stopReason"
@@ -343,7 +347,8 @@ class TestWarnStopSurface:
             "ClaudeStopHookOutput should not have hookSpecificOutput field"
         )
         assert output.decision == "block"
-        assert output.reason == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
+        # reason is user-visible; marker scaffold stripped (advisory body kept).
+        assert output.reason == "evidence?"
 
 
 # ===========================================================================
