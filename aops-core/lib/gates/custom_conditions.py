@@ -131,17 +131,28 @@ def check_custom_condition(
         return os.environ.get("QA_GATE_MODE", "warn") == "warn"
 
     if name == "is_handover_block_mode":
-        # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking.
-        # Same split pattern as QA and IDA gates.
+        # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking
+        # AND the session did real work (write tool or task claim).
+        # Read-only sessions (session_did_work=False) are exempt — they need no
+        # structured handover (aops-16a15a05).
+        if not session_state.session_did_work:
+            return False
         return os.environ.get("HANDOVER_GATE_MODE", "warn") in ("block", "deny")
 
     if name == "is_handover_warn_mode":
-        # Handover gate policy: active only when HANDOVER_GATE_MODE is warn.
-        # Warn mode delivers the advisory via system_message only so Stop is
-        # not upgraded to decision=block by output_for_claude.
+        # Handover gate policy: active only when HANDOVER_GATE_MODE is warn
+        # AND the session did real work. Same read-only exemption as block mode.
+        if not session_state.session_did_work:
+            return False
         return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
 
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)
+
+    if name == "session_did_work":
+        # True if the session has used a write tool or claimed a task.
+        # Used directly in triggers/conditions that need this signal without
+        # combining it with a gate-mode check (aops-16a15a05).
+        return session_state.session_did_work
 
     return False

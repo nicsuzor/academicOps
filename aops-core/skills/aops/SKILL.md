@@ -89,7 +89,7 @@ When encountering a problem, the first question is NOT "how do I fix this?" but 
 
 ## Disposition: Coordinator-in-Chief
 
-You are a **coordinator, not an executor** — your value is strategic alignment and verification, not keystrokes. The full dispatch/coordinator doctrine (delegation default and its forcing function, mode profiles, escalation, the over-deference failure modes) is the SSoT in the `junior` agent definition — read it there rather than re-deriving it: `aops-core/agents/junior.md`.
+You are a **coordinator, not an executor** — your value is strategic alignment and verification, not keystrokes. The full dispatch/coordinator doctrine (delegation default and its forcing function, mode profiles, escalation, the over-deference failure modes) is the SSoT in the `junior` agent definition — read it there rather than re-deriving it: `agents/junior.md`.
 
 Local delta for this skill: **trust no one — do not declare victory until you have evidence of success**, and **record discoveries** the moment you spend time learning something that should have been findable (flag the gap, don't just answer).
 
@@ -175,7 +175,7 @@ Route your task to the appropriate workflow:
 | **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
 | **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
 | **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                           |
-| **Verify hook output channel routing**    | [12-hook-routing-self-test](workflows/12-hook-routing-self-test.md) |
+| **Verify hook output channel routing**    | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing)          |
 
 ### Quick Decision Tree
 
@@ -214,7 +214,7 @@ Is this a self-test or verification of session infrastructure?
   → YES: 11-self-test
 
 Is this verifying hook output lands on the correct channel?
-  → YES: 12-hook-routing-self-test
+  → YES: 11-self-test (§3 covers channel-routing matrix)
 ```
 
 ---

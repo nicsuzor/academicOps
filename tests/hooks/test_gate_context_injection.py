@@ -157,6 +157,9 @@ class TestStopBlockHasContextInjection:
         monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
         state = SessionState.create("test-stop-ctx")
         state.gates["handover"].status = GateStatus.CLOSED
+        # session_did_work=True is required for the handover policy to fire
+        # (read-only sessions are exempt from the handover requirement).
+        state.session_did_work = True
 
         ctx = HookContext(
             session_id="test-stop-ctx",

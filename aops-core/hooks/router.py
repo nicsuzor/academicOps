@@ -61,6 +61,22 @@ except ImportError as e:
 
 DEBUG_LOG_DIR = Path("/tmp")
 
+# Advisory text destined for the agent is wrapped in these markers by the gate
+# engine (lib/gates/engine.py). They are a model-facing signal only — nothing
+# parses them. On channels that are ALSO user-visible (the Stop `reason` field,
+# which Claude Code renders to the user as a notice), the raw tags read as a
+# system dump, so we strip them before display. Agent-only channels
+# (hookSpecificOutput.additionalContext) keep the markers intact.
+_HOOK_MARKER_OPEN = "<SYSTEM HOOK INSTRUCTION>"
+_HOOK_MARKER_CLOSE = "</SYSTEM HOOK INSTRUCTION>"
+
+
+def _strip_hook_markers(text: str | None) -> str | None:
+    """Remove the <SYSTEM HOOK INSTRUCTION> scaffold from user-visible text."""
+    if not text:
+        return text
+    return text.replace(_HOOK_MARKER_OPEN, "").replace(_HOOK_MARKER_CLOSE, "").strip()
+
 
 def _debug_log_path(session_id: str | None) -> Path:
     """Return per-session debug log path.
@@ -844,17 +860,23 @@ class HookRouter:
             ctx_inj = result.context_injection
             sys_msg = result.system_message
 
+            # The Stop `reason` field is BOTH user-visible (Claude Code renders
+            # a blocking Stop hook's reason as a notice) and agent-visible —
+            # there is no agent-only Stop channel. Strip the marker scaffold so
+            # the advisory reads as a clean notice rather than a raw system dump.
+            agent_reason = _strip_hook_markers(ctx_inj)
+
             if result.verdict == "deny":
                 output.decision = "block"
-                if ctx_inj:
-                    output.reason = ctx_inj
+                if agent_reason:
+                    output.reason = agent_reason
             elif result.verdict == "warn" and ctx_inj:
                 # Upgrade output decision to "block" so the advisory lands in
                 # the agent's context on the next turn. The internal verdict
                 # remains "warn" — only the Claude Code output decision field
                 # changes here, not the router's internal safety-net counter.
                 output.decision = "block"
-                output.reason = ctx_inj
+                output.reason = agent_reason
             else:
                 output.decision = "approve"
 

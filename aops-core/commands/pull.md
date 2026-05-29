@@ -2,7 +2,7 @@
 name: pull
 type: command
 category: instruction
-description: Advance the queue one step — pick the next ready task and DISPATCH it to the right surface. Never executes inline. Thin one-shot alias over the program loop's dispatch trigger.
+description: Advance the queue one step — pick the next queued task and DISPATCH it to the right surface. Never executes inline. Thin one-shot alias over the program loop's dispatch trigger.
 triggers:
   - "pull task"
   - "get work"
@@ -20,7 +20,7 @@ permalink: commands/pull
 
 # /pull — Advance the Queue One Step (Dispatch, Not Execute)
 
-**Purpose**: Pick the next ready task and **dispatch it to the right surface** (a polecat, or an in-process subagent), then stop. `/pull` does **one** dispatch step and exits. It never executes the task in this session.
+**Purpose**: Pick the next queued task and **dispatch it to the right surface** (a polecat, or an in-process subagent), then stop. `/pull` does **one** dispatch step and exits. It never executes the task in this session.
 
 > **What changed (WS4).** `/pull` used to mean "claim the next task and grind it inline here." That self-execution semantics is **retired** — it was the exact context-burn the north star forbids: the session that wanted to _advance_ the queue ended up _consuming_ its context on one task, shrinking its supervision breadth. The work a task needs now happens on the surface it is dispatched to (a polecat that ships a PR, or a subagent that reports back), never in the session that ran `/pull`.
 
@@ -32,7 +32,7 @@ There is **no daemon and nothing auto-claims** queued work (the v0.4 "polecats a
 
 ## Workflow (one dispatch, then stop)
 
-### Step 1: Select the next ready task
+### Step 1: Select the next queued task
 
 Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: dispatch only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be dispatched here — the user promotes `ready` → `queued` manually.
 
@@ -83,4 +83,4 @@ WS4 does **not** build the termination mechanism. The **legal-exit path** — ho
 
 ## Implementation Note
 
-`/pull` owns exactly one decision: _which ready task to dispatch, and to which surface._ How that surface then executes, verifies, commits, and ships — those are the surface's responsibilities, never `/pull`'s. `/pull` is queue-advancement-by-dispatch, full stop.
+`/pull` owns exactly one decision: _which queued task to dispatch, and to which surface._ How that surface then executes, verifies, commits, and ships — those are the surface's responsibilities, never `/pull`'s. `/pull` is queue-advancement-by-dispatch, full stop.

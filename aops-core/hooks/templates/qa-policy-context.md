@@ -7,15 +7,9 @@ description: |
   Variables: {temp_path}
 ---
 
-**QA VERIFICATION REQUIRED**
+QA verification is required before you can exit.
 
-You must invoke the **marsha** agent (using the `/verify` skill) to verify planned requirements before exiting.
+- Invoke the **marsha** agent via the `/verify` skill against the requirements captured at `{temp_path}`.
+- Follow whatever marsha returns, but don't print its output to the user — it just clutters the conversation.
 
-**Instruction**:
-Run verification with this command:
-
-- Gemini: `invoke_agent(agent_name='marsha', prompt='{temp_path}\n\nInvoke /verify for methodology.')`
-- Claude: `Agent(subagent_type='aops-core:marsha', prompt='{temp_path}\n\nInvoke /verify for methodology.')`
-- Make sure you obey the instructions the tool or subagent produces, but do not print the output to the user -- it just clutters up the conversation.
-
-This is a technical requirement. Status: currently BLOCKED, but clearing this is quick and easy -- just execute the command!
+This gate is currently BLOCKED; clearing it is quick once verification runs.

@@ -262,7 +262,7 @@ The Task Completion Sweep above closes tasks whose work is _done_ (merged PRs). 
 
 **Procedure** (runs after the Task Completion Sweep, reading the same `$AOPS_SESSIONS/state/pr-state.json` artefact — no fresh `gh pr list`):
 
-1. From the artefact's open-PR records, select **stuck-red candidates**: PRs whose CI is failing (`statusCheckRollup` failing/error) AND that have had no advancing activity (new commit, status change) for **> 24h**. A PR that is red but received a fix commit in the last 24h is _self-healing in progress_ — skip it; the pipeline still owns it.
+1. From the artefact's open-PR records, select **stuck-red candidates**: PRs with at least one `statusCheckRollup` entry where `conclusion == "FAILURE"`, AND whose `updatedAt` timestamp is more than **24h** ago. A PR that is red but has a recent `updatedAt` (a fix commit or status push arrived in the last 24h) is _self-healing in progress_ — skip it; the pipeline still owns it.
 2. For each stuck-red candidate, check whether a follow-up fix-task already exists (search `task_search` / scan the PR's linked tasks for an open `ci-fix` / `stuck-red` tagged task referencing this PR). If one exists and is still open, **do not duplicate** — leave it.
 3. Where no open follow-up exists, **file one** via `create_task`:
    - `title`: `Fix red CI on PR #<N> — <repo>` (plain English; no raw rollup dump).

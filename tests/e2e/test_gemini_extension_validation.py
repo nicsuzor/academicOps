@@ -123,12 +123,58 @@ CLI_ERROR_PATTERNS = (
 )
 
 
+# Source directories whose content determines the dist build output.
+# Used by _check_dist_not_stale() to detect a forgotten local rebuild.
+_DIST_SOURCE_DIRS = (
+    REPO_ROOT / "scripts",
+    REPO_ROOT / "templates",
+    REPO_ROOT / "aops-core",
+)
+
+
+def _check_dist_not_stale() -> None:
+    """Skip with an actionable message if dist is older than any source input.
+
+    Approach: skip-with-warning (not auto-rebuild) so the check is fast,
+    transparent, and safe in read-only or CI environments.
+    """
+    build_stamp = DIST / "gemini-extension.json"
+    if not build_stamp.exists():
+        return  # Malformed dist — let structural tests fail instead
+    dist_mtime = build_stamp.stat().st_mtime
+
+    newest_source: Path | None = None
+    newest_mtime = 0.0
+    for src_dir in _DIST_SOURCE_DIRS:
+        if not src_dir.exists():
+            continue
+        for p in src_dir.rglob("*"):
+            if p.is_file():
+                if any(
+                    part in {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+                    for part in p.parts
+                ) or p.suffix in (".pyc", ".pyo", ".DS_Store"):
+                    continue
+                mt = p.stat().st_mtime
+                if mt > newest_mtime:
+                    newest_mtime = mt
+                    newest_source = p
+
+    if newest_source is not None and newest_mtime > dist_mtime:
+        rel = newest_source.relative_to(REPO_ROOT)
+        pytest.skip(
+            f"dist/ is stale: {rel} is newer than {build_stamp.relative_to(REPO_ROOT)}. "
+            "Run `make build-dev` to rebuild before running these tests."
+        )
+
+
 def _require_dist() -> None:
-    """Skip the test cleanly if the extension has not been built yet."""
+    """Skip the test cleanly if the extension has not been built yet or is stale."""
     if not DIST.exists():
         pytest.skip(
-            f"{DIST} not built. Run `make build` (or `uv run python scripts/build.py`) first."
+            f"{DIST} not built. Run `make build-dev` (or `uv run python scripts/build.py`) first."
         )
+    _check_dist_not_stale()
 
 
 def _gemini_available() -> bool:

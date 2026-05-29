@@ -68,6 +68,7 @@ BUILD_DETRITUS_NAMES = {
     ".ruff_cache",
     ".pytest_cache",
     ".venv",
+    ".uv-cache",
     ".git",
     ".DS_Store",
 }

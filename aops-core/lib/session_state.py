@@ -136,6 +136,11 @@ class SessionState(BaseModel):
     # Session insights (written at close)
     insights: dict[str, Any] | None = None
 
+    # True once a write tool is used or a task is claimed in this session.
+    # Handover gate policies check this to exempt genuinely read-only sessions
+    # from the full handover requirement (aops-16a15a05).
+    session_did_work: bool = False
+
     @classmethod
     def create(cls, session_id: str) -> SessionState:
         """Create new session state."""

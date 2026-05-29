@@ -540,6 +540,11 @@ class GenericGate:
             metadata=merged_metadata,
         )
 
+    # Max number of Stop DENY events from a single gate before downgrading to
+    # WARN. Prevents Gemini sessions (no Stop hook = no loop-breaker) from
+    # being held indefinitely against the termination watchdog (aops-16a15a05).
+    _STOP_DENY_DOWNGRADE_THRESHOLD = 3
+
     def _handle_stop_event(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
@@ -556,6 +561,18 @@ class GenericGate:
         trigger_result = self._evaluate_triggers(context, session_state)
 
         if policy_result and policy_result.verdict == GateVerdict.DENY:
+            # Max-fire downgrade: after N consecutive Stop blocks from this gate,
+            # downgrade to WARN so Gemini sessions (which have no Stop hook and
+            # therefore no Claude-side loop-breaker) can exit without relying on
+            # the termination watchdog (aops-16a15a05, was aops-c5513f7f).
+            state = self._get_state(session_state)
+            deny_count = state.metrics.get("stop_deny_count", 0) + 1
+            state.metrics["stop_deny_count"] = deny_count
+            if deny_count >= self._STOP_DENY_DOWNGRADE_THRESHOLD:
+                return GateResult.warn(
+                    system_message=policy_result.system_message,
+                    context_injection=policy_result.context_injection,
+                )
             return policy_result
 
         if policy_result and policy_result.verdict == GateVerdict.WARN:
