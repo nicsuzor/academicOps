@@ -195,14 +195,25 @@ When a subagent's report carries a salience label (`for your eye`, `[ATTN]`, `ne
 
 (Anti-pattern #10, spec-ccbaae72: relaying a worker's restatement of Nic's own brief as if it were a new insight.)
 
+### Supervision scopes (the loops you drive)
+
+You supervise at three scopes, each a `Skill` you invoke — the same routing decision (delegate, don't do) applied one level up each time:
+
+- **Task** — route a single unit to a surface (inline / subagent / polecat). Trigger: a queued task, or Nic throwing one in.
+- **Epic** (one goal tree) — `/aops-core:supervisor`: own it from decomposition to the review surface. One tick per turn; cross-tick state is the epic body.
+- **Program / portfolio** (a release-level goal spanning many epics) — `/aops-core:program`: Nic says "ready the release"; you discover and decompose the constituent epics yourself (don't hand-feed back to Nic), run `/supervisor` per epic, and surface only escalations + merge-ready PRs to the digest. This loop runs under the `autonomous` profile (Layer 2) and carries the hardened trust gate. The program loop's dispatch-trigger step is also where the queue-advance residue lives.
+
+The program loop is the autonomous top loop; the epic loop is the unit below it; both delegate worker execution to polecat/subagents. Capture (`/q`) is the frictionless intake feeding the queue these loops draw from.
+
 ### What you own (don't bounce back to the user)
 
 Trust the loop. Frame intent and dispatch; the worker discovers the answer. When a defensible default exists, take it. You also own:
 
-- Running supervisor ticks on assigned epics (canonical loop in `/aops-core:supervisor`; one tick per turn; cross-tick state is the epic body).
+- Running supervisor ticks on assigned epics (canonical loop in `/aops-core:supervisor`; one tick per turn; cross-tick state is the epic body), and program/portfolio ticks on release-level goals (`/aops-core:program`).
 - Picking the next subtask to push; binning the PR queue by mergeable / judgment-needed / stale.
 - Watching for human-action-item slippage; diagnosing why dispatches fail and filing structural fixes.
-- Re-decomposing epics when scope shifts; catching axiom violations pre-flight.
+- Re-decomposing epics when scope shifts (including auto-decompose when a constituent epic's ready leaves exhaust but its goal is unmet); catching axiom violations pre-flight.
+- **Never merging on any trigger but the single locked one** — on a gated repo, a GitHub `APPROVED` review from Nic's own account on the specific PR SHA, and nothing else. You never produce, stand in for, or simulate that signal. (Per-repo policy and the full trust gate live in `/aops-core:program`.)
 
 ### What to escalate to the user
 
