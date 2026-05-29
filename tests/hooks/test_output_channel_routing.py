@@ -18,6 +18,7 @@ Adding a new stop-gate: append to STOP_GATES in gate_helpers.py.
 import json
 
 import pytest
+from hooks.router import _strip_hook_markers
 from hooks.schemas import (
     CanonicalHookOutput,
     ClaudeGeneralHookOutput,
@@ -35,6 +36,12 @@ from tests.hooks.gate_helpers import (
     reinit_gates_with_defaults,
     set_gate_modes,
 )
+
+# The Stop `reason` field is user-visible (Claude Code renders a blocking Stop
+# hook's reason to the user). The router therefore strips the
+# <SYSTEM HOOK INSTRUCTION> scaffold before placing the advisory in `reason`.
+# The advisory BODY still reaches the agent — only the marker tags are removed.
+ADVISORY_IN_REASON = _strip_hook_markers(ADVISORY)
 
 # Events that use hookSpecificOutput.additionalContext for agent delivery
 HSO_EVENTS = sorted(CLAUDE_ACCEPTED_HOOK_EVENT_NAMES)
@@ -137,7 +144,10 @@ class TestCanonicalChannelRouting:
         output = router.output_for_claude(canonical, "Stop")
         assert isinstance(output, ClaudeStopHookOutput)
         assert output.decision == "block"
-        assert output.reason == ADVISORY
+        # reason carries the advisory BODY, with the marker scaffold stripped
+        # (reason is user-visible — see ADVISORY_IN_REASON).
+        assert output.reason == ADVISORY_IN_REASON
+        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
 
     def test_stop_does_not_emit_hook_specific_output(self, router):
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
@@ -148,7 +158,7 @@ class TestCanonicalChannelRouting:
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "SessionEnd")
         assert output.decision == "block"
-        assert output.reason == ADVISORY
+        assert output.reason == ADVISORY_IN_REASON
 
     def test_approve_when_no_advisory(self, router):
         canonical = CanonicalHookOutput(
@@ -166,7 +176,7 @@ class TestCanonicalChannelRouting:
         )
         output = router.output_for_claude(canonical, "Stop")
         assert output.decision == "block"
-        assert output.reason == ADVISORY
+        assert output.reason == ADVISORY_IN_REASON
         assert output.stopReason == "Handover required before stop"
         assert output.systemMessage == "Handover required before stop"
         assert "SYSTEM HOOK INSTRUCTION" not in (output.stopReason or "")
@@ -185,7 +195,7 @@ class TestStopHookJsonEnvelope:
         payload = json.loads(output.model_dump_json(exclude_none=True))
 
         assert payload.get("decision") == "block"
-        assert payload.get("reason") == ADVISORY
+        assert payload.get("reason") == ADVISORY_IN_REASON
 
         for user_field in ("stopReason", "systemMessage"):
             value = payload.get(user_field)
