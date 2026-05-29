@@ -67,6 +67,58 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert cfg.external_agents["jules"].enabled is False
 
 
+def test_container_env_forward_defaults_when_absent(cfg_path: Path) -> None:
+    # CANONICAL_YAML has no container_env_forward → built-in default (the OAuth
+    # tokens). This is the "limited list" for hold-for-delegation secrets.
+    cfg = load_polecat_config(cfg_path)
+    assert cfg.container_env_forward == ("CLAUDE_CODE_OAUTH_TOKEN", "GEMINI_API_KEY")
+
+
+def test_container_env_forward_explicit_list(tmp_path: Path) -> None:
+    p = tmp_path / "polecat.yaml"
+    p.write_text(
+        CANONICAL_YAML
+        + dedent(
+            """
+            container_env_forward:
+              - CLAUDE_CODE_OAUTH_TOKEN
+              - GEMINI_API_KEY
+              - SOME_OTHER_NAME
+            """
+        )
+    )
+    cfg = load_polecat_config(p)
+    assert cfg.container_env_forward == (
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "GEMINI_API_KEY",
+        "SOME_OTHER_NAME",
+    )
+
+
+def test_container_env_forward_rejects_values_with_equals(tmp_path: Path) -> None:
+    # Guard: operators must list NAMES, never values. A '=' (i.e. someone pasted
+    # NAME=secretvalue) is a hard load-time failure — secrets live in ~/.env.local.
+    p = tmp_path / "polecat.yaml"
+    p.write_text(
+        CANONICAL_YAML
+        + dedent(
+            """
+            container_env_forward:
+              - CLAUDE_CODE_OAUTH_TOKEN=sk-leaked-secret
+            """
+        )
+    )
+    with pytest.raises(RuntimeError, match="container_env_forward must list var NAMES"):
+        load_polecat_config(p)
+
+
+def test_container_env_forward_rejects_non_list(tmp_path: Path) -> None:
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML + "\ncontainer_env_forward: CLAUDE_CODE_OAUTH_TOKEN\n")
+    with pytest.raises(RuntimeError, match="must be a list of strings"):
+        load_polecat_config(p)
+
+
 def test_for_mode_crew_overlays_hooks(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
     crew = cfg.for_mode("crew")

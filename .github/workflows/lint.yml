@@ -27,8 +27,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           # Use AOPS_BOT_GH_TOKEN so autofix pushes trigger a new
           # synchronize event, restarting the pipeline on the clean commit.
-          # GITHUB_TOKEN pushes are deliberately ignored by GitHub Actions.
-          token: ${{ secrets.AOPS_BOT_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN pushes are deliberately ignored by GitHub Actions, so
+          # NO `|| secrets.GITHUB_TOKEN` fallback (A8: no silent fallbacks) —
+          # falling back would silently break the autofix retrigger loop.
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5

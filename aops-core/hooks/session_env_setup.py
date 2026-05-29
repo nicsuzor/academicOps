@@ -179,6 +179,18 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist.pop("GH_TOKEN", None)
     persist.pop("GITHUB_TOKEN", None)
 
+    # OAuth trust boundary (PKB note-b5347f83, Q2): a general agent (junior)
+    # authenticates its OWN inference via the user's interactive OAuth, NOT via
+    # these tokens. Do NOT persist them into CLAUDE_ENV_FILE — that would make
+    # junior's own `claude`/`gemini` tool calls authenticate with the worker
+    # tokens and leak them into junior's session env. The polecat launcher
+    # resolves these from the host secret store (~/.env.local via
+    # lib/host_secrets) at spawn, guided by polecat.yaml's container_env_forward
+    # whitelist — independent of this session's env. They remain in
+    # agent-env-map.conf for the CONTAINER forwarding path only.
+    persist.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    persist.pop("GEMINI_API_KEY", None)
+
     # 5b. GitHub agent-identity isolation (fail-closed).
     #
     # Inside agent sessions, ALL GitHub authentication uses AOPS_BOT_GH_TOKEN
@@ -330,10 +342,18 @@ Today's note has not been populated yet. Run `/daily` to update.
     #        AOPS_BOT_GH_TOKEN *exactly* (empty if it is unset/empty), which also
     #        clobbers any personal token inherited from the parent env. These
     #        run last, so they are authoritative.
+    # Filter rules:
+    #   - GH_TOKEN / GITHUB_TOKEN: exported authoritatively in group (ii) below.
+    #   - CLAUDE_CODE_OAUTH_TOKEN / GEMINI_API_KEY: OAuth trust boundary (Q2) —
+    #     never persisted to junior's session env; the polecat launcher sources
+    #     them from ~/.env.local at spawn. See the persist.pop() calls in step 5.
+    _oauth_excluded = ("CLAUDE_CODE_OAUTH_TOKEN", "GEMINI_API_KEY")
     conf_lines = [
         line
         for line in get_env_mapping_shell_lines()
-        if "export GH_TOKEN=" not in line and "export GITHUB_TOKEN=" not in line
+        if "export GH_TOKEN=" not in line
+        and "export GITHUB_TOKEN=" not in line
+        and not any(f"export {name}=" in line for name in _oauth_excluded)
     ]
     shell_lines: list[str] = []
     if conf_lines:
@@ -348,6 +368,35 @@ Today's note has not been populated yet. Run `/daily` to update.
     )
     append_shell_lines(shell_lines)
 
+    # 10. Per-surface env-var provisioning contract (PKB note-b5347f83).
+    # Validates the canonical required set for the detected surface and renders
+    # a prominent SUCCESS / FAILURE block. GHA is skipped (Actions injects its
+    # own secrets). Verdict stays ALLOW even on failure (Q1) — we never brick
+    # the session needed to fix a missing var; the block is the loud signal.
+    #
+    # The check reads the LIVE shell-visible env. The hook itself may inherit a
+    # launchd env that lacks shell-profile vars (e.g. AOPS_BOT_GH_TOKEN from
+    # ~/.zshenv), so we merge in any vars we just resolved/deferred to avoid a
+    # false-negative FAILURE for vars that WILL be present at shell-source time.
+    provision_report = None
+    try:
+        from lib.env_provision import validate_surface
+
+        provision_env = dict(os.environ)
+        # Vars exported via deferred shell lines (e.g. AOPS_BOT_GH_TOKEN tracked
+        # from the shell snapshot) are present for tool calls even if invisible
+        # to this Python process. Treat AOPS_BOT_GH_TOKEN as present if it will
+        # be exported at shell-source time.
+        if any("AOPS_BOT_GH_TOKEN" in line for line in shell_lines) and os.environ.get(
+            "AOPS_BOT_GH_TOKEN"
+        ):
+            provision_env["AOPS_BOT_GH_TOKEN"] = os.environ["AOPS_BOT_GH_TOKEN"]
+        provision_env.update(persist)
+        provision_report = validate_surface(provision_env)
+        messages.extend(provision_report.lines)
+    except Exception as e:
+        print(f"WARNING: env provisioning check failed: {e}", file=sys.stderr)
+
     return GateResult(
         verdict=GateVerdict.ALLOW,
         system_message="\n".join(messages),
@@ -355,5 +404,8 @@ Today's note has not been populated yet. Run `/daily` to update.
             "source": "session_env_setup",
             "persisted_vars": persist,
             "deferred_shell_lines": shell_lines,
+            "provision_ok": (provision_report.ok if provision_report else None),
+            "provision_surface": (provision_report.surface.value if provision_report else None),
+            "provision_missing": (provision_report.missing if provision_report else None),
         },
     )

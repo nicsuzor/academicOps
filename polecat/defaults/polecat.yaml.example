@@ -74,6 +74,28 @@ docker:
   image: ghcr.io/nicsuzor/aops-crew
 
 # ---------------------------------------------------------------------------
+# container_env_forward — the EXPLICIT forwarding whitelist.
+#
+# The canonical, legible "limited list" of env-var NAMES that cross into
+# polecat / crew containers for secrets the launching agent deliberately does
+# NOT hold in its own session env (the Claude/Gemini OAuth tokens).
+#
+# IMPORTANT: list var NAMES only — NEVER values. The polecat launcher resolves
+# each name's VALUE at launch from the host secret store (~/.env.local),
+# independent of the launching session's env. This is how a general agent
+# (junior) can dispatch a worker that authenticates with these tokens WITHOUT
+# the agent's own session ever holding them (the leak is closed at the agent;
+# the container still gets what it needs via this list). A `=` in any entry is
+# rejected at load time as a guard against pasting secret values here.
+#
+# Path locators and the bot token continue to flow via agent-env-map.conf
+# (they are not session-leak-sensitive); this list is specifically the
+# hold-for-delegation secrets.
+container_env_forward:
+  - CLAUDE_CODE_OAUTH_TOKEN
+  - GEMINI_API_KEY
+
+# ---------------------------------------------------------------------------
 # External agents available for dispatch (github actions, jules, codex, ...).
 # Hand-maintained — no auto-discovery. The set of keys here is the
 # authoritative provider list consumed by lib/session_naming.py for

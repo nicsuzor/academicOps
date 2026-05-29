@@ -115,6 +115,139 @@ class TestSessionEnvSetup:
                 f"{var} must not be persisted: gate modes live in polecat.yaml now"
             )
 
+    def test_oauth_tokens_not_persisted_to_env_file(self, tmp_path):
+        """OAuth trust boundary (PKB note-b5347f83, Q2): even when the OAuth
+        tokens are present in the source env, the SessionStart hook must NOT
+        write them to CLAUDE_ENV_FILE. A general agent (junior) never holds
+        these in its own session env; the polecat launcher resolves them from
+        ~/.env.local. This is the leak-closure regression guard.
+        """
+        env_file = tmp_path / "claude_env"
+        env_file.touch()
+        env_overrides = {
+            "CLAUDE_ENV_FILE": str(env_file),
+            "PYTHONPATH": "",
+            # Both OAuth tokens present in the launching env...
+            "CLAUDE_CODE_OAUTH_TOKEN": "sk-oauth-should-not-leak",
+            "GEMINI_API_KEY": "gem-should-not-leak",
+        }
+        ctx = HookContext(
+            session_id="test-session-oauth",
+            session_short_hash="oauth123",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id)
+        with (
+            patch.dict("os.environ", env_overrides, clear=False),
+            patch(
+                "hooks.session_env_setup.get_session_status_dir",
+                return_value=str(tmp_path),
+            ),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        content = env_file.read_text()
+        # ...but neither the names nor the secret values reach CLAUDE_ENV_FILE.
+        assert "CLAUDE_CODE_OAUTH_TOKEN" not in content
+        assert "GEMINI_API_KEY" not in content
+        assert "sk-oauth-should-not-leak" not in content
+        assert "gem-should-not-leak" not in content
+        # And the metadata records they were not persisted.
+        persisted = result.metadata["persisted_vars"]
+        assert "CLAUDE_CODE_OAUTH_TOKEN" not in persisted
+        assert "GEMINI_API_KEY" not in persisted
+
+    def test_provisioning_block_rendered_on_host(self, tmp_path):
+        """Q1: SessionStart renders a prominent provisioning block. With the
+        full required set present it must be the SUCCESS block; missing the bot
+        token it must be the FAILURE block — and the verdict stays ALLOW.
+        """
+        env_file = tmp_path / "claude_env"
+        env_file.touch()
+        base = {
+            "CLAUDE_ENV_FILE": str(env_file),
+            "PYTHONPATH": "",
+            "ACA_DATA": "/home/x/brain",
+            "AOPS": "/home/x/src/academicOps",
+            "AOPS_SESSIONS": "/home/x/.polecat/sessions",
+            "PKB_MCP_URL": "http://services:8026/mcp",
+            "AOPS_BOT_GH_TOKEN": "ghp_present",
+        }
+        ctx = HookContext(
+            session_id="test-session-prov",
+            session_short_hash="prov1234",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+
+        # SUCCESS path.
+        state = SessionState.create(ctx.session_id)
+        with (
+            patch.dict("os.environ", base, clear=False),
+            patch(
+                "hooks.session_env_setup.get_session_status_dir",
+                return_value=str(tmp_path),
+            ),
+        ):
+            result_ok = run_session_env_setup(ctx, state)
+        assert result_ok.verdict.name == "ALLOW"
+        assert "ENV OK" in result_ok.system_message
+        assert result_ok.metadata["provision_ok"] is True
+        assert result_ok.metadata["provision_surface"] == "host"
+
+        # FAILURE path: drop the bot token. Must remain ALLOW (never brick the
+        # session needed to fix the var), but render the FAILURE block.
+        env_file.write_text("")
+        no_bot = dict(base)
+        no_bot.pop("AOPS_BOT_GH_TOKEN")
+        # Clear AOPS_BOT_GH_TOKEN if the real shell exported it.
+        with (
+            patch.dict("os.environ", no_bot, clear=True),
+            patch(
+                "hooks.session_env_setup.get_session_status_dir",
+                return_value=str(tmp_path),
+            ),
+        ):
+            result_fail = run_session_env_setup(ctx, state)
+        assert result_fail.verdict.name == "ALLOW"
+        assert "ENV INCOMPLETE" in result_fail.system_message
+        assert result_fail.metadata["provision_ok"] is False
+        assert "AOPS_BOT_GH_TOKEN" in result_fail.metadata["provision_missing"]
+
+    def test_gha_surface_skips_provisioning(self, tmp_path):
+        """GHA surface: provisioning is skipped (Actions injects secrets). The
+        required-var check must not fire even with none of the host vars set."""
+        env_file = tmp_path / "claude_env"
+        env_file.touch()
+        ctx = HookContext(
+            session_id="test-session-gha",
+            session_short_hash="gha12345",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id)
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "CLAUDE_ENV_FILE": str(env_file),
+                    "PYTHONPATH": "",
+                    "GITHUB_ACTIONS": "true",
+                },
+                clear=True,
+            ),
+            patch(
+                "hooks.session_env_setup.get_session_status_dir",
+                return_value=str(tmp_path),
+            ),
+        ):
+            result = run_session_env_setup(ctx, state)
+        assert result.verdict.name == "ALLOW"
+        assert result.metadata["provision_surface"] == "gha"
+        assert result.metadata["provision_ok"] is True
+        assert "provisioning skipped" in result.system_message
+
     def test_run_session_env_setup_ignored_for_other_events(self, temp_env_file):
         """Verify setup is ignored for non-SessionStart events."""
         ctx = HookContext(

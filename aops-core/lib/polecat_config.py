@@ -121,6 +121,13 @@ class PolecatConfig:
     docker: DockerConfig
     external_agents: dict[str, ExternalAgent]
     source_path: Path
+    # Explicit container forwarding whitelist (PKB note-b5347f83, Q2). The
+    # legible "limited list" of env-var NAMES that cross into polecat/crew
+    # containers. NAMES only — VALUES are resolved at launch from the host
+    # secret store (~/.env.local) by lib/host_secrets, NEVER committed here.
+    # This is the canonical source of "what the container gets" for secrets the
+    # launching session deliberately does not hold (OAuth tokens).
+    container_env_forward: tuple[str, ...] = ()
 
     def for_mode(self, mode: str) -> SessionDefaults:
         if mode == "crew":
@@ -238,6 +245,17 @@ BUILTIN_GATES = GatesConfig(
     enforcer_threshold=50,
 )
 
+# Default container forwarding whitelist (PKB note-b5347f83, Q2). The secrets a
+# polecat/crew worker needs but the launching general agent deliberately does
+# NOT persist into its own session env. NAMES only — values resolved at launch
+# from ~/.env.local by lib/host_secrets. Used when no polecat.yaml is present
+# (fresh install / builtin config). The shipped polecat.yaml.example sets the
+# same list explicitly so operators can see and edit it.
+_DEFAULT_CONTAINER_ENV_FORWARD: tuple[str, ...] = (
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "GEMINI_API_KEY",
+)
+
 BUILTIN_SESSION_DEFAULTS = SessionDefaults(
     hooks_enabled=True,
     claude_model="claude-sonnet-4-6",
@@ -256,6 +274,7 @@ def _builtin_config() -> PolecatConfig:
         docker=DockerConfig(image="ghcr.io/nicsuzor/aops-crew"),
         external_agents={},
         source_path=Path("<builtin>"),
+        container_env_forward=_DEFAULT_CONTAINER_ENV_FORWARD,
     )
 
 
@@ -358,6 +377,28 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
         extra = {k: v for k, v in body.items() if k != "enabled"}
         external_agents[str(name)] = ExternalAgent(name=str(name), enabled=enabled, extra=extra)
 
+    # container_env_forward — explicit whitelist of env-var NAMES forwarded into
+    # containers, values resolved at launch from ~/.env.local (PKB note-b5347f83).
+    # Optional: absent ⇒ the built-in default (OAuth tokens). If present it must
+    # be a list of strings; reject anything that looks like a KEY=VALUE (a guard
+    # against operators pasting secret VALUES into the name whitelist).
+    cef_raw = raw.get("container_env_forward")
+    if cef_raw is None:
+        container_env_forward = _DEFAULT_CONTAINER_ENV_FORWARD
+    else:
+        if not isinstance(cef_raw, list) or not all(isinstance(x, str) for x in cef_raw):
+            raise RuntimeError(
+                f"polecat config: container_env_forward must be a list of strings in {cfg_path}"
+            )
+        for item in cef_raw:
+            if "=" in item:
+                raise RuntimeError(
+                    f"polecat config: container_env_forward must list var NAMES, not "
+                    f"values — found '=' in {item!r} in {cfg_path}. Secret values live "
+                    "in ~/.env.local, never in polecat.yaml."
+                )
+        container_env_forward = tuple(cef_raw)
+
     return PolecatConfig(
         session_defaults=session_defaults,
         crew_defaults=crew_defaults,
@@ -365,6 +406,7 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
         docker=docker,
         external_agents=external_agents,
         source_path=cfg_path,
+        container_env_forward=container_env_forward,
     )
 
 

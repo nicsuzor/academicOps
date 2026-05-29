@@ -46,4 +46,9 @@ launchctl setenv GIT_CONFIG_VALUE_1 "ssh://git@github.com/"
 launchctl setenv GIT_CONFIG_KEY_2 "credential.https://github.com.helper"
 launchctl setenv GIT_CONFIG_VALUE_2 ""
 launchctl setenv GIT_CONFIG_KEY_3 "credential.https://github.com.helper"
-launchctl setenv GIT_CONFIG_VALUE_3 '!f() { test "$1" = get && printf "username=x-access-token\npassword=%s\n" "${GH_TOKEN:-${GITHUB_TOKEN:-${AOPS_BOT_GH_TOKEN}}}"; }; f'
+# Single fail-closed impl, identical to hooks/session_env_setup.py step 5b: the
+# credential helper emits AOPS_BOT_GH_TOKEN *directly* (empty => auth fails).
+# NO GH_TOKEN/GITHUB_TOKEN fallback chain (A8: no silent fallbacks; do not keep
+# a second divergent credential-isolation impl). GH_TOKEN/GITHUB_TOKEN are set
+# above to track AOPS_BOT_GH_TOKEN exactly, so the single source is the bot PAT.
+launchctl setenv GIT_CONFIG_VALUE_3 '!f() { test "$1" = get && printf "username=x-access-token\npassword=%s\n" "${AOPS_BOT_GH_TOKEN}"; }; f'
