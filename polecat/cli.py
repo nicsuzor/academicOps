@@ -1523,11 +1523,14 @@ def _build_docker_cmd(
             continue
         if key == CONFIG_PATH_ENV:
             continue
-        # AOPS_GATE_FILE_* and AOPS_HOOK_LOG_PATH hold host-filesystem paths
-        # (e.g. /home/nic/...) that are invalid inside the container
-        # (/home/worker/...).  Exclude them here — the block below always stamps
-        # correct container-local placeholder paths (aops-d883c4ce).
-        if key.startswith("AOPS_GATE_FILE_") or key == "AOPS_HOOK_LOG_PATH":
+        # AOPS_GATE_FILE_*, AOPS_HOOK_LOG_PATH, and AOPS_SESSION_STATE_DIR hold
+        # host-filesystem paths (e.g. /home/nic/...) that are invalid inside
+        # the container (/home/worker/...).  Exclude them here — the block
+        # below always stamps correct container-local paths (aops-d883c4ce).
+        if key.startswith("AOPS_GATE_FILE_") or key in (
+            "AOPS_HOOK_LOG_PATH",
+            "AOPS_SESSION_STATE_DIR",
+        ):
             continue
         if key.startswith("POLECAT_") or key.startswith("AOPS_") or key in _GATE_ENV_VARS:
             cmd.extend(["-e", f"{key}={val}"])
