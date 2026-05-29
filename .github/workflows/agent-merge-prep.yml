@@ -52,9 +52,9 @@ on:
         description: 'OAuth token for Claude agent'
         required: true
 
-# No global concurrency group. GitHub's concurrency model only keeps 1 running +
-# 1 pending per group — dispatching N runs into one group discards N-2 immediately.
-# Serialisation happens at the dispatcher level (one PR per tick) instead.
+# No global concurrency group. Concurrency is per-PR (group: merge-prep-$pr_number)
+# so different PRs run in parallel while the same PR cannot have two simultaneous
+# runs. The dispatcher dispatches all qualifying PRs per tick.
 
 jobs:
   fix:
@@ -65,10 +65,11 @@ jobs:
     timeout-minutes: 45
     name: Merge Prep
     runs-on: ubuntu-latest
-    # Per-PR concurrency prevents duplicate runs on the same PR across cron ticks.
-    # cancel-in-progress: false — let a running prep finish rather than killing it
-    # and restarting. The dispatcher's active-check prevents dispatching duplicates;
-    # this is the safety net if one slips through.
+    # Per-PR concurrency prevents duplicate runs on the same PR. This is the
+    # primary concurrency control: per-PR groups allow different PRs to run
+    # in parallel while preventing duplicate runs on the same PR.
+    # cancel-in-progress: false — let a running prep finish rather than killing
+    # it and restarting.
     concurrency:
       group: merge-prep-${{ inputs.pr_number }}
       cancel-in-progress: false
@@ -243,6 +244,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: claude
         continue-on-error: true
+        timeout-minutes: 15
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot],github-actions[bot]"

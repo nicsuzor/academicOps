@@ -3,15 +3,18 @@
 #
 # Qualification criteria (label-free):
 #   - Last commit >= 15 min ago (bazaar window for bot reviews to complete)
-#   - No in-progress merge-prep run (checked via gh run list)
 #   - Not permanently halted (checked via merge-prep-status commit status)
 #
-# NOTE: The previous `workflow_run` trigger (fire on PR Review Pipeline
-# completion) was removed 2026-05-21 — it cascaded. Every merge-prep push
-# triggered the PR Pipeline → workflow_run → dispatcher → another merge-prep,
-# requalifying PRs against new SHAs faster than the bazaar window could cap.
-# Cron (30 min) + workflow_dispatch are sufficient; responsiveness loss is
-# bounded at 30 min.
+# NOTE: workflow_run trigger is scoped to "Agent: Merge Prep" completions only
+# (not PR Review Pipeline). This drains the queue promptly when a run finishes
+# without cascading: the agent runs once per PR via workflow_dispatch, so its
+# completion firing the dispatcher adds exactly one dispatcher tick per agent
+# completion — no PR pipeline push loop involved.
+#
+# Concurrency: per-PR groups on agent-merge-prep.yml prevent duplicate runs on
+# the same PR. The dispatcher's global `merge-prep-dispatcher` group prevents
+# simultaneous dispatcher runs. There is no global active-check — multiple PRs
+# can prep in parallel.
 #
 # See specs/pr-pipeline.md for the full process documentation.
 
@@ -59,6 +62,12 @@ on:
     # creates a 0-duration phantom failure run with `event=push`. Cross-repo
     # callers should use `secrets: inherit` (see examples/cross-repo-shim/).
     # Same-repo events get GITHUB_TOKEN auto-injected.
+  workflow_run:
+    workflows: ["Agent: Merge Prep"]
+    types: [completed]
+    # No branches filter: agent-merge-prep runs via workflow_dispatch with
+    # ref=main, so head_branch is always 'main'. A branches-ignore: main
+    # filter would suppress every trigger from this workflow.
 
 concurrency:
   group: merge-prep-dispatcher
@@ -141,27 +150,8 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check for in-progress merge-prep runs
-        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true'
-        id: active-check
-        run: |
-          REPO="${{ github.repository }}"
-
-          # Check if any merge-prep runs are currently active.
-          # We also count runs created in the last 60s to bridge API consistency lag.
-          MINUTE_AGO_ISO=$(date -u -d "60 seconds ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-60s +"%Y-%m-%dT%H:%M:%SZ")
-          ACTIVE=$(gh run list --workflow="$WORKFLOW_REF" --repo "$REPO" \
-            --json status,createdAt --jq "[.[] | select((.status == \"in_progress\" or .status == \"queued\") or .createdAt > \"$MINUTE_AGO_ISO\")] | length")
-          echo "Active merge-prep runs: $ACTIVE"
-          if [ "$ACTIVE" -gt 0 ]; then
-            echo "skip_all=true" >> "$GITHUB_OUTPUT"
-            echo "Merge-prep already in progress — skipping this cron tick"
-          else
-            echo "skip_all=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Find qualifying PRs
-        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true' && steps.active-check.outputs.skip_all != 'true'
+        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true'
         id: qualify
         run: |
           REPO="${{ github.repository }}"
@@ -183,6 +173,14 @@ jobs:
             HEAD_REF=$(echo "$PR" | jq -r '.headRefName')
 
             echo "--- Checking PR #$PR_NUM ---"
+
+            # Skip PRs whose head branch was deleted — they crash at checkout
+            ENCODED_REF=$(jq -rn --arg r "$HEAD_REF" '$r | @uri')
+            BRANCH_CHECK=$(gh api "repos/$REPO/branches/$ENCODED_REF" --jq '.name' 2>/dev/null || echo "")
+            if [ -z "$BRANCH_CHECK" ]; then
+              echo "  SKIP: head branch '$HEAD_REF' no longer exists (deleted)"
+              continue
+            fi
 
             # Skip release-please PRs (managed manually)
             if echo "$HEAD_REF" | grep -q '^release-please'; then
@@ -284,8 +282,8 @@ jobs:
             fi
           done
 
-      - name: Dispatch merge-prep for oldest qualifying PR
-        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true' && steps.active-check.outputs.skip_all != 'true'
+      - name: Dispatch merge-prep for qualifying PRs
+        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true'
         run: |
           REPO="${{ github.repository }}"
 
@@ -294,37 +292,29 @@ jobs:
             exit 0
           fi
 
-          # Dispatch ONE PR per tick. GitHub's concurrency model only keeps
-          # 1 running + 1 pending per group — dispatching N runs discards N-2.
-          # The cron (30 min) and workflow_run triggers ensure the next PR gets
-          # picked up after the current one finishes.
-          #
-          # Pick the OLDEST qualifying PR (lowest PR number). The qualification
-          # loop above iterates `gh pr list` output, which is sorted newest-first
-          # by default, so `head -n 1` would pick the NEWEST PR — the opposite
-          # of what this step's name claims. With N qualifying PRs and a 30-min
-          # cron, that ordering starves the oldest PR for N × 30 min while newer
-          # PRs jump the queue (incident: PRs #1101/#1102/#1107 sat for 6-7h
-          # behind ~12 newer PRs on 2026-05-17, see issue #1129).
-          # File format: "PR_NUM" or "PR_NUM:force" (re-qualified PRs need force
-          # to bypass the agent's loop detection on Merge-Prep-By trailers).
-          ENTRY=$(sort -t: -k1 -n /tmp/qualifying_prs.txt | head -n 1)
-          PR_NUM="${ENTRY%%:*}"
-          FORCE_FLAG=""
-          if [ "$ENTRY" != "$PR_NUM" ]; then
-            FORCE_FLAG="-f force=true"
-          fi
-
-          TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
-          echo "Dispatching merge-prep for PR #$PR_NUM (1 of $TOTAL qualifying, force=${FORCE_FLAG:+true})"
-
+          # Dispatch ALL qualifying PRs. Per-PR concurrency groups on
+          # agent-merge-prep.yml (group: merge-prep-$pr_number) prevent
+          # duplicate runs on the same PR while allowing different PRs to run
+          # concurrently. File format: "PR_NUM" or "PR_NUM:force" (re-qualified
+          # PRs need force to bypass the agent's loop detection on
+          # Merge-Prep-By trailers). Sort oldest-first (lowest PR number) so
+          # the dispatch order is deterministic and not newest-first.
           DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
+          TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
+          echo "Dispatching merge-prep for $TOTAL qualifying PR(s)"
 
-          gh workflow run "$WORKFLOW_REF" \
-            --repo "$REPO" \
-            --ref "$DEFAULT_BRANCH" \
-            -f pr_number="$PR_NUM" \
-            -f bot_identity="$BOT_IDENTITY" \
-            $FORCE_FLAG
-
-          echo "  Dispatched successfully. Remaining $((TOTAL - 1)) PRs will be picked up on subsequent ticks."
+          while IFS= read -r ENTRY; do
+            PR_NUM="${ENTRY%%:*}"
+            FORCE_FLAG=""
+            if [ "$ENTRY" != "$PR_NUM" ]; then
+              FORCE_FLAG="-f force=true"
+            fi
+            echo "  Dispatching PR #$PR_NUM (force=${FORCE_FLAG:+true})"
+            gh workflow run "$WORKFLOW_REF" \
+              --repo "$REPO" \
+              --ref "$DEFAULT_BRANCH" \
+              -f pr_number="$PR_NUM" \
+              -f bot_identity="$BOT_IDENTITY" \
+              $FORCE_FLAG
+            echo "  Dispatched PR #$PR_NUM"
+          done < <(sort -t: -k1 -n /tmp/qualifying_prs.txt)
