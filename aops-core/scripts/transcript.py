@@ -1388,9 +1388,12 @@ Examples:
                     # Remove any stale transcripts for this session now that we're
                     # writing a fresh one (slug was previously volatile; clean up orphans).
                     stale_files = _find_existing_transcripts(sessions_claude, session_id)
-                    new_paths = {f"{base_name}-full.md", f"{base_name}-abridged.md"}
+                    new_paths = {
+                        Path(f"{base_name}-full.md").resolve(),
+                        Path(f"{base_name}-abridged.md").resolve(),
+                    }
                     for stale in stale_files:
-                        if str(stale) not in new_paths:
+                        if stale.resolve() not in new_paths:
                             print(f"🗑️  Removing stale transcript: {stale.name}")
                             try:
                                 stale.unlink()
