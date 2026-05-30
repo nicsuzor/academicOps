@@ -899,7 +899,7 @@ class PolecatManager:
                     check=True,
                 )
                 subprocess.run(
-                    ["git", "checkout", "--no-track", "-b", branch_name, f"origin/{branch_name}"],
+                    ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
                     cwd=worktree_path,
                     check=True,
                 )
@@ -1881,7 +1881,7 @@ class PolecatManager:
             )
         else:
             subprocess.run(
-                ["git", "checkout", "--no-track", "-b", branch_name, f"origin/{branch_name}"],
+                ["git", "checkout", "-b", branch_name, f"origin/{branch_name}"],
                 cwd=worktree_path,
                 check=True,
             )
