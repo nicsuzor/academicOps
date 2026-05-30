@@ -61,7 +61,7 @@ def _fast_advance_branch(seed: Path, branch: str, parent_sha: str, commits: int)
         ["git", "fast-import", "--quiet"],
         cwd=seed,
         input="".join(parts),
-        text=True,
+        encoding="utf-8",
         capture_output=True,
         check=True,
     )
