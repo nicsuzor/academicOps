@@ -1342,8 +1342,9 @@ Examples:
                 session_summary.surface = session_summary.surface or session_origin.get("surface")
                 session_summary.client = session_summary.client or session_origin.get("client")
 
-                # Check for meaningful content
-                MIN_MEANINGFUL_ENTRIES = 2
+                # Check for meaningful content — polecats have exactly 1 user + 1
+                # agent turn so we accept sessions with at least 1 meaningful entry.
+                MIN_MEANINGFUL_ENTRIES = 1
                 meaningful_count = sum(
                     1
                     for e in entries
@@ -1358,23 +1359,11 @@ Examples:
                     print(
                         f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
                     )
-                    # Keep any existing transcript — the session may not have flushed yet
-                    # (e.g. a cloud-bridged session whose turns are still buffered locally).
-                    # Only clean up when there is no existing file (a genuinely empty new session).
-                    if not existing_transcript:
-                        stale_files = _find_existing_transcripts(sessions_claude, session_id)
-                        for stale in stale_files:
-                            print(f"🗑️  Removing empty transcript: {stale.name}")
-                            try:
-                                stale.unlink()
-                            except OSError as e:
-                                print(
-                                    f"⚠️  Could not remove empty transcript {stale}: {e}",
-                                    file=sys.stderr,
-                                )
-
                     skipped += 1
                     continue
+
+                # ── Content check passed ── File mutations permitted from this point ──
+                # No rename/delete may precede this line; the check above is the gate.
 
                 # Generate output name (always computed for metadata: date_str, project, slug)
                 (
@@ -1396,6 +1385,23 @@ Examples:
                     ).replace(tzinfo=UTC)
                     out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
                     base_name = str(out_subdir / filename)
+                    # Remove any stale transcripts for this session now that we're
+                    # writing a fresh one (slug was previously volatile; clean up orphans).
+                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
+                    new_paths = {
+                        Path(f"{base_name}-full.md").resolve(),
+                        Path(f"{base_name}-abridged.md").resolve(),
+                    }
+                    for stale in stale_files:
+                        if stale.resolve() not in new_paths:
+                            print(f"🗑️  Removing stale transcript: {stale.name}")
+                            try:
+                                stale.unlink()
+                            except OSError as e:
+                                print(
+                                    f"⚠️  Could not remove stale transcript {stale}: {e}",
+                                    file=sys.stderr,
+                                )
 
                 # Extract and process reflection (if present)
                 # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
@@ -1609,8 +1615,8 @@ Examples:
         if base_name:
             print(f"📊 Found {len(entries)} entries")
 
-            # Check for meaningful content
-            MIN_MEANINGFUL_ENTRIES = 2
+            # Check for meaningful content — accept sessions with at least 1 entry.
+            MIN_MEANINGFUL_ENTRIES = 1
             meaningful_count = sum(
                 1
                 for e in entries
@@ -1760,9 +1766,8 @@ Examples:
 
         print(f"📊 Found {len(entries)} entries")
 
-        # Check for meaningful content (user prompts or assistant responses)
-        # Require at least 2 meaningful entries to be worth transcribing
-        MIN_MEANINGFUL_ENTRIES = 2
+        # Check for meaningful content — accept sessions with at least 1 entry.
+        MIN_MEANINGFUL_ENTRIES = 1
         meaningful_count = sum(
             1
             for e in entries

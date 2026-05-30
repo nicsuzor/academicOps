@@ -74,6 +74,44 @@ def test_find_sessions_excludes_claude_session_state_files(
     assert result == [], f"State files must not appear as sessions; got: {result}"
 
 
+def test_find_sessions_excludes_gemini_session_sidecar_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """*-session.json Gemini sidecar files must not be returned as sessions.
+
+    Polecat Gemini workers store a ``*-session.json`` sidecar alongside the
+    ``chats/session-*.jsonl`` chat file. This sidecar is Gemini metadata
+    (sessionId, gates, turn_count) — NOT a conversation. Before aops-b7e6630a,
+    the polecat discovery picked it up via rglob("*.json") and attempted to
+    parse it, producing 0 meaningful entries and a spurious skip log line.
+    """
+    sessions_root = tmp_path / "sessions"
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_root))
+
+    proj_dir = sessions_root / "polecats" / "aops-b7e6630a" / "claude-sessions" / "aops"
+    proj_dir.mkdir(parents=True)
+
+    # The Gemini sidecar — must be excluded.
+    sidecar = proj_dir / "20260523-2030-c8bffa1d-workspace-gemini-task-b7e6630a-session.json"
+    sidecar.write_text('{"sessionId": "c8bffa1d", "global_turn_count": 2}')
+
+    # An AOPS insights file alongside it — also no conversations, just metadata.
+    insights = proj_dir / "20260523-2030-c8bffa1d-workspace-gemini-task-b7e6630a.json"
+    insights.write_text('{"session_id": "c8bffa1d", "gates": {}}')
+
+    result = find_sessions(
+        claude_projects_dir=tmp_path / "no-claude",
+        include_gemini=False,
+        include_antigravity=False,
+        include_cowork=False,
+    )
+
+    sidecar_sessions = [s for s in result if "session.json" in s.path.name]
+    assert sidecar_sessions == [], (
+        f"Gemini *-session.json sidecar must not appear as a session; got: {sidecar_sessions}"
+    )
+
+
 def test_find_sessions_discovers_gemini_bind_mount_chats(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
