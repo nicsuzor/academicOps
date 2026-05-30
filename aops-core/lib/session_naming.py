@@ -566,7 +566,7 @@ def _format_task_prefix(task_id: str | None) -> str:
 def generate_session_filename(
     session_id: str,
     timestamp: datetime | None = None,
-    slug: str = "session",
+    slug: str | None = None,
     crew_name: str | None = None,
     repo: str | None = None,
     machine: str | None = None,
@@ -579,11 +579,12 @@ def generate_session_filename(
 
     Format: ``{YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}{-variant}.{ext}``
     where shortform is ``{crew?}-{repo}-{provider}`` (or a provided override).
+    When slug is None, the slug component is omitted for deterministic naming.
 
     Args:
         session_id: Full session ID (will be shortened to 8 chars)
         timestamp: Session start time (defaults to now)
-        slug: Content slug, kebab-case (default "session")
+        slug: Content slug, kebab-case. None omits the slug for deterministic naming.
         crew_name: Crew name or None for non-crew sessions
         repo: Repository name (auto-detected if None)
         machine: Ignored (kept for legacy callsite compatibility)
@@ -607,17 +608,23 @@ def generate_session_filename(
     time_str = timestamp.strftime("%H%M")
     if shortform is None:
         shortform = get_session_shortform(crew_name, repo, provider=provider)
-    safe_slug = _sanitize_slug(slug, shortform=shortform)
     art = ARTIFACT_TYPES[artifact_type]
-    task_prefix = _format_task_prefix(task_id)
 
-    return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}{art['variant']}{art['ext']}"
+    if slug is not None:
+        safe_slug = _sanitize_slug(slug, shortform=shortform)
+        task_prefix = _format_task_prefix(task_id)
+        return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}{art['variant']}{art['ext']}"
+    else:
+        task_part = _format_task_prefix(task_id).rstrip("-")
+        if task_part:
+            return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_part}{art['variant']}{art['ext']}"
+        return f"{date_str}-{time_str}-{short_id}-{shortform}{art['variant']}{art['ext']}"
 
 
 def generate_base_name(
     session_id: str,
     timestamp: datetime | None = None,
-    slug: str = "session",
+    slug: str | None = None,
     crew_name: str | None = None,
     repo: str | None = None,
     machine: str | None = None,
@@ -628,6 +635,7 @@ def generate_base_name(
     """Generate the base name shared across all artifacts for a session.
 
     Returns: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug}
+    When slug is None, the slug component is omitted for deterministic naming.
     """
     if timestamp is None:
         timestamp = datetime.now().astimezone()
@@ -637,10 +645,16 @@ def generate_base_name(
     time_str = timestamp.strftime("%H%M")
     if shortform is None:
         shortform = get_session_shortform(crew_name, repo, provider=provider)
-    safe_slug = _sanitize_slug(slug, shortform=shortform)
-    task_prefix = _format_task_prefix(task_id)
 
-    return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}"
+    if slug is not None:
+        safe_slug = _sanitize_slug(slug, shortform=shortform)
+        task_prefix = _format_task_prefix(task_id)
+        return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_prefix}{safe_slug}"
+    else:
+        task_part = _format_task_prefix(task_id).rstrip("-")
+        if task_part:
+            return f"{date_str}-{time_str}-{short_id}-{shortform}-{task_part}"
+        return f"{date_str}-{time_str}-{short_id}-{shortform}"
 
 
 def get_artifact_subdir(artifact_type: str) -> str:

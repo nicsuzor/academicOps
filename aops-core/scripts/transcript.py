@@ -870,20 +870,16 @@ def _generate_transcript_filename(
     # 5. Session ID
     session_id = _get_session_id(session_path)
 
-    # 6. Slug
-    if not slug:
-        if processor:
-            slug = processor.generate_session_slug(entries)
-        else:
-            slug = "session"
+    # 6. Slug — only used when explicitly provided via --slug CLI arg.
+    # No auto-generation from session content: transcript filenames are deterministic.
 
     # Generate base name via naming module
-    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform} or with explicit slug)
     # task_id from $AOPS_TASK_ID is passed through so transcript filenames are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=timestamp,
-        slug=slug,
+        slug=slug or None,
         crew_name=crew_name,
         repo=repo,
         provider=provider,
@@ -898,7 +894,7 @@ def _generate_transcript_filename(
         timestamp.astimezone().strftime("%Y%m%d"),
         repo,
         session_id,
-        slug,
+        slug or "",
     )
 
 
@@ -1369,7 +1365,13 @@ Examples:
                         stale_files = _find_existing_transcripts(sessions_claude, session_id)
                         for stale in stale_files:
                             print(f"🗑️  Removing empty transcript: {stale.name}")
-                            stale.unlink()
+                            try:
+                                stale.unlink()
+                            except OSError as e:
+                                print(
+                                    f"⚠️  Could not remove empty transcript {stale}: {e}",
+                                    file=sys.stderr,
+                                )
 
                     skipped += 1
                     continue
@@ -1383,25 +1385,12 @@ Examples:
                     slug,
                 ) = _generate_transcript_filename(session_path, entries, processor=processor)
 
-                # Stable filename: reuse the existing transcript's base name so re-renders
-                # are idempotent even when session content shifts between cron passes (e.g.
-                # Stop-hook feedback dominating late turns flips the content-derived slug).
-                # The slug is frozen at first-render time. Any extra files with different
-                # slugs (e.g. from a previous accidental rename) are cleaned up here.
+                # Re-render: reuse the existing transcript's base name so re-renders
+                # write to the same path (idempotent, no churn).
+                # First render: generate rotated output path normally (aops-b975b185).
                 if existing_transcript:
                     base_name = str(existing_transcript)[: -len("-full.md")]
-                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
-                    for stale in stale_files:
-                        canonical = (
-                            f"{base_name}-full.md"
-                            if stale.name.endswith("-full.md")
-                            else f"{base_name}-abridged.md"
-                        )
-                        if str(stale) != canonical:
-                            print(f"🗑️  Removing stale transcript: {stale.name}")
-                            stale.unlink()
                 else:
-                    # First render: generate rotated output path normally (aops-b975b185).
                     rotation_dt = extract_date_from_filename(filename) or datetime.strptime(
                         date_str, "%Y%m%d"
                     ).replace(tzinfo=UTC)
@@ -1649,7 +1638,7 @@ Examples:
             # Get session ID and project from path
             sid = _get_session_id(session_path)
             proj = _infer_project(session_path, entries)
-            slug = processor.generate_session_slug(entries)
+            slug = ""
 
             # Compute usage stats and session duration for token_metrics
             usage_stats = processor._aggregate_session_usage(entries, agent_entries)
