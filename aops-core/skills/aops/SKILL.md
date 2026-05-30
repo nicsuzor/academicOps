@@ -162,20 +162,20 @@ Only move to full automation once all parts work individually AND the full proce
 
 Route your task to the appropriate workflow:
 
-| If you need to...                         | Use workflow                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------- |
-| **Add a hook, skill, command, or agent**  | [01-design-new-component](workflows/01-design-new-component.md)     |
-| **Fix something broken in the framework** | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)   |
-| **Test a new approach or optimization**   | [03-experiment-design](workflows/03-experiment-design.md)           |
-| **Check for bloat or trim the framework** | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)   |
-| **Build a significant new feature**       | [05-feature-development](workflows/05-feature-development.md)       |
-| **Write or update a specification**       | [06-develop-specification](workflows/06-develop-specification.md)   |
-| **Record a lesson or observation**        | [07-learning-log](workflows/07-learning-log.md)                     |
-| **Unstick a blocked decision**            | [08-decision-briefing](workflows/08-decision-briefing.md)           |
-| **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md) |
-| **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)     |
-| **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                           |
-| **Verify hook output channel routing**    | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing)          |
+| If you need to...                         | Use workflow                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
+| **Add a hook, skill, command, or agent**  | [01-design-new-component](workflows/01-design-new-component.md)            |
+| **Fix something broken in the framework** | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)          |
+| **Test a new approach or optimization**   | [03-experiment-design](workflows/03-experiment-design.md)                  |
+| **Check for bloat or trim the framework** | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)          |
+| **Build a significant new feature**       | [05-feature-development](workflows/05-feature-development.md)              |
+| **Write or update a specification**       | [06-develop-specification](workflows/06-develop-specification.md)          |
+| **Record a lesson or observation**        | [07-learning-log](workflows/07-learning-log.md)                            |
+| **Unstick a blocked decision**            | [08-decision-briefing](workflows/08-decision-briefing.md)                  |
+| **Diagnose hook/gate failures**           | [09-session-hook-forensics](workflows/09-session-hook-forensics.md)        |
+| **Learn from doing (dogfooding)**         | [10-reflective-execution](workflows/10-reflective-execution.md)            |
+| **Run a self-test of session infra**      | [11-self-test](workflows/11-self-test.md)                                  |
+| **Verify hook output channel routing**    | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing) |
 
 ### Quick Decision Tree
 

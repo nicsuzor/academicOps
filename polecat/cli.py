@@ -314,7 +314,7 @@ def _resolve_model_flag(
       → ``("claude", <name>)``. Claude Code's CLI accepts these as aliases
       for the latest version of each family; polecat passes them through.
       This is the canonical short form documented in ``~/junior/.agents/CORE.md``.
-    * A literal model id (``"claude-opus-4-7"``, ``"gemini-2.5-pro"``, etc.):
+    * A literal model id (``"claude-opus-4-8"``, ``"gemini-2.5-pro"``, etc.):
       the client is inferred from the id prefix and the id is passed through
       to the client CLI as ``--model <id>``.
     * Anything else → ``click.UsageError`` naming the available aliases so the
@@ -337,7 +337,7 @@ def _resolve_model_flag(
         raise click.UsageError(
             "--model requires a non-empty value. "
             f"Aliases: {sorted(_CLIENT_ALIAS_MODELS) + sorted(_CLAUDE_MODEL_FAMILIES)} "
-            "or a literal model id (e.g. claude-opus-4-7, gemini-2.5-pro)."
+            "or a literal model id (e.g. claude-opus-4-8, gemini-2.5-pro)."
         )
 
     # Client-name aliases: pick the client, defer to config for the model id.
@@ -3501,7 +3501,7 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -3572,7 +3572,7 @@ def crew_alias(
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -3631,7 +3631,7 @@ def crew(
         polecat crew -r audre                  # Resume crew worker "audre"
         polecat crew -i aops                   # Interactive shell in crew container
         polecat crew --model gemini aops       # Gemini CLI in our docker container
-        polecat crew --model claude-opus-4-7 aops  # Specific Claude model
+        polecat crew --model claude-opus-4-8 aops  # Specific Claude model
         polecat crew aops -- -p "do something"     # Pass args to agent CLI
     """
     import subprocess
@@ -4299,7 +4299,7 @@ class _IssueTask:
         "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-7, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
