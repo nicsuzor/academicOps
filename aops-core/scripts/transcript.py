@@ -870,20 +870,16 @@ def _generate_transcript_filename(
     # 5. Session ID
     session_id = _get_session_id(session_path)
 
-    # 6. Slug
-    if not slug:
-        if processor:
-            slug = processor.generate_session_slug(entries)
-        else:
-            slug = "session"
+    # 6. Slug — only used when explicitly provided via --slug CLI arg.
+    # No auto-generation from session content: transcript filenames are deterministic.
 
     # Generate base name via naming module
-    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform}-{slug})
+    # (unified format: {YYYYMMDD}-{HHMM}-{session_id}-{shortform} or with explicit slug)
     # task_id from $AOPS_TASK_ID is passed through so transcript filenames are task-grep-friendly.
     base = session_naming.generate_base_name(
         session_id=session_id,
         timestamp=timestamp,
-        slug=slug,
+        slug=slug or None,
         crew_name=crew_name,
         repo=repo,
         provider=provider,
@@ -898,7 +894,7 @@ def _generate_transcript_filename(
         timestamp.astimezone().strftime("%Y%m%d"),
         repo,
         session_id,
-        slug,
+        slug or "",
     )
 
 
@@ -1310,14 +1306,6 @@ Examples:
                     skipped += 1
                     continue
 
-                # Delete stale transcripts before regenerating (prevents duplicates
-                # when filename format changes, e.g., slug added/changed)
-                if existing_transcript:
-                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
-                    for stale in stale_files:
-                        print(f"🗑️  Removing stale transcript: {stale.name}")
-                        stale.unlink()
-
                 # Process the session
                 print(f"📝 Processing session: {session_path}")
                 session_summary, entries, agent_entries = processor.parse_session_file(
@@ -1370,16 +1358,25 @@ Examples:
                     print(
                         f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
                     )
-                    # Cleanup existing transcripts if empty
-                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
-                    for stale in stale_files:
-                        print(f"🗑️  Removing empty transcript: {stale.name}")
-                        stale.unlink()
+                    # Keep any existing transcript — the session may not have flushed yet
+                    # (e.g. a cloud-bridged session whose turns are still buffered locally).
+                    # Only clean up when there is no existing file (a genuinely empty new session).
+                    if not existing_transcript:
+                        stale_files = _find_existing_transcripts(sessions_claude, session_id)
+                        for stale in stale_files:
+                            print(f"🗑️  Removing empty transcript: {stale.name}")
+                            try:
+                                stale.unlink()
+                            except OSError as e:
+                                print(
+                                    f"⚠️  Could not remove empty transcript {stale}: {e}",
+                                    file=sys.stderr,
+                                )
 
                     skipped += 1
                     continue
 
-                # Generate output name
+                # Generate output name (always computed for metadata: date_str, project, slug)
                 (
                     filename,
                     date_str,
@@ -1388,17 +1385,17 @@ Examples:
                     slug,
                 ) = _generate_transcript_filename(session_path, entries, processor=processor)
 
-                # Note: _output_exists() check removed - early mtime check handles
-                # both "already current" (skip) and "stale" (regenerate) cases
-
-                # Rotate into transcripts/YYYY-MM/ keyed off the session start
-                # date parsed from the filename (aops-b975b185). This stays
-                # stable even when a session is re-processed later.
-                rotation_dt = extract_date_from_filename(filename) or datetime.strptime(
-                    date_str, "%Y%m%d"
-                ).replace(tzinfo=UTC)
-                out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
-                base_name = str(out_subdir / filename)
+                # Re-render: reuse the existing transcript's base name so re-renders
+                # write to the same path (idempotent, no churn).
+                # First render: generate rotated output path normally (aops-b975b185).
+                if existing_transcript:
+                    base_name = str(existing_transcript)[: -len("-full.md")]
+                else:
+                    rotation_dt = extract_date_from_filename(filename) or datetime.strptime(
+                        date_str, "%Y%m%d"
+                    ).replace(tzinfo=UTC)
+                    out_subdir = ensure_rotated_dir(sessions_claude, rotation_dt)
+                    base_name = str(out_subdir / filename)
 
                 # Extract and process reflection (if present)
                 # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
@@ -1641,7 +1638,7 @@ Examples:
             # Get session ID and project from path
             sid = _get_session_id(session_path)
             proj = _infer_project(session_path, entries)
-            slug = processor.generate_session_slug(entries)
+            slug = ""
 
             # Compute usage stats and session duration for token_metrics
             usage_stats = processor._aggregate_session_usage(entries, agent_entries)
