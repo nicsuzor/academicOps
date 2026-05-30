@@ -644,6 +644,14 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         "Skill": "activate_skill",
         "Task": "activate_skill",
         "Agent": "activate_skill",
+        # User interaction / planning / todos (Claude built-ins → agy native)
+        # AskUserQuestion was the original gap that caused junior to fail load
+        # validation; the others are listed here so future agents using them are
+        # also translated correctly. NotebookEdit has no agy equivalent → drop.
+        "AskUserQuestion": "ask_user",
+        "ExitPlanMode": "enter_plan_mode",
+        "TodoWrite": "write_todos",
+        "NotebookEdit": None,
         # Web operations
         "WebFetch": "web_fetch",
         "WebSearch": "google_web_search",
