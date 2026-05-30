@@ -1274,6 +1274,7 @@ def find_sessions(
                         or session_file.name.endswith("-hooks.jsonl")
                         or session_file.name.endswith("-hooks.json")
                         or session_file.name.endswith("-claude-session.json")
+                        or session_file.name.endswith("-session.json")
                     ):
                         continue
 

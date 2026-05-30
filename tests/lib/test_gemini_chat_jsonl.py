@@ -235,3 +235,68 @@ def test_transcript_round_trip_has_request_and_tool_calls(tmp_path: Path) -> Non
     # fixture must clearly exceed that once chronological turns + tool calls
     # are rendered.
     assert len(md) > 700
+
+
+def _write_polecat_gemini_session(tmp_path: Path) -> Path:
+    """Write a minimal polecat Gemini chat-jsonl (1 user + 1 agent turn).
+
+    Polecat sessions are single-turn by design: one user dispatch message
+    and one agent response. This is the smallest legal session that must
+    NOT be skipped by the meaningful-entry counter.
+
+    Path layout mirrors the polecat bind-mount:
+    ``<sessions_repo>/polecats/<task>/<project>/chats/session-*.jsonl``
+    """
+    chats_dir = tmp_path / "sessions" / "polecats" / "aops-b7e6630a" / "aops" / "chats"
+    chats_dir.mkdir(parents=True)
+    path = chats_dir / "session-2026-05-23T20-30-c8bffa1d.jsonl"
+
+    lines = [
+        {
+            "sessionId": "c8bffa1d",
+            "projectHash": "aops",
+            "startTime": "2026-05-23T20:30:00Z",
+        },
+        {
+            "role": "user",
+            "parts": [{"text": "Implement the polecat short-session fix."}],
+            "timestamp": "2026-05-23T20:30:01Z",
+        },
+        {
+            "role": "model",
+            "parts": [{"text": "Done — filed PR #1482."}],
+            "model": "gemini-2-5-pro",
+            "tokens": {"input": 800, "output": 12, "cached": 0, "thoughts": 0},
+            "timestamp": "2026-05-23T20:31:45Z",
+        },
+    ]
+    path.write_text("\n".join(json.dumps(line) for line in lines), encoding="utf-8")
+    return path
+
+
+def test_polecat_single_turn_meaningful_count(tmp_path: Path) -> None:
+    """Polecat sessions (1 user + 1 agent turn) must yield meaningful_count >= 1.
+
+    Regression guard for the counter bug (aops-b7e6630a) where the
+    meaningful-entry check reported 0 for a genuine user+agent exchange.
+    """
+    path = _write_polecat_gemini_session(tmp_path)
+    proc = SessionProcessor()
+    _, entries, _ = proc.parse_session_file(path)
+
+    meaningful_count = sum(
+        1
+        for e in entries
+        if e.type in ("user", "assistant")
+        and not (
+            hasattr(e, "message")
+            and e.message
+            and e.message.get("subtype") in ("system", "informational")
+        )
+    )
+    assert meaningful_count >= 1, (
+        f"Polecat single-turn session yielded {meaningful_count} meaningful entries; "
+        "must be >= 1 to avoid spurious skip"
+    )
+    # Exact count: 1 user + 1 assistant = 2
+    assert meaningful_count == 2
