@@ -747,6 +747,16 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 # sentinel gates are NOT suppressed: losing a capture or running a destructive
 # op is still real harm.
 #
+# ida (honesty) is suppressed as a *gate* here, but its injected instructions
+# are TIERED (hooks/templates/ida-reminder.md, updated 2026-05-30): the honesty
+# floor (don't claim inferred as observed; flag substitutions/skips/unverified
+# subagent results; no relayed menus) is woven into the template and applied by
+# the agent's judgment on every turn — only the heavyweight evidence ceremony
+# (confidence %, competing hypotheses, artifact manifest) is gate-suppressed in
+# capture. This is the "instructions first" approach: improve guidance before
+# escalating to harder enforcement. If instruction tiering proves insufficient,
+# we can remove ida from the suppressed set to hard-enforce later.
+#
 # NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
 # repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
 # SessionStart hook writes it — so get_session_register() always resolves to
@@ -759,6 +769,8 @@ REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
 CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
 
 # Gates suppressed in the capture/personal register (the review-grade ceremony).
+# ida's gate fires are suppressed here — the honesty floor is enforced via
+# tiered instructions in ida-reminder.md, not by hard gate enforcement.
 GATES_SUPPRESSED_IN_CAPTURE: frozenset[str] = frozenset({"enforcer", "ida", "qa"})
 
 

@@ -413,7 +413,9 @@ class GenericGate:
         # WS7 item 6 — register-scaling. In the capture/personal register the
         # review-grade gates (enforcer, ida, qa) drop their ceremony entirely so
         # low-stakes capture/personal work isn't dragged through a compliance
-        # audit or an honesty loop (retro MF4, thread 10). Sentinel and handover
+        # audit or an honesty loop (retro MF4, thread 10). ida's instructions
+        # are tiered (ida-reminder.md) so the honesty floor still guides agents
+        # by judgment even when the gate is suppressed. Sentinel and handover
         # still fire — losing a capture or running a destructive op is real harm.
         from hooks.gate_config import is_gate_suppressed_in_register, is_never_block
 
