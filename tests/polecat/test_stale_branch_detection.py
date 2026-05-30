@@ -40,6 +40,33 @@ def _git(args: list[str], cwd: Path, check: bool = True) -> subprocess.Completed
     return subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True, check=check)
 
 
+def _fast_advance_branch(seed: Path, branch: str, parent_sha: str, commits: int) -> None:
+    """Create `commits` empty commits on `branch` starting from `parent_sha`.
+
+    Uses a single git-fast-import subprocess instead of one subprocess per commit.
+    Under pytest-xdist with many workers, spawning 105+ processes per fixture causes
+    fork/fd exhaustion — git-receive-pack dies, the subsequent push exits 128 intermittently.
+    """
+    parts = []
+    for i in range(commits):
+        msg = f"main advance {i}"
+        parts.append(f"commit refs/heads/{branch}\n")
+        parts.append("committer Test User <test@test.example> 1000000000 +0000\n")
+        parts.append(f"data {len(msg.encode())}\n")
+        parts.append(f"{msg}\n")
+        if i == 0:
+            parts.append(f"from {parent_sha}\n")
+        parts.append("\n")
+    subprocess.run(
+        ["git", "fast-import", "--quiet"],
+        cwd=seed,
+        input="".join(parts),
+        encoding="utf-8",
+        capture_output=True,
+        check=True,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _git_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure git has a committer identity in all subprocess calls.
@@ -129,8 +156,8 @@ def _push_stale_polecat_branch(
     branch_sha = _git(["rev-parse", "HEAD"], cwd=seed).stdout.strip()
 
     _git(["checkout", "main"], cwd=seed)
-    for i in range(commits):
-        _git(["commit", "--allow-empty", "-m", f"main advance {i}"], cwd=seed)
+    parent_sha = _git(["rev-parse", "HEAD"], cwd=seed).stdout.strip()
+    _fast_advance_branch(seed, "main", parent_sha, commits)
     _git(["push", "origin", "main"], cwd=seed)
 
     return branch_sha
