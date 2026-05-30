@@ -19,6 +19,8 @@ Rows are **mechanism categories** on a coercion-strength × frequency axis. A ti
 | L6 | tip        | **LLM-mediated review subagent**: `rbg` · `marsha` · `enforcer` subagent · `alignment`                                                                                           | ~1.5–3k tok + 5–30s latency                |
 | L7 | tip (apex) | **Branch protection + merge AND-gates**: branch protection rules · `loop_detector` · `<agent>-status` AND-checks · project-owner / admin approval                                | merge-blocking, irreversible at the moment |
 
+> **Base-tier note.** L1, L2, and L3 are **delivery channels**; within each, the instruction can be tuned across a wide insistence / urgency / visibility / salience / placement spectrum (see [`aops-core/skills/aops/references/enforcement-design.md`](../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum"). "Escalating" a base-tier failure means walking that spectrum (louder → reasoned → relocated → propagated → structured) and propagating the instruction across every failing surface before moving to a heavier tier. Default to instructions; bias hard against new L5+ gates (§4 of [`enforcement.md`](enforcement/enforcement.md)).
+
 ## Lifecycle
 
 Which pyramid tiers fire at which event in the session/PR lifecycle. The pyramid says **how invasive**; the lifecycle says **when**.
