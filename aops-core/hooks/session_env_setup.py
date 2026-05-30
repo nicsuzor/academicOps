@@ -115,7 +115,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         # An empty transcript path is a fallback value — flag it as a warning.
         _ok(f"Transcript: {transcript_path}")
         if transcript_path
-        else _warn(f"Transcript: {transcript_path}"),
+        else _warn("Transcript: (not set)"),
     ]
 
     # Ensure auto mode classifier rules are installed.
@@ -327,21 +327,17 @@ date: {today_iso}
 Today's note has not been populated yet. Run `/daily` to update.
 """
             daily_note_path.write_text(content)
-            messages.append("")
-            messages.append(section_header("Daily note"))
-            messages.append(
-                _ok(f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)")
+            daily_note_row = _ok(
+                f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
             )
         else:
-            messages.append("")
-            messages.append(section_header("Daily note"))
-            messages.append(_ok(f"Daily note: {today_compact}-daily.md"))
+            daily_note_row = _ok(f"Daily note: {today_compact}-daily.md")
 
     except Exception as e:
         # Graceful degradation for daily note bootstrap.
-        messages.append("")
-        messages.append(section_header("Daily note"))
-        messages.append(_warn(f"Daily note: bootstrap failed ({e})"))
+        daily_note_row = _warn(f"Daily note: bootstrap failed ({e})")
+
+    messages.extend(["", section_header("Daily note"), daily_note_row])
 
     # Persist all resolved environment variables (literals and any env-to-env
     # mappings that resolved at hook time).
