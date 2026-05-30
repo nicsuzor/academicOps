@@ -61,6 +61,24 @@ parsing failures and break the enforcement pipeline.
 
 **Limitation**: Even emphatic + reasoned prompts have limited compliance. Level 2 (intent router) provides intelligent, adaptive enforcement.
 
+### Within-class Insistence & Placement Spectrum
+
+The 1a–1d ladder ranks instructions by **strength** (loudness + reasoning + format). Strength is only one axis. Before concluding "the prompt tier is exhausted" and reaching for a heavier mechanism class (L2+), walk **the full within-class spectrum** — same mechanism class (instructions), different lever:
+
+| Rung | Move                                                                                                                                         | Failure pattern it answers                                                                              |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1    | Gentle mention / reminder ("consider X")                                                                                                     | Behaviour is optional                                                                                   |
+| 2    | Plain rule ("do X")                                                                                                                          | Behaviour is expected, no emphasis                                                                      |
+| 3    | Reasoned rule ("do X because Y" — task-relevant stakes)                                                                                      | Rule competes with stronger priors                                                                      |
+| 4    | Emphasis + reason ("**CRITICAL**: X because Y or Z happens")                                                                                 | Salience is the bottleneck                                                                              |
+| 5    | **Relocation / timing** — move the instruction to where/when it is needed (right surface, right lifecycle point) instead of making it louder | Most "prompt didn't work" cases are placement failures, not strength failures                           |
+| 6    | **Propagation** — same instruction reaches every surface that hits the failure (the A7 lesson: per-surface coverage, not a new mechanism)    | Failure recurs because one surface never loaded the rule                                                |
+| 7    | **Structured / parsed format** — output-is-parsed framing, required justification block, checklist (highest-compliance prompt technique)     | Exact format compliance needed; reasoning needs to be forced (see Level 1d below for the detailed form) |
+
+Rungs 1–4 are the strength axis already captured by 1a–1c plus the "Prompt Strength Guidelines" table above. Rungs 5–7 are the placement, propagation, and structure axes — same mechanism class (prompt text), different lever. **All seven rungs are cheaper than crossing into L2+**, and the cost ratio is large: a new gate is permanent maintenance and a new failure surface; rewording or moving an instruction is reversible and cheap.
+
+**The unit of "trying harder at the prompt tier" is this spectrum, not just rung 4.** Skipping from rung 3 straight to a new gate is the failure mode this section exists to prevent. Most observed "instructions don't work" incidents are actually rung 5 or 6 failures: the rule existed but the failing surface never saw it, or saw it at the wrong moment. Treat the prompt tier as exhausted only when the instruction was clear (rungs 1–4), correctly placed (rung 5), propagated to every surface that hit the failure (rung 6), and — where applicable — output-parsed (rung 7), and the failure still recurred.
+
 ### Level 1d: Structured Justification Format
 
 **Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, `specs/ENFORCEMENT-MAP.md`, hooks/*.py, settings.json deny rules).
@@ -428,7 +446,7 @@ tools: [Read, Grep]  # Only these tools available
 When adding enforcement for a behavior:
 
 1. **Diagnose**: Why is the behavior occurring? (lack of info? conflicting priors? no enforcement?)
-2. **Choose level**: Start at lowest effective level
+2. **Choose level**: Start at lowest effective level — almost always an instruction. Agents are intelligent, and instructions do work in the large majority of cases.
 3. **Implement**: Add mechanism
 4. **Observe**: Log evidence of success/failure
-5. **Escalate**: If ineffective, move up the ladder
+5. **Escalate within class before crossing classes.** If ineffective, first walk the within-class insistence/placement spectrum: louder → reasoned → relocated → propagated → structured (see "Within-class Insistence & Placement Spectrum" above). Only cross into a heavier mechanism class (L2+) when evidence shows the instruction spectrum is genuinely exhausted: the rule was clear, salient, correctly placed, propagated to every surface that hit the failure, and still ignored. **Bias hard against new hard gates.** Every gate is permanent maintenance and a new place for the framework to fail — fewer gates means fewer places things go wrong. "Simple is great, agents are smart, instructions do actually work in almost all cases."
