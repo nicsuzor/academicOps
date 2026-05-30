@@ -520,6 +520,7 @@ def get_gate_file_path(
     base = session_naming.generate_base_name(
         session_id,
         timestamp=_parse_date_arg(date),
+        slug="session",
         crew_name=session_naming.resolve_crew_name(),
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
