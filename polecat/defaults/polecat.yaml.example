@@ -25,6 +25,10 @@ session_defaults:
   # Default models for each client. Per-session-type overlays below may
   # override either field independently. The `--model` CLI flag overrides
   # the entry for the active client (selected by `--gemini` / no flag).
+  # `--model claude` (provider alias) resolves to claude_model at runtime —
+  # the single source of truth for your default Claude model. To dispatch
+  # Opus workers without pinning a version in every command, set this to
+  # claude-opus-4-8 and use `--model claude` in dispatch commands.
   claude_model: claude-sonnet-4-6
   gemini_model: gemini-2.5-pro
 

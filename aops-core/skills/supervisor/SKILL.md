@@ -190,9 +190,9 @@ ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"pole
 
 **Model selection flag semantics:**
 
-- `--model <name>` is the canonical flag for model selection. Examples: `--model claude-opus-4-7` for Opus, `--model claude-haiku-4-5` for Haiku.
+- `--model <name>` is the canonical flag for model selection. Use `--model claude` to inherit the configured model from `polecat.yaml session_defaults.claude_model` (preferred — no version pinning in dispatch commands). Use `--model opus` for latest Opus via Claude Code's family alias, or `--model claude-opus-4-8` to pin a specific version. Other examples: `--model claude-haiku-4-5` for Haiku.
 - `--gemini` selects the Gemini CLI as the worker backend (not a model name). To specify a particular Gemini model, pair it with `--model`: `--gemini --model gemini-2.5-pro`.
-- `--opus` is not a valid flag. It does not exist in the polecat CLI and will cause an error if used. Use `--model claude-opus-4-7` instead.
+- `--opus` is not a valid flag. It does not exist in the polecat CLI and will cause an error if used. Use `--model opus` (latest Opus) or `--model claude-opus-4-8` (pinned) instead.
 
 **Auto-arm notify-watch** — if this is the first polecat dispatch in an interactive (non-`/loop`) session and the docker-events Monitor is not already armed, arm it immediately after the dispatch command completes. See [In-Session Multi-Tick Supervision](#in-session-multi-tick-supervision-notify-watch) for topology detection and the canonical Monitor command. Subsequent dispatches in the same session do not re-arm.
 
