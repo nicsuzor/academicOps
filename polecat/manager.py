@@ -904,9 +904,12 @@ class PolecatManager:
                     check=True,
                 )
             else:
-                # Create new branch from the fresh default branch
+                # Create new branch from the fresh default branch. --no-track
+                # stops git auto-inheriting main's upstream (origin/main) under
+                # branch.autoSetupMerge; the explicit `git push -u` below is the
+                # single source of truth for upstream.
                 subprocess.run(
-                    ["git", "checkout", "-b", branch_name],
+                    ["git", "checkout", "--no-track", "-b", branch_name],
                     cwd=worktree_path,
                     check=True,
                 )
@@ -1865,9 +1868,14 @@ class PolecatManager:
 
         if create_fresh:
             # Create fresh from default branch. Clone usually already has it checked out.
+            # --no-track prevents git from auto-inheriting origin/main as the
+            # upstream (branch.autoSetupMerge propagates tracking from the
+            # origin/<default> start-point), which otherwise prints a misleading
+            # "set up to track 'origin/main'" line. The explicit `git push -u`
+            # below sets the correct feature-branch upstream.
             subprocess.run(["git", "checkout", default_branch], cwd=worktree_path, check=False)
             subprocess.run(
-                ["git", "checkout", "-B", branch_name, f"origin/{default_branch}"],
+                ["git", "checkout", "--no-track", "-B", branch_name, f"origin/{default_branch}"],
                 cwd=worktree_path,
                 check=True,
             )
