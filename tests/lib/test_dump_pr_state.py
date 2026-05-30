@@ -182,6 +182,39 @@ def test_apply_triage_pipeline_when_not_yet_approved(tmp_path):
     assert label_cmd[idx + 1] == "triage:pipeline"
 
 
+def test_apply_triage_escalate_labels_but_does_not_create_issue(tmp_path):
+    """Escalated PRs get triage:escalate label but must NOT trigger gh issue create."""
+    pr = {
+        "number": 99,
+        "url": "https://github.com/org/repo/pull/99",
+        "labels": [],
+        "isDraft": False,
+        "mergeable": "CONFLICTING",
+        "statusCheckRollup": [],
+        "headRefName": "feature/conflict",
+        "author": {"login": "someuser"},
+        "updatedAt": "2026-05-25T00:00:00Z",
+    }
+    calls = []
+
+    def capture_run(cmd, **kwargs):
+        calls.append(cmd)
+        return MagicMock()
+
+    with patch("dump_pr_state.subprocess.run", side_effect=capture_run):
+        apply_triage(pr, tmp_path)
+
+    # Should have exactly one gh call: the label-edit
+    assert len(calls) == 1
+    assert "--add-label" in calls[0]
+    idx = calls[0].index("--add-label")
+    assert calls[0][idx + 1] == "triage:escalate"
+
+    # No gh issue create call anywhere
+    for cmd in calls:
+        assert "issue" not in cmd, f"Unexpected gh issue call: {cmd}"
+
+
 def test_fetch_prs_open_prs_populated_when_triage_fails(tmp_path):
     """open_prs must be returned even when apply_triage raises."""
     fake_pr = {

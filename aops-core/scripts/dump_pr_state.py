@@ -167,46 +167,6 @@ def apply_triage(pr: dict, repo_path: Path):
             )
             return
 
-        if new_label == "triage:escalate":
-            search_cmd = [
-                "gh",
-                "issue",
-                "list",
-                "--search",
-                f"PR #{pr['number']} in:title",
-                "--json",
-                "number",
-                "--limit",
-                "1",
-            ]
-            try:
-                res = subprocess.run(
-                    search_cmd, cwd=repo_path, capture_output=True, text=True, check=True
-                )
-                issues = json.loads(res.stdout) if res.stdout.strip() else []
-                if not issues:
-                    title = f"[Action Required] PR #{pr['number']} needs manual fix"
-                    reason = (
-                        "Failing CI checks: " + ", ".join(failed_checks)
-                        if failed_checks
-                        else "Merge conflicts detected."
-                    )
-                    issue_body = f"PR #{pr['number']} ({pr['url']}) has conflicting CI or merge conflicts and requires manual intervention.\n\n**Reason**: {reason}"
-                    subprocess.run(
-                        ["gh", "issue", "create", "--title", title, "--body", issue_body],
-                        cwd=repo_path,
-                        capture_output=True,
-                        check=True,
-                        text=True,
-                    )
-            except subprocess.CalledProcessError as e:
-                stderr = e.stderr or ""
-                print(
-                    f"Warning: escalate issue search/creation failed for {repo_path.name} PR #{pr['number']}: "
-                    f"exit {e.returncode} {stderr.strip()}",
-                    file=sys.stderr,
-                )
-
 
 def fetch_prs(repo_path: Path, state: str, limit: int = 50, since: str | None = None) -> list:
     """Fetch PRs for a specific repo and state."""
