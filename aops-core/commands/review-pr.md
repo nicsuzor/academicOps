@@ -36,6 +36,47 @@ You can also be invoked from Cowork dispatch with the same argument.
 
 ---
 
+## Dispatch topology — read this first
+
+A James panel wants **four independent perspectives** (James synthesis + RBG compliance + Pauli
+strategy + Marsha QA), each in its own context window. How those perspectives are obtained depends on
+the harness. Walk down this ladder to the **highest tier your harness supports** — the canonical
+reference, the mechanism, and the source citations are in [`specs/review-dispatch-topology.md`](../../specs/review-dispatch-topology.md).
+
+> These **lettered** dispatch tiers (A/B/C) are a different axis from the **numbered** Tier 0–3
+> PR-size triage in Step 3 below. Letters = how the panel is launched; numbers = how much review a
+> given PR earns. They compose: a numbered tier decides _whether_ to commission a panel, a lettered
+> tier decides _how_ the commissioned panel runs.
+
+- **Tier A — Peer team** (Claude Code with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`): the **outer
+  agent** launches a four-member team — `james` as lead, `rbg`/`pauli`/`marsha` as teammates from their
+  subagent definitions. All four are peer sessions; James synthesises via the mailbox.
+- **Tier B — Top-level orchestration** (portable default): run `review-pr` in your **own main session**
+  — you _become_ James — and commission RBG/Pauli/Marsha as **one level of subagents** (`Agent(…)` on
+  Claude, `delegate_to_agent` on Gemini). This is the default and works on every harness with one-level
+  sub-delegation.
+- **Tier C — Single-session multi-pass** (floor; GHA, sub-delegation-less clients): one session runs the
+  four lenses sequentially as self-roles and **must disclose the degraded mode explicitly**. No silent
+  collapse.
+
+**The load-bearing rule: never dispatch James as a leaf subagent for a panel review.** A subagent
+generally cannot spawn further subagents (Claude subagents and agent-team teammates both forbid nesting),
+so a James-as-subagent silently performs all four roles in one context — a four-perspective review
+collapses to a one-agent one with no error surfaced. If you are an outer agent wanting a panel review,
+invoke `review-pr` at the top level or as a team lead; do **not** wrap James in `Agent(subagent_type="james")`.
+
+**Leaf-subagent guard (mandatory):** if you are running as James and find you _cannot_ fan out (the
+`Agent`/delegation tool is absent or its calls don't produce independent reviewers), do not silently
+proceed as a one-agent panel. Either **escalate** — "I was dispatched as a subagent and cannot fan out;
+re-dispatch `review-pr` at the top level (Tier B) or as a team lead (Tier A)" — or **degrade with
+disclosure** (Tier C: run the lenses yourself and label the verdict single-session, non-independent).
+
+This is vendor-neutral by construction: Tier B (the default) needs only one-level sub-delegation, which
+every supported harness has; Tier A is an optional enhancement used only where the agent-teams primitive
+exists; Tier C is the always-available floor. No step below hard-depends on a Claude-only primitive.
+
+---
+
 ## What James Does
 
 1. Set up the session (batch preflight, progress logging, halt conditions)
@@ -305,6 +346,12 @@ Reason: <one-line rationale referencing the signal that put this PR into this ti
 ```
 
 Do NOT ask "Proceed?" or wait for confirmation. Commission the agents immediately.
+
+> **Before commissioning, confirm you can fan out.** Per the dispatch-topology ladder above, the
+> reviewers must run as independent perspectives. If your `Agent`/delegation calls in this step do not
+> produce independent reviewer sessions (you are a leaf subagent), STOP and apply the leaf-subagent
+> guard — escalate to the caller or degrade-with-disclosure (Tier C). Do not silently self-play all
+> three reviewer roles in this context.
 
 ### Routing principles
 
