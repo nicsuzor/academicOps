@@ -439,39 +439,29 @@ _LEGACY_ALIASES = {
 _warned_legacy_vars: set[str] = set()
 
 
-def __getattr__(name: str):  # PEP 562 module-level lazy attrs
+def _get_env_with_legacy_fallback(name: str, default: str | None = None) -> str | None:
     import sys
 
+    if name in os.environ:
+        return os.environ[name]
+    legacy_name = _LEGACY_ALIASES.get(name)
+    if legacy_name and legacy_name in os.environ:
+        if legacy_name not in _warned_legacy_vars:
+            sys.stderr.write(
+                f"WARNING: '{legacy_name}' is deprecated. Please migrate to '{name}'.\n"
+            )
+            sys.stderr.flush()
+            _warned_legacy_vars.add(legacy_name)
+        return os.environ[legacy_name]
+    return default
+
+
+def __getattr__(name: str):  # PEP 562 module-level lazy attrs
     if name in _GATE_MODE_DEFAULTS:
-        if name in os.environ:
-            return os.environ[name]
-
-        legacy_name = _LEGACY_ALIASES.get(name)
-        if legacy_name and legacy_name in os.environ:
-            if legacy_name not in _warned_legacy_vars:
-                sys.stderr.write(
-                    f"WARNING: '{legacy_name}' is deprecated. Please migrate to '{name}'.\n"
-                )
-                sys.stderr.flush()
-                _warned_legacy_vars.add(legacy_name)
-            return os.environ[legacy_name]
-
-        return _GATE_MODE_DEFAULTS[name]
+        return _get_env_with_legacy_fallback(name, _GATE_MODE_DEFAULTS[name])
 
     if name == "ENFORCER_TOOL_CALL_THRESHOLD":
-        raw = os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD")
-
-        if raw is None:
-            legacy_name = _LEGACY_ALIASES.get("ENFORCER_TOOL_CALL_THRESHOLD")
-            if legacy_name and legacy_name in os.environ:
-                if legacy_name not in _warned_legacy_vars:
-                    sys.stderr.write(
-                        f"WARNING: '{legacy_name}' is deprecated. Please migrate to 'ENFORCER_TOOL_CALL_THRESHOLD'.\n"
-                    )
-                    sys.stderr.flush()
-                    _warned_legacy_vars.add(legacy_name)
-                raw = os.environ[legacy_name]
-
+        raw = _get_env_with_legacy_fallback("ENFORCER_TOOL_CALL_THRESHOLD")
         if raw is None:
             return _ENFORCER_THRESHOLD_DEFAULT
         try:
