@@ -44,6 +44,7 @@ permissions:
   pull-requests: write
   statuses: write
   issues: write
+  id-token: write
 
 jobs:
   resolve:
