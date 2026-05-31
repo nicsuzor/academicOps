@@ -434,3 +434,39 @@ class TestRegisterScaling:
 
     def test_suppressed_set_is_the_review_grade_gates(self):
         assert GATES_SUPPRESSED_IN_CAPTURE == frozenset({"enforcer", "ida", "qa"})
+
+
+class TestGateModeEnvResolution:
+    """Test environment variable fallback for legacy names."""
+
+    def test_legacy_custodiet_fallback(self, monkeypatch, capsys):
+        import hooks.gate_config
+
+        # Clear warned state for test isolation
+        hooks.gate_config._warned_legacy_vars.clear()
+
+        monkeypatch.delenv("ENFORCER_GATE_MODE", raising=False)
+        monkeypatch.delenv("ENFORCER_TOOL_CALL_THRESHOLD", raising=False)
+        monkeypatch.setenv("CUSTODIET_GATE_MODE", "deny")
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "35")
+
+        assert hooks.gate_config.ENFORCER_GATE_MODE == "deny"
+        assert hooks.gate_config.ENFORCER_TOOL_CALL_THRESHOLD == 35
+
+        captured = capsys.readouterr()
+        assert "WARNING: 'CUSTODIET_GATE_MODE' is deprecated" in captured.err
+        assert "WARNING: 'CUSTODIET_TOOL_CALL_THRESHOLD' is deprecated" in captured.err
+
+    def test_new_name_takes_precedence(self, monkeypatch, capsys):
+        import hooks.gate_config
+
+        hooks.gate_config._warned_legacy_vars.clear()
+
+        monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
+        monkeypatch.setenv("CUSTODIET_GATE_MODE", "deny")
+
+        assert hooks.gate_config.ENFORCER_GATE_MODE == "block"
+
+        # When new name is used, no warning is emitted even if legacy is set
+        captured = capsys.readouterr()
+        assert "WARNING" not in captured.err

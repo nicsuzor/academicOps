@@ -195,7 +195,7 @@ crew_names:
 #                             overlay for gate-mode lookup).
 #   POLECAT_CREW_NAME         Crew name for filenames.
 #   POLECAT_APPROVAL_MODE     "plan" when launched in plan mode (signals the
-#                             gate engine to skip the custodiet ops counter).
+#                             gate engine to skip the enforcer ops counter).
 #   DEBUG_HOOKS               Materialised from `debug:` above. Router dumps
 #                             raw hook stdin to /tmp/cc_hooks_<slug>.jsonl.
 #   GEMINI_SESSION_ID         Set on the Gemini path; also a provider
