@@ -27,6 +27,22 @@ on:
         required: true
         type: string
 
+# RCA aops-31798611 — fix for 100% startup_failure of this workflow.
+# This caller previously declared NO permissions, so its GITHUB_TOKEN fell back
+# to the repository default. The reusable callee (agent-enforcer.yml) declares a
+# job that requests contents/pull-requests/statuses/issues: write. A reusable
+# workflow's job can never be granted more than the caller holds, so when the
+# caller's default token is more restricted than that request, GitHub rejects the
+# workflow at graph-build time (startup_failure) for 100% of invocations — before
+# any job runs and independent of input values (which is why the manual
+# workflow_dispatch failed identically). The caller must grant at least the union
+# of permissions any nested job requests.
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  issues: write
+
 jobs:
   enforce:
     uses: ./.github/workflows/agent-enforcer.yml
