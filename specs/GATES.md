@@ -390,7 +390,7 @@ The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and 
 
 **Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering. Targets the issues catalogued in the gate definition's docstring (#621, #563, #380, #430, #359, #798, #549, #624, #317, #100, #376, #437, #391, #416, #335, #932, #822, #714).
 
-**Why block-once.** Claude Code's Stop event does not support `hookSpecificOutput` or `additionalContext` — the validator silently discards them. The only agent-visible channel on Stop is `decision: "block"` + `reason`. Non-blocking advisory injection is impossible. The block-once pattern is the minimum intervention: the agent sees the checklist once per turn and can self-correct, but is not repeatedly blocked.
+**Why block-once.** Claude Code's Stop event does not support `hookSpecificOutput` or `additionalContext` — the validator rejects any payload containing them (a `hook_non_blocking_error`, surfaced as a "Stop hook error" notification) and discards the whole output, so `decision`/`reason` are lost too. The only agent-visible channel on Stop is `decision: "block"` + `reason` (which is also user-visible — there is no agent-only channel on Stop). Non-blocking advisory injection is impossible. The block-once pattern is the minimum intervention: the agent sees the checklist once per turn and can self-correct, but is not repeatedly blocked. (Re-verified Claude Code 2.1.158, 2026-05-31.)
 
 ### Where it lives
 

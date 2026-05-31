@@ -854,9 +854,15 @@ class HookRouter:
             # 5 blocks in 2 minutes) keys on the internal verdict field, not
             # on this output decision, so routine RBG advisories do not trip it.
             #
-            # `additionalContext` via hookSpecificOutput is emitted
-            # defensively for forward compatibility — newer Claude Code
-            # versions may honour it for Stop; older versions ignore it.
+            # hookSpecificOutput is deliberately NOT emitted on Stop. Claude
+            # Code's Stop output schema rejects it: the validator fails with
+            # "Hook JSON output validation failed — (root): Invalid input" and
+            # discards the ENTIRE payload, silently dropping decision+reason
+            # too. The validator's own expected-schema lists hookSpecificOutput
+            # only for PreToolUse / UserPromptSubmit / PostToolUse /
+            # PostToolBatch — never Stop. So Stop has no agent-only context
+            # channel; `reason` (also user-visible) is the only path to the
+            # model. Verified Claude Code 2.1.158, 2026-05-31 (see kb-fcc2b95c).
             ctx_inj = result.context_injection
             sys_msg = result.system_message
 

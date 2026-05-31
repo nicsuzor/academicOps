@@ -88,8 +88,11 @@ class ClaudeStopHookOutput(BaseModel):
     ``hookSpecificOutput`` is NOT supported for Stop events. Claude Code's schema
     validator only accepts hookSpecificOutput for PreToolUse, UserPromptSubmit,
     PostToolUse, and PostToolBatch. Emitting it with hookEventName="Stop" causes
-    the entire JSON payload to be rejected as invalid, silently discarding both
-    the decision and reason fields. Discovered via polecat self-test 2026-05-23.
+    the entire JSON payload to be rejected ("Hook JSON output validation failed —
+    (root): Invalid input", a hook_non_blocking_error surfaced to the user as a
+    generic "Stop hook error" notification), discarding both the decision and
+    reason fields. Discovered via polecat self-test 2026-05-23; re-verified
+    empirically on Claude Code 2.1.158, 2026-05-31 (repro: proof/anthropic-issue/).
     """
 
     decision: Literal["approve", "block"] | None = None

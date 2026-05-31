@@ -130,7 +130,7 @@ Must exit 0 for JSON to be processed:
 }
 ```
 
-**Platform constraint (confirmed 2026-05-24, Claude Code + Gemini CLI):** Stop events do **not** support `hookSpecificOutput` or `additionalContext`. The validator silently discards the entire payload if those fields are present. The only agent-visible channel on Stop is `decision: "block"` + `reason`. `systemMessage` and `stopReason` are user-visible only — the agent never sees them.
+**Platform constraint (Claude Code 2.1.158, re-verified empirically 2026-05-31):** Stop events do **not** support `hookSpecificOutput` or `additionalContext`. If those fields are present the validator fails (`"Hook JSON output validation failed — (root): Invalid input"`, recorded as a `hook_non_blocking_error` and surfaced to the user as a generic "Stop hook error occurred" notification) and discards the **entire** payload — so `decision`/`reason` are dropped too and the agent is not blocked. The validator's own expected-schema lists `hookSpecificOutput` only for PreToolUse / UserPromptSubmit / PostToolUse / PostToolBatch — never Stop. The only agent-visible channel on Stop is `decision: "block"` + `reason`. `systemMessage` and `stopReason` are user-visible only — the agent never sees them (confirmed absent from the stream-json agent feed). Reproduction: `proof/anthropic-issue/` on the stophooktest branch.
 
 | Field                | `decision: "block"`              | `decision: "approve"` |
 | -------------------- | -------------------------------- | --------------------- |
