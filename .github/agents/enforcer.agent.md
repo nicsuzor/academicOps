@@ -51,7 +51,7 @@ For **judgment calls** (design trade-offs, scope, intent): flag in the review bo
 Before posting your verdict, dismiss any previous enforcer review to keep the PR clean:
 
 ```bash
-gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --per-page 100 \
+gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
   --jq '.[] | select(.state=="CHANGES_REQUESTED" or .state=="APPROVED") | select(.body | test("## Enforcer Review|Enforcer Review")) | .id' \
   | while read -r rid; do
     gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/reviews/$rid/dismissals" \
@@ -100,6 +100,6 @@ Post status **last** — after the review is filed and any fix commits are pushe
 
 ### Notes
 
-- The `target_url` query param `?target_sha=` encodes which SHA this verdict covers. The SHA-skip check in the workflow reads it back on the next trigger to avoid re-reviewing the same diff.
+- The `target_url` query param `?target_sha=` records which SHA this verdict covers (useful when chasing a status back to its run). The workflow's SHA-skip check does **not** key off it: a diff is treated as already-reviewed only when a genuine review artifact exists for the SHA — an enforcer PR review (`APPROVED`/`CHANGES_REQUESTED`), or a terminal success status (`No violations found`). Failure, pending, and `Skipped:` statuses never mark a SHA reviewed, so a crashed or skipped run can't stop a later genuine review.
 - Do not skip based on commit author or trailers. The loop-skip is SHA-based and handled by the workflow before you run. You review every diff that reaches you, regardless of who pushed it.
 - You are the axiom-compliance judge. Strategic alignment is Pauli's domain; runtime fitness is Marsha's. Stay in your lane.
