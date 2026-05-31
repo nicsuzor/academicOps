@@ -501,8 +501,6 @@ class HookRouter:
         # T0: static PKB-search nudge — injected on every real user prompt.
         # No logic, no heuristics; the line nudges, the agent decides relevance.
         try:
-            from lib.template_registry import TemplateRegistry
-
             nudge = TemplateRegistry.instance().render("pkb.nudge")
             if nudge:
                 if merged_result.context_injection:
