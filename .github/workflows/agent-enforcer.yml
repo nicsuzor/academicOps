@@ -59,20 +59,47 @@ jobs:
       AGENT_NAME: enforcer
 
     steps:
-      # §3.6 SHA-based loop-skip: re-post success if this exact SHA was already reviewed.
-      # Replaces v1's broken Enforcer-By trailer check (see PR #1037 / issue #1039).
-      # Author identity is irrelevant — only "have we judged this diff?" matters.
+      # §3.6 SHA-based loop-skip: re-post the verdict if this exact SHA was already
+      # GENUINELY reviewed. Replaces v1's broken Enforcer-By trailer check
+      # (see PR #1037 / issue #1039). Author identity is irrelevant — only
+      # "have we judged this diff?" matters.
+      #
+      # A diff counts as already-reviewed ONLY when a genuine completed review
+      # exists for this exact SHA:
+      #   (a) an actual enforcer PR review (CHANGES_REQUESTED or APPROVED), or
+      #   (b) a genuine terminal success status ("No violations found").
+      # Failure, pending, and "Skipped: …" statuses do NOT count. The earlier
+      # design keyed off any status carrying ?target_sha=<HEAD_SHA> in its
+      # target_url — but the pending status, the crash-fallback failure status,
+      # and the skip status all carry it, so a single failed/crashed run
+      # poisoned the SHA and RBG never reviewed it again (regression
+      # aops-330a87e3; follows aops-31798611 and aops-2be8f5c7).
       - name: SHA-skip check
         id: sha-skip
         run: |
-          LATEST_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last // empty" 2>/dev/null || echo "")
-          PRIOR_TARGET_SHA=$(echo "$LATEST_STATUS" \
-            | jq -r '.target_url // empty' 2>/dev/null \
-            | sed -n 's/.*target_sha=\([a-f0-9]*\).*/\1/p')
+          # (a) Genuine enforcer PR reviews posted against this exact SHA.
+          #     Body starts with "## Enforcer Review" (enforcer.agent.md §5).
+          CHANGES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
 
-          if [ -n "$PRIOR_TARGET_SHA" ] && [ "$PRIOR_TARGET_SHA" = "$HEAD_SHA" ]; then
-            echo "SHA $HEAD_SHA already reviewed — re-posting idempotent success"
+          # (b) Genuine success status anywhere in this SHA's status history.
+          #     "Skipped: …" echoes and failures/pendings are excluded, so a
+          #     clean approve (which posts no PR review) is still durably detected.
+          GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
+
+          if [ "${CHANGES:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already reviewed (CHANGES_REQUESTED) — re-posting failure"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Violations found — see review (already reviewed)" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${APPROVED:-0}" -gt 0 ] || [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already reviewed (approved) — re-posting idempotent success"
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state=success \
               -f context="${AGENT_NAME}-status" \
