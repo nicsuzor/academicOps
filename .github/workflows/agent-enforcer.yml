@@ -114,9 +114,18 @@ jobs:
           git clone --depth 1 --filter=blob:none --sparse \
             "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
             .aops
-          cd .aops && git sparse-checkout set \
-            aops-core/agents/rbg.md \
-            .github/agents/enforcer.agent.md && cd ..
+          # --no-cone: treat the arguments as file path patterns, not cone-mode
+          # directories. Cone mode (the default) interprets each path as a
+          # directory ("'aops-core/agents/rbg.md' is not a directory") and never
+          # materialises the files, so the subsequent cat fails. (aops-2be8f5c7)
+          cd .aops && git sparse-checkout set --no-cone \
+            /aops-core/agents/rbg.md \
+            /.github/agents/enforcer.agent.md && cd ..
+          if [ ! -f .aops/aops-core/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ]; then
+            echo "::error::Enforcer prompt files were not materialised by sparse-checkout" >&2
+            ls -la .aops/aops-core/agents/ .aops/.github/agents/ 2>&1 || true
+            exit 1
+          fi
           PROMPT=$(cat .aops/aops-core/agents/rbg.md .aops/.github/agents/enforcer.agent.md)
           {
             echo "prompt<<AGENT_EOF"
