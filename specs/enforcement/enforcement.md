@@ -257,6 +257,73 @@ See **[`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)
 
 Tier-spanning mechanisms (e.g. `/dump` handover: middle when the handover gate is open, tip when it blocks Stop) carry both tiers in the **Pyramid tier** field with a conditional clause.
 
+### Runtime gates lifecycle
+
+Each gate is a state machine driven by hook events. Forensic detail → [`specs/GATES.md`](../GATES.md).
+
+| Gate     | Starts | Closes when                              | Opens when                                       | Policy event           | Policy action                     |
+| -------- | ------ | ---------------------------------------- | ------------------------------------------------ | ---------------------- | --------------------------------- |
+| enforcer | OPEN   | after n turns (counter-based)            | Calling `enforcer`/`rbg` subagent resets counter | PreToolUse @ threshold | Block non-read/infra tools        |
+| qa       | OPEN   | Write tool used, or task → `in_progress` | `marsha`/`qa`/`verify` subagent completes        | Stop while CLOSED      | Block/warn; demand verifier       |
+| handover | OPEN   | Write tool used, or task → `in_progress` | `/end_session`, `/dump`, or `handover` skill     | Stop while CLOSED      | Block/warn; demand handover       |
+| ida      | CLOSED | n/a (always armed)                       | First Stop in turn (fire-once)                   | Stop while CLOSED      | Inject "show your proof" advisory |
+
+### Mechanism catalogues
+
+Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate forensic detail → [`specs/GATES.md`](../GATES.md).
+
+#### Runtime hooks (`aops-core/hooks/router.py`)
+
+| Mechanism             | L  | Action     | Purpose                                                | Source                                                                          |
+| :-------------------- | :- | :--------- | :----------------------------------------------------- | :------------------------------------------------------------------------------ |
+| `enforcer` gate       | L6 | warn/block | Periodic axiom-compliance check via subagent           | [`ultra-vires-enforcer.md`](ultra-vires-enforcer.md), [`GATES.md`](../GATES.md) |
+| `qa` gate             | L6 | warn/block | Requires verifier subagent before Stop                 | [`GATES.md`](../GATES.md)                                                       |
+| `handover` gate       | L6 | warn/block | Blocks Stop until commit + task update + reflection    | [`GATES.md`](../GATES.md)                                                       |
+| `ida` gate            | L2 | warn       | Stop-hook inject: back assertions with proof           | [`GATES.md`](../GATES.md)                                                       |
+| `hydration` gate      | L4 | warn       | Blocks tool calls until hydrator runs (mode-dependent) | [`GATES.md`](../GATES.md)                                                       |
+| `aca_data_autocommit` | L4 | —          | Auto-commits `$ACA_DATA` after state-modifying calls   | `aops-core/hooks/router.py:_run_aca_data_autocommit`                            |
+| `context-map hints`   | L2 | inject     | UPS lifecycle inject from `.agents/context-map.json`   | `aops-core/hooks/router.py:_inject_context_map_hints`                           |
+
+#### Pre-commit hooks
+
+| Hook                        | L  | Action | Purpose                                                 | Source                                 |
+| :-------------------------- | :- | :----- | :------------------------------------------------------ | :------------------------------------- |
+| `check-no-new-orphan-md`    | L4 | warn   | New `.md` outside canonical-location allowlist (R5.6)   | `scripts/check_no_new_orphan_md.py`    |
+| `check-framework-integrity` | L4 | warn   | Broken wikilinks or missing index entries               | `scripts/check_framework_integrity.py` |
+| `check-no-fallbacks`        | L4 | warn   | Silent-fallback patterns in hooks (A8 / P#8; #930)      | `scripts/check_no_fallbacks.py`        |
+| `normalize-mcp-names`       | L4 | warn   | Auto-heals Gemini-form MCP names to Claude form (#1128) | `scripts/normalize_mcp_names.py`       |
+
+#### Bridge-level constraints
+
+| Constraint                 | L  | Action | Purpose                                       | Source                  |
+| :------------------------- | :- | :----- | :-------------------------------------------- | :---------------------- |
+| `create_task` prefix guard | L4 | block  | ID prefix must match task type / project slug | `polecat/pkb_bridge.py` |
+| `claude` OAUTH pre-flight  | L4 | block  | Exits 4 when `CLAUDE_CODE_OAUTH_TOKEN` unset  | `polecat/cli.py`        |
+
+#### CORE.md directives
+
+| Directive   | L  | Action | Purpose                                   | Source            |
+| :---------- | :- | :----- | :---------------------------------------- | :---------------- |
+| `pkb-first` | L1 | inject | Agents must use PKB before reading source | `.agents/CORE.md` |
+
+#### Scheduled batch automation
+
+| Job                   | L  | Purpose                                         | Source                               |
+| :-------------------- | :- | :---------------------------------------------- | :----------------------------------- |
+| `apply_triage` labels | L0 | Labels open PRs; opens issue for escalate-class | `aops-core/scripts/dump_pr_state.py` |
+
+#### PR-pipeline agents (v2)
+
+Branch protection AND-gates each `<agent>-status` directly — no LLM judgment in the merge gate. **Phase 1 operative (PR #1062); phases 2/3/5 pending.** Contract: [`pr-pipeline-v2.md`](../workflows/pr-pipeline-v2.md).
+
+| Agent              | L  | Action | Purpose                                                 | Source                                                                      |
+| :----------------- | :- | :----- | :------------------------------------------------------ | :-------------------------------------------------------------------------- |
+| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | `.github/workflows/agent-enforcer.yml@enforcer-v1`                          |
+| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment               | `.github/workflows/agent-alignment.yml@alignment-v1`                        |
+| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only             | `.github/workflows/agent-mechanic.yml@mechanic-v1`                          |
+| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                                     |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
+
 ## §7 Scope limits
 
 ### §7.1 Known-clients only
@@ -275,7 +342,23 @@ The framework's agent-based enforcement (rbg, enforcer, qa / marsha, pauli, jame
 | GHA review agents       | No (inlined prompts) | No     | Yes (prompt-level) | No     | N/A          |
 | Third-party agents      | No                   | No     | No                 | No     | No           |
 
-## §8 Operator impact — env var rename
+### §7.3 Session scope
+
+Enforcement is **session-scoped**: every execution context with its own session ID and `SessionStart` event (interactive CLI, background jobs, polecats, GHA workflows) receives the full gate and context-injection stack. Inline subagents spawned via the `Agent` tool share the parent's session ID — gates and context injection are skipped (`ctx.is_subagent` checks in `hooks/router.py`) to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally.
+
+This is policy, not a gap. Claude Code v2.1.69+ (2026-03-05) includes `agent_id` and `agent_type` in hook payloads for subagent-originated tool calls; `is_subagent_session()` in `lib/hook_utils.py` uses these as its primary detection method. Heuristic fallbacks remain for Gemini CLI, which does not provide equivalent fields.
+
+Full session taxonomy and implementation pointers: [`specs/enforcement/hook-router.md` § Session Scope](hook-router.md#session-scope).
+
+## §8 Gate mode environment variables & Operator impact
+
+| Variable              | Default | Values                 | Controls                  |
+| :-------------------- | :------ | :--------------------- | :------------------------ |
+| `ENFORCER_GATE_MODE`  | `block` | `warn`, `block`        | Periodic compliance audit |
+| `HYDRATION_GATE_MODE` | `off`   | `off`, `warn`, `block` | Hydration before work     |
+| `QA_GATE_MODE`        | `block` | `warn`, `block`        | QA verification           |
+| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Reflection before exit    |
+| `IDA_GATE_MODE`       | `warn`  | `warn`, `block`        | Honesty/proof reminder    |
 
 The `custodiet` agent and gate have been renamed to `enforcer`. Operators with values set in shell profiles or `~/.env.local`:
 
