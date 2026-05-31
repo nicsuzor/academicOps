@@ -432,36 +432,33 @@ _GATE_MODE_DEFAULTS = {
 }
 _ENFORCER_THRESHOLD_DEFAULT = 50
 
-_LEGACY_ALIASES = {
-    "ENFORCER_GATE_MODE": "CUSTODIET_GATE_MODE",
-    "ENFORCER_TOOL_CALL_THRESHOLD": "CUSTODIET_TOOL_CALL_THRESHOLD",
+_REMOVED_CUSTODIET_VARS = {
+    "CUSTODIET_GATE_MODE": "ENFORCER_GATE_MODE",
+    "CUSTODIET_TOOL_CALL_THRESHOLD": "ENFORCER_TOOL_CALL_THRESHOLD",
 }
-_warned_legacy_vars: set[str] = set()
 
 
-def _get_env_with_legacy_fallback(name: str, default: str | None = None) -> str | None:
-    import sys
-
-    if name in os.environ:
-        return os.environ[name]
-    legacy_name = _LEGACY_ALIASES.get(name)
-    if legacy_name and legacy_name in os.environ:
-        if legacy_name not in _warned_legacy_vars:
-            sys.stderr.write(
-                f"WARNING: '{legacy_name}' is deprecated. Please migrate to '{name}'.\n"
-            )
-            sys.stderr.flush()
-            _warned_legacy_vars.add(legacy_name)
-        return os.environ[legacy_name]
-    return default
+def _check_for_removed_custodiet_vars() -> None:
+    stale = [
+        (old, new)
+        for old, new in _REMOVED_CUSTODIET_VARS.items()
+        if old in os.environ and new not in os.environ
+    ]
+    if stale:
+        msgs = "\n".join(f"  {old} → {new}" for old, new in stale)
+        raise SystemExit(
+            f"ERROR: Removed environment variable(s) detected:\n{msgs}\n"
+            "Rename them in your shell profile or settings.local.json and retry."
+        )
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
+    _check_for_removed_custodiet_vars()
     if name in _GATE_MODE_DEFAULTS:
-        return _get_env_with_legacy_fallback(name, _GATE_MODE_DEFAULTS[name])
+        return os.environ.get(name, _GATE_MODE_DEFAULTS[name])
 
     if name == "ENFORCER_TOOL_CALL_THRESHOLD":
-        raw = _get_env_with_legacy_fallback("ENFORCER_TOOL_CALL_THRESHOLD")
+        raw = os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD")
         if raw is None:
             return _ENFORCER_THRESHOLD_DEFAULT
         try:

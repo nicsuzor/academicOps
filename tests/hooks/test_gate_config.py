@@ -11,6 +11,8 @@ Ensures:
 import sys
 from pathlib import Path
 
+import pytest
+
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
@@ -437,36 +439,31 @@ class TestRegisterScaling:
 
 
 class TestGateModeEnvResolution:
-    """Test environment variable fallback for legacy names."""
+    """Test detection of removed CUSTODIET_* environment variables."""
 
-    def test_legacy_custodiet_fallback(self, monkeypatch, capsys):
+    def test_custodiet_gate_mode_raises(self, monkeypatch):
         import hooks.gate_config
-
-        # Clear warned state for test isolation
-        hooks.gate_config._warned_legacy_vars.clear()
 
         monkeypatch.delenv("ENFORCER_GATE_MODE", raising=False)
-        monkeypatch.delenv("ENFORCER_TOOL_CALL_THRESHOLD", raising=False)
         monkeypatch.setenv("CUSTODIET_GATE_MODE", "deny")
-        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "35")
 
-        assert hooks.gate_config.ENFORCER_GATE_MODE == "deny"
-        assert hooks.gate_config.ENFORCER_TOOL_CALL_THRESHOLD == 35
+        with pytest.raises(SystemExit, match="CUSTODIET_GATE_MODE"):
+            _ = hooks.gate_config.ENFORCER_GATE_MODE
 
-        captured = capsys.readouterr()
-        assert "WARNING: 'CUSTODIET_GATE_MODE' is deprecated" in captured.err
-        assert "WARNING: 'CUSTODIET_TOOL_CALL_THRESHOLD' is deprecated" in captured.err
-
-    def test_new_name_takes_precedence(self, monkeypatch, capsys):
+    def test_custodiet_threshold_raises(self, monkeypatch):
         import hooks.gate_config
 
-        hooks.gate_config._warned_legacy_vars.clear()
+        monkeypatch.delenv("ENFORCER_TOOL_CALL_THRESHOLD", raising=False)
+        monkeypatch.setenv("CUSTODIET_TOOL_CALL_THRESHOLD", "35")
+
+        with pytest.raises(SystemExit, match="CUSTODIET_TOOL_CALL_THRESHOLD"):
+            _ = hooks.gate_config.ENFORCER_TOOL_CALL_THRESHOLD
+
+    def test_new_name_no_error_when_both_set(self, monkeypatch):
+        import hooks.gate_config
 
         monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
         monkeypatch.setenv("CUSTODIET_GATE_MODE", "deny")
 
+        # No error because ENFORCER_GATE_MODE is present
         assert hooks.gate_config.ENFORCER_GATE_MODE == "block"
-
-        # When new name is used, no warning is emitted even if legacy is set
-        captured = capsys.readouterr()
-        assert "WARNING" not in captured.err
