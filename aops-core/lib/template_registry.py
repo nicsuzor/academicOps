@@ -81,6 +81,15 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Lightweight skills-routing hint (formerly hydration warning)",
         env_override="HYDRATION_WARN_TEMPLATE",
     ),
+    "pkb.nudge": TemplateSpec(
+        name="pkb.nudge",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="pkb-nudge.md",
+        required_vars=(),
+        optional_vars=(),
+        description="Static UPS nudge to search the PKB before relying on memory (T0)",
+        env_override="PKB_NUDGE_TEMPLATE",
+    ),
     # --- Enforcer gate ---
     "enforcer.context": TemplateSpec(
         name="enforcer.context",
