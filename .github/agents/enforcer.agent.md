@@ -100,6 +100,6 @@ Post status **last** — after the review is filed and any fix commits are pushe
 
 ### Notes
 
-- The `target_url` query param `?target_sha=` records which SHA this verdict covers (useful when chasing a status back to its run). The workflow's SHA-skip check does **not** key off it: a diff is treated as already-reviewed only when a genuine review artifact exists for the SHA — an enforcer PR review (`APPROVED`/`CHANGES_REQUESTED`), or a terminal success status (`No violations found`). Failure, pending, and `Skipped:` statuses never mark a SHA reviewed, so a crashed or skipped run can't stop a later genuine review.
+- The target_url query param ?target_sha= records which SHA this verdict covers (useful when chasing a status back to its run). The workflow's SHA-skip check does not key off it: a diff is treated as already-reviewed only when a genuine review artifact exists for the SHA — an enforcer PR review (APPROVED/CHANGES_REQUESTED), or a commit status with state: success (whose description is not Skipped:). Failure, pending, and Skipped: statuses never mark a SHA reviewed, so a crashed or skipped run can't stop a later genuine review.
 - Do not skip based on commit author or trailers. The loop-skip is SHA-based and handled by the workflow before you run. You review every diff that reaches you, regardless of who pushed it.
 - You are the axiom-compliance judge. Strategic alignment is Pauli's domain; runtime fitness is Marsha's. Stay in your lane.
