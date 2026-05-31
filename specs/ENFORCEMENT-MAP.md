@@ -52,12 +52,12 @@ L3 (voluntary skill invocation) is omitted from the flow because it's not lifecy
 
 Each gate is a state machine driven by hook events. Forensic detail → [`specs/GATES.md`](GATES.md).
 
-| Gate     | Starts | Closes when                              | Opens when                                   | Re-arms on       | Policy event           | Policy action                     |
-| -------- | ------ | ---------------------------------------- | -------------------------------------------- | ---------------- | ---------------------- | --------------------------------- |
-| enforcer | OPEN   | n/a (counter-based)                      | `enforcer`/`rbg` subagent resets counter     | counter reset    | PreToolUse @ threshold | Block non-read/infra tools        |
-| qa       | OPEN   | Write tool used, or task → `in_progress` | `marsha`/`qa`/`verify` subagent completes    | UserPromptSubmit | Stop while CLOSED      | Block/warn; demand verifier       |
-| handover | OPEN   | Write tool used, or task → `in_progress` | `/end_session`, `/dump`, or `handover` skill | UserPromptSubmit | Stop while CLOSED      | Block/warn; demand handover       |
-| ida      | CLOSED | n/a (always armed)                       | First Stop in turn (fire-once)               | UserPromptSubmit | Stop while CLOSED      | Inject "show your proof" advisory |
+| Gate     | Starts | Closes when                              | Opens when                                       | Re-arms on       | Policy event           | Policy action                     |
+| -------- | ------ | ---------------------------------------- | ------------------------------------------------ | ---------------- | ---------------------- | --------------------------------- |
+| enforcer | OPEN   | after n turns (counter-based)            | Calling `enforcer`/`rbg` subagent resets counter | counter reset    | PreToolUse @ threshold | Block non-read/infra tools        |
+| qa       | OPEN   | Write tool used, or task → `in_progress` | `marsha`/`qa`/`verify` subagent completes        | UserPromptSubmit | Stop while CLOSED      | Block/warn; demand verifier       |
+| handover | OPEN   | Write tool used, or task → `in_progress` | `/end_session`, `/dump`, or `handover` skill     | UserPromptSubmit | Stop while CLOSED      | Block/warn; demand handover       |
+| ida      | CLOSED | n/a (always armed)                       | First Stop in turn (fire-once)                   | UserPromptSubmit | Stop while CLOSED      | Inject "show your proof" advisory |
 
 ### Gate mode environment variables
 
