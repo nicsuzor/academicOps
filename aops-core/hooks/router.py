@@ -498,6 +498,20 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
 
+        # T0: static PKB-search nudge — injected on every real user prompt.
+        # No logic, no heuristics; the line nudges, the agent decides relevance.
+        try:
+            nudge = TemplateRegistry.instance().render("pkb.nudge")
+            if nudge:
+                if merged_result.context_injection:
+                    merged_result.context_injection = (
+                        f"{merged_result.context_injection}\n\n{nudge}"
+                    )
+                else:
+                    merged_result.context_injection = nudge
+        except Exception as e:
+            print(f"WARNING: pkb_nudge injection error: {e}", file=sys.stderr)
+
         # Context map: match user prompt against .agents/context-map.json
         self._inject_context_map_hints(ctx, merged_result)
 
