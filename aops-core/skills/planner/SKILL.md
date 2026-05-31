@@ -108,6 +108,7 @@ Quick task capture with minimal overhead. Speed is the priority — no enrichmen
    - `effort`: duration (0.5d, 1d, 1w)
    - `consequence`: prose description of what happens if not done
    - `priority`: **default to P3**. Only set higher if the user explicitly signals urgency (P0/P1) or active importance (P2). See [[#priority-assignment-rules]]. Do NOT infer priority from task content.
+   - `classification`: now **load-bearing for VoI computation** (see the `classification` entry in [[../remember/references/TAXONOMY.md]] and the spec [[mem-cf396d84]]). If the user's prompt suggests a spike/probe/research/evaluation shape, the planner SHOULD set `classification` accordingly (`spike`, `research`, etc.) so the leaf earns its `voi_value` term. **Never override a user-set `classification`** — only fill it in when absent.
 6. Create task with body template (Problem, Solution, Files, AC). Apply the Task-Body Authoring Discipline ([[../aops/references/authoring-discipline]]): **state intent + AC, not prescription**, and do not invent mid-stream approval gates. Pass `due`, `effort`, `consequence`, and `priority` as explicit PKB parameters to `mcp__pkb__create_task` (not only in body prose) — the PKB uses `due` as a structured field for deadline-aware prioritization. **Priority defaults to P3** unless user explicitly elevated.
 
 7. **Externalise follow-up action items as separate linked tasks** (not body prose). If the user's prompt or your analysis surfaces follow-up work that is **not part of the primary task's scope** — e.g. supersession decisions ("consider closing X if approved"), prerequisite investigations ("check whether Y is still relevant first"), cross-project updates ("update Z in project A to reflect this"), or triage decisions — create them as separate linked tasks. They must be addressable graph nodes, not invisible prose buried in the body.
@@ -162,12 +163,12 @@ Strategic planning under genuine uncertainty. Knowledge-building that produces p
 **Sub-modes**:
 
 - **Strategic Intake** (UP): New ideas, constraints, connections, surprises → place at the right level, link, surface assumptions. Use `uncertainty` to distinguish between "need more information" (high uncertainty, needs a spike/probe) and "know what to do" (low uncertainty, needs execution). Use the [[strategic-intake]] workflow.
-- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-`focus_score`, low-uncertainty tasks as ready priorities. Ranking uses `focus_score` — the canonical composite that embeds severity, priority, downstream weight, urgency (deadline slack), stakeholder waiting, and decay. See [[multi-parent]] §7. Successor of the older `downstream_weight × criticality` heuristic and the interim urgency-only ranking. Component fields (`urgency`, `downstream_weight`, etc.) remain visible for filter/debug but should never be the primary sort.
+- **Prioritisation** (ACROSS): Use graph topology and computed properties to rank tasks. Surface high-`focus_score`, low-uncertainty tasks as ready priorities. Ranking uses `focus_score` — the canonical composite that embeds severity, priority, downstream weight, urgency (deadline slack), stakeholder waiting, decay, and now a **value-of-information term** (the `voi_value` computed field, surfaced for filter/debug only; defined in [[mem-cf396d84]] / [[multi-parent]] §2.2). See [[multi-parent]] §7. This is the third generation of the ranking heuristic: successor of the older `downstream_weight × criticality` heuristic, then the interim urgency-only ranking, and now the VoI-augmented composite that rewards spike/probe-shaped leaves with uncertain but important downstream. Component fields (`urgency`, `downstream_weight`, `voi_value`, etc.) remain visible for filter/debug but should never be the primary sort.
 
 **Philosophy**:
 
 - Plans are hypotheses, not commitments
-- Prioritise by information value and criticality, not just urgency
+- Prioritise by `focus_score` — now embeds VoI for spike/probe-shaped leaves with uncertain important downstream
 - Search before synthesizing (P52 — MANDATORY)
 - Effectuation over causation: probe, learn, adapt
 
@@ -192,6 +193,7 @@ Break validated epics into structured task trees.
 3. **Property Check**: Check the parent's `scope` and `uncertainty`.
    - **High Uncertainty**: Parent needs more specification. Focus on decomposition into spikes, research, or probeable tasks.
    - **Low Uncertainty + High Scope**: Parent is well-specified but large. Focus on creating standard execution subtasks.
+   - **Set `classification` on each subtask** to match its shape: spike subtasks get `classification: spike`, research subtasks get `classification: research`, execution subtasks get `classification: execution` (or omit — absent is treated as execution). This feeds the `voi_value` term in `focus_score`, so spike/probe-shaped leaves with uncertain important downstream rank correctly (see the `classification` entry in [[../remember/references/TAXONOMY.md]] and the spec [[mem-cf396d84]]).
 4. Select workflow — identify which workflow achieves this epic.
 5. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after).
 6. Define deliverables — each task must have a concrete output.
