@@ -30,7 +30,6 @@ Which mechanism(s) catch a given axiom, what they do when they fire, where in th
 | A6 Scope (Stay strictly within requested bounds)          | session      | always-on (SessionStart load)                                     | injects instruction into prompt context                     |
 | A6 Scope (Stay strictly within requested bounds)          | session      | TodoWrite invocation                                              | injects reminder into task                                  |
 | A6 Scope (Stay strictly within requested bounds)          | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
-| A6 Scope (Stay strictly within requested bounds)          | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
 | A6 Scope (Stay strictly within requested bounds)          | tool-call    | PreToolUse (>50 calls or >$1)                                     | warns agent before tool execution                           |
 | A6 Scope (Stay strictly within requested bounds)          | tool-call    | PostToolUse                                                       | warns agent after tool execution                            |
 | A6 Scope (Stay strictly within requested bounds)          | tool-call    | PreToolUse (enforcer threshold)                                   | blocks or warns on non-read/infra tools                     |
@@ -38,14 +37,12 @@ Which mechanism(s) catch a given axiom, what they do when they fire, where in th
 | A6 Scope (Stay strictly within requested bounds)          | GitHub PR    | PR push                                                           | warns change-author                                         |
 | A7 Authority (Exercise calibrated capability)             | session      | always-on (SessionStart load)                                     | injects instruction into prompt context                     |
 | A7 Authority (Exercise calibrated capability)             | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
-| A7 Authority (Exercise calibrated capability)             | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
 | A7 Authority (Exercise calibrated capability)             | GitHub PR    | `/verify` or `qa` subagent invocation                             | advises orchestrator / change-author on criteria            |
 | A7 Authority (Exercise calibrated capability)             | GitHub PR    | PR push or `/review-pr` invocation                                | advises orchestrator / change-author on authority           |
 | A7 Authority (Exercise calibrated capability)             | GitHub PR    | PR push                                                           | warns change-author                                         |
 | A7 Authority (Exercise calibrated capability)             | session      | Stop-hook while QA gate is CLOSED                                 | blocks Stop until verifier subagent completes               |
 | A8 Halt (Stop and report when unable to proceed safely)   | session      | always-on (SessionStart load)                                     | injects instruction into prompt context                     |
 | A8 Halt (Stop and report when unable to proceed safely)   | tool-call    | PreToolUse (auto-mode classifier match)                           | blocks tool execution                                       |
-| A8 Halt (Stop and report when unable to proceed safely)   | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
 | A8 Halt (Stop and report when unable to proceed safely)   | tool-call    | PreToolUse (auto-mode classifier match)                           | warns agent before tool execution                           |
 | A8 Halt (Stop and report when unable to proceed safely)   | tool-call    | PreToolUse                                                        | hard-denies tool execution                                  |
 | A8 Halt (Stop and report when unable to proceed safely)   | tool-call    | PostToolUse                                                       | warns agent after tool execution                            |
