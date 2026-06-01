@@ -661,6 +661,7 @@ class TestRequireClaudeOauth:
         from cli import _require_claude_oauth_or_exit
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+        monkeypatch.delenv("AOPS_CC_OAUTH_TOKEN", raising=False)
         with pytest.raises(SystemExit) as excinfo:
             _require_claude_oauth_or_exit("claude")
         assert excinfo.value.code == 4

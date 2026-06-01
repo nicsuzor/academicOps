@@ -52,16 +52,23 @@ mkdir -p "$TARGET/.github/workflows"
 
 # Install agent prompt
 dst_agent="$TARGET/.github/agents/pr-reviewer.agent.md"
+SHARED_ERR="$AOPS_DIR/.github/agents/shared-error-handling.md"
+
 if [[ ! -f "$AGENT_SRC" ]]; then
     echo "Error: source agent not found: $AGENT_SRC" >&2
     exit 1
 fi
+if [[ ! -f "$SHARED_ERR" ]]; then
+    echo "Error: shared error handling file not found: $SHARED_ERR" >&2
+    exit 1
+fi
+
 if [[ -f "$dst_agent" ]]; then
     echo "  [UPDATE]  .github/agents/pr-reviewer.agent.md"
 else
     echo "  [INSTALL] .github/agents/pr-reviewer.agent.md"
 fi
-cp "$AGENT_SRC" "$dst_agent"
+cat "$SHARED_ERR" "$AGENT_SRC" > "$dst_agent"
 
 # Install workflow
 dst_workflow="$TARGET/.github/workflows/pr-review.yml"

@@ -86,14 +86,14 @@ gh api "repos/$REPO/statuses/$HEAD_SHA" \
   -f state=success \
   -f context="${AGENT_NAME}-status" \
   -f description="No violations found" \
-  -f target_url="$STATUS_URL"
+  -f target_url="$STATUS_URL" || gh pr comment "$PR_NUMBER" --repo "$REPO" -b "⚠️ **Enforcer Status Failed:** Could not post commit status (HTTP 403/error). Would-be verdict: **SUCCESS** (No violations found). This needs human attention."
 
 # Violations found / CHANGES_REQUESTED:
 gh api "repos/$REPO/statuses/$HEAD_SHA" \
   -f state=failure \
   -f context="${AGENT_NAME}-status" \
   -f description="Violations found — see review" \
-  -f target_url="$STATUS_URL"
+  -f target_url="$STATUS_URL" || gh pr comment "$PR_NUMBER" --repo "$REPO" -b "⚠️ **Enforcer Status Failed:** Could not post commit status (HTTP 403/error). Would-be verdict: **FAILURE** (Violations found). This needs human attention."
 ```
 
 Post status **last** — after the review is filed and any fix commits are pushed. The workflow has a fallback that posts `failure` if this step is never reached (agent crash).
