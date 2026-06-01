@@ -52,7 +52,7 @@ def _is_polecat_sandbox() -> bool:
     (``AOPS_POLECAT_CONTAINER``) rather than a self-identifying session-type
     label — the container no longer needs to know "who it is" (aops-b368109a).
     """
-    return bool(os.environ.get("AOPS_POLECAT_CONTAINER"))
+    return os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
 
 
 def _polecat_claude_state_dir(project_folder: str, subsystem: str) -> Path:

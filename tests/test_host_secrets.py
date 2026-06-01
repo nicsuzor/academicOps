@@ -166,3 +166,47 @@ class TestForwardSourceAliases:
             env_file=tmp_path / "absent",
         )
         assert resolved == {"GEMINI_API_KEY": "gk"}
+
+
+class TestForwardSourceAliasesGHToken:
+    """GH_TOKEN and GITHUB_TOKEN are sourced from AOPS_BOT_GH_TOKEN on the host
+    but injected under their standard names (gh CLI / git) in the container."""
+
+    def test_gh_token_sourced_from_aops_bot(self, tmp_path):
+        resolved = resolve_forward_values(
+            ["GH_TOKEN"],
+            source_env={"AOPS_BOT_GH_TOKEN": "ghp_bot"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"GH_TOKEN": "ghp_bot"}
+
+    def test_github_token_sourced_from_aops_bot(self, tmp_path):
+        resolved = resolve_forward_values(
+            ["GITHUB_TOKEN"],
+            source_env={"AOPS_BOT_GH_TOKEN": "ghp_bot"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"GITHUB_TOKEN": "ghp_bot"}
+
+    def test_aops_bot_alias_wins_over_direct_name(self, tmp_path):
+        resolved = resolve_forward_values(
+            ["GH_TOKEN"],
+            source_env={"AOPS_BOT_GH_TOKEN": "ghp_aops", "GH_TOKEN": "ghp_direct"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"GH_TOKEN": "ghp_aops"}
+
+    def test_gh_token_fallback_to_direct_name(self, tmp_path):
+        """If only GH_TOKEN is present (no AOPS_BOT_GH_TOKEN), it still resolves."""
+        resolved = resolve_forward_values(
+            ["GH_TOKEN"],
+            source_env={"GH_TOKEN": "ghp_direct"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"GH_TOKEN": "ghp_direct"}
+
+    def test_alias_source_from_env_local(self, tmp_path):
+        f = tmp_path / ".env.local"
+        f.write_text("AOPS_BOT_GH_TOKEN=ghp_from_file\n")
+        resolved = resolve_forward_values(["GH_TOKEN", "GITHUB_TOKEN"], source_env={}, env_file=f)
+        assert resolved == {"GH_TOKEN": "ghp_from_file", "GITHUB_TOKEN": "ghp_from_file"}

@@ -46,11 +46,17 @@ _DEFAULT_ENV_LOCAL = Path.home() / ".env.local"
 # GEMINI symmetry (recommendation, deliberately NOT wired): the parallel
 # indirection for Gemini would be a single line here —
 #     "GEMINI_API_KEY": ("AOPS_GEMINI_API_KEY",),
-# — once the operator renames the host var. It is left out until then so this
-# change touches only the Claude token (per task scope); the mechanism is
-# generic and ready for it.
+# — once the operator renames the host var.
+#
+# GH_TOKEN / GITHUB_TOKEN: both are injected into the container under their
+# standard names (used by gh CLI and git respectively), but sourced from the
+# AOPS-prefixed host var AOPS_BOT_GH_TOKEN. The container name itself is kept
+# as a fallback candidate (see ``resolve_forward_values``), so if the host has
+# GH_TOKEN directly it still resolves.
 _FORWARD_SOURCE_ALIASES: dict[str, tuple[str, ...]] = {
     "CLAUDE_CODE_OAUTH_TOKEN": ("AOPS_CC_OAUTH_TOKEN",),
+    "GH_TOKEN": ("AOPS_BOT_GH_TOKEN",),
+    "GITHUB_TOKEN": ("AOPS_BOT_GH_TOKEN",),
 }
 
 # KEY=VALUE with optional leading `export `. KEY is a POSIX-ish env name.

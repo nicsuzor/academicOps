@@ -1768,7 +1768,8 @@ def _run_docker_container(
     # Bypass watchdog kills for interactive or crew sessions (user present).
     # Crew is identified by the crew-name signal the dispatcher already sets;
     # there is no session-type label (aops-b368109a).
-    _is_crew = bool(env.get("POLECAT_CREW_NAME")) if env else False
+    _effective_env = env if env is not None else os.environ
+    _is_crew = bool(_effective_env.get("POLECAT_CREW_NAME"))
     _is_interactive = any(arg in cmd for arg in ["-t", "--tty"])
     _bypass = _is_crew or _is_interactive
 

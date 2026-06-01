@@ -117,23 +117,24 @@ docker:
 #
 # SOURCE-NAME INDIRECTION (aops-b368109a): the names below are the CONTAINER
 # names (what the agent runtime reads). A name may be sourced from a DIFFERENT
-# host variable — see lib/host_secrets._FORWARD_SOURCE_ALIASES. Today
-# CLAUDE_CODE_OAUTH_TOKEN is sourced from the host's AOPS_CC_OAUTH_TOKEN (with
-# the official name kept as a transitional fallback source), so the orchestrator
-# session holds only the AOPS_-prefixed name and never the official one. The
-# list still carries the CONTAINER name here (no `=`, no value) — the guard
+# host variable — see lib/host_secrets._FORWARD_SOURCE_ALIASES. Current
+# indirections:
+#   CLAUDE_CODE_OAUTH_TOKEN → sourced from AOPS_CC_OAUTH_TOKEN on the host
+#   GH_TOKEN                → sourced from AOPS_BOT_GH_TOKEN on the host
+#   GITHUB_TOKEN            → sourced from AOPS_BOT_GH_TOKEN on the host
+# The official/container name is kept as a transitional fallback in each case.
+# The list still carries the CONTAINER name (no `=`, no value) — the guard
 # stays intact; the indirection lives in code, not in this tracked file.
 #
 # GEMINI symmetry (recommendation, NOT yet wired): once the host var is renamed,
 # add `"GEMINI_API_KEY": ("AOPS_GEMINI_API_KEY",)` to that alias map. This list
 # is unchanged either way.
-#
-# Path locators and the bot token continue to flow via agent-env-map.conf
-# (they are not session-leak-sensitive); this list is specifically the
-# hold-for-delegation secrets.
 container_env_forward:
   - CLAUDE_CODE_OAUTH_TOKEN
   - GEMINI_API_KEY
+  - AOPS_BOT_GH_TOKEN
+  - GH_TOKEN
+  - GITHUB_TOKEN
 
 # ---------------------------------------------------------------------------
 # External agents available for dispatch (github actions, jules, codex, ...).
