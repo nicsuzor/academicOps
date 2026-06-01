@@ -23,7 +23,6 @@ These tests pin two properties:
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -39,47 +38,6 @@ from tests.conftest import _docker_available  # noqa: E402
 
 CLI_PY = REPO_ROOT / "polecat" / "cli.py"
 EXTENSION_DIR = "/home/worker/.gemini/extensions/aops-core"
-
-
-def _gemini_branch_source() -> str:
-    """Return the snippet of ``polecat/cli.py`` covering the gemini cmd
-    construction (the ``if is_gemini:`` block inside ``run`` that builds the
-    inner gemini CLI invocation, *not* the docker wrapping).
-
-    We bound the slice narrowly so unrelated changes elsewhere don't mask
-    regressions here.
-
-    Note: the ``crew`` command also has an ``if is_gemini:`` block that builds
-    a gemini command. Both crew and run now use ``--approval-mode yolo``
-    (gemini's plan mode default-denies tools). The blocks are distinguished by
-    form: crew builds ``cmd = ["gemini"]`` on a single line and extends
-    conditionally, while run builds a multi-line ``cmd = [`` list literal with
-    the flags inline. The regex below anchors on the multi-line form to select
-    run.
-
-    Historical note: prior to the unified ``--model`` flag (aops-bc9cf926), the
-    branch condition was ``if gemini:`` (the legacy ``--gemini``/``-g`` click
-    flag). It is now ``if is_gemini:`` where ``is_gemini = cli_tool ==
-    "gemini"`` and ``cli_tool`` is resolved from ``--model``.
-    """
-    text = CLI_PY.read_text()
-    # Anchor on the run-function's gemini block: it builds `cmd = [` as a
-    # multi-line list literal with `"gemini",` on its own line followed by
-    # `"yolo",`. The crew-function builds `cmd = ["gemini"]` on a single line,
-    # which won't match this pattern.
-    m = re.search(
-        r"if is_gemini:\s*\n(?:.*\n){0,40}?\s*cmd\s*=\s*\[\s*\n\s*\"gemini\",(?:.*\n){0,10}?\s*\"yolo\",",
-        text,
-    )
-    assert m is not None, "could not locate run-function gemini cmd construction in polecat/cli.py"
-    start = m.start()
-    # Find the matching else: for this if. Scan forward for a line that
-    # starts (at the same indent) with 'else:' — polecat/cli.py uses 4-space
-    # indent inside functions, so the sibling 'else:' is at 4 spaces.
-    tail = text[start:]
-    else_m = re.search(r"\n    else:\s*\n", tail)
-    assert else_m is not None, "could not find sibling else: for gemini branch"
-    return tail[: else_m.start()]
 
 
 # ---------------------------------------------------------------------------

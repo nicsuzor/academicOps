@@ -5210,7 +5210,6 @@ def resume(ctx, task_id):
         task_id=task_id,
         issue=None,
         no_finish=False,
-        gemini=False,
         interactive=False,
         no_auto_finish=False,
         memory=None,
