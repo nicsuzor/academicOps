@@ -519,10 +519,10 @@ class TestTempPathValidation:
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
         monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-        # When run inside a polecat container, POLECAT_SESSION_TYPE redirects
+        # When run inside a polecat container, AOPS_POLECAT_CONTAINER redirects
         # writes to /home/worker/.claude/projects (the host-extracted dir),
         # bypassing this test's tmp_path home.
-        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
 
         path = get_gate_file_path("enforcer", "test-session-abc123")
 

@@ -51,7 +51,7 @@ echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
 echo "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN"
 echo "GEMINI_API_KEY=$GEMINI_API_KEY"
 echo "GOOGLE_API_KEY=$GOOGLE_API_KEY"
-echo "POLECAT_SESSION_TYPE=$POLECAT_SESSION_TYPE"
+echo "AOPS_POLECAT_CONTAINER=$AOPS_POLECAT_CONTAINER"
 echo "POLECAT_CREW_NAME=$POLECAT_CREW_NAME"
 echo "MY_SECRET=$MY_SECRET"
 echo "DATABASE_URL=$DATABASE_URL"
@@ -109,7 +109,7 @@ class TestDockerEndState:
             "CLAUDE_CODE_OAUTH_TOKEN": "oauth-integration-token",
             "GEMINI_API_KEY": "gemini-conf-driven",
             "GOOGLE_API_KEY": "google-should-not-appear",
-            "POLECAT_SESSION_TYPE": "crew",
+            "AOPS_POLECAT_CONTAINER": "1",
             "POLECAT_CREW_NAME": "integration-test",
             "MY_SECRET": "should-not-leak",
             "DATABASE_URL": "postgres://should-not-leak",
@@ -257,8 +257,8 @@ class TestDockerEndState:
         assert env_results["GEMINI_API_KEY"] == "gemini-conf-driven"
 
     def test_polecat_prefixed_env_reaches_container(self, env_results):
-        """POLECAT_* env vars are forwarded."""
-        assert env_results["POLECAT_SESSION_TYPE"] == "crew"
+        """The dispatcher's operational signals are forwarded (aops-b368109a)."""
+        assert env_results["AOPS_POLECAT_CONTAINER"] == "1"
         assert env_results["POLECAT_CREW_NAME"] == "integration-test"
 
     def test_arbitrary_env_blocked_from_container(self, env_results):

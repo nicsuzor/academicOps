@@ -62,7 +62,8 @@ For polecat sessions, `polecat.yaml` is the primary configuration source — the
 │  polecat.yaml gates.{name}                                          │
 │    ↓ parsed by lib/polecat_config.py                                │
 │  PolecatConfig.session_defaults.gates                               │
-│    ↓ .for_mode(POLECAT_SESSION_TYPE) overlay                        │
+│    ↓ .for_mode(crew|run) overlay — mode is known from the dispatch  │
+│      subcommand (`polecat crew` vs `polecat run`), NOT an env label  │
 │  polecat/cli.py stages resolved modes as env vars into container    │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -90,15 +91,15 @@ For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher
 
 ### Session-type overlays (polecat sessions)
 
-`POLECAT_SESSION_TYPE` (set by `polecat/cli.py` at launch) selects which overlay from `polecat.yaml` is applied on top of `session_defaults`:
+The overlay applied on top of `session_defaults` is selected by the **dispatch subcommand** (`polecat crew` vs `polecat run`), resolved on the host AT DISPATCH by `polecat/cli.py` / `lib/polecat_config.py`. The container never self-identifies with a session-type label — it receives the already-resolved `*_GATE_MODE` env vars (aops-b368109a, which removed `POLECAT_SESSION_TYPE`):
 
-| Value   | Overlay applied to defaults                                       | Surfaces                                        |
-| ------- | ----------------------------------------------------------------- | ----------------------------------------------- |
-| `crew`  | `polecat.yaml:crew_defaults`                                      | `polecat crew` interactive multi-agent sessions |
-| `run`   | `polecat.yaml:run_defaults`                                       | `polecat run` autonomous workers                |
-| (unset) | No overlay — built-in defaults in `gate_config.py` apply directly | Direct CLI sessions (not polecat-launched)      |
+| Dispatch       | Overlay applied to defaults                                       | Surfaces                                        |
+| -------------- | ----------------------------------------------------------------- | ----------------------------------------------- |
+| `polecat crew` | `polecat.yaml:crew_defaults`                                      | `polecat crew` interactive multi-agent sessions |
+| `polecat run`  | `polecat.yaml:run_defaults`                                       | `polecat run` autonomous workers                |
+| direct CLI     | No overlay — built-in defaults in `gate_config.py` apply directly | Direct CLI sessions (not polecat-launched)      |
 
-For direct CLI sessions, `POLECAT_SESSION_TYPE` is not set and polecat is not involved. The hook code reads env vars directly with its own defaults.
+For direct CLI sessions, polecat is not involved and the hook code reads env vars directly with its own defaults. Separately, the container is marked with `AOPS_POLECAT_CONTAINER=1` (a resolved operational signal, not a policy selector); `SessionState` derives its `session_type` (`crew` if `POLECAT_CREW_NAME` is also set, else `polecat`) from it, which the handover gate's triggers/initial-status consult. Gate **modes** are never inferred from this — they arrive pre-resolved.
 
 ### Plugin cache lifecycle
 

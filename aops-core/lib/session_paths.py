@@ -46,8 +46,13 @@ def _parse_date_arg(date: str | None) -> datetime | None:
 
 
 def _is_polecat_sandbox() -> bool:
-    """True if running inside a polecat or crew container."""
-    return bool(os.environ.get("POLECAT_SESSION_TYPE"))
+    """True if running inside a polecat or crew container.
+
+    Reads the resolved operational signal the dispatcher injects
+    (``AOPS_POLECAT_CONTAINER``) rather than a self-identifying session-type
+    label — the container no longer needs to know "who it is" (aops-b368109a).
+    """
+    return os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
 
 
 def _polecat_claude_state_dir(project_folder: str, subsystem: str) -> Path:

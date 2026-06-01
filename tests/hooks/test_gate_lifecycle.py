@@ -142,15 +142,15 @@ class TestHandoverReadOnlyExemption:
     """
 
     def _make_polecat_state(self, session_id: str) -> "SessionState":
-        old = os.environ.get("POLECAT_SESSION_TYPE")
-        os.environ["POLECAT_SESSION_TYPE"] = "polecat"
+        old = os.environ.get("AOPS_POLECAT_CONTAINER")
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         try:
             return SessionState.create(session_id)
         finally:
             if old is not None:
-                os.environ["POLECAT_SESSION_TYPE"] = old
+                os.environ["AOPS_POLECAT_CONTAINER"] = old
             else:
-                os.environ.pop("POLECAT_SESSION_TYPE", None)
+                os.environ.pop("AOPS_POLECAT_CONTAINER", None)
 
     def test_read_only_polecat_allows_stop(self, router, monkeypatch):
         """Read-only session (no writes, no task claim) exits without handover block."""
@@ -299,7 +299,8 @@ class TestStopDenyMaxFireDowngrade:
         monkeypatch.setenv("QA_GATE_MODE", "off")
         # The handover UPS re-arm trigger has session_type_filter=["polecat","crew"],
         # so the test needs a polecat session to re-arm correctly between turns.
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        # session_type is derived from AOPS_POLECAT_CONTAINER (aops-b368109a).
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("handover")

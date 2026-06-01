@@ -146,12 +146,16 @@ class SessionState(BaseModel):
         """Create new session state."""
         now = datetime.now().astimezone().replace(microsecond=0)
 
-        # Detect session type
+        # Detect session type from the resolved operational signals the
+        # dispatcher injects — NOT a self-identifying session-type label
+        # (aops-b368109a). A polecat container is marked by
+        # AOPS_POLECAT_CONTAINER; crew is further distinguished by the
+        # crew-name signal the crew dispatcher sets. ``session_type`` remains a
+        # derived, in-session value used for gate posture and transcript
+        # metadata; it is no longer handed in as a policy label.
         stype = "interactive"
-        if "POLECAT_SESSION_TYPE" in os.environ:
-            val = os.environ["POLECAT_SESSION_TYPE"].lower()
-            if val in ("polecat", "crew"):
-                stype = val
+        if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
+            stype = "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
 
         ver = _get_plugin_version()
 

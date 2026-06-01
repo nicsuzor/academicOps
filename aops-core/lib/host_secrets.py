@@ -26,6 +26,39 @@ from pathlib import Path
 # Default host secret store. Override via $AOPS_HOST_ENV_FILE for tests.
 _DEFAULT_ENV_LOCAL = Path.home() / ".env.local"
 
+# Source-name indirection for forwarded secrets (aops-b368109a).
+#
+# A forwarded secret crosses into the container under the name the agent runtime
+# expects (the dict KEY — e.g. ``CLAUDE_CODE_OAUTH_TOKEN``, what headless
+# ``claude`` reads), but the launching/host env sources it from a DIFFERENT
+# variable (the dict VALUE candidates, tried in order). This closes the
+# OAuth-token leak at the agent: the orchestrator (junior) session holds only
+# ``AOPS_CC_OAUTH_TOKEN`` and never the official-named token, so the official
+# name cannot be used or leaked from the agent's own session — yet workers still
+# authenticate, because polecat resolves the value here at launch and injects it
+# under the official name.
+#
+# The container name itself is appended as the final fallback candidate (see
+# ``resolve_forward_values``), so during rollout — before the host var is
+# renamed — the token can still ride on its official name. Once the host renames
+# ``CLAUDE_CODE_OAUTH_TOKEN`` → ``AOPS_CC_OAUTH_TOKEN`` the alias source wins.
+#
+# GEMINI symmetry (recommendation, deliberately NOT wired): the parallel
+# indirection for Gemini would be a single line here —
+#     "GEMINI_API_KEY": ("AOPS_GEMINI_API_KEY",),
+# — once the operator renames the host var.
+#
+# GH_TOKEN / GITHUB_TOKEN: both are injected into the container under their
+# standard names (used by gh CLI and git respectively), but sourced from the
+# AOPS-prefixed host var AOPS_BOT_GH_TOKEN. The container name itself is kept
+# as a fallback candidate (see ``resolve_forward_values``), so if the host has
+# GH_TOKEN directly it still resolves.
+_FORWARD_SOURCE_ALIASES: dict[str, tuple[str, ...]] = {
+    "CLAUDE_CODE_OAUTH_TOKEN": ("AOPS_CC_OAUTH_TOKEN",),
+    "GH_TOKEN": ("AOPS_BOT_GH_TOKEN",),
+    "GITHUB_TOKEN": ("AOPS_BOT_GH_TOKEN",),
+}
+
 # KEY=VALUE with optional leading `export `. KEY is a POSIX-ish env name.
 _LINE_RE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 
@@ -90,7 +123,14 @@ def resolve_forward_values(
 ) -> dict[str, str]:
     """Resolve VALUES for a whitelist of variable NAMES.
 
-    Resolution order for each name:
+    Each name is the CONTAINER variable name (the name the agent runtime reads).
+    Its value may be sourced from a DIFFERENT host variable via
+    ``_FORWARD_SOURCE_ALIASES`` (the source→container-name indirection that
+    closes the OAuth-token leak — see that constant). Candidate source names are
+    tried in order: the configured alias source(s) first, then the container
+    name itself as the transitional fallback.
+
+    For each candidate, resolution order is:
       1. The host secret store ``~/.env.local`` (authoritative — the wrapper
          sources this itself, independent of the launching session's env).
       2. The process env (``source_env``) as a fallback — covers vars set by
@@ -102,12 +142,15 @@ def resolve_forward_values(
     ``get_container_env_forwards`` contract).
 
     Args:
-        names: Variable names declared in ``polecat.yaml`` ``container_env_forward``.
+        names: Container variable names declared in ``polecat.yaml``
+            ``container_env_forward``.
         source_env: Process env fallback. Defaults to ``os.environ``.
         env_file: Override secret-store path (for tests).
 
     Returns:
-        Dict of {NAME: VALUE} for names that resolved to a non-empty value.
+        Dict of {CONTAINER_NAME: VALUE} for names that resolved to a non-empty
+        value (keyed by the container name, regardless of which source supplied
+        the value).
     """
     if source_env is None:
         source_env = dict(os.environ)
@@ -115,7 +158,11 @@ def resolve_forward_values(
 
     resolved: dict[str, str] = {}
     for name in names:
-        value = host.get(name) or source_env.get(name)
-        if value:
-            resolved[name] = value
+        # Alias source(s) first, then the container name itself as a fallback.
+        candidates = (*_FORWARD_SOURCE_ALIASES.get(name, ()), name)
+        for src in candidates:
+            value = host.get(src) or source_env.get(src)
+            if value:
+                resolved[name] = value
+                break
     return resolved

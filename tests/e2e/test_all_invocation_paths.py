@@ -51,7 +51,7 @@ Do ALL of the following steps and report results exactly as labeled:
 
 1. SANDBOX CHECK:
    - Run: test -f /.dockerenv && echo "SANDBOX_VERIFIED=true" || echo "SANDBOX_VERIFIED=false"
-   - Run: echo "SESSION_TYPE=$POLECAT_SESSION_TYPE"
+   - Run: echo "POLECAT_CONTAINER=$AOPS_POLECAT_CONTAINER"
    - Run: hostname
 
 2. BINARY CHECK:

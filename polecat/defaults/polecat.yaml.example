@@ -46,15 +46,38 @@ session_defaults:
     enforcer_threshold: 50
 
 # ---------------------------------------------------------------------------
-# Per-session-type overlays. All blocks MUST exist (use {} when empty).
-# Keys present here override the matching key in session_defaults for that
-# session type. Supports nested ``gates: {...}`` overrides.
+# POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).
 #
-# For direct CLI sessions (POLECAT_SESSION_TYPE unset), no overlay is
-# applied — gate_config.py falls back to its built-in defaults (all warn,
-# hydration off). Override individual gates via env vars in your shell
-# profile or per-directory CLI settings.
+# These are NOT a single hierarchy; they target different runtimes and are
+# owned separately:
+#
+#   default        Policies that apply to the ORCHESTRATOR (junior) ITSELF —
+#                  the host coordinator session. Set manually if needed. These
+#                  are NOT the policies junior sets on the workers it dispatches.
+#                  Reference/manual scope only: it is NOT read by
+#                  polecat_config.py's resolver (junior runs on the host and
+#                  reads its gate posture from its own env / gate_config.py
+#                  defaults). Formerly named ``local_defaults``.
+#   crew_defaults  Policies for `polecat crew` interactive multi-agent sessions.
+#   run_defaults   Policies for `polecat run` autonomous polecat workers.
+#
+# session_defaults (above) is the base posture; crew_defaults / run_defaults are
+# overlays applied on top of it AT DISPATCH by polecat_config.py, which then
+# injects the RESOLVED concrete values (gate modes, model, hooks_enabled, …)
+# straight into the container env. The container reads no policy from a
+# session-type label — it just receives the already-resolved settings.
+#
+# The overlay blocks (crew_defaults, run_defaults) MUST exist (use {} when
+# empty). Keys present override the matching key in session_defaults for that
+# scope; nested ``gates: {...}`` overrides are supported. Direct CLI sessions
+# (no polecat container) fall back to gate_config.py's built-in defaults.
 # ---------------------------------------------------------------------------
+
+# `default` — the ORCHESTRATOR (junior) scope. Manual/reference only; the
+# resolver does NOT read it. Documented here so all three scopes live together
+# and junior's own intended posture is legible. Mirror session_defaults keys
+# here if you want to record it.
+default: {}
 
 # `polecat crew` — interactive multi-agent sessions. Inherits
 # session_defaults; override specific gates as needed.
@@ -92,12 +115,26 @@ docker:
 # the container still gets what it needs via this list). A `=` in any entry is
 # rejected at load time as a guard against pasting secret values here.
 #
-# Path locators and the bot token continue to flow via agent-env-map.conf
-# (they are not session-leak-sensitive); this list is specifically the
-# hold-for-delegation secrets.
+# SOURCE-NAME INDIRECTION (aops-b368109a): the names below are the CONTAINER
+# names (what the agent runtime reads). A name may be sourced from a DIFFERENT
+# host variable — see lib/host_secrets._FORWARD_SOURCE_ALIASES. Current
+# indirections:
+#   CLAUDE_CODE_OAUTH_TOKEN → sourced from AOPS_CC_OAUTH_TOKEN on the host
+#   GH_TOKEN                → sourced from AOPS_BOT_GH_TOKEN on the host
+#   GITHUB_TOKEN            → sourced from AOPS_BOT_GH_TOKEN on the host
+# The official/container name is kept as a transitional fallback in each case.
+# The list still carries the CONTAINER name (no `=`, no value) — the guard
+# stays intact; the indirection lives in code, not in this tracked file.
+#
+# GEMINI symmetry (recommendation, NOT yet wired): once the host var is renamed,
+# add `"GEMINI_API_KEY": ("AOPS_GEMINI_API_KEY",)` to that alias map. This list
+# is unchanged either way.
 container_env_forward:
   - CLAUDE_CODE_OAUTH_TOKEN
   - GEMINI_API_KEY
+  - AOPS_BOT_GH_TOKEN
+  - GH_TOKEN
+  - GITHUB_TOKEN
 
 # ---------------------------------------------------------------------------
 # External agents available for dispatch (github actions, jules, codex, ...).
@@ -179,10 +216,19 @@ crew_names:
 #
 #   AOPS_BOT_GH_TOKEN     Bot PAT for credential isolation (issue #581).
 #                         Mapped to GH_TOKEN and GITHUB_TOKEN inside containers.
-#   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth credential. The ONLY supported
-#                            Claude auth mechanism — `.credentials.json` and
-#                            `ANTHROPIC_API_KEY` paths were removed
-#                            (aops-06ab3ee0). Generate via `claude setup-token`.
+#   AOPS_CC_OAUTH_TOKEN      HOST source name for the Claude Code OAuth
+#                            credential (aops-b368109a). The orchestrator
+#                            (junior) holds ONLY this name; polecat injects its
+#                            value into containers under the official name
+#                            CLAUDE_CODE_OAUTH_TOKEN. Generate via
+#                            `claude setup-token`. Indirection: lib/host_secrets
+#                            ._FORWARD_SOURCE_ALIASES.
+#   CLAUDE_CODE_OAUTH_TOKEN  CONTAINER name for the Claude Code OAuth credential.
+#                            The ONLY supported Claude auth mechanism —
+#                            `.credentials.json` and `ANTHROPIC_API_KEY` paths
+#                            were removed (aops-06ab3ee0). Sourced from
+#                            AOPS_CC_OAUTH_TOKEN on the host (official name kept
+#                            as a transitional fallback source).
 #   GEMINI_API_KEY        Gemini API auth.
 #   PKB_MCP_URL           PKB MCP HTTP endpoint.
 #   PKB_MCP_TOKEN         PKB MCP auth token.
@@ -191,9 +237,15 @@ crew_names:
 #
 # ─── Spawn-time runtime context (set by polecat/cli.py per session) ────────
 #
-#   POLECAT_SESSION_TYPE      "crew" or "polecat" (selects per-mode YAML
-#                             overlay for gate-mode lookup).
-#   POLECAT_CREW_NAME         Crew name for filenames.
+#   AOPS_POLECAT_CONTAINER    "1" inside any polecat/crew container (set by
+#                             polecat/cli.py at dispatch). Replaces the former
+#                             POLECAT_SESSION_TYPE label (aops-b368109a): a
+#                             resolved operational signal for state-dir routing
+#                             and container-scoped gate posture, NOT a policy
+#                             selector. Gate MODES are injected pre-resolved as
+#                             *_GATE_MODE; the container reads no polecat.yaml.
+#   POLECAT_CREW_NAME         Crew name for filenames. Also distinguishes a crew
+#                             session from a run worker (its presence ⇒ crew).
 #   POLECAT_APPROVAL_MODE     "plan" when launched in plan mode (signals the
 #                             gate engine to skip the custodiet ops counter).
 #   DEBUG_HOOKS               Materialised from `debug:` above. Router dumps
@@ -296,6 +348,13 @@ crew_names:
 #   HYDRATION_GATE_MODE, IDA_GATE_MODE   →  use `gates:` above.
 #   ENFORCER_TOOL_CALL_THRESHOLD          →  use `gates.enforcer_threshold`.
 #   ENFORCER_DISABLED                     →  use `gates.enforcer: off`.
+#   POLECAT_SESSION_TYPE                  →  removed (aops-b368109a). The
+#                                            container no longer self-identifies
+#                                            with a policy label. Use
+#                                            AOPS_POLECAT_CONTAINER (operational
+#                                            signal) + POLECAT_CREW_NAME (crew
+#                                            vs run); gate policy is injected
+#                                            pre-resolved as *_GATE_MODE.
 #   CLAUDE_SESSION_ID                     →  renamed to AOPS_SESSION_ID
 #                                            (vendor-neutral; works for both
 #                                            Claude Code and Gemini sessions).

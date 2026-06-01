@@ -184,7 +184,7 @@ Operational notes for the notify-watch:
 
 - **Arm immediately after the first dispatch that fills a slot.** Arming before any dispatch is harmless but wastes the watch on no-op events.
 - **Each event is one notification, not one action.** The agent reacts by running a normal tick; it does NOT auto-dispatch from inside the watch script.
-- **Filter crew sessions.** Crew containers share the `polecat-` name prefix. Skip events where `POLECAT_SESSION_TYPE=crew` (look up via `docker inspect` on the exit) or refine the watch's `--filter` to match the in-use task-naming pattern.
+- **Filter crew sessions.** Crew containers share the `polecat-` name prefix. Skip events where the container env has `POLECAT_CREW_NAME` set (a crew session; run workers do not set it — look up via `docker inspect` on the exit) or refine the watch's `--filter` to match the in-use task-naming pattern.
 - **Stop the watch when done.** `TaskStop` on the Monitor when the batch is complete; a leaked persistent Monitor keeps emitting notifications across unrelated work.
 
 ## Anti-Patterns

@@ -24,7 +24,7 @@ def _clear_env_vars(monkeypatch):
         "AOPS_GATE_FILE_ENFORCER",
         "GEMINI_SESSION_ID",
         "POLECAT_CREW_NAME",
-        "POLECAT_SESSION_TYPE",
+        "AOPS_POLECAT_CONTAINER",
     )
     for var in ENV_VARS_TO_CLEAR:
         monkeypatch.delenv(var, raising=False)
@@ -199,10 +199,10 @@ class TestPolebcatSandboxRouting:
     """
 
     def test_polecat_sandbox_detection(self, monkeypatch):
-        """_is_polecat_sandbox returns True iff POLECAT_SESSION_TYPE is set."""
-        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        """_is_polecat_sandbox returns True iff AOPS_POLECAT_CONTAINER is set."""
+        monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
         assert not _is_polecat_sandbox()
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         assert _is_polecat_sandbox()
 
     @patch("lib.session_paths._polecat_claude_state_dir")
@@ -210,12 +210,12 @@ class TestPolebcatSandboxRouting:
     def test_hook_log_routes_to_polecat_not_home(
         self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
     ):
-        """POLECAT_SESSION_TYPE set → hook log routes via the polecat state dir.
+        """AOPS_POLECAT_CONTAINER set → hook log routes via the polecat state dir.
 
         All session artefacts (hooks, gates, state) share one dir per session
         now, so the subsystem hint is always ``"state"``.
         """
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 
@@ -230,8 +230,8 @@ class TestPolebcatSandboxRouting:
     def test_session_status_routes_to_polecat_not_home(
         self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
     ):
-        """POLECAT_SESSION_TYPE set → session status routes via _polecat_claude_state_dir, not Path.home()."""
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        """AOPS_POLECAT_CONTAINER set → session status routes via _polecat_claude_state_dir, not Path.home()."""
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 
@@ -246,8 +246,8 @@ class TestPolebcatSandboxRouting:
     def test_gate_file_routes_to_polecat_not_home(
         self, mock_project_folder, mock_polecat_dir, monkeypatch, tmp_path
     ):
-        """POLECAT_SESSION_TYPE set → gate file routes via the polecat state dir."""
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        """AOPS_POLECAT_CONTAINER set → gate file routes via the polecat state dir."""
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 

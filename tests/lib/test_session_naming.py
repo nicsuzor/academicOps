@@ -149,7 +149,7 @@ class TestSurfaceClientDetection(unittest.TestCase):
 
     SCRUBBED = (
         "GITHUB_ACTIONS",
-        "POLECAT_SESSION_TYPE",
+        "AOPS_POLECAT_CONTAINER",
         "POLECAT_CREW_NAME",
         "GEMINI_SESSION_ID",
         "AOPS_SESSION_ID",
@@ -175,12 +175,12 @@ class TestSurfaceClientDetection(unittest.TestCase):
         self.assertEqual(session_naming.get_client(), "github-actions")
 
     def test_polecat_run_surface(self):
-        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         self.assertEqual(session_naming.get_surface(), "claude-polecat")
         self.assertEqual(session_naming.get_client(), "polecat")
 
     def test_polecat_crew_surface(self):
-        os.environ["POLECAT_SESSION_TYPE"] = "crew"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         os.environ["POLECAT_CREW_NAME"] = "barbara"
         self.assertEqual(session_naming.get_surface(), "claude-crew")
         self.assertEqual(session_naming.get_client(), "crew")
@@ -198,18 +198,18 @@ class TestSurfaceClientDetection(unittest.TestCase):
 
     def test_gemini_polecat_surface(self):
         os.environ["GEMINI_SESSION_ID"] = "gemini-test"
-        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         self.assertEqual(session_naming.get_surface(), "gemini-polecat")
         self.assertEqual(session_naming.get_client(), "polecat")
 
     def test_gha_takes_precedence_over_polecat(self):
         os.environ["GITHUB_ACTIONS"] = "true"
-        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         # CI is the dominant surface — polecat-on-GHA is still "github-actions".
         self.assertEqual(session_naming.get_surface(), "github-actions")
 
     def test_metadata_dict_has_all_fields(self):
-        os.environ["POLECAT_SESSION_TYPE"] = "crew"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         os.environ["POLECAT_CREW_NAME"] = "barbara"
         meta = session_naming.get_session_metadata()
         self.assertEqual(
@@ -227,7 +227,7 @@ class TestSurfaceClientDetection(unittest.TestCase):
         The offline transcript-to-summary converter reads `.gemini/` files from
         a Claude shell; without override the JSON would mis-stamp provider.
         """
-        os.environ["POLECAT_SESSION_TYPE"] = "run"
+        os.environ["AOPS_POLECAT_CONTAINER"] = "1"
         meta = session_naming.get_session_metadata(provider="gemini")
         self.assertEqual(meta["provider"], "gemini")
         self.assertEqual(meta["surface"], "gemini-polecat")

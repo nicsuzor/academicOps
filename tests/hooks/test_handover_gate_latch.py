@@ -29,15 +29,15 @@ def _reinit_gates_with_defaults():
 
 def _make_polecat_state(session_id: str) -> SessionState:
     """Create a polecat SessionState (handover starts CLOSED)."""
-    old = os.environ.get("POLECAT_SESSION_TYPE")
-    os.environ["POLECAT_SESSION_TYPE"] = "polecat"
+    old = os.environ.get("AOPS_POLECAT_CONTAINER")
+    os.environ["AOPS_POLECAT_CONTAINER"] = "1"
     try:
         return SessionState.create(session_id)
     finally:
         if old is not None:
-            os.environ["POLECAT_SESSION_TYPE"] = old
+            os.environ["AOPS_POLECAT_CONTAINER"] = old
         else:
-            os.environ.pop("POLECAT_SESSION_TYPE", None)
+            os.environ.pop("AOPS_POLECAT_CONTAINER", None)
 
 
 @pytest.fixture
