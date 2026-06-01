@@ -1223,8 +1223,26 @@ def reflection_to_insights(
                 result["main_agent"] = {"todos": session_summary.details["main_agent_todos"]}
             if "started_at" in session_summary.details:
                 result["started_at"] = session_summary.details["started_at"]
+            if "last_modified" in session_summary.details:
+                result["last_modified"] = session_summary.details["last_modified"]
             if "ended_at" in session_summary.details:
                 result["ended_at"] = session_summary.details["ended_at"]
+
+        for _attr in (
+            "agent",
+            "commissioned_as",
+            "parent_session",
+            "launched_by",
+            "subagent_type",
+            "crew",
+            "session_kind",
+            "client",
+            "surface",
+            "provider",
+        ):
+            _val = getattr(session_summary, _attr, None)
+            if _val:
+                result[_attr] = _val
 
     return result
 
@@ -1943,6 +1961,13 @@ class SessionSummary:
     gemini_version: str | None = None
     outcome: str | None = None
 
+    # Linkage and Identity fields
+    agent: str | None = None
+    commissioned_as: str | None = None
+    parent_session: str | None = None
+    launched_by: str | None = None
+    subagent_type: str | None = None
+
 
 def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
     """Extract session-level metadata from entries.
@@ -2435,6 +2460,18 @@ class SessionProcessor:
         summary.task_id = summary.task_id or os.environ.get("AOPS_TASK_ID")
         if not summary.slug and entries:
             summary.slug = self.generate_session_slug(entries)
+
+        if entries:
+            valid_timestamps = [e.timestamp for e in entries if e.timestamp]
+            if valid_timestamps:
+                started_at = min(valid_timestamps)
+                last_modified = max(valid_timestamps)
+                if "started_at" not in summary.details:
+                    summary.details["started_at"] = started_at.isoformat()
+                if "last_modified" not in summary.details:
+                    summary.details["last_modified"] = last_modified.isoformat()
+                if "ended_at" not in summary.details:
+                    summary.details["ended_at"] = last_modified.isoformat()
 
         return summary, entries, agents
 
