@@ -470,9 +470,11 @@ Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gat
 
 Order: consolidate-duplicate → evidence-bump → close-stale → defer → single-task → fix-epic.
 
+**All task-creation actions** MUST omit `severity` (or pass `severity=0`). Severity is a target-node-only signal — see planner/SKILL.md (~lines 608-626). Setting it on a leaf inverts the focus queue.
+
 - **consolidate-duplicate**: MUST verify target duplicate is `state: closed` post-application, unless explicit carve-out. Workers verify before reporting `Done`.
-- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Task nodes MUST omit `severity` (or pass `severity=0`). Severity is a target-node-only signal — see planner/SKILL.md (~lines 608-626). Setting it on a leaf inverts the focus queue. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
-- **fix-epic**: create epic + subtasks + `verify-parent` task. Task nodes MUST omit `severity` (or pass `severity=0`). Severity is a target-node-only signal — see planner/SKILL.md (~lines 608-626). Setting it on a leaf inverts the focus queue. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
+- **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
+- **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
 - Stamp `triaged-*` label after each confirmed action.
 
 ### 5. Create per-cycle datestamped instance
