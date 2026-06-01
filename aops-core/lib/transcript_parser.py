@@ -2448,16 +2448,7 @@ class SessionProcessor:
                 if "last_modified" not in summary.details:
                     summary.details["last_modified"] = last_modified.isoformat()
                 if "ended_at" not in summary.details:
-                    is_ended = any(
-                        e.type == "summary"
-                        or (
-                            e.type == "system_reminder"
-                            and getattr(e, "hook_event_name", "") == "Stop"
-                        )
-                        for e in entries
-                    )
-                    if is_ended:
-                        summary.details["ended_at"] = last_modified.isoformat()
+                    summary.details["ended_at"] = last_modified.isoformat()
 
         return summary, entries, agents
 

@@ -851,7 +851,7 @@ def _generate_transcript_filename(
             timestamp = entry.timestamp
             break
     if not timestamp:
-        timestamp = datetime.now().astimezone()
+        timestamp = datetime.fromtimestamp(session_path.stat().st_mtime).astimezone()
 
     # 4. Project/Repo
     repo = _infer_project(session_path, entries)
