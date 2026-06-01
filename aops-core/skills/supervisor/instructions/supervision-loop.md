@@ -21,7 +21,7 @@ The supervisor maintains structured state in the epic body. This is the **only**
 | # | ID       | Title       | Status                | Worker | Review surface | Notes           |
 | - | -------- | ----------- | --------------------- | ------ | -------------- | --------------- |
 | 1 | task-abc | Fix widget  | done                  | claude | #234           | merged 10:45    |
-| 2 | task-def | Add tests   | ready_for_user_review | gemini | #235           | open PR         |
+| 2 | task-def | Add tests   | merge_ready           | gemini | #235           | open PR         |
 | 3 | task-ghi | Update docs | ready                 | —      | —              | unblocked by #1 |
 
 ## Pattern Memory
@@ -129,11 +129,11 @@ Pauli returns one of:
 
 The main agent never decides the fix shape. If pauli's verdict is malformed, append "pauli verdict malformed" and exit.
 
-### HALT (ready_for_user_review)
+### HALT (merge_ready)
 
 Once every work item is in a terminal supervisor state (deliverable at review surface OR escalated/blocked), the supervisor:
 
-1. Updates the epic's work-items table; marks each surfaced item `ready_for_user_review`.
+1. Updates the epic's work-items table; marks each surfaced item `merge_ready`.
 2. Emits the final-summary report (template lives in the deliverable subworkflow — for code, see [[code-deliverable#final-summary-template-one-report-per-epic]]).
 3. Sets epic status appropriately and exits. No `ScheduleWakeup`, no re-orient, no follow-up tick on this epic.
 
