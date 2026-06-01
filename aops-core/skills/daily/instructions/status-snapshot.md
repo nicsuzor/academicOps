@@ -10,6 +10,7 @@ Populate the `## Status` section with a factual snapshot of the task graph, upco
 summary = mcp__pkb__task_summary()
 # Returns: { "ready": N, "blocked": N,
 #            "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N },  # READY tasks in each class
+#            "by_priority_total": { "p0": N, "p1": N, "p2": N, "p3": N },  # (future) total tasks in each class
 #            "deadlines": { "overdue": N, "due_today": N, "due_this_week": N } }
 ```
 
@@ -17,12 +18,12 @@ summary = mcp__pkb__task_summary()
 
 ### 3.2: Priority Distribution
 
-Report counts only. Do not annotate with "→ recommended tasks" pointers. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4).
+Report counts only. Do not annotate with "→ recommended tasks" pointers. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](skills/remember/references/TAXONOMY.md#priority-labels-p0p4).
 
 **Per-class denominators.** Each P-row shows the ready count _within that priority class_ against the size of that class — **not** against the global ready total. This makes each bar a completion-progress indicator for its own class ("how much P2 work is ready vs. still blocked/in-flight"), instead of "what share of all ready work happens to be P2". The shared global denominator is the specific defect this section was changed to remove (GitHub #182 §4).
 
 - **Numerator**: `summary["by_priority"]["pN"]` — ready tasks in class N.
-- **Denominator**: the per-class total reported by `task_summary` for class N (all non-closed tasks in that class). Source it from `task_summary` — never count tasks yourself (P#78).
+- **Denominator**: the per-class total reported by `task_summary` for class N (all non-closed tasks in that class), expected under `summary["by_priority_total"]["pN"]` (P#78). Source it from `task_summary` — never count tasks yourself.
 
 ```
 P0 ░░░░░░░░░░ 0/4
