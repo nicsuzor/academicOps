@@ -1132,7 +1132,7 @@ def find_sessions(
                     )
                 )
 
-    # 1.5. Find raw Cowork sessions
+    # 1.5. Find raw Cowork sessions (cross-platform: macOS, Windows, Linux)
     if include_cowork:
         for root in cowork_source_roots():
             if not root.exists():
@@ -1143,16 +1143,41 @@ def find_sessions(
                     continue
 
                 parent_name = session_file.parent.name
-                dir_name = (
-                    session_file.parent.parent.name if parent_name == "outputs" else parent_name
+                conv_dir = (
+                    session_file.parent.parent if parent_name == "outputs" else session_file.parent
                 )
+                dir_name = conv_dir.name
 
                 if not dir_name.startswith("local_"):
+                    continue
+
+                # Skip the persistent agent ditto session
+                if "local_ditto_" in dir_name:
                     continue
 
                 session_id = dir_name.replace("local_", "")[:8]
 
                 if session_id in seen_cowork_ids:
+                    continue
+
+                # Try to get a descriptive project name from the metadata JSON
+                # Structure: <root>/<user-uuid>/<org-uuid>/local_<conv-uuid>/...
+                # Metadata JSON is sibling to the conv dir: org_dir/local_<conv-uuid>.json
+                project_name = "cowork"
+                org_dir = conv_dir.parent
+                metadata_json = org_dir / f"{dir_name}.json"
+                if metadata_json.exists():
+                    try:
+                        meta = json.loads(metadata_json.read_text())
+                        title = meta.get("title", "")
+                        if title:
+                            words = title.lower().split()[:3]
+                            project_name = "cowork-" + "-".join(w for w in words if w.isalnum())
+                    except (OSError, ValueError):
+                        pass
+
+                # Filter by project if specified
+                if project and project.lower() not in project_name.lower():
                     continue
 
                 mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
@@ -1164,10 +1189,10 @@ def find_sessions(
                 sessions.append(
                     SessionInfo(
                         path=session_file,
-                        project="cowork",
+                        project=project_name,
                         session_id=session_id,
                         last_modified=mtime,
-                        source="claude",
+                        source="cowork",
                     )
                 )
 
@@ -1380,59 +1405,6 @@ def find_sessions(
                     source="claude",
                 )
             )
-
-    # 5. Find Claude Desktop Cowork sessions
-    if include_cowork:
-        cowork_base = (
-            Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
-        )
-        if cowork_base.exists():
-            # Structure: <user-uuid>/<org-uuid>/local_<conv-uuid>/audit.jsonl
-            for audit_file in cowork_base.glob("*/*/local_*/audit.jsonl"):
-                # Skip the persistent agent ditto session
-                if "local_ditto_" in str(audit_file):
-                    continue
-
-                # Session ID from parent dir name: local_<uuid> -> first 8 chars of uuid
-                conv_dir = audit_file.parent
-                conv_name = conv_dir.name  # local_<uuid>
-                session_id = conv_name.replace("local_", "")[:8]
-
-                # Try to get project/title from the metadata JSON
-                org_dir = conv_dir.parent
-                metadata_json = org_dir / f"{conv_name}.json"
-                project_name = "cowork"
-                if metadata_json.exists():
-                    try:
-                        meta = json.loads(metadata_json.read_text())
-                        title = meta.get("title", "")
-                        if title:
-                            # Use title words for project name (keep it short)
-                            words = title.lower().split()[:3]
-                            project_name = "cowork-" + "-".join(w for w in words if w.isalnum())
-                    except (OSError, ValueError):
-                        pass
-
-                # Filter by project if specified
-                if project and project.lower() not in project_name.lower():
-                    continue
-
-                # Get modification time
-                mtime = datetime.fromtimestamp(audit_file.stat().st_mtime, tz=UTC)
-
-                # Filter by time if specified
-                if since and mtime < since:
-                    continue
-
-                sessions.append(
-                    SessionInfo(
-                        path=audit_file,
-                        project=project_name,
-                        session_id=session_id,
-                        last_modified=mtime,
-                        source="cowork",
-                    )
-                )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)
