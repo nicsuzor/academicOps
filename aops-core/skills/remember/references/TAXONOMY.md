@@ -297,7 +297,7 @@ Framework reporting distinguishes between the **broad view** of all open work an
 Separate from the task hierarchy, the orchestration layer describes how work is executed:
 
 ```
-WORKFLOW (composable step arrangement for achieving a goal or parent task)
+WORKFLOW (composable step arrangement for achieving a parent task)
   └─ STEP (one unit of work within a workflow)
       └─ SKILL (fungible instructions for HOW to execute a step)
           └─ PROCEDURE (skill-internal instructions, not fungible)

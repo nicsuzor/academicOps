@@ -349,7 +349,7 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 | **DRY**            | Remove restated content, replace with links                                                                                                                 |
 | **Synthesize**     | Strip deliberation artifacts from implemented specs                                                                                                         |
 | **Reparent**       | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                                                          |
-| **Hierarchy**      | Validate task→project structure (a task may parent other tasks), goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
+| **Hierarchy**      | Validate task→project structure (a task may parent other tasks), target-linkage via contributes_to edges, and domain consistency (no places-vs-projects mixing) |
 | **Stale**          | Flag a task with status: stale or inconsistencies                                                                                                           |
 | **Dedup**          | Find and merge duplicate tasks                                                                                                                              |
 | **Triage**         | Detect under-specified tasks                                                                                                                                |
@@ -472,7 +472,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Health metrics**: Orphan rate <5% (including wrong-type-parent orphans), link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
 
-**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → parent task, parent task → project/task, projects = root level (no required parent, or parent is another project). Targets link via `goals: []` metadata, not parent hierarchy. No star patterns (>5 children → create intermediate task). `pkb_orphans` detects missing-parent violations. **Criticality focus**: High-criticality orphans are prioritized for reparenting over low-criticality ones.
+**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → parent task, parent task → project/task, projects = root level (no required parent, or parent is another project). Targets link via contributes_to edges, not parent hierarchy. No star patterns (>5 children → create intermediate task). `pkb_orphans` detects missing-parent violations. **Criticality focus**: High-criticality orphans are prioritized for reparenting over low-criticality ones.
 
 **Densify strategies** (rotate across sessions when densifying):
 
@@ -649,7 +649,7 @@ A "Defer until X ships" sentence in the task body, with `status: inbox` and no e
 PROJECT → TASK → ACTION
 ```
 
-Projects: bounded efforts (tree roots) or polecat repos. Tasks: verifiable work units that may parent other tasks down to single-session deliverables. There is no structural task-vs-epic distinction. Goals are linked via `goals: []` field, not via parent hierarchy.
+Projects: bounded efforts (tree roots) or polecat repos. Tasks: verifiable work units that may parent other tasks down to single-session deliverables. There is no structural task-vs-epic distinction. Targets are linked via contributes_to edges, not via parent hierarchy.
 
 ## Status Values
 
