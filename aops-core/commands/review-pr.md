@@ -489,8 +489,9 @@ Verify:
 
 Your default assumption: IT'S BROKEN. Prove it works, don't assume it looks right.
 State your verdict and evidence in prose, then close with the machine-readable
-trailer: `<!-- aops-verdict: PASS|FAIL|REVISE -->` on its own line (the only
-structured token — do not also emit a bare PASS/FAIL/REVISE word as a field).
+trailer: `<!-- aops-verdict: PASS|FAIL|REVISE -->` and `<!-- aops-issues: N -->`
+(where N is a non-negative integer counting the distinct issues raised) on their
+own lines (the only structured tokens — do not also emit bare words as fields).
 ```
 
 ---
