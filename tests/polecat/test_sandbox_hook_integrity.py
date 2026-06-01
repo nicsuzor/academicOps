@@ -155,7 +155,7 @@ class TestSandboxHookIntegrity:
             pytest.skip("Docker not available or aops-crew image not built")
 
         env = {
-            "POLECAT_SESSION_TYPE": "polecat",
+            "AOPS_POLECAT_CONTAINER": "1",
         }
 
         tmp_files: list[Path] = []

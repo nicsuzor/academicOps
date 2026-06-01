@@ -14,7 +14,14 @@ from tests.hooks.gate_helpers import run_router_claude, run_router_gemini
 class TestRouterClaudeFormat:
     """Claude Code output format from subprocess invocation."""
 
-    def test_session_start_output_format(self) -> None:
+    def test_session_start_output_format(self, monkeypatch) -> None:
+        # SessionStart emits a systemMessage for polecat-container sessions.
+        # Establish that explicitly via the resolved dispatcher signal rather
+        # than depending on ambient container env (aops-b368109a): the harness
+        # inherits os.environ, so set the signal it needs and scrub the removed
+        # label so the result is independent of which launcher created the host.
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
+        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
         input_data = {
             "hook_event_name": "SessionStart",
             "session_id": "test-session-123",

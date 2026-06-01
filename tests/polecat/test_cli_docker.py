@@ -142,10 +142,12 @@ class TestBuildDockerCmd:
         assert not any(a.startswith("GOOGLE_API_KEY=") for a in env_args)
 
     def test_forwards_polecat_prefixed_env(self):
-        env = {"POLECAT_SESSION_TYPE": "crew", "POLECAT_CREW_NAME": "test"}
+        # The dispatcher's operational signals (aops-b368109a): AOPS_POLECAT_CONTAINER
+        # (AOPS_ prefix) and POLECAT_CREW_NAME (POLECAT_ prefix) both forward.
+        env = {"AOPS_POLECAT_CONTAINER": "1", "POLECAT_CREW_NAME": "test"}
         cmd = self._build(env=env)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert "POLECAT_SESSION_TYPE=crew" in env_args
+        assert "AOPS_POLECAT_CONTAINER=1" in env_args
         assert "POLECAT_CREW_NAME=test" in env_args
 
     def test_does_not_forward_arbitrary_env(self):

@@ -428,7 +428,7 @@ Arm it **once**, immediately after the first polecat DISPATCH in an interactive 
 
 **The watch carries signal, not judgment.** It is _not_ a replacement for the per-tick loop. Every dispatch decision still goes through pauli preflight; every verify still goes through marsha. The watch only removes idle time between ticks within one session. Re-read [[#forbidden-in-the-main-agent]] and the non-delegable-supervision principle (nicsuzor/academicOps#942) — a bash `docker events` pipe carries event lines; it does not select tasks, file fix-tasks, or skip gates.
 
-**Crew filtering.** The crew session is also a `polecat-*` container. Filter it out at the agent layer (look up the exit's container env via `docker inspect <name>` and skip if `POLECAT_SESSION_TYPE=crew`), or refine the `--filter` to match the headless naming pattern in use.
+**Crew filtering.** The crew session is also a `polecat-*` container. Filter it out at the agent layer (look up the exit's container env via `docker inspect <name>` and skip if `POLECAT_CREW_NAME` is set — crew sets it, run workers do not), or refine the `--filter` to match the headless naming pattern in use.
 
 **When to stop the watch.** Call `TaskStop` on the Monitor when (a) all dispatched polecats are verified and resolved (the session's in-flight work is done), (b) all in-flight epics have reached `ready_for_user_review`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
 

@@ -1765,8 +1765,10 @@ def _run_docker_container(
     ``docker start -a``.
     """
     cmd = list(docker_cmd.cmd)  # copy to avoid mutation
-    # Bypass watchdog kills for interactive or crew sessions (user present)
-    _is_crew = env.get("POLECAT_SESSION_TYPE") == "crew" if env else False
+    # Bypass watchdog kills for interactive or crew sessions (user present).
+    # Crew is identified by the crew-name signal the dispatcher already sets;
+    # there is no session-type label (aops-b368109a).
+    _is_crew = bool(env.get("POLECAT_CREW_NAME")) if env else False
     _is_interactive = any(arg in cmd for arg in ["-t", "--tty"])
     _bypass = _is_crew or _is_interactive
 
@@ -2367,27 +2369,36 @@ def _require_pkb_url_or_exit() -> None:
 
 
 def _require_claude_oauth_or_exit(cli_tool: str) -> None:
-    """Fail fast if launching a Claude worker without CLAUDE_CODE_OAUTH_TOKEN.
+    """Fail fast if launching a Claude worker with no resolvable Claude token.
 
     Claude auth in polecat is env-only (see aops-core/agent-env-map.conf and
     the auth-staging comment in :func:`_build_docker_cmd`). The OAuth token is
     the single source of truth — no `.credentials.json` staging, no
-    `oauthAccount` merging, no `ANTHROPIC_API_KEY` fallback. If the host env
-    lacks the token we fail here, before spawning a worktree, rather than
-    letting the worker hit a generic 401 deep in headless execution.
+    `oauthAccount` merging, no `ANTHROPIC_API_KEY` fallback.
+
+    The token is sourced from ``AOPS_CC_OAUTH_TOKEN`` in the host env and
+    injected into the container under the official name ``CLAUDE_CODE_OAUTH_TOKEN``
+    (aops-b368109a); the official name itself is a transitional fallback source.
+    This check uses the exact same resolution path as the launcher
+    (``resolve_forward_values``), so it honours ``~/.env.local`` and the alias
+    indirection. If nothing resolves we fail here, before spawning a worktree,
+    rather than letting the worker hit a generic 401 deep in headless execution.
 
     Exit code 4 (config failure) mirrors :func:`_require_pkb_url_or_exit`.
     """
     if cli_tool != "claude":
         return
-    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    from lib.host_secrets import resolve_forward_values
+
+    if resolve_forward_values(["CLAUDE_CODE_OAUTH_TOKEN"]):
         return
     print(
-        "polecat: CLAUDE_CODE_OAUTH_TOKEN is not set.\n"
+        "polecat: no Claude OAuth token found.\n"
         "  Claude auth in polecat is env-var only. Generate a token with:\n"
         "      claude setup-token\n"
-        "  then export it before invoking polecat:\n"
-        "      export CLAUDE_CODE_OAUTH_TOKEN=<token>",
+        "  then export it (host source name) before invoking polecat:\n"
+        "      export AOPS_CC_OAUTH_TOKEN=<token>\n"
+        "  (polecat injects it into the container as CLAUDE_CODE_OAUTH_TOKEN).",
         file=sys.stderr,
     )
     sys.exit(4)
@@ -3929,7 +3940,11 @@ def crew(
         work_dir=work_dir,
         container_env_forward=cfg.container_env_forward,
     )
-    env["POLECAT_SESSION_TYPE"] = "crew"
+    # Resolved operational signals (no self-identifying session-type label).
+    # AOPS_POLECAT_CONTAINER marks "running inside a polecat container" (state
+    # routing + container-scoped gate posture); POLECAT_CREW_NAME distinguishes
+    # crew from a run worker for metrics/filenames (aops-b368109a).
+    env["AOPS_POLECAT_CONTAINER"] = "1"
     env["POLECAT_CREW_NAME"] = crew_name
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
@@ -4694,7 +4709,11 @@ def run(
         work_dir=worktree_path,
         container_env_forward=cfg.container_env_forward,
     )
-    env["POLECAT_SESSION_TYPE"] = "polecat"
+    # Resolved operational signal: "running inside a polecat container" (state
+    # routing + container-scoped gate posture). No session-type label; a run
+    # worker is distinguished from crew by the absence of POLECAT_CREW_NAME
+    # (aops-b368109a).
+    env["AOPS_POLECAT_CONTAINER"] = "1"
     env["AOPS_TASK_ID"] = task.id
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"

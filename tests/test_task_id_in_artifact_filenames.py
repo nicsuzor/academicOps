@@ -39,7 +39,7 @@ def _clear_env_vars(monkeypatch):
         "AOPS_GATE_FILE_ENFORCER",
         "GEMINI_SESSION_ID",
         "POLECAT_CREW_NAME",
-        "POLECAT_SESSION_TYPE",
+        "AOPS_POLECAT_CONTAINER",
         "CLAUDE_PROJECT_DIR",
     ):
         monkeypatch.delenv(var, raising=False)

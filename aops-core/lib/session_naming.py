@@ -198,18 +198,20 @@ def get_surface() -> str:
 
     Returns one of:
         - ``github-actions``: $GITHUB_ACTIONS=true (CI runner)
-        - ``{provider}-crew``: $POLECAT_SESSION_TYPE=crew (crew container)
-        - ``{provider}-polecat``: $POLECAT_SESSION_TYPE is set but not crew
+        - ``{provider}-crew``: $AOPS_POLECAT_CONTAINER set with $POLECAT_CREW_NAME
+        - ``{provider}-polecat``: $AOPS_POLECAT_CONTAINER set, no crew name
         - ``claude-code-cli`` / ``gemini-cli``: bare terminal session
     """
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
 
     provider = get_provider_name()
-    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
-    if session_type == "crew":
-        return f"{provider}-crew"
-    if session_type:
+    # Resolved dispatcher signals, not a self-identifying session-type label
+    # (aops-b368109a): any polecat container is marked by AOPS_POLECAT_CONTAINER;
+    # crew is further distinguished by the crew-name signal.
+    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+        if os.environ.get("POLECAT_CREW_NAME"):
+            return f"{provider}-crew"
         return f"{provider}-polecat"
 
     if provider == "gemini":
@@ -227,11 +229,9 @@ def get_client() -> str:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
 
-    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
-    if session_type == "crew":
-        return "crew"
-    if session_type:
-        return "polecat"
+    # Resolved dispatcher signals, not a session-type label (aops-b368109a).
+    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+        return "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
 
     provider = get_provider_name()
     if provider == "gemini":
@@ -313,7 +313,7 @@ def infer_session_origin_from_path(
 
     Used by the offline transcript→summary converter, which reads jsonl/json
     files long after the original runtime env (``GITHUB_ACTIONS``,
-    ``POLECAT_SESSION_TYPE``, ``POLECAT_CREW_NAME``) is gone. Without this,
+    ``AOPS_POLECAT_CONTAINER``, ``POLECAT_CREW_NAME``) is gone. Without this,
     every offline-converted summary stamps ``surface: claude-code-cli`` even
     for GHA/crew/polecat sessions.
 
@@ -487,10 +487,10 @@ def _surface_with_provider(provider: str) -> str:
     """Internal: surface detection with an explicit provider value."""
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
-    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
-    if session_type == "crew":
-        return f"{provider}-crew"
-    if session_type:
+    # Resolved dispatcher signals, not a session-type label (aops-b368109a).
+    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+        if os.environ.get("POLECAT_CREW_NAME"):
+            return f"{provider}-crew"
         return f"{provider}-polecat"
     if provider == "gemini":
         return "gemini-cli"
@@ -501,11 +501,9 @@ def _client_with_provider(provider: str) -> str:
     """Internal: client detection with an explicit provider value."""
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
-    session_type = (os.environ.get("POLECAT_SESSION_TYPE") or "").strip().lower()
-    if session_type == "crew":
-        return "crew"
-    if session_type:
-        return "polecat"
+    # Resolved dispatcher signals, not a session-type label (aops-b368109a).
+    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+        return "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
     if provider == "gemini":
         return "gemini-cli"
     return "claude-code"

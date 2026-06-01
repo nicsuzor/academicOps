@@ -356,7 +356,7 @@ def _save_minimal_token_summary(
                     break
 
     # Infer surface/client/crew from the persisted session path. The live env
-    # ($GITHUB_ACTIONS, $POLECAT_SESSION_TYPE, $POLECAT_CREW_NAME) is gone by
+    # ($GITHUB_ACTIONS, $AOPS_POLECAT_CONTAINER, $POLECAT_CREW_NAME) is gone by
     # the time the offline converter runs, so without this overrides every
     # GHA/crew/polecat summary mis-stamps `surface: claude-code-cli`. The
     # caller may also pass origin_override when it has scanned the entries

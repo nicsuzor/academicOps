@@ -59,20 +59,29 @@ def _make_session_state(scenario: dict) -> SessionState:
     """Create a SessionState with correct session_type and gate overrides."""
     session_type = scenario.get("session_type", "interactive")
 
-    # Temporarily set POLECAT_SESSION_TYPE so SessionState.create() picks it up
-    old_val = os.environ.get("POLECAT_SESSION_TYPE")
+    # Set the resolved dispatcher signals so SessionState.create() derives the
+    # right session_type (aops-b368109a): AOPS_POLECAT_CONTAINER marks a polecat
+    # container; POLECAT_CREW_NAME distinguishes crew from a run worker.
+    old_container = os.environ.get("AOPS_POLECAT_CONTAINER")
+    old_crew = os.environ.get("POLECAT_CREW_NAME")
     try:
+        os.environ.pop("AOPS_POLECAT_CONTAINER", None)
+        os.environ.pop("POLECAT_CREW_NAME", None)
         if session_type in ("polecat", "crew"):
-            os.environ["POLECAT_SESSION_TYPE"] = session_type
-        elif "POLECAT_SESSION_TYPE" in os.environ:
-            del os.environ["POLECAT_SESSION_TYPE"]
+            os.environ["AOPS_POLECAT_CONTAINER"] = "1"
+        if session_type == "crew":
+            os.environ["POLECAT_CREW_NAME"] = "testcrew"
 
         state = SessionState.create("test-handover-session-type")
     finally:
-        if old_val is not None:
-            os.environ["POLECAT_SESSION_TYPE"] = old_val
-        elif "POLECAT_SESSION_TYPE" in os.environ:
-            del os.environ["POLECAT_SESSION_TYPE"]
+        for _var, _val in (
+            ("AOPS_POLECAT_CONTAINER", old_container),
+            ("POLECAT_CREW_NAME", old_crew),
+        ):
+            if _val is not None:
+                os.environ[_var] = _val
+            else:
+                os.environ.pop(_var, None)
 
     # Apply gate overrides
     for gate_name, overrides in scenario.get("gate_overrides", {}).items():
@@ -291,7 +300,7 @@ class TestHandoverPolecatLifecycle:
 
     def test_polecat_full_lifecycle(self, router, monkeypatch):
         """Polecat session: CLOSED → work → handover skill → OPEN (sticky) → UPS re-arms."""
-        monkeypatch.setenv("POLECAT_SESSION_TYPE", "polecat")
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         reinit_gates_with_defaults()
 
         state = SessionState.create("test-polecat-lifecycle")
@@ -362,8 +371,9 @@ class TestHandoverPolecatLifecycle:
 
     def test_interactive_full_lifecycle(self, router, monkeypatch):
         """Interactive session: OPEN throughout — no close triggers, no re-arm."""
-        # Ensure no POLECAT_SESSION_TYPE
-        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        # Ensure no polecat-container signal (aops-b368109a)
+        monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
+        monkeypatch.delenv("POLECAT_CREW_NAME", raising=False)
         reinit_gates_with_defaults()
 
         state = SessionState.create("test-interactive-lifecycle")

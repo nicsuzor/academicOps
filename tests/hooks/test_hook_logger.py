@@ -36,10 +36,10 @@ def temp_claude_projects(monkeypatch):
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
         monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
-        # When run inside a polecat container, POLECAT_SESSION_TYPE redirects
+        # When run inside a polecat container, AOPS_POLECAT_CONTAINER redirects
         # writes to /home/worker/.claude/projects (the host-extracted dir),
         # bypassing the test's tmpdir. Clear it so Path.home() resolution wins.
-        monkeypatch.delenv("POLECAT_SESSION_TYPE", raising=False)
+        monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
 
         yield tmpdir
 

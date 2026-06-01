@@ -113,3 +113,56 @@ class TestResolveForwardValues:
         f.write_text("WANTED=yes\nUNWANTED=no\n")
         resolved = resolve_forward_values(["WANTED"], source_env={}, env_file=f)
         assert resolved == {"WANTED": "yes"}
+
+
+class TestForwardSourceAliases:
+    """Source-name indirection: the Claude OAuth token is sourced from
+    AOPS_CC_OAUTH_TOKEN on the host but injected under the official container
+    name CLAUDE_CODE_OAUTH_TOKEN (aops-b368109a — leak closed at the agent)."""
+
+    def test_claude_token_sourced_from_aops_alias(self, tmp_path):
+        """Official name absent from the source env → value comes from the alias."""
+        resolved = resolve_forward_values(
+            ["CLAUDE_CODE_OAUTH_TOKEN"],
+            source_env={"AOPS_CC_OAUTH_TOKEN": "tok-aops"},
+            env_file=tmp_path / "absent",
+        )
+        # Keyed by the CONTAINER name, valued from the alias source.
+        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
+
+    def test_official_name_is_transitional_fallback(self, tmp_path):
+        """Before the host var is renamed, the official name still resolves."""
+        resolved = resolve_forward_values(
+            ["CLAUDE_CODE_OAUTH_TOKEN"],
+            source_env={"CLAUDE_CODE_OAUTH_TOKEN": "tok-official"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-official"}
+
+    def test_alias_source_wins_over_official_name(self, tmp_path):
+        """When both are present, the alias source takes precedence."""
+        resolved = resolve_forward_values(
+            ["CLAUDE_CODE_OAUTH_TOKEN"],
+            source_env={
+                "AOPS_CC_OAUTH_TOKEN": "tok-aops",
+                "CLAUDE_CODE_OAUTH_TOKEN": "tok-official",
+            },
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
+
+    def test_alias_source_from_env_local(self, tmp_path):
+        """The alias source is resolved from ~/.env.local too, not just process env."""
+        f = tmp_path / ".env.local"
+        f.write_text("AOPS_CC_OAUTH_TOKEN=tok-from-file\n")
+        resolved = resolve_forward_values(["CLAUDE_CODE_OAUTH_TOKEN"], source_env={}, env_file=f)
+        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-from-file"}
+
+    def test_unaliased_name_unaffected(self, tmp_path):
+        """A name with no alias resolves from its own name as before."""
+        resolved = resolve_forward_values(
+            ["GEMINI_API_KEY"],
+            source_env={"GEMINI_API_KEY": "gk"},
+            env_file=tmp_path / "absent",
+        )
+        assert resolved == {"GEMINI_API_KEY": "gk"}
