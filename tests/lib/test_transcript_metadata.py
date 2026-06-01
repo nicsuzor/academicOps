@@ -386,3 +386,10 @@ class TestUsageStatsServerToolUse:
         )
         stats.add_entry(entry)
         assert stats.server_tool_use == 2
+
+    def test_server_tool_use_unexpected_type(self):
+        """Test server_tool_use with unexpected types (should be safely ignored)."""
+        stats = UsageStats()
+        entry = Entry(type="assistant", server_tool_use="invalid")
+        stats.add_entry(entry)
+        assert stats.server_tool_use == 0

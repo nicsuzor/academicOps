@@ -1488,7 +1488,8 @@ class UsageStats:
             v = entry.server_tool_use
             if isinstance(v, dict):
                 v = sum(x for x in v.values() if isinstance(x, int))
-            self.server_tool_use += v or 0
+            if isinstance(v, int) and not isinstance(v, bool):
+                self.server_tool_use += v
         if entry.service_tier and not self.service_tier:
             self.service_tier = entry.service_tier
 
