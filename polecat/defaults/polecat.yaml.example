@@ -131,6 +131,7 @@ docker:
 # is unchanged either way.
 container_env_forward:
   - CLAUDE_CODE_OAUTH_TOKEN
+  - AOPS_CC_OAUTH_TOKEN
   - GEMINI_API_KEY
   - AOPS_BOT_GH_TOKEN
   - GH_TOKEN
