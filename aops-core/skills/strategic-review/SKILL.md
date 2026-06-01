@@ -82,6 +82,22 @@ James will read the relevant descriptor automatically based on what you tell him
 | **pauli**  | Strategic critique via 10 cognitive moves — The Logician | As needed             |
 | **marsha** | Independent runtime verification — The QA Reviewer       | When code is involved |
 
+## Demand Concrete Proof for Diagnostic Claims
+
+When assessing a claim in a review (e.g. "I checked the logs and couldn't find any errors" or "there is no reason for the failure in the output"), do **not** accept a narrative summary at face value if the claim is load-bearing.
+
+You must demand **concrete proof** of the negative result. The agent must surface primary evidence, not paraphrase.
+
+Follow this exact pattern when rejecting hand-wavy claims:
+
+1. **Name the artifact**: Tell the agent exactly which log, file, or stream to check.
+2. **Demand specific lines**: Require them to show the literal failure line (or exit message) plus _N_ lines of context immediately preceding it.
+3. **Require all perspectives**: If there are multiple sources (e.g., client + host), demand evidence from both sides.
+
+**Worked Example (Colima early-exit framing):**
+
+> "ok. now, are you absolutely sure that you cannot find any reason, in the client logs or in our colima logs on the host, that would explain the early exit? prove to me by showing the exit log messages and the three messages immediately before them in each case."
+
 ## Design rationale
 
 The loop exists because one-shot prompting reliably produces competent-but-not-genius reviews: internally consistent, surface-level, answering the question as posed. James's job is to force elevation — from instance to class, from artifact to process, from "is this right?" to "is this the right question?". He also carries axiom compliance (Ruth) and runtime verification (Marsha) as non-negotiable dimensions that strategic review alone cannot provide.

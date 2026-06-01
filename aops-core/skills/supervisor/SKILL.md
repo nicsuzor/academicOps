@@ -297,6 +297,22 @@ _Enforces A7 Edge 2 (FM-1, FM-2, FM-6)._
 
 Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in the same tick. Forwarding ("subagent recommends X, want to proceed?") is FM-2 rubber-stamping. Before asserting "I can't dispatch X", run the cheapest verification (`gh auth status`, `which gemini`) — capability fabrication (FM-6) forecloses the user's override.
 
+### Demand Concrete Proof for Diagnostic Claims
+
+When a worker, polecat, or subagent claims a negative result on a diagnostic search (e.g. "I checked the logs and couldn't find any errors", "there is no reason for the failure in the output"), do **not** accept this narrative summary at face value if the claim is load-bearing.
+
+You must demand **concrete proof** of the negative result. The agent must surface primary evidence, not paraphrase.
+
+Follow this exact pattern when rejecting hand-wavy claims:
+
+1. **Name the artifact**: Tell the agent exactly which log, file, or stream to check.
+2. **Demand specific lines**: Require them to show the literal failure line (or exit message) plus _N_ lines of context immediately preceding it.
+3. **Require all perspectives**: If there are multiple sources (e.g., client + host), demand evidence from both sides.
+
+**Worked Example (Colima early-exit framing):**
+
+> "ok. now, are you absolutely sure that you cannot find any reason, in the client logs or in our colima logs on the host, that would explain the early exit? prove to me by showing the exit log messages and the three messages immediately before them in each case."
+
 ## Phases
 
 The supervisor is a loop, not a pipeline. Each tick enters one phase and exits.
