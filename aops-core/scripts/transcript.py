@@ -419,27 +419,21 @@ def _save_minimal_token_summary(
             if "ended_at" in session_summary.details:
                 insights["ended_at"] = session_summary.details["ended_at"]
 
-        # Extract newly required metadata
-        if session_summary.agent:
-            insights["agent"] = session_summary.agent
-        if session_summary.commissioned_as:
-            insights["commissioned_as"] = session_summary.commissioned_as
-        if session_summary.parent_session:
-            insights["parent_session"] = session_summary.parent_session
-        if session_summary.launched_by:
-            insights["launched_by"] = session_summary.launched_by
-        if session_summary.subagent_type:
-            insights["subagent_type"] = session_summary.subagent_type
-        if session_summary.crew:
-            insights["crew"] = session_summary.crew
-        if session_summary.session_kind:
-            insights["session_kind"] = session_summary.session_kind
-        if session_summary.client:
-            insights["client"] = session_summary.client
-        if session_summary.surface:
-            insights["surface"] = session_summary.surface
-        if session_summary.provider:
-            insights["provider"] = session_summary.provider
+        for _attr in (
+            "agent",
+            "commissioned_as",
+            "parent_session",
+            "launched_by",
+            "subagent_type",
+            "crew",
+            "session_kind",
+            "client",
+            "surface",
+            "provider",
+        ):
+            _val = getattr(session_summary, _attr, None)
+            if _val:
+                insights[_attr] = _val
 
     # Timeline events for path reconstruction
     if timeline_events:
@@ -835,6 +829,34 @@ def _infer_agent_from_entries(entries: list) -> str | None:
     if match:
         return match.group(1).lower()
     return None
+
+
+def _populate_session_linkage(session_summary: "SessionSummary", entries: list) -> None:
+    """Populate agent identity and parent/spawn linkage fields on session_summary."""
+    agent_name = _infer_agent_from_entries(entries)
+    if agent_name:
+        session_summary.agent = agent_name
+        session_summary.commissioned_as = agent_name
+        if not session_summary.session_kind:
+            session_summary.session_kind = "subagent"
+
+    if entries:
+        first_entry = entries[0]
+        if first_entry.hook_context:
+            parent_id = first_entry.hook_context.get("parent_session_id")
+            if parent_id:
+                session_summary.parent_session = parent_id
+                session_summary.launched_by = parent_id
+            sub_type = first_entry.hook_context.get("subagent_type")
+            if sub_type:
+                session_summary.subagent_type = sub_type
+
+        # Fallback to direct entry fields (for CC 2.1 native subagents)
+        if not session_summary.parent_session and first_entry.parent_uuid:
+            session_summary.parent_session = first_entry.parent_uuid[:8]
+            session_summary.launched_by = first_entry.parent_uuid[:8]
+        if not session_summary.subagent_type and first_entry.subagent_id:
+            session_summary.subagent_type = first_entry.subagent_id
 
 
 def _generate_transcript_filename(
@@ -1449,27 +1471,7 @@ Examples:
                 session_summary.permission_modes = session_ctx.get("permission_modes", [])
                 session_summary.models = session_ctx.get("models", [])
 
-                # Extract agent/commissioned_as from first user prompt frontmatter
-                agent_name = _infer_agent_from_entries(entries)
-                if agent_name:
-                    session_summary.agent = agent_name
-                    session_summary.commissioned_as = agent_name
-                    # If it has a named agent, it is functioning as a subagent role
-                    if not session_summary.session_kind:
-                        session_summary.session_kind = "subagent"
-
-                # Extract parent/spawn linkage if present in first entry hook context
-                if entries:
-                    first_entry = entries[0]
-                    # Also check for env vars if they happen to be in hook_context
-                    if first_entry.hook_context:
-                        parent_id = first_entry.hook_context.get("parent_session_id")
-                        if parent_id:
-                            session_summary.parent_session = parent_id
-                            session_summary.launched_by = parent_id
-                        sub_type = first_entry.hook_context.get("subagent_type")
-                        if sub_type:
-                            session_summary.subagent_type = sub_type
+                _populate_session_linkage(session_summary, entries)
 
                 # Fetch existing outcome if available (from insights JSON)
                 existing_path = find_existing_insights(date_iso, session_id)
@@ -1704,33 +1706,7 @@ Examples:
             session_summary.permission_modes = session_ctx.get("permission_modes", [])
             session_summary.models = session_ctx.get("models", [])
 
-            # Extract agent/commissioned_as from first user prompt frontmatter
-            agent_name = _infer_agent_from_entries(entries)
-            if agent_name:
-                session_summary.agent = agent_name
-                session_summary.commissioned_as = agent_name
-                # If it has a named agent, it is functioning as a subagent role
-                if not session_summary.session_kind:
-                    session_summary.session_kind = "subagent"
-
-            # Extract parent/spawn linkage if present in first entry hook context
-            if entries:
-                first_entry = entries[0]
-                if first_entry.hook_context:
-                    parent_id = first_entry.hook_context.get("parent_session_id")
-                    if parent_id:
-                        session_summary.parent_session = parent_id
-                        session_summary.launched_by = parent_id
-                    sub_type = first_entry.hook_context.get("subagent_type")
-                    if sub_type:
-                        session_summary.subagent_type = sub_type
-
-                # Fallback to direct entry fields (for CC 2.1 native subagents)
-                if not session_summary.parent_session and first_entry.parent_uuid:
-                    session_summary.parent_session = first_entry.parent_uuid[:8]
-                    session_summary.launched_by = first_entry.parent_uuid[:8]
-                if not session_summary.subagent_type and first_entry.subagent_id:
-                    session_summary.subagent_type = first_entry.subagent_id
+            _populate_session_linkage(session_summary, entries)
 
             reflection_header, _ = _process_reflection(
                 entries,
@@ -1880,33 +1856,7 @@ Examples:
         session_summary.permission_modes = session_ctx.get("permission_modes", [])
         session_summary.models = session_ctx.get("models", [])
 
-        # Extract agent/commissioned_as from first user prompt frontmatter
-        agent_name = _infer_agent_from_entries(entries)
-        if agent_name:
-            session_summary.agent = agent_name
-            session_summary.commissioned_as = agent_name
-            # If it has a named agent, it is functioning as a subagent role
-            if not session_summary.session_kind:
-                session_summary.session_kind = "subagent"
-
-        # Extract parent/spawn linkage if present in first entry hook context
-        if entries:
-            first_entry = entries[0]
-            if first_entry.hook_context:
-                parent_id = first_entry.hook_context.get("parent_session_id")
-                if parent_id:
-                    session_summary.parent_session = parent_id
-                    session_summary.launched_by = parent_id
-                sub_type = first_entry.hook_context.get("subagent_type")
-                if sub_type:
-                    session_summary.subagent_type = sub_type
-
-            # Fallback to direct entry fields (for CC 2.1 native subagents)
-            if not session_summary.parent_session and first_entry.parent_uuid:
-                session_summary.parent_session = first_entry.parent_uuid[:8]
-                session_summary.launched_by = first_entry.parent_uuid[:8]
-            if not session_summary.subagent_type and first_entry.subagent_id:
-                session_summary.subagent_type = first_entry.subagent_id
+        _populate_session_linkage(session_summary, entries)
 
         reflection_header, _ = _process_reflection(
             entries,
