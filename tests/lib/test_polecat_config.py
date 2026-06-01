@@ -71,7 +71,11 @@ def test_container_env_forward_defaults_when_absent(cfg_path: Path) -> None:
     # CANONICAL_YAML has no container_env_forward → built-in default (the OAuth
     # tokens). This is the "limited list" for hold-for-delegation secrets.
     cfg = load_polecat_config(cfg_path)
-    assert cfg.container_env_forward == ("CLAUDE_CODE_OAUTH_TOKEN", "AOPS_CC_OAUTH_TOKEN", "GEMINI_API_KEY")
+    assert cfg.container_env_forward == (
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "AOPS_CC_OAUTH_TOKEN",
+        "GEMINI_API_KEY",
+    )
 
 
 def test_container_env_forward_explicit_list(tmp_path: Path) -> None:

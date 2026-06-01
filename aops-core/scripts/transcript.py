@@ -416,6 +416,8 @@ def _save_minimal_token_summary(
                 insights["main_agent"] = {"todos": session_summary.details["main_agent_todos"]}
             if "started_at" in session_summary.details:
                 insights["started_at"] = session_summary.details["started_at"]
+            if "last_modified" in session_summary.details:
+                insights["last_modified"] = session_summary.details["last_modified"]
             if "ended_at" in session_summary.details:
                 insights["ended_at"] = session_summary.details["ended_at"]
 
