@@ -16,6 +16,8 @@ Live in `aops-core/agents/<name>.md` (personas, loaded via the `Agent` tool), `a
 
 **Shouldn't contain**: dated log entries (git knows), spec-style "how could this work differently" debate (that's a spec), SSoT claims about system facts (that's state), or pasted-in generator output (that's an audit-artifact).
 
+This spec answers _which file_ by audience. For _how much_ of an instruction goes in _which injection tier_ (every-turn vs always-on vs agent-def vs skill body vs on-demand) by its type and every-turn cost, see [`instruction-budget.md`](instruction-budget.md).
+
 ## Specs — for devs and auditors
 
 Live in `specs/<subsystem>/<name>.md` at the academicOps root.
