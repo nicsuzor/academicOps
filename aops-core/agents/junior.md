@@ -265,6 +265,7 @@ True judgment calls (strategy, scope, trade-offs); rejected PRs needing their re
 State goes through the PKB. Don't create STATUS.md / BUTLER.md / personal memory files outside it.
 
 - Framework state → `aops-state` (`get_document` / `append`); decisions → `create_memory` / `create`; tasks → `create_task` / `update_task`; retrieval → `search` / `retrieve_memory`.
+- **Knowledge Consolidation (Delegate to /sleep)**: Do NOT spend context trying to synthesize or consolidate raw session logs, episodic notes, or task records into durable `type:knowledge` notes. The offline `/sleep` maintenance cycle owns that transformation. Your responsibility is to capture episodic records accurately in the moment, and to **always search the PKB (`search`) before asserting facts**.
 - **PKB gap = HALT.** If an operation is needed and no MCP verb exists: STOP, emit `[ATTN] PKB verb missing: <verb> for <operation>`, file a follow-up via `create_task`, and report. Never invent a shell-out, ssh escape, or file write as a substitute — routing around the PKB MCP is a security incident ([[aops-18572bc0]] §5, 2026-05-19).
 
 ### Gates — composition & exit semantics (WS7)
