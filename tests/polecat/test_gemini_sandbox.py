@@ -82,47 +82,6 @@ def _gemini_branch_source() -> str:
     return tail[: else_m.start()]
 
 
-class TestGeminiSandboxStatic:
-    """Source-level pin: the gemini CLI invocation must include the
-    extension dir allowlist flag.
-
-    This test is intentionally tight-coupled to the fix site because the
-    behaviour we care about (sandbox allowlist) is a CLI flag string passed
-    to ``gemini`` — there is no reasonable runtime assertion short of the
-    integration test below.
-    """
-
-    def test_include_directories_flag_present(self):
-        snippet = _gemini_branch_source()
-        assert "--include-directories" in snippet, (
-            "polecat gemini branch must pass --include-directories so the "
-            "sandbox allowlist includes the aops-core extension dir. See #522."
-        )
-
-    def test_extension_dir_in_allowlist(self):
-        snippet = _gemini_branch_source()
-        assert EXTENSION_DIR in snippet, (
-            f"polecat gemini branch must include {EXTENSION_DIR} in the "
-            "--include-directories allowlist. See #522."
-        )
-
-    def test_flag_and_value_adjacent(self):
-        """The flag value must follow the flag — guard against accidental
-        drift where the literal exists but isn't the flag argument."""
-        snippet = _gemini_branch_source()
-        # Accept either form:
-        #   "--include-directories", EXTENSION_DIR
-        #   "--include-directories=EXTENSION_DIR"
-        pat_sep = re.compile(
-            r'"--include-directories"\s*,\s*[^"\n]*"' + re.escape(EXTENSION_DIR) + r'"'
-        )
-        pat_eq = re.compile(r'"--include-directories=' + re.escape(EXTENSION_DIR) + r'"')
-        assert pat_sep.search(snippet) or pat_eq.search(snippet), (
-            "--include-directories flag must be adjacent to the extension dir "
-            "value in polecat/cli.py gemini branch."
-        )
-
-
 # ---------------------------------------------------------------------------
 # Integration: actually run gemini with the flag and confirm it can read
 # the extension GEMINI.md without "Path not in workspace".

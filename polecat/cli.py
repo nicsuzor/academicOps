@@ -277,7 +277,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
 # names, polecat both selects the matching client AND uses the model id
 # from ``polecat.yaml session_defaults.<client>_model``. Anything else is
 # treated as a literal model id and the client is inferred from the prefix
-# (``gemini-*`` → gemini, ``claude-*`` / sonnet|opus|haiku-* → claude).
+# (``antigravity-*``/``agy-*`` → antigravity, ``claude-*`` / sonnet|opus|haiku-* → claude).
 _CLIENT_ALIAS_MODELS: dict[str, str] = {
     "antigravity": "antigravity",
     "agy": "antigravity",
@@ -301,21 +301,24 @@ def _resolve_model_flag(
     """Resolve a ``--model <name>`` value into (client, model_id_override).
 
     The unified ``--model`` flag is the canonical way to pick BOTH the agent
-    client (claude vs gemini) AND the model id used inside that client. It
+    client (claude vs antigravity) AND the model id used inside that client. It
     replaces the legacy ``--gemini``/``-g`` flag.
 
     Resolution rules:
 
     * ``None`` → ``(default_client, None)``. No override; the session config's
       configured model for ``default_client`` is used.
-    * A client-name alias (``"claude"``, ``"gemini"``) → ``(client, None)``.
-      The client is switched; the configured ``<client>_model`` from
-      ``polecat.yaml session_defaults`` is used verbatim.
+    * A client-name alias (``"claude"``, ``"antigravity"``, ``"agy"``) →
+      ``(client, None)``. The client is switched; the configured
+      ``<client>_model`` from ``polecat.yaml session_defaults`` is used verbatim.
+      Note: "antigravity" (agy) is a *client* — the CLI wrapper — not a model name.
+      The actual model it uses (e.g. Gemini 3.1 Pro) is configured via
+      ``antigravity_model`` in polecat.yaml.
     * A bare Claude model-family name (``"opus"``, ``"sonnet"``, ``"haiku"``)
       → ``("claude", <name>)``. Claude Code's CLI accepts these as aliases
       for the latest version of each family; polecat passes them through.
       This is the canonical short form documented in ``~/junior/.agents/CORE.md``.
-    * A literal model id (``"claude-opus-4-8"``, ``"gemini-2.5-pro"``, etc.):
+    * A literal model id (``"claude-opus-4-8"``, ``"antigravity-1.0"``, etc.):
       the client is inferred from the id prefix and the id is passed through
       to the client CLI as ``--model <id>``.
     * Anything else → ``click.UsageError`` naming the available aliases so the
@@ -3897,27 +3900,15 @@ def crew(
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
     elif is_antigravity:
-        # Gemini: run inside our Docker container (not --sandbox, which uses
-        # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
+        # Antigravity (agy): run inside our Docker container (not --sandbox, which
+        # uses bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # --approval-mode yolo: gemini's plan mode default-denies tools that
-        # lack an explicit allow rule, blocking even read_file/list_directory.
-        # Trust boundary is the polecat router hook + policy engine, not the
-        # gemini approval prompt. Autonomous workers must never run in plan mode.
-        # Only inject approval-mode if agent_args doesn't already provide one —
-        # callers may pass --approval-mode via extra args after '--'.
-        _has_approval = agent_args and "--approval-mode" in agent_args
-        cmd = ["gemini"]
-        if not _has_approval:
-            cmd.extend(["--approval-mode", "yolo"])
-        cmd.extend(
-            [
-                "--include-directories",
-                "/home/worker/.gemini/extensions/aops-core",
-                "--model",
-                session_cfg.antigravity_model,
-            ]
-        )
+        cmd = [
+            "agy",
+            "--dangerously-skip-permissions",
+            "--model",
+            session_cfg.antigravity_model,
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources.
         # Plan mode + full hook stack — the legacy hooks-off branch was removed
@@ -4958,39 +4949,8 @@ def run(
 
     print("-" * 50)
 
-    # agy 'timed out' quirk: verify via worktree git state
-    is_agy_timeout_success = False
-    if is_antigravity and exit_code != 0:
-        has_git_changes = False
-        try:
-            git_st = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=worktree_path,
-                capture_output=True,
-                text=True,
-            )
-            if git_st.returncode == 0 and git_st.stdout.strip():
-                has_git_changes = True
-        except Exception:
-            pass
-
-        agent_out = ""
-        try:
-            if getattr(result, "stdout", None):
-                agent_out += str(result.stdout)
-            if getattr(result, "stderr", None):
-                agent_out += str(result.stderr)
-        except NameError:
-            pass
-
-        if has_git_changes and (
-            "timed out waiting for response" in agent_out.lower() or "timeout" in agent_out.lower()
-        ):
-            print("✨ Antigravity timed out but left git changes. Treating as success.")
-            is_agy_timeout_success = True
-
     # Step 5: Auto-finish on success (unless disabled)
-    if exit_code == 0 or is_agy_timeout_success:
+    if exit_code == 0:
         print("\n✅ Agent completed successfully.")
 
         # Check for completion signals in stdout/stderr (e.g. fix already deployed)
