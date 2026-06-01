@@ -8,6 +8,7 @@ tools:
   - Skill
   - Bash
   - Write
+  - mcp__outlook__*
   - mcp__plugin_aops-core_pkb__search
   - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__pkb_context
