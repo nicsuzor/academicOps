@@ -16,11 +16,11 @@ This document is the **single authoritative source** for all framework concepts.
 
 ## Core Principle: All Nodes Are One Object
 
-Every node in the PKB is the same fundamental data structure. There is no structural difference between an "epic" and a "task" at the data level — both are graph nodes with the same fields and computed properties.
+Every node in the PKB is the same fundamental data structure. There is no structural difference between an "epic" and a "task" at the data level — both are graph nodes with the same fields and computed properties. The structural task-vs-epic distinction is removed; both are "tasks that may parent tasks."
 
-**Labels** (`type: epic`, `type: task`, etc.) are **views on computed property ranges**, not structural types assigned to fixed tree depths. A node is called an "epic" because its scope and uncertainty fall in the epic range — not because it happens to live at depth 3.
+**Labels** are **views on computed property ranges**, not structural types assigned to fixed tree depths. A task may be a leaf node or a parent node based on its scope and uncertainty — not because it happens to live at depth 3.
 
-This matters because work decomposition is self-similar: decomposing a top-level epic looks exactly like decomposing a leaf task. The stopping condition is residual uncertainty, which is a property of the node, not a function of its depth.
+This matters because work decomposition is self-similar: decomposing a top-level parent task looks exactly like decomposing a leaf task. The stopping condition is residual uncertainty, which is a property of the node, not a function of its depth.
 
 > **"Project" is not a hierarchy level.** See [Project (operational routing field)](#project-operational-routing-field) below — it is a polecat repo slug carried as task metadata, not a node type.
 
@@ -34,13 +34,13 @@ A flat todo list is a fixed-rate code: it treats every item as having the same c
 
 Each level resolves a different kind of uncertainty:
 
-| Level  | Uncertainty resolved         | Remaining uncertainty          |
-| ------ | ---------------------------- | ------------------------------ |
-| Target | What success looks like      | Which bodies of work to pursue |
-| Epic   | What to do and in what order | How to execute each step       |
-| Task   | What to execute              | Nothing — ready to act         |
+| Level       | Uncertainty resolved         | Remaining uncertainty          |
+| ----------- | ---------------------------- | ------------------------------ |
+| Target      | What success looks like      | Which bodies of work to pursue |
+| Parent Task | What to do and in what order | How to execute each step       |
+| Task        | What to execute              | Nothing — ready to act         |
 
-Targets stand outside the tree — they are strategic priorities linked to work via metadata, not parent edges. Within the tree, decomposition is `EPIC → EPIC → … → TASK`, with epics nestable to whatever depth uncertainty demands.
+Targets stand outside the tree — they are strategic priorities linked to work via metadata, not parent edges. Within the tree, decomposition is `TASK → TASK → … → LEAF TASK`, nestable to whatever depth uncertainty demands.
 
 **Compression principle**: Each level must be self-contained. Understanding a node should not require holding its grandparent's context in working memory. If it does, the decomposition has failed — information is leaking across compression boundaries.
 
@@ -97,13 +97,13 @@ Every node carries three core computed properties that drive both label assignme
 
 These ranges map conventional labels to computed property values. They are **guidelines for navigation, not enforcement gates**. Tooling uses these to present a sensible default view; the properties drive actual scheduling.
 
-| Label      | Scope | Uncertainty | Typical behaviour                                                                    |
-| ---------- | ----- | ----------- | ------------------------------------------------------------------------------------ |
-| **target** | n/a   | n/a         | Strategic priority — declared by user. Outside the tree; linked to work by metadata. |
-| **epic**   | 3+    | < 0.5       | Bundle of related work. May parent further epics or tasks. No fixed scope ceiling.   |
-| **task**   | 0–3   | < 0.3       | Near-zero entropy — ready to act. May parent further tasks/epics where useful.       |
+| Label           | Scope | Uncertainty | Typical behaviour                                                                    |
+| --------------- | ----- | ----------- | ------------------------------------------------------------------------------------ |
+| **target**      | n/a   | n/a         | Strategic priority — declared by user. Outside the tree; linked to work by metadata. |
+| **parent task** | 3+    | < 0.5       | Bundle of related work. May parent further tasks. No fixed scope ceiling.            |
+| **task**        | 0–3   | < 0.3       | Near-zero entropy — ready to act. May parent further tasks where useful.             |
 
-A large bounded effort with clear sub-structure is a top-level epic with epic children — not a different type. The label is a human-facing shorthand; the properties are authoritative.
+A large bounded effort with clear sub-structure is a top-level task with child tasks — not a different type. The label is a human-facing shorthand; the properties are authoritative.
 
 **Why not fixed depth?** Forcing work into a rigid hierarchy causes two failure modes:
 
@@ -118,12 +118,12 @@ Variable-rate decomposition stops when uncertainty is low enough to act — rega
 
 The actionable types in the PKB:
 
-| Type       | Description                                                                                                                          |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **target** | A user-declared strategic priority. Stands outside the work tree — linked to work by metadata, never as a parent.                    |
-| **epic**   | A bundle of related work. Tree root by default; may have an epic parent for sub-epic nesting. No depth limit.                        |
-| **task**   | A discrete deliverable, completable in a single focused session. May have an epic or task parent.                                    |
-| **learn**  | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks |
+| Type            | Description                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **target**      | A user-declared strategic priority. Stands outside the work tree — linked to work by metadata, never as a parent.                    |
+| **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                  |
+| **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                             |
+| **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks |
 
 The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types.
 
@@ -132,11 +132,11 @@ The `classification` field carries additional semantic subtypes (bug, feature, s
 | Retired type | Replacement                                                                                                                                                                                                                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `goal`       | Use `target`. Goals were aliased to targets historically; the alias is removed. Targets never parent.                                                                                                                                                                                                                          |
-| `project`    | The hierarchy level is gone. The word "project" now refers narrowly to a polecat repo — see [Project (operational routing field)](#project-operational-routing-field) below. Existing containers previously typed as project will be reclassified (typically to root-level epics) per the migration in [[areas-not-projects]]. |
+| `project`    | The hierarchy level is gone. The word "project" now refers narrowly to a polecat repo — see [Project (operational routing field)](#project-operational-routing-field) below. Existing containers previously typed as project will be reclassified (typically to root-level tasks) per the migration in [[areas-not-projects]]. |
 
 ### `target` nodes
 
-Targets represent user-declared strategic priorities — what success looks like. They are reference/planning nodes, not work containers: they do not parent epics or tasks, and they are excluded from the work tree.
+Targets represent user-declared strategic priorities — what success looks like. Targets are invisible-weight, non-actionable nodes that are excluded from "tasks to do" surfaces yet always propagate weight. They are reference/planning nodes, not work containers: they do not parent tasks, and they are excluded from the work tree. Tasks own `contributes_to` edges but never set a target's weight / consequence / severity.
 
 **Key fields on target nodes:**
 
@@ -145,7 +145,7 @@ Targets represent user-declared strategic priorities — what success looks like
 | `consequence` | Prose description of what happens if the target is not achieved. Present on tasks too — used by the daily skill to surface stakes without editorial framing. |
 | `severity`    | SEV0–SEV4 ladder for the consequences of missing the target. Drives downstream weighting via the contribution edges (see below).                             |
 
-**How work links to targets:** via `contributes_to` edges in the metadata of an epic or task — not via parent hierarchy. A task can contribute to multiple targets simultaneously. The planner enforces this: targets are never used as direct parents.
+**How work links to targets:** via `contributes_to` edges in the metadata of a task — not via parent hierarchy. A task can contribute to multiple targets simultaneously. The planner enforces this: targets are never used as direct parents.
 
 The edge is an object, not a bare ID — see [[multi-parent]] §1.6 for the canonical schema:
 
@@ -171,18 +171,18 @@ contributes_to:
 | Property      | Value                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Where defined | Top-level `projects:` block in `polecat.yaml`                                                                    |
-| Carried as    | `project: <slug>` frontmatter field on tasks (and epics that decompose into tasks needing dispatch)              |
+| Carried as    | `project: <slug>` frontmatter field on tasks (and parent tasks that decompose into tasks needing dispatch)       |
 | Required      | Yes — tasks without a routable `project` are undispatchable; `pkb_orphans` flags them                            |
 | Validation    | Slug must match a `projects:` key, a `project_aliases` entry, or a per-project `aliases:` list in `polecat.yaml` |
 | Inheritance   | Children inherit the parent's `project` unless explicitly overridden (most tasks just take the parent's value)   |
 
-**Project is not a hierarchy level** and does not appear in the work-decomposition tree. It is purely operational — "which repo does the worker check out for this task?" Conceptual containers that used to be marked as project type (e.g. `qut`, `osb`, `tja`, `arc-future-fellowship`) are not projects in this sense; they are root-level epics with no special type.
+**Project is not a hierarchy level** and does not appear in the work-decomposition tree. It is purely operational — "which repo does the worker check out for this task?" Conceptual containers that used to be marked as project type (e.g. `qut`, `osb`, `tja`, `arc-future-fellowship`) are not projects in this sense; they are root-level tasks with no special type.
 
 ---
 
 ## Default Fallback Parent
 
-Every task in the PKB must have a parent. When creating a task, agents and scripts should resolve the most contextually appropriate parent (such as the active epic or project root).
+Every task in the PKB must have a parent. When creating a task, agents and scripts should resolve the most contextually appropriate parent (such as the active parent task or project root).
 
 However, during emergency session handovers, bails (`/dump`), or when capturing ad-hoc work where no parent is obvious, the `adhoc-sessions` node is the **default catch-all parent for resume/handover tasks**.
 
@@ -200,7 +200,7 @@ The graph is **directed but not required to be acyclic**. Cycles are a feature f
 | `depends_on`      | Hard blocker: B cannot start until A completes                    | Pathological | A blocks B blocks A — decomposition failure, must fix                                                                                                           |
 | `soft_depends_on` | Enabling: A makes B easier or better                              | Healthy      | Writing clarifies methodology, methodology improves writing                                                                                                     |
 | `contributes_to`  | Strategic contribution: B advances target A (weighted, justified) | Pathological | A target should not contribute to a node that contributes to it. See [[multi-parent]] §1.6 for full schema. Carries `stated_weight` (verbal) + `justification`. |
-| `closes`          | Completion: this node completes the target task / PR / epic       | Pathological | A closes B — terminal; B is done as a result. Mutual closure undefined.                                                                                         |
+| `closes`          | Completion: this node completes the target task / PR              | Pathological | A closes B — terminal; B is done as a result. Mutual closure undefined.                                                                                         |
 | `link`            | Reference: A mentions B                                           | Irrelevant   | Cross-references carry no ordering — always fine                                                                                                                |
 | `supersedes`      | Replacement: A replaces B                                         | Pathological | Mutual replacement undefined — never valid                                                                                                                      |
 | `similar_to`      | Semantic similarity (auto-discovered)                             | Healthy      | Symmetric. Used for clustering and dedup proposals; never load-bearing for execution.                                                                           |
@@ -217,7 +217,7 @@ The graph is **directed but not required to be acyclic**. Cycles are a feature f
 
 ### Dependencies as mutual information
 
-When two tasks have high mutual information — knowing A's state tells you about B's state — they belong in the same container (epic). When tasks are independent, they can live in different containers.
+When two tasks have high mutual information — knowing A's state tells you about B's state — they belong in the same container (parent task). When tasks are independent, they can live in different containers.
 
 The tree hierarchy is a **spanning tree** of the underlying dependency graph. It captures containment but drops cross-cutting dependency edges. Tooling must surface full dependency chains ("blocked by X, which is blocked by Y"), not just immediate blockers.
 
@@ -297,7 +297,7 @@ Framework reporting distinguishes between the **broad view** of all open work an
 Separate from the task hierarchy, the orchestration layer describes how work is executed:
 
 ```
-WORKFLOW (composable step arrangement for achieving an epic)
+WORKFLOW (composable step arrangement for achieving a goal or parent task)
   └─ STEP (one unit of work within a workflow)
       └─ SKILL (fungible instructions for HOW to execute a step)
           └─ PROCEDURE (skill-internal instructions, not fungible)
@@ -307,7 +307,7 @@ Workflows define WHAT to do and in WHAT order. Skills define HOW to do a single 
 
 ### Workflow
 
-A **composable arrangement of steps** that describes how to achieve an epic. Answers "WHAT do we do and in WHAT order?" — not "HOW do we do each step."
+A **composable arrangement of steps** that describes how to achieve a parent task. Answers "WHAT do we do and in WHAT order?" — not "HOW do we do each step."
 
 Workflows are the Bazaar's quality guarantee. By defining required steps (including verification), workflows ensure that work is good enough regardless of which agent performs it.
 
@@ -339,7 +339,7 @@ A **skill-internal instruction** describing HOW a specific skill accomplishes a 
 
 ### 1. Labels emerge from properties, not position
 
-A node is an "epic" because its scope and uncertainty fall in the epic range, not because it lives at depth 3. Labels are navigation aids; properties drive scheduling and tooling.
+A node acts as a parent task because its scope and uncertainty fall in a certain range, not because it lives at depth 3. Labels are navigation aids; properties drive scheduling and tooling.
 
 ### 2. Decompose until uncertainty is low enough to act
 
@@ -355,7 +355,7 @@ A task is only ready when its uncertainty is low AND all DependsOn edges point t
 
 ### 5. The hierarchy provides context
 
-Each level answers "why?" in terms of its parent. A task's purpose is explained by its epic; a sub-epic's purpose is explained by its parent epic. The strategic "why" — which target a chain serves — is carried by `contributes_to` metadata at any level, not by a parent edge. If you can't trace a chain back to a containing epic (and ultimately to one or more targets via metadata), something is misplaced.
+Each level answers "why?" in terms of its parent. A task's purpose is explained by its parent task. The strategic "why" — which target a chain serves — is carried by `contributes_to` metadata at any level, not by a parent edge. If you can't trace a chain back to a containing parent task (and ultimately to one or more targets via metadata), something is misplaced.
 
 ### 6. Workflows orchestrate; skills execute; skills are fungible
 
@@ -367,15 +367,15 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 
 ### Is this a...?
 
-| Question                                                                                | Answer                                              |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| User-declared strategic priority — what success looks like? Not work, doesn't parent.   | **Target**                                          |
-| A bundle of related work; may have sub-epics or tasks under it; reviewable as one unit? | **Epic**                                            |
-| Scope 0–3, uncertainty < 0.3, single-session deliverable?                               | **Task**                                            |
-| Discovery or spike — not directly actionable?                                           | **Learn**                                           |
-| Sequence of steps describing WHAT to do?                                                | **Workflow**                                        |
-| Instructions for HOW to do one step?                                                    | **Skill**                                           |
-| A polecat repository slug carried on a task for dispatch routing?                       | **Project** (operational metadata, not a node type) |
+| Question                                                                              | Answer                                              |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| User-declared strategic priority — what success looks like? Not work, doesn't parent. | **Target**                                          |
+| A bundle of related work; may have sub-tasks under it; reviewable as one unit?        | **Parent Task**                                     |
+| Scope 0–3, uncertainty < 0.3, single-session deliverable?                             | **Task**                                            |
+| Discovery or spike — not directly actionable?                                         | **Learn**                                           |
+| Sequence of steps describing WHAT to do?                                              | **Workflow**                                        |
+| Instructions for HOW to do one step?                                                  | **Skill**                                           |
+| A polecat repository slug carried on a task for dispatch routing?                     | **Project** (operational metadata, not a node type) |
 
 ### Status lifecycle
 
@@ -412,4 +412,4 @@ This document supersedes any conflicting definitions in other framework files. I
 
 **Referenced by**: all `SKILL.md` files, `aops-core/skills/planner/WORKFLOWS.md`, brain PKB (project: aops, topic: workflow-system-spec)
 
-**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `EPIC → EPIC|TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field. (Decision 2026-05-10.)
+**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `TASK → TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field. (Decision 2026-05-10.)
