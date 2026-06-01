@@ -1228,6 +1228,22 @@ def reflection_to_insights(
             if "ended_at" in session_summary.details:
                 result["ended_at"] = session_summary.details["ended_at"]
 
+        for _attr in (
+            "agent",
+            "commissioned_as",
+            "parent_session",
+            "launched_by",
+            "subagent_type",
+            "crew",
+            "session_kind",
+            "client",
+            "surface",
+            "provider",
+        ):
+            _val = getattr(session_summary, _attr, None)
+            if _val:
+                result[_attr] = _val
+
     return result
 
 
@@ -1944,6 +1960,13 @@ class SessionSummary:
     session_type: str | None = None
     gemini_version: str | None = None
     outcome: str | None = None
+
+    # Linkage and Identity fields
+    agent: str | None = None
+    commissioned_as: str | None = None
+    parent_session: str | None = None
+    launched_by: str | None = None
+    subagent_type: str | None = None
 
 
 def extract_session_context(entries: list[Entry]) -> dict[str, Any]:

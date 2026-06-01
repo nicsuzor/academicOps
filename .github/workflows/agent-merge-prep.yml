@@ -115,9 +115,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: nicsuzor/academicOps
-          ref: pipeline-v1
+          ref: ${{ github.repository == 'nicsuzor/academicOps' && steps.pr-info.outputs.ref || 'pipeline-v1' }}
           path: .aops
-          sparse-checkout: .github/agents/merge-prep.agent.md
+          sparse-checkout: |
+            .github/agents/shared-error-handling.md
+            .github/agents/merge-prep.agent.md
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       # Step 1: Dismiss prior merge-prep approval (approval must reflect latest code)
@@ -233,7 +235,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: prompt
         run: |
-          PROMPT=$(cat .aops/.github/agents/merge-prep.agent.md)
+          PROMPT=$(cat .aops/.github/agents/shared-error-handling.md .aops/.github/agents/merge-prep.agent.md)
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
