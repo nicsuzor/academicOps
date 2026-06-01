@@ -118,7 +118,7 @@ def worker_loop(
             cmd.extend(["-c", caller])
 
             if agent_type == "antigravity":
-                cmd.append("-g")
+                cmd.extend(["--model", "antigravity"])
 
             if project:
                 cmd.extend(["-p", project])
