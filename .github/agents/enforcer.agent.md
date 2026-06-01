@@ -63,8 +63,7 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
 
 File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
 
-- Only post a review if violations exist **or** if you pushed fixes.
-- If no violations and no fixes: do NOT post a review and do NOT comment.
+- Always post a review to record your verdict, even if no violations are found. The workflow relies on reading your emitted verdict marker from this review.
 - Start every review body with `## Enforcer Review` so it can be found for future dismissal.
 - Include the machine-readable trailer (`<!-- aops-verdict: ... -->`, `<!-- aops-issues: N -->`) from the verdict format in your review body.
 
@@ -73,30 +72,6 @@ If you push fixes, use the commit trailer:
 ```
 Enforcer-By: agent
 ```
-
-### 6. Post commit status
-
-After the review (or after skipping with no violations), post the terminal `enforcer-status` commit status. This is what branch protection gates on — it MUST be posted in every non-skipped run.
-
-```bash
-STATUS_URL="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-
-# No violations / APPROVED:
-gh api "repos/$REPO/statuses/$HEAD_SHA" \
-  -f state=success \
-  -f context="${AGENT_NAME}-status" \
-  -f description="No violations found" \
-  -f target_url="$STATUS_URL" || gh pr comment "$PR_NUMBER" --repo "$REPO" -b "⚠️ **Enforcer Status Failed:** Could not post commit status (HTTP 403/error). Would-be verdict: **SUCCESS** (No violations found). This needs human attention."
-
-# Violations found / CHANGES_REQUESTED:
-gh api "repos/$REPO/statuses/$HEAD_SHA" \
-  -f state=failure \
-  -f context="${AGENT_NAME}-status" \
-  -f description="Violations found — see review" \
-  -f target_url="$STATUS_URL" || gh pr comment "$PR_NUMBER" --repo "$REPO" -b "⚠️ **Enforcer Status Failed:** Could not post commit status (HTTP 403/error). Would-be verdict: **FAILURE** (Violations found). This needs human attention."
-```
-
-Post status **last** — after the review is filed and any fix commits are pushed. The workflow has a fallback that posts `failure` if this step is never reached (agent crash).
 
 ### Notes
 

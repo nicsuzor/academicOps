@@ -139,9 +139,15 @@ jobs:
         id: prompt
         if: steps.sha-skip.outputs.skip != 'true'
         run: |
-          git clone --depth 1 --filter=blob:none --sparse \
-            "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
-            .aops
+          if [ "$REPO" = "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
+            git clone -b "${{ inputs.ref }}" --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          else
+            git clone --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          fi
           # --no-cone: treat the arguments as file path patterns, not cone-mode
           # directories. Cone mode (the default) interprets each path as a
           # directory ("'aops-core/agents/rbg.md' is not a directory") and never
@@ -192,19 +198,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-      # Fallback: if the agent crashed before posting its own terminal status,
-      # the commit status is still pending — flip it to failure so branch
-      # protection surfaces a clear signal rather than hanging at pending.
-      - name: Post failure status if agent did not complete
-        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
+      # Post terminal status based on the agent's PR review
+      - name: Post terminal status
+        if: always() && steps.sha-skip.outputs.skip != 'true'
         run: |
           CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state' \
             2>/dev/null || echo "")
+
+          # Only post if not already posted by the agent in a previous step, or if we need to replace pending
           if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
-            gh api "repos/$REPO/statuses/$HEAD_SHA" \
-              -f state=failure \
-              -f context="${AGENT_NAME}-status" \
-              -f description="Enforcer agent run failed — see artifacts" \
-              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            # Fetch the last review for this SHA
+            REVIEW_BODY=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\")] | last.body" 2>/dev/null || echo "")
+            VERDICT=$(echo "$REVIEW_BODY" | grep -oP '(?<=<!-- aops-verdict: )[A-Z]+' || echo "")
+
+            if [ -z "$VERDICT" ]; then
+              if [ "${{ steps.review.outcome }}" != "success" ]; then
+                gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                  -f state=failure \
+                  -f context="${AGENT_NAME}-status" \
+                  -f description="Agent run failed without verdict" \
+                  -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+              else
+                gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                  -f state=failure \
+                  -f context="${AGENT_NAME}-status" \
+                  -f description="Missing verdict marker in review" \
+                  -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+              fi
+            elif [ "$VERDICT" = "APPROVE" ] || [ "$VERDICT" = "PASS" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=success \
+                -f context="${AGENT_NAME}-status" \
+                -f description="No violations found" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            else
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Violations found — see review ($VERDICT)" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            fi
           fi

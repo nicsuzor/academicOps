@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: nicsuzor/academicOps
-          ref: pipeline-v1
+          ref: ${{ github.repository == 'nicsuzor/academicOps' && steps.pr-info.outputs.ref || 'pipeline-v1' }}
           path: .aops
           sparse-checkout: |
             .github/agents/shared-error-handling.md
