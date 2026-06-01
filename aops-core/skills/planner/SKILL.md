@@ -188,7 +188,7 @@ Break validated epics into structured task trees.
 
 **Workflow**:
 
-1. Understand the target (project → needs epics; epic → needs tasks; task → needs actions).
+1. Understand the target (project → needs tasks; task → needs subtasks; leaf task → needs actions).
 2. Search for context (P52).
 3. **Property Check**: Check the parent's `scope` and `uncertainty`.
    - **High Uncertainty**: Parent needs more specification. Focus on decomposition into spikes, research, or probeable tasks.
@@ -337,25 +337,25 @@ Incremental PKM and task graph maintenance. Small, regular attention beats massi
 
 **Activities**:
 
-| Activity           | What                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Lint**           | Validate frontmatter YAML (use PKB linter)                                                                                       |
-| **Weed**           | Fix broken wikilinks, remove dead references                                                                                     |
-| **Prune**          | Archive stale sessions (>30 days)                                                                                                |
-| **Compost**        | Merge fragments into richer notes                                                                                                |
-| **Cultivate**      | Enrich sparse notes, add context                                                                                                 |
-| **Link**           | Connect orphans, add missing wikilinks                                                                                           |
-| **Map**            | Create/update MoCs for navigation                                                                                                |
-| **DRY**            | Remove restated content, replace with links                                                                                      |
-| **Synthesize**     | Strip deliberation artifacts from implemented specs                                                                              |
-| **Reparent**       | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                               |
-| **Hierarchy**      | Validate task→epic→project structure, goal-linkage via goals: [] metadata, and domain consistency (no places-vs-projects mixing) |
-| **Stale**          | Flag a task with status: stale or inconsistencies                                                                                |
-| **Dedup**          | Find and merge duplicate tasks                                                                                                   |
-| **Triage**         | Detect under-specified tasks                                                                                                     |
-| **Densify**        | Add dependency edges between related tasks                                                                                       |
-| **Scan**           | Report graph density without changes                                                                                             |
-| **Anti-inflation** | Surface target/prototype graph hygiene issues (consequence prose, edge `why:`, SEV4 weak-prose flag)                             |
+| Activity           | What                                                                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint**           | Validate frontmatter YAML (use PKB linter)                                                                                                                  |
+| **Weed**           | Fix broken wikilinks, remove dead references                                                                                                                |
+| **Prune**          | Archive stale sessions (>30 days)                                                                                                                           |
+| **Compost**        | Merge fragments into richer notes                                                                                                                           |
+| **Cultivate**      | Enrich sparse notes, add context                                                                                                                            |
+| **Link**           | Connect orphans, add missing wikilinks                                                                                                                      |
+| **Map**            | Create/update MoCs for navigation                                                                                                                           |
+| **DRY**            | Remove restated content, replace with links                                                                                                                 |
+| **Synthesize**     | Strip deliberation artifacts from implemented specs                                                                                                         |
+| **Reparent**       | Fix orphaned tasks (missing-parent AND wrong-type-parent), enforce hierarchy rules                                                                          |
+| **Hierarchy**      | Validate task→project structure (a task may parent other tasks), target-linkage via contributes_to edges, and domain consistency (no places-vs-projects mixing) |
+| **Stale**          | Flag a task with status: stale or inconsistencies                                                                                                           |
+| **Dedup**          | Find and merge duplicate tasks                                                                                                                              |
+| **Triage**         | Detect under-specified tasks                                                                                                                                |
+| **Densify**        | Add dependency edges between related tasks                                                                                                                  |
+| **Scan**           | Report graph density without changes                                                                                                                        |
+| **Anti-inflation** | Surface target/prototype graph hygiene issues (consequence prose, edge `why:`, SEV4 weak-prose flag)                                                        |
 
 ### Anti-Inflation Surface (Target/Prototype Graph Hygiene)
 
@@ -472,7 +472,7 @@ These are the interactive counterpart to sleep Phase 4. In maintain mode, the hu
 
 **Health metrics**: Orphan rate <5% (including wrong-type-parent orphans), link density >2 per note, zero broken links, zero DRY violations, zero hierarchy violations.
 
-**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → epic, epics → project/epic, projects = root level (no required parent, or parent is another project). Goals link via `goals: []` metadata, not parent hierarchy. No star patterns (>5 children → create intermediate epic). `pkb_orphans` detects both missing-parent AND wrong-type-parent violations (e.g., task parented to a project instead of an epic). **Criticality focus**: High-criticality orphans are prioritized for reparenting over low-criticality ones.
+**Hierarchy rules** (P#73): Every task MUST have a parent of the correct type. Tasks → parent task, parent task → project/task, projects = root level (no required parent, or parent is another project). Targets link via contributes_to edges, not parent hierarchy. No star patterns (>5 children → create intermediate task). `pkb_orphans` detects missing-parent violations. **Criticality focus**: High-criticality orphans are prioritized for reparenting over low-criticality ones.
 
 **Densify strategies** (rotate across sessions when densifying):
 
@@ -620,7 +620,7 @@ The severity ladder (SEV0–SEV4, see [[../remember/references/TAXONOMY.md#sever
 **Rules**:
 
 - **Tasks** (`type: task`, `subtask`, or default) → omit `severity` or set `severity: 0`. They inherit urgency from targets via `contributes_to` edges, not by carrying severity directly.
-- **Targets** (`type: target`) → assign 0–4 per the ladder, with mandatory `consequence:` prose and `goal_type:` (`committed` / `aspirational` / `learning`).
+- **Targets** (`type: target`) → Targets are invisible-weight, non-actionable nodes that are excluded from "tasks to do" surfaces yet always propagate weight. Assign 0–4 per the ladder, with mandatory `consequence:` prose and `goal_type:` (`committed` / `aspirational` / `learning`). Tasks own `contributes_to` edges but never set a target's weight / consequence / severity.
 - **Prototypes** (`type: prototype`) → severity lives on `edge_template`, copied to instance edges at creation.
 - Never use severity as a generic "this feels important" signal on a task. If the task feels SEV3-worthy, the right move is to file (or link to) a target node and add a `contributes_to` edge — the propagated urgency will rank the task correctly without flattening the edge-weight model.
 - Planner modes (capture, decompose) and external skills (supervisor, survey, /q, /learn) MUST pass `severity=0` (or omit) when calling `mcp__pkb__create_task` or `mcp__pkb__decompose_task` for task-type nodes.
@@ -646,10 +646,10 @@ A "Defer until X ships" sentence in the task body, with `status: inbox` and no e
 ## Work Hierarchy
 
 ```
-PROJECT → EPIC → TASK → ACTION
+PROJECT → TASK → ACTION
 ```
 
-Projects: bounded efforts (tree roots). Epics: PR-sized verifiable work. Tasks: single-session deliverables within an epic. Goals are linked via `goals: []` field, not via parent hierarchy.
+Projects: bounded efforts (tree roots) or polecat repos. Tasks: verifiable work units that may parent other tasks down to single-session deliverables. There is no structural task-vs-epic distinction. Targets are linked via contributes_to edges, not via parent hierarchy.
 
 ## Status Values
 
