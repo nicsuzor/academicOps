@@ -28,6 +28,7 @@ This workflow enforces framework principles (axioms enforced by `rbg`):
 - **Mandatory Second Opinion**: Plans and conclusions must be reviewed by critic agent before presenting to user
 - **Test-First**: Integration tests before implementation
 - **Mandatory Acceptance Testing**: Feature development MUST include acceptance testing as tracked TODO. Tests are contracts - fix the code, not the test.
+- **Test Behaviour, Not Static Facts**: Never write tests that re-assert static codebase facts — hardcoded label/tool/file sets, file-existence checks, exact markdown prose, directory-structure assertions. They break on legitimate change instead of on regression (e.g. `test_canonical_label_set_matches_apply_triage` broke the moment `triage:pipeline` was added; 26 such tests were removed in PR #1394). The code is the SSoT for _what exists_; a test earns its place only by verifying _what the code does_ — logic, transformations, error handling, integration.
 - **Explicit Success Criteria**: Define measurable outcomes upfront
 - **User-Centric Acceptance Criteria**: Acceptance criteria describe USER outcomes, not technical metrics. Never add performance criteria unless user requests.
 - **Fail-Fast**: No partial success, fix or revert
