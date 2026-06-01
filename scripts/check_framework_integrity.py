@@ -9,7 +9,9 @@ Checks:
 1. Index wikilinks: WORKFLOWS.md wikilinks resolve to workflows/*.md files
 2. Index skills: SKILLS.md entries resolve to skills/*/SKILL.md or commands/*.md
 3. Workflow length: Workflow files must be <= 100 lines (C1 constraint)
-4. Full wikilinks: All wikilinks across the codebase resolve (--full mode, CI only)
+4. Context-map coverage: every spec under spec_dirs is indexed (docs[]) or
+   knowingly excluded (exclude[]); mapped/excluded paths still exist (#1364)
+5. Full wikilinks: All wikilinks across the codebase resolve (--full mode, CI only)
 """
 
 from __future__ import annotations
@@ -161,6 +163,26 @@ def check_workflow_length(plugin_root: Path) -> list[str]:
     return errors
 
 
+def check_context_map_coverage(root: Path) -> list[str]:
+    """Context-map freshness: specs are indexed or knowingly excluded (#1364).
+
+    Delegates to lib.context_map.audit_context_map_coverage so the same logic
+    backs both this pre-commit/CLI surface and the CI regression test.
+    """
+    aops_core = root / "aops-core"
+    if str(aops_core) not in sys.path:
+        sys.path.insert(0, str(aops_core))
+    try:
+        from lib.context_map import audit_context_map_coverage
+    except ImportError:
+        print(
+            "WARNING: lib.context_map not importable, skipping context-map check",
+            file=sys.stderr,
+        )
+        return []
+    return audit_context_map_coverage(root)
+
+
 def check_full_wikilinks(root: Path) -> list[str]:
     """Full codebase wikilink check. Delegates to audit_framework_health.
 
@@ -212,7 +234,10 @@ def main() -> int:
     # 3. Workflow length constraint
     all_errors.extend(check_workflow_length(plugin_root))
 
-    # 4. Full codebase wikilinks (CI only)
+    # 4. Context-map coverage (#1364): specs indexed or knowingly excluded
+    all_errors.extend(check_context_map_coverage(root))
+
+    # 5. Full codebase wikilinks (CI only)
     if full_mode:
         all_errors.extend(check_full_wikilinks(root))
 

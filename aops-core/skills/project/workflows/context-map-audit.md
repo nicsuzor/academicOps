@@ -72,6 +72,17 @@ When auditing, verify each of these fields:
 
 - [ ] `spec_dirs` — present if the repo has an authoritative specs directory; each entry resolves to an existing directory; consumers (`/review-pr`, Pauli) will find specs there.
 - [ ] `docs` — curated, not exhaustive; each entry's `path` exists; descriptions are accurate; keywords cover both formal terms and natural-language queries.
+- [ ] `exclude` — specs under `spec_dirs` that are deliberately NOT indexed (proposed/future work, dated audit snapshots, niche internals). Every spec must be in `docs` or `exclude` — this is what keeps the index from silently rotting when a new spec merges.
+
+### Freshness enforcement (#1364)
+
+The coverage invariant is enforced automatically, so a merged spec can't go undiscoverable:
+
+- **`lib/context_map.py:audit_context_map_coverage()`** — the single source of the rule: every spec under `spec_dirs` is in `docs[]` or `exclude[]`, and every `docs`/`exclude` path resolves.
+- **Pre-commit / CLI** — `scripts/check_framework_integrity.py` runs it (triggered when a spec or `context-map.json` changes); a gap blocks the commit.
+- **CI** — `tests/lib/test_context_map.py::test_real_context_map_has_no_coverage_gaps` fails the build on any gap.
+
+When the gate fires on a new spec: either add a `docs[]` entry (make it discoverable) or add its path to `exclude[]` (knowingly keep it out).
 
 ## Anti-Patterns
 
