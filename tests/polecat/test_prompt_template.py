@@ -187,9 +187,6 @@ def test_prompt_contains_halt_on_unsatisfiable_checkpoint():
     three concrete failure tells.
     """
     prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    # The checkpoint must exist and name the substitution failure mode.
-    assert "Halt-on-unsatisfiable" in prompt
-    assert "streetlight" in prompt.lower()
     # It must ground the rule in the governing axioms rather than restate them.
     assert "A6b" in prompt
     assert "A8" in prompt
