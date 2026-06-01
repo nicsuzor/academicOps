@@ -1226,6 +1226,28 @@ def reflection_to_insights(
             if "ended_at" in session_summary.details:
                 result["ended_at"] = session_summary.details["ended_at"]
 
+        # Extract newly required metadata
+        if session_summary.agent:
+            result["agent"] = session_summary.agent
+        if session_summary.commissioned_as:
+            result["commissioned_as"] = session_summary.commissioned_as
+        if session_summary.parent_session:
+            result["parent_session"] = session_summary.parent_session
+        if session_summary.launched_by:
+            result["launched_by"] = session_summary.launched_by
+        if session_summary.subagent_type:
+            result["subagent_type"] = session_summary.subagent_type
+        if session_summary.crew:
+            result["crew"] = session_summary.crew
+        if session_summary.session_kind:
+            result["session_kind"] = session_summary.session_kind
+        if session_summary.client:
+            result["client"] = session_summary.client
+        if session_summary.surface:
+            result["surface"] = session_summary.surface
+        if session_summary.provider:
+            result["provider"] = session_summary.provider
+
     return result
 
 
@@ -1938,6 +1960,13 @@ class SessionSummary:
     session_type: str | None = None
     gemini_version: str | None = None
     outcome: str | None = None
+
+    # Linkage and Identity fields
+    agent: str | None = None
+    commissioned_as: str | None = None
+    parent_session: str | None = None
+    launched_by: str | None = None
+    subagent_type: str | None = None
 
 
 def extract_session_context(entries: list[Entry]) -> dict[str, Any]:

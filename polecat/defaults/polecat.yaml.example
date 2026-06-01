@@ -134,6 +134,8 @@ projects:
   sessions:
     repo: sessions
     default_branch: main
+  junior:
+    repo: junior
 
 # Top-level shorthand aliases. Highest priority over per-project aliases.
 project_aliases:
