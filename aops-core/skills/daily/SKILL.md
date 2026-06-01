@@ -72,7 +72,9 @@ Sections appear in this order: **Carryover → Status → What Needs Attention �
 
 ### 1. Carryover
 
-Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off.
+Items carrying forward from yesterday and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off.
+
+**Live-state verification step (P#26 Verify First):** Before carrying any factual claim from a prior daily note (GitHub issue state, deployed-vs-undeployed, blocked-vs-unblocked), you MUST verify against live state. Never copy blindly from yesterday's note. Specifically: any prior-day claim that names a GitHub issue or PR must be re-checked via `gh issue view` or `gh pr view` before being re-asserted in today's note. Inference is not evidence.
 
 **Only present when non-empty.** If there's nothing to carry over, omit the section entirely.
 
