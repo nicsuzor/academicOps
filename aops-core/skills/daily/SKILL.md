@@ -66,15 +66,39 @@ Every `/daily` invocation updates the note in place. The skill is designed to be
 
 ## Note Structure
 
-The daily note has **five sections**, each serving a distinct purpose.
+The daily note has a **lede plus five sections**, each serving a distinct purpose.
 
-Sections appear in this order: **Carryover → Status → What Needs Attention → Today's Log → Work Log**.
+Sections appear in this order: **Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log**.
 
-### 1. Carryover
+**Why this order (shape-first, drill-in-second).** The note's headline job is US-5 recovery: a user landing cold answers "what's the shape of right now?" and "what was I just trying to do?" _before_ working through scaffolding. So the synthesis lede leads, the recovery substrate (Today's Log timeline + decisions in flight) sits immediately under it, and the dashboard inventory (Status, inbox, PRs) and carryover follow to support — not block — those two. Carryover and the status dashboard are correct content but they are _scaffolding_: a 13-item checklist at the very top exhausts working memory before the reader reaches the signal. See AC-13 / AC-14 / AC-16 on [[spec-ccbaae72]].
 
-Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off.
+### 0. Lede (shape of right now)
 
-**Only present when non-empty.** If there's nothing to carry over, omit the section entirely.
+A **2–3 line, present-tense narrative read** of where things actually stand — the first thing in the note, above every structured block. The lede tells the reader something a checklist cannot: the story of today, what changed, the through-line. It is the _same synthesis_ the Today's Log would produce (Morning Timeline's "what you were trying to do" line, or the end-of-day editorial read) — **hoisted to the top, not left as a closing paragraph** (AC-16). Persist it to the `daily_narrative` frontmatter field.
+
+**Always present when there is any narrative to tell** (the work date has activity, or there is meaningful in-flight/carryover state). On a truly empty morning with no state, omit it rather than emit a placeholder. The lede is a _compression_ — the full narrative still lives in Today's Log; the lede must not duplicate it at length.
+
+Immediately under the lede, when any data source is degraded, render the one-line **Degraded sources** block (see [Tool-loading discipline](#tool-loading-discipline-degraded-sources)). Degradation is surfaced _as degradation, up front_ — never as full stale sections lower down.
+
+### 1. Today's Log (recovery substrate)
+
+This is the **US-5 recovery surface — second from top, immediately under the lede**, because "what was I just trying to do?" is the returning user's load-bearing question. It is a narrative of the day's work whose shape depends on **when** `/daily` runs:
+
+- **In-flight day (Morning Timeline mode)** — the work date has interactive sessions but no end-of-day reflection yet. Render a **chronological timeline anchored on the user's verbatim prompts**, one outcome line each, closing with a 1–2 sentence "what you were trying to do" synthesis that names the through-line and any blocker that ate time. The reader is the user returning to their desk after a context switch. This is the primary recovery surface and **must not be skipped because the day isn't over**. See [[instructions/morning-timeline]].
+- **Closed day (Work Summary mode)** — end-of-day reflection has fired (a `## Framework Reflection` block exists, or the user invoked `/end-session` / `/dump`). Render the **editorial synthesis**: a brief narrative of the shape of the day, threads that moved or stalled, patterns across sessions, with proportional detail. See [[instructions/work-summary]].
+- **Empty-morning (omit)** — no interactive sessions for the work date yet. Omit `## Today's Log` entirely (no empty heading). On an empty morning the lede + Carryover carry recovery.
+
+Mode selection happens automatically — see the decision matrix in [[instructions/morning-timeline]] §"When to render".
+
+**Decisions in flight** render here too, directly after the timeline: the one-line `Pending decisions: N (ready + review assigned to you)` count, plus any "Needs your call" items the Task Completion Sweep surfaced (factual, not ranked). These are recovery substrate — what is awaiting _your_ judgement — so they sit with the timeline, not buried in the Status dashboard.
+
+**What this section IS NOT**, in either mode:
+
+- A prioritisation of what to do next — that belongs in §Status and the user's own `### My priorities`.
+- A row-for-row rendering of session summaries — the collapsed Work Log carries only provenance (merged PRs, completed tasks), and even there we do not duplicate this narrative.
+- A verdict on the day ("research day", "productive morning", "wasted hours") framed as praise or criticism — you can describe what happened in those terms factually; you cannot weight one category over another.
+
+**The agent is trusted to choose what to surface and how within the chosen mode.** Morning Timeline mode is strictly chronological and verbatim-quote-anchored — chronology IS the structure. Work Summary mode has no prescribed sub-structure; pick the form that fits the day.
 
 ### 2. Status
 
@@ -87,9 +111,12 @@ A factual snapshot of the task graph and today's calendar. No recommendations.
 - **Deadline list**: Any task with `due` ≤ 7 days. List each as `[task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)`. Do not categorise or rank; sort by due date ascending.
 - **High-focus surface**: Tasks with status: queued, ready, or in_progress, ranked by composite `focus_score`. Split into **Target-propagated urgency (SEV3+)** (tasks with `urgency >= 100` AND at least one `goals` entry linking to a target with `severity >= 3`) and **Other high-focus work** buckets. Includes inline badges `[→[[Target Title]]]` for qualifying tasks. Factual surfacing of what the graph computes — not a recommendation. Omitted when the PKB does not yet emit `focus_score`. See [[instructions/status-snapshot]] §3.3a.
 - **Calendar**: Today's events from the calendar source, in time order. No commentary.
-- **Pending decisions**: Count of `ready` + `review` tasks assigned to the user (one line).
+
+(The **Pending decisions** count renders in §1 Today's Log under "Decisions in flight", not here — it is recovery substrate, surfaced above the dashboard.)
 
 **No recommendations**: Do not suggest a sequence. Do not add rationales like "start with X because Y".
+
+**Dashboard inventory, not headline.** Status is the factual dashboard — priority bars, deadlines, calendar, high-focus surface. It sits _below_ the lede and recovery substrate (AC-14): useful, but it answers "what's on the board?", not "what was I doing?". Do not let the deadline list or priority bars become the first thing the reader meets.
 
 > See [[instructions/status-snapshot]] for task data loading.
 
@@ -132,23 +159,13 @@ Include direct PR URLs. Do not rank buckets or say "tackle X first".
 
 **PR Triage Dashboard**: When the total open-PR count across tracked repos is **≥ 10**, the skill must also render a **PR Triage Dashboard** subsection as a sibling to Outstanding Workflows. See [[instructions/pr-triage-dashboard]] for the cluster dispatch procedure.
 
-### 4. Today's Log
+### 4. Carryover
 
-Narrative of the day's work. The shape and depth depend on **when** `/daily` runs relative to the work day:
+Items carrying forward from yesterday (verified against live task state — never copy blindly from yesterday's note) and end-of-day abandoned todos. Each item is a checkbox (`- [ ] [task-id] Title`) so the user can tick it off.
 
-- **In-flight day (Morning Timeline mode)** — the work date has interactive sessions but no end-of-day reflection yet. Render a **chronological timeline anchored on the user's verbatim prompts**, one outcome line each, closing with a 1–2 sentence "what you were trying to do" synthesis that names the through-line and any blocker that ate time. The reader is the user returning to their desk after a context switch and wanting to remember what they were just doing. See [[instructions/morning-timeline]].
-- **Closed day (Work Summary mode)** — end-of-day reflection has fired (a `## Framework Reflection` block exists in the note, or the user invoked `/end-session` / `/dump`). Render the **editorial synthesis**: a brief narrative of the shape of the day, threads that moved or stalled, patterns across sessions, with proportional detail. See [[instructions/work-summary]].
-- **Empty-morning (omit)** — no interactive sessions for the work date yet. Omit `## Today's Log` entirely.
+**Positioned to support, not block (AC-14).** Carryover used to lead the note; it now sits below the recovery substrate and dashboard. A long carryover checklist at the very top is the scaffolding that buries the signal — the returning user's first question is answered by the lede and the timeline, not by working down a 13-item list. Carryover is still important — it just earns a supporting position, not the headline.
 
-Mode selection happens automatically — see the decision matrix in [[instructions/morning-timeline]] §"When to render".
-
-**What this section IS NOT**, in either mode:
-
-- A prioritisation of what to do next — that belongs in §Status and the user's own `### My priorities`.
-- A row-for-row rendering of session summaries — the collapsed Work Log carries only provenance (merged PRs, completed tasks), and even there we do not duplicate this narrative.
-- A verdict on the day ("research day", "infrastructure day", "productive morning", "wasted hours") framed as praise or criticism — you can describe what happened in those terms factually; you cannot weight one category over another.
-
-**The agent is trusted to choose what to surface and how within the chosen mode.** Morning Timeline mode is strictly chronological and verbatim-quote-anchored — chronology IS the structure. Work Summary mode has no prescribed sub-structure; pick the form that fits the day.
+**Only present when non-empty.** If there's nothing to carry over, omit the section entirely.
 
 ### 5. Work Log
 
@@ -207,9 +224,11 @@ The skill gathers information from multiple sources and composes the note. Indep
 
 1. **Create or open** the note (verify carryover tasks against live PKB state, intersected with the `completed_identifiers` set from step 0)
 
+**Step 1.5 — load external-source tools BEFORE any email/calendar/sweep work.** Outlook MCP tools (email + calendar) are typically **deferred** — they are not pre-loaded. Explicitly load them (`ToolSearch select:mcp__outlook__*`, or a keyword query) at the start of the run, and brief every dispatched email/calendar/task-sweep subagent to do the same. Never assume the tools are loaded; never declare a source unavailable from a config check or an unloaded-tool state. See [Tool-loading discipline](#tool-loading-discipline-degraded-sources) — this is the headline fix for AC-15, upstream of any layout fallback.
+
 **Steps 2–3 — run in parallel** (independent):
 
-2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns inbox items for the note)
+2. **Invoke `/email`** to triage inbox (creates tasks with full context; returns inbox items for the note). The `/email` skill verifies the connector by _calling the tool_, not by checking configs ([[workflows/email-capture]] § Critical Guardrails); a single failed first call gets one retry with the canonical fully-qualified tool name before the source is reported degraded.
 3. **Sweep mobile captures** — scan `$ACA_DATA/notes/mobile-captures/`, route each unprocessed capture to `/q` (task) or `/remember` (knowledge), delete the original, summarise in the note. See [[instructions/mobile-capture-triage]].
 
 **Steps 4–6 — run in parallel** (independent; each reads from different data sources):
@@ -224,7 +243,8 @@ The skill gathers information from multiple sources and composes the note. Indep
    - If open PRs ≥ 10, also render the PR Triage Dashboard via subagent dispatch. See [[instructions/pr-triage-dashboard]].
 
 7. **Task completion sweep** — close tasks whose completion is evidenced by merged PRs or sent emails (see below).
-8. **Output** terminal briefing and halt.
+8. **Compose the lede** — once Today's Log and Status are rendered, distil a **2–3 line, present-tense "shape of right now"** read and place it at the very top of the note (§0 Lede), above every structured block. Source it from the Today's Log synthesis (Morning Timeline's "what you were trying to do" line, or the end-of-day editorial read) — do not author a second, divergent narrative. Persist to the `daily_narrative` frontmatter field. This is the AC-13 / AC-16 step: the synthesis leads, it is never left as a closing paragraph. Also emit the one-line **Degraded sources** block here if any source failed (see [Tool-loading discipline](#tool-loading-discipline-degraded-sources)).
+9. **Output** terminal briefing and halt.
 
 ### Task Completion Sweep
 
@@ -278,9 +298,27 @@ The Task Completion Sweep above closes tasks whose work is _done_ (merged PRs). 
 
 > Detailed procedures for each step are in the `instructions/` subdirectory.
 
+## Tool-loading discipline (degraded sources)
+
+The daily note's email, calendar, and task-sweep data come from external connectors (Outlook MCP, the PR-state artefact). The dominant failure this skill must not repeat: the orchestrator (or a subagent it dispatched) **declared a source unavailable without genuinely attempting it**, then rendered stale/empty sections with a "MCP not loaded" footnote — when the MCP was in fact reachable the whole time (the footnote was the lie). The fix is upstream tool-loading discipline; the collapsed-section layout (below) is only the fallback for _genuine_ failures.
+
+**1. Load before you look.** Outlook MCP tools are **deferred** — present by name but not callable until their schema is fetched. Before any email/calendar work, explicitly load them: `ToolSearch select:mcp__outlook__*` (or a keyword query). Brief every dispatched email/calendar/task-sweep subagent to load its own tools the same way — a subagent starts with a fresh tool context and must not assume the orchestrator's loads carry over. **Never** decide availability by reading a config, an env var, or "the tools aren't in my list" — verify by _calling the tool_ (mirrors [[workflows/email-capture]] § Critical Guardrails: "To check if the connector is available, CALL THE TOOL. Don't check configs.").
+
+**2. Retry once on a name miss.** A first call that fails with tool-not-found is most often a casing/underscore mismatch on the fully-qualified name (the same class of miss documented for other MCPs). Retry once with the canonical name from the live deferred-tool list before concluding the source is down. A transient first-call error gets one retry, not an immediate "unavailable".
+
+**3. Only an honest failure earns a footnote.** A "source unavailable / data may be stale" note may appear **only when the tool was actually invoked and failed for a real, named reason** — auth error, network failure, server-down, or artefact genuinely >24h old. Declining to load the tool, or a name-lookup miss you didn't retry, is **not** a real failure and must never be reported as one.
+
+**4. Degraded-source collapse (AC-15 fallback layout).** When a source _does_ genuinely fail after steps 1–3, the section **collapses to a single line at the top of the note** — in the **Degraded sources** block directly under the lede — naming the source, the real reason, and the zero/stale count:
+
+```
+**Degraded sources:** Email — outlook MCP auth error, 0 items shown · PR-state — repo-sync-cron artefact 2d stale
+```
+
+Do **not** render a full empty/stale Email, Calendar, or Task-sweep section with a footnote. In a one-shot artefact the reader cannot ask "why is this empty?" — three full stale sections with the same visual weight as fresh ones make the reader update their model on bad data. One line, up front, _as degradation_ — never buried under the data it failed to fetch.
+
 ## Error Handling
 
-When a data source is unavailable, skip gracefully and continue. Note the gap in natural language ("Email unavailable today"), not with error codes or empty table structures. The note should always be useful even when incomplete.
+When a data source is unavailable **after the [tool-loading discipline](#tool-loading-discipline-degraded-sources) above has been honoured** (load attempted, one retry, genuine failure), skip gracefully and collapse it to a one-line entry in the **Degraded sources** block under the lede — not a full stale section, and never a bare "not loaded" footnote. Note the gap in natural language with its real cause ("Email — outlook MCP auth error"), not with error codes or empty table structures. The note should always be useful even when incomplete.
 
 ## Relationship to Other Skills
 
