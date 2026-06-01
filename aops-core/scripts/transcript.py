@@ -1732,13 +1732,6 @@ Examples:
                 if not session_summary.subagent_type and first_entry.subagent_id:
                     session_summary.subagent_type = first_entry.subagent_id
 
-                # Fallback to direct entry fields (for CC 2.1 native subagents)
-                if not session_summary.parent_session and first_entry.parent_uuid:
-                    session_summary.parent_session = first_entry.parent_uuid[:8]
-                    session_summary.launched_by = first_entry.parent_uuid[:8]
-                if not session_summary.subagent_type and first_entry.subagent_id:
-                    session_summary.subagent_type = first_entry.subagent_id
-
             reflection_header, _ = _process_reflection(
                 entries,
                 sid,
