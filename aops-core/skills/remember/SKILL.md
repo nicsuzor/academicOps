@@ -44,6 +44,12 @@ Persist knowledge via PKB. **PKB IS `$ACA_DATA`** — managed properly. The PKB 
 
 `$ACA_DATA` contains both semantic and episodic memory. The key distinction is between _synthesized knowledge_ (decontextualized, kept current) and _primary sources_ (time-stamped, preserved as-is).
 
+**Consolidation Ownership**: Tend to the PKB while your context is fresh. When you encounter something worth remembering — a decision, a resolved question, a pattern — create or update a knowledge note now. The offline `/sleep` maintenance cycle provides comprehensive, systematic consolidation of raw session logs, episodic records, and task history on a regular schedule; it is a complement to inline curation, not a replacement for it. Your responsibility in immediate mode is:
+
+1. **Capture** episodic records accurately in the moment.
+2. **Curate** — when you encounter something worth consolidating into durable knowledge, do it while context is fresh. Agents must not defer all synthesis to `/sleep`.
+3. **Retrieve**: You MUST search the PKB (`mcp__pkb__search`) before asserting facts or creating new knowledge notes. Don't assume; look it up.
+
 ### Semantic Memory (synthesized knowledge)
 
 Durable, decontextualized truths. Lives in `$ACA_DATA/knowledge/`, project files, context files.
