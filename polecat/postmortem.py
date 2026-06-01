@@ -341,9 +341,9 @@ def format_exit_oneline(metadata: dict | None) -> str:
     """
     if not metadata:
         return ""
-    reason = metadata.get("exit_reason", "?")
-    blurb = _REASON_BLURB.get(reason, reason)
-    bits = [blurb]
+    reason: str = metadata.get("exit_reason") or "?"
+    blurb: str = _REASON_BLURB.get(reason, reason)
+    bits: list[str] = [blurb]
     turns_used = metadata.get("turns_used")
     turns_max = metadata.get("turns_max")
     if turns_used is not None and turns_max is not None:
