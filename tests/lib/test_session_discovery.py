@@ -239,3 +239,62 @@ def test_idempotency_transcript_newer_than_session(mock_env):
 
     # The proof: even with UUID vs Prefix mismatch, it finds the transcript and sees it is newer
     assert state == SessionState.PROCESSED
+
+
+def test_find_sessions_dedupes_cowork(monkeypatch, tmp_path):
+    from lib.session_reader import find_sessions
+
+    # Setup mock claude dir with ingested cowork-logs
+    claude_projects_dir = tmp_path / "claude_projects"
+    cowork_logs = tmp_path / "sessions" / "cowork-logs" / "12345678"
+    cowork_logs.mkdir(parents=True)
+    (cowork_logs / "session.jsonl").write_text("{}")
+
+    # Mock get_sessions_repo
+    monkeypatch.setattr("lib.session_reader.get_sessions_repo", lambda: tmp_path / "sessions")
+
+    # Setup mock raw cowork dir
+    raw_root = tmp_path / "raw_cowork"
+    raw_session_dir = raw_root / "org_abc" / "local_12345678-abcd" / "outputs"
+    raw_session_dir.mkdir(parents=True)
+    (raw_session_dir / "audit.jsonl").write_text("{}")
+
+    # Mock cowork_source_roots
+    monkeypatch.setattr("lib.session_reader.cowork_source_roots", lambda: [raw_root])
+
+    sessions = find_sessions(
+        claude_projects_dir=claude_projects_dir,
+        include_gemini=False,
+        include_antigravity=False,
+        include_cowork=True,
+    )
+
+    # Both ingested and raw share the '12345678' prefix, they should be deduped
+    assert len(sessions) == 1
+    # The ingested one is found first in claude_dirs loop
+    assert sessions[0].session_id == "12345678"
+    assert sessions[0].project == "12345678"
+
+
+def test_find_sessions_raw_cowork(monkeypatch, tmp_path):
+    from lib.session_reader import find_sessions
+
+    # Setup mock raw cowork dir with no ingested overlap
+    raw_root = tmp_path / "raw_cowork"
+    raw_session_dir = raw_root / "org_abc" / "local_99999999-abcd" / "outputs"
+    raw_session_dir.mkdir(parents=True)
+    (raw_session_dir / "audit.jsonl").write_text("{}")
+
+    # Mock cowork_source_roots
+    monkeypatch.setattr("lib.session_reader.cowork_source_roots", lambda: [raw_root])
+
+    sessions = find_sessions(
+        claude_projects_dir=tmp_path / "claude_projects",
+        include_gemini=False,
+        include_antigravity=False,
+        include_cowork=True,
+    )
+
+    assert len(sessions) == 1
+    assert sessions[0].session_id == "99999999"
+    assert sessions[0].project == "cowork"

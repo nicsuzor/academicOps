@@ -31,6 +31,7 @@ from lib.paths import (
     get_transcripts_dir,
     resolve_plugin_path,
 )
+from lib.session_paths import cowork_source_roots
 from lib.transcript_parser import (
     SessionInfo,
     SessionProcessor,
@@ -1072,6 +1073,7 @@ def find_sessions(
         List of SessionInfo, sorted by last_modified descending (newest first)
     """
     sessions = []
+    seen_cowork_ids = set()
 
     # 1. Find Claude Code sessions (and ingested Cowork sessions)
     if claude_projects_dir is None:
@@ -1111,6 +1113,7 @@ def find_sessions(
                 session_id = session_file.stem
                 if session_id == "session" and "cowork-logs" in str(session_file):
                     session_id = project_dir.name[:8]
+                    seen_cowork_ids.add(session_id)
 
                 # Get modification time
                 mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
@@ -1123,6 +1126,45 @@ def find_sessions(
                     SessionInfo(
                         path=session_file,
                         project=project_name,
+                        session_id=session_id,
+                        last_modified=mtime,
+                        source="claude",
+                    )
+                )
+
+    # 1.5. Find raw Cowork sessions
+    if include_cowork:
+        for root in cowork_source_roots():
+            if not root.exists():
+                continue
+
+            for session_file in root.glob("**/*.jsonl"):
+                if session_file.name not in ("session.jsonl", "audit.jsonl"):
+                    continue
+
+                parent_name = session_file.parent.name
+                dir_name = (
+                    session_file.parent.parent.name if parent_name == "outputs" else parent_name
+                )
+
+                if not dir_name.startswith("local_"):
+                    continue
+
+                session_id = dir_name.replace("local_", "")[:8]
+
+                if session_id in seen_cowork_ids:
+                    continue
+
+                mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
+
+                if since and mtime < since:
+                    continue
+
+                seen_cowork_ids.add(session_id)
+                sessions.append(
+                    SessionInfo(
+                        path=session_file,
+                        project="cowork",
                         session_id=session_id,
                         last_modified=mtime,
                         source="claude",
