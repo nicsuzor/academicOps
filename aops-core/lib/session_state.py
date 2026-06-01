@@ -154,7 +154,7 @@ class SessionState(BaseModel):
         # derived, in-session value used for gate posture and transcript
         # metadata; it is no longer handed in as a policy label.
         stype = "interactive"
-        if os.environ.get("AOPS_POLECAT_CONTAINER"):
+        if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
             stype = "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
 
         ver = _get_plugin_version()

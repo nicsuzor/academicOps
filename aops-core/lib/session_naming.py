@@ -209,7 +209,7 @@ def get_surface() -> str:
     # Resolved dispatcher signals, not a self-identifying session-type label
     # (aops-b368109a): any polecat container is marked by AOPS_POLECAT_CONTAINER;
     # crew is further distinguished by the crew-name signal.
-    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+    if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
         if os.environ.get("POLECAT_CREW_NAME"):
             return f"{provider}-crew"
         return f"{provider}-polecat"
@@ -230,7 +230,7 @@ def get_client() -> str:
         return "github-actions"
 
     # Resolved dispatcher signals, not a session-type label (aops-b368109a).
-    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+    if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
         return "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
 
     provider = get_provider_name()
@@ -488,7 +488,7 @@ def _surface_with_provider(provider: str) -> str:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
     # Resolved dispatcher signals, not a session-type label (aops-b368109a).
-    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+    if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
         if os.environ.get("POLECAT_CREW_NAME"):
             return f"{provider}-crew"
         return f"{provider}-polecat"
@@ -502,7 +502,7 @@ def _client_with_provider(provider: str) -> str:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return "github-actions"
     # Resolved dispatcher signals, not a session-type label (aops-b368109a).
-    if os.environ.get("AOPS_POLECAT_CONTAINER"):
+    if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
         return "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
     if provider == "gemini":
         return "gemini-cli"
