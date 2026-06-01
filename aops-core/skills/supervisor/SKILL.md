@@ -299,19 +299,9 @@ Pauli/marsha verdicts ARE decisions, not recommendations to forward. Execute in 
 
 ### Demand Concrete Proof for Diagnostic Claims
 
-When a worker, polecat, or subagent claims a negative result on a diagnostic search (e.g. "I checked the logs and couldn't find any errors", "there is no reason for the failure in the output"), do **not** accept this narrative summary at face value if the claim is load-bearing.
+When a worker, polecat, or subagent claims a negative result on a diagnostic search (e.g. "I checked the logs and couldn't find any errors", "there is no reason for the failure in the output"), do not accept this narrative summary at face value if the claim is load-bearing.
 
-You must demand **concrete proof** of the negative result. The agent must surface primary evidence, not paraphrase.
-
-Follow this exact pattern when rejecting hand-wavy claims:
-
-1. **Name the artifact**: Tell the agent exactly which log, file, or stream to check.
-2. **Demand specific lines**: Require them to show the literal failure line (or exit message) plus _N_ lines of context immediately preceding it.
-3. **Require all perspectives**: If there are multiple sources (e.g., client + host), demand evidence from both sides.
-
-**Worked Example (Colima early-exit framing):**
-
-> "ok. now, are you absolutely sure that you cannot find any reason, in the client logs or in our colima logs on the host, that would explain the early exit? prove to me by showing the exit log messages and the three messages immediately before them in each case."
+Refer to the canonical protocol in skills/verify/SKILL.md for demanding concrete proof of negative results.
 
 ## Phases
 
