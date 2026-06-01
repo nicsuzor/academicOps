@@ -2,7 +2,7 @@
 """
 Polecat Swarm: Manage a swarm of parallel polecat workers.
 
-Spawns N claude and M gemini workers, binding them to specific CPUs.
+Spawns N claude and M antigravity workers, binding them to specific CPUs.
 Restarts workers that finish successfully (exit code 0).
 Alerts and stops workers that fail (non-zero exit code).
 """
@@ -58,7 +58,7 @@ def worker_loop(
     Main loop for a single worker process.
 
     Args:
-        agent_type: 'claude' or 'gemini'
+        agent_type: 'claude' or 'antigravity'
         cpu_id: The CPU core index to bind this process to (0-indexed).
         project: Optional project filter.
         dry_run: If True, do not actually run polecat, just simulate.
@@ -117,7 +117,7 @@ def worker_loop(
             # Claim tasks with the specified caller identity
             cmd.extend(["-c", caller])
 
-            if agent_type == "gemini":
+            if agent_type == "antigravity":
                 cmd.append("-g")
 
             if project:
@@ -185,7 +185,7 @@ def worker_loop(
 
 def run_swarm(
     claude_count: int,
-    gemini_count: int,
+    antigravity_count: int,
     project: str | None = None,
     caller: str = "polecat",
     dry_run: bool = False,
@@ -195,16 +195,16 @@ def run_swarm(
 
     Args:
         claude_count: Number of Claude workers to spawn.
-        gemini_count: Number of Gemini workers to spawn.
+        antigravity_count: Number of Antigravity workers to spawn.
         project: Optional project filter.
         caller: Identity claiming the tasks (default: bot).
         dry_run: If True, simulate execution.
         home_dir: Optional polecat home directory override.
     """
-    total_workers = claude_count + gemini_count
+    total_workers = claude_count + antigravity_count
     if total_workers == 0:
         print(
-            "No workers requested. Use --claude <n> and/or --gemini <m>.",
+            "No workers requested. Use --claude <n> and/or --antigravity <m>.",
             file=sys.stderr,
         )
         return
@@ -218,7 +218,7 @@ def run_swarm(
         count = os.cpu_count() or 1
         available_cpus = list(range(count))
 
-    print(f"🔥 Spawning swarm: {claude_count} Claude, {gemini_count} Gemini")
+    print(f"🔥 Spawning swarm: {claude_count} Claude, {antigravity_count} Antigravity")
     print(f"🖥️  Available CPUs: {len(available_cpus)} {available_cpus}")
 
     # Register signal handler for the main process
@@ -240,11 +240,11 @@ def run_swarm(
         processes.append(p)
         cpu_idx += 1
 
-    # Spawn Gemini workers
-    for _ in range(gemini_count):
+    # Spawn Antigravity workers
+    for _ in range(antigravity_count):
         cpu = available_cpus[cpu_idx % len(available_cpus)]
         p = multiprocessing.Process(
-            target=worker_loop, args=("gemini", cpu, project, caller, dry_run, home_dir)
+            target=worker_loop, args=("antigravity", cpu, project, caller, dry_run, home_dir)
         )
         p.start()
         processes.append(p)
@@ -269,7 +269,9 @@ def run_swarm(
 def main():
     parser = argparse.ArgumentParser(description="Run a swarm of Polecat workers.")
     parser.add_argument("--claude", "-c", type=int, default=0, help="Number of Claude workers")
-    parser.add_argument("--gemini", "-g", type=int, default=0, help="Number of Gemini workers")
+    parser.add_argument(
+        "--antigravity", "-g", type=int, default=0, help="Number of Antigravity workers"
+    )
     parser.add_argument("--project", "-p", type=str, help="Project to focus on (default: all)")
     parser.add_argument(
         "--caller",
@@ -289,7 +291,7 @@ def main():
     )
 
     args = parser.parse_args()
-    run_swarm(args.claude, args.gemini, args.project, args.caller, args.dry_run, args.home)
+    run_swarm(args.claude, args.antigravity, args.project, args.caller, args.dry_run, args.home)
 
 
 if __name__ == "__main__":
