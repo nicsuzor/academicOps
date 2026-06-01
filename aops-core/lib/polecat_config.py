@@ -253,6 +253,7 @@ BUILTIN_GATES = GatesConfig(
 # same list explicitly so operators can see and edit it.
 _DEFAULT_CONTAINER_ENV_FORWARD: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",
+    "AOPS_CC_OAUTH_TOKEN",
     "GEMINI_API_KEY",
 )
 
