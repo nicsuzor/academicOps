@@ -60,7 +60,7 @@ must have _before it knows it needs it_.
 | - | ----------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1 | **Every-turn injection**      | `UserPromptSubmit` hook                                                             | every agent × every turn                      | Highest. Compounds in-window. The most expensive real estate in the system.                                                                               |
 | 2 | **Per-event gate cue**        | `Stop` / `PreToolUse` / `PostToolUse` templates (`ida`, `enforcer`, `qa`, handover) | every agent that trips the gate × each firing | High. Also compounds in-window (the 8×515 `ida` case).                                                                                                    |
-| 3 | **Always-on session context** | `.agents/rules/*.md` + `CORE.md` loaded at `SessionStart`                           | every agent × once per session                | High nominal, but **prompt-cached** (~5-min window) → marginal ~0 after first turn. Full cost on every cold start, long gap, and fresh subagent dispatch. |
+| 3 | **Always-on session context** | `.agents/CORE.md` + `.agents/rules/*.md` loaded at `SessionStart`                   | every agent × once per session                | High nominal, but **prompt-cached** (~5-min window) → marginal ~0 after first turn. Full cost on every cold start, long gap, and fresh subagent dispatch. |
 | 4 | **Agent-def system prompt**   | `agents/<name>.md`                                                                  | only the dispatched agent × once per dispatch | Scoped by role.                                                                                                                                           |
 | 5 | **Skill body**                | `skills/<name>/SKILL.md`                                                            | only sessions that invoke × once per invoke   | Scoped + pulled.                                                                                                                                          |
 | 6 | **Task body**                 | PKB task, pulled on claim                                                           | one task × once                               | Scoped to the unit of work.                                                                                                                               |
@@ -146,7 +146,7 @@ Record, per file, the verdict (`keep` / `trim` / `split` / `demote`) and the tar
 ### Size guidance (judgment, not hard caps)
 
 Caps are enforced elsewhere ([`CONSTRAINTS.md`](../CONSTRAINTS.md)); these are altitude
-expectations, applied with judgment per [doc-taxonomy](doc-taxonomy.md)'s "judgement not a
+expectations, applied with judgment per [doc-taxonomy](doc-taxonomy.md)'s "judgement... not a
 mechanical contract" rule:
 
 - **Tier 1 (every-turn):** aim for ~tens of tokens of injected text. The ~20-token routing
