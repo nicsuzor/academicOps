@@ -1592,6 +1592,14 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         # the description-derived identity header.
         body_content = _strip_agent_body_h1(body).strip()
 
+        shared_err_handling_path = aops_root / ".github" / "agents" / "shared-error-handling.md"
+        if not shared_err_handling_path.exists():
+            raise FileNotFoundError(
+                f"Required file not found: {shared_err_handling_path}. "
+                "Cannot build GHA agents without Anti-Silent-Failure rule."
+            )
+        shared_err_handling_body = shared_err_handling_path.read_text().strip()
+
         trailer_key, trailer_value = _GHA_TRAILER_MAP.get(
             agent_name, ("Review-By", f"aops-{agent_name}")
         )
@@ -1599,6 +1607,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         sections = [
             f"# {description}",
             "",
+            *([shared_err_handling_body, ""] if shared_err_handling_body else []),
             body_content,
             "",
             "---",
