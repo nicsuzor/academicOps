@@ -24,6 +24,7 @@ the writer swallows errors and the readers degrade to ``None``.
 import json
 import re
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -271,7 +272,8 @@ def write_exit_metadata(task_id: str, metadata: dict, home_dir: Path | None) -> 
     """Append an exit-metadata line to ``<task-id>.jsonl``. Never raises.
 
     Returns the path written, or None on failure (observability must never
-    crash the run).
+    crash the run). Write failures are printed to stderr so they are visible
+    without crashing the polecat run.
     """
     try:
         transcript_dir = _transcripts_dir(home_dir)
@@ -286,7 +288,8 @@ def write_exit_metadata(task_id: str, metadata: dict, home_dir: Path | None) -> 
         with open(transcript_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
         return transcript_file
-    except Exception:
+    except Exception as e:
+        print(f"⚠️  post-mortem write failed: {e}", file=sys.stderr)
         return None
 
 
