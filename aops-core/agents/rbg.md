@@ -129,6 +129,16 @@ These resolutions are **prose recommendations the agent articulates and acts on 
 
 ---
 
+### R8 — In-flight thrashing without adaptation (issue #715, #352)
+
+**Rule:** When RBG observes >=3 same-verb tool calls with shifting arguments and no intervening new hypothesis (the canonical thrashing shape), or an identical retry loop without adaptation, it MUST apply qualitative judgment to confirm whether the agent is genuinely thrashing. If confirmed, the verdict MUST be REVISE. The >=3 threshold is a heuristic signal, not a mechanical count — do not issue REVISE on the count alone. After a failure, the agent (or RBG) must record the failure shape (e.g., failed_call, cancelled_independent_call, dependency_relation, retry_allowed=false_until_plan_changes) in the task body (e.g., via mcp__pkb__append) and admit the next attempt ONLY if the plan changed (e.g., serialise the calls, resolve the shell alias / use full uv run path, decouple independent calls). Blocking identical retries while allowing a genuinely different recovery plan is the required adaptation stop rule.
+
+**Worked example (recurrence):** An agent retried an identical failing parallel tool-call pattern 4× with no intervening hypothesis change (using guessed-path `ls`/`find` probes). RBG was silent throughout. The correct verdict would have been `REVISE` upon observing the lack of adaptation in the retry loop.
+
+**Test:** Look for repeated tool failures. If the agent retries without changing its plan/hypothesis (i.e. merely shifting arguments slightly or blindly retrying), flag as an in-flight thrashing violation.
+
+---
+
 ## Verdict output
 
 End your response with a `## Verdict` section. State the overall judgment in one or two sentences, then emit the machine-readable trailer the session-summary parser reads:

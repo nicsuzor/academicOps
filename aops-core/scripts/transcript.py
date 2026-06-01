@@ -416,8 +416,26 @@ def _save_minimal_token_summary(
                 insights["main_agent"] = {"todos": session_summary.details["main_agent_todos"]}
             if "started_at" in session_summary.details:
                 insights["started_at"] = session_summary.details["started_at"]
+            if "last_modified" in session_summary.details:
+                insights["last_modified"] = session_summary.details["last_modified"]
             if "ended_at" in session_summary.details:
                 insights["ended_at"] = session_summary.details["ended_at"]
+
+        for _attr in (
+            "agent",
+            "commissioned_as",
+            "parent_session",
+            "launched_by",
+            "subagent_type",
+            "crew",
+            "session_kind",
+            "client",
+            "surface",
+            "provider",
+        ):
+            _val = getattr(session_summary, _attr, None)
+            if _val:
+                insights[_attr] = _val
 
     # Timeline events for path reconstruction
     if timeline_events:
@@ -766,16 +784,11 @@ _GHA_NAME_FRONTMATTER = re.compile(
 _GHA_NAME_SIMPLE = re.compile(r"(?im)^name:\s*([A-Za-z][A-Za-z0-9_-]*)\b")
 
 
-def _infer_gha_workflow_from_session(session_path: Path, entries: list) -> str | None:
-    """Heuristically identify which GHA workflow/agent drove a session.
+def _infer_agent_from_entries(entries: list) -> str | None:
+    """Heuristically identify which agent/workflow drove a session.
 
-    GitHub Actions sessions live under
-    ``$AOPS_SESSIONS/github/<repo>/<run_id>/<attempt>/...`` and historically
-    have their workflow name baked into the artifact name (parsed by
-    sync_gha_sessions.py). When batch mode picks them up later we can't read
-    the artifact name, so we extract the ``name:`` slug from the agent
-    frontmatter in the first user prompt (e.g. ``name: rbg``,
-    ``name: merge-prep``, ``name: enforcer-review``).
+    Extracts the ``name:`` slug from the agent frontmatter in the first user prompt
+    (e.g. ``name: rbg``, ``name: merge-prep``, ``name: enforcer-review``).
     """
 
     def _entry_text(entry) -> str:
@@ -818,6 +831,34 @@ def _infer_gha_workflow_from_session(session_path: Path, entries: list) -> str |
     if match:
         return match.group(1).lower()
     return None
+
+
+def _populate_session_linkage(session_summary: "SessionSummary", entries: list) -> None:
+    """Populate agent identity and parent/spawn linkage fields on session_summary."""
+    agent_name = _infer_agent_from_entries(entries)
+    if agent_name:
+        session_summary.agent = agent_name
+        session_summary.commissioned_as = agent_name
+        if not session_summary.session_kind:
+            session_summary.session_kind = "subagent"
+
+    if entries:
+        first_entry = entries[0]
+        if first_entry.hook_context:
+            parent_id = first_entry.hook_context.get("parent_session_id")
+            if parent_id:
+                session_summary.parent_session = parent_id
+                session_summary.launched_by = parent_id
+            sub_type = first_entry.hook_context.get("subagent_type")
+            if sub_type:
+                session_summary.subagent_type = sub_type
+
+        # Fallback to direct entry fields (for CC 2.1 native subagents)
+        if not session_summary.parent_session and first_entry.parent_uuid:
+            session_summary.parent_session = first_entry.parent_uuid[:8]
+            session_summary.launched_by = first_entry.parent_uuid[:8]
+        if not session_summary.subagent_type and first_entry.subagent_id:
+            session_summary.subagent_type = first_entry.subagent_id
 
 
 def _generate_transcript_filename(
@@ -863,7 +904,7 @@ def _generate_transcript_filename(
         idx = parts.index("github")
         if len(parts) > idx + 1:
             repo_slug = parts[idx + 1]
-            workflow = _infer_gha_workflow_from_session(session_path, entries)
+            workflow = _infer_agent_from_entries(entries)
             workflow_segment = f"-{workflow}" if workflow else ""
             shortform = f"gha{workflow_segment}-{repo_slug}-claude"
 
@@ -1432,6 +1473,8 @@ Examples:
                 session_summary.permission_modes = session_ctx.get("permission_modes", [])
                 session_summary.models = session_ctx.get("models", [])
 
+                _populate_session_linkage(session_summary, entries)
+
                 # Fetch existing outcome if available (from insights JSON)
                 existing_path = find_existing_insights(date_iso, session_id)
                 if existing_path:
@@ -1665,6 +1708,8 @@ Examples:
             session_summary.permission_modes = session_ctx.get("permission_modes", [])
             session_summary.models = session_ctx.get("models", [])
 
+            _populate_session_linkage(session_summary, entries)
+
             reflection_header, _ = _process_reflection(
                 entries,
                 sid,
@@ -1812,6 +1857,8 @@ Examples:
         session_summary.git_branches = session_ctx.get("git_branches", [])
         session_summary.permission_modes = session_ctx.get("permission_modes", [])
         session_summary.models = session_ctx.get("models", [])
+
+        _populate_session_linkage(session_summary, entries)
 
         reflection_header, _ = _process_reflection(
             entries,
