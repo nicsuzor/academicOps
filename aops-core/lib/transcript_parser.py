@@ -1485,7 +1485,10 @@ class UsageStats:
         if entry.cache_read_input_tokens:
             self.cache_read_input_tokens += entry.cache_read_input_tokens
         if entry.server_tool_use:
-            self.server_tool_use += entry.server_tool_use
+            v = entry.server_tool_use
+            if isinstance(v, dict):
+                v = sum(x for x in v.values() if isinstance(x, int))
+            self.server_tool_use += v or 0
         if entry.service_tier and not self.service_tier:
             self.service_tier = entry.service_tier
 

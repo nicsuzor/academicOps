@@ -359,3 +359,30 @@ class TestInsightsShapeConsistency:
         assert result.get("session_kind") == "bg"
         assert result.get("user_type") == "external"
         assert result.get("entrypoint") == "cli"
+
+
+class TestUsageStatsServerToolUse:
+    def test_server_tool_use_int(self):
+        """Test server_tool_use as int (legacy behavior)."""
+        stats = UsageStats()
+        entry = Entry(type="assistant", server_tool_use=5)
+        stats.add_entry(entry)
+        assert stats.server_tool_use == 5
+
+    def test_server_tool_use_dict(self):
+        """Test server_tool_use as dict (new behavior from Claude Code 2.1+)."""
+        stats = UsageStats()
+        entry = Entry(
+            type="assistant", server_tool_use={"web_search_requests": 2, "web_fetch_requests": 3}
+        )
+        stats.add_entry(entry)
+        assert stats.server_tool_use == 5
+
+    def test_server_tool_use_dict_with_non_int(self):
+        """Test server_tool_use as dict with non-int values just in case."""
+        stats = UsageStats()
+        entry = Entry(
+            type="assistant", server_tool_use={"web_search_requests": 2, "other": "ignored"}
+        )
+        stats.add_entry(entry)
+        assert stats.server_tool_use == 2
