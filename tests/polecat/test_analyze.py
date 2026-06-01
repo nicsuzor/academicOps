@@ -40,9 +40,12 @@ from postmortem import (  # noqa: E402
     write_exit_metadata,
 )
 
-# The enforcer-gate OVERDUE block message, verbatim from
-# aops-core/hooks/templates/enforcer-policy-message.md — the signal a
-# compliance-blocked polecat leaves in its output.
+# Synthetic polecat output that contains the two compliance-block substrings
+# `_COMPLIANCE_BLOCK_MARKERS` detects.  The short-message marker ("✕ Compliance
+# check required") is derived from enforcer-policy-message.md; the OVERDUE
+# marker ("Compliance check OVERDUE") is from enforcer-policy-context.md.
+# Note: the context template uses markdown bold (**ERROR:**) which the
+# substring check doesn't require, so plain "ERROR:" here is intentional.
 COMPLIANCE_BLOCK_OUTPUT = (
     "Working on the task...\n"
     "✕ Compliance check required (22 ops since last check). ◇\n"
