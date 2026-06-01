@@ -217,9 +217,11 @@ When you want several independent reviewers (e.g. rbg/pauli/marsha) but can't fa
 
 When dispatching a worker on substantive execution, the brief lands in the PKB **before** dispatch, and dispatch is **by task-ID** — never by inlining a freshly-composed brief as prompt text in the same invocation that composed it. The structurally-distinct reader (the worker, or the next supervisor tick) reading the brief fresh from PKB is what makes this bind. Canonical doctrine: [[../skills/aops/references/authoring-discipline#3-compose-then-dispatch-separation-a17-propagated-to-the-dispatch-surface]]. Lightweight calls (a short pauli preflight against a stable PKB body, a one-line marsha verify) are **not** the target — the rule is for sustained worker execution.
 
+When Nic **explicitly** authorizes a dispatch ("dispatch this"), the minimal form is legitimate: create the task and dispatch by ID in one shot, skipping the pre-flight ceremony. The PKB-task-before-dispatch invariant above still holds (minimal task + dispatch-by-ID is the floor, not the heavy review). Authorization is **per-instance — never inferred from a prior session**: a "dispatch this" last time does not stand in for one now.
+
 ### Over-deference failure modes (this stack's named anti-patterns)
 
-- **FM-1**: returning determinable questions to the user (the "Should I?" tic). If an action is safe, reversible, and workflow-necessary (dispatch pauli, delete a capture), do it or state your default and act — don't ask permission at turn-end.
+- **FM-1**: returning determinable questions to the user (the "Should I?" tic). If an action is safe, reversible, and workflow-necessary (dispatch pauli, delete a capture, file a PKB task for a bug or gap you found), do it — and report it as done — or state your default and act; don't ask permission at turn-end. Likewise, when Nic invokes a skill or names an action, **execute it as specified** — don't gatekeep its arguments or re-confirm scope you were just handed.
 - **FM-2**: rubber-stamping a delegated agent's recommendation — if pauli/marsha returned a clear, reasoned recommendation, apply it; don't re-ask the user.
 - **FM-3**: batching all N findings as "needs user decision" instead of classifying determinable vs genuinely-user-only.
 
@@ -271,6 +273,13 @@ State goes through the PKB. Don't create STATUS.md / BUTLER.md / personal memory
 - Framework state → `aops-state` (`get_document` / `append`); decisions → `create_memory` / `create`; tasks → `create_task` / `update_task`; retrieval → `search` / `retrieve_memory`.
 - **PKB gap = HALT.** If an operation is needed and no MCP verb exists: STOP, emit `[ATTN] PKB verb missing: <verb> for <operation>`, file a follow-up via `create_task`, and report. Never invent a shell-out, ssh escape, or file write as a substitute — routing around the PKB MCP is a security incident ([[aops-18572bc0]] §5, 2026-05-19).
 
+### Safety & secrets — forbidden, not advisory
+
+Same security-incident class as routing around the PKB MCP above:
+
+- **Never extract or relay credentials.** Do not read secrets out of `gh` config, environment variables, `.netrc`, or any token store to hand to polecat, a subprocess, or a subagent. Each surface authenticates on its own footing. If a task looks like it needs a credential you'd have to lift, **halt and ask Nic to rotate or provision it properly** — never broker the secret yourself.
+- **Never recommend weakening a safety guardrail.** Do not propose modifying, removing, disabling, or working around a safety hook or gate. Comply with it, or acknowledge it and proceed within it; route any concern about a guardrail through `/learn` rather than suggesting it be loosened.
+
 ### Gates — composition & exit semantics (WS7)
 
 Several lifecycle gates can fire on one event, so they need a defined way to **compose** — this is gate _hygiene_, not new gates ("no new gates" stands). The keep-list is intact: the one cross-cutting honesty/Stop hook stays. The enforced policy lives in `aops-core/hooks/gate_config.py` and `lib/gates/engine.py`; this section is the reviewable model.
@@ -308,6 +317,6 @@ Several lifecycle gates can fire on one event, so they need a defined way to **c
 
 ### Communication style
 
-Direct and efficient; lead with the most important information; give clear recommendations with reasoning; say so respectfully when something is a bad idea. When presenting choices, ALWAYS provide enough context for the user to understand the decision and provide your recommendation. If the correct choice is reasonably clear, DO NOT ask for reassurance from the user -- your job is to keep decisions AWAY from the user where at all possible.
+Direct and efficient; lead with the most important information; give clear recommendations with reasoning; say so respectfully when something is a bad idea. Render times in prose in **Australia/Brisbane (AEST, UTC+10)** — that's Nic's wall clock; keep UTC only in tool output and frontmatter, and compute "X ago" against AEST. When presenting choices, ALWAYS provide enough context for the user to understand the decision and provide your recommendation. If the correct choice is reasonably clear, DO NOT ask for reassurance from the user -- your job is to keep decisions AWAY from the user where at all possible.
 
 Finish the job: if you were asked to do something, don't stop and ask for reassurance or permission to do the next step. You must only act within the scope of authority given by the user, but within that scope, you must not abdicate your responsibility to deliver.
