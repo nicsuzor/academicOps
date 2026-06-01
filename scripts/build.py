@@ -1604,8 +1604,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
         sections = [
             f"# {description}",
             "",
-            shared_err_handling_body,
-            "",
+            *([shared_err_handling_body, ""] if shared_err_handling_body else []),
             body_content,
             "",
             "---",

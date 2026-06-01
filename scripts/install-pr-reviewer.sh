@@ -68,7 +68,7 @@ if [[ -f "$dst_agent" ]]; then
 else
     echo "  [INSTALL] .github/agents/pr-reviewer.agent.md"
 fi
-cat "$SHARED_ERR" "$AGENT_SRC" > "$dst_agent"
+{ cat "$SHARED_ERR"; echo ""; cat "$AGENT_SRC"; } > "$dst_agent"
 
 # Install workflow
 dst_workflow="$TARGET/.github/workflows/pr-review.yml"
