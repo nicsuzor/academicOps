@@ -57,6 +57,20 @@ def analyze(ctx, task_id, transcript_lines):
     print(f"🔍 Analyzing task: {task_id}")
     print("=" * 60)
 
+    # --- Section 0: Post-mortem summary (#487) ---
+    # Structured exit metadata written by `polecat run` on exit. This is the
+    # one-stop diagnostic that replaces the manual log/worktree/transcript
+    # forensics path. Absent for runs that predate the feature or never exited.
+    from polecat.postmortem import format_exit_summary, read_exit_metadata
+
+    exit_metadata = read_exit_metadata(task_id, home_dir=manager.home_dir)
+    if exit_metadata:
+        print()
+        print(format_exit_summary(task, exit_metadata))
+    else:
+        print("\n📮 POST-MORTEM")
+        print("   (No exit metadata — run may be in progress, or predates #487 diagnostics)")
+
     # --- Section 1: Task Metadata ---
     print("\n📋 TASK METADATA")
     print(f"   Title:    {task.title}")

@@ -38,6 +38,12 @@ from lib.session_naming import derive_polecat_session_id
 
 from polecat.manager import PolecatManager
 from polecat.observability import metrics
+from polecat.postmortem import (
+    build_exit_metadata,
+    format_exit_oneline,
+    read_exit_metadata,
+    write_exit_metadata,
+)
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 
 # In-container path for the staged polecat.yaml. Hooks running inside the
@@ -3357,13 +3363,23 @@ def list_polecats(ctx):
     for item in sorted(manager.polecats_dir.iterdir()):
         if item.is_dir() and not item.name.startswith("."):
             task_id = item.name
+            is_running = not docker_unavailable and task_id in running
             if docker_unavailable:
                 label = "[UNKNOWN]"
-            elif task_id in running:
+            elif is_running:
                 label = "[ACTIVE] "
             else:
                 label = "[STALE]  "
-            print(f"{label} {task_id} -> {item}")
+            # For worktrees that are NOT running, surface the structured exit
+            # reason (#487) inline so a supervisor sees why each one exited
+            # without running `polecat analyze` per task.
+            status_note = ""
+            if not is_running:
+                status_note = format_exit_oneline(
+                    read_exit_metadata(task_id, home_dir=manager.home_dir)
+                )
+            suffix = f"  — {status_note}" if status_note else ""
+            print(f"{label} {task_id} -> {item}{suffix}")
             found = True
 
     if not found:
@@ -4890,6 +4906,7 @@ def run(
                 print(result.stderr, file=sys.stderr)
 
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
+            real_transcript = None
             try:
                 real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
@@ -4914,6 +4931,24 @@ def run(
             )
             if budget_exhausted:
                 exit_code = EXIT_BUDGET_EXHAUSTED
+
+            # Write structured post-mortem metadata (#487) so a supervisor can
+            # run `polecat analyze <task-id>` instead of hand-correlating logs,
+            # worktree state, and transcripts. Best-effort: never crash the run.
+            try:
+                exit_metadata = build_exit_metadata(
+                    task=task,
+                    exit_code=exit_code,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    worktree_path=worktree_path,
+                    real_transcript=real_transcript,
+                    turns_max=_compute_max_turns(task, max_turns),
+                    budget_exhausted=budget_exhausted,
+                )
+                write_exit_metadata(task.id, exit_metadata, manager.home_dir)
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to write exit metadata: {e}", file=sys.stderr)
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
