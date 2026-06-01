@@ -172,14 +172,8 @@ def check_context_map_coverage(root: Path) -> list[str]:
     aops_core = root / "aops-core"
     if str(aops_core) not in sys.path:
         sys.path.insert(0, str(aops_core))
-    try:
-        from lib.context_map import audit_context_map_coverage
-    except ImportError:
-        print(
-            "WARNING: lib.context_map not importable, skipping context-map check",
-            file=sys.stderr,
-        )
-        return []
+    from lib.context_map import audit_context_map_coverage
+
     return audit_context_map_coverage(root)
 
 
