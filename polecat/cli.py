@@ -4463,10 +4463,20 @@ def run(
                 print(f"✅ Task {task_id} is already '{status_str}'.")
                 sys.exit(0)
 
-            # Warn when re-dispatching tasks under review, but do not refuse.
-            # This allows iterating on an open PR with red CI or pending feedback.
             pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-            if status_str in ("merge_ready", "review") or pr_ref:
+
+            # `review` is an enforced gate — human judgment required before any agent claims.
+            if status_str == "review":
+                print(
+                    f"🔒 Task {task_id} is in 'review' status — human judgment required. "
+                    "Use --force to override.",
+                    file=sys.stderr,
+                )
+                sys.exit(2)
+
+            # Warn when re-dispatching merge_ready or PR-locked tasks, but do not refuse.
+            # merge_ready is an iterative state; agents may continue work on an open PR.
+            if status_str == "merge_ready" or pr_ref:
                 print(
                     f"⚠️  Task {task_id} is under review "
                     f"(status: {status_str}"
@@ -4481,7 +4491,7 @@ def run(
         # aops-core/skills/remember/references/TAXONOMY.md. NEVER add the
         # legacy "active" — PKB rejects it as Invalid status.
         # With --force, claim from any non-terminal status.
-        _CLAIMABLE_STATUSES = ("ready", "queued", "merge_ready", "review") if not force else None
+        _CLAIMABLE_STATUSES = ("ready", "queued", "merge_ready") if not force else None
         if _CLAIMABLE_STATUSES is None or status_str in _CLAIMABLE_STATUSES:
             # Capture prior status so a downstream failure can restore
             # exactly what we found, rather than guessing a default.
