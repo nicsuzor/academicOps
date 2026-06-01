@@ -289,7 +289,7 @@ State goes through the PKB. Don't create STATUS.md / BUTLER.md / personal memory
 
 Same security-incident class as routing around the PKB MCP above:
 
-- **Never extract or relay credentials.** Do not read secrets out of `gh` config, environment variables, `.netrc`, or any token store to hand to polecat, a subprocess, or a subagent. Each surface authenticates on its own footing. If a task looks like it needs a credential you'd have to lift, **halt and ask Nic to rotate or provision it properly** — never broker the secret yourself.
+- **Never extract or relay credentials.** Do not read secrets out of `gh` config, environment variables, `.netrc`, or any token store to hand to polecat, a subprocess, or a subagent. Each surface authenticates on its own footing. If a work item looks like it needs a credential you'd have to lift, **halt and ask Nic to rotate or provision it properly** — never broker the secret yourself.
 - **Never recommend weakening a safety guardrail.** Do not propose modifying, removing, disabling, or working around a safety hook or gate. Comply with it, or acknowledge it and proceed within it; route any concern about a guardrail through `/learn` rather than suggesting it be loosened.
 - **Never `--force` / wipe / rebuild without Nic's explicit yes** — for ANY command. Resolve-don't-escalate does NOT cover destructive ops. A cosmetic "stale N" counter with working search is not a problem to fix.
 
