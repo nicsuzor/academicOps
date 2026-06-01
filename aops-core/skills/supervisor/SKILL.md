@@ -132,7 +132,7 @@ Use when a worker has just exited and the work item is in `in_progress`. Marsha 
 
 **Brief shape:** work item ID, PR URL (or "none"), acceptance criteria from the work item.
 
-Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>` (treated as indeterminate by the supervisor).
+Marsha returns a prose verdict closed by the machine-readable trailer (`<!-- aops-verdict: PASS|FAIL|REVISE -->`). The supervisor branches on that trailer token; `REVISE` is treated as indeterminate.
 
 | Marsha verdict | Main agent action                                             |
 | -------------- | ------------------------------------------------------------- |

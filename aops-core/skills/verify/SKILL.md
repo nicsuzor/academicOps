@@ -42,8 +42,8 @@ User-facing artifacts carry a `## Fitness Rubric` section authored at design tim
 
 First decision in any verification: is this a mechanical task, a fitness task, or mixed?
 
-- **Mechanical bar** (lint fix, dependency bump, test repair, refactor with no UX surface) — evaluate against AC and Red Flags. Verdict is plain `PASS` / `FAIL` / `REVISE`. No rubric needed. Do not invent one.
-- **Fitness bar** (UX, prose, design output, dashboard, anything judged on whether it serves a human in context) — read the spec's `## Fitness Rubric` and judge against it. If a fitness task arrives at you without a rubric, verdict is `REVISE — fitness rubric missing; escalate to pauli/design-rubric`. Do not improvise.
+- **Mechanical bar** (lint fix, dependency bump, test repair, refactor with no UX surface) — evaluate against AC and Red Flags. The verdict token is `PASS` / `FAIL` / `REVISE` (carried by the trailer; see [Verdict format](#verdict-format)). No rubric needed. Do not invent one.
+- **Fitness bar** (UX, prose, design output, dashboard, anything judged on whether it serves a human in context) — read the spec's `## Fitness Rubric` and judge against it. If a fitness task arrives at you without a rubric, the verdict is `REVISE`, reasoned in prose as "fitness rubric missing; escalate to pauli/design-rubric". Do not improvise.
 - **Mixed bar** (most non-trivial work) — both apply. Check AC + Red Flags mechanically, _and_ judge against the rubric. Verdict synthesises both. Expect the fitness judgement to take more attention than the mechanical check; if your verdict only addresses the mechanical side, it has silently collapsed.
 
 To detect a fitness bar, look for any of these signals in the brief or AC: adjectives of experience ("intuitive", "calm", "readable", "beautiful", "useful"); persona emotional/cognitive state ("tired", "anxious", "overwhelmed"); intended consumer is a human in a cognitively-loaded context; two reasonable evaluators could disagree on PASS/FAIL with the same evidence; fitness-for-purpose language ("serves the user", "lifeline not data dump"). Any one is sufficient. If you see these and the rubric is missing, that is the verdict — don't paper over it.
@@ -55,7 +55,7 @@ To detect a fitness bar, look for any of these signals in the brief or AC: adjec
 3. **Look at the artifact.** Concrete observations first. For visual artifacts, see [Concrete-defects-first](#concrete-defects-first-visual-artifacts) below.
 4. **Trace, where it matters.** For data-driven artifacts, follow the pipeline source-to-output (see [Data pipeline verification](#data-pipeline-verification)).
 5. **Judge against the rubric.** Per dimension, write one paragraph citing evidence from step 3-4. Not "looks good" — _why_ it does or doesn't serve the dimension.
-6. **Verdict.** PASS / FAIL / REVISE with prose reasoning.
+6. **Verdict.** Plain-language verdict with prose reasoning, closed by the machine-readable trailer (see [Verdict format](#verdict-format)).
 
 ## Three dimensions of judgement
 
@@ -123,11 +123,12 @@ Any of these requires immediate FAIL, not "polish needed":
 
 ## Verdict format
 
+The report body is prose. The verdict is carried by a machine-readable trailer — the same HTML-comment protocol rbg emits and `lib/reviewer_verdicts.py` parses into the session rollup. Two layers, never a third semi-structured one: prose judgement above, fixed-syntax trailer below. Do not write a `**Verdict:** PASS` line that mimics structure without being parsed — say the verdict in plain language in the prose, and let the trailer carry the token.
+
 ```
 ## Verification Report
 
 **Bar:** mechanical / fitness / mixed
-**Verdict:** PASS / FAIL / REVISE
 
 ### Concrete observations
 [For visual artifacts: defect list with regions. Otherwise: short evidence list with file paths, line numbers, log excerpts.]
@@ -137,7 +138,15 @@ Any of these requires immediate FAIL, not "polish needed":
 
 ### Recommendation
 [If FAIL/REVISE: what specifically needs to change, and why it matters to the user.]
+
+### Verdict
+[One or two plain-language sentences: what you concluded and why.]
+
+<!-- aops-verdict: PASS -->
+<!-- aops-issues: 0 -->
 ```
+
+The two trailer lines are mandatory. `aops-verdict` MUST be one of `PASS`, `FAIL`, `REVISE` (uppercase, exact — the parser also accepts the `APPROVE`/`ESCALATE` tokens used by other reviewers). `aops-issues` MUST be a non-negative integer counting the distinct issues you raised (`0` for a clean PASS). Emit each on its own line with no markdown decoration; the rollup treats absence as "unknown verdict / unknown issue count".
 
 ## Browser-driven UI assessment
 

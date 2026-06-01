@@ -488,7 +488,9 @@ Verify:
 3. Does the PR satisfy its own acceptance criteria (if stated)?
 
 Your default assumption: IT'S BROKEN. Prove it works, don't assume it looks right.
-Produce a PASS, FAIL, or REVISE verdict with specific evidence.
+State your verdict and evidence in prose, then close with the machine-readable
+trailer: `<!-- aops-verdict: PASS|FAIL|REVISE -->` on its own line (the only
+structured token — do not also emit a bare PASS/FAIL/REVISE word as a field).
 ```
 
 ---
@@ -499,7 +501,7 @@ Wait for all commissioned agents to complete. Then:
 
 1. Parse RBG's verdict (`OK` / `WARN` / `BLOCK`)
 2. Extract Pauli's findings, sorted by severity
-3. Read Marsha's verdict (`PASS` / `FAIL` / `REVISE`) if commissioned
+3. Read Marsha's verdict from her `aops-verdict` trailer token (`PASS` / `FAIL` / `REVISE`) if commissioned
 
 Classify each finding as:
 

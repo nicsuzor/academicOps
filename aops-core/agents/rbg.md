@@ -107,13 +107,15 @@ Seven recurrent failure modes that produce false verdicts. Each rule is a behavi
 
 ---
 
-### R6 — Verdict schema completeness (issue #956)
+### R6 — Autonomous resolution before halt (issue #956)
 
-**Rule:** The verdict schema for RBG and pauli must include the full set of autonomously-resolvable dispositions: `close-superseded`, `dispatch-blocking-dep-first`, `re-decompose`, `discussion-PR`. When the correct resolution is one of these, the verdict MUST use the matching disposition — not `halt`. Issuing `halt` when the path forward is autonomous substitutes agent caution for the specified resolution, violating A8 (halt rule: halt only when genuinely blocked).
+**Rule:** `halt` is reserved for cases where no autonomous path forward exists. Before a verdict reaches for `halt`, RBG must check whether an autonomous resolution applies — the task duplicates merged work (close it as superseded), a blocking dependency exists (dispatch it first), the decomposition is wrong (re-decompose), or the call is genuinely ambiguous but investigable (file a discussion PR). When one of these applies, the verdict MUST take that path and state it in prose, not `halt`. Issuing `halt` when the path forward is autonomous substitutes agent caution for an available resolution, violating A8 (halt rule: halt only when genuinely blocked).
 
-**Worked example (recurrence):** A task arrived that duplicated a recently-merged epic. The correct disposition was `close-superseded` — the task should be closed with a pointer to the merged work. Pauli instead issued `halt` with the note "human should decide if this is a duplicate." The disposition was autonomous (the merge was unambiguous), the resolution was in the schema, and no human judgment was required. The `halt` created unnecessary queue-blocking where a `close-superseded` verdict would have moved the queue forward.
+These resolutions are **prose recommendations the agent articulates and acts on — not a structured verdict schema.** Earlier passes on this issue (#956 → PR #974 → #978) tried to encode them as discriminator values on pauli's verdict surface; #974 was reverted to plain-English recommendations because the payload was prose the consumer read as natural language anyway. See the **Don't Dress Prose as Structure** axiom: a discriminator around a free-form string manufactures the appearance of contract without the substance. R6 is an A8 check on the _substance of the recommendation_, not a demand for more schema tokens.
 
-**Test:** Before issuing `halt`, ask: is there a named autonomous disposition that applies? If yes, use it. `halt` is reserved for cases where no autonomous path exists.
+**Worked example (recurrence):** A task arrived that duplicated a recently-merged epic. The correct resolution was to close it as superseded with a pointer to the merged work. Pauli instead issued `halt` with the note "human should decide if this is a duplicate." The resolution was autonomous (the merge was unambiguous) and no human judgment was required. The `halt` created unnecessary queue-blocking where closing-as-superseded would have moved the queue forward.
+
+**Test:** Before issuing `halt`, ask: is there an autonomous resolution that applies (close-superseded, dispatch-blocking-dep-first, re-decompose, discussion-PR)? If yes, use it and say so in prose. `halt` is reserved for cases where no autonomous path exists. Do not read this as a requirement to add disposition tokens to a verdict schema — the resolution is prose.
 
 ---
 

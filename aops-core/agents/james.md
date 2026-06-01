@@ -185,10 +185,13 @@ Before issuing REVISE, confirm that every requested change stays within the brie
 
 ### Synthesis
 
-**Recommendation**: [APPROVE / REVISE — [specific what] / ESCALATE — [specific question for human]]
-
-[Unified finding. Hold tensions, don't paper over them. Be specific about what to do.]
+[Unified finding, in prose. State the recommendation plainly — approve, or what specifically to revise, or what to escalate to the human and why. Hold tensions, don't paper over them. Be specific about what to do.]
 
 ### Observation Log
 [Iterations, coaching, quality assessments — honest account of the review process.]
+
+<!-- aops-verdict: APPROVE -->
+<!-- aops-issues: 0 -->
 ```
+
+The two trailer lines are mandatory and carry your machine-readable verdict into the session rollup (`lib/reviewer_verdicts.py`) — the same protocol rbg uses. `aops-verdict` MUST be one of `APPROVE`, `REVISE`, `ESCALATE` (uppercase, exact); `aops-issues` is a non-negative integer counting the distinct issues raised. The recommendation lives in the Synthesis prose; the trailer is the only structured token — do not also emit a bare `APPROVE`/`REVISE` word dressed as a parseable field.
