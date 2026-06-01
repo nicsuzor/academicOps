@@ -18,7 +18,7 @@ summary = mcp__pkb__task_summary()
 
 ### 3.2: Priority Distribution
 
-Report counts only. Do not annotate with "→ recommended tasks" pointers. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](skills/remember/references/TAXONOMY.md#priority-labels-p0p4).
+Report counts only. Do not annotate with "→ recommended tasks" pointers. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4).
 
 **Per-class denominators.** Each P-row shows the ready count _within that priority class_ against the size of that class — **not** against the global ready total. This makes each bar a completion-progress indicator for its own class ("how much P2 work is ready vs. still blocked/in-flight"), instead of "what share of all ready work happens to be P2". The shared global denominator is the specific defect this section was changed to remove (GitHub #182 §4).
 
