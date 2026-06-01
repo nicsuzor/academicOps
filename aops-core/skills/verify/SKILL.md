@@ -194,4 +194,5 @@ When invoked as `/verify` with no arguments, do a quick verification of the curr
 
 - **Stop hook**: May require verification before session end.
 - **Task completion**: Verify before `complete_task()` — before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
+- **`merge_ready → done` auto-close**: The surfaces that auto-close a task on a merged PR (`/daily` Task Completion Sweep, `/sleep` PR-state sweep) MUST run the AC-verification step in [[references/merge-close-ac-check]] — re-read the task's acceptance criteria against the merged artifact, classify mechanical vs judgment-laden, and surface (never silently close) any unmet or judgment-laden criterion. This closes #1426: correspondence ("is this the right PR?") is not AC satisfaction ("are the criteria actually met?").
 - **Spec writing**: New user-facing specs MUST carry a `## Fitness Rubric` section authored via `/design-rubric` before they reach a worker.
