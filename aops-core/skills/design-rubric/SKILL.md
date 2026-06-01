@@ -57,7 +57,7 @@ Any one is sufficient to require a Fitness Rubric:
 4. Two reasonable evaluators could disagree on PASS/FAIL using the same evidence.
 5. The brief uses fitness-for-purpose language — "serves the user", "lifeline not data dump", "lands softly".
 
-If a task triggers one of these and arrives at marsha without a `## Fitness Rubric`, the verdict is `REVISE — fitness rubric missing; escalate to pauli/design-rubric`. Marsha does not improvise the rubric.
+If a task triggers one of these and arrives at marsha without a `## Fitness Rubric`, the verdict is `REVISE`, reasoned in prose as "fitness rubric missing; escalate to pauli/design-rubric". Marsha does not improvise the rubric.
 
 ### Mixed-bar tasks
 
