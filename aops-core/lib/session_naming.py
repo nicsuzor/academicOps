@@ -15,6 +15,7 @@ import socket
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Known artifact variants and their extensions
 ARTIFACT_TYPES = {
@@ -239,12 +240,15 @@ def get_client() -> str:
     return "claude-code"
 
 
+_UNSET = object()
+
+
 def get_session_metadata(
     *,
     provider: str | None = None,
     surface: str | None = None,
     client: str | None = None,
-    crew: str | None = None,
+    crew: Any = _UNSET,
 ) -> dict[str, str | None]:
     """Return the canonical session-metadata block stamped onto summary JSON.
 
@@ -288,7 +292,7 @@ def get_session_metadata(
         "provider": eff_provider,
         "surface": surface if surface is not None else detected_surface,
         "client": client if client is not None else detected_client,
-        "crew": crew if crew is not None else resolve_crew_name(),
+        "crew": resolve_crew_name() if crew is _UNSET else crew,
     }
 
 

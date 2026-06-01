@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from lib.transcript_parser import SessionProcessor
+from lib.transcript_parser import SessionProcessor, reflection_to_insights
 
 
 @pytest.fixture
@@ -105,3 +105,23 @@ class TestCrewEnvFallbackRemoved:
             summary, _entries, _agents = processor.parse_session_file(str(jsonl_path))
 
         assert summary.crew is None
+
+    def test_reflection_to_insights_env_crew_yields_none(self, tmp_path: Path) -> None:
+        """GHA-sourced transcript -> insights-JSON top-level crew is None.
+        Ensures `session_naming.get_session_metadata` doesn't fall back to env
+        when path-inference legitimately yields crew=None (issue #768)."""
+        sid = "abcd1234"
+        jsonl_path = tmp_path / "github" / "repo" / "1" / "1" / f"{sid}.jsonl"
+
+        with patch.dict("os.environ", {"POLECAT_CREW_NAME": "bogus-insights-crew"}):
+            insights = reflection_to_insights(
+                reflection={},
+                session_id=sid,
+                date="2026-05-20",
+                project="repo",
+                session_path=jsonl_path,
+            )
+
+        assert insights["crew"] is None, (
+            f"Insights inherited bogus crew from env: got {insights['crew']!r}"
+        )
