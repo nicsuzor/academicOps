@@ -4458,23 +4458,22 @@ def run(
 
         if not force:
             _DONE_STATUSES = ("done", "cancelled")
-            _LOCKED_STATUSES = ("merge_ready", "review")
 
             if status_str in _DONE_STATUSES:
                 print(f"✅ Task {task_id} is already '{status_str}'.")
                 sys.exit(0)
 
-            # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
+            # Warn when re-dispatching tasks under review, but do not refuse.
+            # This allows iterating on an open PR with red CI or pending feedback.
             pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-            if status_str in _LOCKED_STATUSES or pr_ref:
+            if status_str in ("merge_ready", "review") or pr_ref:
                 print(
-                    f"🔒 Task {task_id} is locked "
+                    f"⚠️  Task {task_id} is under review "
                     f"(status: {status_str}"
                     + (f", PR: {pr_ref}" if pr_ref else "")
-                    + "). A PR already exists for this task — refusing to re-dispatch.",
+                    + "). Iterating on an existing PR.",
                     file=sys.stderr,
                 )
-                sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
         else:
             print(f"⚠️  --force: bypassing status check for {task_id} (status: {status_str}).")
 
@@ -4482,7 +4481,7 @@ def run(
         # aops-core/skills/remember/references/TAXONOMY.md. NEVER add the
         # legacy "active" — PKB rejects it as Invalid status.
         # With --force, claim from any non-terminal status.
-        _CLAIMABLE_STATUSES = ("ready", "queued") if not force else None
+        _CLAIMABLE_STATUSES = ("ready", "queued", "merge_ready", "review") if not force else None
         if _CLAIMABLE_STATUSES is None or status_str in _CLAIMABLE_STATUSES:
             # Capture prior status so a downstream failure can restore
             # exactly what we found, rather than guessing a default.

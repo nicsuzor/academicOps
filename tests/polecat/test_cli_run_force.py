@@ -76,40 +76,38 @@ def test_run_without_force_blocks_done_task(mock_manager):
     mock_manager.update_task.assert_not_called()
 
 
-def test_run_without_force_blocks_locked_task(mock_manager):
-    """A ``merge_ready`` task is locked (exit 2); never claims."""
+def test_run_without_force_warns_on_under_review_task(mock_manager):
+    """A ``merge_ready`` task warns but proceeds."""
     task = _make_task(status="merge_ready", task_id="task-locked")
-    mock_manager.get_task.return_value = task
+    result = _invoke_run(["run", "-t", "task-locked"], mock_manager, task)
 
-    runner = CliRunner()
-    with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
-        with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
-                result = runner.invoke(main, ["run", "-t", "task-locked"])
+    # We short-circuit at setup_worktree (Exception), so exit code is 1
+    assert "under review" in result.output
+    claim_calls = [
+        c
+        for c in mock_manager.update_task.call_args_list
+        if c.kwargs.get("status") == "in_progress"
+    ]
+    assert claim_calls, "expected an update_task(..., status='in_progress') call"
 
-    assert result.exit_code == 2
-    assert "locked" in result.output
-    mock_manager.update_task.assert_not_called()
 
-
-def test_run_without_force_blocks_pr_locked_task(mock_manager):
-    """A task with a PR set is locked even at queued status (exit 2)."""
+def test_run_without_force_warns_on_pr_locked_task(mock_manager):
+    """A task with a PR set warns but proceeds."""
     task = _make_task(
         status="queued",
         task_id="task-pr",
         pr_url="https://github.com/x/y/pull/1",
     )
-    mock_manager.get_task.return_value = task
+    result = _invoke_run(["run", "-t", "task-pr"], mock_manager, task)
 
-    runner = CliRunner()
-    with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
-        with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
-                result = runner.invoke(main, ["run", "-t", "task-pr"])
-
-    assert result.exit_code == 2
-    assert "locked" in result.output
-    mock_manager.update_task.assert_not_called()
+    # We short-circuit at setup_worktree (Exception), so exit code is 1
+    assert "under review" in result.output
+    claim_calls = [
+        c
+        for c in mock_manager.update_task.call_args_list
+        if c.kwargs.get("status") == "in_progress"
+    ]
+    assert claim_calls, "expected an update_task(..., status='in_progress') call"
 
 
 # ----------------------------------------------------------------------

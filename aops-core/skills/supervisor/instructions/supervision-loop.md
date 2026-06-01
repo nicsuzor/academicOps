@@ -44,18 +44,17 @@ The "Review surface" column holds whatever identifier the deliverable subworkflo
 
 The supervisor uses canonical PKB task statuses — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
 
-| Status                  | Meaning in the supervisor loop                                                                                                |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `ready`                 | Decomposed, awaiting human approval. Plan-review halt state — supervisor resumes only on promotion to `queued`.               |
-| `queued`                | Human-approved, dispatchable. Includes tasks waiting for a shared-artefact lock during coordinated dispatch.                  |
-| `in_progress`           | Dispatched to a worker, or worker executing                                                                                   |
-| `merge_ready`           | (Legacy.) Code-only — deliverable filed at review surface. Supervisor records and moves on; halts at `ready_for_user_review`. |
-| `ready_for_user_review` | Work item has reached its review surface; handed off to the async pipeline. Supervisor terminal state.                        |
-| `review`                | Requires human judgment — supervisor does NOT dispatch.                                                                       |
-| `done`                  | Finalised at the review surface and verified                                                                                  |
-| `blocked`               | Waiting on a dependency — unblocked when the dependency transitions to `done`                                                 |
-| `paused`                | Intentionally stopped; supervisor does not dispatch until human resumes                                                       |
-| `cancelled`             | Abandoned                                                                                                                     |
+| Status        | Meaning in the supervisor loop                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ready`       | Decomposed, awaiting human approval. Plan-review halt state — supervisor resumes only on promotion to `queued`. |
+| `queued`      | Human-approved, dispatchable. Includes tasks waiting for a shared-artefact lock during coordinated dispatch.    |
+| `in_progress` | Dispatched to a worker, or worker executing                                                                     |
+| `merge_ready` | Work item has reached its review surface; handed off to the async pipeline. Supervisor terminal state.          |
+| `review`      | Requires human judgment — supervisor does NOT dispatch.                                                         |
+| `done`        | Finalised at the review surface and verified                                                                    |
+| `blocked`     | Waiting on a dependency — unblocked when the dependency transitions to `done`                                   |
+| `paused`      | Intentionally stopped; supervisor does not dispatch until human resumes                                         |
+| `cancelled`   | Abandoned                                                                                                       |
 
 `review` is an enforceable gate — agents cannot claim tasks in this status.
 
