@@ -43,6 +43,8 @@ Before doing anything, check whether this task has already been worked on:
 
 Only proceed to Step 1 if you confirm no prior work exists.
 
+Project Mandates: Check the project CLAUDE.md for mandates before starting work. When the project CLAUDE.md uses categorical language (MUST, All X must use Y, No Z), you must declare in your progress log which skill or pattern satisfies the mandate before proceeding with ad-hoc tooling.
+
 **Path verification**: Before quoting from a file the task body names, verify the file exists at the named path. If it doesn't, HALT and report — do not substitute a similar-looking file.
 
 **Data verification (research tasks)**: If your task body asks you to quote, count, classify, or analyse primary data (model traces, transcripts, raw records, dbt mart rows, BigQuery results), verify you can read the data *before* quoting from it. Run one probe (e.g. `bq query LIMIT 1`, `duckdb -c "SELECT COUNT(*) FROM ..."`, `head` of a raw record) and quote its actual output in your progress log. If the probe fails — credentials missing, cache absent, source unreachable — HALT and report the gap. Do NOT substitute summary documents, prior reports, or template excerpts for the primary source. If a derived cache is stale per the project's CLAUDE.md threshold, HALT and report — do not silently run `scripts/refresh.sh` unless the task body explicitly authorises it. This is a direct application of CORE.md's Halt Rule and P#42 to the data-evidence chain.
