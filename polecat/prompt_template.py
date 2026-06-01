@@ -67,6 +67,14 @@ Determine whether to execute or triage.
 
 ### Step 2A: Execute
 
+**Halt-on-unsatisfiable (the streetlight check).** Mid-execution you may discover an AC cannot be satisfied *as written* — it needs runtime access you don't have, a config/settings change outside your worktree, or a method you can't run live. When that happens you will be tempted to substitute an easier *adjacent* action you CAN perform and justify it against a loose reading of the AC. **That substitution is the failure, not the fix.** STOP and `release_task(id="{task_id}", status="blocked", summary="<what you attempted>", blocker="<specific impediment>")` instead. This operationalises **A6b** (you cannot weaken, narrow, reinterpret, or substitute acceptance criteria) and **A8** (routing around a failure by substituting a working-looking alternative is prohibited). Each tell below is a HALT, not a proceed:
+
+- The AC demands runtime/observed evidence ("verify at runtime, not source-reading") and you have no access to that environment → block with "no runtime access"; do NOT downgrade to source-reading and infer the result. (#1392)
+- The real fix is out of scope for your worktree (rotate a secret, change a GitHub/CI setting) but an in-repo edit *looks* adjacent → report the out-of-scope dependency; do NOT swap the mechanism to whatever you can edit. (#1305)
+- The loaded methodology requires a live/interactive run and you're reaching for a synthetic stand-in (piped stdin, mock payloads) → run it live or block; the synthetic substitute is not the test. (#1286)
+
+Before proceeding past any AC, ask: *did I change what the AC requires to make it satisfiable, or substitute an action I can do for the one it demands?* If yes — that is a `blocked` report, not progress. First run the cheapest probe to confirm the impediment is real (A7 FM-6: do not fabricate a constraint you didn't test).
+
 If executing:
 
 1. Read task body for context and acceptance criteria
