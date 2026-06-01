@@ -16,6 +16,7 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
+  - mcp__outlook__*
   - mcp__plugin_aops-core_pkb__append
   - mcp__plugin_aops-core_pkb__batch_archive
   - mcp__plugin_aops-core_pkb__batch_merge
