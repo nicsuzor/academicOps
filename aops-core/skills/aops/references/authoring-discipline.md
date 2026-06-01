@@ -12,6 +12,14 @@ Polecats are **smart agents, not mechanical drones**. When authoring a task body
 
 _If you find yourself listing "things to look for," "files to edit," or "checks to run," you are anchoring the recipient and reducing their judgment to mechanical execution. Stop._
 
+**Frame the outcome to verify, not the edit to make.** The AC should name the observable behaviour change the worker must produce and confirm, not the code change you imagine produces it:
+
+- **Lead with the observable outcome** — "after your fix, X should look/behave like Y" — not "change the exponent in `foo.ts` from 0.7 to 2.5."
+- **Name the verification, not just the goal.** Require a concrete before/after check the worker runs against the real surface (measure it, screenshot it, diff the two states), so "done" means _observed-changed_, not _edited_.
+- **If you must name a file, mark it unverified.** Even when you believe you know the code path, write "verify this is actually the code path that runs before editing it" as an explicit check. Over-specifying an implementation anchors the worker on your mental model, which may be wrong.
+
+Failure this prevents: a brief said "change the exponent in `focusEmphasis.ts` from 0.7 to 2.5"; the worker did exactly that, but the treemap read hardcoded constants in a _different_ file — the edit had zero effect, and the prescription masked the real code path. An outcome-framed brief ("high-focus nodes should be visibly more emphasised; screenshot before/after to confirm") would have surfaced the wrong-file problem on the first verification.
+
 ## 2. No Mid-Stream Approval Theatre
 
 Do not invent phantom approval gates. The framework has a canonical review pipeline (e.g., PRs, `/verify`, `/qa`).
