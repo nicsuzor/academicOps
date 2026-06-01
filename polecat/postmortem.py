@@ -32,15 +32,61 @@ from pathlib import Path
 # is the more actionable root cause for a supervisor.
 EXIT_REASONS = ("compliance_blocked", "max_turns", "error", "success")
 
-# Substrings the enforcer gate emits when it BLOCKS a tool call (overdue past
-# the compliance threshold). Distinct from the non-blocking countdown warning
-# ("◇ N turns until compliance check") which must NOT be treated as a block.
-# Sources: aops-core/hooks/templates/enforcer-policy-message.md and
-# enforcer-policy-context.md.
-_COMPLIANCE_BLOCK_MARKERS = (
+# Fallback used only when the enforcer templates are unavailable (e.g. running
+# outside the repo). Real values are loaded from the templates below so that
+# detection stays in sync when template wording changes (A5: one source).
+_COMPLIANCE_BLOCK_MARKERS_FALLBACK = (
     "✕ Compliance check required",
     "Compliance check OVERDUE",
 )
+
+
+def _load_compliance_block_markers() -> tuple[str, ...]:
+    """Derive compliance-block detection substrings from enforcer template files.
+
+    Reads the same templates the enforcer hook renders from so that detection
+    automatically stays in sync when template wording changes (A5: one source).
+    Falls back to _COMPLIANCE_BLOCK_MARKERS_FALLBACK when templates are missing.
+    """
+    try:
+        repo_root = Path(__file__).parent.parent
+        templates_dir = repo_root / "aops-core" / "hooks" / "templates"
+        markers: list[str] = []
+
+        # enforcer-policy-message.md: "✕ Compliance check required ({ops}...)"
+        msg_path = templates_dir / "enforcer-policy-message.md"
+        if msg_path.is_file():
+            for line in msg_path.read_text().splitlines():
+                if line.startswith("✕") and "Compliance check required" in line:
+                    # Strip template variable "{...}" and any trailing "(" or space
+                    stable = re.sub(r"\s*\{[^}]*\}.*", "", line).rstrip(" (")
+                    if stable:
+                        markers.append(stable)
+                    break
+
+        # enforcer-policy-context.md: "**ERROR:** Compliance check OVERDUE. ..."
+        ctx_path = templates_dir / "enforcer-policy-context.md"
+        if ctx_path.is_file():
+            for line in ctx_path.read_text().splitlines():
+                if "Compliance check OVERDUE" in line:
+                    # Strip markdown bold, take phrase up to first ".", find OVERDUE substring
+                    plain = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+                    phrase = plain.split(".")[0].strip()
+                    idx = phrase.find("Compliance check OVERDUE")
+                    if idx >= 0:
+                        markers.append(phrase[idx:])
+                    break
+
+        return tuple(markers) if len(markers) == 2 else _COMPLIANCE_BLOCK_MARKERS_FALLBACK
+    except Exception:
+        return _COMPLIANCE_BLOCK_MARKERS_FALLBACK
+
+
+# Substrings the enforcer gate emits when it BLOCKS a tool call (overdue past
+# the compliance threshold). Distinct from the non-blocking countdown warning
+# ("◇ N turns until compliance check") which must NOT be treated as a block.
+# Derived from aops-core/hooks/templates/ at import time (A5: one source).
+_COMPLIANCE_BLOCK_MARKERS = _load_compliance_block_markers()
 
 # Non-blocking countdown warning: "◇ {remaining} turns until compliance check."
 _COUNTDOWN_RE = re.compile(r"◇\s*(\d+)\s*turns until compliance check")
@@ -60,7 +106,7 @@ def _git_remote_url(worktree_path: Path | None) -> str | None:
         )
         if result.returncode == 0:
             return result.stdout.strip() or None
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
         pass
     return None
 
@@ -83,7 +129,7 @@ def _count_commits_ahead(worktree_path: Path | None) -> int | None:
         )
         if result.returncode == 0:
             return int(result.stdout.strip())
-    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+    except (OSError, subprocess.TimeoutExpired, ValueError):
         pass
     return None
 
@@ -144,9 +190,11 @@ def count_turns_used(
 
     combined = (stdout or "") + (stderr or "")
     if "Reached max turns" in combined:
+        if turns_max is None:
+            return None
         try:
-            return int(turns_max)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
+            return int(turns_max)
+        except ValueError:
             return None
     return None
 
@@ -185,10 +233,13 @@ def build_exit_metadata(
         pr_number = getattr(task, "pr", None)
         pr_url = f"#{pr_number}" if pr_number else None
 
-    try:
-        turns_max_val: int | str | None = int(turns_max)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        turns_max_val = turns_max
+    if turns_max is None:
+        turns_max_val: int | str | None = None
+    else:
+        try:
+            turns_max_val = int(turns_max)
+        except ValueError:
+            turns_max_val = turns_max
 
     return {
         "type": "exit_metadata",
@@ -253,7 +304,7 @@ def read_exit_metadata(task_id: str, home_dir: Path | None = None) -> dict | Non
     except ImportError:
         jsonl_path = _transcripts_dir(home_dir) / f"{task_id}.jsonl"
 
-    if not Path(jsonl_path).is_file():
+    if not jsonl_path or not Path(jsonl_path).is_file():
         return None
 
     try:
