@@ -43,7 +43,7 @@ Before doing anything, check whether this task has already been worked on:
 
 Only proceed to Step 1 if you confirm no prior work exists.
 
-**Project Mandates**: Check the project CLAUDE.md for mandates before starting work. When the project CLAUDE.md uses categorical language ("MUST", "All X must use Y", "No Z"), you must declare which skill or pattern satisfies the mandate before proceeding with ad-hoc tooling.
+Project Mandates: Check the project CLAUDE.md for mandates before starting work. When the project CLAUDE.md uses categorical language (MUST, All X must use Y, No Z), you must declare in your progress log which skill or pattern satisfies the mandate before proceeding with ad-hoc tooling.
 
 **Path verification**: Before quoting from a file the task body names, verify the file exists at the named path. If it doesn't, HALT and report — do not substitute a similar-looking file.
 
