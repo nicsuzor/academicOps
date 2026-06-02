@@ -8,6 +8,8 @@ parent: skills/daily
 
 A chronological narrative of the work date's sessions so far, anchored on the user's **verbatim prompts**. Renders into `## Today's Log` when the day is still in flight — the user is asking "what was I just trying to do?", not "summarise yesterday".
 
+**This is the daily note's recovery substrate (AC-14)** — `## Today's Log` sits _second from top, immediately under the lede_, because answering "what was I just trying to do?" is the returning user's load-bearing question. The closing **"What you were trying to do"** synthesis line is also the natural source for the note's 2–3 line lede (AC-13 / AC-16): distil it, hoist the distillation to the top, and leave the full timeline here. Do not author a second, divergent narrative for the lede.
+
 This is the complement to [[work-summary]], not a replacement:
 
 - **Morning Timeline** (this file) — fires while the day is in flight. Chronological. Verbatim-prompt-anchored. Names the goal and any blocker that ate time. Reader is the user returning to their desk after lunch / a meeting / a context switch.

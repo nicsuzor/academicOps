@@ -6,7 +6,9 @@ description: Daily note structure template (SSoT)
 
 # Daily Note Structure (SSoT)
 
-This template defines the sections and their purpose. The daily note is a hybrid: Carryover, Status, and What Needs Attention are **factual reports** (the agent lists, the user ranks); Today's Log is an **editorial synthesis** (the agent is a smart editor of past work). The user always owns forward prioritisation.
+This template defines the sections and their purpose. The daily note is a hybrid: Carryover, Status, and What Needs Attention are **factual reports** (the agent lists, the user ranks); the Lede and Today's Log are **editorial synthesis** (the agent is a smart editor of past work). The user always owns forward prioritisation.
+
+**Order is shape-first (AC-13 / AC-14 / AC-16):** Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log. The synthesis leads; the "what was I just trying to do?" surface sits immediately under it; the dashboard and carryover follow to support, not block.
 
 ````markdown
 ---
@@ -20,11 +22,23 @@ narrative_generated: null
 
 # Daily Summary - YYYY-MM-DD
 
-## Carryover (Human-Action Items)
+The morning is the framework eating its own dogfood: yesterday's PR wave landed three fix-epics, today's first hour went to a stale-config bug that blocked polecat dispatch on WSL. You cut a prerelease to clear it; dispatch is reopening now. Nothing is on fire — one decision (the v2-obsoletes-v1 call) is waiting on you.
 
-- [ ] [example-carryover-task] **[[Committee Task]]** — due tomorrow (orange) [DECIDE]
-- [ ] [academic-example1] Reply to [[External Contact]] — 2 days overdue (red) [CONFIRM] Draft reply ready: `<summary>`. [ ] send?
-- [ ] [fyi-item-1] Read the new proposal [FYI]
+**Degraded sources:** Email — outlook MCP auth error, 0 items shown _(only when a source genuinely failed after a real attempt + retry; omit this line entirely when all sources loaded)_
+
+## Today's Log
+
+**Morning timeline.** Verbatim prompts in order, one outcome line each.
+
+**11:50–11:51 (nicwin/WSL, brain)** — _"/supervisor aops-5430c4c1 — dispatch with local gemini polecats"_ → first attempt denied; retry ran, supervisor found the epic undecomposed and called pauli for preflight.
+
+**12:14 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally using gemini polecats"_ → dispatch failed at the config layer: `unknown gates keys: ['commit']`. Blocked all polecat dispatch on this host.
+
+**What you were trying to do**: dispatch a chain of SEV2 framework tasks to local gemini polecats; a stale-yaml / code-drift bug from yesterday's PR wave ate ~75 minutes — caught it, cut a prerelease, dispatch path now reopened.
+
+**Decisions in flight**: Pending decisions: 4 (ready + review assigned to you). Needs your call: [task-xyz] does the v2 work obsolete v1? (PR #501 linked).
+
+(Omit `## Today's Log` entirely on an empty morning with no sessions. See [[instructions/morning-timeline]] / [[instructions/work-summary]].)
 
 ## Status
 
@@ -34,8 +48,6 @@ P1 █░░░░░░░░░ 12/85
 P2 ██████████ 55/85
 P3 ██░░░░░░░░ 15/85
 ```
-
-Pending decisions: 4 (ready + review assigned to you)
 
 **Deadlines (≤ 7 days)**:
 
@@ -94,9 +106,13 @@ Invited to join [[Journal Name]] editorial board. Application via online form.
 
 _(Note: Rendered only when total open PRs ≥ 10. Contains cluster decision cards. See [[instructions/pr-triage-dashboard]].)_
 
-## Today's Log
+## Carryover (Human-Action Items)
 
-(Omit this section entirely when the work date has no sessions yet. When populated, this is an editorial synthesis — narrative prose, not a table of sessions. See [[instructions/work-summary]] Step 5.3.)
+_(Positioned here to support, not lead — the lede and Today's Log already answer "what was I doing?". Omit entirely when empty.)_
+
+- [ ] [example-carryover-task] **[[Committee Task]]** — due tomorrow (orange) [DECIDE]
+- [ ] [academic-example1] Reply to [[External Contact]] — 2 days overdue (red) [CONFIRM] Draft reply ready: `<summary>`. [ ] send?
+- [ ] [fyi-item-1] Read the new proposal [FYI]
 
 ## Work Log
 
@@ -116,7 +132,9 @@ No tasks completed today.
 
 ## Design Notes
 
-**Five sections, in order: Carryover → Status → What Needs Attention → Today's Log → Work Log.** Carryover leads because a returning user's first question is "what was I in the middle of?" Status is a factual snapshot; What Needs Attention surfaces inbox/PRs. Today's Log and Work Log sit lower — both are empty in the morning and most useful end-of-day.
+**Lede plus five sections, in order: Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log.** The note's headline job is US-5 recovery, so it is shape-first: the **lede** (2–3 line present-tense synthesis) leads because the returning user's first question is "what's the shape of right now?"; **Today's Log** sits immediately under it because "what was I just trying to do?" is the next question, and the Morning Timeline answers it verbatim (this is the recovery substrate, AC-14). **Status** (dashboard) and **What Needs Attention** (inbox/PRs) follow as factual inventory; **Carryover** is demoted to a supporting position (it used to lead, but a long checklist at the top is the scaffolding that buried the signal — AC-13); **Work Log** is provenance at the bottom. Earlier versions led with Carryover and buried the synthesis as a closing paragraph (AC-16 failure) — that is exactly the order this template now inverts.
+
+**The lede is a compression, hoisted — never a closing paragraph.** It is the _same_ synthesis Today's Log produces, distilled to 2–3 lines and placed at the top (persist to `daily_narrative`). It must not restate the full timeline. When a source genuinely failed (after a real load attempt + retry), a one-line **Degraded sources** block sits directly under the lede — the degradation is visible _as degradation, up front_, never as full stale sections with footnotes (AC-15).
 
 **Status is reportive, not prescriptive.** Priority bars, deadline list, calendar, and decision counts — no SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories, no suggested sequences, no "start here because..." rationales. The `### My priorities` subsection is a user-owned space; the agent creates the empty heading and never writes to it.
 
