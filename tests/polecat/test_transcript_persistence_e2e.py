@@ -7,23 +7,17 @@ Polecat produces two artifacts per run:
    recording only ``{timestamp, task_id, agent, session_type, exit_code,
    success, stdout, stderr}``). This is what polecat advertises in its
    "Transcript saved: …" exit message.
-2. The **real session transcript** — shape depends on the CLI tool:
+2. The **real session transcript** (Claude):
+   ``$AOPS_SESSIONS/polecats/<task-id>/<project>/-workspace/<uuid>.jsonl``
+   (~hundreds of KB, per-turn tool calls).
 
-   * Claude:  ``$AOPS_SESSIONS/polecats/<task-id>/<project>/-workspace/<uuid>.jsonl``
-     (~hundreds of KB, per-turn tool calls).
-   * Gemini:  ``$AOPS_SESSIONS/polecats/<task-id>/<project>/<hash>/chats/session-*.json``
-     (Gemini CLI's own session-log format, written under
-     ``$GEMINI_CLI_HOME/.gemini/tmp/<workdir-hash>/chats/`` inside the
-     container then ``docker cp``'d to the host).
-
-   Neither path is surfaced by polecat; the stub points to (Claude only) the
+   This path is not surfaced by polecat directly; the stub points to the
    host transcript via ``real_transcript_path``.
 
 These tests assert that (2) lands on the host across the failure modes we
-care about operationally — for both Claude and Gemini dispatch paths.
+care about operationally.
 
-Gated identically to ``test_polecat_termination_e2e.py`` — will not run in
-the default suite:
+Gated so it will not run in the default suite:
 
 * ``@pytest.mark.slow`` / ``@pytest.mark.e2e`` — excluded by the default
   ``addopts`` pytest filter.
@@ -476,11 +470,9 @@ def test_real_transcript_persists_on_graceful_shutdown(
     process before extraction `finally` blocks fire and the transcript is
     lost. See task-11de7b21.
 
-    Runs once per supported CLI tool. The polecat-side SIGTERM handler is
-    CLI-tool-agnostic — it converts SIGTERM to KeyboardInterrupt and the
-    same ``finally`` blocks fire for both extract paths
-    (``/home/worker/.claude/projects`` and ``/home/worker/.gemini/tmp``),
-    so the assertion shape is symmetric.
+    Runs once per supported CLI tool. The polecat-side SIGTERM handler
+    converts SIGTERM to KeyboardInterrupt and the same ``finally`` blocks
+    fire for the extract path (``/home/worker/.claude/projects``).
     """
     project = _require_project()
     task_id, client = _create_test_task(
