@@ -180,6 +180,18 @@ def _reset_fixture_task():
     """
     from polecat.pkb_bridge import get_task, update_task
 
+    # A truthy pr/pr_url field — including the literal string "None" left by a
+    # prior run — makes polecat's dispatch guard refuse to re-run the task
+    # ("A PR already exists"). Clear it alongside the status reset. PKB is the
+    # source of truth `pc run` reads, so this MUST happen in PKB, not just the
+    # local file.
+    def _pr_is_set(t) -> bool:
+        for attr in ("pr_url", "pr"):
+            v = getattr(t, attr, None)
+            if v and str(v) != "None":
+                return True
+        return False
+
     last_err: Exception | None = None
     for _attempt in range(5):
         try:
@@ -188,13 +200,15 @@ def _reset_fixture_task():
                 status="queued",
                 assignee="polecat",
                 project="aops",
+                pr_url=None,
             )
             task = get_task(TEST_FIXTURE_TASK_ID)
-            if task and task.status == "queued":
+            if task and task.status == "queued" and not _pr_is_set(task):
                 break
             last_err = RuntimeError(
                 f"after update_task, PKB read-back returned status="
-                f"{task.status if task else None!r} (expected 'queued')"
+                f"{task.status if task else None!r} (expected 'queued'), "
+                f"pr_url={getattr(task, 'pr_url', None)!r} (expected cleared)"
             )
         except Exception as e:  # noqa: BLE001 — surface after retries
             last_err = e
@@ -209,12 +223,24 @@ def _reset_fixture_task():
 
     # Sync the local file to PKB so `_check_fixture_task` and any local PKB
     # reads see the same status. This is best-effort — PKB is authoritative.
+    #
+    # IMPORTANT: `pc run` resolves the task via polecat's PolecatManager, which
+    # reads from local TaskStorage (the on-disk task file) in preference to
+    # PKB. The dispatch guard refuses to re-run any task whose `pr`/`pr_url`
+    # field is truthy. A prior run can leave the literal frontmatter line
+    # `pr_url: None`, which YAML loads as the *string* "None" (truthy!), so the
+    # guard fires with "A PR already exists" even though no PR exists. Strip
+    # both PR fields here so the reset actually unlocks the task.
     aca_data = os.environ.get("ACA_DATA", str(Path.home() / "brain"))
     task_file = Path(aca_data) / "tasks" / f"{TEST_FIXTURE_TASK_ID}.md"
     if not task_file.exists():
         return
     content = task_file.read_text()
     content = re.sub(r"(?m)^status:\s+\S+", "status: queued", content, count=1)
+    # Drop any stale pr/pr_url frontmatter lines (incl. the "None" string that
+    # falsely trips the dispatch lock). They are re-added by polecat only when a
+    # real PR is opened.
+    content = re.sub(r"(?m)^pr(?:_url)?:.*\n", "", content)
     # Strip any "Completion Evidence" or "Outcome" sections appended by previous
     # runs — agents see these and triage ("prior work") instead of executing.
     content = re.sub(r"\n## Completion Evidence.*", "", content, flags=re.DOTALL)
