@@ -1087,7 +1087,9 @@ class TestPkbPersistence:
                     "tags": ["test", "e2e", "pkb-persistence"],
                     "project": project,
                     "status": "ready",
-                    "type": "spike",
+                    # type defaults to "task"; "spike" is no longer a valid
+                    # PKB task type (server rejects with -32603 Invalid task
+                    # type), so omit it rather than pin a stale enum value.
                 },
             )
             assert create_result is not None, "PKB create_task returned None"
