@@ -278,6 +278,12 @@ Replace mechanical quality checks (word counts, structural checklists, format en
 - Quantitative metrics (compliance rates, line counts, format scores) are useful only as signals that trigger qualitative review — never as verdicts
 - **You cannot automate a quality judgment you haven't exercised.** Before building automated quality gates for any new process, an agent must personally perform the qualitative review on real output, document what signals distinguished good from bad, and get user validation.
 
+## Pull over push (injection-tier discipline)
+
+Instruction context costs `size × audience-breadth × load-frequency`. Push tiers (every-turn, gate cue, always-on session context) must be earned: content (a) changes behaviour on most loads, (b) cannot be reactively looked up, and (c) is compact — every line load-bearing at that frequency. Fail any one: **demote**. Default direction is always **pull over push**.
+
+Standard fix for over-injection: split the compact floor cue (stays push) from elaboration, rationale, and checklists (demote to pull — referenced doc, PKB note, or skill body). For tier definitions and per-mechanism costs, see [ENFORCEMENT-MAP.md](../../specs/ENFORCEMENT-MAP.md) §Pyramid.
+
 ## Never Bypass Locks Without User Direction
 
 Agents must NOT remove or bypass lock files without explicit user authorization. When encountering locks, HALT and ask.
