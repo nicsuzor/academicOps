@@ -100,10 +100,6 @@ def _poll_status(task_id: str) -> str | None:
 
 @pytest.mark.slow
 @pytest.mark.e2e
-@pytest.mark.skipif(
-    os.environ.get("POLECAT_E2E") != "1",
-    reason="E2E test — opt in with POLECAT_E2E=1",
-)
 @pytest.mark.skipif(not _docker_available(), reason="Docker / aops-crew image unavailable")
 @pytest.mark.skipif(not _pkb_available(), reason="PKB MCP server unreachable")
 def test_gemini_terminates_after_release_task(tmp_path: Path) -> None:

@@ -15,9 +15,9 @@ These tests pin two properties:
 
 1. **Static**: the gemini branch in ``polecat/cli.py`` emits
    ``--include-directories`` with ``/home/worker/.gemini/extensions/aops-core``.
-2. **Integration** (optional, gated on Docker + ``RUN_GEMINI_SANDBOX_IT=1``):
-   run ``gemini`` inside ``aops-crew`` with the flag and confirm no
-   ``Path not in workspace`` error when reading ``GEMINI.md``.
+2. **Integration** (gated on Docker availability): run ``gemini`` inside
+   ``aops-crew`` with the flag and confirm no ``Path not in workspace``
+   error when reading ``GEMINI.md``.
 """
 
 from __future__ import annotations
@@ -45,24 +45,19 @@ EXTENSION_DIR = "/home/worker/.gemini/extensions/aops-core"
 # the extension GEMINI.md without "Path not in workspace".
 # ---------------------------------------------------------------------------
 
-_IT_ENV = "RUN_GEMINI_SANDBOX_IT"
-
 
 @pytest.mark.slow
 @pytest.mark.integration
 class TestGeminiSandboxDocker:
     """Spin up ``aops-crew`` and run ``gemini --include-directories ...``
-    against a file the sandbox would otherwise block. Gated: requires
-    Docker, the image, and ``RUN_GEMINI_SANDBOX_IT=1`` (because it costs an
-    LLM call).
+    against a file the sandbox would otherwise block. Gated on Docker and
+    the image being available.
     """
 
     @pytest.fixture(autouse=True)
     def _require_docker_and_gate(self):
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
-        if os.environ.get(_IT_ENV) != "1":
-            pytest.skip(f"set {_IT_ENV}=1 to run the gemini sandbox integration test")
         # Gemini auth must be wired into the container explicitly. On most
         # environments (Docker Desktop on WSL in particular), host bind
         # mounts don't round-trip through to the container, so we require
