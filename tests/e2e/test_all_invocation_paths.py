@@ -320,11 +320,12 @@ class TestAllInvocationPaths:
         Args:
             started_after: Unix timestamp — only consider files modified after
                 this time. Prevents picking up stale files from unrelated sessions.
-            crew_name: Optional crew name embedded in hook log filenames (e.g.
-                "test-claude").  When set, filters hook files to those whose
-                filename contains the crew name, avoiding cross-session races
-                where a concurrent session's hook log is created in the same
-                time window.
+            crew_name: Optional crew name for the run under test. Retained for
+                API symmetry with the run path; cross-session isolation is now
+                provided by ``session_dir`` (the per-crew subtree) since the
+                hook log filename is the fixed SSoT placeholder
+                ``polecat-session-hooks.jsonl`` (set via AOPS_HOOK_LOG_PATH in
+                polecat/cli.py) and no longer embeds the crew name.
             backend: "claude" or "gemini". When set, filters session files by
                 location (claude lives at the top of the per-session dir;
                 gemini lives one level deeper under ``chats/``).
@@ -364,9 +365,12 @@ class TestAllInvocationPaths:
         if started_after:
             hook_files = [f for f in hook_files if _hook_birthtime(f) >= started_after]
         if crew_name:
-            # Filenames sanitize crew names with allow_dashes=False: "test-claude" → "testclaude"
-            sanitized_crew = crew_name.replace("-", "")
-            hook_files = [f for f in hook_files if sanitized_crew in f.name]
+            # Polecat writes the crew hook log to the fixed SSoT placeholder
+            # "polecat-session-hooks.jsonl" (AOPS_HOOK_LOG_PATH in
+            # polecat/cli.py); the crew name lives in the per-crew session_dir
+            # subtree, not the filename. Scope to that polecat hook log to
+            # exclude any unrelated hook file that lands in the same window.
+            hook_files = [f for f in hook_files if f.name == "polecat-session-hooks.jsonl"]
         hook_file = hook_files[-1] if hook_files else None
         if hook_file:
             raw = hook_file.read_text()
