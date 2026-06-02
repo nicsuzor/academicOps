@@ -4899,6 +4899,7 @@ def run(
                 print(result.stderr, file=sys.stderr)
 
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
+            real_transcript = None
             try:
                 real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
@@ -4923,6 +4924,19 @@ def run(
             )
             if budget_exhausted:
                 exit_code = EXIT_BUDGET_EXHAUSTED
+
+            # Write exit status for the transcription process to pick up.
+            _write_lifecycle_event(
+                task_id=task.id,
+                phase="exit_status",
+                home_dir=manager.home_dir,
+                exit_code=exit_code,
+                budget_exhausted=budget_exhausted,
+                turns_max=_compute_max_turns(task, max_turns),
+                container_name=f"polecat-{task.id}" if docker_cmd else None,
+                docker_host=env.get("DOCKER_HOST") or None,
+                transcript_path=str(real_transcript) if real_transcript else None,
+            )
 
             # Analyze the transcript for failures
             analyze_func = getattr(manager, "analyze_transcript", None)
