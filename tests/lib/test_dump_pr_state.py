@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,10 @@ SCRIPT_DIR = Path(__file__).parents[2] / "aops-core" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from dump_pr_state import _extract_trailers, _project_pr, apply_triage, fetch_prs
+
+# Use a dynamically computed recent date so tests don't silently break when the
+# hardcoded date crosses the 7-day stale threshold in dump_pr_state.apply_triage.
+_RECENT = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def test_extract_trailers_short_body():
@@ -103,7 +108,7 @@ def test_apply_triage_catchall_is_pipeline(tmp_path):
         "statusCheckRollup": [],
         "headRefName": "feature/x",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
@@ -135,7 +140,7 @@ def test_apply_triage_auto_mergeable_for_green_approved_pr(tmp_path):
         ],
         "headRefName": "feature/y",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
@@ -165,7 +170,7 @@ def test_apply_triage_pipeline_when_not_yet_approved(tmp_path):
         ],
         "headRefName": "feature/z",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
@@ -193,7 +198,7 @@ def test_apply_triage_escalate_labels_but_does_not_create_issue(tmp_path):
         "statusCheckRollup": [],
         "headRefName": "feature/conflict",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
