@@ -5,10 +5,13 @@ from pathlib import Path
 
 import yaml
 
-# Known-stable fallback parent under the aops project: an active "Framework
-# maintenance and tooling improvements" epic with mixed scratch children.
+# Known-stable fallback parent under the aops project: the live
+# "Operate the framework reliably across machines" operations epic
+# (task-70b4a251), which already hosts environment/transcript-verification
+# scratch children and is the successor home after the previous default
+# (task-0d77545a → superseded_by aops-d109aeee) was closed as done.
 # Can be overridden via POLECAT_E2E_PARENT.
-_DEFAULT_AOPS_SCRATCH_PARENT = "task-0d77545a"
+_DEFAULT_AOPS_SCRATCH_PARENT = "task-70b4a251"
 
 
 def write_polecat_test_config(
