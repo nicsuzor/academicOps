@@ -314,15 +314,18 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 #### PR-pipeline agents (v2)
 
-Branch protection AND-gates each `<agent>-status` directly — no LLM judgment in the merge gate. **Phase 1 operative (PR #1062); phases 2/3/5 pending.** Contract: [`pr-pipeline-v2.md`](../workflows/pr-pipeline-v2.md).
+Branch protection requires each agent's `<agent>-status` check directly — there is no transitive triage agent deciding mergeability on the others' behalf. The judgment lives in the LLM review agents themselves: a failing `enforcer-status` (the LLM axiom review of the diff) blocks the merge. Branch protection is just the mechanical AND-gate that combines the required checks; "no triage LLM" is the point, not "the merge is unreviewed."
 
-| Agent              | L  | Action | Purpose                                                 | Source                                                                      |
-| :----------------- | :- | :----- | :------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | `.github/workflows/agent-enforcer.yml@enforcer-v1`                          |
-| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment               | `.github/workflows/agent-alignment.yml@alignment-v1`                        |
-| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only             | `.github/workflows/agent-mechanic.yml@mechanic-v1`                          |
-| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                                     |
-| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
+**Live vs planned.** Only `enforcer-status` (enforcer-v1) is deployed. `alignment-status`, `mechanic-status`, and `qa-status` are **designed but not deployed** (Phases 2 / 3 / 6+ per [`pr-pipeline-v2.md`](../workflows/pr-pipeline-v2.md) §9 — the `agent-alignment.yml` / `agent-mechanic.yml` workflows do not exist yet). v1 `merge-prep` (`agent-merge-prep.yml`) is still the **operative** merge-prep mechanism (it does triage: rebase, bot-approve, set `merge-prep-status`, enable auto-merge), and the ruleset still requires `merge-prep-status` **plus 2 approving reviews** (merge-prep bot + human) — not the v2 target of 1. The table below is the v2 **target** contract; the Status column marks current reality.
+
+| Agent              | L  | Action | Purpose                                                 | Status                                         | Source                                                                      |
+| :----------------- | :- | :----- | :------------------------------------------------------ | :--------------------------------------------- | :-------------------------------------------------------------------------- |
+| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | **live** (enforcer-v1)                         | `.github/workflows/agent-enforcer.yml@enforcer-v1`                          |
+| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment               | planned (Phase 2; workflow absent)             | `.github/workflows/agent-alignment.yml@alignment-v1`                        |
+| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only             | planned (Phase 3; workflow absent)             | `.github/workflows/agent-mechanic.yml@mechanic-v1`                          |
+| `qa-status`        | L6 | block  | LLM runtime/intent verification (marsha)                | planned (Phase 6+; runs locally via `/verify`) | `.github/workflows/agent-qa.yml@qa-v1` (not built)                          |
+| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | **live**                                       | GitHub repo settings (admin-configured)                                     |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | **live** (in v1 merge-prep)                    | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
 
 ## §7 Scope limits
 
