@@ -52,8 +52,21 @@ class TestDockerTooling:
             'echo "DNS_ANTHROPIC=$(getent hosts api.anthropic.com 2>&1 | head -1)"\n'
             'echo "DNS_GITHUB=$(getent hosts github.com 2>&1 | head -1)"\n'
         )
+        # The entrypoint hard-requires AOPS_BOT_GH_TOKEN (config-is-SSoT) and
+        # exits before running the command if it is unset. This batch does no
+        # real GitHub ops, so a non-empty dummy token satisfies the contract.
         result = subprocess.run(
-            ["docker", "run", "--rm", "ghcr.io/nicsuzor/aops-crew", "bash", "-c", script],
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-e",
+                "AOPS_BOT_GH_TOKEN=ghp_dummy_test_token",
+                "ghcr.io/nicsuzor/aops-crew",
+                "bash",
+                "-c",
+                script,
+            ],
             capture_output=True,
             text=True,
             timeout=60,
@@ -163,13 +176,16 @@ class TestDockerEntrypoint:
     def test_entrypoint_configures_git_auth(self):
         """Entrypoint sets up git credentials, SSH isolation, and HTTPS rewrite.
 
-        Runs a shell command inside the container with GH_TOKEN set, verifying
-        the full entrypoint credential chain works. This is the single most
-        important container smoke test — if this fails, no git operations work.
+        Runs a shell command inside the container with AOPS_BOT_GH_TOKEN set —
+        the only accepted credential under config-is-SSoT. The entrypoint
+        derives GH_TOKEN/GITHUB_TOKEN from it; asserting the credential helper
+        resolves password=<token> verifies that derivation chain end to end.
+        This is the single most important container smoke test — if this
+        fails, no git operations work.
         """
         test_token = "ghp_test_e2e_credential_check_12345"
         docker_cmd = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
-        docker_cmd.extend(["-e", f"GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
+        docker_cmd.extend(["-e", f"AOPS_BOT_GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
         docker_cmd.extend(
             [
                 "ghcr.io/nicsuzor/aops-crew",
