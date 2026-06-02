@@ -8,6 +8,19 @@
 # legacy env-var fallbacks: missing fields hard-fail at startup.
 
 # ---------------------------------------------------------------------------
+# polecat_home — REQUIRED. Local cache root for worktrees, sessions/,
+# local.yaml, polecats/ transcripts, and the bare repo mirror. The single
+# source of truth, read on the host by lib/polecat_config.resolve_polecat_home
+# (consumed by polecat/manager.py). Supports ~ and ${VAR} expansion.
+#
+# No default, no env fallback, no guessing: if this key is missing the loader
+# hard-fails (A14). The host resolves it and injects POLECAT_HOME into
+# containers; the container itself reads no config. The `polecat --home PATH`
+# CLI flag overrides it for a single invocation.
+# ---------------------------------------------------------------------------
+polecat_home: ~/.polecat
+
+# ---------------------------------------------------------------------------
 # session_defaults — applied to every polecat / crew session.
 # ---------------------------------------------------------------------------
 session_defaults:
@@ -160,10 +173,25 @@ external_agents:
     enabled: false
 
 # ---------------------------------------------------------------------------
+# PER-MACHINE OVERLAY — <polecat_home>/local.yaml (NOT this file; untracked,
+# machine-specific). Optional. Loaded on the host by lib/polecat_config and
+# folded into the resolved config. Recognised keys:
+#
+#   paths:    {<slug>: /abs/path}   # per-machine project path overrides
+#   machine:  <short-name>          # → injected into containers as AOPS_MACHINE
+#                                     (artifact filenames; replaces the loose
+#                                      AOPS_MACHINE outer-env var)
+#   gates:    {<name>: warn|block|off}  # partial overrides on session_defaults
+#                                         gates for THIS machine only
+#
+# This is where per-machine knobs that used to be loose outer-env vars now
+# live. The host resolves them; containers receive only the resolved values.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Project registry (read by polecat/manager.py).
 # Each entry maps a slug to a GitHub repo + per-project metadata. Slugs are
 # the canonical names; aliases below let `polecat crew <alias>` resolve.
-# Per-machine path overrides live in $POLECAT_HOME/local.yaml under `paths:`.
 # ---------------------------------------------------------------------------
 projects:
   aops:
@@ -210,8 +238,13 @@ crew_names:
 #   AOPS_POLECAT_CONFIG   Explicit path to polecat.yaml. Overrides
 #                         $AOPS_SESSIONS/polecat.yaml. The ONLY env var that
 #                         *names* a config; every config *value* lives here.
-#   POLECAT_HOME          Local cache root; default ~/.polecat. Also overridable
-#                         via `polecat --polecat-home`.
+#                         HOST-ONLY: polecat.yaml is no longer staged into
+#                         containers, so this var is never set inside one.
+#   POLECAT_HOME          Local cache root. The VALUE now lives in this file as
+#                         the required `polecat_home:` key (the host SSoT). This
+#                         env var is the CONTAINER TRANSPORT: the host resolves
+#                         polecat_home and injects POLECAT_HOME so in-container
+#                         lib/paths.py reads it. No ~/.polecat default anywhere.
 #   ACA_DATA              Path to brain/PKB repo. Used by lib/paths.py.
 #   AOPS_GHA_REPOS        Comma-separated list of repos to sync from GHA
 #                         artifacts. Read by scripts/repo-sync-cron.sh.
@@ -254,6 +287,11 @@ crew_names:
 #                             gate engine to skip the custodiet ops counter).
 #   DEBUG_HOOKS               Materialised from `debug:` above. Router dumps
 #                             raw hook stdin to /tmp/cc_hooks_<slug>.jsonl.
+#   AOPS_ENABLED_PROVIDERS    Comma-separated enabled external_agents set,
+#                             resolved on the host from `external_agents:` and
+#                             injected so in-container lib/session_naming can
+#                             parse artifact filenames WITHOUT reading
+#                             polecat.yaml. Empty string ⇒ none enabled.
 #   GEMINI_SESSION_ID         Set on the Gemini path; also a provider
 #                             discriminator (Gemini CLI sets it itself when
 #                             launched directly).
@@ -311,16 +349,17 @@ crew_names:
 #
 # ─── Optional per-host overrides ───────────────────────────────────────────
 #
-#   AOPS_MACHINE              Short machine name override for filenames;
-#                             falls back to `socket.gethostname()`.
-#   AOPS_TASK_ID              Task ID embedded in artifact filenames. NOTE:
-#                             read by lib/session_paths, transcript.py,
-#                             insights_generator. NOT currently set by polecat
-#                             in production spawn paths — task-tagged artifact
-#                             names only work in tests today. Either wire it
-#                             up in polecat/cli.py or strip the readers.
-#   POLECAT_HOSTS             Permitted polecat hosts allowlist (used by
-#                             supervisor worker dispatch).
+#   AOPS_MACHINE              Short machine name for artifact filenames. NO
+#                             LONGER a loose outer-env var: set `machine:` in the
+#                             <polecat_home>/local.yaml overlay; the host injects
+#                             it into containers. Readers still fall back to
+#                             `socket.gethostname()` when neither is set.
+#   AOPS_TASK_ID              Task ID embedded in artifact filenames so they are
+#                             task-greppable. SET by polecat/cli.py at dispatch
+#                             (env["AOPS_TASK_ID"] = task.id) and read by
+#                             lib/session_paths, transcript.py, insights_generator,
+#                             subagent_transcript, transcript_parser, router. Live
+#                             in production — do not assume it is test-only.
 #   NTFY_TOPIC, NTFY_SERVER,  ntfy push notification config. Used by
 #   NTFY_PRIORITY, NTFY_TAGS  hooks/ntfy_notifier.py. Could be folded into
 #                             polecat.yaml in a future pass.

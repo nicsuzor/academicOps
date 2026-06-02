@@ -77,11 +77,25 @@ def get_data_root() -> Path:
 
 
 def get_local_cache_root() -> Path:
-    """Get local cache directory ($POLECAT_HOME or ~/.polecat)."""
+    """Get the local cache root — the SINGLE source of truth, shared with
+    ``polecat/manager.py:get_polecat_home`` (both delegate here, A16).
+
+    Resolution, with NO default and NO guess (A14):
+    1. ``$POLECAT_HOME`` — the container transport (host injects the resolved
+       value) and the host's own export. Wins when present.
+    2. Otherwise the host config SSoT: ``polecat_home:`` in polecat.yaml via
+       ``lib.polecat_config.resolve_polecat_home``.
+
+    If neither is available this raises — there is no ``~/.polecat`` fallback.
+    In-container this never fails: the host always injects ``$POLECAT_HOME``.
+    """
     polecat_home = os.environ.get("POLECAT_HOME")
     if polecat_home:
         return Path(polecat_home).resolve()
-    return Path.home() / ".polecat"
+    # Host without an exported POLECAT_HOME: resolve from the config SSoT.
+    from lib.polecat_config import resolve_polecat_home
+
+    return resolve_polecat_home().resolve()
 
 
 def get_sessions_repo() -> Path:

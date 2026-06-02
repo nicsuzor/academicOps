@@ -196,7 +196,7 @@ def test_apply_triage_escalate_labels_but_does_not_create_issue(tmp_path):
         "statusCheckRollup": [],
         "headRefName": "feature/conflict",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": "2026-06-01T00:00:00Z",
     }
     calls = []
 

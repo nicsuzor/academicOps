@@ -8,9 +8,9 @@ named by ``AOPS_POLECAT_CONFIG``).
 
 Per AXIOMS ``halt-on-failure`` (fail-fast) and ``single-source-of-truth`` (DRY, no
 defaults, no backwards-compat):
-- Missing file ⇒ stderr warning + built-in defaults (see ``BUILTIN_SESSION_DEFAULTS``).
-  This supports fresh-install machines where polecat.yaml has not been created yet.
-  A present-but-malformed file still hard-fails (``halt-on-failure``).
+- Missing or unlocatable file ⇒ hard-fail (A14). There are no built-in defaults
+  and no warn-and-continue. Config must be present or the process exits.
+  A present-but-malformed file also hard-fails.
 - No legacy env-var override paths. ``AOPS_POLECAT_CONFIG`` is the only env
   var that *names* the config; every config *value* lives in the YAML.
 - CLI flags override the loaded config in-process; they do not mutate it.
@@ -122,6 +122,14 @@ class PolecatConfig:
     docker: DockerConfig
     external_agents: dict[str, ExternalAgent]
     source_path: Path
+    # Local cache root (worktrees, sessions/, polecats/ transcripts, the bare
+    # mirror). REQUIRED top-level key — no default, no env fallback, no guess
+    # (A14). The host resolves it and injects POLECAT_HOME into containers.
+    polecat_home: Path
+    # Per-machine short name for artifact filenames. Sourced from the local.yaml
+    # overlay (``machine:``); None when the overlay omits it. The host injects it
+    # into containers as AOPS_MACHINE so worker artifacts carry the HOST's name.
+    machine: str | None
     # Explicit container forwarding whitelist (PKB note-b5347f83, Q2). The
     # legible "limited list" of env-var NAMES that cross into polecat/crew
     # containers. NAMES only — VALUES are resolved at launch from the host
@@ -226,70 +234,28 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
 
 
 # =============================================================================
-# BUILT-IN DEFAULTS
+# DEFAULTS — NONE.
 # =============================================================================
-# Used when no polecat.yaml is found (fresh install / minimal test environments
-# that have not set up $AOPS_SESSIONS). These values are the same as the
-# example YAML defaults. YAML config always overrides them — they are never
-# silently preferred over explicit configuration.
+# Per A14 (fail-fast) and the operator directive: config comes from where we
+# expect (polecat.yaml, located via $AOPS_POLECAT_CONFIG or $AOPS_SESSIONS) or
+# we hard-fail. There is NO builtin config, NO warn-and-continue, NO guessed
+# path. A missing or unlocatable file is an error, not a fresh-install convenience.
 #
-# Gate modes: all 'warn' except hydration (off). This is the safe-minimum
-# posture: warnings appear in context so the agent sees them, but nothing is
-# blocked on a machine that has no config yet.
-
-BUILTIN_GATES = GatesConfig(
-    handover="warn",
-    qa="warn",
-    enforcer="warn",
-    hydration="off",
-    ida="warn",
-    enforcer_threshold=50,
-)
+# The ONE remaining default is the container-forwarding whitelist below: it is
+# an optional key whose omission yields the OAuth-token list. That is a
+# transitional default for an optional secrets list, NOT a guessed config
+# location — distinct from the no-guessing rule above.
 
 # Default container forwarding whitelist (PKB note-b5347f83, Q2). The secrets a
 # polecat/crew worker needs but the launching general agent deliberately does
 # NOT persist into its own session env. NAMES only — values resolved at launch
-# from ~/.env.local by lib/host_secrets. Used when no polecat.yaml is present
-# (fresh install / builtin config). The shipped polecat.yaml.example sets the
-# same list explicitly so operators can see and edit it.
+# from ~/.env.local by lib/host_secrets. The shipped polecat.yaml.example sets
+# the same list explicitly so operators can see and edit it.
 _DEFAULT_CONTAINER_ENV_FORWARD: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "AOPS_CC_OAUTH_TOKEN",
     "GEMINI_API_KEY",
 )
-
-BUILTIN_SESSION_DEFAULTS = SessionDefaults(
-    hooks_enabled=True,
-    claude_model="claude-sonnet-4-6",
-    antigravity_model="agy",
-    debug=False,
-    gates=BUILTIN_GATES,
-)
-
-
-def _builtin_config() -> PolecatConfig:
-    """Return a minimal PolecatConfig using built-in defaults (no YAML needed)."""
-    return PolecatConfig(
-        session_defaults=BUILTIN_SESSION_DEFAULTS,
-        crew_defaults={"hooks_enabled": False},
-        run_defaults={},
-        docker=DockerConfig(image="ghcr.io/nicsuzor/aops-crew"),
-        external_agents={},
-        source_path=Path("<builtin>"),
-        container_env_forward=_DEFAULT_CONTAINER_ENV_FORWARD,
-    )
-
-
-def _warn_no_config(detail: str) -> None:
-    import sys
-
-    print(
-        f"[aops-core] WARNING: {detail}\n"
-        "Using built-in defaults (all gates 'warn'). "
-        "Copy polecat/defaults/polecat.yaml.example to "
-        "$AOPS_SESSIONS/polecat.yaml to configure.",
-        file=sys.stderr,
-    )
 
 
 def _resolve_config_path(explicit: Path | None = None) -> Path:
@@ -309,39 +275,51 @@ def _resolve_config_path(explicit: Path | None = None) -> Path:
     return Path(sessions).expanduser() / "polecat.yaml"
 
 
+def resolve_polecat_home() -> Path:
+    """Resolve the required ``polecat_home`` from polecat.yaml (host-only).
+
+    The single owner of polecat_home resolution — used by polecat/manager.py so
+    the home path has exactly one source of truth (A16). No env fallback, no
+    ``~/.polecat`` default, no guessing (A14): the key is required and the file
+    must be locatable, or this raises.
+    """
+    cfg_path = _resolve_config_path(None)
+    if not cfg_path.exists():
+        raise RuntimeError(
+            f"polecat config: file not found at {cfg_path}; cannot resolve polecat_home."
+        )
+    with open(cfg_path) as f:
+        raw = yaml.safe_load(f) or {}
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"polecat config: {cfg_path} must be a YAML mapping")
+    return Path(_expand_path(_require_str(raw, "polecat_home", cfg_path)))
+
+
 def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
-    """Load and validate ``polecat.yaml``.
+    """Load and validate ``polecat.yaml`` (host-only; never read in-container).
 
-    When no config file can be located (env vars unset or default path absent),
-    returns built-in defaults and emits a stderr warning — no traceback.  This
-    supports fresh-install machines where polecat.yaml has not yet been created.
+    Config is located via ``$AOPS_POLECAT_CONFIG`` or ``$AOPS_SESSIONS`` (or an
+    explicit ``path``). If it cannot be located, or the file is absent or
+    malformed, this HARD-FAILS (A14). There is no builtin config and no
+    warn-and-continue — config comes from where we expect or not at all.
 
-    If a file IS found but is malformed, hard-fails (``halt-on-failure`` fail-fast principle):
-    a broken config is an active error, not a missing-config situation.
+    The resolved config also folds in the per-machine ``local.yaml`` overlay
+    found at ``<polecat_home>/local.yaml`` (``machine:`` and ``gates:``
+    overrides). The host injects the resolved values into containers as env
+    vars; containers never read either YAML file.
 
     Pass ``path`` to bypass env-var resolution (used by tests).
     """
     explicit_path = Path(path) if isinstance(path, str) else path
 
-    try:
-        cfg_path = _resolve_config_path(explicit_path)
-    except RuntimeError as e:
-        # Neither AOPS_POLECAT_CONFIG nor AOPS_SESSIONS is set and no explicit
-        # path was given — no config available at all (fresh install).
-        _warn_no_config(str(e))
-        return _builtin_config()
+    cfg_path = _resolve_config_path(explicit_path)
 
     if not cfg_path.exists():
-        if explicit_path is not None:
-            # Caller explicitly requested a path that doesn't exist — hard fail.
-            raise RuntimeError(
-                f"polecat config: file not found at {cfg_path}.\n"
-                "Copy polecat/defaults/polecat.yaml.example into "
-                "$AOPS_SESSIONS/polecat.yaml and edit to taste."
-            )
-        # Default path resolved from env vars but file is absent — fresh install.
-        _warn_no_config(f"polecat config: file not found at {cfg_path}.")
-        return _builtin_config()
+        raise RuntimeError(
+            f"polecat config: file not found at {cfg_path}.\n"
+            "Copy polecat/defaults/polecat.yaml.example into "
+            "$AOPS_SESSIONS/polecat.yaml and edit to taste."
+        )
     with open(cfg_path) as f:
         raw = yaml.safe_load(f)
     if not isinstance(raw, dict):
@@ -401,6 +379,16 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
                 )
         container_env_forward = tuple(cef_raw)
 
+    # polecat_home — REQUIRED, no default/fallback/guess (A14). The host's local
+    # cache root; resolved here and injected into containers as POLECAT_HOME.
+    polecat_home = Path(_expand_path(_require_str(raw, "polecat_home", cfg_path)))
+
+    # Per-machine overlay at <polecat_home>/local.yaml. Optional file; when
+    # present it may carry `machine:` (→ AOPS_MACHINE) and `gates:` overrides
+    # applied on top of session_defaults.gates. This is the SSoT home for the
+    # per-machine knobs that used to be loose outer-env vars.
+    machine, session_defaults = _apply_local_overlay(polecat_home, session_defaults)
+
     return PolecatConfig(
         session_defaults=session_defaults,
         crew_defaults=crew_defaults,
@@ -408,8 +396,50 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
         docker=docker,
         external_agents=external_agents,
         source_path=cfg_path,
+        polecat_home=polecat_home,
+        machine=machine,
         container_env_forward=container_env_forward,
     )
+
+
+def _expand_path(value: str) -> str:
+    """Expand ``~`` and ``${VAR}`` in a config path string."""
+    return os.path.expandvars(os.path.expanduser(value))
+
+
+def _apply_local_overlay(
+    polecat_home: Path, session_defaults: SessionDefaults
+) -> tuple[str | None, SessionDefaults]:
+    """Fold the per-machine ``<polecat_home>/local.yaml`` overlay into the config.
+
+    Returns ``(machine, session_defaults)``. The overlay is OPTIONAL — a missing
+    file yields ``(None, session_defaults)`` unchanged (this is not a config
+    *location* guess; it is a documented optional per-machine file). A present
+    file must be a mapping; a malformed one hard-fails (A14). Recognised keys:
+
+        machine: <str>        # short host name → AOPS_MACHINE
+        gates: {<name>: ...}  # partial gate-mode overrides over session_defaults
+    """
+    local_path = polecat_home / "local.yaml"
+    if not local_path.exists():
+        return None, session_defaults
+    with open(local_path) as f:
+        raw = yaml.safe_load(f) or {}
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"polecat config: {local_path} must be a YAML mapping")
+
+    machine = raw.get("machine")
+    if machine is not None and not isinstance(machine, str):
+        raise RuntimeError(f"polecat config: {local_path}: 'machine' must be a string")
+
+    gates_raw = raw.get("gates")
+    if gates_raw is not None:
+        if not isinstance(gates_raw, dict):
+            raise RuntimeError(f"polecat config: {local_path}: 'gates' must be a mapping")
+        merged = replace(session_defaults.gates, **_validate_gates(gates_raw, allow_partial=True))
+        session_defaults = replace(session_defaults, gates=merged)
+
+    return machine, session_defaults
 
 
 def _require_mapping(d: dict[str, Any], key: str, src: Path) -> dict[str, Any]:
