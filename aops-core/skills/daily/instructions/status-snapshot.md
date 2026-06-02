@@ -84,6 +84,8 @@ Include `consequence` text only if the task itself carries a `consequence` field
 
 ### 3.4: Calendar
 
+**Load the calendar tool before declaring it unavailable.** Today's events come from the Outlook MCP, whose tools are deferred — load them explicitly (`ToolSearch select:mcp__outlook__*`, or a keyword query) and _call the tool_ to check availability; never decide from a config or an unloaded-tool state. Retry once with the canonical fully-qualified name on a tool-not-found before concluding the source is down. Only emit a "calendar unavailable" note when a real attempt failed for a named reason — and then collapse it to the one-line **Degraded sources** block under the lede, not a stale/empty Calendar section. See [[SKILL]] § "Tool-loading discipline (degraded sources)".
+
 List today's events from the calendar source in time order. Show start time, title, and location. No commentary on which matters most.
 
 ```

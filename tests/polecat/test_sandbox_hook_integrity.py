@@ -156,6 +156,9 @@ class TestSandboxHookIntegrity:
 
         env = {
             "AOPS_POLECAT_CONTAINER": "1",
+            # Entrypoint hard-requires AOPS_BOT_GH_TOKEN (config is SSoT); the
+            # hook router does no GitHub ops, so a dummy token satisfies it.
+            "AOPS_BOT_GH_TOKEN": "ghp_integration_test_token",
         }
 
         tmp_files: list[Path] = []

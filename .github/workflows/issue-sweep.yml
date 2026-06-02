@@ -76,7 +76,7 @@ jobs:
             - **User Gate / Surfacing**: For framework-change dispositions (`fix-epic` / add-or-escalate),
               you CANNOT ask the user interactively. Instead, surface the proposed cycle plan by appending it
               to the current day's Daily Note (e.g. `daily-YYYYMMDD-*.md`). Do NOT execute `fix-epic` operations.
-            - **A17 Recusal**: Do not invent new rules. Use the cost-ladder review for escalation candidates.
+            - **`recusal`**: Do not invent new rules. Use the cost-ladder review for escalation candidates.
             - **State & Commits**: Commit changes directly to the brain repo's main branch.
             - **Time budget**: 25 minutes. Exit cleanly when time is up.
 

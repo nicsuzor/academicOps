@@ -105,7 +105,7 @@ def is_installed() -> bool:
     renamed or removed from plugin.json, this fingerprint silently breaks —
     sessions will re-install on every start (if the heading no longer matches)
     or never re-install after a rule reset (if the rule disappears entirely).
-    Update this fingerprint string if the A10 rule heading changes.
+    Update this fingerprint string if the ``evidence-immutable`` rule heading changes.
     """
     settings, _ = _read_user_settings()
     auto_mode = settings.get("autoMode", {})

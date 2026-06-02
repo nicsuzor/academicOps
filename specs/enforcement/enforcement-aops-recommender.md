@@ -78,21 +78,21 @@ The `/aops` command (or sleep cycle phase) produces:
 - Implementing the auto-PR generation.
 - Real-time detection (PostToolUse hooks are handled by the `enforcer` agent, not the recommender).
 
-## Worked Example: A8 Workaround Pattern
+## Worked Example: `halt-on-failure` Workaround Pattern
 
 ### Step 4: Pattern Detection
 
 The recommender scans issues from the last 14 days:
 
-1. Issue #720: "agent offers workaround menu... A8 violation" (High)
-2. Issue #725: "agent bypasses tool failure with manual grep... A8 violation" (Medium)
-3. Issue #729: "rbg missed workaround offer in prose... A8 violation" (High)
+1. Issue #720: "agent offers workaround menu... `halt-on-failure` violation" (High)
+2. Issue #725: "agent bypasses tool failure with manual grep... `halt-on-failure` violation" (Medium)
+3. Issue #729: "rbg missed workaround offer in prose... `halt-on-failure` violation" (High)
 
-**Pattern Found**: Axiom A8 (Halt on Failure) is being bypassed through "Workaround Substitution". Existing mechanism `auto-mode: Silent Workaround` (Tier: `warn`) has been bypassed 3 times.
+**Pattern Found**: The `halt-on-failure` axiom is being bypassed through "Workaround Substitution". Existing mechanism `auto-mode: Silent Workaround` (Tier: `warn`) has been bypassed 3 times.
 
 ### Step 5: Recommendation Generation
 
-- **Recommendation**: Escalate `A8 Halt` / `auto-mode: Silent Workaround` from `warn` to `block`.
+- **Recommendation**: Escalate `halt-on-failure` / `auto-mode: Silent Workaround` from `warn` to `block`.
 - **Output**:
   - Diff for `specs/ENFORCEMENT-MAP.md`.
   - Briefing citing #720, #725, #729.

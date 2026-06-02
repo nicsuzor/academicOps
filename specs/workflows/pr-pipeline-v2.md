@@ -47,7 +47,7 @@ The collapse produces three concrete pathologies:
 
 v2 reframes around two structural decisions:
 
-- **One LLM agent ≡ one named framework agent ≡ one named status check.** No anonymous Claude runs. No triage agent. Branch protection AND-gates the status checks directly; there is no LLM judgment in the merge gate.
+- **One LLM agent ≡ one named framework agent ≡ one named status check.** No anonymous Claude runs. No triage agent. Branch protection AND-gates the status checks directly — there is no separate triage LLM deciding mergeability (the per-agent LLM reviews still gate the merge through their own status checks).
 - **The framework ships agents, not mechanics.** Mechanical CI is a _naming contract_ the framework declares; consumer repos emit those names from whatever pipeline they like.
 
 ## 2. Architecture

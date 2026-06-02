@@ -44,7 +44,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
    or you're unsure how to proceed — stop and post a comment on the issue
    explaining what blocked you. Do not guess.
 
-6. **Don't ask permission for in-scope work** (A7 Edge 2 — see
+6. **Don't ask permission for in-scope work** (`exercise-authority` Edge 2 — see
    `.agents/rules/AXIOMS.md`). Decisions inside the issue's acceptance criteria
    are yours: library choice, naming, test layout, sensible refactor. Just
    do them. Workflow-required actions (commit, push, open the PR) are
@@ -58,7 +58,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 - **Type hints** throughout. Pydantic for data models.
 - **No backup files.** Git is the backup system (P#24).
 - **No workarounds.** Never use `--no-verify` or `--force` (P#25).
-- **No perpetual commands (A13).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops. Every command must have a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before finishing — orphaned background processes keep the GHA runner alive past your work and cause "job timed out" failures.
+- **No perpetual commands (`bounded-execution`).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops. Every command must have a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before finishing — orphaned background processes keep the GHA runner alive past your work and cause "job timed out" failures.
 
 ## What NOT to Modify
 

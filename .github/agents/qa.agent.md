@@ -72,7 +72,7 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
    - If no test infrastructure found, note this in your report.
 4. **Run the code. Reading diffs is not verification.**
    - Run the test suite and confirm it passes. Avoid watch-mode test flags (`--watch`, `--watchAll`, `jest --watch`) — use single-run invocations.
-   - For UI/frontend PRs: spin up the dev server, use a browser to verify, and **always reap the server before finishing** (A13: Rule Against Perpetuities):
+   - For UI/frontend PRs: spin up the dev server, use a browser to verify, and **always reap the server before finishing** (`bounded-execution`: Rule Against Perpetuities):
      ```bash
      # Example for a Streamlit app
      uv run streamlit run <app.py> &
@@ -134,4 +134,4 @@ gh pr review {pr} --request-changes --body "# QA Verification
 - **Be specific.** Show evidence for every claim.
 - **No false reassurance.** If you can't verify something, say so — don't assume it works.
 - **Silent on non-issues.** Focus your report on what matters.
-- **A13 (Rule Against Perpetuities).** No `--watch`, `tail -f`, or unbounded polling. Every command must have a runtime upper bound visible in the command itself. Reap any backgrounded process (dev server, etc.) with `kill` before you finish.
+- **`bounded-execution` (Rule Against Perpetuities).** No `--watch`, `tail -f`, or unbounded polling. Every command must have a runtime upper bound visible in the command itself. Reap any backgrounded process (dev server, etc.) with `kill` before you finish.

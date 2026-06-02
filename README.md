@@ -195,7 +195,7 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
 6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
 7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
-8. **Recusal — don't legislate from your own case** (AXIOMS § A17) — the agent that just experienced a failure is forensically authoritative but normatively recused from proposing the framework change motivated by it. Framework-change work is split in two:
+8. **Recusal — don't legislate from your own case** (AXIOMS § recusal) — the agent that just experienced a failure is forensically authoritative but normatively recused from proposing the framework change motivated by it. Framework-change work is split in two:
    - **Incident phase** (`/learn`, `/retro`): facts, root-cause category, the rule already in place at the time (if any), and an impact statement. **No "suggested axiom", no "add a gate", no remediation.** Recency exposure is bias; the report does not propose its own remedy.
    - **Review phase** (`/issue-sweep`): a separate, detached context reads incident reports against `specs/ENFORCEMENT-MAP.md` and the axiom set, and is the only phase allowed to author rule changes — defaulting to the cheapest sufficient level (L0/L1 propagation), escalating only when the cost-benefit threshold (≥3 cited recurrences) is satisfied.
 

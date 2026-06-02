@@ -11,7 +11,7 @@ Design decisions (see PKB note-b5347f83):
     launch, not here).
   - Missing required host var → loud FAILURE block but the hook still returns
     ALLOW (Q1: never hard-DENY — that would brick the very session needed to
-    fix the var). A8 "fail loud" is satisfied by the unmissable block.
+    fix the var). ``halt-on-failure`` "fail loud" is satisfied by the unmissable block.
   - OAuth tokens (CLAUDE_CODE_OAUTH_TOKEN / GEMINI_API_KEY) are HOLD-for-
     delegation on the host general-agent surface: they are NOT required for
     junior's own inference and are NOT persisted to CLAUDE_ENV_FILE. The

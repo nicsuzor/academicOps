@@ -76,13 +76,14 @@ class TestBuildDockerCmd:
         with patch("cli._is_remote_daemon", return_value=False):
             yield
 
-    def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None):
+    def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None, cfg=None):
         docker_cmd = _build_docker_cmd(
             cli_tool=cli_tool,
             work_dir=work_dir or Path("/tmp/worktree"),
             env=env or {},
             agent_cmd=agent_cmd or ["claude", "--dangerously-skip-permissions"],
             is_interactive=False,
+            cfg=cfg,
         )
         return docker_cmd.cmd
 
@@ -157,19 +158,33 @@ class TestBuildDockerCmd:
         assert not any("MY_SECRET" in a for a in env_args)
         assert not any("DATABASE_URL" in a for a in env_args)
 
-    def test_polecat_yaml_staged_for_container_hooks(self):
-        """Hooks resolve gate modes from the staged polecat.yaml, not env vars.
+    def test_polecat_yaml_not_staged_into_container(self, tmp_path):
+        """polecat.yaml is NEVER staged into the container.
 
-        The container receives AOPS_POLECAT_CONFIG pointing at the staged
-        copy of polecat.yaml; the previous *_GATE_MODE env-var forwarding
-        no longer exists.
+        The container reads no config file. The host resolves the config and
+        injects only the values the container needs as env vars — here, the
+        enabled-provider set (AOPS_ENABLED_PROVIDERS). The host's own
+        AOPS_POLECAT_CONFIG path must NOT leak inward.
         """
-        cmd = self._build()
+        from lib.polecat_config import load_polecat_config
+
+        p = tmp_path / "polecat.yaml"
+        p.write_text(
+            "session_defaults: {hooks_enabled: true, claude_model: m, antigravity_model: g, "
+            "debug: false, gates: {handover: warn, qa: warn, enforcer: warn, "
+            "hydration: off, ida: warn, enforcer_threshold: 50}}\n"
+            "crew_defaults: {}\nrun_defaults: {}\n"
+            "docker: {image: ghcr.io/nicsuzor/aops-crew}\n"
+            f"polecat_home: {tmp_path}\n"
+            "external_agents: {github: {enabled: true}, codex: {enabled: false}}\n"
+        )
+        cfg = load_polecat_config(p)
+
+        cmd = self._build(cfg=cfg)
         env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
-        assert any(a.startswith("AOPS_POLECAT_CONFIG=") for a in env_args)
-        # Legacy gate-mode env vars are no longer forwarded.
-        assert not any(a.startswith("ENFORCER_GATE_MODE=") for a in env_args)
-        assert not any(a.startswith("HYDRATION_GATE_MODE=") for a in env_args)
+        assert not any(a.startswith("AOPS_POLECAT_CONFIG=") for a in env_args)
+        # Only the ENABLED provider is forwarded (codex is disabled).
+        assert "AOPS_ENABLED_PROVIDERS=github" in env_args
 
     def test_forwards_aops_prefixed_env(self):
         """AOPS_* vars are forwarded (e.g. ACA_DATA, AOPS_SESSIONS)."""

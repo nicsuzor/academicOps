@@ -244,43 +244,87 @@ def check_skill_spec_coverage(root: Path, metrics: HealthMetrics) -> None:
             metrics.skills_without_specs.append(skill)
 
 
+def extract_axiom_slugs(axioms_path: Path) -> list[str]:
+    """Extract the canonical axiom slugs from AXIOMS.md heading anchors.
+
+    Each axiom is identified by the durable ``{#slug}`` anchor on its heading
+    (the canonical, position-independent identifier — see AXIOMS.md "Identity
+    scheme"). We parse heading lines only (``## ... {#slug}``) so that prose
+    mentions of the literal token ``{#slug}`` (e.g. the placeholder in the
+    Identity-scheme note) are NOT mistaken for axioms.
+
+    Raises:
+        ValueError: if AXIOMS.md contains no parseable heading anchors — a
+            structural break that MUST halt loudly rather than silently yield
+            an empty axiom set (A8 / judgment-non-delegable).
+    """
+    content = axioms_path.read_text()
+    # Anchor MUST sit on a markdown heading line (## ...), not in body prose.
+    heading_anchor = re.compile(r"^#{2,6}\s+.*\{#([a-z0-9][a-z0-9-]*)\}\s*$", re.MULTILINE)
+    slugs = [m.group(1) for m in heading_anchor.finditer(content)]
+    if not slugs:
+        raise ValueError(
+            f"No axiom heading anchors ({{#slug}}) found in {axioms_path}. "
+            "AXIOMS.md structure is missing or unparseable — refusing to "
+            "silently report zero axioms."
+        )
+    # Preserve document order, drop any accidental duplicate anchors.
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for slug in slugs:
+        if slug not in seen:
+            seen.add(slug)
+            ordered.append(slug)
+    return ordered
+
+
 def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
-    """Check if axioms and heuristics are mapped to enforcement in enforcement-map.md."""
-    axioms_path = root / "AXIOMS.md"
-    heuristics_path = root / "HEURISTICS.md"
-    rules_path = root / "indices/enforcement-map.md"
+    """Verify every axiom (by canonical slug) has enforcement-map coverage.
 
-    if not rules_path.exists():
-        return
+    The axiom SET is derived from the canonical identifier — the ``{#slug}``
+    heading anchors in ``.agents/rules/AXIOMS.md`` — NOT inferred from a prose
+    heading format. For each axiom slug we then do a deterministic
+    set-membership check: does that slug's identifier appear anywhere in
+    ``specs/ENFORCEMENT-MAP.md``? Any axiom slug with no coverage is reported.
 
-    rules_content = rules_path.read_text().lower()
+    Coverage counting is legitimate deterministic work and stays in code; the
+    prior brittle format-inference of the axiom set (regex over a stale prose
+    heading shape, which had silently drifted to counting zero) was the
+    judgment-non-delegable violation and is removed.
 
-    # Extract axiom numbers from AXIOMS.md
-    if axioms_path.exists():
-        axioms_content = axioms_path.read_text()
-        # Match patterns like "1. **..." or "#1" or "Axiom #1"
-        axiom_pattern = re.compile(r"^\d+\.\s+\*\*", re.MULTILINE)
-        axiom_count = len(axiom_pattern.findall(axioms_content))
+    If either source document is missing or structurally unparseable, this
+    HALTS loudly (raises) rather than silently passing — a dead check that
+    counts zero is worse than no check (A8 / no silent fallbacks).
+    """
+    axioms_path = root / ".agents" / "rules" / "AXIOMS.md"
+    enforcement_map_path = root / "specs" / "ENFORCEMENT-MAP.md"
 
-        for i in range(1, axiom_count + 1):
-            # Check if axiom is mentioned in enforcement-map.md
-            patterns = [f"a#{i}", f"axiom #{i}", f"axiom {i}", f"##{i}"]
-            if not any(p in rules_content for p in patterns):
-                # Also check for "axiom x" placeholder
-                if "axiom x" not in rules_content:
-                    metrics.axioms_without_enforcement.append(f"A#{i}")
+    if not axioms_path.exists():
+        raise FileNotFoundError(
+            f"AXIOMS.md not found at {axioms_path}; cannot derive the axiom "
+            "set. Enforcement-mapping check cannot run — halting loudly "
+            "rather than silently reporting full coverage."
+        )
+    if not enforcement_map_path.exists():
+        raise FileNotFoundError(
+            f"ENFORCEMENT-MAP.md not found at {enforcement_map_path}; nothing "
+            "to verify axiom coverage against. Halting loudly rather than "
+            "silently reporting full coverage."
+        )
 
-    # Extract heuristic numbers from HEURISTICS.md
-    if heuristics_path.exists():
-        heuristics_content = heuristics_path.read_text()
-        # Match patterns like "## H1:" or "## H23:"
-        heuristic_pattern = re.compile(r"^##\s+H(\d+):", re.MULTILINE)
-        heuristic_nums = [int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)]
+    axiom_slugs = extract_axiom_slugs(axioms_path)
 
-        for h in heuristic_nums:
-            patterns = [f"h#{h}", f"h{h}", f"heuristic #{h}", f"heuristic {h}"]
-            if not any(p in rules_content for p in patterns):
-                metrics.heuristics_without_enforcement.append(f"H#{h}")
+    # Coverage source: the enforcement map's text. We match on the canonical
+    # slug token (case-insensitive, whole-token) — robust to the map's
+    # in-progress slug migration. A slug is "covered" iff its identifier
+    # appears as a word-bounded token somewhere in the map.
+    map_content = enforcement_map_path.read_text().lower()
+
+    for slug in axiom_slugs:
+        # Word-bounded match so e.g. "closure" matches but a substring of a
+        # longer unrelated token does not. Slugs are hyphenated lowercase.
+        if not re.search(rf"(?<![a-z0-9-]){re.escape(slug)}(?![a-z0-9-])", map_content):
+            metrics.axioms_without_enforcement.append(slug)
 
 
 def normalize_wikilink_target(

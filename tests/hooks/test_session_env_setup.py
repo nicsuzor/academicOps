@@ -174,6 +174,10 @@ class TestSessionEnvSetup:
             "PKB_MCP_URL": "http://services:8026/mcp",
             "AOPS_BOT_GH_TOKEN": "ghp_present",
             "GITHUB_ACTIONS": "",
+            # Resolved provider set is injected as env (host/container contract);
+            # empty ⇒ no external agents, so session_naming uses builtins only and
+            # never reaches for the (absent, sandboxed) polecat.yaml.
+            "AOPS_ENABLED_PROVIDERS": "",
         }
         ctx = HookContext(
             session_id="test-session-prov",
@@ -235,6 +239,7 @@ class TestSessionEnvSetup:
                     "CLAUDE_ENV_FILE": str(env_file),
                     "PYTHONPATH": "",
                     "GITHUB_ACTIONS": "true",
+                    "AOPS_ENABLED_PROVIDERS": "",
                 },
                 clear=True,
             ),

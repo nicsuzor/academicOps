@@ -261,19 +261,19 @@ Severity is the SRE-style impact ladder for `type: target` nodes — the termina
 
 ## Status Values and Transitions
 
-| Status        | Meaning                                                                          |
-| ------------- | -------------------------------------------------------------------------------- |
-| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness  |
-| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                     |
-| `queued`      | User has manually marked this task available for agent dispatch                  |
-| `in_progress` | Claimed by an agent or human — actively being worked                             |
-| `merge_ready` | Work complete and committed, waiting for review/merge                            |
-| `review`      | Awaiting human review — either mid-flight attention or post-PR changes requested |
-| `done`        | Complete — no further action required                                            |
-| `blocked`     | Waiting on an external dependency that cannot be resolved internally             |
-| `paused`      | Intentionally stopped with intent to resume — work was in-flight but deferred    |
-| `someday`     | Parked idea — may never be worked; differs from `inbox` by explicit deferral     |
-| `cancelled`   | Will not be done — decision made to drop                                         |
+| Status        | Meaning                                                                         |
+| ------------- | ------------------------------------------------------------------------------- |
+| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness |
+| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                    |
+| `queued`      | User has manually marked this task available for agent dispatch                 |
+| `in_progress` | Claimed by an agent or human — actively being worked                            |
+| `merge_ready` | Under review — PR open, awaiting CI, review, or iteration. Iterative state.     |
+| `review`      | Mid-flight human block — requires judgment/direction before work can proceed    |
+| `done`        | Complete — no further action required                                           |
+| `blocked`     | Waiting on an external dependency that cannot be resolved internally            |
+| `paused`      | Intentionally stopped with intent to resume — work was in-flight but deferred   |
+| `someday`     | Parked idea — may never be worked; differs from `inbox` by explicit deferral    |
+| `cancelled`   | Will not be done — decision made to drop                                        |
 
 **Default is `inbox`**: Every new node starts as `inbox` regardless of how it was created.
 

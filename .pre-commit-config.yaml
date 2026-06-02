@@ -106,7 +106,7 @@ repos:
         pass_filenames: false
         files: '\.md$'
 
-      # A8 / P#8 — block silent fallback patterns: empty .get/or fallbacks in
+      # halt-on-failure / P#8 — block silent fallback patterns: empty .get/or fallbacks in
       # hook code, env-var literal defaults in Python, ${VAR:-literal} in
       # shell, and KEY:=literal in agent-env-map.conf. Issue #930 demonstrated
       # how a single literal default in agent-env-map.conf leaked the
@@ -116,7 +116,7 @@ repos:
       # env-map, the cron). Install/setup scripts are excluded — defaults
       # there are part of the bootstrap UX, not silent runtime fallbacks.
       - id: check-no-fallbacks
-        name: no silent fallbacks (A8)
+        name: no silent fallbacks (halt-on-failure)
         entry: uv run python scripts/check_no_fallbacks.py
         language: system
         pass_filenames: true

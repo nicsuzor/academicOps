@@ -42,7 +42,7 @@ def write_polecat_test_config(
         "session_defaults": {
             "hooks_enabled": True,
             "claude_model": "claude-sonnet-4-6",
-            "gemini_model": "gemini-2.5-pro",
+            "antigravity_model": "agy",
             "debug": False,
             "gates": {
                 "handover": "warn",
@@ -58,6 +58,8 @@ def write_polecat_test_config(
         "docker": {"image": "ghcr.io/nicsuzor/aops-crew"},
         "external_agents": {},
         "projects": projects_block,
+        # Required key: points at the per-machine home where local.yaml lives.
+        "polecat_home": str(home_dir),
     }
     if crew_names:
         registry["crew_names"] = crew_names

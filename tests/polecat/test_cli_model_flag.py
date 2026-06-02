@@ -38,16 +38,22 @@ class TestResolveModelFlagAliases:
         assert model is None
 
     def test_none_with_explicit_default_client(self):
-        client, model = _resolve_model_flag(None, default_client="gemini")
-        assert client == "gemini"
+        client, model = _resolve_model_flag(None, default_client="antigravity")
+        assert client == "antigravity"
         assert model is None
 
-    def test_gemini_alias_selects_gemini_client_no_override(self):
-        # --model gemini → switch client to gemini, use polecat.yaml gemini_model.
+    def test_antigravity_alias_selects_antigravity_client_no_override(self):
+        # --model antigravity → switch client to antigravity, use polecat.yaml antigravity_model.
         # This is the canonical CORE.md form.
-        client, model = _resolve_model_flag("gemini")
-        assert client == "gemini"
-        assert model is None  # no override — defer to session_defaults.gemini_model
+        client, model = _resolve_model_flag("antigravity")
+        assert client == "antigravity"
+        assert model is None  # no override — defer to session_defaults.antigravity_model
+
+    def test_agy_alias_selects_antigravity_client_no_override(self):
+        # --model agy is a short alias for antigravity
+        client, model = _resolve_model_flag("agy")
+        assert client == "antigravity"
+        assert model is None
 
     def test_claude_alias_selects_claude_client_no_override(self):
         client, model = _resolve_model_flag("claude")
@@ -56,8 +62,8 @@ class TestResolveModelFlagAliases:
 
     def test_alias_is_case_insensitive(self):
         # Users type whatever — accept both.
-        client, model = _resolve_model_flag("Gemini")
-        assert client == "gemini"
+        client, model = _resolve_model_flag("Antigravity")
+        assert client == "antigravity"
         client, model = _resolve_model_flag("CLAUDE")
         assert client == "claude"
 
@@ -88,8 +94,8 @@ class TestResolveModelFlagLiteralIds:
             ("opus-4-7", "claude"),  # post-rebrand short form
             ("sonnet-4-6", "claude"),
             ("haiku-4-5", "claude"),
-            ("gemini-2.5-pro", "gemini"),
-            ("gemini-1.5-flash", "gemini"),
+            ("antigravity-1.0", "antigravity"),
+            ("agy-2.0-pro", "antigravity"),
         ],
     )
     def test_literal_id_infers_client_from_prefix(self, literal_id, expected_client):
@@ -107,7 +113,7 @@ class TestResolveModelFlagErrors:
         msg = str(exc.value)
         assert "non-empty" in msg
         assert "claude" in msg  # available aliases mentioned
-        assert "gemini" in msg
+        assert "antigravity" in msg
 
     def test_whitespace_only_rejected(self):
         with pytest.raises(click.UsageError):
@@ -123,7 +129,7 @@ class TestResolveModelFlagErrors:
             _resolve_model_flag("turbo")
         msg = str(exc.value)
         assert "claude" in msg
-        assert "gemini" in msg
+        assert "antigravity" in msg
         # The error message should name the literal-id prefix convention so
         # the caller knows how to recover.
         assert "claude-" in msg or "opus-" in msg
@@ -139,7 +145,7 @@ class TestResolveModelFlagErrors:
     def test_model_in_interactive_shell_rejected(self):
         # ``polecat crew -i`` drops into bash — no agent CLI to bind a model to.
         with pytest.raises(click.UsageError) as exc:
-            _resolve_model_flag("gemini", interactive_shell=True)
+            _resolve_model_flag("antigravity", interactive_shell=True)
         assert "interactive" in str(exc.value).lower()
 
     def test_model_none_in_interactive_shell_is_fine(self):
@@ -179,10 +185,10 @@ class TestCLISurfaceLegacyFlagRemoved:
         result = runner.invoke(main, ["run", "--help"])
         assert result.exit_code == 0
         # The help text must call out the alias-resolution semantics so a
-        # caller reading --help understands what 'claude'/'gemini' do.
+        # caller reading --help understands what 'claude'/'antigravity' do.
         assert "polecat.yaml" in result.output
         assert "claude" in result.output
-        assert "gemini" in result.output
+        assert "antigravity" in result.output
 
     def test_run_rejects_old_gemini_flag(self):
         # Belt and braces: even though the option is gone, this asserts the
