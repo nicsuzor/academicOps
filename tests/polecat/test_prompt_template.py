@@ -173,3 +173,25 @@ def test_finish_section_reminds_re_reading_task_body_for_mandatory_gates():
     assert "mandatory" in prompt.lower()
     # It must reference #583 so the rationale is auditable.
     assert "#583" in prompt
+
+
+def test_prompt_contains_halt_on_unsatisfiable_checkpoint():
+    """Worker prompt must instruct halt-as-blocked on an unsatisfiable AC.
+
+    Regression for the worker-discipline gap behind #1392 / #1305 / #1286:
+    when an AC cannot be satisfied as written (no runtime access, an
+    out-of-scope config change, or a method the worker can't run), the worker
+    must release `blocked` rather than substitute an easier adjacent action
+    and self-justify under streetlight pressure. The mitigation is an explicit
+    Step 2A checkpoint that grounds the rule in axioms A6b and A8 and names the
+    three concrete failure tells.
+    """
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    # It must ground the rule in the governing axioms rather than restate them.
+    assert "A6b" in prompt
+    assert "A8" in prompt
+    # It must direct the worker to release as blocked, not proceed.
+    assert 'status="blocked"' in prompt
+    # The three source incidents must be auditable from the prompt.
+    for issue in ("#1392", "#1305", "#1286"):
+        assert issue in prompt
