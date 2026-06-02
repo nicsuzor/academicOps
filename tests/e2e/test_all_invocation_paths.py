@@ -1,6 +1,7 @@
-"""E2E tests for ALL invocation paths: crew and run, Claude and Gemini.
+"""E2E tests for ALL invocation paths: crew and run (Claude).
 
-Parameterized over 4 combinations: (crew, run) × (claude, gemini).
+Parameterized over (crew, run) on the Claude backend. (Gemini variants were
+dropped — gemini is being sunset.)
 Each test exercises the FULL path from CLI entry point through Docker/sandbox
 to LLM response, proving:
 - Agent responds and produces output
@@ -29,9 +30,7 @@ import pytest
 
 from tests.conftest import (
     _docker_available,
-    _gemini_cli_available,
     build_claude_agent_cmd,
-    build_gemini_agent_cmd,
     get_repo_root,
 )
 from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
@@ -39,10 +38,6 @@ from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
 TEST_FIXTURE_TASK_ID = "e2e-test-fixture"
-
-# Fast/cheap Gemini model for E2E tests. Update here when the recommended
-# Flash model changes; the CLI accepts any "gemini-*" literal as a model id.
-_GEMINI_TEST_MODEL = "gemini-2.5-flash"
 
 # Mega-prompt for crew paths (passed directly via -p).
 # Must match the task body for run paths so assertions work on both.
@@ -254,7 +249,7 @@ def _reset_fixture_task():
 class TestAllInvocationPaths:
     """Full CLI-to-response tests across all 4 invocation paths.
 
-    Parameterized: (crew, run) x (claude, gemini). Each param runs one LLM
+    Parameterized: (crew, run) on the Claude backend. Each param runs one LLM
     call; all test methods parse the same output.
     """
 
@@ -262,9 +257,7 @@ class TestAllInvocationPaths:
         scope="class",
         params=[
             "crew-claude",
-            "crew-gemini",
             "run-claude",
-            "run-gemini",
         ],
     )
     def session(self, request, tmp_path_factory):
@@ -275,26 +268,12 @@ class TestAllInvocationPaths:
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
 
-        if backend == "gemini" and not _gemini_cli_available():
-            pytest.skip("Gemini CLI not found in PATH")
-
         tmp_path = tmp_path_factory.mktemp(f"invocation-{param}")
 
         if path_type == "crew":
             result = self._run_crew(tmp_path, backend)
         else:
             result = self._run_polecat(tmp_path, backend)
-
-        # Skip Gemini paths when Google's API has rate-limited us. The CLI
-        # exits cleanly with QUOTA_EXHAUSTED on stderr; without this guard
-        # all downstream assertions fail with no signal that the cause was
-        # external quota, not a code regression.
-        if backend == "gemini":
-            stderr = result.get("stderr", "")
-            combined = result.get("combined", "")
-            for needle in ("QUOTA_EXHAUSTED", "TerminalQuotaError", "exhausted your capacity"):
-                if needle in stderr or needle in combined:
-                    pytest.skip(f"Gemini API quota exhausted ({needle}) — retry after reset")
 
         return result
 
@@ -307,15 +286,11 @@ class TestAllInvocationPaths:
     def _is_session_file(f: Path) -> bool:
         """Return True if the file looks like a session transcript.
 
-        Three concrete shapes (all line-delimited or single JSON):
+        Concrete shapes (all line-delimited or single JSON):
         - Claude transcript: ``<uuid>.jsonl`` written under the agent's
           ``$CLAUDE_CONFIG_DIR/projects/...`` and exfiltrated under
           ``$AOPS_SESSIONS/{crew,polecats}/.../<uuid>.jsonl``. NOT under a
           ``chats/`` directory.
-        - Gemini chat: ``chats/session-*.jsonl`` written by gemini-cli into
-          ``$GEMINI_CLI_HOME/.gemini/tmp/<projectHash>/chats/`` and bind-
-          mounted out under ``$AOPS_SESSIONS/.../workspace/chats/``. This is
-          where the actual conversation + tool calls live.
         - Per-session aops wrapper (``*-{backend}-session.json``) is metadata
           only — gate state, hooks log path — and is NOT treated as a
           transcript.
@@ -326,9 +301,6 @@ class TestAllInvocationPaths:
             return False
         if f.suffix != ".jsonl":
             return False
-        # Gemini chat: chats/session-*.jsonl
-        if f.parent.name == "chats" and f.name.startswith("session-"):
-            return True
         # Claude transcript: any *.jsonl outside chats/ that isn't a hook log
         if f.parent.name != "chats":
             return True
@@ -352,9 +324,9 @@ class TestAllInvocationPaths:
                 hook log filename is the fixed SSoT placeholder
                 ``polecat-session-hooks.jsonl`` (set via AOPS_HOOK_LOG_PATH in
                 polecat/cli.py) and no longer embeds the crew name.
-            backend: "claude" or "gemini". When set, filters session files by
-                location (claude lives at the top of the per-session dir;
-                gemini lives one level deeper under ``chats/``).
+            backend: "claude". When set, filters session files by location
+                (claude lives at the top of the per-session dir, not under
+                ``chats/``).
             session_dir: Required for race-free discovery. Polecat writes the
                 test agent's artefacts under ``$AOPS_SESSIONS/{crew,polecats}/
                 {name_or_task}/{project}/`` — passing this dir scopes the
@@ -400,10 +372,10 @@ class TestAllInvocationPaths:
         hook_file = hook_files[-1] if hook_files else None
         if hook_file:
             raw = hook_file.read_text()
-            # run-claude and run-gemini share the same session dir (same task+project),
-            # so they may append to the same hook log. Filter entries by client_type so
-            # each backend only sees its own hooks.
-            if backend in ("claude", "gemini"):
+            # Multiple runs could share the same session dir (same
+            # task+project) and append to one hook log. Filter entries by
+            # client_type so each backend only sees its own hooks.
+            if backend:
                 filtered_lines = []
                 for line in raw.splitlines():
                     try:
@@ -436,18 +408,10 @@ class TestAllInvocationPaths:
         if started_after:
             session_files = [f for f in session_files if f.stat().st_mtime >= started_after]
 
-        # Filter by expected file location for the backend to prevent cross-
-        # backend contamination when Claude and Gemini sessions sit side by
-        # side under $AOPS_SESSIONS. Claude lives at the top of the per-session
-        # dir; Gemini lives one level deeper under chats/.
+        # Filter by expected file location for the backend. Claude lives at
+        # the top of the per-session dir (not under chats/).
         if backend == "claude":
             session_files = [f for f in session_files if f.parent.name != "chats"]
-        elif backend == "gemini":
-            session_files = [
-                f
-                for f in session_files
-                if f.parent.name == "chats" and f.name.startswith("session-")
-            ]
 
         session_files = sorted(session_files, key=os.path.getmtime)
         session_file = session_files[-1] if session_files else None
@@ -457,7 +421,7 @@ class TestAllInvocationPaths:
     def _run_crew(self, tmp_path, backend, timeout=None):
         """Run pc crew repo <path> -- -p <mega-prompt>."""
         if timeout is None:
-            timeout = 600 if backend == "gemini" else 300
+            timeout = 300
 
         repo = get_repo_root()
         crew_name = f"test-{backend}"
@@ -481,14 +445,9 @@ class TestAllInvocationPaths:
             "-n",
             crew_name,
         ]
-        if backend == "gemini":
-            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         cmd.append("--")
-        if backend == "gemini":
-            cmd.extend(build_gemini_agent_cmd(prompt, include_binary=False))
-        else:
-            cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
+        cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -562,7 +521,7 @@ class TestAllInvocationPaths:
     def _run_polecat(self, tmp_path, backend, timeout=None):
         """Run pc run -t <task_id> for the given backend."""
         if timeout is None:
-            timeout = 600 if backend == "gemini" else 300
+            timeout = 300
         if not _check_fixture_task():
             pytest.skip(
                 f"Test fixture task '{TEST_FIXTURE_TASK_ID}' not found in PKB "
@@ -589,8 +548,6 @@ class TestAllInvocationPaths:
             TEST_FIXTURE_TASK_ID,
             "--no-auto-finish",
         ]
-        if backend == "gemini":
-            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -938,24 +895,18 @@ class TestAllInvocationPaths:
 
         import json
 
-        # Handle both Claude JSONL (one entry per line) and Gemini JSON (single object)
-        if session_file.suffix == ".json":
-            # Gemini: {"messages": [{"type": "user"|"gemini", ...}]}
-            data = json.loads(session_file.read_text())
-            entries = data.get("messages", [])
-        else:
-            # Claude: one JSON object per line
-            entries = []
-            with session_file.open() as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        entries.append(json.loads(line))
+        # Claude: one JSON object per line (JSONL).
+        entries = []
+        with session_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    entries.append(json.loads(line))
 
         assert len(entries) > 0, "Session file has no entries"
         types = {e.get("type") for e in entries}
         assert "user" in types or "human" in types, f"No user message. Types: {types}"
-        assert "assistant" in types or "model" in types or "gemini" in types, (
+        assert "assistant" in types or "model" in types, (
             f"No assistant/model message. Types: {types}"
         )
 
@@ -971,7 +922,7 @@ class TestAllInvocationPaths:
 
 
 # ---------------------------------------------------------------------------
-# PKB write-back regression tests (run-claude × run-gemini)
+# PKB write-back regression tests (run-claude)
 # ---------------------------------------------------------------------------
 
 TERMINAL_STATUSES: frozenset[str] = frozenset({"done", "merge_ready", "blocked", "cancelled"})
@@ -1040,23 +991,23 @@ def _resolve_scratch_parent(project: str) -> str:
 @pytest.mark.integration
 @pytest.mark.xdist_group("pkb-persistence")
 class TestPkbPersistence:
-    """Regression tests: PKB MCP write-back works for run-claude and run-gemini.
+    """Regression tests: PKB MCP write-back works for run-claude.
 
-    Parameterized over (run-claude, run-gemini) — the two backends where a
-    polecat worker must call release_task to persist its result. crew-* paths
-    have no PKB task to close and are out of scope.
+    Parameterized over (run-claude) — the run path where a polecat worker must
+    call release_task to persist its result. crew-* paths have no PKB task to
+    close and are out of scope.
 
     Catches regressions where the agent's PKB MCP server is misconfigured and
     release_task silently fails — e.g., the 2026-04-28 incident (PR #784) where
-    gemini-extension.json was missing PKB_MCP_URL in the pkb MCP server env
-    block, leaving every Gemini polecat with zero PKB tools.
+    an extension config was missing PKB_MCP_URL in the pkb MCP server env
+    block, leaving the polecat with zero PKB tools.
 
     Gated: POLECAT_E2E=1, Docker + aops-crew image, PKB MCP reachable.
     """
 
     @pytest.fixture(
         scope="class",
-        params=["run-claude", "run-gemini"],
+        params=["run-claude"],
     )
     def pkb_run(self, request, tmp_path_factory):
         """Create a fresh PKB spike task, run polecat against it, yield result info."""
@@ -1064,12 +1015,8 @@ class TestPkbPersistence:
 
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
-        if backend == "gemini" and not _gemini_cli_available():
-            pytest.skip("Gemini CLI not found in PATH")
         if not _pkb_available():
             pytest.skip("PKB MCP server unreachable")
-        if os.environ.get("POLECAT_E2E") != "1":
-            pytest.skip("E2E test — opt in with POLECAT_E2E=1")
 
         project = _require_e2e_project()
         from polecat.pkb_bridge import _get_client  # type: ignore
@@ -1089,7 +1036,9 @@ class TestPkbPersistence:
                     "tags": ["test", "e2e", "pkb-persistence"],
                     "project": project,
                     "status": "ready",
-                    "type": "spike",
+                    # type defaults to "task"; "spike" is no longer a valid
+                    # PKB task type (server rejects with -32603 Invalid task
+                    # type), so omit it rather than pin a stale enum value.
                 },
             )
             assert create_result is not None, "PKB create_task returned None"
@@ -1113,8 +1062,6 @@ class TestPkbPersistence:
                 ]
             else:
                 cmd = [polecat_bin, "run", "-t", task_id, "-p", project]
-            if backend == "gemini":
-                cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
             proc = subprocess.Popen(
                 cmd,
