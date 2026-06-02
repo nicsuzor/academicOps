@@ -605,15 +605,25 @@ def reset_terminal_title() -> None:
 def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
     """Find the real Claude Code session transcript under the run session dir.
 
-    Globs ``<run_session_dir>/-workspace/*.jsonl`` and returns the newest by
-    mtime, or ``None`` if nothing is found.
+    The transcript lands at a daemon-dependent depth:
+
+    * Remote daemon (docker cp): the session dir is copied back with the
+      container's ``.claude/projects/-workspace/`` segment intact, so the
+      Claude ``<uuid>.jsonl`` lands at ``<run_session_dir>/-workspace/*.jsonl``.
+    * Local daemon (bind mount): ``run_session_dir`` itself is bind-mounted
+      straight onto the container's ``.claude/projects/-workspace``, so the
+      ``<uuid>.jsonl`` lands FLAT in ``<run_session_dir>/*.jsonl`` — there is
+      no ``-workspace`` segment.
+
+    We accept either layout by globbing recursively, excluding polecat's own
+    ``polecat-session-*.jsonl`` stub/hooks logs (which are also ``.jsonl``).
+    Returns the newest match by mtime, or ``None`` if nothing is found.
     """
-    if run_session_dir is None:
+    if run_session_dir is None or not run_session_dir.is_dir():
         return None
-    workspace = run_session_dir / "-workspace"
-    if not workspace.is_dir():
-        return None
-    jsonls = list(workspace.glob("*.jsonl"))
+    jsonls = [
+        p for p in run_session_dir.rglob("*.jsonl") if not p.name.startswith("polecat-session")
+    ]
     if not jsonls:
         return None
     return max(jsonls, key=lambda p: p.stat().st_mtime)
