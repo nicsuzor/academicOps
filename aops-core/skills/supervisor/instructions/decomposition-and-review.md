@@ -66,16 +66,16 @@ If any check fails, fix the hierarchy BEFORE proceeding with decomposition.
 
 **Post-Decomposition Self-Check Gate** (run AFTER creating subtasks, BEFORE finalizing):
 
-| Check                | How to detect                                                     | Fix                                                      |
-| -------------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| Decision has prep    | Decision task has no upstream data-gathering dependency           | Create prep task, add to `depends_on`                    |
-| Execution is gated   | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on`                        |
-| Writing has data     | Writing task depends on analysis results not yet complete         | Add analysis task to `depends_on`                        |
-| Academic methodology | Academic output has no justification/validation/audit tasks       | Add methodology layer tasks (see [[decompose]] workflow) |
-| No parallel tracking | Parent body contains `- [ ]` items that duplicate subtask titles  | Remove body checklists; replace with "See subtasks"      |
-| A8 prose scan        | Subtask body / planned summary contains workaround framing        | Rewrite to a code-fix decomposition before posting       |
+| Check                        | How to detect                                                     | Fix                                                      |
+| ---------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Decision has prep            | Decision task has no upstream data-gathering dependency           | Create prep task, add to `depends_on`                    |
+| Execution is gated           | Execution task is unconditional but depends on a decision outcome | Add decision task to `depends_on`                        |
+| Writing has data             | Writing task depends on analysis results not yet complete         | Add analysis task to `depends_on`                        |
+| Academic methodology         | Academic output has no justification/validation/audit tasks       | Add methodology layer tasks (see [[decompose]] workflow) |
+| No parallel tracking         | Parent body contains `- [ ]` items that duplicate subtask titles  | Remove body checklists; replace with "See subtasks"      |
+| `halt-on-failure` prose scan | Subtask body / planned summary contains workaround framing        | Rewrite to a code-fix decomposition before posting       |
 
-**A8 prose scan (MANDATORY before posting any decomposition)**
+**`halt-on-failure` prose scan (MANDATORY before posting any decomposition)**
 
 Search every subtask body and the planned plan-review summary for the
 surface signatures of workaround framing. If any of the following appears
@@ -83,7 +83,7 @@ in a draft, **rewrite before posting** — do not post and "note it"; do
 not post and ask the user to choose; rewrite to a fix-only decomposition.
 
 Prohibited phrase patterns (verbatim list — see SKILL.md "Engineering
-Integrity (A8) Is Non-Negotiable" for the canonical copy):
+Integrity (`halt-on-failure`) Is Non-Negotiable" for the canonical copy):
 
 - `drift candidate`, `drift gate`, `drift framing` (in the relax-the-test sense)
 - `skip on <host>`, `host-conditional`, `skip-on-env`, `xfail on <env>`
@@ -260,9 +260,9 @@ the **human approval record** — no separate marker, no extra metadata.
 status transition `review → queued` performed by the human **is** the
 approval record. Do not invent parallel approval tracking.
 
-### Permitted vs prohibited halt content (A8)
+### Permitted vs prohibited halt content (`halt-on-failure`)
 
-Before emitting the user-facing summary, run the A8 prose scan defined in
+Before emitting the user-facing summary, run the `halt-on-failure` prose scan defined in
 the Post-Decomposition Self-Check Gate against the _summary text itself_.
 
 **Permitted in the user-facing summary**:
@@ -281,13 +281,13 @@ the Post-Decomposition Self-Check Gate against the _summary text itself_.
 - Fix-vs-skip / fix-vs-xfail / fix-vs-allowlist menus
 - "Test may be wrong" framings absent independent evidence the test is
   not actually testing what it claims to
-- Soliciting user authorisation for an A8-prohibited path ("are you happy
+- Soliciting user authorisation for a `halt-on-failure`-prohibited path ("are you happy
   with X or do you want a workaround?")
 
 **Permitted halt template** — use this exact shape:
 
 ```
-A8 halt: <test name / failure>. Investigation produced <finding>. Two options:
+halt-on-failure halt: <test name / failure>. Investigation produced <finding>. Two options:
   1. Fix <code path> at <file:line> by <change>. (chosen)
   2. <alternative implementation, also fixing the failure>
 Test stays as written. Filing as <subtask id>.

@@ -326,7 +326,7 @@ def main():
     # 2. Generate Remediation Backlog — one-shot bootstrapper only.
     # The backlog is hand-edited after the initial run; regenerating it unconditionally
     # would silently overwrite manual tracking (in-progress, done, blocked) and
-    # guarantee drift from the dynamic compliance matrix (A5 violation).
+    # guarantee drift from the dynamic compliance matrix (`single-source-of-truth` violation).
     if REMEDIATION_FILE.exists():
         print(
             f"Skipping {REMEDIATION_FILE} — file already exists. Edit manually or delete to regenerate."

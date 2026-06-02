@@ -129,4 +129,4 @@ Your job with briefed constraints is to **surface ambiguity for the human**, not
 - Record redundant information without merging or citing existing memory.
 - Let the system descend into implementation details without a coherent strategy.
 - Review an artifact without first loading the relevant PKB context.
-- Do not perform investigation (reading source files, running Bash, synthesising findings) when asked to plan work. Instead, frame the question, name sources, write the brief, and exit. See [Investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-a17).
+- Do not perform investigation (reading source files, running Bash, synthesising findings) when asked to plan work. Instead, frame the question, name sources, write the brief, and exit. See [Investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-recusal).

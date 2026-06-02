@@ -118,9 +118,9 @@ You are trusted to find what matters. Read the transcript. Find what's worth fix
 - **Pattern recognition**: Before filing issues, look for patterns across your findings. Are these discrete bugs, or symptoms of a single misaligned rule?
 - **Instruction-quality failures**: When an agent underperformed — missed something visible in the logs, declared success prematurely, or optimised for the shallowest valid interpretation — ask whether the instruction itself was the root cause. Classify as root cause category "Instruction Gap" and note which of the seven /craft defects apply (compliance framing, missing artifact chain, no adversarial checks, summary-as-evidence, undefined boundary behavior, skimping on verification, no negative verification). The fix is an instruction rewrite via /craft audit, not an agent behavior change.
 
-### 3b. Forensic scope (A17 Recusal)
+### 3b. Forensic scope (`recusal`)
 
-**The retro is a forensic instrument. It does not legislate.** Per AXIOMS.md § A17, the agent that just read the transcript is normatively recused from proposing framework change motivated by that transcript. Cross-incident judgment about adding/escalating/propagating rules happens in the detached `sweep` mode (a separate context, no prior exposure to this incident).
+**The retro is a forensic instrument. It does not legislate.** Per AXIOMS.md § recusal, the agent that just read the transcript is normatively recused from proposing framework change motivated by that transcript. Cross-incident judgment about adding/escalating/propagating rules happens in the detached `sweep` mode (a separate context, no prior exposure to this incident).
 
 However, **what counts as forensic includes structural articulation.** You may articulate structural shape factually (e.g., "design X is impossible because Y", "the rule forces the agent into an impossible loop"). You may flag: "this looks structural; sweep should ask whether the rule shape is right, not just whether the rule fired".
 
@@ -198,7 +198,7 @@ gh issue create --repo nicsuzor/academicOps \
   --label "bug" --label "criticality:<level>"
 ```
 
-**New issue body: forensic fields only, no narrative preamble. Lead with the failure; stop at impact.** Factual structural articulation is allowed; no remediation proposals (A17 Recusal):
+**New issue body: forensic fields only, no narrative preamble. Lead with the failure; stop at impact.** Factual structural articulation is allowed; no remediation proposals (`recusal`):
 
 Provide a clear, unstructured incident report containing:
 
@@ -208,7 +208,7 @@ Provide a clear, unstructured incident report containing:
 
 Do NOT propose what should change — only document what existed at the time of the incident and the structural realities of why it failed.
 
-Issues that include a "suggested axiom," "proposed gate," or any remediation are out-of-scope under A17 and will be edited down to the forensic core by the sweep agent. Volume bumps on existing issues (`gh issue comment`) follow the same discipline — facts and impact only.
+Issues that include a "suggested axiom," "proposed gate," or any remediation are out-of-scope under `recusal` and will be edited down to the forensic core by the sweep agent. Volume bumps on existing issues (`gh issue comment`) follow the same discipline — facts and impact only.
 
 **Why this discipline:** the sweep agent (or a strategic review) reads many incident reports against the enforcement map and the axiom set, and decides what to add, propagate, escalate, or leave alone. That cross-incident judgment is undermined when each incident report ships pre-packaged with the legislation its author thought it implied. The detached reviewer needs facts; the framework needs coherence; the recused incident agent provides one and protects the other by withholding the second.
 
@@ -239,22 +239,22 @@ Append (do not replace) if `reviewed_by` already exists.
 
 ### Retro anti-patterns
 
-| Anti-pattern                                                                               | What to do instead                                                                                 |
-| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Skimming                                                                                   | Read every line                                                                                    |
-| "Overall good with minor issues"                                                           | Quote specifically                                                                                 |
-| Filing four separate issues for symptoms of one structural flaw (where one edit fixes all) | Identify the structural flaw and file one issue mapping the symptoms back to it                    |
-| Bundling N distinct fixable causes into one issue because they share a meta-class          | File one issue per cause; cross-link each child to the meta-class parent (or anchor) via `Refs #N` |
-| Inventing praise                                                                           | Only genuine strengths                                                                             |
-| Reviewing your own session                                                                 | Review a DIFFERENT session                                                                         |
-| Filing > 3 issues per session                                                              | Triage first; group structural causes; cap at 3 issues                                             |
-| New issue for known pattern                                                                | Comment on existing issue                                                                          |
-| Restating background or title in a bump comment                                            | Post only the new delta: date, new incident facts, new impact angle. Reader already read the issue |
-| Verbose bump comment with narrative setup or recap                                         | One short paragraph max — lead with what happened this time; stop there                            |
-| Verbose new issue body with narrative preamble or framing                                  | Lead with the failure facts; no throat-clearing; no framing preamble                               |
-| Including "suggested axiom", "add a gate", or any remediation proposal in the report (A17) | Stop at facts + structural-context + impact. The sweep agent legislates from a detached context    |
-| "We should change Y because I just hit X"                                                  | The agent that hit X is recused (A17). Surface the incident; leave the change proposal to sweep    |
-| Citing a single session as justification for a new mechanism                               | Recurrence is the evidence base for framework change, not the salience of one transcript           |
+| Anti-pattern                                                                                     | What to do instead                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Skimming                                                                                         | Read every line                                                                                       |
+| "Overall good with minor issues"                                                                 | Quote specifically                                                                                    |
+| Filing four separate issues for symptoms of one structural flaw (where one edit fixes all)       | Identify the structural flaw and file one issue mapping the symptoms back to it                       |
+| Bundling N distinct fixable causes into one issue because they share a meta-class                | File one issue per cause; cross-link each child to the meta-class parent (or anchor) via `Refs #N`    |
+| Inventing praise                                                                                 | Only genuine strengths                                                                                |
+| Reviewing your own session                                                                       | Review a DIFFERENT session                                                                            |
+| Filing > 3 issues per session                                                                    | Triage first; group structural causes; cap at 3 issues                                                |
+| New issue for known pattern                                                                      | Comment on existing issue                                                                             |
+| Restating background or title in a bump comment                                                  | Post only the new delta: date, new incident facts, new impact angle. Reader already read the issue    |
+| Verbose bump comment with narrative setup or recap                                               | One short paragraph max — lead with what happened this time; stop there                               |
+| Verbose new issue body with narrative preamble or framing                                        | Lead with the failure facts; no throat-clearing; no framing preamble                                  |
+| Including "suggested axiom", "add a gate", or any remediation proposal in the report (`recusal`) | Stop at facts + structural-context + impact. The sweep agent legislates from a detached context       |
+| "We should change Y because I just hit X"                                                        | The agent that hit X is recused (`recusal`). Surface the incident; leave the change proposal to sweep |
+| Citing a single session as justification for a new mechanism                                     | Recurrence is the evidence base for framework change, not the salience of one transcript              |
 
 ---
 
@@ -367,7 +367,7 @@ mkdir -p ~/.aops/sessions/reviews
 
 **Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, present the proposed dispatch plan, wait for sign-off, execute confirmed actions, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session.
 
-**Detached judgment role (A17)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
+**Detached judgment role (`recusal`)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
 
 **Hard halts**: No silent dispatch. No improvised dispositions. No cursor in task body (labels ARE the cursor). No proposal to **add or escalate** enforcement (new gate, new axiom, tier-bump, new hook firing surface) without ≥3 cited recurrences (the CBA bar in ENFORCEMENT-MAP.md). Bug fixes within an existing enforcement surface at the same tier, and user-directed architectural changes, are NOT add-or-escalate proposals — a single forensic incident (or explicit user directive) is sufficient for `fix-epic` or `single-task`.
 
@@ -411,7 +411,7 @@ mcp__pkb__get_task(id="epic-a0523a25")  # halt if not in_progress
 
 For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic` candidates by root cause (cap 5 issues per proposed epic). Note one-line rationale per issue.
 
-### 2b. Cost-ladder review for **enforcement-escalation** candidates (A17 — sweep's legislative role)
+### 2b. Cost-ladder review for **enforcement-escalation** candidates (`recusal` — sweep's legislative role)
 
 This step runs only for issues whose remediation would **add or escalate** a
 rule — a new gate, a new axiom, a tier-bump (e.g. L1→L3), a new hook firing
@@ -428,15 +428,15 @@ For genuine add-or-escalate proposals, run this sequence before assigning a
 disposition. This is the work that retro is forbidden to do; sweep is the
 only mode allowed to author it.
 
-1. **Read the forensic reports.** The issue body should be a clean incident report (per A17). If it carries a "suggested axiom" or "proposed gate," strip that from your reasoning — the proposal was authored under prejudicial recency and is evidence of urgency, not of the right answer. Edit the issue to remove the stripped section and leave a comment explaining the A17 split.
+1. **Read the forensic reports.** The issue body should be a clean incident report (per `recusal`). If it carries a "suggested axiom" or "proposed gate," strip that from your reasoning — the proposal was authored under prejudicial recency and is evidence of urgency, not of the right answer. Edit the issue to remove the stripped section and leave a comment explaining the `recusal` split.
 2. **Generalise the failure.** Name the most general Root Cause Category from the documented vocabulary (Discovery Gap, Detection Failure, Instruction Gap, Instruction Weighting, Index Lag, Cross-workflow Gap, Enforcement Gap, Dropped Thread, Design Inversion, Wrong Layer of Abstraction, Rule Should Not Exist, Other) OR use a free-form framing if these do not fit. One per issue. _Instruction Gap_ means the agent's instructions were too shallow to produce excellent execution — the fix is an instruction rewrite via `/craft audit`, not a mechanism change.
 3. **Map to existing mechanisms.** Read the enforcement map (repo-level) end-to-end (it is short by design). Grep AXIOMS.md and HEURISTICS.md for prior framing of the rule. List every existing mechanism that should plausibly have caught this failure, with its tier (L0–L7).
 4. **Classify the failure shape**:
    - **Propagation failure** — rule exists at the right tier but didn't reach this surface. Fix is L1 propagation: edit the specific skill / agent / CORE.md text that needs to carry the rule. Same tier, more callsites.
    - **Escalation candidate** — rule exists but at a tier too cheap to beat the trained reflex. Apply the CBA from the enforcement map (repo-level) (≥3 recurrence links, named cheaper levels already tried with evidence, ongoing cost estimate, reversibility criterion). If you can't satisfy the CBA, the disposition is `defer` with a `needs-more-recurrences` comment, not an escalation.
    - **Rule absent** — name the rule before naming the mechanism. Phrase it as a sentence the user could quote. Then ask which tier it belongs at, defaulting to L0/L1 unless the CBA forces a higher placement.
-5. **Default cheap, escalate reluctantly.** The enforcement map (repo-level) names the dominant failure mode: jumping to L3+ when the actual fix is L1 propagation. Most A7 recurrences are L1 propagation failures; assume the same here unless evidence contradicts.
-6. **Cite the row.** The disposition proposal must name either the row of the enforcement map (repo-level) the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into agents/marsha.md lines XX–YY, citing existing axiom A8" is.
+5. **Default cheap, escalate reluctantly.** The enforcement map (repo-level) names the dominant failure mode: jumping to L3+ when the actual fix is L1 propagation. Most `exercise-authority` recurrences are L1 propagation failures; assume the same here unless evidence contradicts.
+6. **Cite the row.** The disposition proposal must name either the row of the enforcement map (repo-level) the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into agents/marsha.md lines XX–YY, citing existing axiom `halt-on-failure`" is.
 7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `consolidate-duplicate` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
 
 The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and corrective scope. User-directed dispositions still include cost-ladder reasoning (citing the user's directive as the evidence base in place of recurrence links).
@@ -516,7 +516,7 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 | Parenting fix-epics under `epic-a0523a25`                            | Parent under relevant component epic                                                                                                                                |
 | Bundling > 5 issues into one fix-epic                                | Split or surface as human-triage                                                                                                                                    |
 | Re-running cycle without halting                                     | Halt; re-invoke for next cycle                                                                                                                                      |
-| Adopting a "suggested axiom" from an incident report verbatim        | Strip per A17; redo the cost-ladder reasoning from the detached vantage                                                                                             |
+| Adopting a "suggested axiom" from an incident report verbatim        | Strip per `recusal`; redo the cost-ladder reasoning from the detached vantage                                                                                       |
 | Proposing escalation from one incident                               | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences`                                                                                    |
 | Deferring a clear bug fix to wait for more recurrences               | ≥3 rule is for **add-or-escalate** only. A clear bug in an existing surface at the same tier dispatches as `fix-epic` on a single incident                          |
 | Treating a user-directed architectural change as escalation          | User directive substitutes for recurrence count. Dispatch as `fix-epic` with the user's directive cited; cost-ladder reasoning still applies to where the fix lands |
