@@ -45,7 +45,7 @@ From the issue body cluster table + post-merge volume bumps (chronological, dedu
 | 9  | Opaque-reference pass-through                  | Emits IDs/timestamps/noun-phrases without decode        | IDA checklist (decode: expand or omit)                                                                                                                                               |
 | 10 | Thread-audit digest (ordinals + bare IDs)      | Session-local ordinals; descriptor-less IDs             | IDA checklist (decode + synthesize)                                                                                                                                                  |
 | 11 | Scope substitution                             | Project-local → host-wide silently                      | Edit 3 — Halt-on-substitute scope extension                                                                                                                                          |
-| 12 | A17-scope misread                              | "No proposed fix" read as "no causal analysis"          | **Deferred** — `/learn` skill prose gap, not coordinator-emit gap. Separate task (Risk #5).                                                                                          |
+| 12 | `recusal`-scope misread                        | "No proposed fix" read as "no causal analysis"          | **Deferred** — `/learn` skill prose gap, not coordinator-emit gap. Separate task (Risk #5).                                                                                          |
 | 13 | Confirmation-framing reversal                  | "X preserved" reported as if it were a finding          | IDA checklist (filter: confirmation is silence)                                                                                                                                      |
 
 Every surviving sub-shape is either covered, already-closed, or explicitly deferred with rationale. Block 4 closed.
@@ -63,8 +63,8 @@ James's REVISE identified that the post-merge volume bumps recurred against pros
 **Chosen path: hybrid.** Light-touch prose at the role-definition outset (when the coordinator's role is loaded into context); procedural checklist surfaces at the **IDA Stop-hook** (when the coordinator is about to emit). Rationale:
 
 - **Prose at outset is necessary but proven insufficient** — the existing FM-1/2/3 prose was load-bearing-attempted and failed. Adding more prose at the same site (rev 1's Edit 1 Counter-disciplines table) would be a third iteration of a discipline-via-role-prose attempt that has structural counter-evidence.
-- **Hook at emit-time targets the actual decision point** — the substitutions occur at the coordinator-emit boundary, not at role-loading time. A non-blocking Stop-hook reminder fires at exactly that boundary. The existing `aops-core/hooks/templates/ida-reminder.md` already operates this way for honesty checks (A3, A4, A11 — cite proof, flag substitutions before stop). Extending IDA with relay-hygiene material is a single-file, single-template change.
-- **P#49 compliant** — IDA's content is a _checklist surfaced to an LLM_, not a regex / keyword detector. The agent applies judgment; the framework only ensures the discipline is visible at the right moment. This is the same primitive A7 Edge 3 explicitly permits.
+- **Hook at emit-time targets the actual decision point** — the substitutions occur at the coordinator-emit boundary, not at role-loading time. A non-blocking Stop-hook reminder fires at exactly that boundary. The existing `aops-core/hooks/templates/ida-reminder.md` already operates this way for honesty checks (`honest-epistemics`, `cite-sources`, `full-observability` — cite proof, flag substitutions before stop). Extending IDA with relay-hygiene material is a single-file, single-template change.
+- **P#49 compliant** — IDA's content is a _checklist surfaced to an LLM_, not a regex / keyword detector. The agent applies judgment; the framework only ensures the discipline is visible at the right moment. This is the same primitive `exercise-authority` Edge 3 explicitly permits.
 - **Bounded blast radius** — IDA fires per-turn, non-blocking. If the discipline doesn't take, the framework escalates to _blocking IDA_ (handover-gate style) as a Phase 2 — without re-litigating the design.
 - **Cost-asymmetry addressed** — the issue body's seam (c) ("rubrics are cheaper to produce than narratives") names the gradient. The IDA reminder pulls the coordinator toward the harder shape _at the cheapest possible moment_ (one extra read pass before emit), not by adding more reading at session start (where cost compounds with context length).
 
@@ -76,7 +76,7 @@ Three edits total. One on IDA template (load-bearing); one short prose addition 
 
 ### Edit 1 — IDA template carries the relay-hygiene checklist
 
-Extend [aops-core/hooks/templates/ida-reminder.md](aops-core/hooks/templates/ida-reminder.md). Current template is the A3/A4/A11 honesty check; add a coordinator-emit section beneath it.
+Extend [aops-core/hooks/templates/ida-reminder.md](aops-core/hooks/templates/ida-reminder.md). Current template is the `honest-epistemics`/`cite-sources`/`full-observability` honesty check; add a coordinator-emit section beneath it.
 
 ```markdown
 ---
@@ -86,13 +86,13 @@ category: template
 description: |
   Non-blocking Stop-hook reminder (compressed). Asks the agent to cite
   proof for assertions, flag substitutions, and run the relay-hygiene
-  pass before emitting. References AXIOMS A3/A4/A11; surfaces cluster-1122
-  coordinator-emit discipline.
+  pass before emitting. References the honest-epistemics / cite-sources /
+  full-observability axioms; surfaces cluster-1122 coordinator-emit discipline.
 ---
 
 Before stopping: for each claim ("tests pass", "works", "verified"), cite `file:line` or command output — not reasoning. Flag anything you substituted, skipped, or received from a subagent without your own verification.
 
-**Intent check**: name the specific thing the user asked to see working, then confirm you observed _that_ thing — not adjacent healthy state. If the new code path isn't running, "everything is healthy" is not a verification. (A3, A4, A11)
+**Intent check**: name the specific thing the user asked to see working, then confirm you observed _that_ thing — not adjacent healthy state. If the new code path isn't running, "everything is healthy" is not a verification. (`honest-epistemics`, `cite-sources`, `full-observability`)
 
 **Relay hygiene** — if this turn surfaces subagent output, a status digest, or a question to the user, three steps before emit:
 
@@ -168,7 +168,7 @@ No new skill. No new hook. No new template. The IDA infrastructure already exist
 - Does not redesign the marsha PASS/FAIL/REVISE contract. The verdict-shape concern from issue body seam (b) is addressed upstream by the Fitness Rubric requirement (`aops-843a7e38`).
 - Does not add hook-side automation. IDA is a context fragment shown to an LLM; the LLM applies judgment. P#49 compliant.
 - Does not propose closing #1090, #1114, #1115. Those stay open as specific-surface bugs; after this remediation lands and the dogfood verification passes, each is re-evaluated for closure separately.
-- Does not address row 5 (PKB-search-vs-grep) or row 12 (A17-scope misread). Both deferred with rationale (see table and Risk #5).
+- Does not address row 5 (PKB-search-vs-grep) or row 12 (`recusal`-scope misread). Both deferred with rationale (see table and Risk #5).
 - Does not make IDA blocking (deferred to Phase 2; see Block 1 rationale above).
 
 ## Verification (rev 3 — operationalised per Blocks 13–19)
@@ -239,7 +239,7 @@ Setup: user asks a genuine binary question with no defensible default ("should w
 
 4. **Row 5 (PKB-search-vs-grep) deferral risk.** Deferring leaves a known sub-shape uncovered. Mitigation: file a separate task ("Discovery-primitive discipline: PKB primitives before filesystem mechanics") referencing #1045 and the cluster-1122 evidence. That task lives outside the coordinator-emit boundary and is appropriately addressed elsewhere.
 
-5. **Row 12 (A17-scope misread) deferral.** The A17 forensic-mandate misread is a `/learn` skill prose gap, not a coordinator-emit gap. File a separate task to extend the `/learn` skill template with explicit causal-analysis-still-required language. Not blocking on this proposal.
+5. **Row 12 (`recusal`-scope misread) deferral.** The `recusal` forensic-mandate misread is a `/learn` skill prose gap, not a coordinator-emit gap. File a separate task to extend the `/learn` skill template with explicit causal-analysis-still-required language. Not blocking on this proposal.
 
 6. **Pre-existing prose at FM-1/2/3 (junior.md lines 99–103) failed.** Rev 2/3's junior.md change is one paragraph rather than a sibling failure-mode table; the gradient-pull moves to IDA. But if FM-1/2/3 themselves were over-trusted by the framework as the "real" enforcement, leaving them unchanged risks ambiguity. Mitigation: leave FM-1/2/3 unchanged for this proposal; add a 90-day spot-check on whether FM-1/2/3 prose itself needs collapse-or-consolidation. Folded into the 30-day spot-check task (Block 20) as a secondary observable.
 
@@ -277,7 +277,7 @@ Filed alongside the implementation PR. Owner: pauli. Stakeholder: nicsuzor.
 6. File alongside merge:
    - 30-day post-merge spot-check task (Block 20 AC specified above) — status draft → ready on PR merge
    - Row 5 deferral task (Discovery-primitive discipline: PKB primitives before filesystem mechanics)
-   - Row 12 deferral task (`/learn` skill A17-scope misread clarification)
+   - Row 12 deferral task (`/learn` skill `recusal`-scope misread clarification)
 7. PR description references the James-2nd-pass single-reader caveat (Risk #7) so reviewers can commission independent verification via working CLI if desired.
 
 ## Links

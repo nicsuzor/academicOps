@@ -80,7 +80,7 @@ def temp_polecat_home(tmp_path):
         "session_defaults": {
             "hooks_enabled": True,
             "claude_model": "claude-sonnet-4-6",
-            "gemini_model": "gemini-2.5-pro",
+            "antigravity_model": "agy",
             "debug": False,
             "gates": {
                 "handover": "warn",

@@ -19,9 +19,27 @@ IMPORTANT: All required information should be in context at startup, within hook
 
 ## Step 0: Verify hooks are operational in THIS session
 
-Before testing any specific hook behavior, verify that hooks are actually running. Read your own session transcript JSONL (for background jobs: `$CLAUDE_JOB_DIR/../<session-id>.jsonl`; for interactive sessions: `~/.claude/projects/<project-dir>/<session-id>.jsonl`). Search for records containing `"hook_non_blocking_error"`. If any exist, hooks are broken — the attachment's `stderr` field contains the crash traceback. **HALT and report the hook failure before proceeding.**
+Before testing any specific hook behavior, verify that hooks are actually running. Read your own session transcript JSONL (for background jobs: `$CLAUDE_JOB_DIR/../<session-id>.jsonl`; for interactive sessions: `~/.claude/projects/<project-dir>/<session-id>.jsonl`).
 
-The hooks JSONL (`*-session-hooks.jsonl`) is written by the router AFTER successful hook processing. When hooks crash at import time (e.g., `NameError`, `ImportError` in the router or its dependencies), this file is never created. The session transcript JSONL is the ground-truth artifact for hook crash detection — it records `hook_non_blocking_error` attachments written by the CLI itself, not by the router.
+**Do NOT grep for a single marker string. Read `stderr` on EVERY hook attachment.** Hooks degrade in two distinct ways, and a keyword grep for `hook_non_blocking_error` catches only the first:
+
+1. **Hard crash** — attachment `type` is `hook_non_blocking_error` (or `exitCode != 0`). The `stderr` field carries the crash traceback. The router never wrote a `*-session-hooks.jsonl`.
+2. **Silent degradation** — attachment `type` is `hook_success` with `exitCode: 0` **but a non-empty `stderr`**. The hook "succeeded" (didn't block the turn) while a substep failed — e.g. `WARNING: Failed to log hook event: ...`, which means the per-event logger threw and **no `*-session-hooks.jsonl` was written even though hooks ran**. A grep for `hook_non_blocking_error` is blind to this; only reading stderr on success attachments finds it.
+
+**The correct check:** iterate all records with an `attachment` field; for each, inspect `attachment.stderr`. **Any non-empty `stderr`, regardless of `exitCode` or attachment `type`, is a finding.** Group by `hookName` + first stderr line; report the distinct warnings and how many events each affects (a config-load failure typically repeats on every event). HALT and report before proceeding to the rest of the self-test — a degraded-but-exit-0 hook is NOT a pass.
+
+```python
+import json
+f = "<session-transcript>.jsonl"
+for line in open(f):
+    try: r = json.loads(line)
+    except: continue
+    a = r.get("attachment")
+    if isinstance(a, dict) and a.get("stderr", "").strip():
+        print(a.get("hookName"), "exit=", a.get("exitCode"), "::", a["stderr"].strip().splitlines()[0])
+```
+
+The hooks JSONL (`*-session-hooks.jsonl`) is written by the router AFTER successful hook processing. Its absence has **two** causes that you must distinguish, never conflate: (a) the router crashed at import time (`NameError`/`ImportError`) — then the transcript carries `hook_non_blocking_error` attachments; or (b) the router ran but the logging substep threw — then the transcript carries `hook_success` attachments with `Failed to log hook event` in stderr (cause #2 above). "No `*-session-hooks.jsonl`" plus "no `hook_non_blocking_error`" does **not** mean healthy — read the success-attachment stderr before concluding anything.
 
 ---
 
@@ -45,7 +63,7 @@ Walk layers in order; stop at first failure:
 
 **§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:junior')`. Verify visible output, not just return.
 
-**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. **Absence of hooks JSONL does not distinguish "log path misconfigured" from "hooks crashing at import time."** If missing or empty, also check the session transcript JSONL for `hook_non_blocking_error` attachment records — these are written by the CLI (not the router) when a hook process exits non-zero, and the `stderr` field contains the crash traceback.
+**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. **Absence of hooks JSONL does not distinguish "log path misconfigured" from "hooks crashing at import time."** If missing or empty, check the session transcript JSONL per **Step 0's stderr-on-every-attachment method** — not just `hook_non_blocking_error` records. The common case is a `hook_success` (exit 0) attachment whose `stderr` contains `Failed to log hook event: ...` (e.g. a config-load error), meaning hooks ran but the logger threw. A crash (`hook_non_blocking_error`, non-zero exit, traceback in `stderr`) is only one of the two causes; reading stderr on success attachments catches the other.
 
 **§6 Cleanup** — `/exit` → `tmux kill-session` → `polecat nuke <crew>`. Repeat for other client.
 

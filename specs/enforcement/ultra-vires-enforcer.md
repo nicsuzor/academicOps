@@ -279,7 +279,7 @@ In framework terms: the classifier is **rbg-class judgment running at the per-ac
 3. State limits and exceptions in prose so the classifier can apply them. ("Allow `--force` when validating; block `--force` when bypassing tests" — written as prose, the classifier handles the disjunction. Written as a keyword match, it cannot.)
 4. Enforcer remains valuable for verdicts the framework itself needs to **read and act on** (writing to the session-state file, feeding `/learn`, surfacing in the icon strip). The classifier's verdict goes to the user, not to the agent's tool stack.
 
-See `aops-core/.claude-plugin/plugin.json` (`autoMode` key) for the rule set and `aops-core/lib/automode.py` for installation (invoked via `scripts/install.py`). The rules are written as prose stating the axiom (A1–A10), the reasoning, and the kinds of action that count as a violation, with explicit carve-outs where they apply.
+See `aops-core/.claude-plugin/plugin.json` (`autoMode` key) for the rule set and `aops-core/lib/automode.py` for installation (invoked via `scripts/install.py`). The rules are written as prose stating the axiom (by slug), the reasoning, and the kinds of action that count as a violation, with explicit carve-outs where they apply.
 
 ## References
 

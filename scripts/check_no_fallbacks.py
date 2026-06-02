@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run python
 """Pre-commit hook: Block silent fallback patterns.
 
-Enforces P#8 / A8 (Fail-Fast Code): No defaults, no fallbacks, no workarounds,
+Enforces P#8 / `halt-on-failure` (Fail-Fast Code): No defaults, no fallbacks, no workarounds,
 no silent failures. Required values fail loudly when absent.
 
 Detects, across Python / shell / agent-env-map.conf:
@@ -352,7 +352,7 @@ def main() -> int:
             print(f"  {v['file']}:{v['line']}:{v['col']}")
             print(f"    Pattern: {v['pattern']}")
             print(f"    Fix:     {v['message']}\n")
-        print("A8 / P#8: No defaults, no fallbacks, no silent failures.")
+        print("halt-on-failure / P#8: No defaults, no fallbacks, no silent failures.")
         print("Required values must fail-fast when absent. Optional values must")
         print("be annotated with `# allow-fallback: <reason>` on the same line.")
         return 1

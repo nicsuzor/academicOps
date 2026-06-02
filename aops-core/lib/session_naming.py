@@ -15,6 +15,7 @@ import socket
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Known artifact variants and their extensions
 ARTIFACT_TYPES = {
@@ -29,27 +30,35 @@ ARTIFACT_TYPES = {
 #
 # Two sources, merged at first access:
 #   - Built-in LLM CLIs (claude, gemini): framework primitives, always present.
-#   - external_agents map in $AOPS_SESSIONS/polecat.yaml: the operator-curated
-#     list of dispatch targets (github, jules, codex, copilot, ...).
+#   - The operator-curated external_agents set (github, jules, codex, ...).
 #
-# Lazy resolution because session_naming is imported during test collection,
-# before fixtures stage a config file.
+# This module runs on BOTH surfaces, with different transports:
+#   - In-container: there is NO polecat.yaml. The host injects the resolved,
+#     comma-separated enabled set as $AOPS_ENABLED_PROVIDERS. We read that.
+#   - On the host: $AOPS_ENABLED_PROVIDERS is unset; we read the config file
+#     directly (load_polecat_config). Lazy, because this module is imported
+#     during test collection before fixtures stage a config.
 _BUILTIN_PROVIDERS: frozenset[str] = frozenset({"claude", "gemini"})
+_ENABLED_PROVIDERS_ENV = "AOPS_ENABLED_PROVIDERS"
 _PROVIDERS_CACHE: set[str] | None = None
 
 
 def _load_providers() -> set[str]:
     global _PROVIDERS_CACHE
     if _PROVIDERS_CACHE is None:
-        # Local import to avoid circular dependencies and to keep this module
-        # importable in environments without polecat_config (it will hard-fail
-        # only when a caller actually exercises filename parsing).
-        from lib.polecat_config import load_polecat_config
+        injected = os.environ.get(_ENABLED_PROVIDERS_ENV)
+        if injected is not None:
+            # In-container: host already resolved the enabled set. An empty
+            # string means "no external agents enabled" — still authoritative.
+            extra = {p.strip() for p in injected.split(",") if p.strip()}
+        else:
+            # Host: read the config file directly. Local import avoids a circular
+            # dependency and keeps this module importable without polecat_config.
+            from lib.polecat_config import load_polecat_config
 
-        cfg = load_polecat_config()
-        _PROVIDERS_CACHE = set(_BUILTIN_PROVIDERS) | {
-            name for name, agent in cfg.external_agents.items() if agent.enabled
-        }
+            cfg = load_polecat_config()
+            extra = {name for name, agent in cfg.external_agents.items() if agent.enabled}
+        _PROVIDERS_CACHE = set(_BUILTIN_PROVIDERS) | extra
     return _PROVIDERS_CACHE
 
 
@@ -239,12 +248,15 @@ def get_client() -> str:
     return "claude-code"
 
 
+_UNSET = object()
+
+
 def get_session_metadata(
     *,
     provider: str | None = None,
     surface: str | None = None,
     client: str | None = None,
-    crew: str | None = None,
+    crew: Any = _UNSET,
 ) -> dict[str, str | None]:
     """Return the canonical session-metadata block stamped onto summary JSON.
 
@@ -288,7 +300,7 @@ def get_session_metadata(
         "provider": eff_provider,
         "surface": surface if surface is not None else detected_surface,
         "client": client if client is not None else detected_client,
-        "crew": crew if crew is not None else resolve_crew_name(),
+        "crew": resolve_crew_name() if crew is _UNSET else crew,
     }
 
 

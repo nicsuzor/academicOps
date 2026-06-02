@@ -13,7 +13,6 @@ or volume mounts run their own container.
 
 import os
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -52,8 +51,21 @@ class TestDockerTooling:
             'echo "DNS_ANTHROPIC=$(getent hosts api.anthropic.com 2>&1 | head -1)"\n'
             'echo "DNS_GITHUB=$(getent hosts github.com 2>&1 | head -1)"\n'
         )
+        # The entrypoint hard-requires AOPS_BOT_GH_TOKEN (config-is-SSoT) and
+        # exits before running the command if it is unset. This batch does no
+        # real GitHub ops, so a non-empty dummy token satisfies the contract.
         result = subprocess.run(
-            ["docker", "run", "--rm", "ghcr.io/nicsuzor/aops-crew", "bash", "-c", script],
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-e",
+                "AOPS_BOT_GH_TOKEN=ghp_dummy_test_token",
+                "ghcr.io/nicsuzor/aops-crew",
+                "bash",
+                "-c",
+                script,
+            ],
             capture_output=True,
             text=True,
             timeout=60,
@@ -163,13 +175,16 @@ class TestDockerEntrypoint:
     def test_entrypoint_configures_git_auth(self):
         """Entrypoint sets up git credentials, SSH isolation, and HTTPS rewrite.
 
-        Runs a shell command inside the container with GH_TOKEN set, verifying
-        the full entrypoint credential chain works. This is the single most
-        important container smoke test — if this fails, no git operations work.
+        Runs a shell command inside the container with AOPS_BOT_GH_TOKEN set —
+        the only accepted credential under config-is-SSoT. The entrypoint
+        derives GH_TOKEN/GITHUB_TOKEN from it; asserting the credential helper
+        resolves password=<token> verifies that derivation chain end to end.
+        This is the single most important container smoke test — if this
+        fails, no git operations work.
         """
         test_token = "ghp_test_e2e_credential_check_12345"
         docker_cmd = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
-        docker_cmd.extend(["-e", f"GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
+        docker_cmd.extend(["-e", f"AOPS_BOT_GH_TOKEN={test_token}", "-e", "SSH_AUTH_SOCK="])
         docker_cmd.extend(
             [
                 "ghcr.io/nicsuzor/aops-crew",
@@ -211,42 +226,3 @@ class TestDockerEntrypoint:
         assert "REWRITE=git@github.com:" in output, (
             f"SSH→HTTPS URL rewrite not configured:\n{output}"
         )
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-class TestDockerSocket:
-    """Docker socket is accessible and images can be built inside the container."""
-
-    @pytest.fixture(autouse=True)
-    def require_crew_container(self):
-        """Skip unless running inside an aops-crew container."""
-        if os.environ.get("HOSTNAME") != "aops-crew":
-            pytest.skip("Not running inside an aops-crew container")
-
-    def test_docker_socket_accessible(self):
-        """Docker socket exists and docker info succeeds."""
-        assert Path("/var/run/docker.sock").is_socket(), (
-            "Docker socket not found at /var/run/docker.sock — DinD not running?"
-        )
-        result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=30)
-        assert result.returncode == 0, f"docker info failed:\n{result.stderr}"
-
-    def test_can_build_dockerfile(self):
-        """docker build . succeeds from the workspace root."""
-        repo_root = Path(__file__).parents[2]
-        tag = "aops-crew-ci-test"
-        try:
-            result = subprocess.run(
-                ["docker", "build", "-t", tag, str(repo_root)],
-                capture_output=True,
-                text=True,
-                timeout=600,
-            )
-            assert result.returncode == 0, (
-                f"docker build failed:\n"
-                f"STDOUT: {result.stdout[-3000:]}\n"
-                f"STDERR: {result.stderr[-3000:]}"
-            )
-        finally:
-            subprocess.run(["docker", "rmi", tag], capture_output=True)

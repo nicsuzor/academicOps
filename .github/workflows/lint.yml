@@ -28,7 +28,7 @@ jobs:
           # Use AOPS_BOT_GH_TOKEN so autofix pushes trigger a new
           # synchronize event, restarting the pipeline on the clean commit.
           # GITHUB_TOKEN pushes are deliberately ignored by GitHub Actions, so
-          # NO `|| secrets.GITHUB_TOKEN` fallback (A8: no silent fallbacks) —
+          # NO `|| secrets.GITHUB_TOKEN` fallback (halt-on-failure: no silent fallbacks) —
           # falling back would silently break the autofix retrigger loop.
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 

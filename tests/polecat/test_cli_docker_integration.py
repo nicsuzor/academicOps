@@ -186,7 +186,9 @@ class TestDockerEndState:
             docker_cmd = _build_docker_cmd(
                 cli_tool="claude",
                 work_dir=work_dir,
-                env={},
+                # Entrypoint hard-requires AOPS_BOT_GH_TOKEN (config is SSoT);
+                # this workspace check does no GitHub ops, so a dummy satisfies it.
+                env={"AOPS_BOT_GH_TOKEN": "ghp_integration_test_token"},
                 agent_cmd=["bash", "-c", script],
                 is_interactive=False,
                 tmp_files=tmp_files,
@@ -266,19 +268,27 @@ class TestDockerEndState:
         assert env_results.get("MY_SECRET", "") == ""
         assert env_results.get("DATABASE_URL", "") == ""
 
-    def test_polecat_yaml_staged_in_container(self, env_results):
-        """Gate config reaches the container via the staged polecat.yaml.
+    def test_polecat_yaml_not_staged_in_container(self, env_results):
+        """polecat.yaml is NOT staged into the container (config is SSoT).
 
-        Post-SSoT consolidation, gate modes are no longer forwarded as env
-        vars (ENFORCER_GATE_MODE et al.); they are loaded from polecat.yaml
-        staged at /home/worker/.aops/polecat.yaml. ``AOPS_POLECAT_CONFIG``
-        points the in-container hook router at that path. Verify both:
-        the env var is set and the file exists with content.
+        Under the config-is-SSoT model (commit d26755bc), the host is the only
+        reader of polecat.yaml: it resolves the config and injects the few
+        values the container needs as env vars. The container reads no config
+        file, so AOPS_POLECAT_CONFIG is unset and no polecat.yaml is staged.
+        Verify the old staging path is gone: no config env var, no file.
         """
-        assert env_results["AOPS_POLECAT_CONFIG"] == "/home/worker/.aops/polecat.yaml"
-        assert env_results["POLECAT_YAML_PRESENT"] == "true"
-        # Non-empty sha256 → file has content (sha256sum prints empty on missing/empty).
-        assert env_results["POLECAT_YAML_HASH"], "Staged polecat.yaml is missing or empty"
+        assert env_results.get("AOPS_POLECAT_CONFIG", "") == "", (
+            "AOPS_POLECAT_CONFIG should be unset in-container "
+            f"(got {env_results.get('AOPS_POLECAT_CONFIG')!r})"
+        )
+        assert env_results["POLECAT_YAML_PRESENT"] == "false", (
+            "polecat.yaml must NOT be staged into the container"
+        )
+        # NOTE: POLECAT_YAML_HASH is not asserted here — with AOPS_POLECAT_CONFIG
+        # unset, the in-container `sha256sum $AOPS_POLECAT_CONFIG` reads empty
+        # stdin and prints the sha256 of the empty string, so a non-empty hash
+        # is expected and proves nothing. The unset env var + absent file
+        # (asserted above) are the authoritative signals that nothing is staged.
 
     def test_aops_prefixed_env_reaches_container(self, env_results):
         """AOPS_* env vars are forwarded."""
@@ -370,7 +380,12 @@ class TestDockerSocketEndState:
 
     def test_docker_accessible_from_container(self, tmp_path):
         """docker info succeeds inside the container when socket is mounted."""
-        env = {"DOCKER_HOST": "unix:///var/run/docker.sock"}
+        # Entrypoint hard-requires AOPS_BOT_GH_TOKEN (config is SSoT); this
+        # socket check does no GitHub ops, so a dummy token satisfies it.
+        env = {
+            "DOCKER_HOST": "unix:///var/run/docker.sock",
+            "AOPS_BOT_GH_TOKEN": "ghp_integration_test_token",
+        }
         work_dir = tmp_path / "socket-test"
         work_dir.mkdir()
         (work_dir / "placeholder").write_text("x")
@@ -433,7 +448,12 @@ class TestClaudeSeedEndState:
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
             work_dir=work_dir,
-            env={"POLECAT_STAGING_BASE": str(tmp_path)},
+            # Entrypoint hard-requires AOPS_BOT_GH_TOKEN (config is SSoT);
+            # this seed-file check does no GitHub ops, so a dummy satisfies it.
+            env={
+                "POLECAT_STAGING_BASE": str(tmp_path),
+                "AOPS_BOT_GH_TOKEN": "ghp_integration_test_token",
+            },
             agent_cmd=[
                 "bash",
                 "-c",
@@ -477,7 +497,12 @@ class TestClaudeSeedEndState:
         docker_cmd = _build_docker_cmd(
             cli_tool="claude",
             work_dir=work_dir,
-            env={"POLECAT_STAGING_BASE": str(tmp_path)},
+            # Entrypoint hard-requires AOPS_BOT_GH_TOKEN (config is SSoT);
+            # this version check does no GitHub ops, so a dummy satisfies it.
+            env={
+                "POLECAT_STAGING_BASE": str(tmp_path),
+                "AOPS_BOT_GH_TOKEN": "ghp_integration_test_token",
+            },
             agent_cmd=[
                 "bash",
                 "-c",

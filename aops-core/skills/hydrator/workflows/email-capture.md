@@ -43,9 +43,9 @@ For EACH email that would generate a task:
 - **Mandatory Parent Linkage**: Every created task MUST have a `parent` (epic or project task).
 - **Mandatory Task Body Quality**: Every task MUST contain quoted email text, all links, and entry_id. See [[email-capture-details]] § "Task Body Quality Requirements". A task without the actual email content is non-compliant.
 - **Mandatory Link Preservation**: All URLs from the email body MUST appear in the task. Attachment filenames noted but NOT downloaded during triage — retrieval happens when the task is actioned.
-- **Verification of Tool**: To check if `~~email` is available, CALL THE TOOL. Don't check configs.
+- **Verification of Tool**: To check if `~~email` / the Outlook MCP is available, CALL THE TOOL. Don't check configs. The connector's tools may be **deferred** — load them first (`ToolSearch select:mcp__outlook__*`, or a keyword query) before concluding they're absent; a missing-from-list state is not an unavailable connector. On a first-call tool-not-found, retry once with the canonical fully-qualified name (casing/underscore misses are common) before declaring failure. (Canonical rules: [[daily/SKILL]] § "Tool-loading discipline (degraded sources)")
 - **Confidence Scoring**: High confidence auto-categorizes; low confidence flags for review.
-- **Fail-Fast**: Halt immediately if the email connector is unavailable.
+- **Fail-Fast**: Halt immediately if the email connector is **genuinely** unavailable — i.e. a real call failed for a named reason (auth error, network, server-down) _after_ the load + one retry above. Declining to load the deferred tools, or an un-retried name miss, is not a genuine failure and must not be reported as "connector unavailable" (the false-footnote failure AC-15 names).
 
 ## Detailed Procedures
 

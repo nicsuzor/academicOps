@@ -47,8 +47,8 @@ def test_crew_interactive_pops_ci():
         )
 
 
-def test_run_gemini_interactive_pops_ci():
-    """If run with --interactive and model=gemini, CI=true is popped from env."""
+def test_run_antigravity_interactive_pops_ci():
+    """If run with --interactive and model=antigravity, CI=true is popped from env."""
 
     with (
         patch("cli._build_docker_cmd") as mock_build_docker_cmd,
@@ -73,7 +73,9 @@ def test_run_gemini_interactive_pops_ci():
         mock_manager.resolve_project_alias.return_value = "aops"
         mock_manager.checkout_repo.return_value = (Path("/tmp/home"), "branch")
 
-        ctx = run.make_context("run", ["--model", "gemini", "-i", "-t", "task-123", "-p", "aops"])
+        ctx = run.make_context(
+            "run", ["--model", "antigravity", "-i", "-t", "task-123", "-p", "aops"]
+        )
         ctx.obj = {"home": Path("/tmp/home"), "verbose": False}
 
         try:

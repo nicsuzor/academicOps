@@ -37,19 +37,18 @@ except ImportError:
 def get_polecat_home() -> Path:
     """Get the polecat home directory.
 
-    Checks in order:
-    1. POLECAT_HOME environment variable
-    2. Default: ~/.polecat
+    Delegates to :func:`lib.paths.get_local_cache_root` so the polecat CLI and
+    the in-session hooks resolve the SAME local cache root — one source of truth
+    (A16). That resolver honours ``$POLECAT_HOME`` (transport / host export) then
+    the required ``polecat_home:`` config key, and raises if neither is available
+    (no ``~/.polecat`` default, A14).
 
-    Returns:
-        Path to the polecat home directory
+    The ``--home`` CLI flag still overrides this: the caller passes ``home_dir``
+    straight to :class:`PolecatManager`, which never consults this function then.
     """
-    env_home = os.environ.get("POLECAT_HOME")
-    if env_home:
-        if env_home.startswith("~"):
-            return Path(env_home).expanduser()
-        return Path(env_home)
-    return Path.home() / ".polecat"
+    from lib.paths import get_local_cache_root
+
+    return get_local_cache_root()
 
 
 def get_config_path() -> Path:
@@ -57,17 +56,20 @@ def get_config_path() -> Path:
 
     This file holds both project registry (projects, project_aliases,
     crew_names — read here via ``load_config``) and operational config
-    (gates, hooks_enabled, claude_model/gemini_model, docker, external_agents — read by
+    (gates, hooks_enabled, claude_model/antigravity_model, docker, external_agents — read by
     ``aops-core/lib/polecat_config.py``). Single SSoT, two consumers.
+
+    Located via ``$AOPS_POLECAT_CONFIG`` or ``$AOPS_SESSIONS`` — or it raises.
+    No ``polecat_home``-derived guess (A14: config comes from where we expect).
     """
     if env_path := os.environ.get("AOPS_POLECAT_CONFIG"):
         return Path(env_path).expanduser()
-    sessions = os.environ.get("AOPS_SESSIONS")
-    if sessions:
-        sessions_path = Path(sessions).expanduser()
-    else:
-        sessions_path = get_polecat_home() / "sessions"
-    return sessions_path / "polecat.yaml"
+    if sessions := os.environ.get("AOPS_SESSIONS"):
+        return Path(sessions).expanduser() / "polecat.yaml"
+    raise RuntimeError(
+        "polecat config: neither $AOPS_POLECAT_CONFIG nor $AOPS_SESSIONS is set; "
+        "cannot locate polecat.yaml. Set one of them (no fallback path is guessed)."
+    )
 
 
 def get_local_overlay_path() -> Path:
