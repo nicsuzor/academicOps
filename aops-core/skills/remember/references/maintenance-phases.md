@@ -254,7 +254,7 @@ Match PR → task by precedence:
 
 Resolution:
 
-- **Merged** → `complete_task(id, completion_evidence="PR #N merged <ISO> — <url>", pr_url=<url>)`.
+- **Merged** → run the AC-verification step in [[../../verify/references/merge-close-ac-check]] before closing: re-read the task's acceptance criteria against the merged artifact, classify mechanical vs judgment-laden. Every AC clearly met → `complete_task(id, completion_evidence="PR #N merged <ISO> — <url>", pr_url=<url>)`. Any unmet or judgment-laden AC → leave the task in `merge_ready` and log it to the ambiguous queue (surfaced in next `/daily` under "Needs your call"), quoting the criterion. Surface, do not block (#1426).
 - **Closed-without-merge** → apply the [close-context routing protocol](#close-context-routing-protocol) below. Never re-queue automatically.
 - **Open** → no-op.
 - **No match** → log to ambiguous queue in artefact, surface in next `/daily`. Never invent a task.
@@ -267,7 +267,7 @@ Artefact written to `$ACA_DATA/state/pr-state.json`.
 
 For every task currently in `merge_ready` or `review` (cap 50 per cycle, oldest-modified first):
 
-1. **PR-status reverify.** If frontmatter has a `pr_url`, fetch the PR's current state. State `MERGED` and task not yet `done` → `complete_task`. State `CLOSED` and not merged → apply the close-context routing protocol (same as Activity 4a). Never re-queue automatically.
+1. **PR-status reverify.** If frontmatter has a `pr_url`, fetch the PR's current state. State `MERGED` and task not yet `done` → run the AC-verification step ([[../../verify/references/merge-close-ac-check]]) against the merged artifact first; `complete_task` only if every AC is clearly met, else leave in `merge_ready` and surface the unmet/judgment-laden criterion to the ambiguous queue. State `CLOSED` and not merged → apply the close-context routing protocol (same as Activity 4a). Never re-queue automatically.
 2. **Body-vs-frontmatter drift.** If body contains `## Release: merge_ready` but no `pr_url` exists, surface as `claim-without-pr` — do not auto-act.
 3. **Worker-no-op marker.** If body contains `⚠️ Review needed (zero changes detected)` or `Worker finished without making changes`, re-queue to `inbox` with annotation.
 4. **Repeated-sweep-failure marker.** If body contains ≥3 `## 🧹 Sweep Report` entries all reading `PR Closed without merge`, treat as a `bad-implementation` signal when routing: include it in the context given to the routing sub-agent as strong evidence the approach keeps failing.
