@@ -35,6 +35,12 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         "access denied",
         "deny rule",
         "restricted",
+        # Claude's own framing when the Write tool refuses a protected path:
+        # it describes the path as sensitive/protected and says it cannot
+        # access it, rather than using the word "denied" verbatim.
+        "cannot access",
+        "sensitive file",
+        "protected",
         # In headless non-interactive mode, the autoMode soft_deny rule triggers a
         # permission prompt that Claude cannot resolve — the write is effectively
         # blocked and Claude reports it as a permission request:
