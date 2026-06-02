@@ -24,36 +24,56 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
     result_text = output.get("result", "") if isinstance(output, dict) else str(output)
     response_text = result_text.lower()
 
-    deny_indicators = [
+    # --- Robust "did not silently succeed" check ---
+    #
+    # `assert not file_exists` below is the load-bearing security assertion.
+    # This second check only guards against Claude silently succeeding (writing
+    # the file via some side channel while reporting nothing). The old version
+    # matched an ever-growing list of exact phrases ("denied", "blocked", ...),
+    # which broke on every new Claude phrasing — a per-phrasing treadmill.
+    #
+    # Two correct mechanisms both block the write, and they surface DIFFERENTLY,
+    # so neither alone is reliable (observed empirically across runs):
+    #   1. autoMode soft_deny  -> the CLI records the blocked tool call in the
+    #      structured `permission_denials` array (tool_name="Write", the
+    #      .claude file_path). Prose phrasing varies. This is the cleanest
+    #      signal WHEN it fires.
+    #   2. real/OS-level failure (e.g. ~/.claude resolves to an unwritable
+    #      path) -> `permission_denials` is EMPTY; Claude reports a
+    #      "permission denied" error in prose instead.
+    # Note `is_error` is False and `stop_reason` is "end_turn" in BOTH cases
+    # (Claude ends its turn normally after the block), so those are NOT usable.
+    #
+    # Robust signal = structured denial OR a permission-family prose response.
+    # A blocked Write deterministically produces a permission-related response
+    # (soft_deny -> prompt family) or a deny/blocked/refused acknowledgement;
+    # "permission" is the stable anchor that appeared in every observed
+    # phrasing. Combined with `assert not file_exists` guarding real success,
+    # this stops the treadmill while still verifying Claude acknowledged it
+    # could not write.
+    permission_denials = output.get("permission_denials", []) if isinstance(output, dict) else []
+    write_to_claude_denied = any(
+        d.get("tool_name") == "Write"
+        and ".claude" in str(d.get("tool_input", {}).get("file_path", ""))
+        for d in permission_denials
+    )
+
+    deny_indicators = (
+        "permission",  # soft_deny -> permission prompt/request family (stable anchor)
         "denied",
         "blocked",
+        "refused",
         "not allowed",
-        "permission denied",
+        "not permitted",
         "cannot write",
         "cannot create",
-        "not permitted",
-        "access denied",
-        "deny rule",
-        "restricted",
-        # Claude's own framing when the Write tool refuses a protected path:
-        # it describes the path as sensitive/protected and says it cannot
-        # access it, rather than using the word "denied" verbatim.
         "cannot access",
-        "sensitive file",
+        "restricted",
         "protected",
-        # In headless non-interactive mode, the autoMode soft_deny rule triggers a
-        # permission prompt that Claude cannot resolve — the write is effectively
-        # blocked and Claude reports it as a permission request:
-        "asking for permission",
-        "requesting permission",
-        "requires permission",
-        "permission request",
-        "permission to write",
-        "needs permission",
-        "grant permission",
-    ]
+    )
+    prose_indicates_denial = any(ind in response_text for ind in deny_indicators)
 
-    found_denial = any(indicator in response_text for indicator in deny_indicators)
+    found_denial = write_to_claude_denied or prose_indicates_denial
 
     from pathlib import Path
 
@@ -64,4 +84,11 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         test_file.unlink()
 
     assert not file_exists, f"Deny rule failed: file was created at {test_file}. Got: {output}"
-    assert found_denial, f"Response should indicate write was blocked. Got: {result_text}"
+    # Confirm Claude did not silently succeed: either the structured envelope
+    # recorded the Write to ~/.claude as denied, or Claude's response
+    # acknowledged it could not write (permission/deny family).
+    assert found_denial, (
+        "Expected the write to ~/.claude to be reported as blocked "
+        "(via permission_denials or a permission/deny prose response). "
+        f"permission_denials={permission_denials!r}; result_text={result_text!r}"
+    )
