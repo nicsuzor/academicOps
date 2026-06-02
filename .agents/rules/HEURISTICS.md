@@ -173,6 +173,14 @@ Instructions should delegate responsibility for HOW a task is fulfilled. Specify
 
 **Derivation**: Extends P#104 from single decisions to entire workflows.
 
+<a id="P118"></a>
+
+## Delegate to Preserve Context (P#118)
+
+Every tool call is context you burn. Subagents have fresh context. If a task can be described in a prompt, delegate it.
+
+**Derivation**: The main agent's context window is a depleting resource — each Read, Bash, or Grep call consumed inline narrows the room left for judgment. A subagent starts clean and returns only its conclusion. Extends P#116 (Delegate Agency to Capable Agents) and P#119 (Bound Subagent Scope Before Dispatch): delegate not only because the agent is capable, but because delegation is how context is conserved.
+
 <a id="P117"></a>
 
 ## Surface Observations, Not Interpretations (P#117)

@@ -256,3 +256,38 @@ class TestPolebcatSandboxRouting:
         mock_polecat_dir.assert_called_with("-home-worker-project", "state")
         assert str(path).startswith(str(tmp_path))
         assert not str(path).startswith(str(Path.home()))
+
+
+class TestCoworkSourceRoots:
+    def test_cowork_source_roots_darwin(self, monkeypatch):
+        import sys
+
+        monkeypatch.setattr(sys, "platform", "darwin")
+        from lib.session_paths import cowork_source_roots
+
+        roots = cowork_source_roots()
+        assert len(roots) == 1
+        assert "Library/Application Support/Claude/local-agent-mode-sessions" in str(roots[0])
+
+    def test_cowork_source_roots_win32(self, monkeypatch):
+        import os
+        import sys
+
+        monkeypatch.setattr(sys, "platform", "win32")
+        monkeypatch.setitem(os.environ, "APPDATA", "C:\\\\Users\\\\Test\\\\AppData\\\\Roaming")
+        from lib.session_paths import cowork_source_roots
+
+        roots = cowork_source_roots()
+        assert len(roots) == 1
+        assert "Claude/local-agent-mode-sessions" in str(roots[0])
+        assert "AppData" in str(roots[0])
+
+    def test_cowork_source_roots_linux(self, monkeypatch):
+        import sys
+
+        monkeypatch.setattr(sys, "platform", "linux")
+        from lib.session_paths import cowork_source_roots
+
+        roots = cowork_source_roots()
+        assert len(roots) == 1
+        assert ".config/Claude/local-agent-mode-sessions" in str(roots[0])

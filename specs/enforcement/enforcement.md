@@ -13,7 +13,7 @@ tags: [enforcement, compliance, framework-architecture, verification]
 > **Spec, not state.** This file is the **design statement** for how the
 > aops framework enforces its rules: the regulatory pyramid that frames
 > all enforcement choices, the escalation discipline, the PR
-> cost-benefit requirements, the worked A7 example, the user-facing
+> cost-benefit requirements, the worked `exercise-authority` example, the user-facing
 > witness → judge separation, and the evidence loop that drives all
 > enforcement change. The **operative state register** — every
 > mechanism currently in play, its pyramid position, and the axiom-keyed
@@ -102,9 +102,20 @@ Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-me
 
 **Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (always-on context injection, voluntary skill invocation, lifecycle hints) tapering to a sharp apex of rare severe responses (LLM-mediated review, branch protection, recusal-grounded recourse). The narrower the level, the more reluctantly invoked.
 
-**Executive vs legislative.** The pyramid is **executive only** — it lists the mechanisms that act on agent behaviour. Axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)) and heuristics are **legislative**: they declare what the rules are. The rules don't enforce themselves; they are _enforced by_ mechanisms across multiple pyramid tiers. Numbering an axiom raises the _weight_ of a rule in the L1 always-on injection mechanism — the numbering is content-weighting, not pyramid placement. Looking up "what enforces A7?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
+**Executive vs legislative.** The pyramid is **executive only** — it lists the mechanisms that act on agent behaviour. Axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)) and heuristics are **legislative**: they declare what the rules are. The rules don't enforce themselves; they are _enforced by_ mechanisms across multiple pyramid tiers. Promoting a rule into `AXIOMS.md` raises its _weight_ in the L1 always-on injection mechanism — axiom status is content-weighting, not pyramid placement. (Weight comes from being a first-class axiom, not from any ordinal number; axioms are keyed by slug, see §4.0.) Looking up "what enforces `exercise-authority`?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
 
 **Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
+
+### §4.0 How AXIOMS.md is written (authoring principles)
+
+The legislative layer has its own form discipline. These principles govern how [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md) and its paired review checklist [`.agents/rules/AXIOMS-REVIEW.md`](../../.agents/rules/AXIOMS-REVIEW.md) MUST be written. They are spec rules, not style preferences — an axiom that breaks them is malformed and `rbg` should flag it.
+
+- **Each axiom targets a CLASS of problems, never an instance.** The axioms themselves OBEY the `categorical-imperative` axiom: a rule is admissible only if it is universally constructed and universally construed. An axiom written as a patch for a single incident violates the very axiom it states — it is a bill of attainder against one failure, not law.
+- **Per-axiom template.** Each axiom is: a one-line normative principle + at most **3** class-level sharpening clauses **PLUS** at most **ONE** illustration + a review hook. The single `_E.g._` illustration is structurally distinct and does **not** count against the 3-clause budget — an axiom with 3 sharpening clauses and 1 illustration is compliant. The illustration must name a CLASS — never a PR number, task ID, single-client anecdote, or other enumerated instance. Where no class-level illustration is load-bearing, omit it entirely; an instance-level "e.g." is worse than none.
+- **Axioms are identified by SLUG, not number.** Each axiom carries a durable, unique, semantically-meaningful slug (e.g. `judgment-non-delegable`) — never an ordinal number. References to an axiom cite its slug (e.g. `[[AXIOMS#judgment-non-delegable]]`), never a position-dependent number. _Why:_ an ordinal couples an axiom's identity to its position, so any reorder or merge renumbers the whole set and breaks every reference across the codebase — a single-source-of-truth / stable-identifier failure (the `single-source-of-truth` axiom). A slug decouples identity from position: the set can be reordered, merged, or extended without breaking a single reference, and a slug is self-documenting where a bare number is not.
+- **Ordering is by DOCUMENT POSITION, not by identifier.** The Categorical Imperative sits first as the primary axiom — the one every other axiom instantiates. That primacy is expressed by position plus an explicit note in that axiom, not by a number; reordering the rest changes nobody's identity.
+- **No unnumbered or afterthought tier.** Every axiom is a first-class entry. There is no appendix of lesser rules, no trailing "see also" tier carrying normative weight — first-class status is conferred by being an axiom, not by holding a low number.
+- **Hard 1:1 invariant.** Every axiom in `AXIOMS.md` has exactly one correspondingly-slugged block in `AXIOMS-REVIEW.md` (the auditor questions `rbg` applies), and vice versa — no orphans on either side, keyed by slug. This is itself a `single-source-of-truth` obligation on the pair: the two files are one rule set expressed as law and as audit, and they MUST be reworked in lockstep so the slug set never diverges.
 
 Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
@@ -137,25 +148,25 @@ Any PR that adds, escalates, or removes enforcement MUST include a **Cost-Benefi
 
 Reviewers should WARN on missing CBA, BLOCK on missing items 1, 4, or 5.
 
-### §4.2 Worked example: A7
+### §4.2 Worked example: `exercise-authority`
 
-A7 ("Exercise Authority — Calibrate Capability", `.agents/rules/AXIOMS.md`) is an axiom — a rule, not a pyramid position. Its **enforcement footprint** spans multiple tiers of the executive pyramid:
+`exercise-authority` ("Exercise Authority — Calibrate Capability", `.agents/rules/AXIOMS.md`) is an axiom — a rule, not a pyramid position. Its **enforcement footprint** spans multiple tiers of the executive pyramid:
 
-| Tier | Mechanism enforcing A7 | What it does                                                          |
-| :--- | :--------------------- | :-------------------------------------------------------------------- |
-| L1   | AXIOMS.md inject       | Always-on prompt-cached load at SessionStart; ~100 lines per session. |
-| L6   | `rbg` PR-time review   | Reads diff against A7; advisory verdict for the orchestrator.         |
-| L6   | `marsha` QA verifier   | Checks task-completion claims for over-deference.                     |
-| L7   | `enforcer-status` GHA  | LLM review fed into branch-protection AND-gate at merge.              |
+| Tier | Mechanism enforcing `exercise-authority` | What it does                                                                    |
+| :--- | :--------------------------------------- | :------------------------------------------------------------------------------ |
+| L1   | AXIOMS.md inject                         | Always-on prompt-cached load at SessionStart; ~100 lines per session.           |
+| L6   | `rbg` PR-time review                     | Reads diff against `exercise-authority`; advisory verdict for the orchestrator. |
+| L6   | `marsha` QA verifier                     | Checks task-completion claims for over-deference.                               |
+| L7   | `enforcer-status` GHA                    | LLM review fed into branch-protection AND-gate at merge.                        |
 
-The decision to **number** A7 (vs leaving the rule as scattered surface-text instructions) was an explicit cost-benefit decision. Numbering raises the rule's **weight inside the L1 always-on inject mechanism**; it does not move the enforcement to a different tier.
+The decision to **promote `exercise-authority` into an axiom** (vs leaving the rule as scattered surface-text instructions) was an explicit cost-benefit decision. Axiom status raises the rule's **weight inside the L1 always-on inject mechanism**; it does not move the enforcement to a different tier. (The weight comes from the rule becoming a first-class axiom, not from any number — axioms are keyed by slug, see §4.0.)
 
 - **Friction**: 9+ over-deference recurrences across 6 agent surfaces (issue #195 thread, issue #950, plus fresh /retro evidence from 2026-05-11 sessions).
 - **Cheaper position attempted first**: surface-text L1 fixes (per-skill CORE.md / butler.md / planner). Tried 9 times across the #195 history. Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
-- **Why numbering justified**: per-surface L1 surface-text fixes did not beat the trained "seek confirmation" reflex. Moving the rule into always-on AXIOMS.md (still L1 — same mechanism class) makes it cross-cutting in a way no per-surface edit could match. Numbering is the weight-raising act.
+- **Why axiom-promotion justified**: per-surface L1 surface-text fixes did not beat the trained "seek confirmation" reflex. Moving the rule into always-on AXIOMS.md (still L1 — same mechanism class) makes it cross-cutting in a way no per-surface edit could match. Promotion to a first-class axiom is the weight-raising act.
 - **Forward cost**: ~100 lines permanent in always-on AXIOMS.md, prompt-cached. Surface citations remain L1 (≤10 lines each).
-- **Future fixes** against any of A7's three edges should land at the cheapest sufficient position — usually L1 surface-text propagation, not new axioms. Adding A18/A19 against the same root would repeat the failure mode this PR resolved.
-- **Reversibility / acceptance criterion**: zero FM-1 through FM-7 recurrences across the next 5 /retro reviews. If the criterion fails, the documented contingency is L6 (pre-Stop LLM hook), per `note-23e58353`.
+- **Future fixes** against any of `exercise-authority`'s three edges should land at the cheapest sufficient position — usually L1 surface-text propagation, not new axioms. Minting a new axiom against the same root would repeat the failure mode this PR resolved.
+- **Reversibility / acceptance criterion**: zero FM-1 through FM-7 recurrences (the `exercise-authority` failure-mode tells) across the next 5 /retro reviews. If the criterion fails, the documented contingency is L6 (pre-Stop LLM hook), per `note-23e58353`.
 
 This serves as the template for axiom-weight escalation: the CBA must look like this, with named prior attempts and explicit reversibility. The axiom is the rule; the pyramid tiers are the mechanisms enforcing it — confusing the two leads to inflating the axiom count rather than thickening the enforcement footprint.
 
@@ -169,7 +180,7 @@ This serves as the template for axiom-weight escalation: the CBA must look like 
 
 ## §5 Evidence loop
 
-The pyramid _learns_ by an evidence loop: incidents become anonymised reports become patterns become recommendations become rule changes. The loop is split deliberately by recusal (A17) into a witness phase and a judge phase — the agent that lived through the failure files facts only; a separate, detached agent later reads accumulated reports and proposes change.
+The pyramid _learns_ by an evidence loop: incidents become anonymised reports become patterns become recommendations become rule changes. The loop is split deliberately by the `recusal` axiom into a witness phase and a judge phase — the agent that lived through the failure files facts only; a separate, detached agent later reads accumulated reports and proposes change.
 
 ### §5.1 User story: how the framework gets better
 
@@ -286,12 +297,12 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 #### Pre-commit hooks
 
-| Hook                        | L  | Action | Purpose                                                 | Source                                 |
-| :-------------------------- | :- | :----- | :------------------------------------------------------ | :------------------------------------- |
-| `check-no-new-orphan-md`    | L4 | warn   | New `.md` outside canonical-location allowlist (R5.6)   | `scripts/check_no_new_orphan_md.py`    |
-| `check-framework-integrity` | L4 | warn   | Broken wikilinks or missing index entries               | `scripts/check_framework_integrity.py` |
-| `check-no-fallbacks`        | L4 | warn   | Silent-fallback patterns in hooks (A8 / P#8; #930)      | `scripts/check_no_fallbacks.py`        |
-| `normalize-mcp-names`       | L4 | warn   | Auto-heals Gemini-form MCP names to Claude form (#1128) | `scripts/normalize_mcp_names.py`       |
+| Hook                        | L  | Action | Purpose                                                           | Source                                 |
+| :-------------------------- | :- | :----- | :---------------------------------------------------------------- | :------------------------------------- |
+| `check-no-new-orphan-md`    | L4 | warn   | New `.md` outside canonical-location allowlist (R5.6)             | `scripts/check_no_new_orphan_md.py`    |
+| `check-framework-integrity` | L4 | warn   | Broken wikilinks or missing index entries                         | `scripts/check_framework_integrity.py` |
+| `check-no-fallbacks`        | L4 | warn   | Silent-fallback patterns in hooks (`halt-on-failure` / P#8; #930) | `scripts/check_no_fallbacks.py`        |
+| `normalize-mcp-names`       | L4 | warn   | Auto-heals Gemini-form MCP names to Claude form (#1128)           | `scripts/normalize_mcp_names.py`       |
 
 #### Bridge-level constraints
 
@@ -314,15 +325,18 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 #### PR-pipeline agents (v2)
 
-Branch protection AND-gates each `<agent>-status` directly — no LLM judgment in the merge gate. **Phase 1 operative (PR #1062); phases 2/3/5 pending.** Contract: [`pr-pipeline-v2.md`](../workflows/pr-pipeline-v2.md).
+Branch protection requires each agent's `<agent>-status` check directly — there is no transitive triage agent deciding mergeability on the others' behalf. The judgment lives in the LLM review agents themselves: a failing `enforcer-status` (the LLM axiom review of the diff) blocks the merge. Branch protection is just the mechanical AND-gate that combines the required checks; "no triage LLM" is the point, not "the merge is unreviewed." For the canonical architectural details of this design and its phased rollout, see [`pr-pipeline-v2.md`](../workflows/pr-pipeline-v2.md).
 
-| Agent              | L  | Action | Purpose                                                 | Source                                                                      |
-| :----------------- | :- | :----- | :------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | `.github/workflows/agent-enforcer.yml@enforcer-v1`                          |
-| `alignment-status` | L6 | block  | LLM review of PKB design-intent alignment               | `.github/workflows/agent-alignment.yml@alignment-v1`                        |
-| `mechanic-status`  | L4 | —      | Mechanical merge + conflict resolution only             | `.github/workflows/agent-mechanic.yml@mechanic-v1`                          |
-| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | GitHub repo settings (admin-configured)                                     |
-| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check) |
+**Live vs planned.** `enforcer-status` (enforcer-v1) is the only deployed GHA agent gate. The others are **not** GHA checks: `alignment-status` is **in progress** — pauli runs **off-GHA**, host-invoked via the `strategic-review` skill (it needs PKB reachability, which GHA lacks), posts a verdict, and is intended to become a required check but is **not yet** in the ruleset; `qa-status` does **not** exist — marsha is **live but manual-only** (`/verify`) and is not wired to the PR pipeline; the planned rebase-only split is **not built** (`agent-mechanic.yml` absent) and its name is undecided ("mechanic" rejected). The live `merge-prep` (`agent-merge-prep.yml`) is the **operative** merge-prep mechanism: it **auto-tries to make the PR green** (auto-fixes failing checks, re-runs until they pass) **and addresses all prior review comments**, plus conflict-resolve (merge, **not** rebase — force-push prohibited), bot-approve, set `merge-prep-status`, enable auto-merge, with self-loop detection + ceiling (`MAX_MERGE_PREP_RUNS=5`). The ruleset still requires `merge-prep-status` **plus 2 approving reviews** (merge-prep bot + human) — not the v2 target of 1. The table below is the v2 **target** contract; the Status column marks current reality.
+
+| Agent              | L  | Action | Purpose                                                 | Status                                                                      | Source                                                                                                                  |
+| :----------------- | :- | :----- | :------------------------------------------------------ | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
+| `enforcer-status`  | L6 | block  | LLM review of PR diff against axioms; SHA-skip dedupe   | **live** (enforcer-v1)                                                      | `.github/workflows/agent-enforcer.yml@enforcer-v1`                                                                      |
+| `alignment-status` | L6 | block  | pauli review of PKB design-intent (NOT axioms)          | in progress — host-invoked via `strategic-review`; not yet a required check | host / user machine via the `strategic-review` skill (off-GHA — pauli needs PKB reachability); no `agent-alignment.yml` |
+| rebase-only split  | L4 | —      | Mechanical merge + conflict resolution only             | planned; not built — split's name undecided ("mechanic" rejected)           | `.github/workflows/agent-mechanic.yml` absent; live merge-prep still does this                                          |
+| `qa-status`        | L6 | block  | marsha runtime/intent verification                      | exists; manual invocation only (`/verify`); not wired to the PR pipeline    | runs locally via `/verify`; no `agent-qa.yml`                                                                           |
+| branch protection  | L7 | block  | AND-gates all required `<agent>-status` checks at merge | **live**                                                                    | GitHub repo settings (admin-configured)                                                                                 |
+| `loop_detector`    | L7 | block  | Refuses merge if loop detected in PR-pipeline state     | **live** (in v1 merge-prep)                                                 | `.github/workflows/agent-merge-prep.yml` (steps: loop-check, ceiling-check)                                             |
 
 ## §7 Scope limits
 

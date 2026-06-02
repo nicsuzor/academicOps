@@ -299,7 +299,7 @@ Applies whenever a PR was closed without merge. The action depends on close cont
 | **bad-implementation** | Ambiguous, wrong approach, reviewer rejection of approach/design, repeated failure, or "needs rethink" language           | Mark original task `cancelled`. File a sibling investigation task (same parent, `soft_depends_on: [<original-id>]`) summarising what went wrong and what must change before redispatching. Do NOT re-queue the original. |
 | **retry-as-is**        | Rare: unrelated infrastructure failure explicitly documented in PR comments; nothing about the task or approach was wrong | Re-queue to `inbox`. Log the justification explicitly in the sleep activity log and in the task body.                                                                                                                    |
 
-**Agent invocation, not regex** — per No Shitty NLP (AXIOMS.md § 235). The agent reads the actual PR body and comments to make a semantic judgment. Do not string-match on "wontfix" or similar labels; the label is a signal, not the verdict.
+**Agent invocation, not regex** — per `judgment-non-delegable` (AXIOMS.md). The agent reads the actual PR body and comments to make a semantic judgment. Do not string-match on "wontfix" or similar labels; the label is a signal, not the verdict.
 
 **Investigation task format (bad-implementation route):**
 

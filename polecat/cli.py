@@ -40,10 +40,11 @@ from polecat.manager import PolecatManager
 from polecat.observability import metrics
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 
-# In-container path for the staged polecat.yaml. Hooks running inside the
-# container read AOPS_POLECAT_CONFIG (set by ``_build_docker_cmd``) to resolve
-# this same file.
-_CONTAINER_POLECAT_YAML = "/home/worker/.aops/polecat.yaml"
+# NOTE: polecat.yaml is NOT staged into containers. The container reads no
+# config file; the host resolves polecat.yaml + the local.yaml overlay and
+# injects the needed values as env vars (gate modes, model, debug,
+# AOPS_ENABLED_PROVIDERS, AOPS_MACHINE). ``CONFIG_PATH_ENV`` is still skipped
+# in the env-forwarding loop so the host's own path never leaks inward.
 
 # Turn budget for headless Claude runs.
 #
@@ -277,9 +278,10 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
 # names, polecat both selects the matching client AND uses the model id
 # from ``polecat.yaml session_defaults.<client>_model``. Anything else is
 # treated as a literal model id and the client is inferred from the prefix
-# (``gemini-*`` → gemini, ``claude-*`` / sonnet|opus|haiku-* → claude).
+# (``antigravity-*``/``agy-*`` → antigravity, ``claude-*`` / sonnet|opus|haiku-* → claude).
 _CLIENT_ALIAS_MODELS: dict[str, str] = {
-    "gemini": "gemini",
+    "antigravity": "antigravity",
+    "agy": "antigravity",
     "claude": "claude",
 }
 
@@ -300,21 +302,24 @@ def _resolve_model_flag(
     """Resolve a ``--model <name>`` value into (client, model_id_override).
 
     The unified ``--model`` flag is the canonical way to pick BOTH the agent
-    client (claude vs gemini) AND the model id used inside that client. It
+    client (claude vs antigravity) AND the model id used inside that client. It
     replaces the legacy ``--gemini``/``-g`` flag.
 
     Resolution rules:
 
     * ``None`` → ``(default_client, None)``. No override; the session config's
       configured model for ``default_client`` is used.
-    * A client-name alias (``"claude"``, ``"gemini"``) → ``(client, None)``.
-      The client is switched; the configured ``<client>_model`` from
-      ``polecat.yaml session_defaults`` is used verbatim.
+    * A client-name alias (``"claude"``, ``"antigravity"``, ``"agy"``) →
+      ``(client, None)``. The client is switched; the configured
+      ``<client>_model`` from ``polecat.yaml session_defaults`` is used verbatim.
+      Note: "antigravity" (agy) is a *client* — the CLI wrapper — not a model name.
+      The actual model it uses (e.g. Gemini 3.1 Pro) is configured via
+      ``antigravity_model`` in polecat.yaml.
     * A bare Claude model-family name (``"opus"``, ``"sonnet"``, ``"haiku"``)
       → ``("claude", <name>)``. Claude Code's CLI accepts these as aliases
       for the latest version of each family; polecat passes them through.
       This is the canonical short form documented in ``~/junior/.agents/CORE.md``.
-    * A literal model id (``"claude-opus-4-8"``, ``"gemini-2.5-pro"``, etc.):
+    * A literal model id (``"claude-opus-4-8"``, ``"antigravity-1.0"``, etc.):
       the client is inferred from the id prefix and the id is passed through
       to the client CLI as ``--model <id>``.
     * Anything else → ``click.UsageError`` naming the available aliases so the
@@ -354,11 +359,11 @@ def _resolve_model_flag(
 
     # Literal model ids: infer client from prefix and pass through verbatim.
     # Anthropic naming: claude-*, opus-*, sonnet-*, haiku-* (post-rebrand
-    # aliases). Google: gemini-*. Anything else is an error — silent
+    # aliases). Antigravity: antigravity-*, agy-*. Anything else is an error — silent
     # pass-through caused the original drift (--opus → default sonnet) by
     # forwarding unknown names to the wrong client.
-    if alias_lower.startswith("gemini-"):
-        return "gemini", name
+    if alias_lower.startswith("antigravity-") or alias_lower.startswith("agy-"):
+        return "antigravity", name
     if (
         alias_lower.startswith("claude-")
         or alias_lower.startswith("opus-")
@@ -371,7 +376,7 @@ def _resolve_model_flag(
     raise click.UsageError(
         f"--model {model_value!r}: cannot determine client. "
         f"Use one of the aliases {aliases}, or pass a literal model id prefixed with "
-        "'claude-', 'opus-', 'sonnet-', 'haiku-', or 'gemini-'."
+        "'claude-', 'opus-', 'sonnet-', 'haiku-', 'antigravity-', or 'agy-'."
     )
 
 
@@ -405,11 +410,11 @@ def _resolve_session_config(
     if model is not None:
         if client == "claude":
             overrides["claude_model"] = model
-        elif client == "gemini":
-            overrides["gemini_model"] = model
+        elif client == "antigravity":
+            overrides["antigravity_model"] = model
         else:
             raise click.UsageError(
-                f"--model has no effect for client={client!r}; drop the flag or pick claude/gemini"
+                f"--model has no effect for client={client!r}; drop the flag or pick claude/antigravity"
             )
     if debug is not None:
         overrides["debug"] = debug
@@ -600,15 +605,25 @@ def reset_terminal_title() -> None:
 def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
     """Find the real Claude Code session transcript under the run session dir.
 
-    Globs ``<run_session_dir>/-workspace/*.jsonl`` and returns the newest by
-    mtime, or ``None`` if nothing is found.
+    The transcript lands at a daemon-dependent depth:
+
+    * Remote daemon (docker cp): the session dir is copied back with the
+      container's ``.claude/projects/-workspace/`` segment intact, so the
+      Claude ``<uuid>.jsonl`` lands at ``<run_session_dir>/-workspace/*.jsonl``.
+    * Local daemon (bind mount): ``run_session_dir`` itself is bind-mounted
+      straight onto the container's ``.claude/projects/-workspace``, so the
+      ``<uuid>.jsonl`` lands FLAT in ``<run_session_dir>/*.jsonl`` — there is
+      no ``-workspace`` segment.
+
+    We accept either layout by globbing recursively, excluding polecat's own
+    ``polecat-session-*.jsonl`` stub/hooks logs (which are also ``.jsonl``).
+    Returns the newest match by mtime, or ``None`` if nothing is found.
     """
-    if run_session_dir is None:
+    if run_session_dir is None or not run_session_dir.is_dir():
         return None
-    workspace = run_session_dir / "-workspace"
-    if not workspace.is_dir():
-        return None
-    jsonls = list(workspace.glob("*.jsonl"))
+    jsonls = [
+        p for p in run_session_dir.rglob("*.jsonl") if not p.name.startswith("polecat-session")
+    ]
     if not jsonls:
         return None
     return max(jsonls, key=lambda p: p.stat().st_mtime)
@@ -1607,14 +1622,22 @@ def _build_docker_cmd(
                 else:
                     cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
-    # Stage polecat.yaml into the container so hooks resolve gate modes,
-    # provider lists, and any other config without re-reading host paths.
-    # The host config is the SSoT — the staged file is a copy.
-    staged_aops_dir = staging_dir / ".aops" if staging_dir else None
-    if staged_aops_dir is not None:
-        staged_aops_dir.mkdir(exist_ok=True)
-        shutil.copy2(cfg.source_path, staged_aops_dir / "polecat.yaml")
-    cmd.extend(["-e", f"{CONFIG_PATH_ENV}={_CONTAINER_POLECAT_YAML}"])
+    # The container NEVER reads polecat.yaml. The host is the SSoT: it resolved
+    # the config above and injects the few values the container actually needs
+    # as plain env vars. Gate modes + model + debug are stamped elsewhere
+    # (_apply_gate_env / model flags); here we inject the remaining two:
+    #   AOPS_ENABLED_PROVIDERS — the enabled external_agents set, consumed by
+    #       lib/session_naming for artifact-filename parsing.
+    #   AOPS_MACHINE           — the host's short name (from the local.yaml
+    #       overlay), so worker artifacts carry the HOST machine, not the
+    #       container hostname. Omitted when the overlay does not set it.
+    if cfg is not None:
+        enabled_providers = ",".join(
+            sorted(name for name, agent in cfg.external_agents.items() if agent.enabled)
+        )
+        cmd.extend(["-e", f"AOPS_ENABLED_PROVIDERS={enabled_providers}"])
+        if cfg.machine:
+            cmd.extend(["-e", f"AOPS_MACHINE={cfg.machine}"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -2423,7 +2446,7 @@ def _bootstrap_or_exit(client: str | None = None) -> None:
     "--home",
     envvar="POLECAT_HOME",
     type=click.Path(path_type=Path),
-    help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
+    help="Polecat home directory (default: $POLECAT_HOME, else polecat.yaml 'polecat_home:' value)",
 )
 @click.option(
     "--verbose",
@@ -3510,10 +3533,10 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     "--model",
     default=None,
     help=(
-        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "Select client and/or model. Aliases 'claude' and 'antigravity' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, antigravity-1.0) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -3581,10 +3604,10 @@ def crew_alias(
     "--model",
     default=None,
     help=(
-        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "Select client and/or model. Aliases 'claude' and 'antigravity' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, antigravity-1.0) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -3642,7 +3665,7 @@ def crew(
         polecat crew repo /path/to/x           # Crew in arbitrary repo
         polecat crew -r audre                  # Resume crew worker "audre"
         polecat crew -i aops                   # Interactive shell in crew container
-        polecat crew --model gemini aops       # Gemini CLI in our docker container
+        polecat crew --model antigravity aops  # Antigravity CLI (agy) in our docker container
         polecat crew --model claude-opus-4-8 aops  # Specific Claude model
         polecat crew aops -- -p "do something"     # Pass args to agent CLI
     """
@@ -3868,7 +3891,7 @@ def crew(
         cli_tool = "shell"
     else:
         cli_tool = selected_client
-    is_gemini = cli_tool == "gemini"
+    is_antigravity = cli_tool == "antigravity"
     _require_claude_oauth_or_exit(cli_tool)
     print(f"\n\U0001f91d Starting {cli_tool} crew session...")
     print(f"   Crew: {crew_name}")
@@ -3895,28 +3918,16 @@ def crew(
         # Both claude and gemini CLIs are pre-installed in the image along
         # with their aops plugins, so the user can run either manually.
         cmd = ["bash"]
-    elif is_gemini:
-        # Gemini: run inside our Docker container (not --sandbox, which uses
-        # bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
+    elif is_antigravity:
+        # Antigravity (agy): run inside our Docker container (not --sandbox, which
+        # uses bind mounts that fail on WSL2/Docker Desktop).  Auth files are staged
         # via docker cp, and session transcripts are extracted after the run.
-        # --approval-mode yolo: gemini's plan mode default-denies tools that
-        # lack an explicit allow rule, blocking even read_file/list_directory.
-        # Trust boundary is the polecat router hook + policy engine, not the
-        # gemini approval prompt. Autonomous workers must never run in plan mode.
-        # Only inject approval-mode if agent_args doesn't already provide one —
-        # callers may pass --approval-mode via extra args after '--'.
-        _has_approval = agent_args and "--approval-mode" in agent_args
-        cmd = ["gemini"]
-        if not _has_approval:
-            cmd.extend(["--approval-mode", "yolo"])
-        cmd.extend(
-            [
-                "--include-directories",
-                "/home/worker/.gemini/extensions/aops-core",
-                "--model",
-                session_cfg.gemini_model,
-            ]
-        )
+        cmd = [
+            "agy",
+            "--dangerously-skip-permissions",
+            "--model",
+            session_cfg.antigravity_model,
+        ]
     else:
         # Claude Code: sandbox via project settings.json + setting-sources.
         # Plan mode + full hook stack — the legacy hooks-off branch was removed
@@ -3953,7 +3964,7 @@ def crew(
     # Claude crew runs in plan mode; signal that to the gate engine so it
     # skips the custodiet ops counter (the gate must not fire when rbg
     # cannot be invoked). Suppressed for gemini / interactive shell paths.
-    if not interactive and not is_gemini:
+    if not interactive and not is_antigravity:
         env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
@@ -3966,7 +3977,7 @@ def crew(
 
     tmp_gemini_home = None
     tmp_files: list[Path] = []
-    if is_gemini:
+    if is_antigravity:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(
             env, work_dir=work_dir, hooks_enabled=session_cfg.hooks_enabled
@@ -4089,7 +4100,7 @@ def crew(
             # Claude writes to /home/worker/.claude/projects/-workspace/
             # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
             extract = []
-            if is_gemini:
+            if is_antigravity:
                 if _is_remote_daemon():
                     gemini_tmp_dir = session_dir / ".gemini-tmp"
                     gemini_tmp_dir.mkdir(exist_ok=True)
@@ -4124,7 +4135,7 @@ def crew(
     finally:
         reset_terminal_title()
         # Extract Gemini session files before cleaning up
-        if is_gemini:
+        if is_antigravity:
             _extract_gemini_sessions(session_dir)
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
@@ -4312,10 +4323,10 @@ class _IssueTask:
     "--model",
     default=None,
     help=(
-        "Select client and/or model. Aliases 'claude' and 'gemini' pick the "
+        "Select client and/or model. Aliases 'claude' and 'antigravity' pick the "
         "client and use the configured model from polecat.yaml. Bare Claude "
         "family names ('opus', 'sonnet', 'haiku') and literal model ids "
-        "(e.g. claude-opus-4-8, gemini-2.5-pro) are passed through and the "
+        "(e.g. claude-opus-4-8, antigravity-1.0) are passed through and the "
         "client is inferred from the prefix. Replaces the legacy --gemini/-g flag."
     ),
 )
@@ -4421,7 +4432,7 @@ def run(
     # model id; it replaces the legacy --gemini/-g flag.
     selected_client, model_override = _resolve_model_flag(model, default_client="claude")
     cli_tool = selected_client
-    is_gemini = cli_tool == "gemini"
+    is_antigravity = cli_tool == "antigravity"
     _bootstrap_or_exit(client=cli_tool)
     _require_claude_oauth_or_exit(cli_tool)
 
@@ -4458,23 +4469,32 @@ def run(
 
         if not force:
             _DONE_STATUSES = ("done", "cancelled")
-            _LOCKED_STATUSES = ("merge_ready", "review")
 
             if status_str in _DONE_STATUSES:
                 print(f"✅ Task {task_id} is already '{status_str}'.")
                 sys.exit(0)
 
-            # Refuse to re-dispatch tasks locked by an open PR (not yet merged).
             pr_ref = task.pr_url or (f"#{task.pr}" if task.pr else None)
-            if status_str in _LOCKED_STATUSES or pr_ref:
+
+            # `review` is an enforced gate — human judgment required before any agent claims.
+            if status_str == "review":
                 print(
-                    f"🔒 Task {task_id} is locked "
-                    f"(status: {status_str}"
-                    + (f", PR: {pr_ref}" if pr_ref else "")
-                    + "). A PR already exists for this task — refusing to re-dispatch.",
+                    f"🔒 Task {task_id} is in 'review' status — human judgment required. "
+                    "Use --force to override.",
                     file=sys.stderr,
                 )
-                sys.exit(2)  # Exit 2 = locked; distinct from exit 1 (error) / exit 3 (empty queue)
+                sys.exit(2)
+
+            # Warn when re-dispatching merge_ready or PR-locked tasks, but do not refuse.
+            # merge_ready is an iterative state; agents may continue work on an open PR.
+            if status_str == "merge_ready" or pr_ref:
+                print(
+                    f"⚠️  Task {task_id} is under review "
+                    f"(status: {status_str}"
+                    + (f", PR: {pr_ref}" if pr_ref else "")
+                    + "). Iterating on an existing PR.",
+                    file=sys.stderr,
+                )
         else:
             print(f"⚠️  --force: bypassing status check for {task_id} (status: {status_str}).")
 
@@ -4482,7 +4502,7 @@ def run(
         # aops-core/skills/remember/references/TAXONOMY.md. NEVER add the
         # legacy "active" — PKB rejects it as Invalid status.
         # With --force, claim from any non-terminal status.
-        _CLAIMABLE_STATUSES = ("ready", "queued") if not force else None
+        _CLAIMABLE_STATUSES = ("ready", "queued", "merge_ready") if not force else None
         if _CLAIMABLE_STATUSES is None or status_str in _CLAIMABLE_STATUSES:
             # Capture prior status so a downstream failure can restore
             # exactly what we found, rather than guessing a default.
@@ -4631,7 +4651,7 @@ def run(
     )
 
     # Step 4: Run agent in the worktree
-    # cli_tool / is_gemini were resolved upstream from --model (see
+    # cli_tool / is_antigravity were resolved upstream from --model (see
     # _resolve_model_flag at the top of run()).
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
@@ -4651,32 +4671,21 @@ def run(
     print("-" * 50)
 
     # Build command - gemini and claude have different CLI interfaces
-    if is_gemini:
-        # Gemini CLI — run inside our Docker container (not --sandbox, which
-        # uses bind mounts that fail on WSL2/Docker Desktop).
-        #
-        # Sandbox allowlist (#522): Gemini's workspace sandbox blocks reads of
-        # files outside /workspace, including the aops-core extension's
-        # GEMINI.md and sibling skills. Explicitly widen the allowlist to the
-        # extension directory so read_file / activate_skill work.  Keep this
-        # list narrow — DO NOT blanket-widen; each entry is a specific dir
-        # the agent needs to reach.
+    if is_antigravity:
+        # Antigravity CLI (agy) — replacing gemini
         cmd = [
-            "gemini",
-            "--approval-mode",
-            "yolo",
-            "--include-directories",
-            "/home/worker/.gemini/extensions/aops-core",
+            "agy",
+            "--dangerously-skip-permissions",
             "--model",
-            session_cfg.gemini_model,
+            session_cfg.antigravity_model,
         ]
 
         if interactive:
-            # -i starts interactive mode with initial prompt
-            cmd.extend(["-i", prompt])
+            # Interactive mode
+            cmd.append(prompt)
         else:
-            # Headless mode with auto-approve
-            cmd.extend(["-p", prompt])
+            # Headless mode with a timeout
+            cmd.extend(["-p", prompt, "--print-timeout", "9m"])
     else:
         # Claude CLI. Autonomous polecat workers run bypass-permissions in both
         # hooks-on and hooks-off cases.
@@ -4730,7 +4739,7 @@ def run(
     run_session_dir = _get_sessions_base() / "polecats" / task.id / project_slug
     env["AOPS_SESSION_STATE_DIR"] = str(run_session_dir)
 
-    if is_gemini:
+    if is_antigravity:
         # Replicate Gemini authentication — creates a temp dir with .gemini/ auth files.
         tmp_gemini_home = _replicate_gemini_auth(
             env, work_dir=worktree_path, hooks_enabled=session_cfg.hooks_enabled
@@ -4815,7 +4824,7 @@ def run(
     # Compute extract_paths for session transcript persistence.
     # Claude writes to /home/worker/.claude/projects/-workspace/
     # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
-    if is_gemini:
+    if is_antigravity:
         if _is_remote_daemon():
             gemini_tmp_dir = run_session_dir / ".gemini-tmp"
             gemini_tmp_dir.mkdir(exist_ok=True)
@@ -4851,7 +4860,7 @@ def run(
                     cwd=worktree_path,
                     env=env,
                     extract_paths=_extract,
-                    gemini=is_gemini,
+                    gemini=is_antigravity,
                     task_id=task.id,
                 )
             else:
@@ -4871,7 +4880,7 @@ def run(
                     capture_output=True,
                     text=True,
                     extract_paths=_extract,
-                    gemini=is_gemini,
+                    gemini=is_antigravity,
                     task_id=task.id,
                 )
             else:
@@ -4955,7 +4964,7 @@ def run(
         if interactive:
             reset_terminal_title()
         # Extract Gemini session files before cleaning up
-        if is_gemini:
+        if is_antigravity:
             _extract_gemini_sessions(run_session_dir)
         if tmp_gemini_home and tmp_gemini_home.exists():
             shutil.rmtree(tmp_gemini_home)
@@ -5110,18 +5119,18 @@ main.add_command(_watch_cmd)
 
 @main.command()
 @click.option("--claude", "-c", default=0, help="Number of Claude workers")
-@click.option("--gemini", "-g", default=0, help="Number of Gemini workers")
+@click.option("--antigravity", "-a", default=0, help="Number of Antigravity workers")
 @click.option("--project", "-p", help="Project to focus on (default: all)")
 @click.option("--caller", default="polecat", help="Identity claiming the tasks (default: bot)")
 @click.option("--dry-run", is_flag=True, help="Simulate execution")
 @click.pass_context
-def swarm(ctx, claude, gemini, project, caller, dry_run):
+def swarm(ctx, claude, antigravity, project, caller, dry_run):
     """Run a swarm of parallel Polecat workers.
 
-    Spawns N claude and M gemini workers, managing CPU affinity.
+    Spawns N claude and M antigravity workers, managing CPU affinity.
     Restarting workers on success, stopping on failure.
     """
-    client_to_check = "gemini" if gemini > 0 else ("claude" if claude > 0 else None)
+    client_to_check = "antigravity" if antigravity > 0 else ("claude" if claude > 0 else None)
     _bootstrap_or_exit(client=client_to_check)
     if claude > 0:
         _require_claude_oauth_or_exit("claude")
@@ -5143,7 +5152,7 @@ def swarm(ctx, claude, gemini, project, caller, dry_run):
                 sys.exit(1)
 
     home = ctx.obj.get("home")
-    run_swarm(claude, gemini, project, caller, dry_run, str(home) if home else None)
+    run_swarm(claude, antigravity, project, caller, dry_run, str(home) if home else None)
 
 
 try:
@@ -5229,7 +5238,6 @@ def resume(ctx, task_id):
         task_id=task_id,
         issue=None,
         no_finish=False,
-        gemini=False,
         interactive=False,
         no_auto_finish=False,
         memory=None,

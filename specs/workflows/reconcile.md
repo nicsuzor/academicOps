@@ -17,7 +17,7 @@ This is a behavioural spec. It describes what an agent does when reconciling Git
 
 ## Problem
 
-The closure loop between GitHub (issues, PRs) and the PKB task graph is partial and duplicated. `/daily`, `/sleep`, and `/supervisor` each contain ad-hoc closure logic, and matching is done by whole-word title match and branch name — shitty NLP (AXIOMS § 235 / A7 Edge 3).
+The closure loop between GitHub (issues, PRs) and the PKB task graph is partial and duplicated. `/daily`, `/sleep`, and `/supervisor` each contain ad-hoc closure logic, and matching is done by whole-word title match and branch name — shitty NLP (the `judgment-non-delegable` axiom / `exercise-authority` Edge 3).
 
 Four gap types:
 
@@ -32,7 +32,7 @@ Four gap types:
 2. **No Shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces (frontmatter fields, the GH API's `closingIssuesReferences` structured field, frontmatter URLs). Anywhere prose is involved, an agent reads it.
 3. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log — same staleness contract as `pr-state.json`. The log is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
-5. **`needs_user_call` has exactly one rendering consumer**: `/daily`'s "What Needs Attention → Needs your call" section. Writing the flag without that consumer is an A8 violation.
+5. **`needs_user_call` has exactly one rendering consumer**: `/daily`'s "What Needs Attention → Needs your call" section. Writing the flag without that consumer is a `halt-on-failure` violation.
 6. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
 7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write). _(This is the revision from PR #985: the prior design proposed `aops-core/lib/reconcile/` + `scripts/reconcile.py --forward/--reverse/--full` + cron wiring + a `pkb__complete_task` hook. Nic's review: "no scripts. trust agents to take care of this in a smart way, don't delegate to dumb bash." The script layer is removed.)_
 8. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.

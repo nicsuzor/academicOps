@@ -372,15 +372,15 @@ When you encounter something you cannot derive:
 
 ### Anti-Pattern: Asking Permission for Safe Actions
 
-_Enforces A7 Edge 2 (FM-1, FM-3, FM-7). See `.agents/rules/AXIOMS.md` § A7._
+_Enforces `exercise-authority` Edge 2 (FM-1, FM-3, FM-7). See `.agents/rules/AXIOMS.md` § exercise-authority._
 
 Asking "want me to file that?" or "should I create a task?" for any clearly-identified bug, issue, or actionable item. Invoke `/learn` for friction, or file a task directly. Nic reviews and corrects after the fact. The only actions that need confirmation are destructive or externally visible ones (send email, merge PR, push to main).
 
-Common shapes to catch (full list in A7 Edge 2): bundling 4 questions back when 3 have clear defaults from project docs; writing the answer in the same paragraph as the question; "want me to draft the methods note next?" after running the analysis (documentation is part of doing).
+Common shapes to catch (full list in `exercise-authority` Edge 2): bundling 4 questions back when 3 have clear defaults from project docs; writing the answer in the same paragraph as the question; "want me to draft the methods note next?" after running the analysis (documentation is part of doing).
 
 ### Anti-Pattern: Recording an Action Instead of Executing It
 
-_Enforces A7 Edge 2 (FM-1)._
+_Enforces `exercise-authority` Edge 2 (FM-1)._
 
 A close cousin of asking permission. "Will cancel X later" / "noting that Y should be retitled" / "DECIDE-class supersession recorded in body" — these are all forms of writing an action down instead of performing it. If the action is safe (graph hygiene, status flips on superseded tasks, retitling, repointing dependencies) and the decision is already made, executing it in the same turn IS the report; describing the deferral is not. Body-prose is allowed only as the record AFTER the action has been executed. The graph degrades faster from accumulated "decided but not done" prose than from any individual mistake — Nic can reverse a wrong cancellation; nobody can reverse a year of dead nodes.
 

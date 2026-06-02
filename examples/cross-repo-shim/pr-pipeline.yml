@@ -6,6 +6,16 @@ on:
 
 jobs:
   pipeline:
+    # Required: a calling job cannot grant the reusable workflow MORE
+    # permissions than itself. With default-restrictive repo settings the
+    # GITHUB_TOKEN comes through as read-only.
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      id-token: write
+      issues: write
+      actions: read
     # Replace 'main' with '@pipeline-v1' for stability
     uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@pipeline-v1
     secrets:
