@@ -1,7 +1,10 @@
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+_RECENT = (datetime.now(UTC) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Add aops-core/scripts to path for imports
 SCRIPT_DIR = Path(__file__).parents[2] / "aops-core" / "scripts"
@@ -103,7 +106,7 @@ def test_apply_triage_catchall_is_pipeline(tmp_path):
         "statusCheckRollup": [],
         "headRefName": "feature/x",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
@@ -135,7 +138,7 @@ def test_apply_triage_auto_mergeable_for_green_approved_pr(tmp_path):
         ],
         "headRefName": "feature/y",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
@@ -165,7 +168,7 @@ def test_apply_triage_pipeline_when_not_yet_approved(tmp_path):
         ],
         "headRefName": "feature/z",
         "author": {"login": "someuser"},
-        "updatedAt": "2026-05-25T00:00:00Z",
+        "updatedAt": _RECENT,
     }
     calls = []
 
