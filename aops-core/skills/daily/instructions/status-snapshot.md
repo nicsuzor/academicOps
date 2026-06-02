@@ -9,22 +9,39 @@ Populate the `## Status` section with a factual snapshot of the task graph, upco
 ```python
 summary = mcp__pkb__task_summary()
 # Returns: { "ready": N, "blocked": N,
-#            "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N },
+#            "by_priority": { "p0": N, "p1": N, "p2": N, "p3": N },  # READY tasks in each class
+#            "by_priority_total": { "p0": N, "p1": N, "p2": N, "p3": N },  # (future) total tasks in each class
 #            "deadlines": { "overdue": N, "due_today": N, "due_this_week": N } }
 ```
 
-Use `summary["ready"]` as the denominator for priority bars.
+`by_priority["pN"]` is the count of **ready** tasks in priority class N, and `ready` is the total ready count. These are the canonical numbers — **never recompute them by listing and counting tasks yourself** (P#78: aggregation is the PKB's job, not the LLM's, precisely because LLM counting is what produced the stale/impossible figures this surface exists to fix).
 
 ### 3.2: Priority Distribution
 
-Report counts only. Do not annotate with "→ recommended tasks" pointers. Use the count from `summary["ready"]` as the total of **ready tasks**. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4).
+Report counts only. Do not annotate with "→ recommended tasks" pointers. Labels P0–P3 follow the canonical definitions — see [Priority Labels in TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4).
+
+**Per-class denominators.** Each P-row shows the ready count _within that priority class_ against the size of that class — **not** against the global ready total. This makes each bar a completion-progress indicator for its own class ("how much P2 work is ready vs. still blocked/in-flight"), instead of "what share of all ready work happens to be P2". The shared global denominator is the specific defect this section was changed to remove (GitHub #182 §4).
+
+- **Numerator**: `summary["by_priority"]["pN"]` — ready tasks in class N.
+- **Denominator**: the per-class total reported by `task_summary` for class N (all non-closed tasks in that class), expected under `summary["by_priority_total"]["pN"]` (P#78). Source it from `task_summary` — never count tasks yourself.
 
 ```
-P0 ░░░░░░░░░░ 3/85
-P1 █░░░░░░░░░ 12/85
-P2 ██████████ 55/85
-P3 ██░░░░░░░░ 15/85
+P0 ░░░░░░░░░░ 0/4
+P1 ██░░░░░░░░ 3/14
+P2 ████░░░░░░ 107/240
+P3 ██████░░░░ 265/410
 ```
+
+**Graceful degradation.** The currently-shipped `task_summary` emits only the ready count per class (`by_priority`), not the per-class total. Until it also emits per-class totals, render the ready count alone, with no denominator and no bar fill implying completeness:
+
+```
+P0  0
+P1  3
+P2  107
+P3  265
+```
+
+Do **not** fabricate a denominator, reuse the global `ready` total as a stand-in, or have the LLM count tasks to synthesise one. A wrong denominator is worse than none — it reintroduces exactly the impossible-ratio failure (#182) this surface was built to prevent.
 
 ### 3.3: Deadline List
 
