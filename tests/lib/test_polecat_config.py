@@ -19,7 +19,7 @@ CANONICAL_YAML = dedent(
     session_defaults:
       hooks_enabled: true
       claude_model: claude-sonnet-4-6
-      gemini_model: gemini-2.5-pro
+      antigravity_model: agy
       debug: false
       gates:
         handover: warn
@@ -57,9 +57,9 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert isinstance(cfg, PolecatConfig)
     assert cfg.session_defaults.hooks_enabled is True
     assert cfg.session_defaults.claude_model == "claude-sonnet-4-6"
-    assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
+    assert cfg.session_defaults.antigravity_model == "agy"
     assert cfg.session_defaults.model_for("claude") == "claude-sonnet-4-6"
-    assert cfg.session_defaults.model_for("gemini") == "gemini-2.5-pro"
+    assert cfg.session_defaults.model_for("antigravity") == "agy"
     assert cfg.session_defaults.debug is False
     assert cfg.session_defaults.gates.handover == "warn"
     assert cfg.session_defaults.gates.hydration == "off"
@@ -133,7 +133,7 @@ def test_for_mode_crew_overlays_hooks(cfg_path: Path) -> None:
     crew = cfg.for_mode("crew")
     assert crew.hooks_enabled is False
     assert crew.claude_model == "claude-sonnet-4-6"  # inherited
-    assert crew.gemini_model == "gemini-2.5-pro"  # inherited
+    assert crew.antigravity_model == "agy"  # inherited
     run = cfg.for_mode("run")
     assert run.hooks_enabled is True  # falls through to session_defaults
 
@@ -141,11 +141,11 @@ def test_for_mode_crew_overlays_hooks(cfg_path: Path) -> None:
 def test_overrides_via_with_overrides(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
     overridden = cfg.with_overrides(
-        "crew", {"hooks_enabled": True, "claude_model": "opus", "gemini_model": "flash"}
+        "crew", {"hooks_enabled": True, "claude_model": "opus", "antigravity_model": "agy-fast"}
     )
     assert overridden.hooks_enabled is True
     assert overridden.claude_model == "opus"
-    assert overridden.gemini_model == "flash"
+    assert overridden.antigravity_model == "agy-fast"
 
 
 def test_model_for_rejects_unknown_client(cfg_path: Path) -> None:
@@ -187,7 +187,7 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
             session_defaults:
               hooks_enabled: true
               claude_model: foo
-              gemini_model: bar
+              antigravity_model: agy
               debug: false
               gates:
                 handover: warn
@@ -237,7 +237,7 @@ def test_aops_sessions_default(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
     cfg = load_polecat_config()
     assert cfg.session_defaults.claude_model == "claude-sonnet-4-6"
-    assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
+    assert cfg.session_defaults.antigravity_model == "agy"
 
 
 def test_unset_env_hard_fails(monkeypatch) -> None:

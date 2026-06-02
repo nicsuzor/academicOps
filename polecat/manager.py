@@ -56,7 +56,7 @@ def get_config_path() -> Path:
 
     This file holds both project registry (projects, project_aliases,
     crew_names — read here via ``load_config``) and operational config
-    (gates, hooks_enabled, claude_model/gemini_model, docker, external_agents — read by
+    (gates, hooks_enabled, claude_model/antigravity_model, docker, external_agents — read by
     ``aops-core/lib/polecat_config.py``). Single SSoT, two consumers.
 
     Located via ``$AOPS_POLECAT_CONFIG`` or ``$AOPS_SESSIONS`` — or it raises.

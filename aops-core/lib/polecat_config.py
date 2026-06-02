@@ -7,9 +7,9 @@ defaults from one YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path
 named by ``AOPS_POLECAT_CONFIG``).
 
 Per AXIOMS A14 (fail-fast) and A16 (DRY, no defaults, no backwards-compat):
-- Missing file ⇒ stderr warning + built-in defaults (see ``BUILTIN_SESSION_DEFAULTS``).
-  This supports fresh-install machines where polecat.yaml has not been created yet.
-  A present-but-malformed file still hard-fails (A14).
+- Missing or unlocatable file ⇒ hard-fail (A14). There are no built-in defaults
+  and no warn-and-continue. Config must be present or the process exits.
+  A present-but-malformed file also hard-fails.
 - No legacy env-var override paths. ``AOPS_POLECAT_CONFIG`` is the only env
   var that *names* the config; every config *value* lives in the YAML.
 - CLI flags override the loaded config in-process; they do not mutate it.
@@ -25,7 +25,7 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
     session_defaults:                         # applied to every session
         hooks_enabled: bool                   # legacy field, must be true (#940)
         claude_model: str                     # model id passed to `claude --model`
-        gemini_model: str                     # model id passed to `gemini --model`
+        antigravity_model: str               # model id passed to `agy --model`
         debug: bool                           # forwarded as DEBUG_HOOKS=1
         gates:
             handover: warn|block|off
@@ -78,17 +78,17 @@ class GatesConfig:
 class SessionDefaults:
     hooks_enabled: bool
     claude_model: str
-    gemini_model: str
+    antigravity_model: str
     debug: bool
     gates: GatesConfig
 
     def model_for(self, client: str) -> str:
-        """Return the model id for the given client (``claude`` or ``gemini``)."""
+        """Return the model id for the given client (``claude`` or ``antigravity``)."""
         if client == "claude":
             return self.claude_model
-        if client == "gemini":
-            return self.gemini_model
-        raise ValueError(f"unknown client: {client!r} (expected 'claude' or 'gemini')")
+        if client in ("antigravity", "agy"):
+            return self.antigravity_model
+        raise ValueError(f"unknown client: {client!r} (expected 'claude' or 'antigravity')")
 
 
 @dataclass(frozen=True)
@@ -170,7 +170,7 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
                 raise ValueError(f"unsupported nested override: {key!r}")
             gates_patch[tail] = value
             continue
-        if key not in {"hooks_enabled", "claude_model", "gemini_model", "debug"}:
+        if key not in {"hooks_enabled", "claude_model", "antigravity_model", "debug"}:
             raise ValueError(f"unknown override key: {key!r}")
         patch[key] = value
     if gates_patch:
@@ -331,7 +331,7 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
     session_defaults = SessionDefaults(
         hooks_enabled=_require_bool(sd_raw, "hooks_enabled", cfg_path),
         claude_model=_require_str(sd_raw, "claude_model", cfg_path),
-        gemini_model=_require_str(sd_raw, "gemini_model", cfg_path),
+        antigravity_model=_require_str(sd_raw, "antigravity_model", cfg_path),
         debug=_require_bool(sd_raw, "debug", cfg_path),
         gates=gates,
     )

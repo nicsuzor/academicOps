@@ -136,7 +136,7 @@ Marsha returns a one-line verdict: `PASS`, `FAIL <reason>`, or `REVISE <reason>`
 
 | Marsha verdict | Main agent action                                             |
 | -------------- | ------------------------------------------------------------- |
-| PASS           | Mark item `ready_for_user_review`; checkpoint                 |
+| PASS           | Mark item `merge_ready`; checkpoint                           |
 | FAIL           | Call pauli with `role=react`, context=`marsha-fail: <reason>` |
 | REVISE         | File a verification subtask (depends_on PR); checkpoint       |
 
@@ -337,7 +337,7 @@ State lives in the epic body (see [The Task File Is the Only State](#the-task-fi
 
 **Forbidden as state surfaces:** any new local JSON state file outside the epic body (Stop-hook JSON, `session-state.json`, `coordination-state.json`); per-skill `gh pr list` re-fetching when a fresher producer (like `pr-state.json`) is available.
 
-The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent for other deliverable types). Set the epic to `ready_for_user_review` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; emit the final summary and exit. See [[instructions/code-deliverable]] for the code case.
+The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent for other deliverable types). Set the epic to `merge_ready` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; emit the final summary and exit. See [[instructions/code-deliverable]] for the code case.
 
 ## User Attention Notification
 
@@ -430,7 +430,7 @@ Arm it **once**, immediately after the first polecat DISPATCH in an interactive 
 
 **Crew filtering.** The crew session is also a `polecat-*` container. Filter it out at the agent layer (look up the exit's container env via `docker inspect <name>` and skip if `POLECAT_CREW_NAME` is set — crew sets it, run workers do not), or refine the `--filter` to match the headless naming pattern in use.
 
-**When to stop the watch.** Call `TaskStop` on the Monitor when (a) all dispatched polecats are verified and resolved (the session's in-flight work is done), (b) all in-flight epics have reached `ready_for_user_review`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
+**When to stop the watch.** Call `TaskStop` on the Monitor when (a) all dispatched polecats are verified and resolved (the session's in-flight work is done), (b) all in-flight epics have reached `merge_ready`/`blocked`/`review`, or (c) the session is about to end. A leaked persistent Monitor keeps consuming notifications across unrelated tasks.
 
 **Choosing between mechanisms** (see [[instructions/supervision-loop#monitoring-mechanisms]] for the table):
 

@@ -43,7 +43,7 @@ session_defaults:
   # Opus workers without pinning a version in every command, set this to
   # claude-opus-4-8 and use `--model claude` in dispatch commands.
   claude_model: claude-sonnet-4-6
-  gemini_model: gemini-2.5-pro
+  antigravity_model: agy
 
   # Forwarded into containers as DEBUG_HOOKS=1 when true; the hook router
   # then dumps raw stdin to /tmp/cc_hooks_<slug>.jsonl.
@@ -144,6 +144,7 @@ docker:
 # is unchanged either way.
 container_env_forward:
   - CLAUDE_CODE_OAUTH_TOKEN
+  - AGY_API_KEY
   - AOPS_CC_OAUTH_TOKEN
   - GEMINI_API_KEY
   - AOPS_BOT_GH_TOKEN
@@ -200,6 +201,8 @@ projects:
   sessions:
     repo: sessions
     default_branch: main
+  junior:
+    repo: junior
 
 # Top-level shorthand aliases. Highest priority over per-project aliases.
 project_aliases:

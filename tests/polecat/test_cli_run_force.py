@@ -3,11 +3,12 @@
 
 The ``--force`` flag bypasses the status-check guard on ``polecat run -t``,
 allowing the command to claim and run a task regardless of its current
-status — including terminal (``done``, ``cancelled``) and locked
+status — including terminal (``done``, ``cancelled``) and gated
 (``merge_ready``, ``review``, PR-locked) statuses.
-Without ``--force``, the existing gating behaviour for terminal/locked
-statuses (``done``, ``cancelled``, ``merge_ready``, ``review``, or any
-PR-locked task) is preserved.
+Without ``--force``:
+- ``done`` / ``cancelled``: exit 0, no claim.
+- ``review``: exit 2 (enforced gate — human judgment required).
+- ``merge_ready`` or PR-locked: warn and proceed (iterative state).
 """
 
 import sys
@@ -76,40 +77,54 @@ def test_run_without_force_blocks_done_task(mock_manager):
     mock_manager.update_task.assert_not_called()
 
 
-def test_run_without_force_blocks_locked_task(mock_manager):
-    """A ``merge_ready`` task is locked (exit 2); never claims."""
-    task = _make_task(status="merge_ready", task_id="task-locked")
+def test_run_without_force_blocks_review_task(mock_manager):
+    """A ``review`` task is a hard gate — exits with code 2, never claims."""
+    task = _make_task(status="review", task_id="task-review")
     mock_manager.get_task.return_value = task
 
     runner = CliRunner()
     with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
         with patch("polecat.cli._bootstrap_or_exit", return_value=None):
             with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
-                result = runner.invoke(main, ["run", "-t", "task-locked"])
+                result = runner.invoke(main, ["run", "-t", "task-review"])
 
     assert result.exit_code == 2
-    assert "locked" in result.output
+    assert "review" in result.output
     mock_manager.update_task.assert_not_called()
 
 
-def test_run_without_force_blocks_pr_locked_task(mock_manager):
-    """A task with a PR set is locked even at queued status (exit 2)."""
+def test_run_without_force_warns_on_under_review_task(mock_manager):
+    """A ``merge_ready`` task warns but proceeds."""
+    task = _make_task(status="merge_ready", task_id="task-locked")
+    result = _invoke_run(["run", "-t", "task-locked"], mock_manager, task)
+
+    # We short-circuit at setup_worktree (Exception), so exit code is 1
+    assert "under review" in result.output
+    claim_calls = [
+        c
+        for c in mock_manager.update_task.call_args_list
+        if c.kwargs.get("status") == "in_progress"
+    ]
+    assert claim_calls, "expected an update_task(..., status='in_progress') call"
+
+
+def test_run_without_force_warns_on_pr_locked_task(mock_manager):
+    """A task with a PR set warns but proceeds."""
     task = _make_task(
         status="queued",
         task_id="task-pr",
         pr_url="https://github.com/x/y/pull/1",
     )
-    mock_manager.get_task.return_value = task
+    result = _invoke_run(["run", "-t", "task-pr"], mock_manager, task)
 
-    runner = CliRunner()
-    with patch("polecat.cli._require_pkb_url_or_exit", return_value=None):
-        with patch("polecat.cli._bootstrap_or_exit", return_value=None):
-            with patch("polecat.cli._require_claude_oauth_or_exit", return_value=None):
-                result = runner.invoke(main, ["run", "-t", "task-pr"])
-
-    assert result.exit_code == 2
-    assert "locked" in result.output
-    mock_manager.update_task.assert_not_called()
+    # We short-circuit at setup_worktree (Exception), so exit code is 1
+    assert "under review" in result.output
+    claim_calls = [
+        c
+        for c in mock_manager.update_task.call_args_list
+        if c.kwargs.get("status") == "in_progress"
+    ]
+    assert claim_calls, "expected an update_task(..., status='in_progress') call"
 
 
 # ----------------------------------------------------------------------
