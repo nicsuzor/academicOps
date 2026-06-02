@@ -8,10 +8,10 @@ from textwrap import dedent
 
 import pytest
 from lib.polecat_config import (
-    BUILTIN_SESSION_DEFAULTS,
     CONFIG_PATH_ENV,
     PolecatConfig,
     load_polecat_config,
+    resolve_polecat_home,
 )
 
 CANONICAL_YAML = dedent(
@@ -45,8 +45,10 @@ CANONICAL_YAML = dedent(
 
 @pytest.fixture
 def cfg_path(tmp_path: Path) -> Path:
+    # polecat_home is now a REQUIRED key. Point it at tmp_path so overlay tests
+    # can drop a local.yaml beside it; tmp_path has none by default (machine None).
     p = tmp_path / "polecat.yaml"
-    p.write_text(CANONICAL_YAML)
+    p.write_text(CANONICAL_YAML + f"\npolecat_home: {tmp_path}\n")
     return p
 
 
@@ -65,19 +67,26 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert cfg.docker.image == "ghcr.io/nicsuzor/aops-crew"
     assert cfg.external_agents["github"].enabled is True
     assert cfg.external_agents["jules"].enabled is False
+    assert cfg.polecat_home == cfg_path.parent
+    assert cfg.machine is None  # no local.yaml overlay present
 
 
 def test_container_env_forward_defaults_when_absent(cfg_path: Path) -> None:
     # CANONICAL_YAML has no container_env_forward → built-in default (the OAuth
     # tokens). This is the "limited list" for hold-for-delegation secrets.
     cfg = load_polecat_config(cfg_path)
-    assert cfg.container_env_forward == ("CLAUDE_CODE_OAUTH_TOKEN", "GEMINI_API_KEY")
+    assert cfg.container_env_forward == (
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "AOPS_CC_OAUTH_TOKEN",
+        "GEMINI_API_KEY",
+    )
 
 
 def test_container_env_forward_explicit_list(tmp_path: Path) -> None:
     p = tmp_path / "polecat.yaml"
     p.write_text(
         CANONICAL_YAML
+        + f"\npolecat_home: {tmp_path}\n"
         + dedent(
             """
             container_env_forward:
@@ -213,7 +222,7 @@ def test_missing_per_mode_overlay_hard_fails(tmp_path: Path) -> None:
 
 def test_env_var_path_resolution(tmp_path: Path, monkeypatch) -> None:
     p = tmp_path / "elsewhere.yaml"
-    p.write_text(CANONICAL_YAML)
+    p.write_text(CANONICAL_YAML + f"\npolecat_home: {tmp_path}\n")
     monkeypatch.setenv(CONFIG_PATH_ENV, str(p))
     monkeypatch.delenv("AOPS_SESSIONS", raising=False)
     cfg = load_polecat_config()
@@ -223,7 +232,7 @@ def test_env_var_path_resolution(tmp_path: Path, monkeypatch) -> None:
 def test_aops_sessions_default(tmp_path: Path, monkeypatch) -> None:
     sessions = tmp_path / "sess-cfg"
     sessions.mkdir()
-    (sessions / "polecat.yaml").write_text(CANONICAL_YAML)
+    (sessions / "polecat.yaml").write_text(CANONICAL_YAML + f"\npolecat_home: {sessions}\n")
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions))
     monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
     cfg = load_polecat_config()
@@ -231,14 +240,60 @@ def test_aops_sessions_default(tmp_path: Path, monkeypatch) -> None:
     assert cfg.session_defaults.gemini_model == "gemini-2.5-pro"
 
 
-def test_unset_env_returns_builtin_defaults(monkeypatch) -> None:
+def test_unset_env_hard_fails(monkeypatch) -> None:
+    # No builtin config, no warn-and-continue: unlocatable config is an error.
     monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
     monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-    cfg = load_polecat_config()
-    assert isinstance(cfg, PolecatConfig)
-    assert cfg.source_path.name == "<builtin>"
-    assert cfg.session_defaults == BUILTIN_SESSION_DEFAULTS
-    assert cfg.session_defaults.gates.handover == "warn"
+    with pytest.raises(RuntimeError, match="is not set"):
+        load_polecat_config()
+
+
+def test_missing_polecat_home_hard_fails(tmp_path: Path) -> None:
+    # polecat_home is required — no default, no env fallback, no guess.
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML)  # note: no polecat_home line
+    with pytest.raises(RuntimeError, match="polecat_home"):
+        load_polecat_config(p)
+
+
+def test_polecat_home_expands_env_and_user(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PCHOME", str(tmp_path / "cache"))
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML + "\npolecat_home: ${PCHOME}\n")
+    cfg = load_polecat_config(p)
+    assert cfg.polecat_home == tmp_path / "cache"
+
+
+def test_local_overlay_machine_and_gates(tmp_path: Path) -> None:
+    # The per-machine local.yaml overlay supplies `machine:` and overrides gates.
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "local.yaml").write_text("machine: dev-box\ngates:\n  handover: block\n")
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML + f"\npolecat_home: {home}\n")
+    cfg = load_polecat_config(p)
+    assert cfg.machine == "dev-box"
+    assert cfg.session_defaults.gates.handover == "block"  # overlaid
+    assert cfg.session_defaults.gates.qa == "warn"  # untouched base value
+
+
+def test_local_overlay_rejects_bad_gate_mode(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "local.yaml").write_text("gates:\n  handover: scream\n")
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML + f"\npolecat_home: {home}\n")
+    with pytest.raises(ValueError, match="invalid gate mode"):
+        load_polecat_config(p)
+
+
+def test_resolve_polecat_home_via_env(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "cache"
+    p = tmp_path / "polecat.yaml"
+    p.write_text(CANONICAL_YAML + f"\npolecat_home: {home}\n")
+    monkeypatch.setenv(CONFIG_PATH_ENV, str(p))
+    monkeypatch.delenv("AOPS_SESSIONS", raising=False)
+    assert resolve_polecat_home() == home
 
 
 def test_dataclasses_are_frozen(cfg_path: Path) -> None:

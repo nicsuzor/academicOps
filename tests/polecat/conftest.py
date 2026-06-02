@@ -58,6 +58,8 @@ def write_polecat_test_config(
         "docker": {"image": "ghcr.io/nicsuzor/aops-crew"},
         "external_agents": {},
         "projects": projects_block,
+        # Required key: points at the per-machine home where local.yaml lives.
+        "polecat_home": str(home_dir),
     }
     if crew_names:
         registry["crew_names"] = crew_names

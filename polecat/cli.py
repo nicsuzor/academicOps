@@ -40,10 +40,11 @@ from polecat.manager import PolecatManager
 from polecat.observability import metrics
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 
-# In-container path for the staged polecat.yaml. Hooks running inside the
-# container read AOPS_POLECAT_CONFIG (set by ``_build_docker_cmd``) to resolve
-# this same file.
-_CONTAINER_POLECAT_YAML = "/home/worker/.aops/polecat.yaml"
+# NOTE: polecat.yaml is NOT staged into containers. The container reads no
+# config file; the host resolves polecat.yaml + the local.yaml overlay and
+# injects the needed values as env vars (gate modes, model, debug,
+# AOPS_ENABLED_PROVIDERS, AOPS_MACHINE). ``CONFIG_PATH_ENV`` is still skipped
+# in the env-forwarding loop so the host's own path never leaks inward.
 
 # Turn budget for headless Claude runs.
 #
@@ -1607,14 +1608,22 @@ def _build_docker_cmd(
                 else:
                     cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
-    # Stage polecat.yaml into the container so hooks resolve gate modes,
-    # provider lists, and any other config without re-reading host paths.
-    # The host config is the SSoT — the staged file is a copy.
-    staged_aops_dir = staging_dir / ".aops" if staging_dir else None
-    if staged_aops_dir is not None:
-        staged_aops_dir.mkdir(exist_ok=True)
-        shutil.copy2(cfg.source_path, staged_aops_dir / "polecat.yaml")
-    cmd.extend(["-e", f"{CONFIG_PATH_ENV}={_CONTAINER_POLECAT_YAML}"])
+    # The container NEVER reads polecat.yaml. The host is the SSoT: it resolved
+    # the config above and injects the few values the container actually needs
+    # as plain env vars. Gate modes + model + debug are stamped elsewhere
+    # (_apply_gate_env / model flags); here we inject the remaining two:
+    #   AOPS_ENABLED_PROVIDERS — the enabled external_agents set, consumed by
+    #       lib/session_naming for artifact-filename parsing.
+    #   AOPS_MACHINE           — the host's short name (from the local.yaml
+    #       overlay), so worker artifacts carry the HOST machine, not the
+    #       container hostname. Omitted when the overlay does not set it.
+    if cfg is not None:
+        enabled_providers = ",".join(
+            sorted(name for name, agent in cfg.external_agents.items() if agent.enabled)
+        )
+        cmd.extend(["-e", f"AOPS_ENABLED_PROVIDERS={enabled_providers}"])
+        if cfg.machine:
+            cmd.extend(["-e", f"AOPS_MACHINE={cfg.machine}"])
 
     cmd.append(image)
     cmd.extend(agent_cmd)
@@ -2423,7 +2432,8 @@ def _bootstrap_or_exit(client: str | None = None) -> None:
     "--home",
     envvar="POLECAT_HOME",
     type=click.Path(path_type=Path),
-    help="Polecat home directory (default: $POLECAT_HOME, or ~/.polecat)",
+    help="Polecat home directory (overrides polecat.yaml `polecat_home:`; "
+    "default: that config value, else $POLECAT_HOME, else ~/.polecat)",
 )
 @click.option(
     "--verbose",
