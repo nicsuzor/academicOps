@@ -555,3 +555,19 @@ def get_pid_session_map_path() -> Path:
     """
     # PID session maps are ephemeral runtime files, always use /tmp
     return Path("/tmp") / f"session-{os.getppid()}.json"
+
+
+def cowork_source_roots() -> list[Path]:
+    """Get cross-platform paths for raw Cowork (Claude Desktop) session roots."""
+    roots = []
+    if sys.platform == "darwin":
+        roots.append(
+            Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
+        )
+    elif sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            roots.append(Path(appdata) / "Claude" / "local-agent-mode-sessions")
+    else:
+        roots.append(Path.home() / ".config" / "Claude" / "local-agent-mode-sessions")
+    return roots
