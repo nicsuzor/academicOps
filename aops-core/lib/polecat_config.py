@@ -6,10 +6,11 @@ running inside the resulting Claude/Gemini sessions) — reads its operational
 defaults from one YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path
 named by ``AOPS_POLECAT_CONFIG``).
 
-Per AXIOMS A14 (fail-fast) and A16 (DRY, no defaults, no backwards-compat):
+Per AXIOMS ``halt-on-failure`` (fail-fast) and ``single-source-of-truth`` (DRY, no
+defaults, no backwards-compat):
 - Missing file ⇒ stderr warning + built-in defaults (see ``BUILTIN_SESSION_DEFAULTS``).
   This supports fresh-install machines where polecat.yaml has not been created yet.
-  A present-but-malformed file still hard-fails (A14).
+  A present-but-malformed file still hard-fails (``halt-on-failure``).
 - No legacy env-var override paths. ``AOPS_POLECAT_CONFIG`` is the only env
   var that *names* the config; every config *value* lives in the YAML.
 - CLI flags override the loaded config in-process; they do not mutate it.
@@ -315,7 +316,7 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
     returns built-in defaults and emits a stderr warning — no traceback.  This
     supports fresh-install machines where polecat.yaml has not yet been created.
 
-    If a file IS found but is malformed, hard-fails (A14 fail-fast principle):
+    If a file IS found but is malformed, hard-fails (``halt-on-failure`` fail-fast principle):
     a broken config is an active error, not a missing-config situation.
 
     Pass ``path`` to bypass env-var resolution (used by tests).

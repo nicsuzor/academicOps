@@ -149,8 +149,8 @@ applies: `.agents/rules/AXIOMS.md` and its review checklist `.agents/rules/AXIOM
 axiom violation that rbg should have flagged slip past her? This is verification of her
 coverage of the CLASS, not a from-scratch re-review that re-litigates everything she
 already cleared — read the diff against the axioms looking for a missed violation, not for
-agreement on calls she made. If you find one: name the axiom (e.g. A2 — the categorical
-imperative, an instance-specific carve-out where a general rule was required), treat it as a
+agreement on calls she made. If you find one: name the axiom (e.g. `categorical-imperative`,
+an instance-specific carve-out where a general rule was required), treat it as a
 REDESIGN/HOLD-class signal in your verdict, AND flag it as a merge-prep/rbg PIPELINE GAP —
 the axiom stage let it through, which is itself worth surfacing. If rbg's coverage holds,
 say so in one line. Do NOT invent axioms or stretch a design smell into an axiom violation;
@@ -158,7 +158,7 @@ a design smell with no axiom behind it belongs in the failure-pattern hunt above
 But the same discipline cuts BOTH ways: a narrow, literal, or technicality reading must NOT
 be used to EXONERATE a genuine violation. This is the lens's own anti-rationalisation
 discipline one level up — the backstop must not wriggle out of a real axiom hit the way a
-clean-looking PR wriggles out of an architectural one. Concretely for "No Shitty NLP": when
+clean-looking PR wriggles out of an architectural one. Concretely for `judgment-non-delegable`: when
 a PR carries a STRUCTURED signal through an UNSTRUCTURED channel and reconstructs it
 downstream by matching text — detecting a state or outcome by string-matching prose that
 some hook or client happens to render into a transcript — the axiom applies REGARDLESS of

@@ -55,11 +55,11 @@ Check the diff against the framework axioms (Section 4 below). Focus on the prin
 - **Workarounds (P#25)** — does the PR bypass tooling or skip checks?
 - **Data boundaries (P#6)** — does the PR expose private data?
 - **Enforcement-change CBA (`specs/ENFORCEMENT-MAP.md`)** — if the PR adds, modifies, or removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body MUST include the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (friction evidence), 4 (ongoing cost), or 5 (reversibility).
-- **A7 Edge 3 (script abdication)** — did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? Recommend agent-invocation alternative where the underlying decision is "does this serve its purpose?".
+- **`exercise-authority` Edge 3 (script abdication)** — did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? Recommend agent-invocation alternative where the underlying decision is "does this serve its purpose?".
 
-### Disposition: Fix Don't Ask (A7 Edge 2)
+### Disposition: Fix Don't Ask (`exercise-authority` Edge 2)
 
-_Enforces A7 Edge 2 (FM-1, FM-3). See `.agents/rules/AXIOMS.md` § A7._
+_Enforces `exercise-authority` Edge 2 (FM-1, FM-3). See `.agents/rules/AXIOMS.md` § exercise-authority._
 
 For safe, in-scope review actions — applying obvious typo fixes, correcting clear axiom violations with a one-line edit, pushing the fix as a follow-up commit on the PR branch — **just do it**. Do not return a review that says "I'd recommend fixing X, want me to push?" — that is the FM-1 anti-pattern. Push the fix, note what you changed in the review body, let the author override.
 
@@ -169,7 +169,7 @@ Summary format:
 - **Depth over breadth.** One well-analysed finding beats seven surface nits.
 - **Conservative fixes.** If a fix might change intended behaviour, comment instead.
 - **No manual lint/style fixes.** Automated tooling handles that; focus on substance.
-- **A13 (Rule Against Perpetuities).** Never run `--watch`, `tail -f`, `gh run watch`, or unbounded loops. Every command needs a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before you finish.
+- **`bounded-execution` (Rule Against Perpetuities).** Never run `--watch`, `tail -f`, `gh run watch`, or unbounded loops. Every command needs a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before you finish.
 
 ## 6. Framework Axioms
 

@@ -83,7 +83,7 @@ gh run view {run_id} --log-failed
 
 CI failures are your **primary** concern — a PR with passing reviews but failing CI cannot merge. Treat every CI failure as a problem you must fix or explain why you cannot.
 
-### Polling for in-progress checks (A13: Rule Against Perpetuities)
+### Polling for in-progress checks (`bounded-execution`: Rule Against Perpetuities)
 
 You run inside a GitHub Actions runner with a finite job timeout. Commands that block indefinitely (e.g. `gh pr checks --watch`, `gh run watch`, `tail -f`) **leak background processes** that keep the action wrapper alive past your session's notional end and burn through the runner's wall-clock budget — even after you have finished your work. **Do not use them.** This is the most common cause of "merge prep job timed out" failures.
 

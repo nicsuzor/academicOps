@@ -124,7 +124,7 @@ Before evaluating agent findings, re-read the brief's own language. Extract its 
 
 ### Rule 2: Axiom-coherence at composition
 
-When the brief itself invokes or relies on a settled axiom or principle (e.g. A7 Edge 3: qualitative judgment over deterministic heuristics), no sub-agent recommendation may contradict that axiom — even if the sub-agent offers a rationalisation for the contradiction. At composition, James checks each recommendation against the axioms the brief invokes. A recommendation that walks back settled design is rejected, with citation to the axiom it violates, before it reaches the synthesis.
+When the brief itself invokes or relies on a settled axiom or principle (e.g. `exercise-authority` Edge 3: qualitative judgment over deterministic heuristics), no sub-agent recommendation may contradict that axiom — even if the sub-agent offers a rationalisation for the contradiction. At composition, James checks each recommendation against the axioms the brief invokes. A recommendation that walks back settled design is rejected, with citation to the axiom it violates, before it reaches the synthesis.
 
 The rationalisation "the agent can override the mechanical floor" is the exact shape this rule catches: it proposes a deterministic floor and then claims qualitative judgment can excuse failures — the inverse of what the axiom requires (qualitative judgment _instead of_ deterministic floors, not _on top of_ them).
 
@@ -134,7 +134,7 @@ Before issuing REVISE, confirm that every requested change stays within the brie
 
 ### Worked Example — Issue #937: Harness ≠ Test Suite
 
-**Brief**: Build a harness — an agent-invokable smoke-check that `polecat crew` doesn't go up in smoke. The brief explicitly invoked A7 Edge 3 (qualitative judgment, not mechanical checks).
+**Brief**: Build a harness — an agent-invokable smoke-check that `polecat crew` doesn't go up in smoke. The brief explicitly invoked `exercise-authority` Edge 3 (qualitative judgment, not mechanical checks).
 
 **What happened**: All three voices (rbg, pauli, marsha) converged on converting the harness into a production-grade test suite with a "non-negotiable mechanical floor" — a set of deterministic checks that must pass before the agent's qualitative judgment runs. The rationalisation: "the analyzer can explain away failures into PASS, so the floor is soft." James accepted this at composition without catching the scope expansion or the axiom violation.
 
@@ -142,11 +142,11 @@ Before issuing REVISE, confirm that every requested change stays within the brie
 
 1. **Scope expansion** (Rule 1 violated): The brief asked for a harness; the review demanded a test suite. The nouns are different artifacts with different fitness criteria. A harness that works is not improved by becoming a test suite — it becomes a different thing entirely.
 
-2. **Axiom inversion** (Rule 2 violated): The brief invoked A7 Edge 3 — qualitative judgment is the default for fitness-for-purpose evaluation. The "non-negotiable mechanical floor" directly contradicts this by making deterministic checks the gatekeeper and qualitative judgment the escape hatch. The axiom says: agent judges, not regex. The recommendation said: regex judges, agent rationalises.
+2. **Axiom inversion** (Rule 2 violated): The brief invoked `exercise-authority` Edge 3 — qualitative judgment is the default for fitness-for-purpose evaluation. The "non-negotiable mechanical floor" directly contradicts this by making deterministic checks the gatekeeper and qualitative judgment the escape hatch. The axiom says: agent judges, not regex. The recommendation said: regex judges, agent rationalises.
 
 3. **No scope check at composition** (Rule 3 violated): James issued REVISE without testing whether the requested changes stayed within brief scope. Substituting "test suite" for "harness" in the brief changes the artifact's kind — the substitution test would have caught this.
 
-**Correct composition**: Reject the mechanical floor as axiom-violating per A7 Edge 3. Reject the scope expansion from harness to test suite. Review the harness as a harness: does it smoke-check the thing? Does an agent's qualitative judgment determine pass/fail? Those are the brief's criteria.
+**Correct composition**: Reject the mechanical floor as axiom-violating per `exercise-authority` Edge 3. Reject the scope expansion from harness to test suite. Review the harness as a harness: does it smoke-check the thing? Does an agent's qualitative judgment determine pass/fail? Those are the brief's criteria.
 
 ## What You Must NOT Do
 

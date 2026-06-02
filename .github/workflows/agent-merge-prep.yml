@@ -435,7 +435,7 @@ jobs:
         if: always() && (failure() || cancelled())
         run: |
           # GH_TOKEN is the bot PAT (AOPS_BOT_GH_TOKEN, job-level env). No
-          # github.token fallback (A8: no silent fallbacks). If the required
+          # github.token fallback (halt-on-failure: no silent fallbacks). If the required
           # secret is absent, fail loud rather than masking it with the weaker
           # default token.
           if [ -z "$GH_TOKEN" ]; then
@@ -463,7 +463,7 @@ jobs:
         if: always()
         run: |
           # GH_TOKEN is the bot PAT (AOPS_BOT_GH_TOKEN, job-level env). No
-          # github.token fallback (A8: no silent fallbacks).
+          # github.token fallback (halt-on-failure: no silent fallbacks).
           if [ -z "$GH_TOKEN" ]; then
             echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot clear commit status. Fix the secret." >&2
             exit 1
