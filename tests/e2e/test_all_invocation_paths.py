@@ -1002,7 +1002,7 @@ class TestPkbPersistence:
     an extension config was missing PKB_MCP_URL in the pkb MCP server env
     block, leaving the polecat with zero PKB tools.
 
-    Gated: POLECAT_E2E=1, Docker + aops-crew image, PKB MCP reachable.
+    Gated: Docker + aops-crew image, PKB MCP reachable.
     """
 
     @pytest.fixture(
