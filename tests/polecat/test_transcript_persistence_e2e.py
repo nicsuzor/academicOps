@@ -116,11 +116,32 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
     The UUID filename is chosen by Claude Code itself and polecat doesn't
     record it, so we glob. On re-runs there may be multiple jsonls; take
     the newest by mtime.
+
+    The transcript lands at a daemon-dependent depth under
+    ``polecats/<task>/<project>/`` (see polecat/cli.py around line 1547):
+
+    * Local daemon (bind mount): ``session_dir`` itself is bind-mounted onto
+      the container's ``.claude/projects/-workspace``, so Claude's ``<uuid>``
+      jsonl lands directly in ``<project>/`` — no ``-workspace`` segment.
+    * Remote daemon (docker cp): ``_find_real_transcript`` extracts from
+      ``<run_session_dir>/-workspace/*.jsonl``, so the jsonl lands one level
+      deeper, under ``<project>/-workspace/``.
+
+    We accept either layout by globbing recursively under the per-run dir.
+    The summary stub lives one level up (``polecats/<task>.jsonl`` under
+    POLECAT_HOME, asserted separately by ``_assert_stub``) and the hooks log
+    is ``polecat-session-hooks.jsonl`` — neither matches the Claude session
+    UUID jsonl pattern we select here.
     """
-    workspace = _sessions_base() / "polecats" / task_id / project / "-workspace"
-    assert workspace.is_dir(), f"Missing session dir: {workspace}"
-    jsonls = list(workspace.glob("*.jsonl"))
-    assert jsonls, f"No transcript found under {workspace}"
+    run_dir = _sessions_base() / "polecats" / task_id / project
+    assert run_dir.is_dir(), f"Missing session dir: {run_dir}"
+    # The Claude session transcript is a UUID-named .jsonl; exclude the
+    # polecat hooks log (polecat-session-hooks.jsonl) which is also .jsonl.
+    jsonls = [p for p in run_dir.rglob("*.jsonl") if not p.name.startswith("polecat-session")]
+    assert jsonls, (
+        f"No Claude session transcript (.jsonl) found under {run_dir}. "
+        f"Existing tree: {[str(p) for p in run_dir.rglob('*') if p.is_file()][:20]}"
+    )
     path = max(jsonls, key=lambda p: p.stat().st_mtime)
     size = path.stat().st_size
     assert size >= min_bytes, (
@@ -298,10 +319,6 @@ def _require_project() -> str:
 _GATES = [
     pytest.mark.slow,
     pytest.mark.e2e,
-    pytest.mark.skipif(
-        os.environ.get("POLECAT_E2E") != "1",
-        reason="E2E test — opt in with POLECAT_E2E=1",
-    ),
     pytest.mark.skipif(not _docker_available(), reason="Docker / aops-crew image unavailable"),
     pytest.mark.skipif(not _pkb_available(), reason="PKB MCP server unreachable"),
 ]
@@ -346,10 +363,32 @@ def shared_sessions_dir(monkeypatch: pytest.MonkeyPatch) -> Path:
     on the host after container exit. ``~/.aops/test-sessions-<uuid>/`` is
     a natural fit: same volume as the real sessions dir, isolated per-test,
     cleaned up on teardown.
+
+    Config is SSoT (commit d26755bc): polecat resolves its config from
+    ``$AOPS_SESSIONS/polecat.yaml`` with no fallback, so the freshly-created
+    test sessions dir MUST carry a polecat.yaml or ``polecat run`` exits
+    immediately with ``FileNotFoundError``. We seed it from the canonical
+    version-controlled ``polecat/defaults/polecat.yaml.example`` — the same
+    seed ``tests/conftest.py::ensure_test_environment`` uses — because it is
+    schema-complete (it carries every key ``load_polecat_config`` now requires,
+    e.g. ``session_defaults.antigravity_model``) and cannot drift from the
+    code's required schema the way a host's hand-maintained config can.
+    Projects resolve by repo name (cloned into ``~/.aops/.repos``), not by
+    host-specific absolute path, so the example resolves the ``aops`` project
+    identically to the real config.
     """
+    example_config = REPO_ROOT / "polecat" / "defaults" / "polecat.yaml.example"
+    assert example_config.is_file(), (
+        f"Canonical polecat config example not found at {example_config}; "
+        "cannot seed the test sessions dir. Config is SSoT — polecat run "
+        "resolves $AOPS_SESSIONS/polecat.yaml with no fallback."
+    )
+
     base = _polecat_home() / "test-sessions" / f"e2e-{uuid.uuid4().hex[:8]}"
     base.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(example_config, base / "polecat.yaml")
     monkeypatch.setenv("AOPS_SESSIONS", str(base))
+    monkeypatch.delenv("AOPS_POLECAT_CONFIG", raising=False)
     try:
         yield base
     finally:
