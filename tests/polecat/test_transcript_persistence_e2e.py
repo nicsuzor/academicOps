@@ -31,11 +31,8 @@ the default suite:
 * ``POLECAT_E2E_PROJECT`` — project slug required, no silent default.
 * Docker + ``aops-crew`` image must be present.
 * ``PKB_MCP_URL`` must be set and reachable.
-* For the Gemini parameter only: ``GEMINI_API_KEY`` must be set so the
-  in-container Gemini CLI can authenticate (host ``~/.gemini/oauth_creds.json``
-  rarely round-trips into the container on WSL2 / Docker Desktop).
 
-Tasks: task-5ddb64df (Claude), task-743da695 (Gemini variant).
+Tasks: task-5ddb64df (Claude).
 """
 
 from __future__ import annotations
@@ -156,47 +153,6 @@ def _assert_real_transcript(task_id: str, project: str, min_bytes: int) -> Path:
     return path
 
 
-def _assert_gemini_transcript(task_id: str, project: str, min_bytes: int) -> Path:
-    """Assert a Gemini ``session-*.json[l]`` file landed on the host.
-
-    Gemini CLI writes its chat log to
-    ``/home/worker/.gemini/tmp/workspace/chats/session-*.jsonl`` inside the
-    container. Polecat bind-mounts ``<session_dir>`` over that workspace
-    directory (and ``mkdir``s ``chats/`` ahead of the run) so files land
-    directly on the host at::
-
-        $AOPS_SESSIONS/polecats/<task_id>/<project>/chats/session-*.jsonl
-
-    Older Gemini builds wrote a single ``session-*.json`` per session; we
-    accept both extensions and parse accordingly. On re-runs there may be
-    multiple session files; take the newest by mtime.
-    """
-    run_dir = _sessions_base() / "polecats" / task_id / project
-    assert run_dir.is_dir(), f"Missing run dir: {run_dir}"
-    sessions = list(run_dir.rglob("session-*.jsonl")) + list(run_dir.rglob("session-*.json"))
-    assert sessions, (
-        f"No Gemini session-*.json[l] found under {run_dir}. "
-        f"Existing tree: {[str(p) for p in run_dir.rglob('*') if p.is_file()][:20]}"
-    )
-    path = max(sessions, key=lambda p: p.stat().st_mtime)
-    size = path.stat().st_size
-    assert size >= min_bytes, (
-        f"Gemini transcript {path} is {size}B, expected ≥{min_bytes}B (probably truncated)"
-    )
-    if path.suffix == ".jsonl":
-        with path.open() as f:
-            lines = [ln for ln in f if ln.strip()]
-        assert lines, f"Gemini transcript {path} is empty"
-        # Smoke-parse every line so a truncated/partial write fails loudly.
-        for ln in lines:
-            json.loads(ln)
-    else:
-        with path.open() as f:
-            payload = json.load(f)
-        assert payload, f"Gemini transcript {path} parsed but is empty"
-    return path
-
-
 def _assert_stub(task_id: str, expect_real_path: bool = True) -> Path:
     """Assert the summary stub landed and optionally references the real transcript."""
     stub = _polecat_home() / "polecats" / f"{task_id}.jsonl"
@@ -268,11 +224,10 @@ def _create_test_task(title: str, body: str, project: str, tags: list[str]) -> t
 def _polecat_cmd(task_id: str, project: str, cli_tool: str = "claude") -> list[str]:
     """Build a ``polecat run`` invocation for the requested CLI tool.
 
-    ``cli_tool`` selects the dispatch flag: ``"claude"`` runs the default
-    Claude path; ``"gemini"`` adds ``-g`` so polecat dispatches via the
-    Gemini CLI inside the container.
+    ``cli_tool`` selects the dispatch path; only ``"claude"`` (the default
+    Claude path) is currently supported.
     """
-    if cli_tool not in ("claude", "gemini"):
+    if cli_tool not in ("claude",):
         raise ValueError(f"unsupported cli_tool: {cli_tool!r}")
 
     polecat_bin = shutil.which("polecat") or shutil.which("pc")
@@ -281,10 +236,7 @@ def _polecat_cmd(task_id: str, project: str, cli_tool: str = "claude") -> list[s
     else:
         base = [polecat_bin]
 
-    cmd = [*base, "run", "-t", task_id, "-p", project]
-    if cli_tool == "gemini":
-        cmd.append("-g")
-    return cmd
+    return [*base, "run", "-t", task_id, "-p", project]
 
 
 def _cleanup(proc: subprocess.Popen | None, client: object | None, task_id: str | None) -> None:
@@ -332,20 +284,10 @@ def _apply_gates(fn):
 
 # Parametrisation across CLI tools. Per the "no per-mode duplicate tests"
 # memory rule we hoist the dispatch tool to a parameter rather than copying
-# each test. Gemini is gated separately on GEMINI_API_KEY because the host
-# ~/.gemini/oauth_creds.json doesn't reliably round-trip into the container
-# on WSL2 / Docker Desktop, so an API key is the only auth we can rely on
-# in CI-equivalent environments.
+# each test. (Gemini variants were dropped — gemini is being sunset and its
+# host-auth never round-tripped reliably into the container on WSL2.)
 _CLI_TOOL_PARAMS = [
     pytest.param("claude", id="claude"),
-    pytest.param(
-        "gemini",
-        marks=pytest.mark.skipif(
-            not os.environ.get("GEMINI_API_KEY"),
-            reason="GEMINI_API_KEY not set — Gemini variant requires API-key auth",
-        ),
-        id="gemini",
-    ),
 ]
 
 
@@ -411,9 +353,7 @@ _TRIVIAL_INSTRUCTION = (
 def test_real_transcript_persists_on_success(shared_sessions_dir: Path, cli_tool: str) -> None:
     """A normal successful polecat run leaves a fat transcript on the host.
 
-    Runs once per supported CLI tool (Claude, Gemini). The Gemini parameter
-    is skipped at collection time when ``GEMINI_API_KEY`` is unset — see
-    ``_CLI_TOOL_PARAMS``.
+    Runs once per supported CLI tool (Claude). See ``_CLI_TOOL_PARAMS``.
     """
     project = _require_project()
     task_id, client = _create_test_task(
@@ -450,15 +390,8 @@ def test_real_transcript_persists_on_success(shared_sessions_dir: Path, cli_tool
             proc.kill()
             pytest.fail(f"polecat subprocess did not exit 60s after PKB terminal for {task_id}")
 
-        if cli_tool == "gemini":
-            # Gemini writes a single-JSON session file (not JSONL) and the
-            # stub doesn't yet record real_transcript_path for the gemini
-            # path — the docker-cp landing point is what we verify here.
-            _assert_gemini_transcript(task_id, project, min_bytes=1_000)
-            _assert_stub(task_id, expect_real_path=False)
-        else:
-            _assert_real_transcript(task_id, project, min_bytes=10_000)
-            _assert_stub(task_id)
+        _assert_real_transcript(task_id, project, min_bytes=10_000)
+        _assert_stub(task_id)
     finally:
         _cleanup(proc, client, task_id)
 
@@ -595,13 +528,6 @@ def test_real_transcript_persists_on_graceful_shutdown(
         # If proc already exited (unlikely with this prompt), still verify
         # transcript landed.
 
-        if cli_tool == "gemini":
-            # Gemini's first session-*.json write happens after a few
-            # turns; 45s of search-and-grep against tests/ is normally
-            # enough. Min bytes is lower than Claude's because Gemini's
-            # session log is denser per turn.
-            _assert_gemini_transcript(task_id, project, min_bytes=1_000)
-        else:
-            _assert_real_transcript(task_id, project, min_bytes=10_000)
+        _assert_real_transcript(task_id, project, min_bytes=10_000)
     finally:
         _cleanup(proc, client, task_id)

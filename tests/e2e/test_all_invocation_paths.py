@@ -29,9 +29,7 @@ import pytest
 
 from tests.conftest import (
     _docker_available,
-    _gemini_cli_available,
     build_claude_agent_cmd,
-    build_gemini_agent_cmd,
     get_repo_root,
 )
 from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
@@ -39,10 +37,6 @@ from tests.polecat.conftest import _DEFAULT_AOPS_SCRATCH_PARENT
 # PKB task whose body is the test prompt for `pc run -t`.
 # Created in PKB under aops project — DO NOT COMPLETE or ARCHIVE this task.
 TEST_FIXTURE_TASK_ID = "e2e-test-fixture"
-
-# Fast/cheap Gemini model for E2E tests. Update here when the recommended
-# Flash model changes; the CLI accepts any "gemini-*" literal as a model id.
-_GEMINI_TEST_MODEL = "gemini-2.5-flash"
 
 # Mega-prompt for crew paths (passed directly via -p).
 # Must match the task body for run paths so assertions work on both.
@@ -262,9 +256,7 @@ class TestAllInvocationPaths:
         scope="class",
         params=[
             "crew-claude",
-            "crew-gemini",
             "run-claude",
-            "run-gemini",
         ],
     )
     def session(self, request, tmp_path_factory):
@@ -275,26 +267,12 @@ class TestAllInvocationPaths:
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
 
-        if backend == "gemini" and not _gemini_cli_available():
-            pytest.skip("Gemini CLI not found in PATH")
-
         tmp_path = tmp_path_factory.mktemp(f"invocation-{param}")
 
         if path_type == "crew":
             result = self._run_crew(tmp_path, backend)
         else:
             result = self._run_polecat(tmp_path, backend)
-
-        # Skip Gemini paths when Google's API has rate-limited us. The CLI
-        # exits cleanly with QUOTA_EXHAUSTED on stderr; without this guard
-        # all downstream assertions fail with no signal that the cause was
-        # external quota, not a code regression.
-        if backend == "gemini":
-            stderr = result.get("stderr", "")
-            combined = result.get("combined", "")
-            for needle in ("QUOTA_EXHAUSTED", "TerminalQuotaError", "exhausted your capacity"):
-                if needle in stderr or needle in combined:
-                    pytest.skip(f"Gemini API quota exhausted ({needle}) — retry after reset")
 
         return result
 
@@ -400,9 +378,9 @@ class TestAllInvocationPaths:
         hook_file = hook_files[-1] if hook_files else None
         if hook_file:
             raw = hook_file.read_text()
-            # run-claude and run-gemini share the same session dir (same task+project),
-            # so they may append to the same hook log. Filter entries by client_type so
-            # each backend only sees its own hooks.
+            # Multiple backends could share the same session dir (same
+            # task+project) and append to one hook log. Filter entries by
+            # client_type so each backend only sees its own hooks.
             if backend in ("claude", "gemini"):
                 filtered_lines = []
                 for line in raw.splitlines():
@@ -457,7 +435,7 @@ class TestAllInvocationPaths:
     def _run_crew(self, tmp_path, backend, timeout=None):
         """Run pc crew repo <path> -- -p <mega-prompt>."""
         if timeout is None:
-            timeout = 600 if backend == "gemini" else 300
+            timeout = 300
 
         repo = get_repo_root()
         crew_name = f"test-{backend}"
@@ -481,14 +459,9 @@ class TestAllInvocationPaths:
             "-n",
             crew_name,
         ]
-        if backend == "gemini":
-            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         cmd.append("--")
-        if backend == "gemini":
-            cmd.extend(build_gemini_agent_cmd(prompt, include_binary=False))
-        else:
-            cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
+        cmd.extend(build_claude_agent_cmd(prompt, output_format="text", include_binary=False))
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -562,7 +535,7 @@ class TestAllInvocationPaths:
     def _run_polecat(self, tmp_path, backend, timeout=None):
         """Run pc run -t <task_id> for the given backend."""
         if timeout is None:
-            timeout = 600 if backend == "gemini" else 300
+            timeout = 300
         if not _check_fixture_task():
             pytest.skip(
                 f"Test fixture task '{TEST_FIXTURE_TASK_ID}' not found in PKB "
@@ -589,8 +562,6 @@ class TestAllInvocationPaths:
             TEST_FIXTURE_TASK_ID,
             "--no-auto-finish",
         ]
-        if backend == "gemini":
-            cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
         env = os.environ.copy()
         cwd = os.getcwd()
@@ -971,7 +942,7 @@ class TestAllInvocationPaths:
 
 
 # ---------------------------------------------------------------------------
-# PKB write-back regression tests (run-claude × run-gemini)
+# PKB write-back regression tests (run-claude)
 # ---------------------------------------------------------------------------
 
 TERMINAL_STATUSES: frozenset[str] = frozenset({"done", "merge_ready", "blocked", "cancelled"})
@@ -1040,11 +1011,11 @@ def _resolve_scratch_parent(project: str) -> str:
 @pytest.mark.integration
 @pytest.mark.xdist_group("pkb-persistence")
 class TestPkbPersistence:
-    """Regression tests: PKB MCP write-back works for run-claude and run-gemini.
+    """Regression tests: PKB MCP write-back works for run-claude.
 
-    Parameterized over (run-claude, run-gemini) — the two backends where a
-    polecat worker must call release_task to persist its result. crew-* paths
-    have no PKB task to close and are out of scope.
+    Parameterized over (run-claude) — the run path where a polecat worker must
+    call release_task to persist its result. crew-* paths have no PKB task to
+    close and are out of scope.
 
     Catches regressions where the agent's PKB MCP server is misconfigured and
     release_task silently fails — e.g., the 2026-04-28 incident (PR #784) where
@@ -1056,7 +1027,7 @@ class TestPkbPersistence:
 
     @pytest.fixture(
         scope="class",
-        params=["run-claude", "run-gemini"],
+        params=["run-claude"],
     )
     def pkb_run(self, request, tmp_path_factory):
         """Create a fresh PKB spike task, run polecat against it, yield result info."""
@@ -1064,8 +1035,6 @@ class TestPkbPersistence:
 
         if not _docker_available():
             pytest.skip("Docker not available or aops-crew image not built")
-        if backend == "gemini" and not _gemini_cli_available():
-            pytest.skip("Gemini CLI not found in PATH")
         if not _pkb_available():
             pytest.skip("PKB MCP server unreachable")
 
@@ -1113,8 +1082,6 @@ class TestPkbPersistence:
                 ]
             else:
                 cmd = [polecat_bin, "run", "-t", task_id, "-p", project]
-            if backend == "gemini":
-                cmd.extend(["--model", _GEMINI_TEST_MODEL])
 
             proc = subprocess.Popen(
                 cmd,
