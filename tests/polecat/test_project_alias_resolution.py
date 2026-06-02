@@ -36,6 +36,11 @@ def _write_registry(tmp_path: Path, registry: dict) -> Path:
     sessions = tmp_path / "sessions"
     sessions.mkdir(exist_ok=True)
     cfg = sessions / "polecat.yaml"
+    # polecat_home is a required key; inject it when the caller's minimal
+    # fixture omits it so resolve_polecat_home() (called transitively via
+    # load_local_overlay) doesn't fail on a stub yaml.
+    if "polecat_home" not in registry:
+        registry = {**registry, "polecat_home": str(tmp_path / "polecat_home")}
     cfg.write_text(yaml.dump(registry))
     return cfg
 
