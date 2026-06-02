@@ -1068,8 +1068,6 @@ class TestPkbPersistence:
             pytest.skip("Gemini CLI not found in PATH")
         if not _pkb_available():
             pytest.skip("PKB MCP server unreachable")
-        if os.environ.get("POLECAT_E2E") != "1":
-            pytest.skip("E2E test — opt in with POLECAT_E2E=1")
 
         project = _require_e2e_project()
         from polecat.pkb_bridge import _get_client  # type: ignore
