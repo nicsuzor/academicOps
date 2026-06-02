@@ -131,3 +131,9 @@ _Edge 3 (script abdication):_
 - Cite the cross-incident recurrence (≥2 distinct incidents, named) that justifies the rule change. If only one incident is in evidence, the proposal is deferred to detached review, not adopted.
 - Does an incident/forensic output carry a "suggested axiom," "proposed gate," or any remediation that belongs to the detached review phase?
 - Was an ordinary in-task fix or self-correction wrongly slowed under cover of recusal (which governs framework change only)?
+
+## pull-over-push
+
+- For any instruction or instruction section placed in a push tier (every-turn, gate cue, or always-on), does it pass all three: changes behaviour on most loads; cannot be reactively looked up; compact?
+- Where elaboration, rationale, or checklists appear in a push tier, were they demoted to pull (referenced doc, PKB note, or skill body)?
+- Did the agent default to push where pull would do — or correctly default to pull and push only what is earned?
