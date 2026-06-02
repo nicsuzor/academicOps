@@ -16,7 +16,7 @@ A research deliverable would have its own subworkflow file with different vocabu
 | Dispatch       | `polecat run -t <task-id> -p <project>` (with `-g` for Gemini), or Jules via `pkb task ... \| jules new`. |
 | Verify         | Marsha reads the PR diff + worker exit; returns PASS/FAIL/REVISE.                                         |
 | Review surface | GitHub PR; mechanical merge-prep adds the `ready-for-review` label asynchronously.                        |
-| Integrate      | Replaced by **halt at `ready_for_user_review`**. The supervisor never merges.                             |
+| Integrate      | Replaced by **halt at `merge_ready`**. The supervisor never merges.                                       |
 
 ## Mandatory Pre-Dispatch Gates
 
@@ -54,7 +54,7 @@ Tasks tagged `high-risk` or meeting blast-radius criteria require independent cr
 
 ## Monitor: Wait for the PR, Then Halt
 
-The supervisor's only monitoring obligation is "did the worker open a PR?" Once each work item has a PR, the supervisor halts at `ready_for_user_review` and the existing GHA pipeline takes over. The supervisor does NOT poll CI, does NOT chase reviewers, does NOT track merge-prep status.
+The supervisor's only monitoring obligation is "did the worker open a PR?" Once each work item has a PR, the supervisor halts at `merge_ready` and the existing GHA pipeline takes over. The supervisor does NOT poll CI, does NOT chase reviewers, does NOT track merge-prep status.
 
 ```bash
 # Dispatch in background — get notified on exit
@@ -71,12 +71,12 @@ The third row is the **in-session notify-watch** — armed once when the user re
 
 On worker exit, hand the result to **marsha** (see [[../SKILL.md#marsha--verify]]). Marsha reads the PR / diff / transcript on the supervisor's behalf and returns PASS/FAIL/REVISE. The main agent never reads them.
 
-| Outcome            | Main agent action                                          |
-| ------------------ | ---------------------------------------------------------- |
-| Marsha PASS        | Record PR in work items; mark item `ready_for_user_review` |
-| Marsha FAIL        | Call pauli with `role=react`                               |
-| Marsha REVISE      | File a verification subtask (depends_on PR)                |
-| Worker exit, no PR | Call pauli with `role=react`, context `no-deliverable`     |
+| Outcome            | Main agent action                                      |
+| ------------------ | ------------------------------------------------------ |
+| Marsha PASS        | Record PR in work items; mark item `merge_ready`       |
+| Marsha FAIL        | Call pauli with `role=react`                           |
+| Marsha REVISE      | File a verification subtask (depends_on PR)            |
+| Worker exit, no PR | Call pauli with `role=react`, context `no-deliverable` |
 
 ### Removed Responsibilities (per task-212f1c82)
 
@@ -97,16 +97,16 @@ If a transcript shows the supervisor doing any of these against a PR that has al
 
 The supervisor's job ends when each work item is **opened as a PR**. That is the completion signal — replacing the old `merge_ready` / "drive PR to mergeable" / poll-CI loop.
 
-| Layer                             | Owns                                                                        | Surface                   |
-| --------------------------------- | --------------------------------------------------------------------------- | ------------------------- |
-| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `ready_for_user_review` once each PR is open | One report per epic       |
-| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep        | PR labels + status checks |
+| Layer                             | Owns                                                                 | Surface                   |
+| --------------------------------- | -------------------------------------------------------------------- | ------------------------- |
+| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `merge_ready` once each PR is open    | One report per epic       |
+| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep | PR labels + status checks |
 
 The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does NOT chase reviewers. Once every work item has opened a PR, produce the final summary and halt.
 
-### Halt state: `ready_for_user_review`
+### Halt state: `merge_ready`
 
-Set the epic to `ready_for_user_review` once every child task either:
+Set the epic to `merge_ready` once every child task either:
 
 - has an open PR, OR
 - has been escalated/blocked with a clear reason recorded in the task body.
@@ -116,7 +116,7 @@ The existing GHA pipeline (pr-pipeline.yml, agent-enforcer.yml, agent-merge-prep
 ### Final-summary template (one report per epic)
 
 ```
-Epic <epic-id> — N PRs in `ready_for_user_review`
+Epic <epic-id> — N PRs in `merge_ready`
 
 | # | Task ID  | Title              | PR                            | State            |
 | - | -------- | ------------------ | ----------------------------- | ---------------- |
