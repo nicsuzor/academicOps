@@ -73,9 +73,7 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
         "restricted",
         "protected",
     )
-    _deny_pattern = re.compile(
-        "|".join(r"\b" + re.escape(ind) + r"\b" for ind in deny_indicators)
-    )
+    _deny_pattern = re.compile("|".join(r"\b" + re.escape(ind) + r"\b" for ind in deny_indicators))
     prose_indicates_denial = bool(_deny_pattern.search(response_text))
 
     found_denial = write_to_claude_denied or prose_indicates_denial
