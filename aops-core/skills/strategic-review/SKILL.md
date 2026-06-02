@@ -20,7 +20,7 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 2.4.0
+version: 2.4.1
 permalink: skills-strategic-review
 ---
 
@@ -64,7 +64,7 @@ Invoke on a green, merge-ready PR before human approval:
 Agent(subagent_type="aops-core:pauli", prompt="[the lens text below + PR ref / diff + originating task]")
 ```
 
-This is the PENULTIMATE step before human approval. The lens reads deeply (diff + call sites + originating task + VISION + specs + PKB cross-repo links) but returns a thin surface — leading with a verdict glyph, then ONE scannable line per applicable field plus a spot-check pointer, so Nic can make the call without re-reading the diff himself. The thin surface is one-line-per-field, NOT a fixed line count: an honest MERGE that owns its external-impact, persistence, and axiom-backstop lines runs ~7 lines and that is correct. The cap is on what NIC READS per line; the lens still does the full analysis and records its full output on the PR (see the post + check actions in the prompt block).
+This is the PENULTIMATE step before human approval. The lens reads deeply (diff + call sites + originating task + vision note + specs + PKB cross-repo links) but returns a thin surface — leading with a verdict glyph, then ONE scannable line per applicable field plus a spot-check pointer, so Nic can make the call without re-reading the diff himself. The thin surface is one-line-per-field, NOT a fixed line count: an honest MERGE that owns its external-impact, persistence, and axiom-backstop lines runs ~7 lines and that is correct. The cap is on what NIC READS per line; the lens still does the full analysis and records its full output on the PR (see the post + check actions in the prompt block).
 
 **Not yet auto-wired into merge-prep — this is graduated enforcement (VISION).** It earns promotion to an always-on pipeline stage only after dogfooding proves it catches real wrong-place fixes without crying wolf. Promotion path (follow-up, not taken here): add it as a Pauli commission in `review-contexts/pr-code.md` / `pr-framework.md` so James runs it automatically on merge-ready PRs, and register `strategic-review/arch-fit` as an expected/required CI check so the PR cannot go green without it. **Do not take those steps until dogfooding earns it.** (Completing the check when the skill runs — below — is part of the skill now; _requiring_ the check is the promotion step.)
 
@@ -88,12 +88,13 @@ solves, where that problem originates, and whether here is where it should be so
 RECONSTRUCT, DON'T ACCEPT. Do not take the PR description's account of the problem.
 Read the originating task/issue, the changed files, AND their call sites and the
 abstraction they belong to — you cannot judge "should be elsewhere" without reading
-what elsewhere is. Strategic context lives in: projects/aops/vision (VISION) and the
-relevant projects/aops/specs/ doc, plus the linked task. NOT STATUS.md or any
-operational snapshot.
+what elsewhere is. Strategic context lives in: the PKB vision note `[[vision]]`
+(permalink `aops-vision`; fetch with get_document) for framework intent and design
+philosophy, and the relevant doc in the repo-root `specs/` tree (map: `specs/INDEX.md`)
+for the canonical spec, plus the linked task. NOT STATUS.md or any operational snapshot.
 
 SPEC GROUNDING. Ground the change against the canonical spec — normally the relevant
-projects/aops/specs/ doc. But for a taxonomy / SSoT edit, the edited file may itself BE
+doc in the repo-root `specs/` tree. But for a taxonomy / SSoT edit, the edited file may itself BE
 the canonical spec: there is no external doc to match against. In that case the grounding
 check becomes "is the SSoT edit internally coherent, and fully propagated to every
 consumer?" — not "does it match a specs/ doc."
