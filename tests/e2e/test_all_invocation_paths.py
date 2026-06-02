@@ -1,6 +1,7 @@
-"""E2E tests for ALL invocation paths: crew and run, Claude and Gemini.
+"""E2E tests for ALL invocation paths: crew and run (Claude).
 
-Parameterized over 4 combinations: (crew, run) × (claude, gemini).
+Parameterized over (crew, run) on the Claude backend. (Gemini variants were
+dropped — gemini is being sunset.)
 Each test exercises the FULL path from CLI entry point through Docker/sandbox
 to LLM response, proving:
 - Agent responds and produces output
@@ -248,7 +249,7 @@ def _reset_fixture_task():
 class TestAllInvocationPaths:
     """Full CLI-to-response tests across all 4 invocation paths.
 
-    Parameterized: (crew, run) x (claude, gemini). Each param runs one LLM
+    Parameterized: (crew, run) on the Claude backend. Each param runs one LLM
     call; all test methods parse the same output.
     """
 
@@ -285,15 +286,11 @@ class TestAllInvocationPaths:
     def _is_session_file(f: Path) -> bool:
         """Return True if the file looks like a session transcript.
 
-        Three concrete shapes (all line-delimited or single JSON):
+        Concrete shapes (all line-delimited or single JSON):
         - Claude transcript: ``<uuid>.jsonl`` written under the agent's
           ``$CLAUDE_CONFIG_DIR/projects/...`` and exfiltrated under
           ``$AOPS_SESSIONS/{crew,polecats}/.../<uuid>.jsonl``. NOT under a
           ``chats/`` directory.
-        - Gemini chat: ``chats/session-*.jsonl`` written by gemini-cli into
-          ``$GEMINI_CLI_HOME/.gemini/tmp/<projectHash>/chats/`` and bind-
-          mounted out under ``$AOPS_SESSIONS/.../workspace/chats/``. This is
-          where the actual conversation + tool calls live.
         - Per-session aops wrapper (``*-{backend}-session.json``) is metadata
           only — gate state, hooks log path — and is NOT treated as a
           transcript.
@@ -304,9 +301,6 @@ class TestAllInvocationPaths:
             return False
         if f.suffix != ".jsonl":
             return False
-        # Gemini chat: chats/session-*.jsonl
-        if f.parent.name == "chats" and f.name.startswith("session-"):
-            return True
         # Claude transcript: any *.jsonl outside chats/ that isn't a hook log
         if f.parent.name != "chats":
             return True
@@ -330,9 +324,9 @@ class TestAllInvocationPaths:
                 hook log filename is the fixed SSoT placeholder
                 ``polecat-session-hooks.jsonl`` (set via AOPS_HOOK_LOG_PATH in
                 polecat/cli.py) and no longer embeds the crew name.
-            backend: "claude" or "gemini". When set, filters session files by
-                location (claude lives at the top of the per-session dir;
-                gemini lives one level deeper under ``chats/``).
+            backend: "claude". When set, filters session files by location
+                (claude lives at the top of the per-session dir, not under
+                ``chats/``).
             session_dir: Required for race-free discovery. Polecat writes the
                 test agent's artefacts under ``$AOPS_SESSIONS/{crew,polecats}/
                 {name_or_task}/{project}/`` — passing this dir scopes the
@@ -378,10 +372,10 @@ class TestAllInvocationPaths:
         hook_file = hook_files[-1] if hook_files else None
         if hook_file:
             raw = hook_file.read_text()
-            # Multiple backends could share the same session dir (same
+            # Multiple runs could share the same session dir (same
             # task+project) and append to one hook log. Filter entries by
             # client_type so each backend only sees its own hooks.
-            if backend in ("claude", "gemini"):
+            if backend:
                 filtered_lines = []
                 for line in raw.splitlines():
                     try:
@@ -414,18 +408,10 @@ class TestAllInvocationPaths:
         if started_after:
             session_files = [f for f in session_files if f.stat().st_mtime >= started_after]
 
-        # Filter by expected file location for the backend to prevent cross-
-        # backend contamination when Claude and Gemini sessions sit side by
-        # side under $AOPS_SESSIONS. Claude lives at the top of the per-session
-        # dir; Gemini lives one level deeper under chats/.
+        # Filter by expected file location for the backend. Claude lives at
+        # the top of the per-session dir (not under chats/).
         if backend == "claude":
             session_files = [f for f in session_files if f.parent.name != "chats"]
-        elif backend == "gemini":
-            session_files = [
-                f
-                for f in session_files
-                if f.parent.name == "chats" and f.name.startswith("session-")
-            ]
 
         session_files = sorted(session_files, key=os.path.getmtime)
         session_file = session_files[-1] if session_files else None
@@ -909,24 +895,18 @@ class TestAllInvocationPaths:
 
         import json
 
-        # Handle both Claude JSONL (one entry per line) and Gemini JSON (single object)
-        if session_file.suffix == ".json":
-            # Gemini: {"messages": [{"type": "user"|"gemini", ...}]}
-            data = json.loads(session_file.read_text())
-            entries = data.get("messages", [])
-        else:
-            # Claude: one JSON object per line
-            entries = []
-            with session_file.open() as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        entries.append(json.loads(line))
+        # Claude: one JSON object per line (JSONL).
+        entries = []
+        with session_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    entries.append(json.loads(line))
 
         assert len(entries) > 0, "Session file has no entries"
         types = {e.get("type") for e in entries}
         assert "user" in types or "human" in types, f"No user message. Types: {types}"
-        assert "assistant" in types or "model" in types or "gemini" in types, (
+        assert "assistant" in types or "model" in types, (
             f"No assistant/model message. Types: {types}"
         )
 
@@ -1019,8 +999,8 @@ class TestPkbPersistence:
 
     Catches regressions where the agent's PKB MCP server is misconfigured and
     release_task silently fails — e.g., the 2026-04-28 incident (PR #784) where
-    gemini-extension.json was missing PKB_MCP_URL in the pkb MCP server env
-    block, leaving every Gemini polecat with zero PKB tools.
+    an extension config was missing PKB_MCP_URL in the pkb MCP server env
+    block, leaving the polecat with zero PKB tools.
 
     Gated: POLECAT_E2E=1, Docker + aops-crew image, PKB MCP reachable.
     """
