@@ -20,7 +20,7 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Task,Read
-version: 2.4.1
+version: 2.5.0
 permalink: skills-strategic-review
 ---
 
@@ -135,6 +135,25 @@ Failure patterns you are hunting (grounded in the vision):
     demonstrated benefit is ITSELF a defect, sufficient grounds to 🔴 REJECT on its own,
     independent of correctness. Of every new field/token/enum ask: who actually reads it, what
     do they DO differently because of it, and would a smart agent reading the prose have sufficed?
+  • Unregistered mechanism / under-integrated component — the PR ADDS a skill / step / surface /
+    gate / lifecycle-transition behaviour that lives ONLY in skill-instruction prose (plus thin
+    pointers) and is INVISIBLE to the framework's self-description layer. This is DISTINCT from
+    "doesn't earn its keep" (that is about NEED; this is about REGISTRATION & DISCOVERABILITY of a
+    mechanism that may be perfectly justified). For any ADDED mechanism, check four homes and name
+    each that is missing: (1) its OWNING canonical spec — is the mechanism described where the
+    framework documents that workflow/transition (e.g. `specs/workflows/*.md` for a close/reconcile
+    step), not only inside a `references/` file? (2) `specs/ENFORCEMENT-MAP.md` — does it have a row?
+    This is MECHANICAL and rbg-BLOCKING: ENFORCEMENT-MAP's own header states "Any PR that adds,
+    escalates, or retires a mechanism updates a row here in the same change (P#65); rbg blocks on
+    currency." A "surface, not block" / non-gating mechanism is NOT exempt — that table already
+    carries advisory, manual, non-blocking surfaces (e.g. marsha `/verify`, james `/review-pr`).
+    (3) discoverability — `.agents/context-map.json` / README / any enforcement flowchart. (4) WHO
+    RUNS IT WHEN, stated canonically — not reconstructable only by reading N skills. A mechanism
+    integrated nowhere but skill prose + pointers is UNDER-INTEGRATED → ⚠️ HOLD / 🔁 REDESIGN
+    (resolve the registration before merge); the ENFORCEMENT-MAP omission alone is an rbg pipeline
+    gap to surface on the axiom-backstop line. BEWARE the anaesthetic: "it's only a surface, not a
+    gate" reads as "not a mechanism" and silences this hunt — treat ANY added surface/step as a
+    registrable mechanism regardless of whether it blocks.
   • Entrenches what should shrink / fights the trajectory.
   • Procedure where philosophy belongs (skill/agent edits) — rigid mechanics/mode-routers
     where the principle is to state the goal and trust the agent.
@@ -143,9 +162,15 @@ Failure patterns you are hunting (grounded in the vision):
     mechanism protected, decide whether dropping it leaves a real safety gap or is correctly
     removing dead weight, and say where (if anywhere) that protected property now lives.
 
-CONSUMER MIGRATION (redefinition / rename PRs). If the PR redefines or renames a status,
-field, schema, or shared concept, ENUMERATE the consumers of the OLD definition and confirm
-each was migrated. "All call sites reconciled" asserted is not enough — show it.
+CONSUMER MIGRATION / PROPAGATION COMPLETENESS. If the PR redefines or renames a status,
+field, schema, or shared concept — OR changes a shared RULE, TEMPLATE, or RENDERING that more
+than one site implements (e.g. a daily-note bar format, a worked example, a documented procedure
+duplicated across surfaces) — ENUMERATE every site that implements the OLD form and confirm each
+was migrated. Do NOT scope this to the files the PR happened to touch: grep the WHOLE repo for the
+pattern the PR claims to fix and check the matches the diff did NOT change. The defect the PR's own
+text says it removes must not survive in a sibling (a second template, a parallel SSoT doc, another
+skill's copy) — that is a single-source-of-truth break and a class-instance miss (the fix applied to
+one of N members). "All call sites reconciled" asserted is not enough — show the enumeration.
 WARNING: verify against the PR DIFF (`gh pr diff`), NOT the local working tree / branch
 state. Local-state checks produce false positives — a consumer can look migrated locally
 while the diff doesn't carry the change. (This exact error happened in dogfooding.)
@@ -171,7 +196,16 @@ applies: `.agents/rules/AXIOMS.md` and its review checklist `.agents/rules/AXIOM
 axiom violation that rbg should have flagged slip past her? This is verification of her
 coverage of the CLASS, not a from-scratch re-review that re-litigates everything she
 already cleared — read the diff against the axioms looking for a missed violation, not for
-agreement on calls she made. HUNT WHAT THE PR GETS WRONG; never shop for an axiom it
+agreement on calls she made. MECHANICAL CURRENCY CHECK (do NOT delegate this to rbg — she
+demonstrably whiffs it): if the PR ADDS, ESCALATES, or RETIRES a mechanism (a gate, hook, skill,
+step, surface, or lifecycle-transition behaviour — INCLUDING a non-blocking "surface"), open
+`specs/ENFORCEMENT-MAP.md` and confirm the PR adds/updates a row IN THE SAME CHANGE. Its header
+makes this rbg-blocking (P#65: "Any PR that adds, escalates, or retires a mechanism updates a row
+here in the same change; rbg blocks on currency"). A missing row is a CONCRETE pipeline gap —
+report it on the axiom-backstop line as "GAP — ENFORCEMENT-MAP row missing (P#65, rbg-blocking)",
+treat it as HOLD/REDESIGN-class, and cross-reference the unregistered-mechanism failure pattern
+above. This is mechanical, not a judgment call: do not rationalise it away because the mechanism
+"only surfaces" or "isn't a gate." HUNT WHAT THE PR GETS WRONG; never shop for an axiom it
 "satisfies" and cite that to bless the merge. Axiom COMPLIANCE is the absence of one kind of
 problem, never a positive reason to merge — "the PR correctly applies axiom X" is not a
 finding this backstop produces. Anti-rationalisation cuts BOTH ways: the backstop can talk
@@ -248,6 +282,18 @@ DISCIPLINE:
     weak strawman picked to be easy to dismiss. Steelman it with a concrete "what each site
     has that the other lacks" comparison. "Here is better" only earns its place by naming
     the perishable/better info the alternative would actually lose.
+  • DON'T REDESIGN TOWARD A FORECLOSED ALTERNATIVE. Before issuing 🔁 REDESIGN because the fix
+    "should be a stronger mechanism elsewhere," confirm that stronger mechanism is not one the
+    originating issue/task EXPLICITLY RULED OUT. If the issue says (e.g.) "without adding a new
+    blocking gate where doctrine forbids it" and your redesign target IS a gate / forced dispatch /
+    the very thing it foreclosed, REDESIGN is the wrong glyph: the PR took the constrained path on
+    purpose. When the residual concern is a real-but-deferred enhancement that the issue's own
+    constraints push OUT of this PR's scope, the call is ✅ MERGE (tension noted) + a named
+    follow-up — not REDESIGN. Beware the over-fire twin of the rationalisation trap: "surfacing
+    only defers, it doesn't drive resolution" proves too much — it convicts EVERY surface-not-block
+    mechanism in the framework, since none force resolution. Distinguish "defers SILENTLY" (a real
+    defect) from "surfaces VISIBLY but doesn't drive" (doctrine-compliant detection); only the
+    former is a verdict-moving concern.
 
 OUTPUT — exactly what a final pre-merge human gate needs, no more.
 Lead with ONE verdict:

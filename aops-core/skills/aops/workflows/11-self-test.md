@@ -26,22 +26,7 @@ Before testing any specific hook behavior, verify that hooks are actually runnin
 1. **Hard crash** — attachment `type` is `hook_non_blocking_error` (or `exitCode != 0`). The `stderr` field carries the crash traceback. The router never wrote a `*-session-hooks.jsonl`.
 2. **Silent degradation** — attachment `type` is `hook_success` with `exitCode: 0` **but a non-empty `stderr`**. The hook "succeeded" (didn't block the turn) while a substep failed — e.g. `WARNING: Failed to log hook event: ...`, which means the per-event logger threw and **no `*-session-hooks.jsonl` was written even though hooks ran**. A grep for `hook_non_blocking_error` is blind to this; only reading stderr on success attachments finds it.
 
-**The correct check:** iterate all records with an `attachment` field; for each, inspect `attachment.stderr`. **Any non-empty `stderr`, regardless of `exitCode` or attachment `type`, is a finding.** Group by `hookName` + first stderr line; report the distinct warnings and how many events each affects (a config-load failure typically repeats on every event). HALT and report before proceeding to the rest of the self-test — a degraded-but-exit-0 hook is NOT a pass.
-
-```python
-import json
-f = "<session-transcript>.jsonl"
-for line in open(f):
-    try: r = json.loads(line)
-    except: continue
-    a = r.get("attachment")
-    if isinstance(a, dict) and a.get("stderr", "").strip():
-        print(a.get("hookName"), "exit=", a.get("exitCode"), "::", a["stderr"].strip().splitlines()[0])
-```
-
-The hooks JSONL (`*-session-hooks.jsonl`) is written by the router AFTER successful hook processing. Its absence has **two** causes that you must distinguish, never conflate: (a) the router crashed at import time (`NameError`/`ImportError`) — then the transcript carries `hook_non_blocking_error` attachments; or (b) the router ran but the logging substep threw — then the transcript carries `hook_success` attachments with `Failed to log hook event` in stderr (cause #2 above). "No `*-session-hooks.jsonl`" plus "no `hook_non_blocking_error`" does **not** mean healthy — read the success-attachment stderr before concluding anything.
-
----
+**The correct check:** iterate all records with an `attachment` field; for each, inspect `attachment.stderr`. **Any non-empty `stderr`, regardless of `exitCode` or attachment `type`, is a finding.** Group by `hookName` + first stderr line; report the distinct warnings and how many events each affects (a config-load failure typically repeats on every event). HALT before proceeding — a degraded-but-exit-0 hook is NOT a pass. The `*-session-hooks.jsonl` is written only after successful processing; its absence does NOT mean healthy (the logger may have thrown on an exit-0 hook), so read success-attachment stderr before concluding.
 
 ## 2. Polecat session validation
 
@@ -63,13 +48,11 @@ Walk layers in order; stop at first failure:
 
 **§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:junior')`. Verify visible output, not just return.
 
-**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. **Absence of hooks JSONL does not distinguish "log path misconfigured" from "hooks crashing at import time."** If missing or empty, check the session transcript JSONL per **Step 0's stderr-on-every-attachment method** — not just `hook_non_blocking_error` records. The common case is a `hook_success` (exit 0) attachment whose `stderr` contains `Failed to log hook event: ...` (e.g. a config-load error), meaning hooks ran but the logger threw. A crash (`hook_non_blocking_error`, non-zero exit, traceback in `stderr`) is only one of the two causes; reading stderr on success attachments catches the other.
+**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 
 **§6 Cleanup** — `/exit` → `tmux kill-session` → `polecat nuke <crew>`. Repeat for other client.
 
 On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]], GH #1237.
-
----
 
 ## 3. Hook output channel routing
 
@@ -92,7 +75,7 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 | `Notification`     | user-only  | By definition a user-surface event                                       |
 | `SessionEnd`       | agent-only | Cleanup advisory for next session; same dispatch as Stop (router.py:807) |
 
-**Pre-flight: confirm hooks are executing.** Before verifying channel routing, confirm that at least one hook event has been processed successfully. Check the hooks JSONL for any entry with a successful verdict. If no such entry exists, or if the hooks JSONL is absent, check the session transcript JSONL for `hook_non_blocking_error` records. If hooks are not running at all, this workflow cannot produce valid routing results — halt and diagnose per Step 0 above. Total hook failure reads as "no findings" in this section, which is the wrong answer.
+**Pre-flight: confirm hooks are executing** (per Step 0 — total hook failure reads as "no findings" here, the wrong answer). Confirm at least one hook event processed successfully before judging routing.
 
 **Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers legacy fallback (router.py:838, #1042) leaking `context_injection` to user — false positive; check verdict type.
 
