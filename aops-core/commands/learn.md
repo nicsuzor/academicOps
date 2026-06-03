@@ -59,8 +59,19 @@ The dispatched junior agent owns the session from here. The main context is clea
 ## Arguments
 
 - `/learn` — auto-select the most recent unreviewed transcript
-- `/learn <path>` — review the specified transcript
+- `/learn <path>` — review the specified transcript (pass a markdown path, not a `.jsonl`)
 - `/learn <session-id>` — review the session matching that ID
+
+**Transcript source.** Review the human-readable **markdown** transcript, never the raw
+session JSON/JSONL. The markdown corpus lives at `~/src/sessions/transcripts/YYYY-MM/`,
+filenames `YYYYMMDD-HHMM-<shortid>-<project>-claude-full.md` (preferred) with a
+`-abridged.md` sibling as fallback. A session ID resolves to its markdown via the embedded
+short id (first 8 chars of the UUID) — `ls ~/src/sessions/transcripts/*/*-<shortid>-*-claude-full.md`
+— not to the raw `.jsonl` under `~/.claude/projects/`. The full resolution order
+(`-full.md` → `-abridged.md` → raw `.jsonl` only as a disclosed last resort) and the
+transcript-quality gate (stop and ask the user to fix/regenerate a missing, truncated, or
+tool-stripped transcript rather than reviewing the raw JSONL silently) are defined in
+`aops-core/skills/survey/SKILL.md` retro-mode Step 1 — the dispatched agent follows them.
 
 ## What this command does NOT do
 

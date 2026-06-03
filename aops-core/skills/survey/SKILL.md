@@ -84,18 +84,108 @@ Agent(
 
 ### 1. Select transcript
 
-```bash
-# List recent transcripts, newest first
-# (transcripts are sharded into yyyy-mm/ subdirs after rotation; recent ones stay at top level)
-find ~/.aops/sessions/transcripts -name '*.md' -printf '%T@ %p\n' | sort -rn | head -20 | cut -d' ' -f2-
+**Read the human-readable markdown transcript, not the raw session JSON/JSONL.** The
+markdown is the mirrored, forensic-grade record (every line, tool calls and results
+intact). The raw `.jsonl`/`.json` the harness writes under `~/.claude/projects/.../`
+is a last resort only — it is harder to read and the markdown almost always exists.
 
-# Show unreviewed transcripts (missing reviewed_by in frontmatter)
-for f in $(find ~/.aops/sessions/transcripts -name '*.md' -printf '%T@ %p\n' | sort -rn | head -20 | cut -d' ' -f2-); do
+**Corpus location.** The markdown corpus lives under the sessions repo, sharded by month:
+
+```bash
+# Canonical markdown corpus root (sharded into YYYY-MM/ subdirs):
+#   ~/src/sessions/transcripts/YYYY-MM/
+# Filename pattern:
+#   YYYYMMDD-HHMM-<shortid>-<project>-claude-full.md      (preferred — complete record)
+#   YYYYMMDD-HHMM-<shortid>-<project>-claude-abridged.md  (fallback — tool detail stripped)
+# where <shortid> is the first 8 chars of the session UUID.
+```
+
+**Resolution order (do not skip a tier silently):**
+
+1. **`-full.md`** — the complete forensic record. Always prefer this.
+2. **`-abridged.md`** — thinner sibling with most tool calls/results stripped. Use only
+   when no `-full.md` exists, and **say so** — abridged is weaker evidence for forensics.
+3. **Raw `.jsonl`/`.json`** — last resort, AND only after you have told the user no
+   markdown was found and they have confirmed (or directed) the fallback. Never fall back
+   to JSONL silently.
+
+**Auto-select the most recent unreviewed transcript** (retro auto-mode):
+
+```bash
+# Newest -full.md transcripts first, across all month shards:
+find ~/src/sessions/transcripts -name '*-claude-full.md' -printf '%T@ %p\n' \
+  | sort -rn | head -20 | cut -d' ' -f2-
+
+# Of those, the unreviewed ones (no reviewed_by: in frontmatter):
+for f in $(find ~/src/sessions/transcripts -name '*-claude-full.md' -printf '%T@ %p\n' \
+            | sort -rn | head -20 | cut -d' ' -f2-); do
   grep -q "^reviewed_by:" "$f" || echo "$f"
 done | head -10
 ```
 
-If the user specified a path or session ID, use that. If no unreviewed transcripts exist, report and stop.
+**Resolve a user-supplied session ID to its markdown file.** The short id (first 8 chars
+of the UUID) is embedded in the markdown filename, so glob on it — do NOT reach for the
+raw `.jsonl` under `~/.claude/projects/`:
+
+```bash
+SID=04202ce6   # the short id (or first 8 chars of a full UUID the user pasted)
+# Preferred -full.md, then -abridged.md fallback:
+ls ~/src/sessions/transcripts/*/*-${SID}-*-claude-full.md 2>/dev/null \
+  || ls ~/src/sessions/transcripts/*/*-${SID}-*-claude-abridged.md 2>/dev/null
+```
+
+If the user gave an explicit markdown path, use it. If they gave a session ID, resolve it
+as above. If no unreviewed transcripts exist (auto-mode), report and stop. **Whichever way
+you arrived at a file — auto-select, session-ID resolution, or an explicit path the user
+handed you — it then passes the transcript-quality gate below. A path handed in by the user
+is not exempt: a truncated or tool-stripped file is just as useless when named explicitly.**
+
+**Before concluding a transcript is "absent," rule out looking in the wrong place.** A zero
+-hit glob means one of two very different things, and the original bug was conflating them
+(an agent reported "no mirrored markdown transcript exists" when the markdown was sitting in
+`~/src/sessions/transcripts/2026-06/` — it had simply checked a directory that does not
+exist on this host). Distinguish them explicitly:
+
+```bash
+# 1. Does the corpus root itself exist and contain month shards? If this is empty or
+#    errors, your PATH is wrong — do NOT report the transcript as absent. Fix the path
+#    (or, if the corpus genuinely isn't on this host, STOP and ask the user where it is).
+ls -d ~/src/sessions/transcripts/*/ 2>/dev/null | head
+
+# 2. Only once the corpus root is confirmed present: a zero-hit glob for THIS session id
+#    means the transcript for this session is genuinely absent (proceed to the gate).
+```
+
+Report "absent" only after step 1 confirms the corpus exists and step 2 returns nothing for
+the session id. Never infer "no markdown exists anywhere" from a single failed `ls` in one
+guessed directory.
+
+**Transcript-quality gate — STOP rather than review a bad transcript.** Once you have a
+candidate file, confirm it is good enough for a real forensic review. Do this by _reading_,
+not glancing: open the head and the tail of the file, and where the raw `.jsonl` is also
+present, use it as a cheap independent yardstick (count its lines — each is roughly one
+event — against the markdown's turn count; a 1300-line raw session mirrored to a 50-line
+markdown is stripped, not complete). The transcript is **not good enough** if any of these
+hold:
+
+- **Absent** — corpus root confirmed present (step 1 above), but no `-full.md` and no
+  `-abridged.md` exists for the requested session (only the raw `.jsonl`).
+- **Truncated** — the file does not end with a natural closing turn (it stops mid-message or
+  mid-tool-call), OR it is drastically smaller than the raw `.jsonl` for the same session
+  implies it should be (sanity-check the tail and the line-count ratio; don't assume).
+- **Stripped** — tool calls and/or tool results are absent where the session used tools
+  (read a sample of the body — if you see assistant turns referencing actions but no
+  corresponding tool-call/tool-result blocks, it's stripped). An `-abridged.md` standing in
+  for forensic work counts as stripped: it deliberately drops tool detail.
+
+When the transcript fails this gate, **stop and prompt the user to fix or regenerate it**
+(via `AskUserQuestion`) — name which condition failed, cite the concrete evidence you
+observed (the path you checked, the line counts you compared, the missing tool blocks), and
+state what you need (e.g. "the markdown for session `<id>` is missing — corpus root
+`~/src/sessions/transcripts/` exists but holds no file matching `*-<id>-*-claude-*.md`;
+please regenerate the mirror, or confirm you want me to proceed against the raw `.jsonl`
+knowing tool results may be incomplete"). Do **not** silently proceed on the raw JSONL or a
+degraded file; a forensic review built on a poor transcript produces false findings.
 
 ### 2. Read the full transcript
 
