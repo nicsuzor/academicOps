@@ -374,7 +374,10 @@ def get_session_status_dir(
 
     # 3. Claude Code session
     import re
-    if session_id and re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id):
+
+    if session_id and re.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id
+    ):
         project_folder = get_claude_project_folder()
         if _is_polecat_sandbox():
             return _polecat_claude_state_dir(project_folder, "state")
