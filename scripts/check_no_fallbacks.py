@@ -34,24 +34,34 @@ Allowlists:
 
 Usage:
     check_no_fallbacks.py [files...]
+    check_no_fallbacks.py --update-baseline
 
-    With no args: scans the canonical hot paths
-        $AOPS/aops-core/hooks/*.py
-        $AOPS/aops-core/agent-env-map.conf
-        $AOPS/scripts/repo-sync-cron.sh
+    With no args: scans ALL first-party Python / shell / agent-env-map.conf
+    under $AOPS/{aops-core,polecat,scripts,aops-tools} (excluding vendored /
+    build trees: .venv, dist, node_modules, __pycache__, .claude). This is the
+    SAME surface the pre-commit `files:` glob matches, so a bare run and the
+    hook agree (see `_in_scope`).
+
+    --update-baseline: regenerate `check_no_fallbacks_baseline.json` from the
+    current scan. The baseline grandfathers PRE-EXISTING violations (per file,
+    per pattern) so the widened glob can land before the P0 content-sweep
+    (aops-682e75a5) finishes burning them down. NEW fallbacks — beyond the
+    grandfathered per-(file, pattern) counts — still fail loudly. The baseline
+    shrinks to {} as the sweep lands; delete the file once empty.
 
 Exit codes:
-    0: clean
-    1: violation(s) detected (blocks commit)
+    0: clean (or only grandfathered violations remain)
+    1: new violation(s) detected (blocks commit)
 """
 
 from __future__ import annotations
 
 import ast
-import os
+import json
 import re
 import sys
-from pathlib import Path
+from collections import defaultdict
+from pathlib import Path, PurePosixPath
 
 # ---------------------------------------------------------------------------
 # Allow-fallback comment: a strict opt-out marker that requires a reason.
@@ -318,26 +328,155 @@ def _check_path(filepath: Path) -> list[dict]:
     return []
 
 
+# ---------------------------------------------------------------------------
+# Scope — the single source of truth for "which files do we check".
+#
+# `_in_scope` is the predicate; `_default_targets` walks it for a bare run.
+# The pre-commit `files:` / `exclude:` regex in .pre-commit-config.yaml is a
+# hand-maintained second copy of this predicate. The two are kept honest by
+# tests/hooks/test_check_no_fallbacks.py::test_bare_run_and_precommit_scope_agree,
+# which loads the real glob from the config and asserts it makes the SAME
+# include/exclude decision as `_in_scope` on representative paths — so silent
+# drift between the two fails CI. Keep them in lock-step when widening scope.
+# ---------------------------------------------------------------------------
+
+# First-party Python homes. Everything under these (recursively) is in scope;
+# vendored / build / worktree trees below are pruned by `_EXCLUDE_PARTS`.
+_SCOPE_DIRS = ("aops-core", "polecat", "scripts", "aops-tools")
+
+# Path components that take a file out of scope no matter where they appear:
+# virtualenvs, build output, package caches, and isolated worktrees.
+_EXCLUDE_PARTS = frozenset({".venv", "dist", "node_modules", "__pycache__", ".claude"})
+
+# The one non-suffix file we check by name (literal defaults here leak into
+# every host session — issue #930). Only the canonical top-level copy.
+_ENVMAP_REL = "aops-core/agent-env-map.conf"
+
+
+def _repo_root() -> Path:
+    # Anchor on this script's own location, NOT $AOPS: the script lives inside
+    # the repo it checks (scripts/check_no_fallbacks.py -> repo root), so it
+    # must scan THIS checkout even when $AOPS points at a different deployed
+    # install (e.g. /app while committing from a /workspace worktree).
+    return Path(__file__).resolve().parent.parent
+
+
+def _in_scope(relpath: str) -> bool:
+    """True if `relpath` (repo-root-relative, POSIX) is first-party code we
+    check. Mirrors the pre-commit `files:`/`exclude:` regex."""
+    p = PurePosixPath(relpath)
+    parts = p.parts
+    if not parts or parts[0] not in _SCOPE_DIRS:
+        return False
+    if _EXCLUDE_PARTS.intersection(parts):
+        return False
+    if p.name == "agent-env-map.conf":
+        return relpath == _ENVMAP_REL
+    return p.suffix in (".py", ".sh")
+
+
 def _default_targets() -> list[Path]:
-    aops_root = Path(os.environ.get("AOPS", Path(__file__).parent.parent)).resolve()
+    root = _repo_root()
     targets: list[Path] = []
-    hooks_dir = aops_root / "aops-core" / "hooks"
-    if hooks_dir.is_dir():
-        targets.extend(hooks_dir.glob("*.py"))
-    envmap = aops_root / "aops-core" / "agent-env-map.conf"
-    if envmap.is_file():
-        targets.append(envmap)
-    cron = aops_root / "scripts" / "repo-sync-cron.sh"
-    if cron.is_file():
-        targets.append(cron)
+    for scope_dir in _SCOPE_DIRS:
+        base = root / scope_dir
+        if not base.is_dir():
+            continue
+        for candidate in sorted(base.rglob("*")):
+            if not candidate.is_file():
+                continue
+            rel = candidate.resolve().relative_to(root).as_posix()
+            if _in_scope(rel):
+                targets.append(candidate)
     return targets
 
 
+# ---------------------------------------------------------------------------
+# Baseline — grandfather PRE-EXISTING violations so the widened glob can land
+# before the P0 content-sweep (aops-682e75a5) burns them down. Keyed by
+# (repo-relative file, pattern); a per-pattern COUNT is stored. NEW violations
+# (beyond the grandfathered count) still fail — line-number-independent so the
+# baseline survives edits elsewhere in a file.
+# ---------------------------------------------------------------------------
+
+_BASELINE_PATH = Path(__file__).resolve().parent / "check_no_fallbacks_baseline.json"
+
+
+def _rel_key(filepath: Path) -> str:
+    root = _repo_root()
+    try:
+        return filepath.resolve().relative_to(root).as_posix()
+    except ValueError:
+        # Outside the repo (e.g. a test tmp file) — never matches the baseline,
+        # so such a file's violations always surface. That is the desired
+        # behaviour for the regression test.
+        return filepath.as_posix()
+
+
+def _load_baseline() -> dict[str, dict[str, int]]:
+    if not _BASELINE_PATH.is_file():
+        return {}
+    try:
+        data = json.loads(_BASELINE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: could not read baseline {_BASELINE_PATH}: {e}", file=sys.stderr)
+        return {}
+    # Absent "baseline" key genuinely means "no grandfathered sites".
+    return data["baseline"] if "baseline" in data else {}
+
+
+def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]]) -> list[dict]:
+    """Drop up to the grandfathered count of each (file, pattern); return the
+    rest (the net-new violations that must block)."""
+    seen: dict[tuple[str, str], int] = defaultdict(int)
+    surviving: list[dict] = []
+    for v in violations:
+        rel = _rel_key(Path(v["file"]))
+        pattern = v["pattern"]
+        file_baseline = baseline.get(rel)  # None if the file has no grandfathered sites
+        allowed = file_baseline.get(pattern, 0) if file_baseline else 0
+        seen[(rel, pattern)] += 1
+        if seen[(rel, pattern)] > allowed:
+            surviving.append(v)
+    return surviving
+
+
+def _generate_baseline() -> dict[str, dict[str, int]]:
+    counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for filepath in _default_targets():
+        if not filepath.is_file():
+            continue
+        rel = _rel_key(filepath)
+        for v in _check_path(filepath):
+            counts[rel][v["pattern"]] += 1
+    return {rel: dict(sorted(counts[rel].items())) for rel in sorted(counts)}
+
+
 def main() -> int:
-    if len(sys.argv) > 1:
-        files = [Path(f) for f in sys.argv[1:]]
-    else:
-        files = _default_targets()
+    args = sys.argv[1:]
+
+    if "--update-baseline" in args:
+        baseline = _generate_baseline()
+        payload = {
+            "_comment": (
+                "Grandfathered silent-fallback sites pending burn-down by the P0 "
+                "content-sweep aops-682e75a5. Keyed by repo-relative file -> "
+                "pattern -> count. NEW fallbacks beyond these counts still fail. "
+                "Regenerate with `scripts/check_no_fallbacks.py --update-baseline`; "
+                "delete this file once the sweep empties it."
+            ),
+            "baseline": baseline,
+        }
+        _BASELINE_PATH.write_text(
+            json.dumps(payload, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+        )
+        total = sum(sum(p.values()) for p in baseline.values())
+        print(
+            f"Wrote baseline: {total} grandfathered site(s) across {len(baseline)} file(s) -> {_BASELINE_PATH}"
+        )
+        return 0
+
+    files = [Path(f) for f in args] if args else _default_targets()
 
     all_violations: list[dict] = []
     checked = 0
@@ -345,6 +484,11 @@ def main() -> int:
         if filepath.is_file():
             checked += 1
             all_violations.extend(_check_path(filepath))
+
+    baseline = _load_baseline()
+    total_found = len(all_violations)
+    all_violations = _apply_baseline(all_violations, baseline)
+    grandfathered = total_found - len(all_violations)
 
     if all_violations:
         print(f"ERROR: {len(all_violations)} silent-fallback pattern(s) detected:\n")
@@ -357,7 +501,10 @@ def main() -> int:
         print("be annotated with `# allow-fallback: <reason>` on the same line.")
         return 1
 
-    print(f"OK: No silent-fallback patterns in {checked} file(s)")
+    msg = f"OK: No new silent-fallback patterns in {checked} file(s)"
+    if grandfathered:
+        msg += f" ({grandfathered} grandfathered site(s) pending burn-down by aops-682e75a5)"
+    print(msg)
     return 0
 
 
