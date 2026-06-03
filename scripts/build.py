@@ -490,6 +490,7 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
                             cmd = new_hook["command"]
                             cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core")
                             cmd = cmd.replace("--client claude", "--client agy")
+                            cmd = f"{cmd} {output_event}"
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
                     new_entry[key] = new_hooks

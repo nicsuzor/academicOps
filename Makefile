@@ -242,12 +242,16 @@ install-agy:
 	@echo "Installing aops plugin into Antigravity CLI (agy)..."
 	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
 		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
-		agy plugin install "$(DIST_DIR)/aops-antigravity"; \
+		mkdir -p "$(AGY_PLUGIN_DIR)"; \
+		cp -r "$(DIST_DIR)/aops-antigravity/"* "$(AGY_PLUGIN_DIR)/"; \
+		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 	else \
 		echo "  Source: $(AGY_RELEASE_URL)"; \
 		TMP_DIR=$$(mktemp -d); \
 		curl -fsSL "$(AGY_RELEASE_URL)" | tar -xz -C "$$TMP_DIR"; \
-		agy plugin install "$$TMP_DIR"; \
+		mkdir -p "$(AGY_PLUGIN_DIR)"; \
+		cp -r "$$TMP_DIR/"* "$(AGY_PLUGIN_DIR)/"; \
+		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		rm -rf "$$TMP_DIR"; \
 	fi
 	@echo "  Target: $(AGY_PLUGIN_DIR)"

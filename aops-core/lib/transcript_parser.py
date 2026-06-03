@@ -3102,6 +3102,44 @@ class SessionProcessor:
             return line[:120]
         return ""
 
+    @staticmethod
+    def _scrub_binary(content: str) -> str:
+        """Collapse runs of binary / non-text data in antigravity tool output.
+
+        Tool steps such as RUN_COMMAND piping a gzipped download, or a task log
+        capturing a binary file, embed raw bytes that decode to U+FFFD
+        replacement characters and C0/C1 control codes. Real text (incl.
+        non-Latin scripts and emoji — neither triggers the heuristic) passes
+        through verbatim; any *line* that is dominantly binary is dropped, and
+        consecutive binary lines collapse into a single
+        ``[binary data omitted: N chars]`` placeholder so the transcript stays
+        readable without discarding the surrounding evidence (headers, exit
+        codes, ``<truncated N lines>`` markers).
+        """
+
+        def _is_suspect(c: str) -> bool:
+            o = ord(c)
+            return c == "�" or (o < 32 and c != "\t") or 127 <= o <= 159
+
+        # Fast path: no binary signal at all → return unchanged.
+        if not any(_is_suspect(c) for c in content):
+            return content
+
+        out: list[str] = []
+        run = 0  # accumulated char count of the current binary run
+        for line in content.split("\n"):
+            bad = sum(1 for c in line if _is_suspect(c))
+            if line and bad / len(line) > 0.15:
+                run += len(line)
+                continue
+            if run:
+                out.append(f"[binary data omitted: {run} chars]")
+                run = 0
+            out.append(line)
+        if run:
+            out.append(f"[binary data omitted: {run} chars]")
+        return "\n".join(out)
+
     def _parse_antigravity_transcript_jsonl(
         self, brain_dir: Path, transcript_path: Path
     ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
@@ -3207,7 +3245,8 @@ class SessionProcessor:
 
             is_error = status == "ERROR" or rtype == "ERROR_MESSAGE"
             tid = f"{session_id}-t-{step}"
-            desc = self._antigravity_tool_desc(content)
+            clean = self._scrub_binary(content)
+            desc = self._antigravity_tool_desc(clean)
             tool_input = {"description": desc} if desc else {}
             _add(
                 "assistant",
@@ -3223,7 +3262,7 @@ class SessionProcessor:
                     {
                         "type": "tool_result",
                         "tool_use_id": tid,
-                        "content": content,
+                        "content": clean,
                         "is_error": is_error,
                     }
                 ],

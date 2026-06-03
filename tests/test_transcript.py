@@ -575,6 +575,71 @@ class TestAntigravityCliBrain:
         assert "how do hooks work here?" in summary.summary
         assert "COMPACT VERSION" not in summary.summary
 
+    def test_binary_tool_output_is_scrubbed(self, processor, tmp_path):
+        """Binary bytes in tool output (e.g. a gzipped download) collapse to a
+        placeholder; surrounding readable lines (headers, exit codes) survive."""
+        binary_line = "�\x00\x01\x02" + "".join(chr(c) for c in range(1, 30)) * 3
+        records = [
+            {
+                "step_index": 0,
+                "source": "USER_EXPLICIT",
+                "type": "USER_INPUT",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+                "content": "<USER_REQUEST>\ndownload it\n</USER_REQUEST>",
+            },
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "RUN_COMMAND",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:48:00Z",
+                "content": (
+                    "Created At: 2026-06-03T04:48:00Z\n"
+                    "The command completed successfully.\n"
+                    "Output:\n" + binary_line + "\nexit code: 0"
+                ),
+            },
+        ]
+        brain_dir = self._write_brain(tmp_path, records)
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=True, variant="full"
+        )
+        # Placeholder present; readable framing preserved; raw binary gone.
+        assert "[binary data omitted:" in md
+        assert "The command completed successfully." in md
+        assert "exit code: 0" in md
+        assert "\x00" not in md and "\x01" not in md
+
+    def test_clean_output_is_not_altered(self, processor, tmp_path):
+        """The scrubber must not touch normal text (incl. non-Latin / emoji)."""
+        records = [
+            {
+                "step_index": 0,
+                "source": "USER_EXPLICIT",
+                "type": "USER_INPUT",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+                "content": "<USER_REQUEST>\nlist\n</USER_REQUEST>",
+            },
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "RUN_COMMAND",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:48:00Z",
+                "content": "Output:\n日本語のテキスト ✅ done\nexit code: 0",
+            },
+        ]
+        brain_dir = self._write_brain(tmp_path, records)
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=True, variant="full"
+        )
+        assert "日本語のテキスト ✅ done" in md
+        assert "[binary data omitted" not in md
+
     def test_falls_back_to_markdown_when_no_jsonl(self, processor, tmp_path):
         """Old IDE-format brain dirs (markdown artifacts, no jsonl) still parse."""
         brain_dir = tmp_path / "29431e8b-old-format"
