@@ -2,7 +2,7 @@
 name: issue-sweep
 type: command
 category: instruction
-description: Thin shortcut — delegates to the survey skill in sweep mode. Autonomous GitHub issue triage that shrinks the backlog (merges/closes duplicates, aggregates related issues) — one cycle per invocation.
+description: Thin shortcut — delegates to the survey skill in sweep mode. Autonomous GitHub issue triage that shrinks the backlog (consolidates/closes duplicates, aggregates related issues) — one cycle per invocation.
 triggers:
   - "issue sweep"
   - "sweep issues"
@@ -22,11 +22,11 @@ permalink: commands/issue-sweep
 
 # /issue-sweep — Survey Shortcut (sweep mode)
 
-**Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, **proceeds autonomously on the rational defaults** (merges/closes duplicates, aggregates related issues into fix-epics, files single-tasks, queues fix-epics), gates only on genuine judgment calls, logs the cycle. **HALT after one cycle.**
+**Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, **proceeds autonomously on the rational defaults** (consolidates/closes duplicates, aggregates related issues into fix-epics, files single-tasks, queues fix-epics), gates only on genuine judgment calls, logs the cycle. **HALT after one cycle.**
 
 Runs **undirected** by default (cursor-driven over the oldest-untriaged batch) or **directed** when given a focus — a specific blocker / failure / issue to investigate and prioritise first. A directed sweep is _focus-first, not focus-only_: it still scans the general backlog, and a focus sets attention only — it does not relax the escalation evidence bar (see the survey skill's "Directed vs undirected sweep").
 
-**Proceeds autonomously** on the rational defaults — no per-bucket sign-off. Gates ONLY on genuine judgment calls (ambiguous classification / needs-human-triage) and the two **HARD HALTS**: (a) the locked merge gate (never auto-merge, never mint/simulate an approval; opening-visible-PR / merge-to-`main` is not a sweep action), and (b) destructive or externally-irreversible operations. Closing/merging GitHub _issues_ is reversible, so it is autonomous. No improvised dispositions beyond the rubric. No cursor in task body — labels are the cursor.
+**Proceeds autonomously** on the rational defaults — no per-bucket sign-off. Gates ONLY on genuine judgment calls (ambiguous classification / needs-human-triage) and the two **HARD HALTS**: (a) the locked merge gate (never auto-merge, never mint/simulate an approval; opening-visible-PR / merge-to-`main` is not a sweep action), and (b) destructive or externally-irreversible operations. Closing/consolidating GitHub _issues_ is reversible, so it is autonomous. No improvised dispositions beyond the rubric. No cursor in task body — labels are the cursor.
 
 ## Dispatch
 

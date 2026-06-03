@@ -365,13 +365,13 @@ mkdir -p ~/.aops/sessions/reviews
 
 ## Mode: sweep
 
-**Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, **proceed autonomously on the rational defaults** (apply each disposition as the rubric decides it), gate only on genuine judgment calls, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session. The sweep actively shrinks the backlog — it merges and closes duplicates and aggregates related issues into fix-epics, it does not merely label them.
+**Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, **proceed autonomously on the rational defaults** (apply each disposition as the rubric decides it), gate only on genuine judgment calls, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session. The sweep actively shrinks the backlog — it consolidates and closes duplicates and aggregates related issues into fix-epics, it does not merely label them.
 
 Sweep runs **undirected** (cursor-driven, the default) or **directed** — given a focus (a specific blocker, failure, or issue the user is fighting _right now_), it investigates and prioritises that focus first while still pulling and reviewing the general backlog. Direction is not a recency exemption — see "Directed vs undirected sweep" below.
 
 **Detached judgment role (`recusal`)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
 
-**Proceed autonomously on the rational defaults.** The sweep does NOT halt for per-bucket sign-off on every disposition. Apply the low-blast-radius defaults — evidence-bump, defer, consolidate-duplicate (merge + close), aggregate, single-task creation, and fix-epic creation that stays `queued` — without asking. Closing or merging a GitHub _issue_ is reversible (it reopens, the comment trail persists), so it is in-scope for autonomous action. Gate ONLY on:
+**Proceed autonomously on the rational defaults.** The sweep does NOT halt for per-bucket sign-off on every disposition. Apply the low-blast-radius defaults — evidence-bump, defer, consolidate-duplicate (consolidate + close), aggregate, single-task creation, and fix-epic creation that stays `queued` — without asking. Closing or consolidating a GitHub _issue_ is reversible (it reopens, the comment trail persists), so it is in-scope for autonomous action. Gate ONLY on:
 
 - **Genuine judgment calls** — an ambiguous classification, or any issue the rubric sends to **Needs human triage** (decidable in < 30s by a fresh agent; if not, it gates).
 - The two **HARD HALTS** that remain absolute:
@@ -478,7 +478,7 @@ The output of this step feeds the disposition decision in the rubric below (most
 
 Split the classified batch into two streams:
 
-- **Default stream — apply autonomously, no sign-off.** Every issue whose disposition is a low-blast-radius default (consolidate-duplicate, aggregate, evidence-bump, close-stale, defer, single-task, fix-epic-left-`queued`). Execute these in step 4 directly, then report them as a done summary. Do NOT ask before applying.
+- **Default stream — apply autonomously, no sign-off.** Every issue whose disposition is a low-blast-radius default (consolidate-duplicate, aggregate, evidence-bump, close-as-stale, defer, single-task, fix-epic-left-`queued`). Execute these in step 4 directly, then report them as a done summary. Do NOT ask before applying.
 - **Gate stream — surface and wait.** Only: issues the rubric sends to **Needs human triage** (ambiguous classification, not decidable in < 30s), add-or-escalate enforcement proposals that must show their evidence (per §2b), and anything brushing a HARD HALT (the locked merge gate, or a destructive/irreversible op). Use `AskUserQuestion` for the gate stream only; halt cleanly on decline and re-emit.
 
 **Tie-breaker — when in doubt, gate.** The two streams are not symmetric: applying a default without sign-off is the autonomous behaviour Nic asked for, but applying something that should have gated is the failure this design must prevent. So if you cannot state, in one sentence, the rubric criterion that puts an issue in the default stream, it is NOT a rational default — route it to **Needs human triage** in the gate stream. "Rational default" means the disposition is one of the named rubric rows AND its criterion is met cleanly on the issue's own facts (no guessing at intent, no "probably a duplicate," no "close enough to stale"). A disposition you had to argue yourself into is a judgment call, not a default.
@@ -506,7 +506,7 @@ Report the cycle in this shape — the default-stream sections are an **applied/
 
 ### 4. Execute the default stream (low blast-radius first)
 
-Order: consolidate-duplicate → aggregate → evidence-bump → close-stale → defer → single-task → fix-epic. Apply autonomously — these are not gated. (Gate-stream items wait at step 3 and are executed only after the user returns `y`.)
+Order: consolidate-duplicate → aggregate → evidence-bump → close-as-stale → defer → single-task → fix-epic. Apply autonomously — these are not gated. (Gate-stream items wait at step 3 and are executed only after the user returns `y`.)
 
 **All task-creation actions** MUST omit `severity` (or pass `severity=0`). Severity is a target-node-only signal — see skills/planner/SKILL.md (~lines 608-626). Setting it on a leaf inverts the focus queue.
 
