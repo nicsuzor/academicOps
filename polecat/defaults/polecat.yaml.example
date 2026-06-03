@@ -43,6 +43,11 @@ session_defaults:
   # Opus workers without pinning a version in every command, set this to
   # claude-opus-4-8 and use `--model claude` in dispatch commands.
   claude_model: claude-sonnet-4-6
+  # `--model gemini` selects the npm/nvm Gemini CLI; this is the model id
+  # passed to `gemini --model`. Distinct from antigravity_model below.
+  gemini_model: gemini-3.1-pro-preview
+  # `--model agy`/`antigravity` selects the agy CLI wrapper (Docker), which
+  # runs a Gemini model internally; `agy` is the wrapper's own default.
   antigravity_model: agy
 
   # Forwarded into containers as DEBUG_HOOKS=1 when true; the hook router

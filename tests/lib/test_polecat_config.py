@@ -19,6 +19,7 @@ CANONICAL_YAML = dedent(
     session_defaults:
       hooks_enabled: true
       claude_model: claude-sonnet-4-6
+      gemini_model: gemini-3.1-pro-preview
       antigravity_model: agy
       debug: false
       gates:
@@ -57,8 +58,10 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert isinstance(cfg, PolecatConfig)
     assert cfg.session_defaults.hooks_enabled is True
     assert cfg.session_defaults.claude_model == "claude-sonnet-4-6"
+    assert cfg.session_defaults.gemini_model == "gemini-3.1-pro-preview"
     assert cfg.session_defaults.antigravity_model == "agy"
     assert cfg.session_defaults.model_for("claude") == "claude-sonnet-4-6"
+    assert cfg.session_defaults.model_for("gemini") == "gemini-3.1-pro-preview"
     assert cfg.session_defaults.model_for("antigravity") == "agy"
     assert cfg.session_defaults.debug is False
     assert cfg.session_defaults.gates.handover == "warn"
@@ -187,6 +190,7 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
             session_defaults:
               hooks_enabled: true
               claude_model: foo
+              gemini_model: gemini-3.1-pro-preview
               antigravity_model: agy
               debug: false
               gates:

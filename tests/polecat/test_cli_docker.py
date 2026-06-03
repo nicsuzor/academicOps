@@ -170,7 +170,7 @@ class TestBuildDockerCmd:
 
         p = tmp_path / "polecat.yaml"
         p.write_text(
-            "session_defaults: {hooks_enabled: true, claude_model: m, antigravity_model: g, "
+            "session_defaults: {hooks_enabled: true, claude_model: m, gemini_model: gm, antigravity_model: g, "
             "debug: false, gates: {handover: warn, qa: warn, enforcer: warn, "
             "hydration: off, ida: warn, enforcer_threshold: 50}}\n"
             "crew_defaults: {}\nrun_defaults: {}\n"
