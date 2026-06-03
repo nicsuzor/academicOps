@@ -34,13 +34,14 @@ A flat todo list is a fixed-rate code: it treats every item as having the same c
 
 Each level resolves a different kind of uncertainty:
 
-| Level       | Uncertainty resolved         | Remaining uncertainty          |
-| ----------- | ---------------------------- | ------------------------------ |
-| Target      | What success looks like      | Which bodies of work to pursue |
-| Parent Task | What to do and in what order | How to execute each step       |
-| Task        | What to execute              | Nothing — ready to act         |
+| Level       | Uncertainty resolved                   | Remaining uncertainty          |
+| ----------- | -------------------------------------- | ------------------------------ |
+| Goal        | Who I am / what I commit to (identity) | Which targets to pursue        |
+| Target      | What success looks like (milestone)    | Which bodies of work to pursue |
+| Parent Task | What to do and in what order           | How to execute each step       |
+| Task        | What to execute                        | Nothing — ready to act         |
 
-Targets stand outside the tree — they are strategic priorities linked to work via metadata, not parent edges. Within the tree, decomposition is `TASK → TASK → … → LEAF TASK`, nestable to whatever depth uncertainty demands.
+Goals and targets stand outside the tree — they are strategic nodes linked to work via metadata, not parent edges. Within the tree, decomposition is `TASK → TASK → … → LEAF TASK`, nestable to whatever depth uncertainty demands.
 
 **Compression principle**: Each level must be self-contained. Understanding a node should not require holding its grandparent's context in working memory. If it does, the decomposition has failed — information is leaking across compression boundaries.
 
@@ -97,11 +98,12 @@ Every node carries three core computed properties that drive both label assignme
 
 These ranges map conventional labels to computed property values. They are **guidelines for navigation, not enforcement gates**. Tooling uses these to present a sensible default view; the properties drive actual scheduling.
 
-| Label           | Scope | Uncertainty | Typical behaviour                                                                    |
-| --------------- | ----- | ----------- | ------------------------------------------------------------------------------------ |
-| **target**      | n/a   | n/a         | Strategic priority — declared by user. Outside the tree; linked to work by metadata. |
-| **parent task** | 3+    | < 0.5       | Bundle of related work. May parent further tasks. No fixed scope ceiling.            |
-| **task**        | 0–3   | < 0.3       | Near-zero entropy — ready to act. May parent further tasks where useful.             |
+| Label           | Scope | Uncertainty | Typical behaviour                                                                                         |
+| --------------- | ----- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| **goal**        | n/a   | n/a         | Identity commitment — declared by user. Outside the tree; never a parent. No severity/consequence/due.    |
+| **target**      | n/a   | n/a         | Milestone — declared by user. Outside the tree; linked to work by metadata. Carries severity+consequence. |
+| **parent task** | 3+    | < 0.5       | Bundle of related work. May parent further tasks. No fixed scope ceiling.                                 |
+| **task**        | 0–3   | < 0.3       | Near-zero entropy — ready to act. May parent further tasks where useful.                                  |
 
 A large bounded effort with clear sub-structure is a top-level task with child tasks — not a different type. The label is a human-facing shorthand; the properties are authoritative.
 
@@ -114,16 +116,29 @@ Variable-rate decomposition stops when uncertainty is low enough to act — rega
 
 ---
 
+## Goals, Targets, and Work — the three tiers
+
+The PKB separates **why / what / how**. `goal` and `target` are **strategic nodes beside the work tree** (reference tier): never parents, never in "to-do" surfaces, connected to work only by `contributes_to`. `epic`/`task`/`learn` are the **work tree** and the only actionable tier.
+
+- **`goal` — identity (why).** An identity-level commitment: _who I am / how I define myself_. **Unquantifiable** — you cannot count "achievement," and there is no meaningful consequence-of-missing an identity. So a goal has **no `severity`, no `consequence`, no `due`**. Roots of meaning (~10), e.g. _World-Class Academic Profile_. Out of the work tree: never a parent, never parented.
+- **`target` — milestone (what).** A tangible, **countable, measurable** output/milestone — _done / not done_. Carries the quantifiable stakes: **`severity` (SEV0–SEV4) + `consequence`** (+ optional `due`). The unit that propagates weight into the work tree, e.g. _Deliver LLB242 marks by deadline_. Out of the work tree: never a parent, never parented. Advances ≥1 goal via `contributes_to`.
+- **`epic` / `task` / `learn` — work (how).** Verbs. The only actionable tier (`ACTIONABLE_TYPES`) and the only nodes in the parent-child tree (`EPIC → EPIC|TASK → …`). Advances outcomes via `contributes_to` to **targets** (or directly to **goals**).
+
+Linkage (out-of-tree, via `contributes_to`): `task/epic → target → goal`. The `to:` of a `contributes_to` edge may be a **target or a goal**. Linkage is metadata, not structure — never parent-child, never affects tree traversal; goals & targets are excluded from orphan detection (parentless is correct). **Severity lives only on targets** and propagates down `contributes_to` (Birnbaum); goals carry no severity. `goal` is **not** an alias of `target` — the 2026-05-10 retirement is reversed; distinct coexisting types.
+
+---
+
 ## Primary Node Types
 
 The actionable types in the PKB:
 
-| Type            | Description                                                                                                                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **target**      | A user-declared strategic priority. Stands outside the work tree — linked to work by metadata, never as a parent.                    |
-| **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                  |
-| **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                             |
-| **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks |
+| Type            | Description                                                                                                                                                                                           |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **goal**        | An identity-level commitment (_who I am / how I define myself_). Outside the work tree — never a parent, never parented. No severity, consequence, or due. Linked TO by targets via `contributes_to`. |
+| **target**      | A user-declared strategic milestone. Stands outside the work tree — linked to work by metadata, never as a parent. Carries `severity` + `consequence`. Advances ≥1 goal via `contributes_to`.         |
+| **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                                                                                   |
+| **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                              |
+| **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks                                                                  |
 
 The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types.
 
@@ -131,12 +146,11 @@ The `classification` field carries additional semantic subtypes (bug, feature, s
 
 | Retired type | Replacement                                                                                                                                                                                                                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `goal`       | Use `target`. Goals were aliased to targets historically; the alias is removed. Targets never parent.                                                                                                                                                                                                                          |
 | `project`    | The hierarchy level is gone. The word "project" now refers narrowly to a polecat repo — see [Project (operational routing field)](#project-operational-routing-field) below. Existing containers previously typed as project will be reclassified (typically to root-level tasks) per the migration in [[areas-not-projects]]. |
 
 ### `target` nodes
 
-Targets represent user-declared strategic priorities — what success looks like. Targets are invisible-weight, non-actionable nodes that are excluded from "tasks to do" surfaces yet always propagate weight. They are reference/planning nodes, not work containers: they do not parent tasks, and they are excluded from the work tree. Tasks own `contributes_to` edges but never set a target's weight / consequence / severity.
+Targets represent user-declared strategic milestones — tangible, measurable outputs (_done / not done_). They sit between `goal` nodes (the identity tier above) and the work tree (epics/tasks/learn). Targets are invisible-weight, non-actionable nodes that are excluded from "tasks to do" surfaces yet always propagate weight. They are reference/planning nodes, not work containers: they do not parent tasks, and they are excluded from the work tree. Tasks own `contributes_to` edges but never set a target's weight / consequence / severity. Targets advance ≥1 goal via their own `contributes_to` edges.
 
 **Key fields on target nodes:**
 
@@ -151,7 +165,7 @@ The edge is an object, not a bare ID — see [[multi-parent]] §1.6 for the cano
 
 ```yaml
 contributes_to:
-  - to: <target-id>
+  - to: <target-or-goal-id>
     stated_weight: Expected         # Renooij-Witteman verbal term, see below
     justification: "single sentence (ICD 203 style) explaining the belief"
     # Optional, for prototype-backed obligations:
@@ -162,7 +176,23 @@ contributes_to:
 
 **Weight is verbal, not numeric.** Raw decimals are rejected at parse. The Renooij-Witteman scale: `Impossible` (0.00) / `Improbable` (0.15) / `Uncertain` (0.25) / `Fifty-Fifty` (0.50) / `Expected` (0.75) / `Probable` (0.85) / `Certain` (1.00). Semantics are Birnbaum importance — the marginal probability that missing this task guarantees failure of the target. `Certain` = single point of failure; `Fifty-Fifty` = redundancy exists.
 
-(Legacy `goals: []` metadata fields on existing nodes carry the same intent and should be migrated to `contributes_to` edges. The migration assigns a default `stated_weight: Expected` and a placeholder justification pending review.)
+(Legacy `goals: []` metadata fields on existing nodes carry the same intent and should be migrated to `contributes_to` edges pointing to the appropriate `target` or `goal` node. The migration assigns a default `stated_weight: Expected` and a placeholder justification pending review.)
+
+### `goal` nodes
+
+Goals represent identity-level commitments — _who I am / how I define myself_. They are the top tier of the strategic reference layer, above targets. Like targets, goals are non-actionable and outside the work tree: never parents, never parented, excluded from "tasks to do" surfaces and orphan detection (parentless is correct for both).
+
+**Goals carry no operational stakes metadata:**
+
+| Field         | Value                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `severity`    | Not applicable — identity commitments are unquantifiable; there is no cost-of-missing. |
+| `consequence` | Not applicable.                                                                        |
+| `due`         | Not applicable.                                                                        |
+
+**How targets link to goals:** via `contributes_to` edges on the target node, exactly as work tasks link to targets. The `to:` field of a target's `contributes_to` edge points to a goal ID. Work tasks may also point directly to a goal when no intermediate target applies.
+
+**Orphan detection**: Goals are excluded — a goal with no parent is correct, not an error.
 
 ## Project (operational routing field)
 
@@ -194,16 +224,16 @@ Skills like `/dump` or `/end-session` that need to rapidly persist a loose threa
 
 The graph is **directed but not required to be acyclic**. Cycles are a feature for some edge types and a pathology for others.
 
-| Edge type         | Semantics                                                         | Cycles       | Notes / example                                                                                                                                                 |
-| ----------------- | ----------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `parent`          | Containment: B is part of A                                       | Nonsensical  | Self-containment undefined — never valid. Strict tree (one parent).                                                                                             |
-| `depends_on`      | Hard blocker: B cannot start until A completes                    | Pathological | A blocks B blocks A — decomposition failure, must fix                                                                                                           |
-| `soft_depends_on` | Enabling: A makes B easier or better                              | Healthy      | Writing clarifies methodology, methodology improves writing                                                                                                     |
-| `contributes_to`  | Strategic contribution: B advances target A (weighted, justified) | Pathological | A target should not contribute to a node that contributes to it. See [[multi-parent]] §1.6 for full schema. Carries `stated_weight` (verbal) + `justification`. |
-| `closes`          | Completion: this node completes the target task / PR              | Pathological | A closes B — terminal; B is done as a result. Mutual closure undefined.                                                                                         |
-| `link`            | Reference: A mentions B                                           | Irrelevant   | Cross-references carry no ordering — always fine                                                                                                                |
-| `supersedes`      | Replacement: A replaces B                                         | Pathological | Mutual replacement undefined — never valid                                                                                                                      |
-| `similar_to`      | Semantic similarity (auto-discovered)                             | Healthy      | Symmetric. Used for clustering and dedup proposals; never load-bearing for execution.                                                                           |
+| Edge type         | Semantics                                                              | Cycles       | Notes / example                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parent`          | Containment: B is part of A                                            | Nonsensical  | Self-containment undefined — never valid. Strict tree (one parent).                                                                                                  |
+| `depends_on`      | Hard blocker: B cannot start until A completes                         | Pathological | A blocks B blocks A — decomposition failure, must fix                                                                                                                |
+| `soft_depends_on` | Enabling: A makes B easier or better                                   | Healthy      | Writing clarifies methodology, methodology improves writing                                                                                                          |
+| `contributes_to`  | Strategic contribution: B advances target/goal A (weighted, justified) | Pathological | A target/goal should not contribute to a node that contributes to it. See [[multi-parent]] §1.6 for full schema. Carries `stated_weight` (verbal) + `justification`. |
+| `closes`          | Completion: this node completes the target task / PR                   | Pathological | A closes B — terminal; B is done as a result. Mutual closure undefined.                                                                                              |
+| `link`            | Reference: A mentions B                                                | Irrelevant   | Cross-references carry no ordering — always fine                                                                                                                     |
+| `supersedes`      | Replacement: A replaces B                                              | Pathological | Mutual replacement undefined — never valid                                                                                                                           |
+| `similar_to`      | Semantic similarity (auto-discovered)                                  | Healthy      | Symmetric. Used for clustering and dedup proposals; never load-bearing for execution.                                                                                |
 
 **Provenance fields, not edge types**: `inherits_from` (on `contributes_to` edges only) records which prototype an edge was materialised from. It's a one-time breadcrumb at edge creation, not a live reference — editing the prototype later does not retroactively rewrite existing edges.
 
@@ -243,7 +273,7 @@ The single canonical definition of priority. Other framework documents MUST link
 
 ## Severity Ladder (SEV0–SEV4)
 
-Severity is the SRE-style impact ladder for `type: target` nodes — the terminal obligations the rest of the graph protects. It is **not** a generic importance signal for tasks. The single canonical scale; framework documents MUST link here rather than redefine these levels locally. See the multi-parent spec (brain PKB) §1.2 for the full target-node specification.
+Severity is the SRE-style impact ladder for `type: target` nodes — the measurable milestones the rest of the graph protects. **`type: goal` nodes (the identity tier above targets) carry no severity** — identity commitments are unquantifiable, so there is no meaningful cost-of-missing to encode. Severity is **not** a generic importance signal for tasks. The single canonical scale; framework documents MUST link here rather than redefine these levels locally. See the multi-parent spec (brain PKB) §1.2 for the full target-node specification.
 
 | Level | Name       | Example                                                                                          |
 | ----- | ---------- | ------------------------------------------------------------------------------------------------ |
@@ -367,15 +397,16 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 
 ### Is this a...?
 
-| Question                                                                              | Answer                                              |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| User-declared strategic priority — what success looks like? Not work, doesn't parent. | **Target**                                          |
-| A bundle of related work; may have sub-tasks under it; reviewable as one unit?        | **Parent Task**                                     |
-| Scope 0–3, uncertainty < 0.3, single-session deliverable?                             | **Task**                                            |
-| Discovery or spike — not directly actionable?                                         | **Learn**                                           |
-| Sequence of steps describing WHAT to do?                                              | **Workflow**                                        |
-| Instructions for HOW to do one step?                                                  | **Skill**                                           |
-| A polecat repository slug carried on a task for dispatch routing?                     | **Project** (operational metadata, not a node type) |
+| Question                                                                                                | Answer                                              |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Identity-level commitment — who I am / how I define myself? No severity/consequence/due, never parents. | **Goal**                                            |
+| User-declared measurable milestone — carries severity + consequence? Not work, doesn't parent.          | **Target**                                          |
+| A bundle of related work; may have sub-tasks under it; reviewable as one unit?                          | **Parent Task**                                     |
+| Scope 0–3, uncertainty < 0.3, single-session deliverable?                                               | **Task**                                            |
+| Discovery or spike — not directly actionable?                                                           | **Learn**                                           |
+| Sequence of steps describing WHAT to do?                                                                | **Workflow**                                        |
+| Instructions for HOW to do one step?                                                                    | **Skill**                                           |
+| A polecat repository slug carried on a task for dispatch routing?                                       | **Project** (operational metadata, not a node type) |
 
 ### Status lifecycle
 

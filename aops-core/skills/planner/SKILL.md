@@ -307,7 +307,7 @@ Interactive flow for densifying `contributes_to` edges on target nodes.
 
 #### Pattern: deliverable-producing tasks wire to a class-level production target
 
-When a task's deliverable is one instance of a recurring class of outputs (a release, a report, a dashboard, an external piece, etc.), wire it via `contributes_to` to a dedicated **class-level production target** for that deliverable type — not directly to a higher-level goal, to a project, or to a vague aggregate. The production target itself `contributes_to` upward toward broader goals.
+When a task's deliverable is one instance of a recurring class of outputs (a release, a report, a dashboard, an external piece, etc.), wire it via `contributes_to` to a dedicated **class-level production target** (`type: target`) for that deliverable type — not directly to a `goal` node, to a project, or to a vague aggregate. The production target itself `contributes_to` upward toward `goal` nodes (the identity tier above targets — `type: goal`, carrying no severity of their own).
 
 Why: routing through a dedicated production target (a) preserves per-instance judgment on contribution × ship-risk; (b) prevents double-counting when one output touches multiple higher-level narratives; (c) lets the target's severity propagate cleanly back to instance-tasks via focus_score; (d) models continuous production correctly — the target is durable; individual deliverables come and go. (Ref: aops-ab3b443a)
 
@@ -621,6 +621,7 @@ The severity ladder (SEV0–SEV4, see [[../remember/references/TAXONOMY.md#sever
 
 - **Tasks** (`type: task`, `subtask`, or default) → omit `severity` or set `severity: 0`. They inherit urgency from targets via `contributes_to` edges, not by carrying severity directly.
 - **Targets** (`type: target`) → Targets are invisible-weight, non-actionable nodes that are excluded from "tasks to do" surfaces yet always propagate weight. Assign 0–4 per the ladder, with mandatory `consequence:` prose and `goal_type:` (`committed` / `aspirational` / `learning`). Tasks own `contributes_to` edges but never set a target's weight / consequence / severity.
+- **Goals** (`type: goal`) → Goals are identity-level commitments (the tier above targets). They carry **no severity, no consequence, no due** — identity commitments are unquantifiable. Never assign severity to a goal node. Targets wire to goals via `contributes_to`; goals carry no operational stakes metadata.
 - **Prototypes** (`type: prototype`) → severity lives on `edge_template`, copied to instance edges at creation.
 - Never use severity as a generic "this feels important" signal on a task. If the task feels SEV3-worthy, the right move is to file (or link to) a target node and add a `contributes_to` edge — the propagated urgency will rank the task correctly without flattening the edge-weight model.
 - Planner modes (capture, decompose) and external skills (supervisor, survey, /q, /learn) MUST pass `severity=0` (or omit) when calling `mcp__pkb__create_task` or `mcp__pkb__decompose_task` for task-type nodes.
