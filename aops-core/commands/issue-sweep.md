@@ -2,7 +2,7 @@
 name: issue-sweep
 type: command
 category: instruction
-description: Thin shortcut — delegates to the survey skill in sweep mode. Quality-gated GitHub issue triage — one cycle per invocation.
+description: Thin shortcut — delegates to the survey skill in sweep mode. Autonomous GitHub issue triage that shrinks the backlog (merges/closes duplicates, aggregates related issues) — one cycle per invocation.
 triggers:
   - "issue sweep"
   - "sweep issues"
@@ -22,15 +22,15 @@ permalink: commands/issue-sweep
 
 # /issue-sweep — Survey Shortcut (sweep mode)
 
-**Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, presents the dispatch plan, waits for sign-off, executes confirmed actions, logs the cycle. **HALT after one cycle.**
+**Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, **proceeds autonomously on the rational defaults** (merges/closes duplicates, aggregates related issues into fix-epics, files single-tasks, queues fix-epics), gates only on genuine judgment calls, logs the cycle. **HALT after one cycle.**
 
 Runs **undirected** by default (cursor-driven over the oldest-untriaged batch) or **directed** when given a focus — a specific blocker / failure / issue to investigate and prioritise first. A directed sweep is _focus-first, not focus-only_: it still scans the general backlog, and a focus sets attention only — it does not relax the escalation evidence bar (see the survey skill's "Directed vs undirected sweep").
 
-**Hard halts**: No silent dispatch. No improvised dispositions (sixth bucket). No cursor in task body — labels are the cursor.
+**Proceeds autonomously** on the rational defaults — no per-bucket sign-off. Gates ONLY on genuine judgment calls (ambiguous classification / needs-human-triage) and the two **HARD HALTS**: (a) the locked merge gate (never auto-merge, never mint/simulate an approval; opening-visible-PR / merge-to-`main` is not a sweep action), and (b) destructive or externally-irreversible operations. Closing/merging GitHub _issues_ is reversible, so it is autonomous. No improvised dispositions beyond the rubric. No cursor in task body — labels are the cursor.
 
 ## Dispatch
 
-Delegate to junior (jr) — interactive confirmation gates require user interaction that pauli's lean profile doesn't support:
+Delegate to junior (jr) — the gate-stream judgment calls require the user-interaction surface that pauli's lean profile doesn't support:
 
 ```python
 Agent(
@@ -39,7 +39,7 @@ Agent(
 
 Context from user: <paste user's invocation context — batch size override, dry-run flag, or a FOCUS (a specific blocker / failure / issue number to investigate and prioritise first). If a focus is given, run a directed sweep per the skill's "Directed vs undirected sweep": triage the focal root-cause cluster first, then continue the general backlog scan; focus sets attention only, not the escalation bar.>
 
-Follow the sweep mode workflow exactly: pre-flight → pull batch (focal cluster first if directed) → classify → present plan and gate → execute confirmed → append cycle log → /verify handoff → HALT.""",
+Follow the sweep mode workflow exactly: pre-flight → pull batch (focal cluster first if directed) → classify → apply the rational defaults autonomously (gate only judgment calls + the two HARD HALTS) → append cycle log → /verify handoff → HALT.""",
   tools=[
     'Bash', 'Read', 'Grep', 'Glob', 'Skill', 'AskUserQuestion',
     'mcp__plugin_aops-core_pkb__get_task',
@@ -59,14 +59,14 @@ The dispatched jr agent owns the session from here. The main context is clean.
 - `/issue-sweep <issue#>` — directed cycle: investigate that issue and its root-cause cluster first, then continue the general backlog scan
 - `/issue-sweep "<focus phrase>"` — directed cycle aimed at a described blocker/failure (resolves to the matching issue cluster)
 - `/issue-sweep --batch 10` — override batch size for this cycle
-- `/issue-sweep --dry-run` — produce cycle plan and gate, but do not execute or write cycle log
+- `/issue-sweep --dry-run` — produce the classified cycle plan only; do not apply any disposition or write the cycle log
 
 ## What this command does NOT do
 
 - Does not fix any issue — single-tasks and fix-epics are queued in PKB, executed later.
 - Does not invoke `/supervisor` — fix-epics are left `queued`; user picks which to run next.
-- Does not run on a schedule — manual invocation only until the rubric is validated over 3–5 cycles.
-- Does not consume `/loop` — cadence is decided after manual cycles prove the rubric.
+- Does not open a visible PR or merge to `main` — the locked merge gate is never a sweep action.
+- Does not perform destructive or externally-irreversible operations (issue closes/merges are reversible and so are in-scope).
 
 ## See also
 

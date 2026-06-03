@@ -365,13 +365,20 @@ mkdir -p ~/.aops/sessions/reviews
 
 ## Mode: sweep
 
-**Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, present the proposed dispatch plan, wait for sign-off, execute confirmed actions, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session.
+**Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, **proceed autonomously on the rational defaults** (apply each disposition as the rubric decides it), gate only on genuine judgment calls, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session. The sweep actively shrinks the backlog — it merges and closes duplicates and aggregates related issues into fix-epics, it does not merely label them.
 
 Sweep runs **undirected** (cursor-driven, the default) or **directed** — given a focus (a specific blocker, failure, or issue the user is fighting _right now_), it investigates and prioritises that focus first while still pulling and reviewing the general backlog. Direction is not a recency exemption — see "Directed vs undirected sweep" below.
 
 **Detached judgment role (`recusal`)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
 
-**Hard halts**: No silent dispatch. No improvised dispositions. No cursor in task body (labels ARE the cursor). No proposal to **add or escalate** enforcement (new gate, new axiom, tier-bump, new hook firing surface) without ≥3 cited recurrences (the CBA bar in ENFORCEMENT-MAP.md). Bug fixes within an existing enforcement surface at the same tier, and user-directed architectural changes, are NOT add-or-escalate proposals — a single forensic incident (or explicit user directive) is sufficient for `fix-epic` or `single-task`.
+**Proceed autonomously on the rational defaults.** The sweep does NOT halt for per-bucket sign-off on every disposition. Apply the low-blast-radius defaults — evidence-bump, defer, consolidate-duplicate (merge + close), aggregate, single-task creation, and fix-epic creation that stays `queued` — without asking. Closing or merging a GitHub _issue_ is reversible (it reopens, the comment trail persists), so it is in-scope for autonomous action. Gate ONLY on:
+
+- **Genuine judgment calls** — an ambiguous classification, or any issue the rubric sends to **Needs human triage** (decidable in < 30s by a fresh agent; if not, it gates).
+- The two **HARD HALTS** that remain absolute:
+  - **(a) The locked merge gate** — never auto-merge a PR, never mint, simulate, or stand in for an approval. Opening a visible PR / merging to `main` stays gated and is not a sweep action.
+  - **(b) Destructive or externally-irreversible operations** — anything that cannot be reopened or reverted (force-pushes, history rewrites, deleting data, external side-effects beyond GitHub issue state).
+
+**No improvised dispositions** beyond those in the rubric below (the rubric now sanctions consolidate-duplicate, aggregate, and the rest — an unsanctioned seventh bucket still goes to Needs human triage). No cursor in task body (labels ARE the cursor). No proposal to **add or escalate** enforcement (new gate, new axiom, tier-bump, new hook firing surface) without ≥3 cited recurrences (the CBA bar in ENFORCEMENT-MAP.md). Bug fixes within an existing enforcement surface at the same tier, and user-directed architectural changes, are NOT add-or-escalate proposals — a single forensic incident (or explicit user directive) is sufficient for `fix-epic` or `single-task`.
 
 ### Directed vs undirected sweep
 
@@ -387,14 +394,15 @@ The point: a user fighting a live blocker can aim the sweep at it without the sw
 
 ### Disposition rubric
 
-| Disposition             | Criterion                                                                                                                | Action                                                           | Label                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------- |
-| `close-as-stale`        | > 90d + no recent comments + root cause fixed, OR describes behaviour framework no longer has (verifiable by cheap grep) | `gh issue close` with comment citing fix                         | `triaged-stale`         |
-| `consolidate-duplicate` | Volume bump on duplicate issue                                                                                           | Close duplicate; MUST comment citing canonical via `#N`          | `triaged-duplicate`     |
-| `evidence-bump`         | Volume bump accumulating evidence on a related open issue (e.g. fix-epic)                                                | Leave open; MUST comment citing canonical via `#N`               | `triaged-evidence-bump` |
-| `single-task`           | Atomic: AC clear, ≤ 3 files, one obvious implementation, no cross-component coordination                                 | File polecat task with `Closes #N`                               | `triaged-single`        |
-| `fix-epic`              | Multi-step, multi-file, or design-required                                                                               | Propose to user; on `y`: create epic + decompose, leave `queued` | `triaged-epic`          |
-| `defer`                 | Real but blocked or low-criticality                                                                                      | Apply `triaged-defer` + `revisit-by-YYYY-MM-DD` comment          | `triaged-defer`         |
+| Disposition             | Criterion                                                                                                                | Action                                                                                                                                                                                                                                  | Label                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `close-as-stale`        | > 90d + no recent comments + root cause fixed, OR describes behaviour framework no longer has (verifiable by cheap grep) | `gh issue close` with comment citing fix                                                                                                                                                                                                | `triaged-stale`         |
+| `consolidate-duplicate` | Two+ issues are the same underlying problem                                                                              | Pick a canonical; merge any unique detail from the others into it FIRST; then close each duplicate with a comment cross-linking the canonical via `#N`. Apply autonomously.                                                             | `triaged-duplicate`     |
+| `aggregate`             | Several related-but-distinct issues share one root cause / fix surface and are better solved together                    | Fold the related issues into ONE fix-epic (cap 5 sources); close each source with a pointer comment citing the epic / canonical via `#N` (merge any unique AC detail into the epic first); leave the epic `queued`. Apply autonomously. | `triaged-aggregate`     |
+| `evidence-bump`         | Volume bump accumulating evidence on a related open issue (e.g. fix-epic)                                                | Leave open; MUST comment citing canonical via `#N`                                                                                                                                                                                      | `triaged-evidence-bump` |
+| `single-task`           | Atomic: AC clear, ≤ 3 files, one obvious implementation, no cross-component coordination                                 | File polecat task with `Closes #N`. Apply autonomously.                                                                                                                                                                                 | `triaged-single`        |
+| `fix-epic`              | Multi-step, multi-file, or design-required                                                                               | Create epic + decompose, leave `queued`. Apply autonomously.                                                                                                                                                                            | `triaged-epic`          |
+| `defer`                 | Real but blocked or low-criticality                                                                                      | Apply `triaged-defer` + `revisit-by-YYYY-MM-DD` comment                                                                                                                                                                                 | `triaged-defer`         |
 
 Every disposition must be decidable in < 30 seconds by a fresh agent. If longer: "Needs human triage."
 
@@ -402,7 +410,7 @@ Every disposition must be decidable in < 30 seconds by a fresh agent. If longer:
 
 ```bash
 gh issue list --repo nicsuzor/academicOps --state open --limit 100 \
-  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-duplicate -label:triaged-evidence-bump -label:triaged-single -label:triaged-epic -label:triaged-defer' \
+  --search 'sort:created-asc -label:triaged-stale -label:triaged-comment -label:triaged-duplicate -label:triaged-aggregate -label:triaged-evidence-bump -label:triaged-single -label:triaged-epic -label:triaged-defer' \
   --json number,title,labels,createdAt,updatedAt,comments,body \
   > /tmp/issue-sweep-batch.json
 # Client-side sort: criticality-desc, age-asc. Take top 20.
@@ -434,7 +442,7 @@ mcp__pkb__get_task(id="epic-a0523a25")  # halt if not in_progress
 
 ### 2. Pull batch (≤ 20 issues) and classify
 
-For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic` candidates by root cause (cap 5 issues per proposed epic). Note one-line rationale per issue.
+For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic` and `aggregate` candidates by root cause (cap 5 issues per epic). Detect duplicates: two+ issues describing the same underlying problem collapse to one canonical (`consolidate-duplicate`); several distinct issues sharing one fix surface fold into one fix-epic (`aggregate` — e.g. the grounding/ratification meta-class folded into a single grounding fix-epic). Note one-line rationale per issue.
 
 ### 2b. Cost-ladder review for **enforcement-escalation** candidates (`recusal` — sweep's legislative role)
 
@@ -464,45 +472,49 @@ only mode allowed to author it.
 6. **Cite the row.** The disposition proposal must name either the row of the enforcement map (repo-level) the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into agents/marsha.md lines XX–YY, citing existing axiom `halt-on-failure`" is.
 7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `consolidate-duplicate` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
 
-The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and corrective scope. User-directed dispositions still include cost-ladder reasoning (citing the user's directive as the evidence base in place of recurrence links).
+The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). An **add-or-escalate proposal is a gate-stream item**: surface it to the user gate in step 3 with the cost-ladder reasoning visible, and do not apply it autonomously. Bug-fix dispositions are NOT add-or-escalate — they proceed autonomously in the default stream (they require only the bug description and corrective scope, no cost-ladder rationale). User-directed dispositions also proceed autonomously, but still record cost-ladder reasoning in the log (citing the user's directive as the evidence base in place of recurrence links).
 
-### 3. Present cycle plan and gate
+### 3. Apply the rational defaults; gate only judgment calls
+
+Split the classified batch into two streams:
+
+- **Default stream — apply autonomously, no sign-off.** Every issue whose disposition is a low-blast-radius default (consolidate-duplicate, aggregate, evidence-bump, close-stale, defer, single-task, fix-epic-left-`queued`). Execute these in step 4 directly, then report them as a done summary. Do NOT ask before applying.
+- **Gate stream — surface and wait.** Only: issues the rubric sends to **Needs human triage** (ambiguous classification, not decidable in < 30s), add-or-escalate enforcement proposals that must show their evidence (per §2b), and anything brushing a HARD HALT (the locked merge gate, or a destructive/irreversible op). Use `AskUserQuestion` for the gate stream only; halt cleanly on decline and re-emit.
+
+**Tie-breaker — when in doubt, gate.** The two streams are not symmetric: applying a default without sign-off is the autonomous behaviour Nic asked for, but applying something that should have gated is the failure this design must prevent. So if you cannot state, in one sentence, the rubric criterion that puts an issue in the default stream, it is NOT a rational default — route it to **Needs human triage** in the gate stream. "Rational default" means the disposition is one of the named rubric rows AND its criterion is met cleanly on the issue's own facts (no guessing at intent, no "probably a duplicate," no "close enough to stale"). A disposition you had to argue yourself into is a judgment call, not a default.
+
+Report the cycle in this shape — the default-stream sections are an **applied/done log**, the gate section is the only one that waits:
 
 ```
-## Cycle <N> — proposed dispatches  (open before: <K>; batch: <M>)
+## Cycle <N> — applied  (open before: <K>; batch: <M>)
 
-### Fix-epic 1: <title>
-- Issues: #A, #B  - Why grouped: ...  - Proposed scope: ...  - Estimated effort: S/M/L
-- Confirm? [y / edit / defer / split]
+### Applied autonomously (done)
+- Consolidate-duplicate: #R → unique detail merged into #S, #R verified state:closed
+- Aggregate: #A, #B, #C → folded into fix-epic <id> (queued), each source verified state:closed
+- Evidence bump (left open): #T → bumped #U (both verified still open)
+- Close (stale): #P → verified state:closed
+- Defer: #Q (revisit-by YYYY-MM-DD)
+- Single-task: #X → "<title>" (XS)
+- Fix-epic (queued): <title> ← #D, #E
 
-### Single-tasks
-- #X → "<title>" (XS)
-Confirm batch? [y / edit / defer all]
-
-### Close (stale) / Consolidate / Evidence bump
-- Close (stale): #P
-- Close duplicate: #R → bumps #S
-- Evidence bump (leave open): #T → bumps #U
-Confirm? [y / edit]
-
-### Needs human triage
+### Needs human triage / decision (waiting)
 - #Z (rubric ambiguous: <reason>)
+- <add-or-escalate proposal>: cost-ladder reasoning + ≥3 recurrence links or quoted directive (per §2b)
 ```
 
-**Directed sweep:** lead the plan with a **Focal cluster** section (the focus issue + its same-root-cause siblings), THEN include the standard sections above for the general batch. The general-batch section is mandatory and must carry its reviewed-count; if it is empty because the focal cluster used the whole budget, say so explicitly and name the unreviewed cursor range (per "Directed vs undirected sweep" → Coverage). Any escalation inside the focal cluster shows its recurrence links or quoted user directive inline (per Judgment standard) — a focal disposition with no shown evidence is not gateable.
+**Directed sweep:** lead the report with a **Focal cluster** section (the focus issue + its same-root-cause siblings), THEN the standard sections above for the general batch. The general-batch section is mandatory and must carry its reviewed-count; if it is empty because the focal cluster used the whole budget, say so explicitly and name the unreviewed cursor range (per "Directed vs undirected sweep" → Coverage). Any escalation inside the focal cluster still goes to the gate stream and shows its recurrence links or quoted user directive inline (per Judgment standard) — a focal escalation with no shown evidence is not applied, it gates.
 
-Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gate again.
+### 4. Execute the default stream (low blast-radius first)
 
-### 4. Execute (low blast-radius first)
-
-Order: consolidate-duplicate → evidence-bump → close-stale → defer → single-task → fix-epic.
+Order: consolidate-duplicate → aggregate → evidence-bump → close-stale → defer → single-task → fix-epic. Apply autonomously — these are not gated. (Gate-stream items wait at step 3 and are executed only after the user returns `y`.)
 
 **All task-creation actions** MUST omit `severity` (or pass `severity=0`). Severity is a target-node-only signal — see skills/planner/SKILL.md (~lines 608-626). Setting it on a leaf inverts the focus queue.
 
-- **consolidate-duplicate**: MUST verify target duplicate is `state: closed` post-application, unless explicit carve-out. Workers verify before reporting `Done`.
+- **consolidate-duplicate**: merge any unique detail from each duplicate into the canonical FIRST, then close each duplicate with a comment cross-linking the canonical via `#N`. MUST verify each closed duplicate is `state: closed` post-application, unless explicit carve-out. Workers verify before reporting `Done`.
+- **aggregate**: create the fix-epic (intent + merged AC from all sources), then close each source issue with a pointer comment citing the epic / canonical via `#N`. MUST verify each source is `state: closed` post-application. Leave the epic `queued`; do NOT invoke `/supervisor`.
 - **single-task**: `mcp__pkb__create_task` with issue body, AC, and `Closes #N` instruction. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]).
 - **fix-epic**: create epic + subtasks + `verify-parent` task. Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]) — intent+AC, no mid-stream approval theatre. Leave `queued`. Do NOT invoke `/supervisor`.
-- Stamp `triaged-*` label after each confirmed action.
+- Stamp the `triaged-*` label after each applied action.
 
 ### 5. Create per-cycle datestamped instance
 
@@ -532,19 +544,23 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 
 ### Sweep anti-patterns
 
-| Anti-pattern                                                         | What to do instead                                                                                                                                                  |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authoring "surface for sign-off" or "review before promoting" prose  | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                               |
-| Skipping user-confirmation gate                                      | Always present and wait                                                                                                                                             |
-| Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                                                                                                              |
-| Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                                                                                                     |
-| Inventing a sixth disposition                                        | Surface under "Needs human triage"                                                                                                                                  |
-| Storing numeric cursor in task body                                  | Labels are the cursor                                                                                                                                               |
-| Parenting fix-epics under `epic-a0523a25`                            | Parent under relevant component epic                                                                                                                                |
-| Bundling > 5 issues into one fix-epic                                | Split or surface as human-triage                                                                                                                                    |
-| Re-running cycle without halting                                     | Halt; re-invoke for next cycle                                                                                                                                      |
-| Adopting a "suggested axiom" from an incident report verbatim        | Strip per `recusal`; redo the cost-ladder reasoning from the detached vantage                                                                                       |
-| Proposing escalation from one incident                               | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences`                                                                                    |
-| Deferring a clear bug fix to wait for more recurrences               | ≥3 rule is for **add-or-escalate** only. A clear bug in an existing surface at the same tier dispatches as `fix-epic` on a single incident                          |
-| Treating a user-directed architectural change as escalation          | User directive substitutes for recurrence count. Dispatch as `fix-epic` with the user's directive cited; cost-ladder reasoning still applies to where the fix lands |
-| "Add a gate" / "add an axiom" without naming the ENFORCEMENT-MAP row | Cite the specific row the fix propagates from or would add; default L0/L1                                                                                           |
+| Anti-pattern                                                                                                                      | What to do instead                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authoring "surface for sign-off" or "review before promoting" prose                                                               | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                               |
+| Gating a rational default for sign-off (asking before applying a consolidate / aggregate / defer / single-task / queued fix-epic) | Apply it autonomously; report it in the done log. Gate only judgment calls + the two HARD HALTS                                                                     |
+| Skipping the gate on a genuine judgment call, an add-or-escalate proposal, or a HARD HALT                                         | Surface those to the gate stream and wait                                                                                                                           |
+| Auto-merging a PR, or minting / simulating an approval to "clear" an issue                                                        | Locked merge gate is absolute — never. Opening-visible-PR / merge-to-`main` is not a sweep action                                                                   |
+| Closing/merging duplicates without merging the unique detail into the canonical first                                             | Pull every unique fact/AC into the canonical, THEN close, with a cross-link comment via `#N`                                                                        |
+| Aggregating unrelated issues just to shrink the count                                                                             | `aggregate` is for issues sharing one root cause / fix surface; cap 5 sources. Unrelated issues stay separate                                                       |
+| Stamping `triaged-epic` before user `y` on a GATED epic                                                                           | Default-stream epics stamp after they're applied; gate-stream items stamp after the gate returns `y`                                                                |
+| Invoking `/supervisor` inline                                                                                                     | Leave fix-epics `queued`; user dispatches later                                                                                                                     |
+| Inventing a disposition not in the rubric                                                                                         | Surface under "Needs human triage"                                                                                                                                  |
+| Storing numeric cursor in task body                                                                                               | Labels are the cursor                                                                                                                                               |
+| Parenting fix-epics under `epic-a0523a25`                                                                                         | Parent under relevant component epic                                                                                                                                |
+| Bundling > 5 issues into one fix-epic                                                                                             | Split or surface as human-triage                                                                                                                                    |
+| Re-running cycle without halting                                                                                                  | Halt; re-invoke for next cycle                                                                                                                                      |
+| Adopting a "suggested axiom" from an incident report verbatim                                                                     | Strip per `recusal`; redo the cost-ladder reasoning from the detached vantage                                                                                       |
+| Proposing escalation from one incident                                                                                            | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences`                                                                                    |
+| Deferring a clear bug fix to wait for more recurrences                                                                            | ≥3 rule is for **add-or-escalate** only. A clear bug in an existing surface at the same tier dispatches as `fix-epic` on a single incident                          |
+| Treating a user-directed architectural change as escalation                                                                       | User directive substitutes for recurrence count. Dispatch as `fix-epic` with the user's directive cited; cost-ladder reasoning still applies to where the fix lands |
+| "Add a gate" / "add an axiom" without naming the ENFORCEMENT-MAP row                                                              | Cite the specific row the fix propagates from or would add; default L0/L1                                                                                           |
