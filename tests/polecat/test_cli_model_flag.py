@@ -55,6 +55,14 @@ class TestResolveModelFlagAliases:
         assert client == "antigravity"
         assert model is None
 
+    def test_gemini_alias_selects_gemini_client_no_override(self):
+        # Regression (aops-58e2a1ce): PR #1543 dropped the gemini alias when it
+        # added antigravity. --model gemini must select the npm/nvm Gemini CLI
+        # client (distinct from antigravity/agy) and defer to gemini_model.
+        client, model = _resolve_model_flag("gemini")
+        assert client == "gemini"
+        assert model is None  # no override — defer to session_defaults.gemini_model
+
     def test_claude_alias_selects_claude_client_no_override(self):
         client, model = _resolve_model_flag("claude")
         assert client == "claude"
@@ -96,6 +104,8 @@ class TestResolveModelFlagLiteralIds:
             ("haiku-4-5", "claude"),
             ("antigravity-1.0", "antigravity"),
             ("agy-2.0-pro", "antigravity"),
+            ("gemini-3.1-pro-preview", "gemini"),  # regression: aops-58e2a1ce
+            ("gemini-2.5-flash", "gemini"),
         ],
     )
     def test_literal_id_infers_client_from_prefix(self, literal_id, expected_client):
