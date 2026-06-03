@@ -6,4 +6,4 @@ description: |
   Short user-facing message when handover gate blocks exit.
 ---
 
-≡ Handover required before exit.
+▶ Handover required before exit — `/end-session` or `/dump`.

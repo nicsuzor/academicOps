@@ -50,8 +50,10 @@ session_defaults:
   debug: false
 
   # Gate enforcement modes. Each value MUST be one of warn | block | off.
+  # handover: block — a session that did real work must hand over before Stop
+  # (read-only sessions are exempt automatically). /end-session and /dump unlock it.
   gates:
-    handover: warn
+    handover: block
     qa: warn
     enforcer: warn
     hydration: off

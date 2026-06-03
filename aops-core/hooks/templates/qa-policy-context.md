@@ -7,9 +7,4 @@ description: |
   Variables: {temp_path}
 ---
 
-QA verification is required before you can exit.
-
-- Invoke the **marsha** agent via the `/verify` skill against the requirements captured at `{temp_path}`.
-- Follow whatever marsha returns, but don't print its output to the user — it just clutters the conversation.
-
-This gate is currently BLOCKED; clearing it is quick once verification runs.
+🧪 **Verify before you stop.** Run `/verify` (marsha) against the requirements at `{temp_path}`, act on what it finds, but keep marsha's raw output out of the chat. Then close with your own user-facing summary.

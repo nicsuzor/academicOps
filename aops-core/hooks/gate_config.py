@@ -421,7 +421,10 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 # hydration. These match the previous BUILTIN_GATES posture.
 
 _GATE_MODE_DEFAULTS = {
-    "HANDOVER_GATE_MODE": "warn",
+    # Handover defaults to block: a session that did real work (write tool or
+    # task claim) must hand over before Stop. Read-only sessions are exempt via
+    # session_did_work=False in custom_conditions (the policy returns no verdict).
+    "HANDOVER_GATE_MODE": "block",
     "QA_GATE_MODE": "warn",
     "ENFORCER_GATE_MODE": "warn",
     "HYDRATION_GATE_MODE": "off",
