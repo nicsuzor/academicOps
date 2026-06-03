@@ -367,9 +367,23 @@ mkdir -p ~/.aops/sessions/reviews
 
 **Purpose**: Run ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classify ≤ 20 open issues, present the proposed dispatch plan, wait for sign-off, execute confirmed actions, log the cycle. **HALT after one cycle.** Fix-epics are left `queued` for `/supervisor` in a later session.
 
+Sweep runs **undirected** (cursor-driven, the default) or **directed** — given a focus (a specific blocker, failure, or issue the user is fighting _right now_), it investigates and prioritises that focus first while still pulling and reviewing the general backlog. Direction is not a recency exemption — see "Directed vs undirected sweep" below.
+
 **Detached judgment role (`recusal`)**: sweep is the framework's _legislative_ phase. The agents that diagnosed each incident are recused; the sweep agent reads their forensic reports together with the enforcement map and the axiom set, and is the one allowed to propose adding, propagating, escalating, or retiring rules. Recency exposure is what makes this work — sweep enters with no prior context on any individual incident, so the cross-incident pattern (not the salience of any one report) drives the call.
 
 **Hard halts**: No silent dispatch. No improvised dispositions. No cursor in task body (labels ARE the cursor). No proposal to **add or escalate** enforcement (new gate, new axiom, tier-bump, new hook firing surface) without ≥3 cited recurrences (the CBA bar in ENFORCEMENT-MAP.md). Bug fixes within an existing enforcement surface at the same tier, and user-directed architectural changes, are NOT add-or-escalate proposals — a single forensic incident (or explicit user directive) is sufficient for `fix-epic` or `single-task`.
+
+### Directed vs undirected sweep
+
+Sweep accepts an optional **focus** — a specific blocker, failure, or issue the user is fighting _right now_ (passed as the invocation argument, e.g. `/issue-sweep 1573` or `/issue-sweep "agent infers rendered state instead of looking"`). With no focus, sweep runs undirected: cursor-driven over the oldest-untriaged batch.
+
+A focus changes **what sweep attends to first, not how it judges.**
+
+- **Attention / ordering** (a focus moves this): investigate the focal issue first — read it, its comments, and any linked forensic reports / transcripts — then pull every open issue that plausibly shares its root cause to the **front** of the batch so the cluster is triaged together.
+- **Coverage** (a focus does NOT shrink this): after triaging the focal cluster, pull and classify the normal undirected batch. A directed sweep is _focus-first_, not _focus-only_. The cycle plan (step 3) MUST contain a general-batch section with the count of non-focal issues reviewed — an empty or absent general section is a failed directed sweep, not a fast one. If the focal cluster exhausts the batch budget, do not silently stop: name the exact cursor range left unreviewed (the oldest-untriaged issue numbers not reached) so the next cycle resumes there.
+- **Judgment standard** (a focus does NOT relax this): the detached cost-ladder (§2b) and the escalation evidence bar are unchanged. Being _directed to prioritise_ an issue is not the same as importing the recency bias `recusal` exists to defeat — that bias is about adopting an incident's _pre-authored legislation_ verbatim, not about which issue you look at first. Distinguish two different user inputs: a **focus** ("investigate this blocker first") only sets attention; a **directed change** ("change rule X this way") substitutes for the recurrence bar _for that specific change_ (per §2b). A focus is never, by itself, a directed change. So any add-or-escalate proposal arising from the focal issue MUST show its evidence inline in the cycle plan — the ≥3 recurrence links, or the explicit user directive quoted — and must NOT cite the user's focus, or the focal incident's salience, as that evidence. If you cannot show ≥3 recurrences or a directive, the disposition is `defer` with `needs-more-recurrences`, exactly as in an undirected sweep. A clear bug fix within an existing surface at the same tier still dispatches on a single incident.
+
+The point: a user fighting a live blocker can aim the sweep at it without the sweep abandoning its backlog scan or lowering its bar for what counts as a justified framework change.
 
 ### Disposition rubric
 
@@ -392,6 +406,17 @@ gh issue list --repo nicsuzor/academicOps --state open --limit 100 \
   --json number,title,labels,createdAt,updatedAt,comments,body \
   > /tmp/issue-sweep-batch.json
 # Client-side sort: criticality-desc, age-asc. Take top 20.
+```
+
+**Directed focus (optional).** When the sweep is given a focus, additionally resolve the focal issue and its root-cause cluster and rank them ahead of the cursor batch:
+
+```bash
+# Focal issue(s) + same-root-cause siblings, pulled to the front:
+gh issue list --repo nicsuzor/academicOps --state open --limit 30 \
+  --search '<focus keywords, or the issue number>' \
+  --json number,title,labels,createdAt,updatedAt,comments,body \
+  > /tmp/issue-sweep-focus.json
+# Triage the focal cluster first; then continue with the undirected batch above (dedup by issue number).
 ```
 
 ### 1. Pre-flight
@@ -463,6 +488,8 @@ Confirm? [y / edit]
 ### Needs human triage
 - #Z (rubric ambiguous: <reason>)
 ```
+
+**Directed sweep:** lead the plan with a **Focal cluster** section (the focus issue + its same-root-cause siblings), THEN include the standard sections above for the general batch. The general-batch section is mandatory and must carry its reviewed-count; if it is empty because the focal cluster used the whole budget, say so explicitly and name the unreviewed cursor range (per "Directed vs undirected sweep" → Coverage). Any escalation inside the focal cluster shows its recurrence links or quoted user directive inline (per Judgment standard) — a focal disposition with no shown evidence is not gateable.
 
 Use `AskUserQuestion` for each gate. Halt cleanly on decline — re-emit and gate again.
 

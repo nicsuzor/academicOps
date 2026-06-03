@@ -24,6 +24,8 @@ permalink: commands/issue-sweep
 
 **Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, presents the dispatch plan, waits for sign-off, executes confirmed actions, logs the cycle. **HALT after one cycle.**
 
+Runs **undirected** by default (cursor-driven over the oldest-untriaged batch) or **directed** when given a focus — a specific blocker / failure / issue to investigate and prioritise first. A directed sweep is _focus-first, not focus-only_: it still scans the general backlog, and a focus sets attention only — it does not relax the escalation evidence bar (see the survey skill's "Directed vs undirected sweep").
+
 **Hard halts**: No silent dispatch. No improvised dispositions (sixth bucket). No cursor in task body — labels are the cursor.
 
 ## Dispatch
@@ -35,9 +37,9 @@ Agent(
   subagent_type='aops-core:jr',
   prompt="""Read aops-core/skills/survey/SKILL.md. Execute in sweep mode.
 
-Context from user: <paste user's invocation context — batch size override, dry-run flag, or specific instructions>
+Context from user: <paste user's invocation context — batch size override, dry-run flag, or a FOCUS (a specific blocker / failure / issue number to investigate and prioritise first). If a focus is given, run a directed sweep per the skill's "Directed vs undirected sweep": triage the focal root-cause cluster first, then continue the general backlog scan; focus sets attention only, not the escalation bar.>
 
-Follow the sweep mode workflow exactly: pre-flight → pull batch → classify → present plan and gate → execute confirmed → append cycle log → /verify handoff → HALT.""",
+Follow the sweep mode workflow exactly: pre-flight → pull batch (focal cluster first if directed) → classify → present plan and gate → execute confirmed → append cycle log → /verify handoff → HALT.""",
   tools=[
     'Bash', 'Read', 'Grep', 'Glob', 'Skill', 'AskUserQuestion',
     'mcp__plugin_aops-core_pkb__get_task',
@@ -53,7 +55,9 @@ The dispatched jr agent owns the session from here. The main context is clean.
 
 ## Arguments
 
-- `/issue-sweep` — run one cycle, batch size 20 (default)
+- `/issue-sweep` — run one undirected cycle, batch size 20 (default)
+- `/issue-sweep <issue#>` — directed cycle: investigate that issue and its root-cause cluster first, then continue the general backlog scan
+- `/issue-sweep "<focus phrase>"` — directed cycle aimed at a described blocker/failure (resolves to the matching issue cluster)
 - `/issue-sweep --batch 10` — override batch size for this cycle
 - `/issue-sweep --dry-run` — produce cycle plan and gate, but do not execute or write cycle log
 
