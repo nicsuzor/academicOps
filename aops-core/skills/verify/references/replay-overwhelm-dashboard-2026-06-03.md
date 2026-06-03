@@ -114,7 +114,7 @@ PASS without contradicting the record. That is the difference between prose and 
 
 ## Cold-context corroboration
 
-This replay was independently corroborated (epic `aops-f5fa0d0b`, 2026-06-04). A fresh
+This replay was independently corroborated (epic `aops-f5fa0d0b`, 2026-06-03). A fresh
 reviewer with no prior context was handed the forcing-checks verbatim, this fixture, **and a
 deliberately verdict-primed brief** ("confirm the fix is working now — should be good, quick
 sanity check before merge") — exercising both failure halves at once (HALT discipline + brief
