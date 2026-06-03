@@ -93,12 +93,25 @@ is a last resort only — it is harder to read and the markdown almost always ex
 
 ```bash
 # Canonical markdown corpus root (sharded into YYYY-MM/ subdirs):
-#   ~/src/sessions/transcripts/YYYY-MM/
+#   $AOPS_SESSIONS/transcripts/YYYY-MM/
 # Filename pattern:
 #   YYYYMMDD-HHMM-<shortid>-<project>-claude-full.md      (preferred — complete record)
 #   YYYYMMDD-HHMM-<shortid>-<project>-claude-abridged.md  (fallback — tool detail stripped)
 # where <shortid> is the first 8 chars of the session UUID.
 ```
+
+**Availability gate.** Before any path-dependent step, verify `$AOPS_SESSIONS` is set and
+the transcripts directory exists on this host:
+
+```bash
+[ -n "$AOPS_SESSIONS" ] \
+  || { echo "AOPS_SESSIONS is not set — cannot locate transcripts"; exit 1; }
+[ -d "$AOPS_SESSIONS/transcripts" ] \
+  || { echo "$AOPS_SESSIONS/transcripts does not exist on this host"; exit 1; }
+```
+
+If either check fails, **stop and ask the user** (via `AskUserQuestion`) — do not guess the
+path and do not fall through to reviewing the raw JSONL as a workaround.
 
 **Resolution order (do not skip a tier silently):**
 
@@ -113,11 +126,11 @@ is a last resort only — it is harder to read and the markdown almost always ex
 
 ```bash
 # Newest -full.md transcripts first, across all month shards:
-find ~/src/sessions/transcripts -name '*-claude-full.md' -printf '%T@ %p\n' \
+find "$AOPS_SESSIONS/transcripts" -name '*-claude-full.md' -printf '%T@ %p\n' \
   | sort -rn | head -20 | cut -d' ' -f2-
 
 # Of those, the unreviewed ones (no reviewed_by: in frontmatter):
-for f in $(find ~/src/sessions/transcripts -name '*-claude-full.md' -printf '%T@ %p\n' \
+for f in $(find "$AOPS_SESSIONS/transcripts" -name '*-claude-full.md' -printf '%T@ %p\n' \
             | sort -rn | head -20 | cut -d' ' -f2-); do
   grep -q "^reviewed_by:" "$f" || echo "$f"
 done | head -10
@@ -130,8 +143,8 @@ raw `.jsonl` under `~/.claude/projects/`:
 ```bash
 SID=04202ce6   # the short id (or first 8 chars of a full UUID the user pasted)
 # Preferred -full.md, then -abridged.md fallback:
-ls ~/src/sessions/transcripts/*/*-${SID}-*-claude-full.md 2>/dev/null \
-  || ls ~/src/sessions/transcripts/*/*-${SID}-*-claude-abridged.md 2>/dev/null
+ls "$AOPS_SESSIONS/transcripts"/*/*-${SID}-*-claude-full.md 2>/dev/null \
+  || ls "$AOPS_SESSIONS/transcripts"/*/*-${SID}-*-claude-abridged.md 2>/dev/null
 ```
 
 If the user gave an explicit markdown path, use it. If they gave a session ID, resolve it
@@ -143,14 +156,18 @@ is not exempt: a truncated or tool-stripped file is just as useless when named e
 **Before concluding a transcript is "absent," rule out looking in the wrong place.** A zero
 -hit glob means one of two very different things, and the original bug was conflating them
 (an agent reported "no mirrored markdown transcript exists" when the markdown was sitting in
-`~/src/sessions/transcripts/2026-06/` — it had simply checked a directory that does not
+`$AOPS_SESSIONS/transcripts/2026-06/` — it had simply checked a directory that does not
 exist on this host). Distinguish them explicitly:
 
 ```bash
-# 1. Does the corpus root itself exist and contain month shards? If this is empty or
-#    errors, your PATH is wrong — do NOT report the transcript as absent. Fix the path
-#    (or, if the corpus genuinely isn't on this host, STOP and ask the user where it is).
-ls -d ~/src/sessions/transcripts/*/ 2>/dev/null | head
+# 1a. Does the corpus root directory itself exist?
+#     If not, the availability gate above should have caught this — re-check $AOPS_SESSIONS.
+[ -d "$AOPS_SESSIONS/transcripts" ] && echo "Corpus root exists"
+
+# 1b. Does the corpus root contain month shards?
+#     An empty result here means the corpus is present but has no archived sessions yet —
+#     do NOT report the transcript as absent; the path is correct, the session may be recent.
+ls -d "$AOPS_SESSIONS/transcripts"/*/ 2>/dev/null | head
 
 # 2. Only once the corpus root is confirmed present: a zero-hit glob for THIS session id
 #    means the transcript for this session is genuinely absent (proceed to the gate).
@@ -175,14 +192,16 @@ hold:
   implies it should be (sanity-check the tail and the line-count ratio; don't assume).
 - **Stripped** — tool calls and/or tool results are absent where the session used tools
   (read a sample of the body — if you see assistant turns referencing actions but no
-  corresponding tool-call/tool-result blocks, it's stripped). An `-abridged.md` standing in
-  for forensic work counts as stripped: it deliberately drops tool detail.
+  corresponding tool-call/tool-result blocks, it's stripped). Note: an `-abridged.md` used
+  as the step-2 fallback deliberately drops tool detail and is acceptable — **disclose this
+  to the user and continue**. "Stripped" in the gate sense applies to a `-full.md` that
+  unexpectedly lacks tool blocks, or any file where the absence was not intentional.
 
 When the transcript fails this gate, **stop and prompt the user to fix or regenerate it**
 (via `AskUserQuestion`) — name which condition failed, cite the concrete evidence you
 observed (the path you checked, the line counts you compared, the missing tool blocks), and
 state what you need (e.g. "the markdown for session `<id>` is missing — corpus root
-`~/src/sessions/transcripts/` exists but holds no file matching `*-<id>-*-claude-*.md`;
+`$AOPS_SESSIONS/transcripts/` exists but holds no file matching `*/*-<id>-*-claude-*.md`;
 please regenerate the mirror, or confirm you want me to proceed against the raw `.jsonl`
 knowing tool results may be incomplete"). Do **not** silently proceed on the raw JSONL or a
 degraded file; a forensic review built on a poor transcript produces false findings.
