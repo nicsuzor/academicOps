@@ -303,6 +303,20 @@ class TestInferSessionOriginFromPath(unittest.TestCase):
         self.assertEqual(origin["client"], "claude-code")
         self.assertIsNone(origin["crew"])
 
+    def test_antigravity_cli_path(self):
+        """antigravity-cli brain dirs are a distinct surface, not bare gemini-cli,
+        even though they live under ~/.gemini/."""
+        from pathlib import Path
+
+        p = Path(
+            "/home/nic/.gemini/antigravity-cli/brain/"
+            "60e16c42-a07a-4c65-9ed7-f7362162bc7e"
+        )
+        origin = session_naming.infer_session_origin_from_path(p, provider="gemini")
+        self.assertEqual(origin["surface"], "antigravity-cli")
+        self.assertEqual(origin["client"], "antigravity-cli")
+        self.assertIsNone(origin["crew"])
+
     def test_metadata_accepts_path_overrides(self):
         """get_session_metadata forwards explicit surface/client/crew overrides."""
         meta = session_naming.get_session_metadata(

@@ -438,3 +438,150 @@ class TestThoughtsAndContext:
         )
         assert "Extended thinking" in md
         assert "Let me think about this carefully" in md
+
+
+class TestAntigravityCliBrain:
+    """Parsing the new antigravity-cli brain format, whose conversation lives in
+    ``<brain>/<uuid>/.system_generated/logs/transcript_full.jsonl`` (step records)
+    rather than top-level markdown artifacts.
+    """
+
+    @pytest.fixture
+    def processor(self):
+        from lib.transcript_parser import SessionProcessor
+
+        return SessionProcessor()
+
+    def _write_brain(self, tmp_path: Path, records: list[dict]) -> Path:
+        brain_dir = tmp_path / "60e16c42-a07a-4c65-9ed7-f7362162bc7e"
+        logs = brain_dir / ".system_generated" / "logs"
+        logs.mkdir(parents=True)
+        (logs / "transcript_full.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in records), encoding="utf-8"
+        )
+        return brain_dir
+
+    def _sample_records(self) -> list[dict]:
+        return [
+            {
+                "step_index": 0,
+                "source": "USER_EXPLICIT",
+                "type": "USER_INPUT",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+                "content": (
+                    "<USER_REQUEST>\nhow do hooks work here?\n</USER_REQUEST>\n"
+                    "<ADDITIONAL_METADATA>\nThe current local time is: ...\n</ADDITIONAL_METADATA>\n"
+                    "<USER_SETTINGS_CHANGE>\nThe user changed setting `Model Selection` "
+                    "from None to Gemini 3.1 Pro (High).\n</USER_SETTINGS_CHANGE>"
+                ),
+            },
+            # Boilerplate that must be dropped, not rendered.
+            {
+                "step_index": 1,
+                "source": "SYSTEM",
+                "type": "EPHEMERAL_MESSAGE",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+                "content": "The following is an <EPHEMERAL_MESSAGE> ... CRITICAL INSTRUCTION ...",
+            },
+            {
+                "step_index": 2,
+                "source": "SYSTEM",
+                "type": "CONVERSATION_HISTORY",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+            },
+            {
+                "step_index": 3,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:50Z",
+                "content": "Let me check the hooks config.",
+            },
+            {
+                "step_index": 4,
+                "source": "MODEL",
+                "type": "VIEW_FILE",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:55Z",
+                "content": (
+                    "Created At: 2026-06-03T04:47:55Z\nCompleted At: 2026-06-03T04:47:55Z\n"
+                    "File Path: `file:///home/nic/hooks.json`\n1: {\n2:   \"hooks\": {}\n}"
+                ),
+            },
+            {
+                "step_index": 5,
+                "source": "MODEL",
+                "type": "MCP_TOOL",
+                "status": "ERROR",
+                "created_at": "2026-06-03T04:48:00Z",
+                "content": "Encountered error in step execution: Error calling tool 'create_memory'",
+            },
+        ]
+
+    def test_parses_steps_into_turns(self, processor, tmp_path):
+        brain_dir = self._write_brain(tmp_path, self._sample_records())
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+
+        # USER_INPUT extracts only the <USER_REQUEST> body for the summary.
+        assert summary.summary == "Antigravity Session: how do hooks work here?"
+
+        # One user text turn + one assistant text turn + a tool_use/tool_result
+        # pair for each of the two tool steps. Boilerplate is dropped.
+        assert sum(1 for e in entries if e.type == "user") == 3  # 1 input + 2 results
+        assert sum(1 for e in entries if e.type == "assistant") == 3  # 1 text + 2 calls
+
+        # No EPHEMERAL / CONVERSATION_HISTORY boilerplate leaked into any entry.
+        flat = json.dumps([e.message for e in entries])
+        assert "EPHEMERAL_MESSAGE" not in flat
+        assert "CRITICAL INSTRUCTION" not in flat
+
+    def test_renders_tools_and_results(self, processor, tmp_path):
+        brain_dir = self._write_brain(tmp_path, self._sample_records())
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+        md = processor.format_session_as_markdown(
+            summary, entries, agents, include_tool_results=True, variant="full"
+        )
+        # User request + assistant text rendered.
+        assert "how do hooks work here?" in md
+        assert "Let me check the hooks config." in md
+        # Tool call name + its result body are attached.
+        assert "ViewFile" in md
+        assert "/home/nic/hooks.json" in md
+        # The errored tool result surfaces.
+        assert "create_memory" in md
+
+    def test_prefers_full_over_compact(self, processor, tmp_path):
+        """When both transcript files exist, the full one is the source."""
+        brain_dir = self._write_brain(tmp_path, self._sample_records())
+        logs = brain_dir / ".system_generated" / "logs"
+        # A deliberately divergent compact file that must NOT be chosen.
+        (logs / "transcript.jsonl").write_text(
+            json.dumps(
+                {
+                    "step_index": 0,
+                    "source": "USER_EXPLICIT",
+                    "type": "USER_INPUT",
+                    "status": "DONE",
+                    "created_at": "2026-06-03T04:47:47Z",
+                    "content": "<USER_REQUEST>\nCOMPACT VERSION\n</USER_REQUEST>",
+                }
+            ),
+            encoding="utf-8",
+        )
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+        assert "how do hooks work here?" in summary.summary
+        assert "COMPACT VERSION" not in summary.summary
+
+    def test_falls_back_to_markdown_when_no_jsonl(self, processor, tmp_path):
+        """Old IDE-format brain dirs (markdown artifacts, no jsonl) still parse."""
+        brain_dir = tmp_path / "29431e8b-old-format"
+        brain_dir.mkdir()
+        (brain_dir / "task.md").write_text(
+            "Build the context discovery design\n\n- [ ] step one", encoding="utf-8"
+        )
+        summary, entries, agents = processor.parse_session_file(str(brain_dir))
+        assert entries  # not skipped as empty
+        assert "Build the context discovery design" in summary.summary

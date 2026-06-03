@@ -957,7 +957,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Universal Hook Router")
     parser.add_argument(
-        "--client", choices=["gemini", "claude"], help="Client type (gemini or claude)"
+        "--client", choices=["gemini", "claude", "agy"], help="Client type (gemini, claude, or agy)"
     )
     parser.add_argument(
         "event", nargs="?", help="Event name (required for Gemini if not in payload)"
@@ -993,7 +993,7 @@ def main():
     result = router.execute_hooks(ctx)
 
     # Output (JSON conversion happens only here)
-    if client_type == "gemini":
+    if client_type in ("gemini", "agy"):
         output = router.output_for_gemini(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
     else:

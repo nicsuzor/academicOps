@@ -1,19 +1,19 @@
 # AcademicOps Plugin Installation
 
-Distribution repository: https://github.com/nicsuzor/aops
+Distribution repository: https://github.com/nicsuzor/academicOps
 
 Claude Code
 
 ```bash
-command claude plugin marketplace add nicsuzor/aops
+command claude plugin marketplace add nicsuzor/academicOps
 command claude plugin marketplace update academicOps && command claude plugin install aops-core@academicOps && command claude plugin install aops-tools@academicOps
 ```
 
 Gemini CLI (warning: auto accept flag below, remove --consent if you're concerned)
 
 ```bash
-command gemini extensions install https://github.com/nicsuzor/aops.git --auto-update --pre-release --consent
-command gemini extensions install https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz --auto-update --pre-release --consent
+command gemini extensions install https://github.com/nicsuzor/academicOps.git --auto-update --pre-release --consent
+command gemini extensions install https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz --auto-update --pre-release --consent
 ```
 
 Update both:
@@ -21,8 +21,8 @@ Update both:
 ```bash
 command claude plugin marketplace update academicOps && command claude plugin update aops-core@academicOps && command claude plugin update aops-tools@academicOps
 command gemini extensions uninstall aops-core && command gemini extensions uninstall aops-tools
-command gemini extensions install https://github.com/nicsuzor/aops.git --auto-update --pre-release --consent
-command gemini extensions install https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz --auto-update --pre-release --consent
+command gemini extensions install https://github.com/nicsuzor/academicOps.git --auto-update --pre-release --consent
+command gemini extensions install https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz --auto-update --pre-release --consent
 ```
 
 ## Polecat Installation

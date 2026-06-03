@@ -102,7 +102,7 @@ else
         echo -n "  Downloading pkb for ${PLATFORM}... "
         TMPDIR=$(mktemp -d)
         ARCHIVE="aops-claude-${PLATFORM}.tar.gz"
-        if gh release download --repo nicsuzor/aops --pattern "${ARCHIVE}" --dir "${TMPDIR}" --clobber 2>/dev/null; then
+        if gh release download --repo nicsuzor/academicOps --pattern "${ARCHIVE}" --dir "${TMPDIR}" --clobber 2>/dev/null; then
             mkdir -p "${INSTALL_BIN}"
             tar xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
             # Find and install binaries (may be at bin/ or aops-claude/bin/)
@@ -141,8 +141,8 @@ if command -v claude &>/dev/null; then
             fail "aops-core plugin not installed. Run: make install-claude"
         fi
     else
-        echo "  Installing aops plugin from marketplace..."
-        if claude plugin marketplace add nicsuzor/aops 2>&1 | sed 's/^/    /' && \
+        echo -n "  Registering plugins... "
+        if claude plugin marketplace add nicsuzor/academicOps 2>&1 | sed 's/^/    /' && \
            claude plugin marketplace update academicOps 2>&1 | sed 's/^/    /' && \
            claude plugin install aops-core@academicOps 2>&1 | sed 's/^/    /'; then
             ok "aops-core plugin installed"

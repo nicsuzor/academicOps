@@ -3043,22 +3043,235 @@ class SessionProcessor:
                 result.append(entry)
         return result
 
+    # antigravity-cli (new format) step types that represent tool executions.
+    # The step `type` is the tool identity and its `content` is the result;
+    # we map each to a human-readable tool name for the renderer.
+    _ANTIGRAVITY_TOOL_NAMES = {
+        "VIEW_FILE": "ViewFile",
+        "LIST_DIRECTORY": "ListDirectory",
+        "GREP_SEARCH": "GrepSearch",
+        "SEARCH_WEB": "SearchWeb",
+        "READ_URL_CONTENT": "ReadUrl",
+        "RUN_COMMAND": "RunCommand",
+        "CODE_ACTION": "CodeAction",
+        "MCP_TOOL": "McpTool",
+        "GENERIC": "Task",
+    }
+
+    @staticmethod
+    def _antigravity_step_timestamp(value: Any) -> datetime | None:
+        """Parse an antigravity step ``created_at`` (ISO 8601, usually Z)."""
+        if not isinstance(value, str) or not value:
+            return None
+        try:
+            s = value.replace("Z", "+00:00") if value.endswith("Z") else value
+            return datetime.fromisoformat(s).astimezone()
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _antigravity_user_text(content: str) -> str:
+        """Extract the real message from a USER_INPUT step.
+
+        USER_INPUT content wraps the message in ``<USER_REQUEST>…</USER_REQUEST>``
+        and trails system boilerplate (``<ADDITIONAL_METADATA>``, settings-change
+        notices). Return just the request when present, else the raw content.
+        """
+        if not content:
+            return ""
+        m = re.search(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", content, re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        return content.strip()
+
+    @staticmethod
+    def _antigravity_tool_desc(content: str) -> str:
+        """Best-effort one-line label for an antigravity tool step."""
+        if not content:
+            return ""
+        m = re.search(r"File Path:\s*`?([^`\n]+)`?", content)
+        if m:
+            return m.group(1).strip()
+        m = re.search(r"Task Description:\s*([^\n]+)", content)
+        if m:
+            return m.group(1).strip()
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith(("Created At:", "Completed At:")):
+                continue
+            return line[:120]
+        return ""
+
+    def _parse_antigravity_transcript_jsonl(
+        self, brain_dir: Path, transcript_path: Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Parse an antigravity-cli structured transcript jsonl into entries.
+
+        Each line is one step:
+        ``{step_index, source, type, status, created_at, content}``.
+
+        - USER_INPUT          → user text turn
+        - PLANNER_RESPONSE    → assistant text turn
+        - tool steps          → assistant tool_use + matching user tool_result
+        - SYSTEM_MESSAGE/ERROR_MESSAGE → tool_result-style feedback turns
+        - EPHEMERAL_MESSAGE / CONVERSATION_HISTORY → skipped (boilerplate/empty)
+        """
+        session_id = brain_dir.name
+        entries: list[Entry] = []
+        first_ts: datetime | None = None
+        first_user: str | None = None
+        model_name: str | None = None
+
+        records: list[dict] = []
+        try:
+            with open(transcript_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(obj, dict):
+                        records.append(obj)
+        except OSError:
+            return SessionSummary(uuid=session_id), [], {}
+
+        records.sort(key=lambda o: o.get("step_index", 0))
+
+        def _add(entry_type: str, uuid: str, blocks: list[dict], ts, model=None) -> None:
+            payload = {"content": blocks}
+            entries.append(
+                Entry(
+                    type=entry_type,
+                    uuid=uuid,
+                    timestamp=ts,
+                    message=payload,
+                    content=payload,
+                    model=model,
+                )
+            )
+
+        for obj in records:
+            rtype = obj.get("type")
+            status = obj.get("status")
+            content = obj.get("content") or ""
+            ts = self._antigravity_step_timestamp(obj.get("created_at"))
+            if ts and first_ts is None:
+                first_ts = ts
+            step = obj.get("step_index", len(entries))
+
+            if rtype in ("EPHEMERAL_MESSAGE", "CONVERSATION_HISTORY"):
+                continue
+
+            if rtype == "USER_INPUT":
+                mm = re.search(r"Model Selection`?\s*from\s*\S+\s*to\s*([^\.\n]+)", content)
+                if mm and not model_name:
+                    model_name = mm.group(1).strip()
+                text = self._antigravity_user_text(content)
+                if not text:
+                    continue
+                if first_user is None:
+                    first_user = text
+                _add("user", f"{session_id}-u-{step}", [{"type": "text", "text": text}], ts)
+                continue
+
+            if rtype == "PLANNER_RESPONSE":
+                text = content.strip()
+                if not text:
+                    continue
+                _add(
+                    "assistant",
+                    f"{session_id}-a-{step}",
+                    [{"type": "text", "text": text}],
+                    ts,
+                    model=model_name,
+                )
+                continue
+
+            if not content.strip():
+                continue
+
+            # Tool steps + system/error feedback → tool_use/tool_result pairs so
+            # the existing renderer attaches each result to its call.
+            if rtype in self._ANTIGRAVITY_TOOL_NAMES:
+                name = self._ANTIGRAVITY_TOOL_NAMES[rtype]
+            elif rtype == "SYSTEM_MESSAGE":
+                name = "System"
+            elif rtype == "ERROR_MESSAGE":
+                name = "Error"
+            else:
+                # Unknown step type — surface it rather than dropping silently.
+                name = (rtype or "Unknown").title().replace("_", "")
+
+            is_error = status == "ERROR" or rtype == "ERROR_MESSAGE"
+            tid = f"{session_id}-t-{step}"
+            desc = self._antigravity_tool_desc(content)
+            tool_input = {"description": desc} if desc else {}
+            _add(
+                "assistant",
+                f"{session_id}-ac-{step}",
+                [{"type": "tool_use", "id": tid, "name": name, "input": tool_input}],
+                ts,
+                model=model_name,
+            )
+            _add(
+                "user",
+                f"{session_id}-tr-{step}",
+                [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tid,
+                        "content": content,
+                        "is_error": is_error,
+                    }
+                ],
+                ts,
+            )
+
+        summary_text = (
+            f"Antigravity Session: {first_user[:50]}" if first_user else "Antigravity Session"
+        )
+        session_summary = SessionSummary(
+            uuid=session_id,
+            summary=summary_text,
+            created_at=first_ts.isoformat() if first_ts else "",
+        )
+        return session_summary, entries, {}
+
     def _parse_antigravity_brain(
         self, brain_dir: Path
     ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
         """Parse Antigravity brain directory into structured data.
 
-        Antigravity brain directories contain markdown artifacts:
-        - task.md: Task checklist
-        - implementation_plan.md: Implementation details
-        - walkthrough.md: Session walkthrough (optional)
-        - audit_report.md: Audit report (optional)
-        - requirements_rubric.md: Requirements (optional)
+        Two on-disk layouts exist:
 
-        These are combined into a transcript-like format.
+        1. antigravity-cli (current): a structured transcript jsonl under
+           ``.system_generated/logs/transcript_full.jsonl`` (preferred) — the
+           full step-by-step conversation. Parsed by
+           ``_parse_antigravity_transcript_jsonl``.
+        2. antigravity / IDE (older): top-level markdown artifacts
+           (task.md, implementation_plan.md, walkthrough.md, audit_report.md,
+           requirements_rubric.md) combined into a transcript-like format.
+
+        The jsonl is preferred when present; otherwise we fall back to the
+        markdown artifacts.
         """
-        entries: list[Entry] = []
         session_id = brain_dir.name
+
+        logs_dir = brain_dir / ".system_generated" / "logs"
+        for _name in ("transcript_full.jsonl", "transcript.jsonl"):
+            tpath = logs_dir / _name
+            if tpath.exists():
+                summary, jsonl_entries, agents = self._parse_antigravity_transcript_jsonl(
+                    brain_dir, tpath
+                )
+                if jsonl_entries:
+                    return summary, jsonl_entries, agents
+                break  # transcript present but empty → try markdown artifacts
+
+        entries: list[Entry] = []
 
         # Get modification time for timestamp
         md_files = list(brain_dir.glob("*.md"))

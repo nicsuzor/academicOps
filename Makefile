@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -9,9 +9,9 @@ AOPS_ROOT := $(shell pwd)
 DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
-DIST_REPO := nicsuzor/aops
+DIST_REPO := nicsuzor/academicOps
 DIST_REPO_URL := https://github.com/$(DIST_REPO)
-GEMINI_REMOTE_URL := https://github.com/nicsuzor/aops.git
+GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
 AGY_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-core
 
 # Extension names
@@ -19,7 +19,7 @@ GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
-GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/aops/releases/latest/download/aops-tools.tar.gz
+GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -57,7 +57,6 @@ help:
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
 	@echo "Release Management (Automation):"
-	@echo "  make prerelease     - Trigger testing build via GitHub Actions"
 	@echo "  make nextver        - Show next version number"
 	@echo "  make release        - Manually tag/push (prefer release-please PRs)"
 	@echo ""
@@ -243,13 +242,13 @@ install-agy:
 	@echo "Installing aops plugin into Antigravity CLI (agy)..."
 	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
 		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
-		rm -rf "$(AGY_PLUGIN_DIR)"; \
-		cp -r "$(DIST_DIR)/aops-antigravity" "$(AGY_PLUGIN_DIR)"; \
+		agy plugin install "$(DIST_DIR)/aops-antigravity"; \
 	else \
 		echo "  Source: $(AGY_RELEASE_URL)"; \
-		rm -rf "$(AGY_PLUGIN_DIR)"; \
-		mkdir -p "$(AGY_PLUGIN_DIR)"; \
-		curl -fsSL "$(AGY_RELEASE_URL)" | tar -xz -C "$(AGY_PLUGIN_DIR)"; \
+		TMP_DIR=$$(mktemp -d); \
+		curl -fsSL "$(AGY_RELEASE_URL)" | tar -xz -C "$$TMP_DIR"; \
+		agy plugin install "$$TMP_DIR"; \
+		rm -rf "$$TMP_DIR"; \
 	fi
 	@echo "  Target: $(AGY_PLUGIN_DIR)"
 	@echo "✓ Antigravity CLI plugin installed"
@@ -317,11 +316,6 @@ install-crontab:
 
 # --- Release Management ---
 
-# Trigger a prerelease build via GitHub Actions workflow_dispatch
-prerelease:
-	@echo "Triggering prerelease build via GitHub Actions..."
-	@gh workflow run build-extension.yml --field prerelease=true
-	@echo "✓ Prerelease workflow triggered. Follow progress with: gh run list --workflow=build-extension.yml"
 
 # Show current and next version
 nextver:

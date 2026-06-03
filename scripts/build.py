@@ -488,7 +488,8 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
                         new_hook = dict(hook)
                         if "command" in new_hook:
                             cmd = new_hook["command"]
-                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+                            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core")
+                            cmd = cmd.replace("--client claude", "--client agy")
                             new_hook["command"] = cmd
                         new_hooks.append(new_hook)
                     new_entry[key] = new_hooks
@@ -1654,7 +1655,7 @@ def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
 
 # --- Reusable GHA Workflow Generation ---
 
-_DIST_REPO = "nicsuzor/aops"
+_DIST_REPO = "nicsuzor/academicOps"
 
 _GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
     "enforcer": {
