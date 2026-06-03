@@ -134,7 +134,7 @@ The actionable types in the PKB:
 
 | Type            | Description                                                                                                                                                                                           |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **goal**        | An identity-level commitment (_who I am / how I define myself_). Outside the work tree — never a parent, never parented. No severity, consequence, or due. Linked TO by targets via `contributes_to`. |
+| **goal**        | An identity-level commitment (_who I am / how I define myself_). Outside the work tree — never a parent, never parented. No severity, consequence, or due. Linked TO by targets or work tasks (epics/tasks/learn) via `contributes_to`. |
 | **target**      | A user-declared strategic milestone. Stands outside the work tree — linked to work by metadata, never as a parent. Carries `severity` + `consequence`. Advances ≥1 goal via `contributes_to`.         |
 | **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                                                                                   |
 | **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                              |
