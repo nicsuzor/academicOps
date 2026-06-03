@@ -322,10 +322,6 @@ class HookRouter:
         # 4. Transcript Path / Temp Root
         transcript_path = raw_input.get("transcript_path") or raw_input.get("transcriptPath")
 
-        artifact_dir = raw_input.get("artifact_directory_path") or raw_input.get(
-            "artifactDirectoryPath"
-        )
-
         # Request Tracing (aops-32068a2e)
         trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
 
@@ -571,12 +567,22 @@ class HookRouter:
 
         merged_result = CanonicalHookOutput()
 
-        # Load Session State ONCE
+        # Load Session State ONCE. Thread the harness routing signals so every
+        # event places artefacts in this session's real dir — required on agy,
+        # which has no SessionStart to set AOPS_SESSION_STATE_DIR (aops-bc8e18c5).
         try:
-            state = SessionState.load(ctx.session_id)
+            state = SessionState.load(
+                ctx.session_id,
+                transcript_path=ctx.transcript_path,
+                client_type=ctx.client_type,
+            )
         except Exception as e:
             print(f"WARNING: Failed to load session state: {e}", file=sys.stderr)
-            state = SessionState.create(ctx.session_id)
+            state = SessionState.create(
+                ctx.session_id,
+                transcript_path=ctx.transcript_path,
+                client_type=ctx.client_type,
+            )
 
         # Initialize gate registry
         GateRegistry.initialize()

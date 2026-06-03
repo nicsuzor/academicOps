@@ -291,3 +291,72 @@ class TestCoworkSourceRoots:
         roots = cowork_source_roots()
         assert len(roots) == 1
         assert ".config/Claude/local-agent-mode-sessions" in str(roots[0])
+
+
+class TestAntigravityStatusDir:
+    """Antigravity (agy) sessions must place artefacts in their ~/.gemini brain
+    dir and NEVER silently fall back to ~/.claude/projects (aops-bc8e18c5).
+
+    agy has no SessionStart event and no env-file propagation, so
+    AOPS_SESSION_STATE_DIR is permanently unset and the directory is re-resolved
+    per-event from the explicit --client signal + transcript_path.
+    """
+
+    def _agy_transcript(self, tmp_path: Path) -> Path:
+        # Mirrors the real agy layout: brain/<uuid>/.system_generated/logs/transcript.jsonl
+        uuid = "57cd4afc-9375-4b9b-b0d0-75321c10ac64"
+        logs = (
+            tmp_path / ".gemini" / "antigravity-cli" / "brain" / uuid / ".system_generated" / "logs"
+        )
+        logs.mkdir(parents=True, exist_ok=True)
+        return logs / "transcript.jsonl"
+
+    def test_agy_status_dir_resolves_to_brain_not_claude(self, tmp_path):
+        """client=agy + agy transcript_path → .system_generated dir, never ~/.claude."""
+        transcript = self._agy_transcript(tmp_path)
+        result = get_session_status_dir(
+            "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+            transcript_path=str(transcript),
+            client_type="agy",
+        )
+        assert result == transcript.parent.parent  # .../<uuid>/.system_generated
+        assert ".claude" not in str(result)
+        assert ".system_generated" in str(result)
+
+    def test_agy_with_uuid_session_never_uses_claude_branch(self, tmp_path):
+        """An agy session_id is UUID-shaped; the explicit --client signal must win
+        over the UUID→Claude heuristic that previously leaked the state file."""
+        transcript = self._agy_transcript(tmp_path)
+        result = get_session_status_dir(
+            "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+            transcript_path=str(transcript),
+            client_type="agy",
+        )
+        assert ".claude" not in str(result)
+
+    def test_agy_without_transcript_raises_no_fallback(self):
+        """No transcript_path, no env var, client=agy → RAISE, not a silent
+        write under ~/.claude (NO-FALLBACKS axiom)."""
+        with pytest.raises(ValueError, match="Refusing to fall back to the Claude"):
+            get_session_status_dir(
+                "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+                transcript_path=None,
+                client_type="agy",
+            )
+
+    def test_session_state_save_lands_in_agy_dir(self, tmp_path):
+        """End-to-end: SessionState carrying agy routing saves under the agy
+        brain dir, not ~/.claude/projects (the exact leak from aops-bc8e18c5)."""
+        from lib.session_state import SessionState
+
+        transcript = self._agy_transcript(tmp_path)
+        state = SessionState.create(
+            "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+            transcript_path=str(transcript),
+            client_type="agy",
+        )
+        state.save()
+
+        saved = list((transcript.parent.parent).glob("*.json"))
+        assert saved, "state file was not written under the agy .system_generated dir"
+        assert all(".claude" not in str(p) for p in saved)

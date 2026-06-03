@@ -271,6 +271,7 @@ def _canonical_artifact_path(
     transcript_path: str | None,
     date: str | None,
     artifact_type: str,
+    client_type: str | None = None,
 ) -> Path:
     """Build a session artefact path anchored on the existing state file.
 
@@ -280,7 +281,7 @@ def _canonical_artifact_path(
     file exists yet (SessionStart, before save), a fresh filename is generated
     from ``date`` (or ``now``).
     """
-    status_dir = get_session_status_dir(session_id, transcript_path)
+    status_dir = get_session_status_dir(session_id, transcript_path, client_type)
 
     art = session_naming.ARTIFACT_TYPES[artifact_type]
 
@@ -302,7 +303,10 @@ def _canonical_artifact_path(
 
 
 def get_hook_log_path(
-    session_id: str, transcript_path: str | None = None, date: str | None = None
+    session_id: str,
+    transcript_path: str | None = None,
+    date: str | None = None,
+    client_type: str | None = None,
 ) -> Path:
     """Get the path for the per-session hook log file.
 
@@ -329,26 +333,41 @@ def get_hook_log_path(
     if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
         return Path(env_hook_log_path)
 
-    return _canonical_artifact_path(session_id, transcript_path, date, "hooks")
+    return _canonical_artifact_path(session_id, transcript_path, date, "hooks", client_type)
 
 
 def get_session_status_dir(
-    session_id: str | None = None, transcript_path: str | None = None
+    session_id: str | None = None,
+    transcript_path: str | None = None,
+    client_type: str | None = None,
 ) -> Path:
-    """Get session status directory from AOPS_SESSION_STATE_DIR or auto-detect.
+    """Get session status directory from AOPS_SESSION_STATE_DIR or the explicit client.
 
-    This env var is set by the router at SessionStart:
-    - Gemini: ~/.gemini/tmp/<hash>/ (from transcript_path)
-    - Claude: ~/.claude/projects/<encoded-cwd>/
+    Resolution order (NO silent fallbacks — a session that can't be placed
+    raises; it is NEVER guessed into the wrong harness's directory):
 
-    Falls back to auto-detection based on:
-    1. session_id starting with "gemini-" -> Gemini path
-    2. transcript_path containing "/.gemini/" -> Gemini path (extracts from path)
-    3. Otherwise (UUID format) -> Claude path derived from cwd
+    1. ``AOPS_SESSION_STATE_DIR`` env var — set by the router at SessionStart on
+       harnesses that have one (Claude via ``CLAUDE_ENV_FILE`` propagation,
+       regular Gemini). Antigravity (agy) has no SessionStart and no env-file
+       propagation, so this is permanently unset there and every artefact is
+       placed per-event by the branches below.
+    2. Gemini-family (regular Gemini CLI + Antigravity/agy), routed by the
+       EXPLICIT ``--client`` signal OR positive Gemini detection from the
+       transcript path / ``GEMINI_SESSION_ID``. A gemini/agy session MUST
+       resolve to its real ``~/.gemini`` directory or fail loud — it must never
+       fall through to the Claude branch and silently write under
+       ``~/.claude/projects`` (aops-bc8e18c5).
+    3. Claude Code: ``~/.claude/projects/<encoded-cwd>/``. The cwd-derivation is
+       Claude's real on-disk convention, not a guess — reached only for an
+       explicit ``claude`` client, or a non-hook caller (``client_type is None``)
+       whose ``session_id`` is a Claude UUID.
 
     Args:
         session_id: Optional session ID for client detection.
         transcript_path: Optional transcript path for Gemini detection.
+        client_type: Explicit hook-caller identity from ``--client``
+            ("claude" | "gemini" | "agy"). When provided it is authoritative —
+            session-id shape is NOT used to infer the harness.
 
     Returns:
         Path to session status directory (created if doesn't exist)
@@ -360,24 +379,32 @@ def get_session_status_dir(
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 2. Auto-detect Gemini from session_id or transcript_path
-    if _is_gemini_session(session_id, transcript_path):
+    # 2. Gemini-family (regular Gemini CLI + Antigravity/agy). Routed by the
+    #    explicit --client signal or positive Gemini detection. A gemini/agy
+    #    session MUST resolve to its real ~/.gemini dir or fail loud — it must
+    #    NEVER fall through to the Claude branch (NO FALLBACKS, aops-bc8e18c5).
+    if client_type in ("gemini", "agy") or _is_gemini_session(session_id, transcript_path):
         gemini_dir = _get_gemini_status_dir(transcript_path)
         if gemini_dir is not None:
             gemini_dir.mkdir(parents=True, exist_ok=True)
             return gemini_dir
 
         raise ValueError(
-            "Gemini session detected but cannot determine status directory. "
+            f"Gemini/agy session (client={client_type!r}) but cannot determine status "
+            "directory: no AOPS_SESSION_STATE_DIR, no resolvable transcript_path, and no "
+            "GEMINI_SESSION_ID. Refusing to fall back to the Claude project dir. "
             "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
         )
 
-    # 3. Claude Code session
+    # 3. Claude Code session — explicit claude client, or a non-hook caller
+    #    (client_type is None) whose session_id is a Claude UUID.
     import re
 
-    if session_id and re.match(
-        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id
-    ):
+    is_claude_uuid = bool(
+        session_id
+        and re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id)
+    )
+    if client_type == "claude" or (client_type is None and is_claude_uuid):
         project_folder = get_claude_project_folder()
         if _is_polecat_sandbox():
             return _polecat_claude_state_dir(project_folder, "state")
@@ -387,15 +414,19 @@ def get_session_status_dir(
 
     # 4. Fail loud (NO FALLBACKS)
     raise ValueError(
-        f"Could not definitively determine session status directory for session_id '{session_id}'. "
-        "Session did not match Gemini profile (no transcript_path or GEMINI_SESSION_ID) "
-        "and did not match Claude profile (no valid UUID). "
+        f"Could not definitively determine session status directory for session_id "
+        f"'{session_id}' (client={client_type!r}). Session did not match Gemini/agy "
+        "(no --client gemini/agy, transcript_path, or GEMINI_SESSION_ID) and did not "
+        "match Claude (no --client claude and no valid UUID). "
         "Failing fast per NO-FALLBACKS axiom."
     )
 
 
 def get_session_file_path(
-    session_id: str, date: str | None = None, transcript_path: str | None = None
+    session_id: str,
+    date: str | None = None,
+    transcript_path: str | None = None,
+    client_type: str | None = None,
 ) -> Path:
     """Get session state file path (flat structure).
 
@@ -418,7 +449,7 @@ def get_session_file_path(
         crew_name=session_naming.resolve_crew_name(),
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
-    return get_session_status_dir(session_id, transcript_path) / filename
+    return get_session_status_dir(session_id, transcript_path, client_type) / filename
 
 
 def get_session_directory(
@@ -495,6 +526,7 @@ def get_gate_file_path(
     session_id: str,
     transcript_path: str | None = None,
     date: str | None = None,
+    client_type: str | None = None,
 ) -> Path:
     """Get the path for a gate context file.
 
@@ -518,7 +550,7 @@ def get_gate_file_path(
         return Path(env_path)
 
     # Anchor on the existing state file so all artefacts share one base name.
-    status_dir = get_session_status_dir(session_id, transcript_path)
+    status_dir = get_session_status_dir(session_id, transcript_path, client_type)
     existing = _find_existing_state_file(session_id, status_dir)
     if existing is not None:
         parsed = session_naming.parse_session_filename(existing.name)
@@ -540,6 +572,7 @@ def get_all_gate_file_paths(
     session_id: str,
     transcript_path: str | None = None,
     date: str | None = None,
+    client_type: str | None = None,
 ) -> dict[str, Path]:
     """Get paths for all gate context files.
 
@@ -547,7 +580,8 @@ def get_all_gate_file_paths(
         Dict mapping gate name to file path
     """
     return {
-        gate: get_gate_file_path(gate, session_id, transcript_path, date) for gate in GATE_NAMES
+        gate: get_gate_file_path(gate, session_id, transcript_path, date, client_type)
+        for gate in GATE_NAMES
     }
 
 

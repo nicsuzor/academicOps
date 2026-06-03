@@ -81,9 +81,15 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
     # Use precomputed short_hash from context
     short_hash = ctx.session_short_hash
-    hook_log_path = get_hook_log_path(ctx.session_id, transcript_path=ctx.transcript_path)
-    state_file_path = get_session_file_path(ctx.session_id, transcript_path=ctx.transcript_path)
-    status_dir = get_session_status_dir(ctx.session_id, transcript_path=ctx.transcript_path)
+    hook_log_path = get_hook_log_path(
+        ctx.session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
+    )
+    state_file_path = get_session_file_path(
+        ctx.session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
+    )
+    status_dir = get_session_status_dir(
+        ctx.session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
+    )
 
     # Fail-fast: ensure state file can be written
     if not state_file_path.exists():
@@ -164,7 +170,9 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     persist["AOPS_HOOK_LOG_PATH"] = str(hook_log_path)
 
     # 4. Persist gate file paths
-    gate_paths = get_all_gate_file_paths(ctx.session_id, transcript_path=ctx.transcript_path)
+    gate_paths = get_all_gate_file_paths(
+        ctx.session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
+    )
     for gate_name, gate_path in gate_paths.items():
         persist[f"AOPS_GATE_FILE_{gate_name.upper()}"] = str(gate_path)
 

@@ -115,6 +115,14 @@ class SessionState(BaseModel):
     ended_at: str | None = None
     version: str = "unknown"
 
+    # Harness routing — the explicit --client signal and transcript path, used
+    # to place this session's artefacts in the correct on-disk directory on
+    # every event. Required on surfaces with no SessionStart / env-file
+    # propagation (Antigravity/agy), where AOPS_SESSION_STATE_DIR is never set
+    # and each save() must re-resolve the dir from these values (aops-bc8e18c5).
+    client_type: str | None = None  # "claude" | "gemini" | "agy"
+    transcript_path: str | None = None
+
     # Global turn counter (increments on user prompt)
     global_turn_count: int = 0
 
@@ -142,7 +150,12 @@ class SessionState(BaseModel):
     session_did_work: bool = False
 
     @classmethod
-    def create(cls, session_id: str) -> SessionState:
+    def create(
+        cls,
+        session_id: str,
+        transcript_path: str | None = None,
+        client_type: str | None = None,
+    ) -> SessionState:
         """Create new session state."""
         now = datetime.now().astimezone().replace(microsecond=0)
 
@@ -165,6 +178,8 @@ class SessionState(BaseModel):
             started_at=now.isoformat(),
             session_type=stype,
             version=ver,
+            transcript_path=transcript_path,
+            client_type=client_type,
         )
 
         # Initialize gate states from gate config definitions
@@ -177,14 +192,33 @@ class SessionState(BaseModel):
         return instance
 
     @classmethod
-    def load(cls, session_id: str, retries: int = 3) -> SessionState:
+    def load(
+        cls,
+        session_id: str,
+        retries: int = 3,
+        transcript_path: str | None = None,
+        client_type: str | None = None,
+    ) -> SessionState:
         """Load session state from disk."""
         now = datetime.now()
         today = now.strftime("%Y%m%d")
         yesterday = (now - timedelta(days=1)).strftime("%Y%m%d")
 
         short_hash = get_session_short_hash(session_id)
-        status_dir = get_session_status_dir(session_id)
+        status_dir = get_session_status_dir(session_id, transcript_path, client_type)
+
+        def _resolved(instance: SessionState) -> SessionState:
+            """Refresh routing fields from the live call so save() places correctly.
+
+            The on-disk copy carries whatever was stored on the first save; the
+            live event's transcript_path/client_type are authoritative for where
+            this session's artefacts belong, so they win when provided.
+            """
+            if transcript_path is not None:
+                instance.transcript_path = transcript_path
+            if client_type is not None:
+                instance.client_type = client_type
+            return instance
 
         # Search for files matching this session_id on today or yesterday
         for date_compact in [today, yesterday]:
@@ -205,33 +239,40 @@ class SessionState(BaseModel):
                             text = path.read_text()
                             data = json.loads(text)
                             # Convert dict to Pydantic
-                            return cls.model_validate(data)
+                            return _resolved(cls.model_validate(data))
                         except json.JSONDecodeError as e:
                             if attempt < retries - 1:
                                 time.sleep(0.01)
                                 continue
                             print(f"WARNING: SessionState JSON decode error: {e}", file=sys.stderr)
                             # Return new state on failure to avoid blocking
-                            return cls.create(session_id)
+                            return cls.create(session_id, transcript_path, client_type)
                         except ValidationError as e:
                             print(f"WARNING: SessionState validation error: {e}", file=sys.stderr)
                             # Schema mismatch -> Create new (migration via reset)
-                            return cls.create(session_id)
+                            return cls.create(session_id, transcript_path, client_type)
                         except Exception as e:
                             print(f"WARNING: SessionState load error: {e}", file=sys.stderr)
                             # Unknown error -> Create new? Or retry?
                             if attempt < retries - 1:
                                 time.sleep(0.01)
                                 continue
-                            return cls.create(session_id)
+                            return cls.create(session_id, transcript_path, client_type)
 
         # Not found, create new
-        return cls.create(session_id)
+        return cls.create(session_id, transcript_path, client_type)
 
     def save(self) -> None:
         """Save session state to disk."""
-        # Ensure directory exists
-        path = get_session_file_path(self.session_id, self.date)
+        # Ensure directory exists. Pass the harness routing signals so the
+        # state file lands in this session's real dir even when there is no
+        # AOPS_SESSION_STATE_DIR (Antigravity/agy) — never the Claude fallback.
+        path = get_session_file_path(
+            self.session_id,
+            self.date,
+            transcript_path=self.transcript_path,
+            client_type=self.client_type,
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
 
         fd, temp_path_str = tempfile.mkstemp(

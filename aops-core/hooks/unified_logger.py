@@ -52,7 +52,9 @@ def log_hook_event(
     if date is None:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
-    log_path = get_hook_log_path(session_id, transcript_path=ctx.transcript_path, date=date)
+    log_path = get_hook_log_path(
+        session_id, transcript_path=ctx.transcript_path, date=date, client_type=ctx.client_type
+    )
 
     # Process metrics — best-effort (psutil may fail in sandboxed envs)
     try:
