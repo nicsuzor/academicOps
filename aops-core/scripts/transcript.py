@@ -1052,6 +1052,20 @@ def _infer_project(
 
     # Handle Antigravity brain directories
     if session_path.is_dir():
+        # Authoritative source first: agy maps each conversation UUID (the brain
+        # dir name) to its workspace via history.jsonl / last_conversations.json.
+        # The new antigravity-cli format carries no "Working directory:" line in
+        # its transcript, so content-scraping below would otherwise fall back to
+        # the bare "antigravity" default and lose the real project.
+        try:
+            from lib.session_reader import _load_agy_workspace_map
+
+            workspace = _load_agy_workspace_map().get(session_path.name)
+            if workspace:
+                return _resolve_project_key(Path(workspace).name)
+        except Exception:  # noqa: BLE001 — never let project inference hard-fail
+            pass
+
         # Try to extract working dir from brain content
         if entries:
             working_dir = extract_working_dir_from_entries(entries)

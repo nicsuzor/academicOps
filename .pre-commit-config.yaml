@@ -57,8 +57,11 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
-  # Framework integrity checks (index wikilinks, skill entries, workflow length)
-  # Consolidates check-workflow-length + new index integrity validation
+  # Framework integrity checks (index wikilinks, skill entries, workflow length,
+  # context-map coverage). Consolidates check-workflow-length + index integrity.
+  # The context-map.json / specs/ triggers fire the context-map coverage check
+  # when a spec is added or the map changes, so a new spec cannot merge without
+  # being indexed or knowingly excluded (#1364).
   - repo: local
     hooks:
       - id: check-framework-integrity
@@ -66,7 +69,7 @@ repos:
         entry: uv run python scripts/check_framework_integrity.py
         language: system
         pass_filenames: false
-        files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$'
+        files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$|^specs/.*\.md$|context-map\.json$'
 
       # Auto-heal Gemini-form MCP tool names (mcp_pkb_get_task) back to
       # canonical Claude form (mcp__pkb__get_task). Inverse of the transform

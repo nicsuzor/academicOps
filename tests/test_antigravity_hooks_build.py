@@ -101,8 +101,8 @@ class TestAntigravityHooksBuildTransform:
         found = unsupported & set(transform["hooks"].keys())
         assert not found, f"Unsupported agy events found in output: {found}"
 
-    def test_plugin_root_var_replaced_with_extension_path(self, transform):
-        """All commands must use ${extensionPath} not ${CLAUDE_PLUGIN_ROOT}."""
+    def test_plugin_root_var_replaced_with_shell_var(self, transform):
+        """All commands must use hardcoded $HOME path not ${CLAUDE_PLUGIN_ROOT}."""
         for event, hook_entries in transform["hooks"].items():
             for entry in hook_entries:
                 for hook in entry.get("hooks", []):
@@ -110,18 +110,18 @@ class TestAntigravityHooksBuildTransform:
                     assert "${CLAUDE_PLUGIN_ROOT}" not in cmd, (
                         f"${'{CLAUDE_PLUGIN_ROOT}'} not replaced in {event} hook: {cmd}"
                     )
-                    assert "${extensionPath}" in cmd, (
-                        f"${'{extensionPath}'} missing in {event} hook: {cmd}"
+                    assert "$HOME/.gemini/antigravity-cli/plugins/aops-core" in cmd, (
+                        f"Expected agy install path missing in {event} hook: {cmd}"
                     )
 
-    def test_client_flag_is_claude(self, transform):
-        """agy hooks must use --client claude (agy uses Claude's JSON payload format)."""
+    def test_client_flag_is_agy(self, transform):
+        """agy hooks must use --client agy."""
         for event, hook_entries in transform["hooks"].items():
             for entry in hook_entries:
                 for hook in entry.get("hooks", []):
                     cmd = hook.get("command", "")
-                    assert "--client claude" in cmd, (
-                        f"Expected --client claude in {event} hook command: {cmd}"
+                    assert "--client agy" in cmd, (
+                        f"Expected --client agy in {event} hook command: {cmd}"
                     )
 
     def test_disabled_entries_not_included(self, build_mod, tmp_path):

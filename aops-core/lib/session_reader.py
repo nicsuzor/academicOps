@@ -1260,8 +1260,21 @@ def find_sessions(
                 if not brain_dir.is_dir():
                     continue
 
+                # Older antigravity/IDE sessions store top-level markdown
+                # artifacts; the newer antigravity-cli flavour stores a
+                # structured transcript under .system_generated/logs/ and no
+                # top-level markdown. Accept either as evidence of a session.
                 md_files = list(brain_dir.glob("*.md"))
-                if not md_files:
+                logs_dir = brain_dir / ".system_generated" / "logs"
+                transcript_files = [
+                    p
+                    for p in (
+                        logs_dir / "transcript_full.jsonl",
+                        logs_dir / "transcript.jsonl",
+                    )
+                    if p.exists()
+                ]
+                if not md_files and not transcript_files:
                     continue
 
                 full_uuid = brain_dir.name
@@ -1276,7 +1289,10 @@ def find_sessions(
                 if project and project.lower() not in project_name.lower():
                     continue
 
-                mtime = max(datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files)
+                mtime = max(
+                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
+                    for f in (md_files + transcript_files)
+                )
 
                 if since and mtime < since:
                     continue

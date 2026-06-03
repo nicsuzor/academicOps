@@ -1,100 +1,162 @@
 name: Build and Deploy
 
-# ==============================================================================
-# Slim cross-repo build dispatcher.
-#
-# WHAT THIS WORKFLOW DOES
-#   Fires a `repository_dispatch` at nicsuzor/aops, which owns the actual
-#   build and release. This file does NOT build anything itself — see
-#   .github/aops-dist/build.yml for the canonical reference copy of the
-#   real build workflow (the live copy lives at
-#   nicsuzor/aops/.github/workflows/build.yml).
-#
-# WHY IT'S SPLIT
-#   academicOps used to do the whole build and push artifacts cross-repo,
-#   which required a broad PAT. Moving the build to nicsuzor/aops means:
-#     - mem + academicOps reads on the build side are unauthenticated (public)
-#     - the only write target is aops itself, so its own GITHUB_TOKEN suffices
-#     - the only PAT use *anywhere* is the dispatch POST below
-#
-# REQUIRED SECRET
-#   AOPS_DIST_PAT — used solely to POST repository_dispatch on nicsuzor/aops.
-#     Fine-grained PAT, resource owner nicsuzor, repository nicsuzor/aops:
-#       - Contents: Read and write   (governs repository_dispatch)
-#       - Metadata: Read             (implied baseline)
-#     Or classic PAT with `repo` scope (per GitHub's docs for /dispatches).
-#     Or a GitHub App installed on nicsuzor/aops with Contents: Write +
-#     actions/create-github-app-token to mint the token in-workflow.
-#
-# DOWNSTREAM CONTRACT — see also nicsuzor/aops `.github/workflows/build.yml`
-#   event_type:    build-aops-extension
-#   client_payload:
-#     ref:            ref to build (tag/branch/sha) — academicOps source
-#     release_type:   "stable" or "testing"
-#     source_sha:     informational; this run's commit
-#     source_run_id:  informational; this run's id
-# ==============================================================================
-
 on:
   push:
-    tags: ['v*']           # stable releases on tag push
+    tags: ['v*']
   release:
-    types: [published]     # release-please publishes a release
-  workflow_dispatch:
-    inputs:
-      prerelease:
-        description: 'Cut a pre-release (testing) build instead of a stable one'
-        required: false
-        type: boolean
-        default: false
+    types: [published]
 
 concurrency:
   group: build-deploy
   cancel-in-progress: true
 
 jobs:
-  dispatch:
-    timeout-minutes: 45
-    name: Dispatch build to nicsuzor/aops
+  download-pkb-binaries:
+    name: Fetch pkb binary (${{ matrix.artifact_label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact_label: x86_64-linux
+            output_name: pkb-linux-x86_64
+          - artifact_label: aarch64-darwin
+            output_name: pkb-macos-aarch64
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve dispatch context (ref + release type)
+      - name: Resolve latest mem release with assets
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh api repos/nicsuzor/mem/releases --jq '
+            [.[] | select(.assets | length > 0)] | .[0].tag_name // ""
+          ')
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "::error::No nicsuzor/mem release found with binary assets"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download ${{ matrix.artifact_label }} archive from mem release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
+          gh release download "$TAG" --repo nicsuzor/mem --pattern "$ARCHIVE"
+          mkdir -p output
+          tar xzf "$ARCHIVE" -C output
+          chmod +x output/pkb
+
+      - name: Upload pkb binary as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output_name }}
+          path: output/pkb
+          if-no-files-found: error
+
+  build-and-deploy:
+    name: Build extensions and publish release assets
+    needs: download-pkb-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve build context
         id: ctx
         run: |
-          # Map the trigger event to the {ref, release_type} we'll send to aops.
-          # Tag pushes and release events always cut stable; workflow_dispatch
-          # honours the prerelease input toggle.
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             REF="${{ github.ref_name }}"
             RTYPE="stable"
-            REASON="tag push"
           elif [[ "${{ github.event_name }}" == "release" ]]; then
             REF="${{ github.event.release.tag_name }}"
             RTYPE="stable"
-            REASON="release published"
-          elif [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
-            REF="${{ github.sha }}"
-            RTYPE="testing"
-            REASON="manual prerelease"
           else
             REF="${{ github.sha }}"
             RTYPE="stable"
-            REASON="manual stable"
           fi
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Dispatch context::ref=$REF type=$RTYPE reason=$REASON"
 
-      - name: POST repository_dispatch → nicsuzor/aops [build-aops-extension]
-        env:
-          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ctx.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Compute version
+        id: version
         run: |
-          # The receiving workflow lives at:
-          #   https://github.com/nicsuzor/aops/blob/main/.github/workflows/build.yml
-          gh api repos/nicsuzor/aops/dispatches \
-            -f event_type=build-aops-extension \
-            -f client_payload[ref]='${{ steps.ctx.outputs.ref }}' \
-            -f client_payload[release_type]='${{ steps.ctx.outputs.release_type }}' \
-            -f client_payload[source_sha]='${{ github.sha }}' \
-            -f client_payload[source_run_id]='${{ github.run_id }}'
-          echo "::notice::Dispatched build-aops-extension to nicsuzor/aops (ref=${{ steps.ctx.outputs.ref }}, type=${{ steps.ctx.outputs.release_type }}). Watch: https://github.com/nicsuzor/aops/actions"
+          chmod +x scripts/version.py
+          BASE_VERSION=$(uv run python scripts/version.py --get)
+          if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
+            if [[ "$BASE_VERSION" == *-dev.* ]]; then
+              VERSION="${BASE_VERSION}.${{ github.run_number }}"
+            else
+              CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
+              VERSION="${CLEAN_VERSION}-dev.${{ github.run_number }}"
+            fi
+          else
+            VERSION="$BASE_VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download pkb binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: pkb-binaries/
+
+      - name: Build per-platform dist artifacts
+        env:
+          ACA_DATA: ${{ github.workspace }}
+        run: |
+          VERSION_FLAG=""
+          if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
+            VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
+          fi
+
+          for platform_dir in pkb-binaries/pkb-*; do
+            ARTIFACT_NAME=$(basename "$platform_dir")
+            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-}"
+            uv run python scripts/build.py \
+              --pkb-binary "$platform_dir/pkb" \
+              --target-platform "$PLATFORM_LABEL" \
+              $VERSION_FLAG
+          done
+          
+          # Generic fallback
+          uv run python scripts/build.py $VERSION_FLAG
+
+      - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
+        if: github.event_name == 'release' || github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=""
+          [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
+
+          ARCHIVES=""
+          for f in dist/*.tar.gz; do
+            [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
+          done
+
+          if [ -z "$ARCHIVES" ]; then
+            echo "::error::No archives in dist/"
+            exit 1
+          fi
+
+          gh release upload "v$VERSION" $ARCHIVES --clobber || \
+          gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES

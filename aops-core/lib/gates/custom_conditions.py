@@ -137,14 +137,18 @@ def check_custom_condition(
         # structured handover (aops-16a15a05).
         if not session_state.session_did_work:
             return False
-        return os.environ.get("HANDOVER_GATE_MODE", "warn") in ("block", "deny")
+        from hooks.gate_config import HANDOVER_GATE_MODE
+
+        return HANDOVER_GATE_MODE in ("block", "deny")
 
     if name == "is_handover_warn_mode":
         # Handover gate policy: active only when HANDOVER_GATE_MODE is warn
         # AND the session did real work. Same read-only exemption as block mode.
         if not session_state.session_did_work:
             return False
-        return os.environ.get("HANDOVER_GATE_MODE", "warn") == "warn"
+        from hooks.gate_config import HANDOVER_GATE_MODE
+
+        return HANDOVER_GATE_MODE == "warn"
 
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)

@@ -157,19 +157,11 @@ def _is_gemini_session(session_id: str | None, transcript_path: str | None = Non
     if os.environ.get("GEMINI_SESSION_ID"):
         return True
 
-    if session_id is not None and session_id.startswith("gemini-"):
-        return True
-
     if transcript_path is not None and "/.gemini/" in transcript_path:
         return True
 
-    # Polecat worker fallback: AOPS_SESSION_STATE_DIR is set by router at SessionStart
-    # and persists across the session. Workers may not have transcript_path in transcript_path
-    # but will have this env var pointing to ~/.gemini/tmp/<hash>/ for Gemini sessions.
-    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-    if state_dir and "/.gemini/" in state_dir:
-        return True
-
+    # NO FALLBACKS: We no longer heuristically match 'gemini-' session IDs or
+    # polecat state directories. A session must definitively declare itself.
     return False
 
 
@@ -380,14 +372,26 @@ def get_session_status_dir(
             "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
         )
 
-    # 3. Claude Code session (or unknown) - derive path from cwd
-    # Same logic as session_env_setup.sh: ~/.claude/projects/-<cwd-with-dashes>/
-    project_folder = get_claude_project_folder()
-    if _is_polecat_sandbox():
-        return _polecat_claude_state_dir(project_folder, "state")
-    status_dir = Path.home() / ".claude" / "projects" / project_folder
-    status_dir.mkdir(parents=True, exist_ok=True)
-    return status_dir
+    # 3. Claude Code session
+    import re
+
+    if session_id and re.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id
+    ):
+        project_folder = get_claude_project_folder()
+        if _is_polecat_sandbox():
+            return _polecat_claude_state_dir(project_folder, "state")
+        status_dir = Path.home() / ".claude" / "projects" / project_folder
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+
+    # 4. Fail loud (NO FALLBACKS)
+    raise ValueError(
+        f"Could not definitively determine session status directory for session_id '{session_id}'. "
+        "Session did not match Gemini profile (no transcript_path or GEMINI_SESSION_ID) "
+        "and did not match Claude profile (no valid UUID). "
+        "Failing fast per NO-FALLBACKS axiom."
+    )
 
 
 def get_session_file_path(

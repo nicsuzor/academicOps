@@ -6,4 +6,4 @@ description: |
   Short user-facing message when QA gate blocks exit.
 ---
 
-✕ QA verification required before exit.
+🧪 QA verification required before exit.

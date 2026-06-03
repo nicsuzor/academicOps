@@ -26,6 +26,16 @@
       },
       "source": "./aops-tools-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-cowork",
+      "description": "AcademicOps variant for Cowork - includes native task list synchronization",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-cowork",
+      "category": "productivity"
     }
   ]
 }

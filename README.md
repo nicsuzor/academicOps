@@ -213,24 +213,22 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 
 ## Installation
 
-Distribution repository: https://github.com/nicsuzor/aops
+Distribution repository: https://github.com/nicsuzor/academicOps
+
+**Requirements**:
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) or [Gemini CLI](https://github.com/google/gemini-cli)
+- GitHub CLI (`gh`) for artifact retrieval
+- Docker (optional, for sandboxing/testing)
+
+**Quick Install**:
 
 ```bash
-# Set your knowledge base directory
-export ACA_DATA="$HOME/brain"
+command claude plugin marketplace add nicsuzor/academicOps
 ```
 
-**Claude Code**:
-
+*(For Gemini users)*:
 ```bash
-command claude plugin marketplace add nicsuzor/aops
-```
-
-**Gemini CLI**:
-
-```bash
-(command gemini extensions uninstall aops-core || echo not installed) && \
-  command gemini extensions install git@github.com:nicsuzor/aops.git --consent --auto-update --pre-release
+  command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
 ```
 
 ## Configuration

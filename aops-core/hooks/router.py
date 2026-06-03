@@ -290,7 +290,7 @@ class HookRouter:
             hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
 
         # 2. Determine Session ID
-        session_id = raw_input.get("session_id")
+        session_id = raw_input.get("session_id") or raw_input.get("conversationId")
         if not session_id:
             session_id = self.session_data.get("session_id") or os.environ.get("AOPS_SESSION_ID")
 
@@ -320,7 +320,11 @@ class HookRouter:
             subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
 
         # 4. Transcript Path / Temp Root
-        transcript_path = raw_input.get("transcript_path")
+        transcript_path = raw_input.get("transcript_path") or raw_input.get("transcriptPath")
+
+        artifact_dir = raw_input.get("artifact_directory_path") or raw_input.get(
+            "artifactDirectoryPath"
+        )
 
         # Request Tracing (aops-32068a2e)
         trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
@@ -407,7 +411,11 @@ class HookRouter:
         processed_fields = [
             "hook_event_name",
             "session_id",
+            "conversationId",
             "transcript_path",
+            "transcriptPath",
+            "artifact_directory_path",
+            "artifactDirectoryPath",
             "trace_id",
             "tool_name",
             "tool_input",
@@ -957,7 +965,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Universal Hook Router")
     parser.add_argument(
-        "--client", choices=["gemini", "claude"], help="Client type (gemini or claude)"
+        "--client", choices=["gemini", "claude", "agy"], help="Client type (gemini, claude, or agy)"
     )
     parser.add_argument(
         "event", nargs="?", help="Event name (required for Gemini if not in payload)"
@@ -993,7 +1001,7 @@ def main():
     result = router.execute_hooks(ctx)
 
     # Output (JSON conversion happens only here)
-    if client_type == "gemini":
+    if client_type in ("gemini", "agy"):
         output = router.output_for_gemini(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
     else:

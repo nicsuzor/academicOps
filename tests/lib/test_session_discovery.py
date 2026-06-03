@@ -298,3 +298,42 @@ def test_find_sessions_raw_cowork(monkeypatch, tmp_path):
     assert len(sessions) == 1
     assert sessions[0].session_id == "99999999"
     assert sessions[0].project == "cowork"
+
+
+def test_find_sessions_antigravity_cli_new_format(monkeypatch, tmp_path):
+    """New antigravity-cli brain dirs have no top-level markdown — the whole
+    conversation lives under .system_generated/logs/. Discovery must find them
+    by the structured transcript jsonl, not require a .md file (which used to
+    silently drop every new-format session).
+    """
+    from lib.session_reader import find_sessions
+
+    fake_home = tmp_path / "home"
+    brain = fake_home / ".gemini" / "antigravity-cli" / "brain"
+    logs = brain / "60e16c42-a07a-4c65-9ed7-f7362162bc7e" / ".system_generated" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "transcript_full.jsonl").write_text(
+        json.dumps(
+            {
+                "step_index": 0,
+                "source": "USER_EXPLICIT",
+                "type": "USER_INPUT",
+                "status": "DONE",
+                "created_at": "2026-06-03T04:47:47Z",
+                "content": "<USER_REQUEST>\nhi\n</USER_REQUEST>",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(fake_home))
+
+    sessions = find_sessions(
+        claude_projects_dir=tmp_path / "claude_projects",
+        include_gemini=False,
+        include_antigravity=True,
+        include_cowork=False,
+    )
+
+    ag = [s for s in sessions if s.source == "antigravity"]
+    assert len(ag) == 1
+    assert ag[0].session_id == "60e16c42"

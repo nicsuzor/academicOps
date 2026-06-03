@@ -378,6 +378,12 @@ def infer_session_origin_from_path(
             "crew": None,
         }
 
+    # Antigravity CLI (Google's agentic CLI, Gemini-backed). Its brain dirs
+    # live at ~/.gemini/antigravity{,-cli}/brain/<uuid>/ — distinct surface
+    # from a bare ``gemini-cli`` terminal session, so don't collapse them.
+    if "antigravity" in path_str:
+        return {"surface": "antigravity-cli", "client": "antigravity-cli", "crew": None}
+
     # Gemini CLI (incl. ~/.gemini/tmp/.../chats/session-*.json)
     if ".gemini" in path_str or "/gemini/" in path_str:
         return {"surface": "gemini-cli", "client": "gemini-cli", "crew": None}
