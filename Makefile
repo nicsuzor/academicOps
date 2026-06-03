@@ -256,10 +256,6 @@ install-agy:
 	fi
 	@echo "  Target: $(AGY_PLUGIN_DIR)"
 	@echo "✓ Antigravity CLI plugin installed"
-	@if [ -f "$(HOME)/.gemini/config/mcp_config.json" ] && [ ! -s "$(HOME)/.gemini/config/mcp_config.json" ]; then \
-		echo '{}' > "$(HOME)/.gemini/config/mcp_config.json"; \
-		echo "  ✓ Fixed empty mcp_config.json"; \
-	fi
 
 # Optional: install into Windows-side Claude/Gemini when invoked from WSL.
 # Silently no-ops outside WSL or when no Windows binaries are found.
