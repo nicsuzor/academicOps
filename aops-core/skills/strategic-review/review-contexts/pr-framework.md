@@ -39,7 +39,7 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 - Negative space: what edge cases in framework behavior is this not handling?
 - Systems view: how does this interact with the hook system, the gate system, the skill discovery system?
 - Does this increase or decrease framework complexity? Is the complexity earned?
-- **Pyramid placement** (enforcement map cost ladder, repo-level): did the PR escalate to a more expensive level (L3+) when a cheaper level (L1 propagation to a specific surface) would have sufficed? Most over-deference recurrences are L1 propagation failures, not L3 mechanism gaps.
+- **Pyramid placement** (enforcement map, repo-level): did the PR escalate to a more expensive level (L3+) when a cheaper level (L1 propagation to a specific surface) would have sufficed? Most over-deference recurrences are L1 propagation failures, not L3 mechanism gaps.
 
 **Marsha (when commissioned) must:**
 

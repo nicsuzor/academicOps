@@ -381,7 +381,7 @@ A focus changes **what sweep attends to first, not how it judges.**
 
 - **Attention / ordering** (a focus moves this): investigate the focal issue first — read it, its comments, and any linked forensic reports / transcripts — then pull every open issue that plausibly shares its root cause to the **front** of the batch so the cluster is triaged together.
 - **Coverage** (a focus does NOT shrink this): after triaging the focal cluster, pull and classify the normal undirected batch. A directed sweep is _focus-first_, not _focus-only_. The cycle plan (step 3) MUST contain a general-batch section with the count of non-focal issues reviewed — an empty or absent general section is a failed directed sweep, not a fast one. If the focal cluster exhausts the batch budget, do not silently stop: name the exact cursor range left unreviewed (the oldest-untriaged issue numbers not reached) so the next cycle resumes there.
-- **Judgment standard** (a focus does NOT relax this): the detached cost-ladder (§2b) and the escalation evidence bar are unchanged. Being _directed to prioritise_ an issue is not the same as importing the recency bias `recusal` exists to defeat — that bias is about adopting an incident's _pre-authored legislation_ verbatim, not about which issue you look at first. Distinguish two different user inputs: a **focus** ("investigate this blocker first") only sets attention; a **directed change** ("change rule X this way") substitutes for the recurrence bar _for that specific change_ (per §2b). A focus is never, by itself, a directed change. So any add-or-escalate proposal arising from the focal issue MUST show its evidence inline in the cycle plan — the ≥3 recurrence links, or the explicit user directive quoted — and must NOT cite the user's focus, or the focal incident's salience, as that evidence. If you cannot show ≥3 recurrences or a directive, the disposition is `defer` with `needs-more-recurrences`, exactly as in an undirected sweep. A clear bug fix within an existing surface at the same tier still dispatches on a single incident.
+- **Judgment standard** (a focus does NOT relax this): the detached pyramid-position review (§2b) and the escalation evidence bar are unchanged. Being _directed to prioritise_ an issue is not the same as importing the recency bias `recusal` exists to defeat — that bias is about adopting an incident's _pre-authored legislation_ verbatim, not about which issue you look at first. Distinguish two different user inputs: a **focus** ("investigate this blocker first") only sets attention; a **directed change** ("change rule X this way") substitutes for the recurrence bar _for that specific change_ (per §2b). A focus is never, by itself, a directed change. So any add-or-escalate proposal arising from the focal issue MUST show its evidence inline in the cycle plan — the ≥3 recurrence links, or the explicit user directive quoted — and must NOT cite the user's focus, or the focal incident's salience, as that evidence. If you cannot show ≥3 recurrences or a directive, the disposition is `defer` with `needs-more-recurrences`, exactly as in an undirected sweep. A clear bug fix within an existing surface at the same tier still dispatches on a single incident.
 
 The point: a user fighting a live blocker can aim the sweep at it without the sweep abandoning its backlog scan or lowering its bar for what counts as a justified framework change.
 
@@ -436,7 +436,7 @@ mcp__pkb__get_task(id="epic-a0523a25")  # halt if not in_progress
 
 For each issue: read body + ≤ 3 recent comments. Apply rubric. Group `fix-epic` candidates by root cause (cap 5 issues per proposed epic). Note one-line rationale per issue.
 
-### 2b. Cost-ladder review for **enforcement-escalation** candidates (`recusal` — sweep's legislative role)
+### 2b. Pyramid-position review for **enforcement-escalation** candidates (`recusal` — sweep's legislative role)
 
 This step runs only for issues whose remediation would **add or escalate** a
 rule — a new gate, a new axiom, a tier-bump (e.g. L1→L3), a new hook firing
@@ -445,8 +445,8 @@ tier (correcting wrong logic or wrong prose in an existing skill, agent,
 hook, or gate) follow the normal `fix-epic` / `single-task` path — they do
 not require this section, and a single forensic incident is sufficient
 evidence. **User-directed architectural changes** do NOT bypass this section —
-cost-ladder reasoning still applies to establish where the fix lands on
-the enforcement ladder. Only the ≥3 recurrence requirement is waived;
+pyramid-position reasoning still applies to establish where the fix lands on
+the enforcement pyramid. Only the ≥3 recurrence requirement is waived;
 the user's directive substitutes for that evidence.
 
 For genuine add-or-escalate proposals, run this sequence before assigning a
@@ -464,7 +464,7 @@ only mode allowed to author it.
 6. **Cite the row.** The disposition proposal must name either the row of the enforcement map (repo-level) the fix propagates from, or the new row it would add. "Add a gate" is not a disposition; "L1 propagation into agents/marsha.md lines XX–YY, citing existing axiom `halt-on-failure`" is.
 7. **No-change is a valid outcome.** If the rule exists at the right tier and the failure was a single agent slip, the disposition is `close-as-stale` (or `consolidate-duplicate` to track volume) — not a framework change. Recurrence count is the evidence base; one slip is not.
 
-The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the cost-ladder reasoning visible. Bug-fix dispositions go through the normal user gate without this cost-ladder rationale — they require only the bug description and corrective scope. User-directed dispositions still include cost-ladder reasoning (citing the user's directive as the evidence base in place of recurrence links).
+The output of this step feeds the disposition decision in the rubric below (most often `fix-epic` for L1 propagation work, `defer` for "needs more recurrences," or `close-as-stale` for "no change warranted"). Surface every add-or-escalate proposal to the user gate in step 3 with the pyramid-position reasoning visible. Bug-fix dispositions go through the normal user gate without this pyramid-position rationale — they require only the bug description and corrective scope. User-directed dispositions still include pyramid-position reasoning (citing the user's directive as the evidence base in place of recurrence links).
 
 ### 3. Present cycle plan and gate
 
@@ -532,19 +532,19 @@ Loop stops only when ALL open issues are either: < 7 days old, stamped `triaged-
 
 ### Sweep anti-patterns
 
-| Anti-pattern                                                         | What to do instead                                                                                                                                                  |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authoring "surface for sign-off" or "review before promoting" prose  | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                               |
-| Skipping user-confirmation gate                                      | Always present and wait                                                                                                                                             |
-| Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                                                                                                              |
-| Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                                                                                                     |
-| Inventing a sixth disposition                                        | Surface under "Needs human triage"                                                                                                                                  |
-| Storing numeric cursor in task body                                  | Labels are the cursor                                                                                                                                               |
-| Parenting fix-epics under `epic-a0523a25`                            | Parent under relevant component epic                                                                                                                                |
-| Bundling > 5 issues into one fix-epic                                | Split or surface as human-triage                                                                                                                                    |
-| Re-running cycle without halting                                     | Halt; re-invoke for next cycle                                                                                                                                      |
-| Adopting a "suggested axiom" from an incident report verbatim        | Strip per `recusal`; redo the cost-ladder reasoning from the detached vantage                                                                                       |
-| Proposing escalation from one incident                               | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences`                                                                                    |
-| Deferring a clear bug fix to wait for more recurrences               | ≥3 rule is for **add-or-escalate** only. A clear bug in an existing surface at the same tier dispatches as `fix-epic` on a single incident                          |
-| Treating a user-directed architectural change as escalation          | User directive substitutes for recurrence count. Dispatch as `fix-epic` with the user's directive cited; cost-ladder reasoning still applies to where the fix lands |
-| "Add a gate" / "add an axiom" without naming the ENFORCEMENT-MAP row | Cite the specific row the fix propagates from or would add; default L0/L1                                                                                           |
+| Anti-pattern                                                         | What to do instead                                                                                                                                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Authoring "surface for sign-off" or "review before promoting" prose  | Apply the Trust the Worker doctrine ([[../aops/references/authoring-discipline]]). State intent + AC, no mid-stream approval theatre.                                    |
+| Skipping user-confirmation gate                                      | Always present and wait                                                                                                                                                  |
+| Stamping `triaged-epic` before user `y`                              | All stamps live after gate returns `y`                                                                                                                                   |
+| Invoking `/supervisor` inline                                        | Leave fix-epics `queued`; user dispatches later                                                                                                                          |
+| Inventing a sixth disposition                                        | Surface under "Needs human triage"                                                                                                                                       |
+| Storing numeric cursor in task body                                  | Labels are the cursor                                                                                                                                                    |
+| Parenting fix-epics under `epic-a0523a25`                            | Parent under relevant component epic                                                                                                                                     |
+| Bundling > 5 issues into one fix-epic                                | Split or surface as human-triage                                                                                                                                         |
+| Re-running cycle without halting                                     | Halt; re-invoke for next cycle                                                                                                                                           |
+| Adopting a "suggested axiom" from an incident report verbatim        | Strip per `recusal`; redo the pyramid-position reasoning from the detached vantage                                                                                       |
+| Proposing escalation from one incident                               | Need ≥3 cited recurrences (CBA); otherwise `defer` with `needs-more-recurrences`                                                                                         |
+| Deferring a clear bug fix to wait for more recurrences               | ≥3 rule is for **add-or-escalate** only. A clear bug in an existing surface at the same tier dispatches as `fix-epic` on a single incident                               |
+| Treating a user-directed architectural change as escalation          | User directive substitutes for recurrence count. Dispatch as `fix-epic` with the user's directive cited; pyramid-position reasoning still applies to where the fix lands |
+| "Add a gate" / "add an axiom" without naming the ENFORCEMENT-MAP row | Cite the specific row the fix propagates from or would add; default L0/L1                                                                                                |
