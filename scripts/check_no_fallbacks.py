@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import sys
 from collections import defaultdict
@@ -382,13 +383,17 @@ def _default_targets() -> list[Path]:
         base = root / scope_dir
         if not base.is_dir():
             continue
-        for candidate in sorted(base.rglob("*")):
-            if not candidate.is_file():
-                continue
-            rel = candidate.resolve().relative_to(root).as_posix()
-            if _in_scope(rel):
-                targets.append(candidate)
-    return targets
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_PARTS]
+            for filename in filenames:
+                candidate = Path(dirpath) / filename
+                try:
+                    rel = candidate.resolve().relative_to(root).as_posix()
+                except ValueError:
+                    continue
+                if _in_scope(rel):
+                    targets.append(candidate)
+    return sorted(targets)
 
 
 # ---------------------------------------------------------------------------
@@ -421,8 +426,10 @@ def _load_baseline() -> dict[str, dict[str, int]]:
     except (OSError, json.JSONDecodeError) as e:
         print(f"Warning: could not read baseline {_BASELINE_PATH}: {e}", file=sys.stderr)
         return {}
+    if not isinstance(data, dict):
+        return {}
     # Absent "baseline" key genuinely means "no grandfathered sites".
-    return data["baseline"] if "baseline" in data else {}
+    return data.get("baseline", {})
 
 
 def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]]) -> list[dict]:
@@ -433,8 +440,8 @@ def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]])
     for v in violations:
         rel = _rel_key(Path(v["file"]))
         pattern = v["pattern"]
-        file_baseline = baseline.get(rel)  # None if the file has no grandfathered sites
-        allowed = file_baseline.get(pattern, 0) if file_baseline else 0
+        file_baseline = baseline.get(rel) or {}
+        allowed = file_baseline.get(pattern, 0)
         seen[(rel, pattern)] += 1
         if seen[(rel, pattern)] > allowed:
             surviving.append(v)
