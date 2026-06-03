@@ -308,10 +308,7 @@ class TestInferSessionOriginFromPath(unittest.TestCase):
         even though they live under ~/.gemini/."""
         from pathlib import Path
 
-        p = Path(
-            "/home/nic/.gemini/antigravity-cli/brain/"
-            "60e16c42-a07a-4c65-9ed7-f7362162bc7e"
-        )
+        p = Path("/home/nic/.gemini/antigravity-cli/brain/60e16c42-a07a-4c65-9ed7-f7362162bc7e")
         origin = session_naming.infer_session_origin_from_path(p, provider="gemini")
         self.assertEqual(origin["surface"], "antigravity-cli")
         self.assertEqual(origin["client"], "antigravity-cli")

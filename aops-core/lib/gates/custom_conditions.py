@@ -138,6 +138,7 @@ def check_custom_condition(
         if not session_state.session_did_work:
             return False
         from hooks.gate_config import HANDOVER_GATE_MODE
+
         return HANDOVER_GATE_MODE in ("block", "deny")
 
     if name == "is_handover_warn_mode":
@@ -146,6 +147,7 @@ def check_custom_condition(
         if not session_state.session_did_work:
             return False
         from hooks.gate_config import HANDOVER_GATE_MODE
+
         return HANDOVER_GATE_MODE == "warn"
 
     if name == "has_bound_task":

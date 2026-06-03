@@ -15,10 +15,10 @@ tags: [enforcement, reference, mechanisms]
 > — a useful frame for thinking about _when_ a mechanism fires. **No
 > blocking rule cites L0–L11 or the base/middle/tip pyramid.** The
 > operative catalogue for add/escalate/remove decisions is the L0–L7
-> cost ladder in **`specs/ENFORCEMENT-MAP.md`**, which `rbg` blocks on
+> regulatory pyramid in **`specs/ENFORCEMENT-MAP.md`**, which `rbg` blocks on
 > via P#65. Reach for this file when you need the per-mechanism schema
 > details (trigger, location, scope, status); reach for the operative
-> state file when you need the current cost-ladder ranking.
+> state file when you need the current pyramid ranking.
 
 This is the per-mechanism detail catalogue referenced from `specs/enforcement/enforcement.md` §6. For the design statement — why enforcement is shaped the way it is, how the pipeline and pyramid views relate, and how the evidence loop closes — read `specs/enforcement/enforcement.md` first. For the operative state catalogue keyed by mechanism × rule, read `specs/ENFORCEMENT-MAP.md`. For the per-gate runtime catalogue (5-question template: what / where / how-configured / how-verify / how-debug for each session-time gate), see [`specs/GATES.md`](../../specs/GATES.md).
 
@@ -615,7 +615,7 @@ Mechanisms below are aspirational, partial, or cannot be fully verified from the
 
 **Related**
 
-- **Operative state catalogue (SSoT)**: `specs/ENFORCEMENT-MAP.md` — L0–L7 cost ladder + every mechanism row. `rbg` blocks on it (P#65).
+- **Operative state catalogue (SSoT)**: `specs/ENFORCEMENT-MAP.md` — L0–L7 regulatory pyramid + every mechanism row. `rbg` blocks on it (P#65).
 - `specs/enforcement/enforcement.md` — design statement (read first).
 - `specs/enforcement/enforcement-map.md` — redirect stub (superseded 2026-05-20 by `specs/ENFORCEMENT-MAP.md`).
 - `specs/enforcement/ultra-vires-enforcer.md` — enforcer agent + gate internal design.

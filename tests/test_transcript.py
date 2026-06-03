@@ -508,7 +508,7 @@ class TestAntigravityCliBrain:
                 "created_at": "2026-06-03T04:47:55Z",
                 "content": (
                     "Created At: 2026-06-03T04:47:55Z\nCompleted At: 2026-06-03T04:47:55Z\n"
-                    "File Path: `file:///home/nic/hooks.json`\n1: {\n2:   \"hooks\": {}\n}"
+                    'File Path: `file:///home/nic/hooks.json`\n1: {\n2:   "hooks": {}\n}'
                 ),
             },
             {
