@@ -1343,7 +1343,7 @@ def _assert_plugin_imports_resolve(content_dir: Path, platform: str) -> None:
         return
     failures: list[str] = []
     for agent_file in sorted(agents_dir.glob("*.md")):
-        text = agent_file.read_text()
+        text = agent_file.read_text(encoding="utf-8")
         for match in _PLUGIN_ROOT_VAR_RE.finditer(text):
             rel = match.group(1).rstrip(".,;:)")
             if rel.startswith("../") or "/../" in rel:
