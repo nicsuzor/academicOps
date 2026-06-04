@@ -59,7 +59,7 @@ Run `TaskList()` and reconcile mirrored tasks. For each native task marked `comp
 
 #### 2. Version Control
 
-If files changed, commit, push, and run `gh pr create --fill`.
+If files changed, commit, push, and run `gh pr create --fill --base dev` (PRs target `dev`; `main` is publish-only).
 
 #### 3. Update Project Breadcrumb
 
@@ -131,7 +131,7 @@ Emit exactly this markdown block:
 - **Branch**: `<branch>`
 - **Issue**: <url or "none">
 - **Follow-ups**: `<task-id> (<short title>)` (or "none")
-  
+
 - **What you asked**: <original user instruction, including deliverables and constraints.>
 - **Summary**: <release_summary value>
 ```
