@@ -1114,6 +1114,7 @@ def build_aops_core(
     if platform == "gemini":
         src_extension_json = aops_root / "templates" / "aops-core.gemini-extension.json"
         dist_extension_json = dist_dir / "gemini-extension.json"
+        root_extension_json = aops_root / "gemini-extension.json"
 
         if src_extension_json.exists():
             print(f"Generating extension manifest from {src_extension_json.name}...")
@@ -1124,6 +1125,12 @@ def build_aops_core(
                 with open(dist_extension_json, "w") as f:
                     json.dump(manifest, f, indent=2)
                     f.write("\n")
+
+                # Also save to repository root
+                with open(root_extension_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print("  ✓ Generated gemini-extension.json at root and dist")
             except Exception as e:
                 print(f"Error processing extension manifest: {e}", file=sys.stderr)
                 raise
@@ -1952,7 +1959,8 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     """Generate marketplace.json for both local dev and dist repo consumption.
 
     Reads the template from templates/marketplace.json and produces two outputs:
-    1. dist/marketplace.json — for the dist repo (paths: ./aops-claude)
+    1. dist/.claude-plugin/marketplace.json — for local dev (paths: ./aops-claude)
+    2. .claude-plugin/marketplace.json — for the repository root (paths: ./dist/aops-claude)
 
     aops-cowork is deliberately NOT advertised in the marketplace: Cowork on
     personal Anthropic accounts has no marketplace mechanism, so the plugin is
@@ -1982,7 +1990,27 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     with open(dist_marketplace, "w") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
-    print(f"  ✓ Generated {dist_marketplace} (for dist repo)")
+    print(f"  ✓ Generated {dist_marketplace} (for local dev)")
+
+    # 2. Repo root version (sources point to ./dist/aops-claude)
+    # Use json serialization for a deep copy
+    root_data = json.loads(json.dumps(data))
+    for plugin in root_data.get("plugins", []):
+        if plugin.get("source"):
+            src = plugin["source"]
+            if src.startswith("./"):
+                plugin["source"] = f"./dist/{src[2:]}"
+            else:
+                plugin["source"] = f"./dist/{src}"
+
+    root_marketplace_dir = aops_root / ".claude-plugin"
+    root_marketplace_dir.mkdir(parents=True, exist_ok=True)
+    root_marketplace = root_marketplace_dir / "marketplace.json"
+    with open(root_marketplace, "w") as f:
+        json.dump(root_data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {root_marketplace} (for repository root)")
+
 
 
 def package_artifacts(

@@ -130,6 +130,11 @@ RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
     && echo '{"/tmp/aops-dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
     && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
+    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
+    && cp -r /tmp/aops-dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-core \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
+    && cp -r /tmp/aops-dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
     && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \

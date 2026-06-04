@@ -106,6 +106,13 @@ repos:
         pass_filenames: false
         files: '\.md$'
 
+      - id: check-no-dist-commit
+        name: prevent manual commits to dist/
+        entry: uv run python scripts/check_no_dist_commit.py
+        language: system
+        pass_filenames: true
+        files: '^dist/'
+
       # halt-on-failure / P#8 — block silent fallback patterns: empty .get/or fallbacks,
       # env-var literal defaults in Python, ${VAR:-literal} in shell, and
       # KEY:=literal in agent-env-map.conf. Issue #930 demonstrated how a single

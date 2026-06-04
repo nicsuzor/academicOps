@@ -1360,6 +1360,17 @@ def _build_docker_cmd(
                     src = gemini_dir / auth_file
                     if src.exists():
                         shutil.copy2(src, staged_gemini_dir / auth_file)
+
+                # Also stage Antigravity auth files for shell users who want to run agy
+                ag_dir = gemini_dir / "antigravity-cli"
+                if ag_dir.is_dir():
+                    staged_ag_dir = staged_gemini_dir / "antigravity-cli"
+                    staged_ag_dir.mkdir(exist_ok=True)
+                    for f in ["antigravity-oauth-token", "settings.json", "installation_id"]:
+                        src = ag_dir / f
+                        if src.exists():
+                            shutil.copy2(src, staged_ag_dir / f)
+
                 # Also forward GEMINI_API_KEY if set
                 gemini_key = env.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
                 if gemini_key:
@@ -2151,6 +2162,16 @@ def _replicate_gemini_auth(
     if not playwright_src.exists():
         raise RuntimeError(f"Missing bundled policy file: {playwright_src}")
     shutil.copy2(playwright_src, policies_dir / "playwright-allow.toml")
+
+    # Replicate antigravity-cli credentials if present
+    ag_dir = gemini_dir / "antigravity-cli"
+    if ag_dir.is_dir():
+        target_ag_dir = target_dir / "antigravity-cli"
+        target_ag_dir.mkdir(parents=True, exist_ok=True)
+        for f in ["antigravity-oauth-token", "settings.json", "installation_id"]:
+            src = ag_dir / f
+            if src.exists():
+                shutil.copy2(src, target_ag_dir / f, follow_symlinks=True)
 
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host

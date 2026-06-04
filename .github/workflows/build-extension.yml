@@ -84,6 +84,12 @@ jobs:
           ref: ${{ steps.ctx.outputs.ref }}
           fetch-depth: 0
 
+      - name: Checkout main branch for publish target
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: dist-repo
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -134,9 +140,32 @@ jobs:
               --target-platform "$PLATFORM_LABEL" \
               $VERSION_FLAG
           done
-          
+
           # Generic fallback
           uv run python scripts/build.py $VERSION_FLAG
+
+      - name: Mirror dist/ and manifests into main branch and commit
+        run: |
+          # rsync --delete keeps the dist/ folder in sync
+          mkdir -p dist-repo/dist
+          rsync -a --delete dist/ dist-repo/dist/
+
+          # Copy manifests to dist-repo root
+          mkdir -p dist-repo/.claude-plugin
+          cp dist/.claude-plugin/marketplace.json dist-repo/.claude-plugin/marketplace.json
+          cp dist/aops-gemini/gemini-extension.json dist-repo/gemini-extension.json
+
+          cd dist-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f dist/ .claude-plugin/marketplace.json gemini-extension.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit, main is already in sync"
+          else
+            git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }} [skip ci]"
+            git push origin main
+          fi
+
 
       - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
         if: github.event_name == 'release' || github.event_name == 'push'
@@ -160,3 +189,16 @@ jobs:
 
           gh release upload "v$VERSION" $ARCHIVES --clobber || \
           gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES
+
+      - name: Force-push deployment to main
+        if: github.event_name == 'release' || github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b temp-main
+          cp -r dist/.claude-plugin .
+          git add -f dist/ .claude-plugin/
+          git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }}"
+          git push origin temp-main:main --force

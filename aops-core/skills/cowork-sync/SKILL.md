@@ -52,7 +52,7 @@ Invoked by `/pull` claim step.
    ```
 2. Create the parent native task:
    ```json
-   TaskCreate(
+   parent_native = TaskCreate(
      subject="<short-title>",
      description="PKB <pkb-id> — <full-title>",
      activeForm="Implementing <subject>"
@@ -65,7 +65,7 @@ Invoked by `/pull` claim step.
      description="PKB <child-id> — <child-title>",
      activeForm="Implementing <child-title>"
    )
-   TaskUpdate(taskId=child_native, addBlocks=[parent_native_id])
+   TaskUpdate(taskId=child_native, addBlocks=[parent_native])
    ```
 4. Flipped parent native task to `in_progress`:
    ```json

@@ -10,7 +10,7 @@ on:
 
   push:
     branches:
-      - main
+      - dev
 
 permissions:
   contents: write
@@ -52,22 +52,6 @@ jobs:
             echo "uv.lock is already up to date"
           else
             git commit -m "chore: update uv.lock for release"
-            git push
-          fi
-
-      - name: Build dist directory for release
-        if: ${{ steps.release.outputs.pr }}
-        env:
-          ACA_DATA: ${{ github.workspace }}
-        run: |
-          uv run python scripts/build.py
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f dist/
-          if git diff --cached --quiet; then
-            echo "dist/ is already up to date"
-          else
-            git commit -m "chore: build distribution assets"
             git push
           fi
 
