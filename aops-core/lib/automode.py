@@ -61,7 +61,7 @@ def _get_aops_rules() -> dict | None:
             manifest = json.loads(plugin_json.read_text())
         except (json.JSONDecodeError, OSError):
             continue
-        if "autoMode" in manifest:
+        if isinstance(manifest, dict) and "autoMode" in manifest:
             return manifest["autoMode"]
 
     return None
@@ -133,8 +133,8 @@ def is_installed() -> bool:
     """
     settings, _ = _read_user_settings()
     auto_mode = settings.get("autoMode", {})
-    soft_deny = auto_mode.get("soft_deny", [])
-    return any(AOPS_RULES_FINGERPRINT in rule for rule in soft_deny)
+    soft_deny = auto_mode.get("soft_deny") or []  # allow-fallback: null in JSON
+    return any(AOPS_RULES_FINGERPRINT in r for r in soft_deny if isinstance(r, str))
 
 
 def install(dry_run: bool = False) -> tuple[bool, str]:
