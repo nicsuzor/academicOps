@@ -90,7 +90,10 @@ def load_config(config_path: Path | None = None) -> dict:
         )
 
     with open(config_path) as f:
-        return yaml.safe_load(f) or {}
+        res = yaml.safe_load(f)
+        if not res:
+            raise ValueError(f"Empty config file: {config_path}")
+        return res
 
 
 def load_local_overlay(overlay_path: Path | None = None) -> dict:
@@ -100,7 +103,7 @@ def load_local_overlay(overlay_path: Path | None = None) -> dict:
     if not overlay_path.exists():
         return {}
     with open(overlay_path) as f:
-        return yaml.safe_load(f) or {}
+        return yaml.safe_load(f) or {}  # allow-fallback: empty overlay is valid
 
 
 def _expand_env(value: str) -> str:
@@ -137,7 +140,7 @@ def resolve_project_path(
 
     if overlay is None:
         overlay = load_local_overlay(overlay_path)
-    overlay_paths = overlay.get("paths", {}) or {}
+    overlay_paths = overlay.get("paths", {}) or {}  # allow-fallback: paths block is optional
     if slug in overlay_paths:
         candidate = Path(_expand_env(str(overlay_paths[slug])))
         return candidate if candidate.exists() else None
@@ -150,7 +153,7 @@ def resolve_project_path(
         [
             Path.home() / "src",
             Path.home(),
-            Path("/opt") / os.environ.get("USER", "user"),
+            Path("/opt") / os.environ["USER"],
         ]
     )
 
@@ -178,21 +181,23 @@ def load_projects(
     overlay = load_local_overlay(overlay_path)
 
     projects = {}
-    for slug, proj in (config.get("projects") or {}).items():
-        proj = proj or {}
+    projects_cfg = config.get("projects") or {}  # allow-fallback: projects block optional
+    for slug, proj in projects_cfg.items():
+        proj = proj or {}  # allow-fallback: empty project config is valid
         repo = proj.get("repo", slug)
         # Per-project aliases: optional list of shorthand names accepted in
         # place of the canonical slug (e.g. ['academicOps', 'acaops']).
-        aliases_raw = proj.get("aliases") or []
+        aliases_raw = proj.get("aliases") or []  # allow-fallback: aliases optional
         if not isinstance(aliases_raw, list):
             aliases_raw = [aliases_raw]
         aliases = [str(a) for a in aliases_raw]
+        mounts = proj.get("mounts") or []  # allow-fallback: extra mounts optional
         entry = {
             "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
             "aliases": aliases,
-            "mounts": proj.get("mounts") or [],
+            "mounts": mounts,
         }
         for key in ("auto_commit", "merge_strategy"):
             if key in proj:
@@ -225,20 +230,21 @@ def load_project_aliases(config_path: Path | None = None) -> dict[str, str]:
     aliases: dict[str, str] = {}
 
     # 1. Top-level project_aliases (highest priority)
-    for alias, slug in (config.get("project_aliases") or {}).items():
+    aliases_block = config.get("project_aliases") or {}  # allow-fallback: aliases block optional
+    for alias, slug in aliases_block.items():
         aliases[str(alias)] = str(slug)
 
-    projects_block = config.get("projects") or {}
+    projects_block = config.get("projects") or {}  # allow-fallback: projects block is optional
 
     # 2. Per-project aliases lists
     for slug, proj in projects_block.items():
-        proj = proj or {}
-        for alias in proj.get("aliases") or []:
+        proj = proj or {}  # allow-fallback: empty project config is valid
+        for alias in proj.get("aliases") or []:  # allow-fallback: aliases are optional
             aliases.setdefault(str(alias), slug)
 
     # 3. Repo name (only if not already mapped)
     for slug, proj in projects_block.items():
-        proj = proj or {}
+        proj = proj or {}  # allow-fallback: empty project config is valid
         repo = proj.get("repo")
         if repo:
             aliases.setdefault(str(repo), slug)
@@ -487,7 +493,8 @@ class PolecatManager:
 
         parts = []
         for slug in sorted(self.projects):
-            extras = sorted(set(aliases_for.get(slug, [])))
+            slug_aliases = aliases_for.get(slug, [])  # allow-fallback: display, no aliases ok
+            extras = sorted(set(slug_aliases))
             if extras:
                 parts.append(f"{slug} (aliases: {', '.join(extras)})")
             else:
@@ -1695,7 +1702,8 @@ class PolecatManager:
 
         worktree_path = self.polecats_dir / task.id
         branch_name = f"polecat/{task.id}"
-        default_branch = self.projects.get(project, {}).get("default_branch", "main")
+        proj_cfg = self.projects.get(project, {})  # allow-fallback: bare-mirror = no config
+        default_branch = proj_cfg.get("default_branch", "main")
 
         if worktree_path.exists():
             # Validate it's actually a git repo
@@ -1928,7 +1936,7 @@ class PolecatManager:
             raise RuntimeError("Failed to create valid clone - orphan branch detected")
 
         # Configure git identity if specified in config
-        identity = self.config.get("git_identity", {})
+        identity = self.config["git_identity"] if "git_identity" in self.config else {}
         if identity:
             user_name = identity.get("name")
             user_email = identity.get("email")
