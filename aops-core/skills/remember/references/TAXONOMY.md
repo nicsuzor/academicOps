@@ -132,13 +132,13 @@ Linkage (out-of-tree, via `contributes_to`): `task/epic → target → goal`. Th
 
 The actionable types in the PKB:
 
-| Type            | Description                                                                                                                                                                                           |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type            | Description                                                                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **goal**        | An identity-level commitment (_who I am / how I define myself_). Outside the work tree — never a parent, never parented. No severity, consequence, or due. Linked TO by targets or work tasks (epics/tasks/learn) via `contributes_to`. |
-| **target**      | A user-declared strategic milestone. Stands outside the work tree — linked to work by metadata, never as a parent. Carries `severity` + `consequence`. Advances ≥1 goal via `contributes_to`.         |
-| **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                                                                                   |
-| **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                              |
-| **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks                                                                  |
+| **target**      | A user-declared strategic milestone. Stands outside the work tree — linked to work by metadata, never as a parent. Carries `severity` + `consequence`. Advances ≥1 goal via `contributes_to`.                                           |
+| **parent task** | A bundle of related work. Tree root by default; may have a parent task for nesting. No depth limit.                                                                                                                                     |
+| **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                                                                |
+| **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks                                                                                                    |
 
 The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types.
 
@@ -237,6 +237,8 @@ The graph is **directed but not required to be acyclic**. Cycles are a feature f
 
 **Provenance fields, not edge types**: `inherits_from` (on `contributes_to` edges only) records which prototype an edge was materialised from. It's a one-time breadcrumb at edge creation, not a live reference — editing the prototype later does not retroactively rewrite existing edges.
 
+**On-node inverse of `supersedes`**: the `superseded_by` frontmatter field on the _retired_ task is the inverse of the `supersedes` edge — it both retires the task (out of the dispatchable set) and keeps the redirect readable on the task itself. See [Supersession and retirement](#supersession-and-retirement-superseded_by).
+
 ### Cycle detection policy
 
 **Hard cycles** (`parent`, `depends_on`, `contributes_to`, `closes`, `supersedes`): Detected via Tarjan's SCC across the union of these edge types. Any strongly connected component with more than one node, or any single-node SCC with a self-edge, is a structural failure requiring human review. Surfaced as errors.
@@ -312,6 +314,23 @@ Severity is the SRE-style impact ladder for `type: target` nodes — the measura
 **`queued` is a human gate**: The user manually promotes tasks from `ready` to `queued` to make them available for agent dispatch. This preserves human control over what agents work on next. Agents pull only from `queued`.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
+
+### Supersession and retirement (`superseded_by`)
+
+When a task's work is carved into sibling subtasks, moved under a successor, or otherwise replaced, the original must **leave the dispatchable set** — it must stop being a `queued`/`ready` leaf that `/pull` can select. Recording the replacement only as prose in a parent epic's Log is **not** sufficient: that redirect is invisible on the task itself, so `/pull` selects the original carrying its now-stale (fossil) body. This is the #1584 failure: an original decomposed into siblings (two already done) stayed `queued` and was dispatched against a brief describing work already shipped.
+
+The canonical mechanism is the `superseded_by` task field:
+
+```yaml
+superseded_by: [<replacement-id>, …]   # ids of the tasks that now carry this work
+```
+
+- **It retires the task.** Stamping `superseded_by` transitions the task out of the dispatchable set (the PKB closes it — verified at runtime: `status` → `done`), so it no longer appears in `queued` or `ready` and `/pull` will not select it. No separate status edit is required; setting `status: cancelled` is the equivalent when the work was dropped rather than re-homed.
+- **The redirect lives ON the task.** Because the pointer is frontmatter on the retired task, anyone (or any `/pull` descent) reading that task sees where the work went — unlike a redirect buried in an ancestor's Log.
+- **It is the on-node inverse of the `supersedes` edge** (see [Edge Semantics](#edge-semantics-and-cycle-policy)). "A `supersedes` B" (edge on the replacement) ⟺ "B `superseded_by` A" (field on the original). Use `superseded_by` when the requirement is _the original must be non-dispatchable with a readable redirect_ — placing only `supersedes` on the replacements scatters the redirect across siblings and leaves the original dispatchable. (This is distinct from the knowledge-note dedup convention in [[../SKILL.md]] §dedup, where superseded source notes are deleted rather than pointer-stamped.)
+- **Do not rewrite the stale body.** Supersession fixes _dispatchability_, not body content. The fossil body is left intact (git preserves it); the field is what makes the task non-dispatchable and the redirect discoverable.
+
+Producers that carve work out of an existing task (planner `decompose`, supervisor, sweep) MUST stamp `superseded_by` on the original in the same operation. `/pull` treats a non-empty `superseded_by` as non-dispatchable and surfaces the redirect (see [[commands/pull]] Step 1).
 
 ### Actionable vs. Ready
 
