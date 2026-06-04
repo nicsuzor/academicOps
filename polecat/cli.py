@@ -4836,15 +4836,6 @@ def run(
     if resolved:
         final_cmd[0] = resolved
 
-    # The local bind-mount path runs `final_cmd` directly via subprocess.run,
-    # bypassing _run_docker_container (the only place that names the container,
-    # and only on its local-daemon branch). Name the bypass container here too
-    # so it is addressable from outside the run: `docker logs -f polecat-<task>`,
-    # `docker stop`, and `polecat list` (which matches running containers by the
-    # `polecat-<task-id>` name via `docker ps --filter name=polecat-`).
-    if not (docker_cmd and docker_cmd.staging_dir) and "--name" not in final_cmd:
-        final_cmd[3:3] = ["--name", f"polecat-{task.id}"]
-
     # Compute extract_paths for session transcript persistence.
     # Claude writes to /home/worker/.claude/projects/-workspace/
     # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
