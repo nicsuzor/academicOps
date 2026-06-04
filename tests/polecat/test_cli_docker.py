@@ -672,11 +672,16 @@ class TestClaudeConfigSeed:
 class TestRequireClaudeOauth:
     """Pre-flight: polecat must fail fast when CLAUDE_CODE_OAUTH_TOKEN is unset."""
 
-    def test_exits_when_oauth_token_missing_for_claude(self, monkeypatch, capsys):
+    def test_exits_when_oauth_token_missing_for_claude(self, monkeypatch, capsys, tmp_path):
         from cli import _require_claude_oauth_or_exit
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.delenv("AOPS_CC_OAUTH_TOKEN", raising=False)
+        # Isolate the host secret store too: resolve_forward_values reads
+        # ~/.env.local (the authoritative source) before the process env, so a
+        # real token on the dev host would mask the "missing" case. Point
+        # AOPS_HOST_ENV_FILE at a nonexistent file so load_host_secrets is empty.
+        monkeypatch.setenv("AOPS_HOST_ENV_FILE", str(tmp_path / "no-env-local"))
         with pytest.raises(SystemExit) as excinfo:
             _require_claude_oauth_or_exit("claude")
         assert excinfo.value.code == 4

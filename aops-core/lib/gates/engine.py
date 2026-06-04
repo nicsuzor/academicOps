@@ -373,7 +373,18 @@ class GenericGate:
         # in advance.
         temp_path = state.metrics.get("temp_path")
         if not temp_path:
-            temp_path = str(get_gate_file_path(self.name, ctx.session_id))
+            # Thread the session's routing signals (transcript_path + client_type)
+            # so the gate file lands in this session's real dir — never the Claude
+            # fallback for a gemini/agy session, and resolvable at all (NO
+            # FALLBACKS) for any non-UUID id.
+            temp_path = str(
+                get_gate_file_path(
+                    self.name,
+                    ctx.session_id,
+                    ctx.transcript_path,
+                    client_type=ctx.client_type,
+                )
+            )
 
         # Render countdown message
         countdown_variables = {

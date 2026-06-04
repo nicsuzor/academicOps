@@ -140,14 +140,19 @@ def get_session_short_hash(session_id: str) -> str:
 def _is_gemini_session(session_id: str | None, transcript_path: str | None = None) -> bool:
     """Detect if this is a Gemini CLI session.
 
-    Detection methods:
+    Detection methods (NO FALLBACKS — a session must definitively declare
+    itself; we no longer heuristically match a "gemini-" session-id prefix or a
+    polecat ``AOPS_SESSION_STATE_DIR``):
     1. GEMINI_SESSION_ID env var is set (Gemini CLI always provides this)
-    2. session_id starts with "gemini-" (legacy fallback; polecat now emits "{hash}-gemini")
-    3. transcript_path contains "/.gemini/"
-    4. AOPS_SESSION_STATE_DIR contains "/.gemini/" (polecat worker fallback)
+    2. transcript_path contains "/.gemini/"
+
+    Anything else is NOT treated as Gemini here. The explicit ``--client``
+    signal (handled by the caller in ``get_session_status_dir``) is what routes
+    a gemini/agy session that lacks these signals; ``AOPS_SESSION_STATE_DIR`` is
+    consumed directly by ``get_session_status_dir`` and never needs detection.
 
     Args:
-        session_id: Session ID (polecat Gemini sessions use "{hash}-gemini" format)
+        session_id: Session ID (unused for detection; kept for the call shape)
         transcript_path: Optional transcript path for Gemini detection
 
     Returns:

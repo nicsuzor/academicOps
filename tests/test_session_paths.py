@@ -113,8 +113,12 @@ class TestSessionPaths(unittest.TestCase):
                 patch.object(Path, "home", return_value=Path(tmpdir)),
                 patch.object(Path, "cwd", return_value=project_root),
             ):
-                # Pass UUID-style session_id to trigger claude path
-                result = session_paths.get_session_status_dir("abc123-def456-ghi789")
+                # Pass a real UUID session_id to trigger the claude path
+                # (NO FALLBACKS: only a UUID-shaped id, or explicit --client
+                # claude, routes to ~/.claude — a non-UUID id now raises).
+                result = session_paths.get_session_status_dir(
+                    "07328230-44d4-414b-9fec-191a6eec0948"
+                )
                 self.assertEqual(result, expected_path)
 
     @patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": ""}, clear=True)
@@ -152,10 +156,12 @@ class TestSessionPaths(unittest.TestCase):
         )
         self.assertTrue(result)
 
-    def test_is_gemini_session_prefix(self):
-        """_is_gemini_session detects Gemini via session_id prefix."""
+    def test_is_gemini_session_prefix_not_detected(self):
+        """NO FALLBACKS: a 'gemini-' session-id prefix is no longer a detection
+        signal. Without GEMINI_SESSION_ID / a /.gemini/ transcript_path, it is
+        NOT treated as Gemini here (the explicit --client signal routes it)."""
         result = session_paths._is_gemini_session("gemini-2026-01-01-abc123", None)
-        self.assertTrue(result)
+        self.assertFalse(result)
 
     @patch.dict(os.environ, {"GEMINI_SESSION_ID": "test-session-id"})
     def test_is_gemini_session_env_var(self):
@@ -177,19 +183,19 @@ class TestSessionPaths(unittest.TestCase):
         {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc123hash/"},
         clear=True,
     )
-    def test_is_gemini_session_state_dir_fallback(self):
-        """_is_gemini_session detects Gemini via AOPS_SESSION_STATE_DIR when no transcript_path.
-
-        This is the polecat worker case: worker runs in isolated worktree without
-        transcript_path in input_data, but AOPS_SESSION_STATE_DIR was set by router.
-        Regression test for GH#467.
+    def test_is_gemini_session_state_dir_not_detected(self):
+        """NO FALLBACKS: AOPS_SESSION_STATE_DIR is no longer a _is_gemini_session
+        signal — get_session_status_dir consumes it directly (step 1), so a
+        '/.gemini/' state dir does NOT make _is_gemini_session return True.
+        Supersedes the GH#467 fallback, which silently mis-routed sessions.
         """
-        # UUID session_id (no gemini- prefix), no transcript_path, but state dir is Gemini
+        # UUID session_id, no transcript_path; the gemini state dir is set in env
+        # but is irrelevant to detection now.
         result = session_paths._is_gemini_session(
             "07328230-44d4-414b-9fec-191a6eec0948",
-            {},  # No transcript_path - simulating polecat worker
+            {},  # No transcript_path
         )
-        self.assertTrue(result, "Should detect Gemini from AOPS_SESSION_STATE_DIR")
+        self.assertFalse(result, "state dir alone must not trigger Gemini detection")
 
     @patch.dict(
         os.environ,

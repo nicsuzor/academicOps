@@ -42,8 +42,11 @@ class TestEnforcerBlockCLI:
         state_dir = tmp_path / "claude-session"
         state_dir.mkdir()
 
-        # Run the script with isolated state directory
-        env = {"CLAUDE_SESSION_STATE_DIR": str(state_dir)}
+        # Run the script with isolated state directory. The code reads
+        # AOPS_SESSION_STATE_DIR (get_session_status_dir step 1); the old
+        # CLAUDE_SESSION_STATE_DIR name was a no-op that the removed Claude
+        # fallback happened to mask.
+        env = {"AOPS_SESSION_STATE_DIR": str(state_dir)}
         result = subprocess.run(
             [
                 sys.executable,

@@ -119,8 +119,12 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
             + "; ".join(render_errors)
         )
 
-    # Write to predictable gate file path — fail fast on disk errors
-    gate_path = get_gate_file_path(gate, session_id, transcript_path=ctx.transcript_path)
+    # Write to predictable gate file path — fail fast on disk errors. Thread
+    # client_type (alongside transcript_path) so the file honours the session's
+    # harness routing and never silently falls back to the Claude project dir.
+    gate_path = get_gate_file_path(
+        gate, session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
+    )
     gate_path.parent.mkdir(parents=True, exist_ok=True)
     gate_path.write_text(content, encoding="utf-8")
     return gate_path

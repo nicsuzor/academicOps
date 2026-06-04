@@ -101,7 +101,13 @@ class TestClientTypeInJSONL:
         assert len(entries) == 1
         assert entries[0]["client_type"] == "claude"
 
-    def test_jsonl_contains_client_type_gemini(self, router, temp_claude_projects):
+    def test_jsonl_contains_client_type_gemini(self, router, temp_claude_projects, monkeypatch):
+        # A gemini session must declare its dir (NO FALLBACKS): point
+        # AOPS_SESSION_STATE_DIR at a real ~/.gemini-style tmp dir so the log
+        # resolves there instead of raising.
+        gemini_dir = Path(temp_claude_projects) / ".gemini" / "tmp" / "ws"
+        gemini_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(gemini_dir))
         raw = {"session_id": "test-jsonl-gemini"}
         with patch("hooks.router.persist_session_data"):
             ctx = router.normalize_input(raw, client_type="gemini")
@@ -114,7 +120,10 @@ class TestClientTypeInJSONL:
 
     def test_jsonl_client_type_null_when_absent(self, router, temp_claude_projects):
         """JSONL must show client_type: null (not 'unknown') when --client absent."""
-        raw = {"session_id": "test-jsonl-no-client"}
+        # A UUID session_id routes to the Claude dir via the `client_type is None
+        # and is_claude_uuid` branch, so the log resolves while client_type stays
+        # None — exactly the "--client absent" case under test.
+        raw = {"session_id": "118e8a3e-2c1d-44f9-9c3e-7a0b1d2e3f40"}
         with patch("hooks.router.persist_session_data"):
             ctx = router.normalize_input(raw)
 

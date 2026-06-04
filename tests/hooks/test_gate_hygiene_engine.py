@@ -29,6 +29,7 @@ _CONFIGS = {c.name: c for c in GATE_CONFIGS}
 def _ctx(tool_name, hook_event="PreToolUse", tool_input=None):
     return HookContext(
         session_id="ws7-engine-test",
+        client_type="claude",
         trace_id=None,
         hook_event=hook_event,
         tool_name=tool_name,
@@ -40,7 +41,7 @@ def _ctx(tool_name, hook_event="PreToolUse", tool_input=None):
 
 def _state_with_enforcer_overdue():
     """Session state with the enforcer gate past its block threshold."""
-    state = SessionState.create("ws7-engine-test")
+    state = SessionState.create("ws7-engine-test", client_type="claude")
     state.main_agent.current_task = "task-x"  # so the gate is "armed"
     state.gates["enforcer"].status = GateStatus.OPEN
     state.gates["enforcer"].ops_since_open = 999

@@ -127,7 +127,7 @@ def set_gate_modes(
 
 def make_session_state(scenario: dict) -> SessionState:
     """Create a SessionState with gate overrides from the scenario."""
-    state = SessionState.create("test-session-verdict")
+    state = SessionState.create("test-session-verdict", client_type="claude")
     for gate_name, overrides in scenario.get("gate_overrides", {}).items():
         gate = state.gates.get(gate_name, GateState())
         if "status" in overrides:
@@ -153,6 +153,7 @@ def make_context(scenario: dict) -> HookContext:
     """Create a HookContext from scenario data."""
     return HookContext(
         session_id="test-session-verdict",
+        client_type="claude",
         hook_event=scenario["hook_event"],
         tool_name=scenario.get("tool_name"),
         tool_input=scenario.get("tool_input", {}),
@@ -171,7 +172,7 @@ def make_gate_trigger_state(gate_name: str) -> SessionState:
     For the handover gate, session_did_work is set to True so the policy
     condition (which exempts read-only sessions) is satisfied (aops-16a15a05).
     """
-    state = SessionState.create("test-gate-mode")
+    state = SessionState.create("test-gate-mode", client_type="claude")
     if gate_name == "enforcer":
         from hooks.gate_config import ENFORCER_TOOL_CALL_THRESHOLD
 
@@ -199,12 +200,14 @@ def make_gate_trigger_context(gate_name: str) -> HookContext:
     if gate_name == "enforcer":
         return HookContext(
             session_id="test-gate-mode",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Agent",
             tool_input={"prompt": "test"},
         )
     return HookContext(
         session_id="test-gate-mode",
+        client_type="claude",
         hook_event="Stop",
     )
 

@@ -60,13 +60,14 @@ class TestCountdownEvaluation:
     @pytest.fixture
     def session_state(self) -> SessionState:
         """Create a mock session state."""
-        return SessionState.create("test-session-countdown")
+        return SessionState.create("test-session-countdown", client_type="claude")
 
     @pytest.fixture
     def hook_context(self) -> HookContext:
         """Create a mock hook context for PreToolUse."""
         return HookContext(
             session_id="test-session-countdown",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Edit",
         )
@@ -176,13 +177,14 @@ class TestCountdownIntegration:
     @pytest.fixture
     def session_state(self) -> SessionState:
         """Create a mock session state."""
-        return SessionState.create("test-session-integration")
+        return SessionState.create("test-session-integration", client_type="claude")
 
     @pytest.fixture
     def hook_context(self) -> HookContext:
         """Create a mock hook context for PreToolUse."""
         return HookContext(
             session_id="test-session-integration",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Edit",
         )
