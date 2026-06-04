@@ -24,6 +24,7 @@ version: 2.0.0
    - **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
    - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
    - **Low Uncertainty + High Scope**: Parent is well-understood but large. The decomposition should focus on creating independent, parallelizable execution tasks.
+   - **Intent before mechanism**: for a build/change task, first pin down what the thing should _do_ and _why_ (spec-of-intent); confirming how the existing plumbing works is necessary but never a substitute for specifying the intent.
 
 2. **Search for Context**: Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
