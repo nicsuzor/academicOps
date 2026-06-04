@@ -18,6 +18,12 @@ on:
 
 permissions:
   pull-requests: write
+  # `gh pr comment` posts an issue comment (PRs are issues under the hood:
+  # POST /repos/{repo}/issues/{n}/comments), which the GITHUB_TOKEN can only
+  # do with `issues: write`. Without it the comment step fails with "Resource
+  # not accessible by integration" and reddens the run even though the retarget
+  # (the load-bearing `gh pr edit`) already succeeded.
+  issues: write
 
 jobs:
   retarget:
