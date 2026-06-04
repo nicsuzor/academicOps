@@ -244,6 +244,7 @@
     "specs/agents/polecat-system.md",
     "specs/agents/supervisor.md",
     "specs/context-map-schema.md",
+    "specs/enforcement/auto-mode-classifier.md",
     "specs/enforcement/enforcement-aops-recommender.md",
     "specs/enforcement/enforcement-mechanisms.md",
     "specs/enforcement/enforcement.md",

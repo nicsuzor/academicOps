@@ -393,3 +393,90 @@ class TestUsageStatsServerToolUse:
         entry = Entry(type="assistant", server_tool_use="invalid")
         stats.add_entry(entry)
         assert stats.server_tool_use == 0
+
+
+# ---------------------------------------------------------------------------
+# TestAutoModeDecisions — auto-mode classifier verdict extraction (step 8)
+# ---------------------------------------------------------------------------
+
+
+class TestAutoModeDecisions:
+    """The auto-mode classifier records blocked calls in the headless result
+    envelope (`type:result`) as `permission_denials`, and flags death-by-denial
+    via `terminal_reason`. These must surface into the transcript so the evidence
+    loop can measure fire rate. Allows are silent and not recorded.
+
+    Source of the envelope shape: a live `claude -p` result envelope
+    (`{tool_name, tool_use_id, tool_input}` per denial) — see
+    specs/enforcement/auto-mode-classifier.md.
+    """
+
+    _RESULT_ENTRY = {
+        "type": "result",
+        "subtype": "success",
+        "is_error": False,
+        "num_turns": 2,
+        "permission_denials": [
+            {
+                "tool_name": "Write",
+                "tool_use_id": "toolu_017eJ6SzcBteCqNWQBvjJ9JJ",
+                "tool_input": {"file_path": "/home/nic/.claude/x.txt", "content": "test"},
+            }
+        ],
+        "terminal_reason": None,
+    }
+
+    def test_from_dict_captures_permission_denials(self):
+        entry = Entry.from_dict(self._RESULT_ENTRY)
+        assert entry.type == "result"
+        assert len(entry.permission_denials) == 1
+        assert entry.permission_denials[0]["tool_name"] == "Write"
+        assert entry.permission_denials[0]["tool_use_id"].startswith("toolu_")
+
+    def test_from_dict_captures_permission_denials_camel_case(self):
+        """Envelope may use camelCase keys (CC CLI JSON serialisation style)."""
+        camel_entry = {
+            "type": "result",
+            "subtype": "success",
+            "is_error": False,
+            "num_turns": 2,
+            "permissionDenials": [
+                {
+                    "toolName": "Write",
+                    "toolUseId": "toolu_017eJ6SzcBteCqNWQBvjJ9JJ",
+                    "toolInput": {"filePath": "/home/nic/.claude/x.txt", "content": "test"},
+                }
+            ],
+            "terminalReason": "too_many_permission_denials",
+        }
+        entry = Entry.from_dict(camel_entry)
+        assert entry.type == "result"
+        assert len(entry.permission_denials) == 1
+        assert entry.permission_denials[0]["toolName"] == "Write"
+        assert entry.permission_denials[0]["toolUseId"].startswith("toolu_")
+        assert entry.terminal_reason == "too_many_permission_denials"
+
+    def test_from_dict_defaults_when_absent(self):
+        """A normal entry without the result-envelope keys → empty/None, no crash."""
+        entry = Entry.from_dict({"type": "assistant", "message": {}})
+        assert entry.permission_denials == []
+        assert entry.terminal_reason is None
+
+    def test_extract_session_context_aggregates_denials(self):
+        entries = [Entry(type="user"), Entry.from_dict(self._RESULT_ENTRY)]
+        ctx = extract_session_context(entries)
+        assert len(ctx["permission_denials"]) == 1
+        assert ctx["permission_denials"][0]["tool_name"] == "Write"
+
+    def test_extract_session_context_captures_terminal_reason(self):
+        """death-by-denial: 3-consecutive / 20-total denials → terminal_reason set."""
+        terminated = {**self._RESULT_ENTRY, "terminal_reason": "too_many_permission_denials"}
+        ctx = extract_session_context([Entry.from_dict(terminated)])
+        assert ctx["terminal_reason"] == "too_many_permission_denials"
+
+    def test_all_allow_records_no_denials(self):
+        """Auto mode with every call allowed → no denials (allows are silent)."""
+        ctx = extract_session_context([Entry(type="assistant", permission_mode="auto")])
+        assert ctx["permission_denials"] == []
+        assert ctx["terminal_reason"] is None
+        assert "auto" in ctx["permission_modes"]

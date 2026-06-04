@@ -254,6 +254,8 @@ Moving the logic into the unified gate architecture gave lifecycle management, i
 
 ## Relationship to Claude Code auto mode (2026-03)
 
+> **Canonical spec for the classifier:** [`auto-mode-classifier.md`](auto-mode-classifier.md) is the design statement for the auto-mode classifier as a framework mechanism (admission criteria, cost model, rule-writing form). This section covers only how the **enforcer subagent** relates to it.
+
 Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) is a Sonnet 4.6 agent that reads the proposed tool call **alongside the conversation transcript and the rules expressed as prose**, then decides whether to allow, surface a permission prompt, or block. It is not a regex matcher and it is not limited to a single tool call's local arguments — explicit user intent in prior turns can override default rules, and stated boundaries in the conversation ("don't push", "wait until I review") become block signals the classifier observes.
 
 In framework terms: the classifier is **rbg-class judgment running at the per-action gate** — fast, transcript-aware, prose-reasoning. Treat it as a peer reviewer, not a pattern matcher.

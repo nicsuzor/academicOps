@@ -1764,6 +1764,11 @@ class Entry:
     client_version: str | None = None
     git_branch: str | None = None
     permission_mode: str | None = None
+    # Auto-mode classifier fields — present only on a `type:result` envelope entry
+    # (headless `claude -p`). `permission_denials` is the structured record of
+    # calls the auto-mode classifier blocked; `terminal_reason` flags death-by-denial.
+    permission_denials: list = field(default_factory=list)
+    terminal_reason: str | None = None
     stop_reason: str | None = None
     attribution_plugin: str | None = None
     attribution_skill: str | None = None
@@ -1837,6 +1842,10 @@ class Entry:
             client_version=data.get("version"),
             git_branch=data.get("gitBranch"),
             permission_mode=data.get("permissionMode"),
+            permission_denials=data.get("permission_denials")
+            or data.get("permissionDenials")
+            or [],  # allow-fallback: absent on pre-classifier sessions
+            terminal_reason=data.get("terminal_reason") or data.get("terminalReason"),
             stop_reason=stop_reason,
             attribution_plugin=data.get("attributionPlugin"),
             attribution_skill=data.get("attributionSkill"),
@@ -1956,6 +1965,8 @@ class SessionSummary:
     client_version: str | None = None
     git_branches: list[str] = field(default_factory=list)
     permission_modes: list[str] = field(default_factory=list)
+    permission_denials: list = field(default_factory=list)
+    terminal_reason: str | None = None
     models: list[str] = field(default_factory=list)
     session_type: str | None = None
     gemini_version: str | None = None
@@ -1983,6 +1994,8 @@ def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
         "client_version": None,
         "git_branches": [],
         "permission_modes": [],
+        "permission_denials": [],
+        "terminal_reason": None,
         "models": [],
     }
     branches = set()
@@ -2006,6 +2019,10 @@ def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
             perms.add(e.permission_mode)
         if e.model:
             models.add(e.model)
+        if e.permission_denials:
+            ctx["permission_denials"].extend(e.permission_denials)
+        if e.terminal_reason and not ctx["terminal_reason"]:
+            ctx["terminal_reason"] = e.terminal_reason
 
     ctx["git_branches"] = sorted(list(branches))
     ctx["permission_modes"] = sorted(list(perms))
@@ -4910,6 +4927,12 @@ class SessionProcessor:
                 metadata_yaml += f"permission_mode: {session.permission_modes[0]}\n"
             else:
                 metadata_yaml += f"permission_modes: [{', '.join(session.permission_modes)}]\n"
+        # Auto-mode classifier decisions (headless result envelope). Allows are silent;
+        # only denials and a death-by-denial termination are recorded.
+        if session.permission_denials:
+            metadata_yaml += f"auto_mode_denials: {len(session.permission_denials)}\n"
+        if session.terminal_reason:
+            metadata_yaml += f"terminal_reason: {session.terminal_reason}\n"
         if session.models:
             metadata_yaml += f"models: [{', '.join(session.models)}]\n"
         if session.session_type:
