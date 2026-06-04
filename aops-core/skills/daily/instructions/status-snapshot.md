@@ -53,12 +53,12 @@ Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sor
 
 ### 3.3a: High-Focus Surface (Target-Driven Grouping)
 
-After the deadline list, emit a factual block of tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]] §7).
+After the deadline list, emit a factual block of tasks ranked by composite `focus_score` — restricted to `status` in {`queued`, `ready`, `in_progress`}. `focus_score` is the canonical composite (embeds severity, priority, downstream weight, urgency, stakeholder waiting; see [[multi-parent]]).
 
 **Loading and Grouping Logic**:
 
 1. Use `mcp__pkb__list_tasks(status=["queued","ready","in_progress"], limit=100, format="json")` and sort by `focus_score` descending. Load this once and reuse the result for the §3.3b SEV4 count.
-2. **Threshold**: A task qualifies for the SEV3+ bucket when it has `urgency >= 100` (a high-urgency tier per the PKB's urgency scale; see [[multi-parent]] §7) **and** at least one entry in its `goals` field links to a target node with `severity >= 3`.
+2. **Threshold**: A task qualifies for the SEV3+ bucket when it has `urgency >= 100` (a high-urgency tier per the PKB's urgency scale; see [[multi-parent]]) **and** at least one entry in its `goals` field links to a target node with `severity >= 3`.
 3. **Badging**: For tasks in the top list, read their `goals` field. Fetch each linked target's metadata — cache results per target ID to avoid redundant calls when multiple tasks share a target. If a linked target has `severity >= 3`, prepare an inline badge `[→[[Target Title]]]`.
 4. **Display rule** (deterministic): Take the top 10 tasks by `focus_score` and split into:
    - **Target-propagated urgency (SEV3+)**: tasks meeting both criteria in step 2.

@@ -36,7 +36,7 @@ There is **no daemon and nothing auto-claims** queued work (the v0.4 "polecats a
 
 Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: dispatch only from `queued` (the human-gated dispatch queue). Tasks in `ready` are decomposed-but-unapproved and MUST NOT be dispatched here — the user promotes `ready` → `queued` manually.
 
-- **No argument**: call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` and pick the highest-`focus_score` task. `focus_score` is the composite ranking (severity, priority, downstream weight, deadline urgency, stakeholder waiting, decay) — see [[multi-parent]] §7. Do NOT rank by any single component directly.
+- **No argument**: call `mcp__pkb__list_tasks(status="queued", limit=10, format="json")` and pick the highest-`focus_score` task. `focus_score` is the composite ranking (severity, priority, downstream weight, deadline urgency, stakeholder waiting, decay) — see [[multi-parent]]. Do NOT rank by any single component directly.
 - **`/pull <task-id>`**: call `mcp__pkb__get_task(id="<task-id>")`. If it has children, descend to the first `queued` leaf. Dispatch that leaf, not the parent.
 - **Nothing queued**: report "no queued tasks to dispatch" and stop. Do not reach into `ready`/`inbox` to manufacture work, and do not start doing anything yourself.
 

@@ -85,7 +85,7 @@ Every node carries three core computed properties that drive both label assignme
 
 **What it tells you**: Which nodes to work on first when time is scarce. High criticality = unblocks many downstream nodes. Low criticality = isolated or terminal work.
 
-> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite that embeds severity, priority, `urgency` (deadline slack + decay), `downstream_weight`, stakeholder waiting, and `criticality`. See [[multi-parent]] §7 for the full model. Component fields (`urgency`, `downstream_weight`, `criticality`) remain visible in metadata for filtering and debugging, but should never be the headline ranking signal — ranking always goes through `focus_score`.
+> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite (additive integer composition) that embeds severity, priority, deadline pressure, age/staleness, `downstream_weight`, stakeholder waiting, and an `urgency` term. See [[multi-parent]] for the full, current model. Component fields (`urgency`, `downstream_weight`, `criticality`, `uncertainty`) remain visible in metadata for filtering, classification, and debugging, but are **not** themselves focus_score terms and should never be the headline ranking signal — ranking always goes through `focus_score`. (Cross-repo TAXONOMY SSoT reconciliation is tracked separately under [[mem-3820aa50]].)
 
 ### depth and leaf
 
