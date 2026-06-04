@@ -34,8 +34,8 @@ If the artifact is genuinely missing or unreadable, say so explicitly and reques
 
 ## Axioms
 
-@${CLAUDE_PLUGIN_ROOT}/../.agents/rules/AXIOMS.md
-@${CLAUDE_PLUGIN_ROOT}/../.agents/rules/AXIOMS-REVIEW.md
+@${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md
+@${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS-REVIEW.md
 
 ## Fix what you can
 

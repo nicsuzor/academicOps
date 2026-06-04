@@ -937,6 +937,24 @@ def build_aops_core(
         else:
             safe_copy(src_item, content_dir / src_item.name)
 
+    # 1a-axioms. Co-ship the framework axioms INTO the plugin payload so the
+    # @-imports in rbg.md / marsha.md resolve at runtime in a deployed plugin
+    # (where ${CLAUDE_PLUGIN_ROOT}/../ is outside the payload). The single SSoT
+    # at .agents/rules/AXIOMS.md remains the only hand-maintained copy.
+    axioms_src_dir = aops_root / ".agents" / "rules"
+    axioms_dst_dir = content_dir / ".agents" / "rules"
+    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
+    for axiom_file in AXIOM_FILES:
+        src = axioms_src_dir / axiom_file
+        if not src.exists():
+            raise FileNotFoundError(
+                f"Required axiom file {src} not found — cannot build plugin without it"
+            )
+        dst = axioms_dst_dir / axiom_file
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        safe_copy(src, dst)
+    print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+
     # 1a-pre. Drop the cowork-sync skill on every platform except cowork.
     # The skill describes the PKB ↔ native task-list mirror that only Cowork's
     # harness uses; the same source file would be misleading on claude/gemini/agy.
@@ -1284,8 +1302,102 @@ def build_aops_core(
             md_file.unlink()
             print(f"  - Removed {md_file.name} (Gemini uses TOML)")
 
+    # 6. Anti-drift regression guard. Catches the class of defect that left
+    # rbg + marsha grounding verdicts on a stale `old_axioms.md` decoy because
+    # the canonical axioms were never shipped into the plugin payload (#aops-75543e66).
+    # Two checks: (a) every plugin-relative @-import in a shipped agent must
+    # resolve inside the payload; (b) no axiom-shaped decoy may ship anywhere
+    # outside .agents/rules/.
+    _assert_plugin_imports_resolve(content_dir, platform)
+    _assert_no_axiom_decoys(content_dir)
+
     print(f"✓ Built {plugin_name} ({platform})")
     return gemini_mcps
+
+
+_PLUGIN_ROOT_VAR_RE = re.compile(r"@\$\{(?:CLAUDE_PLUGIN_ROOT|extensionPath)\}/([^\s`'\"<>]+)")
+# Decoy patterns: an axiom-shaped name carrying a staleness/version marker —
+# `old_axioms.md`, `axioms_old.md`, `axioms_v1.md`, `legacy_axioms.md`,
+# `archived-axioms.md`, etc. Legitimate per-skill axiom files (e.g.
+# `skills/research/axioms.md` for academic-axioms corollaries) are NOT decoys
+# because they have no staleness marker and live inside an active skill folder.
+_AXIOM_NAME_RE = re.compile(r"axioms?", re.IGNORECASE)
+_DECOY_MARKER_RE = re.compile(
+    r"(?:^|[_\-.])(?:old|legacy|archive[d]?|deprecated|backup|copy|v\d+|orig|original|prev|previous)(?:$|[_\-.])",
+    re.IGNORECASE,
+)
+
+
+def _assert_plugin_imports_resolve(content_dir: Path, platform: str) -> None:
+    """Fail the build if any shipped agent @-imports a path absent from the payload.
+
+    Walks every agent .md under content_dir/agents/, extracts each
+    @${CLAUDE_PLUGIN_ROOT}/<rel> or @${extensionPath}/<rel> reference, and
+    asserts the relative path exists at content_dir/<rel>. Catches the
+    rbg/marsha dangling axiom-import regression directly: the plugin payload
+    IS the resolution scope at runtime, so an unresolvable import means a
+    review agent will silently fall back to whatever a `find` lands on.
+    """
+    agents_dir = content_dir / "agents"
+    if not agents_dir.exists():
+        return
+    failures: list[str] = []
+    for agent_file in sorted(agents_dir.glob("*.md")):
+        text = agent_file.read_text()
+        for match in _PLUGIN_ROOT_VAR_RE.finditer(text):
+            rel = match.group(1).rstrip(".,;:)")
+            if rel.startswith("../") or "/../" in rel:
+                failures.append(
+                    f"{agent_file.relative_to(content_dir)}: import @${{...}}/{rel} "
+                    "escapes the plugin payload (parent-of-root path)"
+                )
+                continue
+            target = content_dir / rel
+            if not target.exists():
+                failures.append(
+                    f"{agent_file.relative_to(content_dir)}: import @${{...}}/{rel} "
+                    f"does not resolve in payload (expected {target})"
+                )
+    if failures:
+        raise RuntimeError(
+            f"Plugin import resolution guard failed for {platform}:\n  - " + "\n  - ".join(failures)
+        )
+
+
+def _assert_no_axiom_decoys(content_dir: Path) -> None:
+    """Fail the build if any axiom-shaped file ships outside .agents/rules/.
+
+    The canonical axioms live at .agents/rules/AXIOMS.md and
+    .agents/rules/AXIOMS-REVIEW.md (co-shipped at build time). Any other
+    axiom-shaped file in the payload is a decoy that a fallback `find` could
+    surface to a review agent (this happened: aops-core/old_axioms.md shipped
+    for months and rbg grounded verdicts on it after the canonical import
+    dangled, #aops-75543e66).
+    """
+    allowed_rel = {
+        Path(".agents/rules/AXIOMS.md"),
+        Path(".agents/rules/AXIOMS-REVIEW.md"),
+    }
+    decoys: list[str] = []
+    for md_file in content_dir.rglob("*.md"):
+        rel = md_file.relative_to(content_dir)
+        if rel in allowed_rel:
+            continue
+        stem = md_file.stem
+        if not _AXIOM_NAME_RE.search(stem):
+            continue
+        # axiom-shaped name. Two flagging conditions:
+        #   1. Name carries a staleness/version marker (the actual decoy class).
+        #   2. Name lives at the plugin root (any axiom file at top level is
+        #      a tripwire for `find` fallbacks regardless of marker).
+        if _DECOY_MARKER_RE.search(stem) or rel.parent == Path("."):
+            decoys.append(str(rel))
+    if decoys:
+        raise RuntimeError(
+            "Axiom decoy guard failed — these axiom-shaped files would ship "
+            "outside .agents/rules/ and could be mis-loaded by a review agent:\n  - "
+            + "\n  - ".join(decoys)
+        )
 
 
 def build_aops_tools(
