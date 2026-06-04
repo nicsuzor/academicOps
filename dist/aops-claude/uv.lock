@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "aops-core"
-version = "0.3.33+gddf3f73a"
+version = "0.3.34.dev0+g048f630d.dirty"
 source = { editable = "." }
 dependencies = [
     { name = "filelock" },
