@@ -4672,7 +4672,7 @@ class SessionProcessor:
                                 markdown += f"## Agent (Turn {turn_number})\n\n"
                             agent_header_emitted = True
 
-                        thoughts = item.get("thoughts") or []
+                        thoughts = item.get("thoughts") or []  # allow-fallback: absent for non-thinking models
                         if thoughts:
                             label = (
                                 "Model thoughts"

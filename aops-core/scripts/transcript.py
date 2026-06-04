@@ -1495,8 +1495,8 @@ Examples:
                 # the per-turn stream — surface each as an explicit timeline event so
                 # the evidence loop (/retro, /trend-review) can measure fire rate.
                 for _d in (
-                    session_summary.permission_denials or []
-                ):  # allow-fallback: field always exists but may be falsy
+                    session_summary.permission_denials or []  # allow-fallback: field always exists but may be falsy
+                ):
                     _dn = _d if isinstance(_d, dict) else {}
                     tool_name = _dn.get("tool_name") or _dn.get("toolName")
                     tool_use_id = _dn.get("tool_use_id") or _dn.get("toolUseId")
@@ -1893,7 +1893,7 @@ Examples:
         session_summary.client_version = session_ctx.get("client_version")
         session_summary.git_branches = session_ctx.get("git_branches", [])
         session_summary.permission_modes = session_ctx.get("permission_modes", [])
-        session_summary.models = session_ctx.get("models", [])
+        session_summary.models = session_ctx.get("models", [])  # allow-fallback: field optional in older transcripts
 
         _populate_session_linkage(session_summary, entries)
 
