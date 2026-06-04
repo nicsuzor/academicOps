@@ -198,6 +198,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b temp-main
-          git add -f dist/
+          cp -r dist/.claude-plugin .
+          git add -f dist/ .claude-plugin/
           git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }}"
           git push origin temp-main:main --force
