@@ -76,6 +76,17 @@ class PkbTask:
 # 'draft' and 'active' appear in the MCP server's own schema description but are
 # NOT valid — they are artefacts of an older API version. Any call that passes
 # them will get a server-side "Invalid status" error; we catch it here first.
+#
+# NOTE (partial-work doctrine): the `partial` terminal status — an honest
+# partial stop (draft PR + live follow-up task) — is NOT listed here on purpose.
+# This frozenset mirrors what the PKB MCP server actually accepts, and the
+# server currently REJECTS `partial` on release_task/update_task ("Invalid
+# status: partial. Must be one of: merge_ready, done, review, blocked,
+# cancelled"). Adding it here before the server enum is extended would let the
+# value through only to fail server-side. The polecat layer (finalize.py
+# `--partial`, prompt_template.py) is `partial`-aware and degrades honestly
+# until the server accepts it; once the server enum gains `partial`, add it
+# here in the same change. See the partial-work spec (PKB: spec-partial-work).
 VALID_TASK_STATUSES = frozenset(
     {
         "inbox",

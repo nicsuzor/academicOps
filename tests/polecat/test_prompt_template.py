@@ -175,6 +175,71 @@ def test_finish_section_reminds_re_reading_task_body_for_mandatory_gates():
     assert "#583" in prompt
 
 
+def test_preamble_leads_with_search_pkb_first_not_do_not_pull():
+    """AC#4: the worker preamble must lead with 'search the PKB first', replacing
+    the old 'Do not run /pull' stance.
+
+    Partial-work doctrine (PKB: spec-partial-work, chunk 4): the worker is a
+    PKB-first actor, not a context-blind executor. The old preamble's headline
+    instruction was 'Do not run /pull'; the new headline is PKB-first.
+    """
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    assert "Search the PKB first" in prompt
+    # The PKB-first instruction must be the framing, not a buried aside: the
+    # old hard 'Do not run `/pull`' headline must be gone.
+    assert "Do not run `/pull`" not in prompt
+    # It must name the PKB-as-system-of-record rationale, not just the slogan.
+    assert "system of record" in prompt
+
+
+def test_preamble_authorises_thin_brief_and_partial_stop():
+    """AC#4: the preamble must frame the brief as thin (intent+AC) and authorise
+    stopping `partial` when the chunk is too big for one focused session."""
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    assert "thin" in prompt.lower()
+    # 'stop partial' must be presented as authorised + expected, not a failure.
+    assert "stop partial" in prompt.lower()
+    assert "Honest-partial beats false-whole" in prompt
+
+
+def test_finish_contains_clause_2b_ac_self_certification():
+    """AC#3: the finish flow must require every AC to resolve to one of
+    tested | declared-deferred | illegal-gap — honesty-led, not a coverage gate.
+
+    Partial-work doctrine clause 2b (PKB: spec-partial-work §3): a silently-absent
+    AC is the dishonest stop. The discriminator is worker self-cert + a
+    `## Deliberately deferred` PR section, explicitly NOT regex/keyword/coverage
+    matching (No-Shitty-NLP P#49). Guard both halves: the three-way partition
+    must be present, AND it must be framed as a judgment call, not a tool score.
+    """
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    # The three-way partition by name.
+    assert "tested" in prompt
+    assert "declared-deferred" in prompt
+    assert "illegal-gap" in prompt
+    # The disclosure convention the partition relies on.
+    assert "## Deliberately deferred" in prompt
+    # It must NOT be reducible to mechanical matching — it encodes judgment.
+    assert "keyword/coverage matching" in prompt
+    # It must cite the axioms that forbid narrowing/relabelling an AC.
+    assert "A6b" in prompt and "A8" in prompt
+
+
+def test_finish_contains_partial_draft_pr_path():
+    """AC#2: the finish flow must offer a `gh pr create --draft` partial path
+    distinct from the ready path, releasing as `partial` not `merge_ready`."""
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    # A draft-PR partial path must exist alongside the ready path.
+    assert "--draft" in prompt
+    assert 'status="partial"' in prompt
+    # It must explicitly forbid laundering a partial stop into merge_ready.
+    assert "do **NOT** release" in prompt or "do NOT release `merge_ready`" in prompt
+    # The four required gh flags must still be documented (regression guard:
+    # omitting --head/--base hangs gh).
+    for flag in ("--title", "--body", "--head", "--base"):
+        assert flag in prompt
+
+
 def test_prompt_contains_halt_on_unsatisfiable_checkpoint():
     """Worker prompt must instruct halt-as-blocked on an unsatisfiable AC.
 
