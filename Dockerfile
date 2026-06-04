@@ -96,6 +96,12 @@ RUN umask 000 && curl -fsSL https://claude.ai/install.sh | bash \
     && claude --version > /home/worker/.claude-code-version 2>&1 \
     && cat /home/worker/.claude-code-version
 
+# Install Antigravity CLI (agy)
+ARG AGY_VERSION
+RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
+    && agy --version > /home/worker/.agy-version 2>&1 \
+    && cat /home/worker/.agy-version
+
 # RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
 # this layer so rebuilds always fetch the latest Rust toolchain from rustup.
 ARG RUST_CACHEBUST
