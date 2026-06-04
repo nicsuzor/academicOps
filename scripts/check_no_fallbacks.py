@@ -429,7 +429,7 @@ def _load_baseline() -> dict[str, dict[str, int]]:
     if not isinstance(data, dict):
         return {}
     # Absent "baseline" key genuinely means "no grandfathered sites".
-    return data.get("baseline", {})
+    return data.get("baseline", {})  # allow-fallback: absent key = no grandfathered sites; callers treat empty dict as clean baseline
 
 
 def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]]) -> list[dict]:
@@ -440,7 +440,7 @@ def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]])
     for v in violations:
         rel = _rel_key(Path(v["file"]))
         pattern = v["pattern"]
-        file_baseline = baseline.get(rel) or {}
+        file_baseline = baseline.get(rel) or {}  # allow-fallback: absent file key = zero grandfathered violations for that file
         allowed = file_baseline.get(pattern, 0)
         seen[(rel, pattern)] += 1
         if seen[(rel, pattern)] > allowed:
