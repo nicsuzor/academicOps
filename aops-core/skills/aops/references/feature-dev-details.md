@@ -31,7 +31,7 @@ This workflow enforces framework principles (axioms enforced by `rbg`):
 - **Test Behaviour, Not Static Facts**: Never write tests that re-assert static codebase facts — hardcoded label/tool/file sets, file-existence checks, exact markdown prose, directory-structure assertions. They break on legitimate change instead of on regression (e.g. `test_canonical_label_set_matches_apply_triage` broke the moment `triage:pipeline` was added; 26 such tests were removed in PR #1394). The code is the SSoT for _what exists_; a test earns its place only by verifying _what the code does_ — logic, transformations, error handling, integration.
 - **Explicit Success Criteria**: Define measurable outcomes upfront
 - **User-Centric Acceptance Criteria**: Acceptance criteria describe USER outcomes, not technical metrics. Never add performance criteria unless user requests.
-- **Fail-Fast**: No partial success, fix or revert
+- **Fail-Fast**: No partial success _within the claimed leaf_ — the thing you actually claimed either works completely or you fix/revert it. (Honest-partial of a _smaller_ whole — a sub-scope cut at a clean seam, built green, and disclosed as a `partial` draft PR + continue task — is legitimate, not a fail-fast violation. See [[spec-partial-work]].)
 - **Single Source of Truth**: Reference, don't duplicate
 - **Experiment-Driven**: Document as formal experiments
 - **Real Data Fixtures**: Test fixtures use real captured data, not fabricated examples. E2E tests must use REAL framework prompts, not contrived examples.
@@ -208,7 +208,7 @@ Feature development follows eight phases:
 - Integration test fails → Stop, fix, or revert
 - Documentation conflicts → Stop, resolve
 - Bloat detected → Stop, refactor
-- No partial success - feature works completely or doesn't ship
+- No partial success _within the claimed scope_ — the feature you claimed works completely or doesn't ship. (Shipping a _narrower, clean_ whole — cut at a scope seam, built green, disclosed as a `partial` draft PR + continue task — is a smaller claim honestly delivered, not "partial success." See [[spec-partial-work]].)
 
 ### Phase 7: Validation & Decision
 
@@ -275,7 +275,7 @@ Feature development follows eight phases:
 
 **Output**: Feature committed (keep), removed (revert), or refined (iterate once).
 
-**Fail-Fast**: Never commit partial success. Better to revert and learn than ship broken features.
+**Fail-Fast**: Never commit _broken_ partial success — the claimed thing carrying a defect or red test inside its shipped surface, relabelled a draft. Better to revert and learn than ship broken. (An honest `partial` — a smaller whole built green and disclosed, with every shipped acceptance criterion resolved to _tested_ or _declared-deferred_ and never silently absent — is a legitimate stop, not broken-ship. See [[spec-partial-work]].)
 
 ### Phase 8: Spec Synthesis
 

@@ -34,7 +34,7 @@ description: Process for adding new framework capability (hook, skill, script, c
 
 5. **Run integration test**
    - Test must pass completely
-   - No partial success
+   - No partial success _within the claimed component_ — the test for what you claimed must pass completely. (A _narrower_, clean component honestly disclosed as a `partial` is legitimate; a claimed component with a red test inside its surface is broken-ship. See [[spec-partial-work]].)
    - Document actual vs expected behavior
 
 6. **Update authoritative sources**

@@ -50,7 +50,7 @@ version: 2.0.0
 8. **Identify Dependencies**: Which tasks must complete before others can start?
    - Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
-9. **Estimate Effort**: Assign rough duration (0.5d, 1d, 1w). Tasks over 0.5d probably need further decomposition. Single-session tasks (1–4 hours) are the right duration.
+9. **Estimate Effort**: Assign rough duration (0.5d, 1d, 1w). Tasks over 0.5d probably need further decomposition. Single-session tasks (1–4 hours) are the right duration. This single-session vs multi-session call feeds **thin-brief / `partial`-stop eligibility** (recorded at step 16): under the NARROW default ([[spec-partial-work]]), a single-session leaf may legitimately be dispatched thin and stop at `partial`, while epics and multi-session work keep the full review gate.
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
@@ -68,7 +68,7 @@ version: 2.0.0
     - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution, does not block promotion).
     - **Exploratory**: _Escape Hatch_ — Create minimal verification tasks and do not block promotion to ready for exploratory work.
 
-16. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`.
+16. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`. Record **thin-brief / `partial`-stop eligibility** in this same entry ([[spec-partial-work]]): whether this node may be dispatched on a thin brief and whether a worker may stop at `partial` (draft PR + continue task). This is the promotion-log author's call — **not** a worker frontmatter field, because a worker cannot self-promote its own latitude. NARROW default: full gate for epics/multi-session; a single-session leaf (step 9) may go thin and stop `partial`.
 
 ## Hierarchy and Depth
 
