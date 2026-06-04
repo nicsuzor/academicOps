@@ -177,6 +177,14 @@ jobs:
           cp "${SRC}/dist/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
           cp "${SRC}/dist/aops-gemini/gemini-extension.json" gemini-extension.json
 
+          # main is the default branch, so pull_request_target workflows resolve
+          # from HERE. Keep the stray-PR auto-retarget workflow on main (in sync
+          # with source) so PRs opened against main are flipped to dev. This is
+          # the only source-side workflow the publish step deliberately carries
+          # onto main; everything else on main is built artifacts.
+          mkdir -p .github/workflows
+          cp "${SRC}/.github/workflows/auto-retarget-pr.yml" .github/workflows/auto-retarget-pr.yml
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
