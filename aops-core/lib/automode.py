@@ -1,9 +1,12 @@
 """
 Auto mode classifier rule management.
 
-Reads aops autoMode rules from plugin.json,
-fetches CC defaults via `claude auto-mode defaults`, merges them, and installs
-into ~/.claude/settings.json.
+Reads aops autoMode rules from the plugin manifest — canonical SSoT is
+``templates/aops-core.plugin.json`` (the editable source); the build copies it
+to ``<plugin>/.claude-plugin/plugin.json``, which is what ships and what the
+runtime session-start hook reads (see ``_get_aops_rules``). Fetches CC defaults
+via `claude auto-mode defaults`, merges them, and installs into
+~/.claude/settings.json.
 
 Merge strategy:
   - environment: aops REPLACES CC defaults (our context is more specific).
@@ -26,18 +29,40 @@ from pathlib import Path
 
 AOPS_CORE_DIR = Path(__file__).parent.parent
 
+# Fingerprint substring marking aops autoMode rules as installed in user
+# settings. Keyed on the canonical axiom SLUG (`evidence-immutable`), not a prose
+# heading: slugs are stable across rule rewrites, headings are not (the old
+# fingerprint pinned the renamed P#42 heading and silently misfired). CONTRACT:
+# the soft_deny rule for this axiom MUST contain this slug token. The regression
+# test tests/lib/test_automode.py::test_fingerprint_present_in_canonical_manifest
+# fails loudly if a rule rewrite drops it — turning a silent runtime misfire into
+# a CI failure.
+AOPS_RULES_FINGERPRINT = "evidence-immutable"
+
 
 def _get_aops_rules() -> dict | None:
-    """Load aops autoMode rules from plugin.json."""
-    # Primary: plugin.json autoMode field
-    plugin_json = AOPS_CORE_DIR.parent / "templates" / "aops-core.plugin.json"
-    if plugin_json.exists():
+    """Load aops autoMode rules from the plugin manifest.
+
+    Canonical SSoT is ``templates/aops-core.plugin.json`` (the editable source).
+    The build copies it to ``<plugin>/.claude-plugin/plugin.json``; an installed
+    plugin does not ship the source ``templates/`` tree, so the same loader must
+    fall back to the built manifest sitting next to this module. Checked
+    source-first so local edits win during development; at runtime only the built
+    copy exists and is used.
+    """
+    candidates = (
+        AOPS_CORE_DIR.parent / "templates" / "aops-core.plugin.json",  # source checkout (SSoT)
+        AOPS_CORE_DIR / ".claude-plugin" / "plugin.json",  # built / installed plugin
+    )
+    for plugin_json in candidates:
+        if not plugin_json.exists():
+            continue
         try:
             manifest = json.loads(plugin_json.read_text())
-            if "autoMode" in manifest:
-                return manifest["autoMode"]
         except (json.JSONDecodeError, OSError):
-            pass
+            continue
+        if isinstance(manifest, dict) and "autoMode" in manifest:
+            return manifest["autoMode"]
 
     return None
 
@@ -100,17 +125,16 @@ def _read_user_settings() -> tuple[dict, Path]:
 def is_installed() -> bool:
     """Check if aops autoMode rules are already in user settings.
 
-    Uses the presence of "Research Data Is Immutable AND Irreplaceable (P#42)" in soft_deny as a
-    fingerprint for aops rules. LOAD-BEARING: if that rule's heading text is
-    renamed or removed from plugin.json, this fingerprint silently breaks —
-    sessions will re-install on every start (if the heading no longer matches)
-    or never re-install after a rule reset (if the rule disappears entirely).
-    Update this fingerprint string if the ``evidence-immutable`` rule heading changes.
+    Fingerprints on ``AOPS_RULES_FINGERPRINT`` (the ``evidence-immutable`` axiom
+    slug) appearing in soft_deny. The slug is stable across prose rewrites, so —
+    unlike the old exact-heading match — a rule reword does not silently break the
+    check. The rule→slug contract is guarded by the regression test referenced on
+    ``AOPS_RULES_FINGERPRINT``.
     """
     settings, _ = _read_user_settings()
     auto_mode = settings.get("autoMode", {})
-    soft_deny = auto_mode.get("soft_deny", [])
-    return any("Research Data Is Immutable AND Irreplaceable (P#42)" in rule for rule in soft_deny)
+    soft_deny = auto_mode.get("soft_deny") or []  # allow-fallback: null in JSON
+    return any(AOPS_RULES_FINGERPRINT in r for r in soft_deny if isinstance(r, str))
 
 
 def install(dry_run: bool = False) -> tuple[bool, str]:

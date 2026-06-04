@@ -194,6 +194,7 @@ Break validated epics into structured task trees.
    - **High Uncertainty**: Parent needs more specification. Focus on decomposition into spikes, research, or probeable tasks.
    - **Low Uncertainty + High Scope**: Parent is well-specified but large. Focus on creating standard execution subtasks.
    - **Set `classification` on each subtask** to match its shape: spike subtasks get `classification: spike`, research subtasks get `classification: research`, execution subtasks omit `classification` (absent is treated as execution). This feeds the `voi_value` term in `focus_score`, so spike/probe-shaped leaves with uncertain important downstream rank correctly (see the `classification` entry in [[../remember/references/TAXONOMY.md]] and the spec [[mem-cf396d84]]).
+     3a. **Interrogate the task's epistemics before structuring** — what evidence best answers this (including the negative/diagnostic record — rejected PRs, reverts, recent daily-note complaints — not just distilled issues/retros), what must be observable before success can be judged (instrument it if not), and whether the artifact's nature dictates the verification shape (qualitative targets need observation, not crafted probes). Full prompts: [[workflows/decompose#core-process]] step 3.5.
 4. Select workflow — identify which workflow achieves this epic.
 5. Derive epic shape: planning tasks (before) → execution tasks (during) → verification tasks (after).
 6. Define deliverables — each task must have a concrete output.
@@ -218,7 +219,7 @@ To promote a node from `inbox` to `ready`, you must produce all of the following
 5. **Fitness Rubric (user-facing work only)**: If the epic produces a user-facing deliverable (UX, prose, design output, dashboard, anything judged on fitness rather than purely on mechanical correctness), the parent body MUST carry a `## Fitness Rubric` section authored via `/aops-core:design-rubric`. The rubric is the input marsha reads at verify time. Without it, verification regresses to checkbox compliance. For purely mechanical work (lint fix, dependency bump, test repair), the rubric is not required.
 6. **Multi-agent review gate satisfied**: the epic carries a `james review (pauli + rbg + revise)` blocker subtask, and any standalone tasks created in this decomposition carry the `pauli + rbg` first / `james` last subtask pair. Promotion is gated on the review subtasks reaching `done`, not merely on existing.
 
-**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing the rationale for promotion.
+**Promotion decision recording**: Write a "Promotion log" entry to the parent body capturing the rationale for promotion. This entry is also where **thin-brief / `partial`-stop eligibility** is recorded (the NARROW default, [[spec-partial-work]]): state whether this node may be dispatched on a thin brief and whether a worker may legitimately stop at `partial` (a draft PR + a live continue task) rather than completing the whole. Eligibility is the promotion-log author's auditable decision — **never a worker's self-declared frontmatter field** (a worker cannot self-promote its own latitude). Default under NARROW: the multi-agent review gate is mandatory for epics and multi-session work; a single-session leaf may be dispatched thin and stop at `partial`.
 
 **Critical rules**:
 
@@ -551,6 +552,8 @@ _Enforces `exercise-authority` Edge 2 (FM-2, FM-3, FM-4). This applies the Decis
 | **SURFACE** | Genuine taste, scope, naming, values, or trade-off where the user's preference is the deciding input.                                                   | Present options + recommendation + reasoning. Ask.                                                                                                                                                                                                                                                                                                                             |
 
 **Test before surfacing**: write the decision as a question. If the question can be answered by re-reading VISION.md, the axioms, or this skill's other sections, it's a DECIDE. If the question can only be answered by running the thing first, it's a DEFER. Only what's left is a SURFACE.
+
+**Blast-radius forcing function**: independent of the test above, a decision that is hard to reverse or that changes the environment for _all_ future agents and sessions — adding or escalating an enforcement surface, changing a shared default, reshaping the framework's own rules — is SURFACE-class even when a peer agent _could_ decide it. Peer review still runs; it does not replace the user's sign-off on a high-blast-radius commitment. This is distinct from the anti-pattern below: re-surfacing a _genuinely delegated_ call is rubber-stamping, but a framework-shaping change was never fully the agent's to delegate.
 
 **Worked example** (real, 2026-04-30, issue-sweep epic decomposition):
 
