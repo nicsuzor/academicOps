@@ -32,142 +32,72 @@ permalink: skill-peer-review
 
 # Peer Review Skill
 
-**Purpose**: Run a peer review of a research funding application or academic submission, preserving the user's voice and producing evidence-based feedback that matches the _current round's_ scheme criteria.
+Run peer reviews of research funding applications or academic submissions, matching the current round's scheme criteria and producing evidence-based feedback.
 
-**When to invoke**: User is assigned as a Detailed Assessor, a General Assessor / College of Experts member, or is reviewing a paper, thesis, or draft.
+## Core Rules
 
-**Core stance**: Criteria, weights, scoring bands, and even rubric language change between rounds. **Do not assume the previous round's criteria still apply.** Always fetch the current handbook or guidelines first.
-
-For role-specific nuance see [[reviewer-roles]]. For platform tips see [[platform-instructions]]. For taxonomy and scoring guidance see [[review-guidance]].
-
----
-
-## Core Axiom: Evidence Over Opinion
-
-Every score and every sentence of feedback must point to evidence in the application. "The methodology is weak" is not feedback; "The proposed survey instrument (Part C, p.4) does not specify sampling frame or recruitment strategy" is.
-
-For collegial draft review (where the user provides the judgment), an additional axiom applies — **support, don't replace judgment**. The agent prepares materials, maps questions to text, drafts in the user's voice. The agent does not generate critique unless explicitly asked.
-
----
+- **Evidence-Based**: Every claim must cite the application (page, section, or quote).
+- **Fetch Round Criteria**: Fetch current scheme guidelines (ARC, ERC, SNSF, NHMRC) for each round. Do not reuse prior criteria.
+- **Conflict of Interest (CoI)**: Declare CoI immediately upon identifying institutional, personal, collaborator, supervisory, or financial relationships.
+- **No AI-Text Policies**: Adhere to funding body policies (e.g., ARC) prohibiting AI-generated assessor text. Use the agent to organize, verify, and edit notes; the final text must reflect the user's voice.
+- **No Integrity Allegations in Comments**: Route suspected research-integrity breaches to the scheme's integrity office separately.
 
 ## Workflow
 
 ### 1. Intake & CoI Check
 
-1. Read the assignment notice (email, RMS notification, etc.). Capture:
-   - Scheme + round (e.g. FT26, DE27, ERC-ADG, SNSF Project)
-   - Application ID, candidate, institution, title
-   - **Role**: Detailed Assessor vs. General Assessor / CoE vs. collegial reviewer (see [[reviewer-roles]])
-   - Deadline (and any platform's earlier soft deadline)
-   - Min char/word counts per criterion (Detailed only)
-2. **Declare CoI before reading**: institutional, personal, recent collaborator (typically last 4 years for outputs / 2 years for funding under ARC), supervisory, or financial. Re-check CoI when reading the participant list and references — collaborators may be named only deep in the application.
-3. Create a task file `YYYYMMDD-{scheme}-{appid}.md` with the assignment context, deadline, and role.
+- Read assignment details and capture: scheme/round, Application ID, candidate, institution, title, role (Detailed vs. General Assessor), and deadline.
+- Create a task file: `YYYYMMDD-{scheme}-{appid}.md`.
 
-### 2. Fetch Current Criteria
+### 2. Fetch Scheme Guidelines
 
-**Do not reuse criteria from a prior round**. Fetch the current scheme handbook or guidelines:
+Search PKB or external sources (e.g., GrantConnect, mySNF) for current round handbooks. Extract:
 
-- **ARC** schemes: search PKB for the current handbook (e.g. `ARC-FT26-Assessor-Handbook`, `ARC-DE27-Assessor-Handbook`); else fetch from https://www.arc.gov.au/funding-research/peer-review/assessor-resources or via GrantConnect for the Grant Guidelines.
-- **ERC**: call-specific evaluation guide.
-- **SNSF**: scheme-specific assessor instructions in mySNF.
-- **NHMRC**: peer review guidelines for the specific scheme + round.
-
-Extract into the task or working notes:
-
-- Criteria list, sub-elements, weights
-- Any add-on criteria (e.g. ARC Indigenous research add-ons)
-- Scoring scale + band descriptors + indicative distribution
-- Char minimums (per criterion + overall)
-- Submission platform + deadline
-- Role-specific instructions (Detailed vs General Assessor differ — see [[reviewer-roles]])
-- Anything new this round vs. last (compare with PKB notes from the previous year if any)
+- Criteria, sub-elements, and weights.
+- Scoring scale, band descriptors, and character limits.
 
 ### 3. Materials Assembly
 
-1. Download the application PDF + supporting parts. Store under `${ACA_DATA}/reviews/{scheme}/{appid}/`.
-2. Convert to line-numbered text: `pdftotext -layout {input}.pdf source.txt`. This enables grep + line citations in notes.
-3. Build a **section map** (table of section → line range) at the top of the working notes. This is the most useful single navigation aid for re-reads.
-4. Generate a working assessment file from the criteria fetched in step 2 — see [[review-template]] for the structure to instantiate.
+- Download application PDF to `${ACA_DATA}/reviews/{scheme}/{appid}/`.
+- Convert to line-numbered text: `pdftotext -layout {input}.pdf source.txt`.
+- Build a section-to-line-range map in the working notes.
 
-### 4. Initial Read & Reading Notes
+### 4. Reading Notes & Initial Pass
 
-One full pass, no scoring. Goal: understand the project, candidate trajectory, and ask. The output is a **reading notes** document at `~/brain/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md` that:
+Generate `~/brain/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md` containing:
 
-- Maps every assessment criterion to specific line ranges in the source
-- Records **basic factual claims** the application makes against each criterion (what it says it does, with line refs) — NOT yet judgments
-- Flags `[?]` markers where claims need verification or where something is missing/inconsistent
-- Surfaces structural anchors useful for re-read (RQs, aims, theoretical frame, methods phases, budget summary)
-- Includes an anti-bias checklist tailored to this application
+- Mapping of criteria to line ranges.
+- Basic factual claims made by the application.
+- Clarification questions `[?]`.
+- Structural anchors (aims, methods, budget summary).
+- Anti-bias checklist.
 
-The reading notes are designed to be read alongside the source — keep both open. See [[reading-notes-format]].
+### 5. Assessment & Quality Gate
 
-### 5. Criterion-by-Criterion Assessment
+Draft comments for each criterion following the scheme's scoring bands.
 
-For each criterion fetched in step 2:
+- Ensure all prose matches the assigned score.
+- Criticize the proposal, not the person.
+- Verify character limits are met.
 
-1. **Locate evidence** in the application — quote or page-cite. Absent evidence is itself feedback.
-2. **Categorise** each unit (see taxonomy in [[review-guidance]]):
-   - **Scope**: specific text | section | document
-   - **Type**: structural | methodological | substantive | clarity | citation | strategic-fit
-   - **Direction**: strength | weakness | gap | concern
-3. **Draft comment** to meet the round's char minimum. Lead with strengths, then material weaknesses, then minor concerns. Avoid hedging.
-4. **Score** against the band descriptors fetched in step 2. Distribute realistically — don't drift toward the centre.
+### 6. Submission & Close-out
 
-### 6. Quality Check
+- Log in to the platform (RMS, mySNF, etc.), paste comments, verify counts, and submit.
+- Update task to `status: done`, append final assessment to the task file, and archive the review folder.
 
-Before drafting overall:
+## Scribe Mode (Collegial Drafts)
 
-- [ ] Each criterion comment cites the application (page, section, or quote)
-- [ ] Scores are consistent with text — no "outstanding" prose with a B score
-- [ ] No personal attacks; criticise the proposal, not the person
-- [ ] Tone professional; for grants, slightly more supportive than for journal review (it's a funding decision)
-- [ ] No suspected research-integrity breaches mentioned in assessor comments — route to the integrity office separately
-- [ ] No restatement of the application; no comparison with other applications; no AI-generated text (per ARC policy)
-- [ ] Char counts pass
+For reviewing draft papers/proposals written by colleagues:
 
-### 7. Overall Assessment & Score
-
-Synthesise: what makes this application competitive? What would have to change for it to be? The overall score is a judgment about whether this should be funded against the scheme's purpose, not a mechanical average.
-
-### 8. Submission
-
-1. Log in to the platform (RMS, EvalAccess, mySNF). Pre-flight char counts.
-2. Paste, save frequently, submit. Capture confirmation.
-
-### 9. Close-out
-
-Update task to `[x] #status-done`; append final assessment to the task file; archive the review folder; note any patterns worth keeping in PKB.
-
----
-
-## Scribe Mode (collegial drafts, not panel assessment)
-
-For colleague drafts, theses, or letters where the user is providing the judgment:
-
-1. **Assemble** materials in `${ACA_DATA}/reviews/[author]/`.
-2. **Reading guide**: produce `YYYYMMDD-reading-notes.md` mapping the author's stated questions to specific line numbers / sections. Do NOT add your own critique.
-3. **Scribe**: capture the user's reactions and draft feedback in their voice (terse, specific, no LLM hedging).
-4. **Finalise**: append response to task file, mark complete, file in author folder.
-
----
-
-## Critical Rules
-
-- **Fetch criteria fresh each round.** Do not assume the previous year's criteria.
-- **Match your role.** Detailed and General Assessor / CoE work differs — see [[reviewer-roles]].
-- **Evidence-based.** Every claim points to the proposal.
-- **CoI declared and re-checked** when participant lists and references are reached.
-- **Voice.** For collegial review, match the user. Direct, specific, no effusive thanks.
-- **No integrity allegations in comments.** Route to the scheme's integrity office.
-- **No AI-generated assessment text** under ARC policy. The agent prepares notes and helps draft in the user's voice; the user owns the final text.
-
----
+1. Assemble materials in `${ACA_DATA}/reviews/[author]/`.
+2. Generate `YYYYMMDD-reading-notes.md` mapping the author's questions to line numbers.
+3. Draft feedback matching the user's voice (terse, specific, no hedging).
 
 ## References
 
-- [[reviewer-roles]] — Detailed Assessor vs General Assessor / CoE vs collegial reviewer
-- [[review-guidance]] — taxonomy, scoring bands, tone calibration, anti-bias
-- [[review-template]] — generic assessment file structure (instantiate per scheme)
-- [[reading-notes-format]] — reading notes layout that helps you read alongside the source
-- [[platform-instructions]] — RMS, mySNF, EvalAccess submission tips
-- PKB: search for `{scheme}-Assessor-Handbook` or `{scheme} Grant Guidelines` for the current round
+- [[reviewer-roles]] — Role distinctions (Detailed vs General Assessor vs collegial)
+- [[review-guidance]] — Taxonomy, scoring bands, tone, and anti-bias calibration
+- [[review-template]] — Assessment file templates
+- [[reading-notes-format]] — Reading notes layout
+- [[platform-instructions]] — Submission platform tips
+- PKB: search for `{scheme}-Assessor-Handbook` or `{scheme} Grant Guidelines`

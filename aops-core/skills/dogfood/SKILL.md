@@ -20,227 +20,50 @@ version: 0.1.0
 permalink: skills-dogfood
 ---
 
-# /dogfood — Delegated Instruction Testing
+# Delegated Instruction Testing Guidelines
 
-## Purpose
+Test whether a set of instructions produces correct, complete, and verified outcomes when executed by a contextless agent. Do not perform the work yourself.
 
-Test whether a set of instructions produces good outcomes when executed by a contextless agent. The dogfooder does NOT do the work — they write instructions, delegate execution, observe what happens, and improve the instructions.
+## Core Directives
 
-This skill is the **outer loop** that wraps any task category. The inner loop (execute/reflect/codify per step) is documented in the brain PKB (project: aops, topic: dogfood) and applies within each phase below.
+### Phase 0: Verification & Data Landscape Mapping
 
-## When to Use
+Before writing instructions or propagating subagent results:
 
-- Building or improving a skill, workflow, or command
-- Testing whether instructions are sufficient for delegation
-- Evaluating framework capabilities on real work
-- Any situation where "can a contextless agent do this well?" is the question
+- **Verify verdicts**: Use `/verify` by citation to evaluate the subagent's actual output (freshness, completeness, limitations) against the original brief. Do not blindly accept or relay its self-reported status.
+- **Sample data sources**: Open and read sample files directly. Do not assume data formats or presence (e.g. verify if a file contains input vs. output).
+- **Map data channels**: Understand how data flows between main agents, subagents, and hooks/logs. Verify the exact delivery mechanism (e.g. tool result vs. system message).
+- **Glob safety**: Avoid globbing large directories (10K+ files) with commands like `ls *.md` (which fail silently). Use targeted list/find queries (`find` or `ls | head`).
 
-## Workflow
+### Phase 1: Research and Draft
 
-### Phase 0: Know What You're Eating
+- Write self-contained instructions detailing objectives, exact data paths, sampling parameters, expected output format, and saving locations.
+- Work directly in the target skill file for mature instructions. Avoid leaving stray scratch files in the repo.
+- Enforce `/craft` author mode review to check for shallow-execution vulnerabilities before delegating.
 
-**Goal**: Understand the system being dogfooded well enough that your instructions won't send the subagent down a dead end, AND verify subagent verdicts before any propagation.
+### Phase 2: Commission Execution
 
-This phase exists because of specific, observed failures:
+- **Scale incrementally**: Start with a small batch size (e.g. N=2 tasks) to verify the pipeline before scaling.
+- **Isolate context**: Launch the subagent with only the instruction file as context. Do not provide verbal coaching.
+- **Execution management**: Let the agent run. Do not abort/restart for scope changes; send a redirect message to the running agent instead. Interrupt only for active harm.
 
-1. A dogfooding supervisor concluded a task was impossible because "the data doesn't exist" — when the data was in the session transcripts and hook logs, documented in the framework's own forensics workflow. The supervisor had the right files in their research but didn't connect the dots.
-2. A dogfooding supervisor relayed subagent verdicts (PASS/FAIL, observed defects) without independent verification against the original brief, propagating false-negatives into trend-review.
+### Phase 3: Analyze Friction and Iterate
 
-**Before writing any instructions OR classifying/propagating subagent outputs:**
-
-1. **Verify the verdict against the original brief.** Ground yourself in the subagent's actual output before classifying it. Do not blindly relay its self-reported pass/fail. Use `aops-core/skills/verify/SKILL.md` by citation to evaluate the data's (a) freshness, (b) completeness, and (c) limitations rather than restating the heuristics here.
-
-2. **Read the relevant framework workflows.** Check the `/framework` skill's workflow router. If the task touches hooks/gates, read `09-session-hook-forensics.md`. If it touches skills, read the relevant SKILL.md. If it touches transcripts, read `transcript.py` and understand the data pipeline.
-
-3. **Verify data sources by sampling.** Do not ASSUME what a data file contains. READ one. If you're writing instructions that say "audit files contain X," open an audit file and confirm X is there. If it isn't, find where X actually lives.
-
-4. **Map the full data landscape.** For any framework component, there are typically multiple data sources at different levels of detail:
-   - **Pre-rendered markdown transcripts** (`~/.aops/sessions/transcripts/`) — abridged and full forms, ~10K+ files. **Synced across machines** — your primary source for session-level analysis.
-   - **Raw session logs** (`~/.claude/projects/<workspace>/<sid>.jsonl`) — local-only on the machine that ran the session.
-   - **Hook event logs** (`~/.claude/projects/<workspace>/<sid>-hooks.jsonl`) — co-located with session stream; contains SubagentStart/SubagentStop events with verdicts.
-   - **Subagent transcripts** (referenced by `agent_transcript_path` in SubagentStop events)
-   - **Polecat worker mirror** (`~/.aops/polecats/<task-id>/`) — worker-side session + hook artifacts for a task.
-   - **Audit files** (input documents sent to review agents — INPUT, not output)
-
-   The audit file for a component is its INPUT, not its OUTPUT. The output lives in the subagent transcript and the hook event log. The full session transcript (markdown or JSONL) contains the complete conversation including what happened before and after any component fired.
-
-   **When a command like `ls *.md` returns nothing on a large directory, try `ls <dir>/ | head` instead.** Glob expansion failures on 10K+ files are silent.
-
-5. **Understand the difference between "not in this file" and "doesn't exist."** If a data point isn't in the file you're looking at, ask where else it might be before concluding it's unavailable.
-
-6. **Trace the full data flow for multi-component systems.** If evaluating a system with multiple components (e.g., gate + subagent + main agent), map how data moves between them. A conclusion about "does X work?" requires knowing which channel delivers the result and whether the recipient sees it. Don't assume the obvious channel is the only one.
-
-### Phase 1: Research and Draft Instructions
-
-**Goal**: Produce a self-contained instruction document that a contextless agent could follow.
-
-1. **Understand the domain.** Read existing skills, specs, and infrastructure related to the task category. Don't draft from imagination — draft from evidence of what exists.
-
-2. **Identify the data.** Where does the input come from? What format is it in? What's the expected output? A contextless agent can't ask you — the instructions must answer these questions. **Verify by reading sample files** — don't describe data you haven't inspected.
-
-3. **Write the instructions.** Work directly in the target skill file if the instructions are mature enough to belong there. Only use a scratch task body in the brain PKB for scaffolding that doesn't yet fit anywhere — and **clean it up when the session ends**. The document must be self-contained:
-   - What to do and why
-   - Where to find the data (exact paths, not variables the agent won't have)
-   - How to sample if the data is large
-   - What to assess and how to structure the output
-   - Where to save the output
-   - Ground rules (evidence standards, uncertainty handling)
-
-   Learnings that belong in a skill go into the skill immediately. Learnings too narrow for the skill go into PKB. Don't leave stray markdown files in the repo.
-
-4. **Reflect before delegating.** Read the instructions as if you knew nothing about this codebase. What's ambiguous? What requires knowledge the agent won't have?
-
-5. **Quality gate (optional).** For high-stakes instructions, invoke `/craft` author mode to check for shallow-execution vulnerabilities — compliance framing, missing artifact chains, no adversarial checks, summary-as-evidence, undefined boundary behavior. If `/craft` says REVISE, fix the instructions before spending compute on delegation.
-
-### Phase 2: Commission Contextless Execution
-
-**Goal**: Test the instructions by delegating to an agent with NO prior context.
-
-1. **Scope the first iteration small.** Start with N=2 representative tasks. Verify the pipeline accepts tasks, workers spawn, and output is observable before scaling. Only increase batch size when the first N=2 run completes cleanly. Finding 2 failures from 2 tasks is as informative as 2 failures from 10 — at a fraction of the cost.
-
-2. **Launch a subagent** with ONLY the instruction file as context. Do not brief it verbally — if the instructions need verbal supplementation, they're incomplete.
-
-   ```
-   Agent(
-     prompt="You are a contextless reviewer. Your ONLY instructions are in: <path>. Read that file, then follow its instructions exactly. Note any friction.",
-     run_in_background=true
-   )
-   ```
-
-3. **Do not interfere.** Let the agent succeed or fail on the instructions alone. The friction IS the data.
-
-   **Exception — redirect, don't kill.** If new guidance arrives while the agent is running and making progress, use `SendMessage` to redirect scope rather than `TaskStop` + restart. Only use `TaskStop` if the agent is actively causing harm (wrong files, dangerous scope expansion). A scope-narrowing correction (e.g. "do 2 tasks not 10") does not justify a kill-and-restart — send the update and let the agent self-correct. Killing a productive agent discards accumulated work and pays full cold-start cost on the replacement.
-
-4. **Record what happens.** When the agent completes, **read the full output** — not just a summary. Note:
-   - Did it find the data? If not, what was missing from the instructions?
-   - Did it understand the task? Where did it misinterpret?
-   - Where did it get stuck? Was that because the instructions were wrong, ambiguous, or assumed knowledge the agent didn't have?
-   - Was the output well-structured?
-   - Was the output useful (not just complete, but actually insightful)?
-   - **Did it discover something you didn't expect?** The subagent may find real issues with the system being evaluated, not just issues with the instructions. Both matter.
-
-### Phase 3: Friction Analysis and Iteration
-
-**Goal**: Update the instructions based on observed difficulties.
-
-1. **Read the subagent's output.** Evaluate against the original objectives — not "did it follow the steps" but "did it produce something valuable?"
-
-2. **Categorize friction:**
-
-   | Friction type                                | Fix                                  |
-   | -------------------------------------------- | ------------------------------------ |
-   | Missing path or data source                  | Add to instructions                  |
-   | Ambiguous assessment criteria                | Sharpen the question                 |
-   | Agent couldn't find something                | Add discovery commands               |
-   | Agent misunderstood the goal                 | Rewrite the objective section        |
-   | Agent produced shallow analysis              | Add examples of good vs bad analysis |
-   | Agent went off track                         | Add guardrails or constraints        |
-   | Instructions too long/complex                | Simplify, split into phases          |
-   | Data format wasn't what instructions assumed | Update data source description       |
-
-3. **Update the instructions.** Edit them in-place (skill file, or wherever they now live). Be careful not to over-fit to this specific execution — the instructions should work for the category of task, not just this instance.
-
-4. **Optionally re-run.** If friction was severe (agent couldn't complete the task), commission a second contextless execution with the updated instructions. If friction was minor (agent completed but output could be better), one iteration may suffice. **When the re-run is a _verification_ — proving an edit closed a gap — run ≥2 per condition: a single before/after cannot separate the edit's effect from agent variance, so a clean N=1 delta is a strong signal, not proof.**
+- Analyze transcripts to classify friction (e.g. missing paths, ambiguous criteria, shallow analysis).
+- Update the instructions in-place to address root causes, avoiding over-fitting to the specific test instance.
+- Run at least 2 verification trials per condition when verifying that an edit closed a gap.
 
 ### Phase 4: Independent Quality Review
 
-**Goal**: Assess HOW WELL the delegated work was carried out, not just whether it was done.
+- Commission a separate review agent (e.g. `/strategic-review` or `/verify`) to evaluate depth, accuracy, and fitness of the subagent's deliverables.
+- Enforce qualitative assessment by agents rather than relying on deterministic script checks.
 
-This is the hardest phase. Commission a separate reviewer agent — ideally a different model or agent type — to evaluate the subagent's output against the original objectives.
+### Phase 5: Codify & Land
 
-1. **Commission the review.** Use pauli (critic mode) or James (full orchestration):
+- Promote tested instructions to canonical skills or commands.
+- Verify deliverables actually reached their target destinations (e.g., reviews posted, commits pushed, PKB tasks updated).
+- **Always leave a loose thread**: File follow-up tasks in the PKB for any remaining friction items, promotion work, or subsequent phases before exiting.
 
-   ```
-   Agent(
-     subagent_type="aops-core:pauli",
-     prompt="Review the following report against these objectives: <objectives>. The report is at: <path>. Assess depth, accuracy, specificity, and actionability. Be brutal — adequate is not good enough."
-   )
-   ```
+## Output Expectations
 
-   For full multi-agent review use `/strategic-review` (default mode with James).
-
-2. **Evaluate the review.** The reviewer's assessment tells you about BOTH the instructions and the execution:
-   - If the execution was poor but instructions were clear → the task may be too hard for this agent tier
-   - If the execution was shallow because instructions didn't specify depth → fix the instructions
-   - If the execution was good but missed important angles → add those angles to instructions
-   - If the reviewer identifies structural framing errors (e.g., burying the primary finding as one recommendation among many) → add explicit structural requirements to the instructions
-   - If the reviewer finds the subagent violated framework principles in its own analysis (e.g., keyword-matching recommendations that violate P#49) → add guardrails against those specific anti-patterns
-
-### Phase 5: Codify
-
-**Goal**: Produce reusable skill components from what you learned.
-
-1. **Promote instructions to a skill or command.** If the instructions work well enough for delegation, they belong in `aops-core/skills/` or `aops-core/commands/`, not in scratch task bodies.
-
-2. **Generalize.** Review the instructions for over-specificity to this one execution. Would they work for:
-   - A different time period?
-   - A different aspect of the same system?
-   - A different reviewer agent?
-   - A slightly different question in the same category?
-
-3. **File follow-ups.** If the dogfooding revealed issues beyond the instructions themselves (framework bugs, missing data, broken tools), file tasks for those separately. **Always file follow-up tasks for friction items, promotion work, and unfinished phases.**
-
-4. **Assess category coverage.** Does this one example adequately test the skill, or is the category broad enough that another example from a different part of the space would reveal new issues? Common reasons to run another example:
-   - The first example was narrow (e.g., only one platform, one time period, one data source)
-   - The quality review revealed structural issues that the updated instructions haven't been tested against
-   - The subagent's output was good enough that iteration was minor — you haven't stressed the instructions enough to find their limits
-
-## Key Principles
-
-1. **You are testing the instructions, not doing the work.** If you find yourself doing the analysis, you've left the dogfooding lane.
-
-2. **Friction is data, not failure.** A subagent that gets stuck reveals an instruction gap. That's the point.
-
-3. **Don't over-fit.** Instructions should work for the category, not just this specific instance. If you add "look in `~/.claude/projects/*/<sid>-hooks.jsonl`" that's fine (it's where the data lives). If you add "look for session hash b9555bcd" that's over-fitting.
-
-4. **Quality review is not optional.** Without independent assessment, you can't distinguish "the agent did what I said" from "the agent produced something valuable." These are different.
-
-5. **One iteration minimum, two maximum.** If the first subagent run was a disaster, iterate once and re-run. If it was decent, iterate once and move to review. Don't loop forever.
-
-6. **Work must land, not just produce analysis.** The point of dogfooding on live work is dual: test assumptions in practice AND produce useful output. A review that stays in your conversation context but never posts to the PR is a silent drop. A fix that's correct but never pushed is unfinished. The dogfood supervisor must verify that the commissioned work's deliverables actually reached their targets — PR reviews posted to GitHub, fixes pushed, tasks filed. Analysis that doesn't land is half the value: you got the reflection but the user got nothing.
-
-## Scope Note
-
-When dogfooding, the agent has scope over both the task being executed AND the instructions being tested. Inline fixes to the instruction artifact are not scope expansion — they are the task. Custodiet should not flag this.
-
-## Common Failure Modes
-
-These were observed during dogfooding runs and should be watched for:
-
-| Failure mode                                                                                  | What happened                                                                                                                                                                                                                         | Prevention                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Concluded task was impossible when data existed elsewhere**                                 | Supervisor accepted "verdicts not in audit files" as "verdicts don't exist" — when session transcripts and hook JSONL contained everything needed                                                                                     | **Phase 0**: Read framework workflows, verify data by sampling, map the FULL data landscape before writing instructions                                                                                                                                                                                                         |
-| **Didn't read the relevant framework workflow**                                               | The forensics workflow documents exactly how to find RBG verdicts in hook logs. Supervisor never read it.                                                                                                                             | Phase 0: Check the /framework skill's workflow router. If the task touches hooks/gates, read the forensics workflow FIRST.                                                                                                                                                                                                      |
-| Wrong assumption about data format                                                            | Instructions said "audit files contain RBG verdicts" — they contain input to RBG, not output                                                                                                                                          | Verify data sources by reading samples BEFORE writing instructions                                                                                                                                                                                                                                                              |
-| Accepted subagent's "impossible" finding without verification                                 | Subagent reported data gap → supervisor iterated on acknowledging the gap rather than questioning the premise                                                                                                                         | When a subagent reports a task is impossible or data is missing, VERIFY before accepting. P#26 applies to your subagent's claims too.                                                                                                                                                                                           |
-| Silent glob failure hid 10K+ files                                                            | `ls ~/.aops/sessions/transcripts/*.md` returned empty because shell glob expansion failed on 10K+ files — supervisor concluded no transcripts existed                                                                                 | Use `find <dir> -name '*.ext'` or `ls <dir>/ \| head` instead of `ls <dir>/*.ext` for large directories — also required now that transcripts are sharded into `yyyy-mm/` subdirs (a top-level glob misses rotated files). When a command returns nothing, question WHY before concluding the data isn't there.                  |
-| Fragile shell commands                                                                        | `sed` commands broke when file naming convention changed                                                                                                                                                                              | Describe what to extract, not specific commands. Let the agent figure out the parsing.                                                                                                                                                                                                                                          |
-| Quality reviewer finds structural framing errors                                              | Report buries the primary finding as one recommendation among many                                                                                                                                                                    | Add explicit structural requirements (e.g., "executive summary must state data limitations first")                                                                                                                                                                                                                              |
-| Quality reviewer finds framework principle violations in the subagent's recommendations       | Keyword-matching recommendations violated P#49                                                                                                                                                                                        | Add guardrails against specific anti-patterns in the ground rules                                                                                                                                                                                                                                                               |
-| Writing draft artifacts before review completes                                               | Skill files written before quality feedback received                                                                                                                                                                                  | Draft early (that's fine), but mark them as drafts and plan to revise after review                                                                                                                                                                                                                                              |
-| Unreproducible quantitative claims                                                            | Subagent counted "68 events" for a session that had 15 — used keyword grep that included unrelated event types                                                                                                                        | Instructions must require documented counting methodology. Quantitative claims need the exact command that produced them, so reviewers can spot-check.                                                                                                                                                                          |
-| Keyword classification of free-text verdicts                                                  | Subagent classified RBG verdicts by keyword presence in analytical reasoning, inflating false positive count                                                                                                                          | If classification requires judgment (OK vs WARN in free text), document rules and acknowledge margin of error. Don't present rough counts as precise.                                                                                                                                                                           |
-| Mischaracterized enforcement architecture                                                     | Iteration 2 concluded "zero enforcement" because it examined only the gate system message (always "Compliance verified"), missing that the agent receives verdicts directly via the Agent tool result                                 | Verify the actual delivery mechanism before making claims about enforcement channels. Trace the full data flow: who sends what to whom, and through which channel.                                                                                                                                                              |
-| Useless early samples wasted deep-review time                                                 | Instruction to sample from "earliest week" led to March sessions with empty narratives and free-text verdicts — infrastructure failures, not compliance test cases                                                                    | Qualify sampling guidance by data quality: note which periods have usable structured data vs. which are infrastructure-failure era                                                                                                                                                                                              |
-| Subagent found real findings but misframed aggregate conclusion                               | Iteration 2's session-level analysis was correct (RBG accuracy, false positives, etc.) but the aggregate conclusion ("zero enforcement") was wrong because it examined the wrong enforcement channel                                  | When aggregating, verify that the aggregate conclusion follows from the individual findings. A correct finding + wrong causal chain = wrong conclusion.                                                                                                                                                                         |
-| Full batch dispatched on first iteration                                                      | Agent dispatched N=10 tasks on iteration 1; user had to intervene. Two failures from 2 tasks is as informative as 2 from 10 at a fraction of the cost.                                                                                | **First iteration scope**: cap at N=2. Verify pipeline health before scaling.                                                                                                                                                                                                                                                   |
-| Killed productive agent on scope correction                                                   | Scope narrowing arrived mid-run; agent used `TaskStop` + restart instead of `SendMessage`. Discarded real findings, paid full cold-start cost on replacement.                                                                         | Use `SendMessage` to redirect a running agent. Only `TaskStop` for active harm (wrong files, dangerous expansion).                                                                                                                                                                                                              |
-| Created draft spec file instead of editing skill                                              | Agent wrote a draft spec file as a working artifact rather than editing the skill directly. File persisted after session, cluttering the repo.                                                                                        | Work directly in the skill file. Use a scratch task body in the brain PKB for scaffolding; clean it up when the session ends.                                                                                                                                                                                                   |
-| **Concluded task without filing follow-up**                                                   | Agent finished work but didn't leave a loose thread in the PKB                                                                                                                                                                        | **Always leave a loose thread.** Before exiting, file a task for what comes next.                                                                                                                                                                                                                                               |
-| **Re-asked plan-approved steps after ExitPlanMode** (`exercise-authority` Edge 2, FM-5)       | After user approved a multi-step plan via ExitPlanMode, agent then asked "want me to do step 2 now?" — re-litigating a settled decision                                                                                               | Plan approval is blanket pre-authorisation for every step the plan enumerates. Only legitimate post-approval moves: do the next step, or report a real blocker.                                                                                                                                                                 |
-| **Built a deterministic check where agent judgment was needed** (`exercise-authority` Edge 3) | Wrote a regex/keyword classifier to grade subagent output instead of having an agent qualitatively assess fitness-for-purpose                                                                                                         | If the test is "does this serve the purpose?", default to agent invocation. Reserve scripts for counting, syntactic checks, idempotent transforms.                                                                                                                                                                              |
-| **Work produced but never landed** (silent drop)                                              | 4 PR reviews ran as local subagent exercises producing correct verdicts, but none posted to GitHub because auth was broken. Supervisor reported "review passed/failed" without verifying the deliverable actually reached its target. | **Verify deliverables landed.** After commissioning work, confirm the output reached its target: review posted to PR, fix pushed to remote, task filed in PKB. Auth/network failures that prevent landing are halts to surface, not conditions to silently skip. A review in your context that isn't on the PR is not a review. |
-| **Relayed a subagent's plausible finding to the user before verifying**                       | A subagent reported a "discovered bug" (a source-of-truth discrepancy); the supervisor relayed it in a user-facing message, then verified on disk and had to retract — the subagent had mis-stated it.                                | Verify a subagent's load-bearing _findings_ (not just its pass/fail verdict) against disk BEFORE relaying them upward. A plausible positive claim earns the same scrutiny as an "impossible" one — P#26 applies to discoveries too.                                                                                             |
-
-## Handover
-
-**Always leave a loose thread.** Before exiting, file a follow-up task for any friction items, instruction promotions, or unfinished phases. A summary in chat is not enough; the next step must exist in the PKB as a discrete task.
-
-## Related
-
-- brain PKB (project: aops, topic: dogfood) — the inner-loop spec (per-step reflection)
-- dogfood spec (brain PKB) — the workflow version
-- `aops-core/skills/survey/SKILL.md` — retro/trend/sweep modes (tasks this skill might dogfood)
-- `aops-core/skills/verify/SKILL.md` — quality assessment (used in Phase 4)
-- `aops-core/skills/craft/SKILL.md` — instruction quality gate (pre-flight before Phase 2)
-- `aops-core/skills/dogfood/references/decomposition-eval.md` — reusable test for decompose-mode decomposition quality (epistemics rubric + worked example)
+- Respond with structured, concise summaries of dogfooding outcomes, listing specific instruction defects found, edits made, and verification run verdicts.

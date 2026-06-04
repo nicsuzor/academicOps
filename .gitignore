@@ -341,6 +341,7 @@ dist/
 
 # Generated marketplace.json (produced by build.py from templates/marketplace.json)
 .claude-plugin/marketplace.json
+gemini-extension.json
 
 streamlit_log.txt
 data/

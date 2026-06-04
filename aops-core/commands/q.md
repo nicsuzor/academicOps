@@ -14,12 +14,14 @@ domain:
 owner: pauli
 ---
 
-# /q - Quick Queue
+# /q — Quick Queue
 
-Delegate to the planner skill in **capture** mode.
+Captures a task by delegating to the `planner` skill in `capture` mode.
 
-Invoke: `Skill(skill="planner", args="capture: <user args>")`
+## Execution
 
-Pass through all arguments exactly as the user provided them. If no arguments were given, invoke with just `Skill(skill="planner", args="capture")` — the planner will prompt for details.
+Invoke the planner skill:
+`Skill(skill="planner", args="capture: <user args>")`
 
-Do not reimplement task capture here. The planner owns the workflow.
+Pass all arguments exactly as provided. If no arguments are given, run:
+`Skill(skill="planner", args="capture")`

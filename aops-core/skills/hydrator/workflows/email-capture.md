@@ -13,58 +13,28 @@ backend: scripts
 
 # Email → Task Capture Workflow
 
-**Purpose**: Automatically extract action items from emails and create properly categorized tasks with full context linking.
+Automatically extract action items from emails and create properly categorized tasks with full context linking.
 
-**When to invoke**: User says "check my email for tasks", "process emails", "any new tasks from email?", or similar phrases indicating email-to-task workflow.
+## Operational Directives
 
-## Summary Checklist
+- **Conciseness**: Keep all outputs, task descriptions, and summaries extremely concise.
+- **No Micromanagement**: Let the agent query tools and search files naturally to resolve details.
+- **Duplicate Prevention**: Always run `task_search(query="...")` for the email subject/key action phrase before creating a task. If a match exists, skip creation and link to it. If ambiguous, consult the user.
 
-1. **Step 0: Check Existing Tasks** - Search PKB before creating to prevent duplicates (see procedure below).
-2. **Step 1: Fetch and Check Responses** - Get recent emails and check if already responded to.
-3. **Step 2: Analyze and Classify** - Categorize into Actionable, Important FYI, or Safe to ignore.
-4. **Step 3 & 4: Context and Categorization** - Query PKB for project matching and confidence scoring.
-5. **Step 5: Infer Priority and Metadata** - Assign a canonical priority label (see [TAXONOMY.md → Priority Labels](../../remember/references/TAXONOMY.md#priority-labels-p0p4); email capture uses P0–P3 via the deadline-based heuristic in [[email-capture-details]]) and extract structured metadata (`due`, `effort`, `consequence`).
-6. **Step 6: Create "Ready for Action" Tasks** - Generate summaries, note attachment filenames, preserve links, and create tasks.
-7. **Step 7: Duplicate Prevention** - Handled by Step 0 above. There is no server-side dedup on creation.
-8. **Step 8: Present Information and Summary** - Show Important FYI content and created tasks.
+## Checklist & Procedure
 
-### Step 0 Procedure (MANDATORY before any task creation)
-
-For EACH email that would generate a task:
-
-1. `task_search(query="<email subject or key action phrase>")` — check for existing task
-2. If match found: compare titles and content. If clearly the same action → **SKIP creation**, note "already tracked as `<matched_id>`"
-3. If ambiguous match (similar but not identical): present both to user before creating
-4. If no match: proceed with creation
+1. **Fetch & Check**: Retrieve recent emails. Check if already responded to.
+2. **Classify**: Categorize emails into _Actionable_, _Important FYI_, or _Safe to Ignore_.
+3. **Context & Categorize**: Query the PKB to match tasks to active projects/epics.
+4. **Metadata & Priority**: Assign canonical priority labels (P0-P3, referencing [TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4)) and extract metadata (`due`, `effort`, `consequence`).
+5. **Create Tasks**: Create a task with a clear title, body (including quoted email text, entry_id, and metadata), and parent linkage.
+6. **Present Summary**: Present created tasks and Important FYI items.
 
 ## Critical Guardrails
 
-- **Mandatory First Step**: Always check for existing tasks before creation.
-- **Mandatory Parent Linkage**: Every created task MUST have a `parent` (epic or project task).
-- **Mandatory Task Body Quality**: Every task MUST contain quoted email text, all links, and entry_id. See [[email-capture-details]] § "Task Body Quality Requirements". A task without the actual email content is non-compliant.
-- **Mandatory Link Preservation**: All URLs from the email body MUST appear in the task. Attachment filenames noted but NOT downloaded during triage — retrieval happens when the task is actioned.
-- **Verification of Tool**: To check if `~~email` / the Outlook MCP is available, CALL THE TOOL. Don't check configs. The connector's tools may be **deferred** — load them first (`ToolSearch select:mcp__outlook__*`, or a keyword query) before concluding they're absent; a missing-from-list state is not an unavailable connector. On a first-call tool-not-found, retry once with the canonical fully-qualified name (casing/underscore misses are common) before declaring failure. (Canonical rules: [[daily/SKILL]] § "Tool-loading discipline (degraded sources)")
-- **Confidence Scoring**: High confidence auto-categorizes; low confidence flags for review.
-- **Fail-Fast**: Halt immediately if the email connector is **genuinely** unavailable — i.e. a real call failed for a named reason (auth error, network, server-down) _after_ the load + one retry above. Declining to load the deferred tools, or an un-retried name miss, is not a genuine failure and must not be reported as "connector unavailable" (the false-footnote failure AC-15 names).
+- **Mandatory Parent Linkage**: Every created task must link to a `parent` epic or project task.
+- **Link Preservation**: Include all URLs and attachment filenames from the email in the task body (do not download attachments).
+- **Email MCP Verification**: Call Outlook/email MCP tools to verify availability. Retry fully-qualified names if first call fails. Halt only if a real call fails with a named error.
+- **Verification of Task Quality**: Task bodies must contain the original email quotes, entry_id, and sender/date.
 
-## Detailed Procedures
-
-For step-by-step instructions and technical configurations, see **[[email-capture-details]]**:
-
-- Detailed duplication check and response detection logic
-- Classification matrix and signal indicators
-- PKB context mapping and confidence scoring thresholds
-- Priority inference rules (email-specific deadline heuristic; canonical labels in [TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4))
-- Task body templates and resource download/conversion procedures
-- Presentation formatting and archive candidate selection
-- Error handling and logging requirements
-- Account-specific archive configurations (Gmail vs Exchange)
-
-## How to Verify
-
-1. **Task Creation**: Check that tasks for legitimate action items are created.
-2. **Task Body Quality**: Every task body contains quoted email text, all links, entry_id, and sender/date metadata. A task that paraphrases without quoting is non-compliant.
-3. **Link Preservation**: All URLs from the email appear in the task. Attachment filenames noted. No silently dropped links.
-4. **Duplication**: Ensure no duplicate tasks are created for the same email.
-5. **Categorization**: Verify high-confidence tasks have correct projects and priority.
-6. **Daily Note Integration**: When invoked with `--daily`, FYI items contain actual email content (not just subject lines) for inclusion in the daily note.
+For step-by-step configurations and heuristics, refer to **[[email-capture-details]]**.
