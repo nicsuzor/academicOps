@@ -9,7 +9,7 @@ tools:
   - Bash
   - Write
   - mcp__outlook__*
-  - mcp__plugin_aops-core_pkb__*search
+  - mcp__plugin_aops-core_pkb__*
   - mcp__plugin_aops-core_pkb__get_document
   - mcp__plugin_aops-core_pkb__pkb_context
   - mcp__plugin_aops-core_pkb__create
