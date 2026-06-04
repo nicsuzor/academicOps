@@ -1,0 +1,692 @@
+import logging
+import os
+import re
+import time
+from typing import Any
+
+from hooks.schemas import HookContext
+
+from lib.gate_model import GateResult, GateVerdict
+from lib.gate_types import (
+    GateCondition,
+    GateConfig,
+    GateState,
+    GateStatus,
+    GateTransition,
+)
+from lib.session_paths import get_gate_file_path
+from lib.session_state import SessionState
+from lib.template_registry import TemplateRegistry
+
+logger = logging.getLogger(__name__)
+
+
+class GenericGate:
+    """
+    Generic Gate Engine that executes declarative GateConfig.
+    """
+
+    def __init__(self, config: GateConfig):
+        self.config = config
+
+    @property
+    def name(self) -> str:
+        return self.config.name
+
+    def _get_state(self, session_state: SessionState) -> GateState:
+        # Ensure state exists
+        if self.name not in session_state.gates:
+            session_state.gates[self.name] = GateState(status=self.config.initial_status)
+        return session_state.gates[self.name]
+
+    def _evaluate_condition(
+        self,
+        condition: GateCondition,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> bool:
+        # 0. Check Current Status
+        if condition.current_status:
+            if state.status != condition.current_status:
+                return False
+
+        # 1. Hook Event Match
+        if condition.hook_event:
+            # Match regex if it starts with ^ or ends with $ or contains |
+            if any(c in condition.hook_event for c in "^$|[]()"):
+                if not re.search(condition.hook_event, ctx.hook_event):
+                    return False
+            else:
+                # Simple equality check for backward compatibility and speed
+                if condition.hook_event != ctx.hook_event:
+                    return False
+
+        # 2. Tool Name Pattern
+        if condition.tool_name_pattern:
+            if not ctx.tool_name:
+                return False
+            if not re.search(condition.tool_name_pattern, ctx.tool_name):
+                return False
+
+        # 2.5 Excluded Tool Categories
+        if condition.excluded_tool_categories:
+            from hooks.gate_config import get_tool_category
+
+            if (
+                ctx.tool_name
+                and get_tool_category(
+                    ctx.tool_name,
+                    ctx.tool_input if isinstance(ctx.tool_input, dict) else None,
+                )
+                in condition.excluded_tool_categories
+            ):
+                return False
+
+        # 3. Tool Input Pattern
+        if condition.tool_input_pattern:
+            # Stringify tool_input and regex search
+            input_str = str(ctx.tool_input)
+            if not re.search(condition.tool_input_pattern, input_str):
+                return False
+
+        # 3.5 Subagent exclusion
+        if condition.exclude_if_subagent and ctx.is_subagent:
+            return False
+
+        # 3.55 Session type filter
+        if condition.session_type_filter:
+            if session_state.session_type not in condition.session_type_filter:
+                return False
+
+        # 3.6 Prompt exclude patterns
+        if condition.prompt_exclude_patterns:
+            prompt = ctx.raw_input.get("prompt", "").strip()
+            for pattern in condition.prompt_exclude_patterns:
+                if re.search(pattern, prompt):
+                    return False
+
+        # 3.7 Subagent Type Pattern
+        if condition.subagent_type_pattern:
+            if not ctx.subagent_type:
+                return False
+            if not re.search(condition.subagent_type_pattern, ctx.subagent_type):
+                return False
+
+        # 3.8 Prompt Pattern
+        if condition.prompt_pattern:
+            prompt = ctx.raw_input.get("prompt", "")
+            if not re.search(condition.prompt_pattern, prompt):
+                return False
+
+        # 4. State Metrics Checks
+        if condition.min_ops_since_open is not None:
+            if state.ops_since_open < condition.min_ops_since_open:
+                return False
+        if condition.min_ops_since_close is not None:
+            if state.ops_since_close < condition.min_ops_since_close:
+                return False
+        if condition.min_turns_since_open is not None:
+            current_turn = session_state.global_turn_count
+            diff = current_turn - state.last_open_turn
+            if diff < condition.min_turns_since_open:
+                return False
+        # ... implement other metric checks as needed ...
+
+        # 5. Custom Check
+        if condition.custom_check:
+            # Import dynamically or use registry
+            from lib.gates.custom_conditions import check_custom_condition
+
+            if not check_custom_condition(condition.custom_check, ctx, state, session_state):
+                return False
+
+        return True
+
+    def _build_template_variables(
+        self, ctx: HookContext, state: GateState, session_state: SessionState
+    ) -> dict[str, Any]:
+        """Build the variable dict available for template rendering."""
+        # Expose tool_input.file_path / path when present so templates can refer
+        # to the specific file involved (e.g. orchestrator-boundary warning).
+        file_path = ""
+        if isinstance(ctx.tool_input, dict):
+            fp = ctx.tool_input.get("file_path") or ctx.tool_input.get("path")
+            if isinstance(fp, str):
+                file_path = fp
+        return {
+            "session_id": ctx.session_id,
+            "tool_name": ctx.tool_name or "",
+            "file_path": file_path,
+            "gate_status": getattr(state.status, "value", state.status),
+            "ops_since_open": state.ops_since_open,
+            "ops_since_close": state.ops_since_close,
+            "blocked": state.blocked,
+            "block_reason": state.block_reason or "",
+            # Access metrics
+            **state.metrics,
+        }
+
+    def _render_template(
+        self, template: str, ctx: HookContext, state: GateState, session_state: SessionState
+    ) -> str:
+        """Render an inline template string with context variables."""
+        variables = self._build_template_variables(ctx, state, session_state)
+
+        # Fail fast on missing template variables. The old defaultdict fallback
+        # silently produced "(not set)" which caused gates to pass broken
+        # instructions to agents (e.g. temp_path not in metrics).
+        try:
+            return template.format_map(variables)
+        except KeyError as e:
+            raise RuntimeError(
+                f"Gate '{self.name}' template has unresolved variable {e}. "
+                f"Available variables: {sorted(variables.keys())}. "
+                f"Template: {template[:200]!r}"
+            ) from e
+
+    def _resolve_message(
+        self,
+        template_key: str | None,
+        inline_template: str | None,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> str | None:
+        """Resolve a message from a template key or inline string.
+
+        Prefers template_key (via TemplateRegistry) over inline_template.
+        Returns None if neither is set.
+        """
+        if template_key:
+            variables = self._build_template_variables(ctx, state, session_state)
+            try:
+                return TemplateRegistry.instance().render(template_key, variables)
+            except (KeyError, ValueError, FileNotFoundError) as e:
+                raise RuntimeError(
+                    f"Gate '{self.name}' failed to render template key '{template_key}': {e}"
+                ) from e
+
+        if inline_template:
+            return self._render_template(inline_template, ctx, state, session_state)
+
+        return None
+
+    def _apply_transition(
+        self,
+        transition: GateTransition,
+        ctx: HookContext,
+        state: GateState,
+        session_state: SessionState,
+    ) -> GateResult:
+        # Update Status
+        if transition.target_status and transition.target_status != state.status:
+            # Change state
+            state.status = transition.target_status
+            if transition.target_status == GateStatus.OPEN:
+                state.last_open_ts = time.time()
+                state.last_open_turn = session_state.global_turn_count
+                state.ops_since_open = 0
+            elif transition.target_status == GateStatus.CLOSED:
+                state.last_close_ts = time.time()
+                state.last_close_turn = session_state.global_turn_count
+                state.ops_since_close = 0
+
+        # Sticky latch: lock the gate in its current status until a
+        # designated unstick event fires.
+        if transition.sticky_until:
+            state.sticky = True
+            state.sticky_until_events = list(transition.sticky_until)
+
+        # Update Metrics
+        if transition.reset_ops_counter:
+            state.ops_since_open = 0
+            state.ops_since_close = 0
+
+        for key, value in transition.set_metrics.items():
+            state.metrics[key] = value
+
+        for key in transition.increment_metrics:
+            state.metrics[key] = state.metrics.get(key, 0) + 1
+
+        # Custom Action (Side Effects)
+        # Execute this BEFORE rendering templates, as the action may set metrics
+        # (e.g. temp_path) that are required by the templates.
+        custom_sys_msg = None
+        custom_ctx_inj = None
+
+        if transition.custom_action:
+            from lib.gates.custom_actions import execute_custom_action
+
+            result = execute_custom_action(transition.custom_action, ctx, state, session_state)
+            if result:
+                custom_sys_msg = result.system_message
+                custom_ctx_inj = result.context_injection
+
+        # Render Messages (prefer template keys over inline strings)
+        sys_msg = self._resolve_message(
+            transition.system_message_key,
+            transition.system_message_template,
+            ctx,
+            state,
+            session_state,
+        )
+
+        ctx_inj = self._resolve_message(
+            transition.context_key,
+            transition.context_template,
+            ctx,
+            state,
+            session_state,
+        )
+
+        # Combine Messages (Template first, then Custom Action)
+        if custom_sys_msg:
+            sys_msg = "\n".join(filter(None, [sys_msg, custom_sys_msg]))
+
+        if custom_ctx_inj:
+            ctx_inj = "\n\n".join(filter(None, [ctx_inj, custom_ctx_inj]))
+
+        return GateResult.allow(system_message=sys_msg, context_injection=ctx_inj)
+
+    def _evaluate_triggers(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate triggers (Transitions)."""
+        state = self._get_state(session_state)
+
+        # Unstick: if this event matches the gate's sticky_until list,
+        # clear the latch BEFORE evaluating triggers so the same event
+        # can fire a normal transition (e.g. UPS unsticks then re-arms).
+        if state.sticky and state.sticky_until_events:
+            if ctx.hook_event in state.sticky_until_events:
+                state.sticky = False
+                state.sticky_until_events = []
+
+        messages = []
+        injections = []
+        transition_occurred = False
+
+        for trigger in self.config.triggers:
+            if self._evaluate_condition(trigger.condition, ctx, state, session_state):
+                # Sticky suppression: skip transitions targeting a different
+                # status while the gate is latched.
+                if (
+                    state.sticky
+                    and trigger.transition.target_status
+                    and trigger.transition.target_status != state.status
+                ):
+                    break
+
+                result = self._apply_transition(trigger.transition, ctx, state, session_state)
+                if result.system_message:
+                    messages.append(result.system_message)
+                if result.context_injection:
+                    injections.append(result.context_injection)
+                transition_occurred = True
+                # Break after first match to ensure deterministic state transition
+                break
+
+        if transition_occurred:
+            return GateResult.allow(
+                system_message="\n".join(messages) if messages else None,
+                context_injection="\n\n".join(injections) if injections else None,
+            )
+        return None
+
+    def _evaluate_countdown(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate countdown warning before threshold is reached.
+
+        Returns a subtle informational message if we're approaching the
+        threshold but haven't reached it yet. This gives agents advance
+        notice to proactively run compliance checks.
+        """
+        countdown = self.config.countdown
+        if not countdown:
+            return None
+
+        state = self._get_state(session_state)
+
+        # Get current ops count based on configured metric
+        if countdown.metric == "ops_since_open":
+            current_ops = state.ops_since_open
+        elif countdown.metric == "ops_since_close":
+            current_ops = state.ops_since_close
+        else:
+            current_ops = state.metrics.get(countdown.metric, 0)
+
+        threshold = countdown.threshold
+        start_at = threshold - countdown.start_before
+
+        # Only show countdown if we're in the window (start_at <= current < threshold)
+        if current_ops < start_at or current_ops >= threshold:
+            return None
+
+        remaining = threshold - current_ops
+
+        # Compute temp_path deterministically if not in metrics
+        # Bug fix: aops-d3b46a51 - temp_path was showing "(not available)" in
+        # countdown because it was only set when policy fired (at threshold).
+        # Now we compute it using get_gate_file_path() so agents know the path
+        # in advance.
+        temp_path = state.metrics.get("temp_path")
+        if not temp_path:
+            # Thread the session's routing signals (transcript_path + client_type)
+            # so the gate file lands in this session's real dir — never the Claude
+            # fallback for a gemini/agy session, and resolvable at all (NO
+            # FALLBACKS) for any non-UUID id.
+            temp_path = str(
+                get_gate_file_path(
+                    self.name,
+                    ctx.session_id,
+                    ctx.transcript_path,
+                    client_type=ctx.client_type,
+                )
+            )
+
+        # Render countdown message
+        countdown_variables = {
+            "remaining": remaining,
+            "threshold": threshold,
+            "current": current_ops,
+            "gate_name": self.name,
+            "temp_path": temp_path,
+        }
+
+        # Prefer template key over inline string
+        message = None
+        if countdown.message_key:
+            try:
+                message = TemplateRegistry.instance().render(
+                    countdown.message_key, countdown_variables
+                )
+            except (KeyError, ValueError, FileNotFoundError) as e:
+                logger.warning(f"Countdown template key error for gate '{self.name}': {e}")
+        else:
+            try:
+                message = countdown.message_template.format_map(countdown_variables)
+            except KeyError as e:
+                logger.warning(f"Countdown template error for gate '{self.name}': {e}")
+
+        if not message:
+            message = f"📋 {remaining} turns until {self.name} check required."
+
+        return GateResult.allow(system_message=message)
+
+    def _evaluate_policies(
+        self, ctx: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate policies (Blocking/Warning)."""
+        state = self._get_state(session_state)
+
+        # WS7 item 6 — register-scaling. In the capture/personal register the
+        # review-grade gates (enforcer, ida, qa) drop their ceremony entirely so
+        # low-stakes capture/personal work isn't dragged through a compliance
+        # audit or an honesty loop (retro MF4, thread 10). ida's instructions
+        # are tiered (ida-reminder.md) so the honesty floor still guides agents
+        # by judgment even when the gate is suppressed. Sentinel and handover
+        # still fire — losing a capture or running a destructive op is real harm.
+        from hooks.gate_config import is_gate_suppressed_in_register, is_never_block
+
+        if is_gate_suppressed_in_register(self.name):
+            return None
+
+        for policy in self.config.policies:
+            if self._evaluate_condition(policy.condition, ctx, state, session_state):
+                # Policy matched!
+
+                # WS7 item 5 — honour the never-block list (#1451). A never-block
+                # tool (AskUserQuestion, ExitPlanMode, PKB/spawn infrastructure)
+                # must never be denied OR warned by a gate on a PreToolUse call:
+                # denying AskUserQuestion collapses the live-attention surface the
+                # "Nic is the gate" substitute depends on. Global invariant — no
+                # individual gate overrides it. Skip the policy (fall through to
+                # the next, or to None) rather than block.
+                if ctx.hook_event == "PreToolUse" and is_never_block(
+                    ctx.tool_name,
+                    ctx.tool_input if isinstance(ctx.tool_input, dict) else None,
+                ):
+                    continue
+
+                # Custom Action (Side Effects before message rendering)
+                sys_msg_prefix = ""
+                ctx_inj_prefix = ""
+                if policy.custom_action:
+                    from lib.gates.custom_actions import execute_custom_action
+
+                    action_result = execute_custom_action(
+                        policy.custom_action, ctx, state, session_state
+                    )
+                    if action_result:
+                        if action_result.system_message:
+                            sys_msg_prefix = action_result.system_message + "\n"
+                        if action_result.context_injection:
+                            ctx_inj_prefix = action_result.context_injection + "\n\n"
+
+                sys_msg = (
+                    self._resolve_message(
+                        policy.message_key,
+                        policy.message_template or None,
+                        ctx,
+                        state,
+                        session_state,
+                    )
+                    or ""
+                )
+                ctx_inj = self._resolve_message(
+                    policy.context_key,
+                    policy.context_template,
+                    ctx,
+                    state,
+                    session_state,
+                )
+                if ctx_inj:
+                    ctx_inj = "<SYSTEM HOOK INSTRUCTION>" + ctx_inj + "</SYSTEM HOOK INSTRUCTION>"
+
+                # Combine prefixes
+                final_sys_msg = sys_msg_prefix + sys_msg
+                final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
+
+                if getattr(policy.verdict, "value", policy.verdict) in ("deny", "block"):
+                    return GateResult.deny(
+                        system_message=final_sys_msg,
+                        context_injection=final_ctx_inj if final_ctx_inj else None,
+                    )
+                elif getattr(policy.verdict, "value", policy.verdict) == "warn":
+                    return GateResult.warn(
+                        system_message=final_sys_msg,
+                        context_injection=final_ctx_inj if final_ctx_inj else None,
+                    )
+
+        return None
+
+    # --- Hook Interface ---
+
+    def evaluate_triggers(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Evaluate only triggers (state updates), ignoring policies.
+
+        Use this when bypassing gates for compliance subagents while still
+        needing to update gate states.
+        """
+        return self._evaluate_triggers(context, session_state)
+
+    def check(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """PreToolUse: Check policies and countdown warnings."""
+        # Run triggers first to allow JIT state transitions (e.g. unblocking hydrator)
+        trigger_result = self._evaluate_triggers(context, session_state)
+        policy_result = self._evaluate_policies(context, session_state)
+
+        # If policy blocks/warns, return that (countdown not needed)
+        policy_verdict = (
+            getattr(policy_result.verdict, "value", policy_result.verdict)
+            if policy_result
+            else None
+        )
+        if policy_result and policy_verdict in ("deny", "block", "warn"):
+            if trigger_result:
+                # Merge trigger messages but keep policy verdict
+                return GateResult(
+                    verdict=policy_result.verdict,
+                    system_message="\n".join(
+                        filter(None, [trigger_result.system_message, policy_result.system_message])
+                    ),
+                    context_injection="\n\n".join(
+                        filter(
+                            None,
+                            [trigger_result.context_injection, policy_result.context_injection],
+                        )
+                    ),
+                    metadata={**trigger_result.metadata, **policy_result.metadata},
+                )
+            return policy_result
+
+        # Check countdown warning (only if policy didn't trigger)
+        countdown_result = self._evaluate_countdown(context, session_state)
+
+        # Collect all results to merge
+        results = [r for r in [trigger_result, policy_result, countdown_result] if r]
+
+        if not results:
+            return None
+        if len(results) == 1:
+            return results[0]
+
+        # Merge all results
+        # Verdict: deny > warn > allow
+        verdict = GateVerdict.ALLOW
+        for r in results:
+            if r.verdict == GateVerdict.DENY:
+                verdict = GateVerdict.DENY
+                break
+            elif r.verdict == GateVerdict.WARN:
+                verdict = GateVerdict.WARN
+
+        merged_metadata: dict = {}
+        for r in results:
+            merged_metadata.update(r.metadata)
+
+        return GateResult(
+            verdict=verdict,
+            system_message="\n".join(filter(None, [r.system_message for r in results])),
+            context_injection="\n\n".join(filter(None, [r.context_injection for r in results])),
+            metadata=merged_metadata,
+        )
+
+    # Max number of Stop DENY events from a single gate before downgrading to
+    # WARN. Prevents Gemini sessions (no Stop hook = no loop-breaker) from
+    # being held indefinitely against the termination watchdog (aops-16a15a05).
+    _STOP_DENY_DOWNGRADE_THRESHOLD = 3
+
+    def _handle_stop_event(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """Shared logic for Stop-like events: check policies then evaluate triggers.
+
+        Triggers always run regardless of policy verdict so that per-turn gate
+        lifecycles (e.g. IDA: CLOSED→OPEN on Stop) execute even when a DENY
+        fires. Without this, DENY returns early and the gate stays closed,
+        causing it to re-block on every subsequent Stop in the same turn.
+        """
+        policy_result = self._evaluate_policies(context, session_state)
+        # Always evaluate triggers — gate state transitions (e.g. IDA open)
+        # must apply even when the policy denies.
+        trigger_result = self._evaluate_triggers(context, session_state)
+
+        if policy_result and policy_result.verdict == GateVerdict.DENY:
+            # Max-fire downgrade: after N consecutive Stop blocks from this gate,
+            # downgrade to WARN so Gemini sessions (which have no Stop hook and
+            # therefore no Claude-side loop-breaker) can exit without relying on
+            # the termination watchdog (aops-16a15a05, was aops-c5513f7f).
+            state = self._get_state(session_state)
+            deny_count = state.metrics.get("stop_deny_count", 0) + 1
+            state.metrics["stop_deny_count"] = deny_count
+            if deny_count >= self._STOP_DENY_DOWNGRADE_THRESHOLD:
+                return GateResult.warn(
+                    system_message=policy_result.system_message,
+                    context_injection=policy_result.context_injection,
+                )
+            return policy_result
+
+        if policy_result and policy_result.verdict == GateVerdict.WARN:
+            return policy_result
+
+        return trigger_result
+
+    def on_stop(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """Stop: Check policies (blocking) AND Evaluate triggers (cleanup)."""
+        return self._handle_stop_event(context, session_state)
+
+    def on_tool_use(self, context: HookContext, session_state: SessionState) -> GateResult | None:
+        """PostToolUse: Evaluate triggers."""
+        # Update metrics
+        state = self._get_state(session_state)
+
+        # Subagent tool calls (is_subagent=True) do NOT increment the parent's counter.
+        # The parent's Agent tool call increments by 1, and internal subagent calls
+        # are ignored (aops-d8ee59cc). The router already sets is_subagent=False for
+        # spawn tool calls in the parent session, so no special SPAWN_TOOLS handling needed.
+        #
+        # Plan-mode sessions (POLECAT_APPROVAL_MODE=plan) skip counting entirely.
+        # In plan mode the agent can only make read-only calls, so compliance
+        # enforcement is moot. The gate must not fire when rbg invocation is
+        # restricted — policy rules are a second defense but this is the primary guard.
+        in_plan_mode = os.environ.get("POLECAT_APPROVAL_MODE") == "plan"
+        should_increment = not context.is_subagent and not in_plan_mode
+
+        if should_increment:
+            if state.status == GateStatus.OPEN:
+                state.ops_since_open += 1
+            else:
+                state.ops_since_close += 1
+
+        trigger_result = self._evaluate_triggers(context, session_state)
+        policy_result = self._evaluate_policies(context, session_state)
+
+        if trigger_result and policy_result:
+            # Policy verdict dominates; merge messages from both.
+            return GateResult(
+                verdict=policy_result.verdict,
+                system_message="\n".join(
+                    filter(None, [trigger_result.system_message, policy_result.system_message])
+                )
+                or None,
+                context_injection="\n\n".join(
+                    filter(
+                        None,
+                        [trigger_result.context_injection, policy_result.context_injection],
+                    )
+                )
+                or None,
+                metadata={**trigger_result.metadata, **policy_result.metadata},
+            )
+        return policy_result or trigger_result
+
+    def on_user_prompt(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        return self._evaluate_triggers(context, session_state)
+
+    def on_session_start(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        return self._evaluate_triggers(context, session_state)
+
+    def on_after_agent(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        return self._evaluate_triggers(context, session_state)
+
+    def on_subagent_start(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        return self._evaluate_triggers(context, session_state)
+
+    def on_subagent_stop(
+        self, context: HookContext, session_state: SessionState
+    ) -> GateResult | None:
+        """SubagentStop: Evaluate triggers only (policies are scoped to session end, not subagent completion)."""
+        return self._evaluate_triggers(context, session_state)

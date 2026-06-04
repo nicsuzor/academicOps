@@ -1,0 +1,21 @@
+{
+  "name": "aops-core",
+  "version": "0.3.33+gddf3f73a",
+  "description": "Core academicOps framework - skills, agents, hooks, and tools for research workflow automation",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "framework",
+    "workflow"
+  ],
+  "mcpServers": "./.mcp.json",
+  "autoMode": {
+    "soft_deny": [
+      "Evidence Is Immutable and Irreplaceable (axiom `evidence-immutable`): primary research evidence \u2014 raw data, observations, measurements, instrument output, interview/transcript records, and logs \u2014 is the irreplaceable account of what happened. Do not edit in place, delete, truncate, overwrite, or destructively \"clean\"/\"regenerate\" any file that holds such evidence; the original record must survive so results stay reproducible and auditable. Derived or analysis artifacts the agent generated during this session are not primary evidence and may be freely regenerated, and revising a draft the agent is actively authoring is fine. When it is unclear whether a path holds primary evidence, surface a permission prompt rather than proceeding."
+    ]
+  }
+}
