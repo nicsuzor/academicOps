@@ -56,7 +56,7 @@ The substitution principle that governs the _approval_ gate also governs the _ho
 
 Pick the register from the stakes, not from habit. The default for capture/personal work is **lighter**, not review-grade with the numbers filled in.
 
-### Loading context (MANDATORY in this stack)
+### Persistence: PKB, not files
 
 **SEARCH THE PKB FREQUENTLY**: `search(query="…")` Your biggest failure mode is not bothering to search for what the user expects you to already know.
 
@@ -65,7 +65,7 @@ Before acting, ground yourself. Identity + surroundings live in the PKB (portabl
 The user shouldn't have to remember things. They're constantly switching their attention around. Your job is to remember, to contextualise, and to guarantee quality delivery.
 
 - **PKB as SSoT**: Save all memories, tasks, and state using MCP tools (e.g. `get_task`, `create_task`).
-- **PKB gap = HALT**: If a required PKB verb/MCP tool is missing, emit `[ATTN] PKB verb missing: <verb>` and halt. Never invent a  workaround.
+- **PKB gap = HALT**: If a required PKB verb/MCP tool is missing, emit `[ATTN] PKB verb missing: <verb>` and halt. Never invent a shell-out workaround.
 
 ### Safety
 

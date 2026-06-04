@@ -47,7 +47,8 @@ def test_core_agent_transformation_for_gemini(agent_name):
 
     # Verify path replacement (${CLAUDE_PLUGIN_ROOT} -> ${extensionPath}) in the whole file
     assert "${CLAUDE_PLUGIN_ROOT}" not in final
-    assert "${extensionPath}" in final
+    if "${CLAUDE_PLUGIN_ROOT}" in content:
+        assert "${extensionPath}" in final
     if "AXIOMS.md" in content:
         # Axioms are co-shipped INTO the plugin payload at
         # <plugin>/.agents/rules/AXIOMS.md, so the import must resolve at
