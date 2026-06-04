@@ -228,10 +228,7 @@ def main() -> int:
     # 3. Workflow length constraint
     all_errors.extend(check_workflow_length(plugin_root))
 
-    # 4. Context-map coverage (#1364): specs indexed or knowingly excluded
-    all_errors.extend(check_context_map_coverage(root))
-
-    # 5. Full codebase wikilinks (CI only)
+    # 4. Full codebase wikilinks (CI only)
     if full_mode:
         all_errors.extend(check_full_wikilinks(root))
 

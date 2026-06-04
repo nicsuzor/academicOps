@@ -89,7 +89,6 @@ The PKB itself: server, taxonomy, graph operations, ranking, planning. From both
 - [[work-management]] — Task lifecycle and graph insertion
 - [[multi-parent-edges]] — Tasks with multiple parents
 - [[areas-not-projects]] — Why some things are areas, not projects
-- [[context-map-schema]] — `.agents/context-map.json` format
 - [[batch-graph-operations]] — Batch CRUD over the graph (mem)
 - [[task-focus-scoring]] — Focus score algorithm (mem)
 - [[planning-web]] — Web of plans / dashboard data model (mem)

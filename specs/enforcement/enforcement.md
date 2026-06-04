@@ -293,7 +293,6 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 | `ida` gate            | L2 | warn       | Stop-hook inject: back assertions with proof                                  | [`GATES.md`](../GATES.md)                                                       |
 | `hydration` gate      | L4 | warn       | Blocks tool calls until hydrator runs (mode-dependent)                        | [`GATES.md`](../GATES.md)                                                       |
 | `aca_data_autocommit` | L4 | —          | Auto-commits the provider-specific data directory after state-modifying calls | `hooks/router.py:_run_aca_data_autocommit`                                      |
-| `context-map hints`   | L2 | inject     | UPS lifecycle inject from `.agents/context-map.json`                          | `hooks/router.py:_inject_context_map_hints`                                     |
 
 #### Pre-commit hooks
 

@@ -443,13 +443,12 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 
 Both run unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
 
-| Concern               | Path                                                                                   |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`)                            |
-| Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)                               |
-| Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`, `_inject_context_map_hints`) |
-| Routing-hint template | `aops-core/hooks/templates/hydration-gate-warn.md`                                     |
-| Context-map loader    | `aops-core/lib/context_map.py`                                                         |
+| Concern               | Path                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`) |
+| Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)    |
+| Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`)   |
+| Routing-hint template | `aops-core/hooks/templates/hydration-gate-warn.md`          |
 
 **Verify the injection landed**:
 
@@ -458,7 +457,7 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
   | jq -r 'select(.output.context_injection!=null) | "\(.logged_at) \(.output.context_injection[:120])"'
 ```
 
-**Common failures**: no injection at all → confirm `is_subagent=False` and `_is_task_notification` returned False. No context-map hints → confirm `<cwd>/.agents/context-map.json` exists. Expected a verdict and got none → there is no policy; this is by design.
+**Common failures**: no injection at all → confirm `is_subagent=False` and `_is_task_notification` returned False. Expected a verdict and got none → there is no policy; this is by design.
 
 ---
 
@@ -493,3 +492,5 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 ### Doc shape
 
 This file is a state-category SSoT per the doc-taxonomy spec (brain PKB). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for the Phase C subsystem consolidations (epic `aops-2b8dd7a7`).
+subsystem consolidations (epic `aops-2b8dd7a7`).
+ns (epic `aops-2b8dd7a7`).

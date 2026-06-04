@@ -105,7 +105,6 @@ The quality skills form a pipeline: `/craft` ensures instructions are excellent 
 Hooks make every session framework-aware without manual setup:
 
 - **SessionStart**: loads principles, pulls latest state
-- **UserPromptSubmit hints**: inject context-map pointers
 - **PreToolUse gates**: hydration, enforcer (periodic compliance), custodiet (workflow discipline), policy enforcer (destructive-command block)
 - **PostToolUse**: orchestrator-boundary detection (brain only), warn-tier checks, autocommit
 - **Stop gates**: QA + handover discipline before session ends
@@ -216,6 +215,7 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 Distribution repository: https://github.com/nicsuzor/academicOps
 
 **Requirements**:
+
 - [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) or [Gemini CLI](https://github.com/google/gemini-cli)
 - GitHub CLI (`gh`) for artifact retrieval
 - Docker (optional, for sandboxing/testing)
@@ -226,9 +226,10 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 command claude plugin marketplace add nicsuzor/academicOps
 ```
 
-*(For Gemini users)*:
+_(For Gemini users)_:
+
 ```bash
-  command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
+command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
 ```
 
 ## Configuration
@@ -341,3 +342,4 @@ Projects customise the framework by adding files to a `.agents/` directory:
 - **`.agents/rules/`** — Project-specific rules loaded as binding constraints
 - **`.agents/workflows/`** — Project-specific workflows supplementing the global index
 - **`.agents/context-map.json`** — Maps project documentation to topics for just-in-time context injection
+  index to aid discovery of project knowledge
