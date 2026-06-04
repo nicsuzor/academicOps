@@ -178,14 +178,15 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 
 #### CC auto-mode classifier
 
-- **Pipeline layer**: L4 Soft gates (pre-execution, per tool call)
-- **Pyramid tier**: middle (soft_deny → permission prompt) and tip (block / hard-deny rules)
-- **Trigger**: every tool call, before execution, when CC is running in auto mode
-- **Purpose**: Sonnet 4.6 pre-execution gate. Reads the proposed tool call alongside the conversation transcript and the prose `autoMode.environment` / `allow` / `soft_deny` / `block` rules, then judges whether to allow, surface a permission prompt (warn), or block. Treat it as **rbg-class judgment running at the per-action gate** — transcript-aware, prose-reasoning, fast.
-- **Location**: rules in `aops-core/.claude-plugin/plugin.json` (`autoMode` key); merge logic and installation in `aops-core/lib/automode.py` (invoked by `scripts/install.py`).
+> **Canonical design statement:** [`auto-mode-classifier.md`](auto-mode-classifier.md) — what the classifier is _for_ in this framework, the admission criteria for a rule, the cost model (death-by-denial), and the rule-writing form. This catalogue entry carries only the runtime schema; that spec is the SSoT for design intent.
+
+- **Pipeline layer**: L4 Soft gates (pre-execution, per tool call); **pyramid L5** (judgment per-action gate) in `ENFORCEMENT-MAP.md`.
+- **Pyramid tier**: middle (`soft_deny` — context-overridable deny) → tip (`hard_deny` — absolute block).
+- **Trigger**: every tool call, before execution, when CC is running in auto mode.
+- **Purpose**: Sonnet 4.6 pre-execution gate. Reads the proposed tool call alongside a **stripped** transcript (user messages + bare tool calls/params; **not** assistant prose or tool outputs) and the prose `autoMode.environment` / `allow` / `soft_deny` / `hard_deny` rules, then returns **allow or deny** (there is no "ask" verdict). A denial returns its reason to the agent as a tool result; the verdict also surfaces to the user (permission UI in interactive; in headless, 3 consecutive / 20 total denials terminate the run). Treat it as **`rbg`-class judgment running at the per-action gate**.
+- **Location**: rules in [`templates/aops-core.plugin.json`](../../templates/aops-core.plugin.json) (`autoMode` key); merge logic and installation in [`aops-core/lib/automode.py`](../../aops-core/lib/automode.py) (invoked by `scripts/install.py`); merged copy mirrored to `polecat/defaults/claude-settings.json`.
 - **Scope**: Claude Code only (polecat, crew, interactive — not Gemini, not GHA).
-- **Status**: active. Rule wording carries P#-ID-style framing inherited from before the classifier was understood as judgment-capable; rewrite as prose-with-reasoning is `task-06db60dc`.
-- **Design notes**: rule design implications — see `specs/ultra-vires-enforcer.md` §"Relationship to Claude Code auto mode". Rules state principle and reasoning so the classifier can apply them with judgment; do not write them as rule-ID lookups. Explicit user intent in conversation can override default rules; stated boundaries become block signals. The classifier's verdict surfaces to the user (permission UI), not to the agent's working context — for verdicts the framework needs to read and act on, use the enforcer subagent instead.
+- **Status**: **wired but unseeded** — the `autoMode` key is currently absent from the template and the rule set is effectively CC defaults (see `auto-mode-classifier.md` §"Current state"). Seeding the first 1–3 aops rules is in progress.
 
 #### Hydration gate
 
