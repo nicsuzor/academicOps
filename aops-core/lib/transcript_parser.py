@@ -1842,7 +1842,9 @@ class Entry:
             client_version=data.get("version"),
             git_branch=data.get("gitBranch"),
             permission_mode=data.get("permissionMode"),
-            permission_denials=data.get("permission_denials") or data.get("permissionDenials") or [],  # allow-fallback: absent on pre-classifier sessions
+            permission_denials=data.get("permission_denials")
+            or data.get("permissionDenials")
+            or [],  # allow-fallback: absent on pre-classifier sessions
             terminal_reason=data.get("terminal_reason") or data.get("terminalReason"),
             stop_reason=stop_reason,
             attribution_plugin=data.get("attributionPlugin"),

@@ -1486,13 +1486,17 @@ Examples:
                 session_summary.git_branches = session_ctx.get("git_branches", [])
                 session_summary.permission_modes = session_ctx.get("permission_modes", [])
                 session_summary.models = session_ctx.get("models", [])
-                session_summary.permission_denials = session_ctx.get("permission_denials", [])  # allow-fallback: absent on pre-classifier sessions
+                session_summary.permission_denials = session_ctx.get(
+                    "permission_denials", []
+                )  # allow-fallback: absent on pre-classifier sessions
                 session_summary.terminal_reason = session_ctx.get("terminal_reason")
 
                 # Auto-mode classifier denials live on the result envelope, not in
                 # the per-turn stream — surface each as an explicit timeline event so
                 # the evidence loop (/retro, /trend-review) can measure fire rate.
-                for _d in session_summary.permission_denials or []:  # allow-fallback: field always exists but may be falsy
+                for _d in (
+                    session_summary.permission_denials or []
+                ):  # allow-fallback: field always exists but may be falsy
                     _dn = _d if isinstance(_d, dict) else {}
                     tool_name = _dn.get("tool_name") or _dn.get("toolName")
                     tool_use_id = _dn.get("tool_use_id") or _dn.get("toolUseId")
@@ -1502,10 +1506,7 @@ Examples:
                             "type": "permission_denial",
                             "tool": tool_name,
                             "tool_use_id": tool_use_id,
-                            "description": (
-                                f"auto-mode denied {tool_name} "
-                                f"({tool_use_id})"
-                            ),
+                            "description": (f"auto-mode denied {tool_name} ({tool_use_id})"),
                         }
                     )
 
