@@ -18,10 +18,11 @@ permalink: commands/program
 
 # /program — Program / Portfolio Supervision
 
-Invoke the **program** skill. This is junior's autonomous top loop, one scope above `/supervisor`: it owns a release-level goal spanning many epics, discovers and decomposes the constituent epics itself, runs `/supervisor` per epic, and surfaces only escalations + merge-ready PRs.
+Runs program-level supervision across multiple epics to achieve a release-level goal.
 
-Invoke: `Skill(skill="program", args="<program-task-id>")`
+## Execution
 
-**Canonical loop invocation:** `/loop 30m /program <program-task-id>`
+Invoke the program skill directly:
+`Skill(skill="program", args="<program-task-id>")`
 
-If no program task exists yet for the release goal, the skill's first tick discovers and files the constituent epics under a program task. The skill owns the workflow — do not reimplement the loop here.
+`/program` runs a single tick. To drive a release continuously, wrap it in a loop: `/loop 30m /program <program-task-id>`.

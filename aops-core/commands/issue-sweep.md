@@ -20,57 +20,27 @@ allowed-tools: Agent
 permalink: commands/issue-sweep
 ---
 
-# /issue-sweep — Survey Shortcut (sweep mode)
+# /issue-sweep — Triage Backlog Issues
 
-**Purpose**: Shortcut that delegates to the survey skill in `sweep` mode. Runs ONE cycle of the open-issue sweep on `nicsuzor/academicOps`. Classifies ≤ 20 issues, **proceeds autonomously on the rational defaults** (consolidates/closes duplicates, aggregates related issues into fix-epics, files single-tasks, queues fix-epics), gates only on genuine judgment calls, logs the cycle. **HALT after one cycle.**
+Triages GitHub issues by delegating to the `survey` skill in `sweep` mode. Triages ≤ 20 issues per cycle.
 
-Runs **undirected** by default (cursor-driven over the oldest-untriaged batch) or **directed** when given a focus — a specific blocker / failure / issue to investigate and prioritise first. A directed sweep is _focus-first, not focus-only_: it still scans the general backlog, and a focus sets attention only — it does not relax the escalation evidence bar (see the survey skill's "Directed vs undirected sweep").
+## Invocation & Arguments
 
-**Proceeds autonomously** on the rational defaults — no per-bucket sign-off. Gates ONLY on genuine judgment calls (ambiguous classification / needs-human-triage) and the two **HARD HALTS**: (a) the locked merge gate (never auto-merge, never mint/simulate an approval; opening-visible-PR / merge-to-`main` is not a sweep action), and (b) destructive or externally-irreversible operations. Closing/consolidating GitHub _issues_ is reversible, so it is autonomous. No improvised dispositions beyond the rubric. No cursor in task body — labels are the cursor.
+- `/issue-sweep` — run one undirected cycle of 20 issues.
+- `/issue-sweep <issue#>` or `"<focus phrase>"` — directed cycle: prioritize this issue/focus and its root-cause cluster first, then scan general backlog.
+- `/issue-sweep --batch <N>` — override batch size.
+- `/issue-sweep --dry-run` — output classification plan without executing modifications or writing logs.
+
+## Execution Rules
+
+- **Autonomous Actions**: Consolidate and close duplicate issues, group related issues into fix-epics, file single tasks, and queue fix-epics in the PKB.
+- **Escalation Gates**: Gate only on ambiguous classifications or when human input is required.
+- **Prohibitions**:
+  - Do not run tasks or fix code.
+  - Do not open PRs or merge to `main`.
+  - Do not run destructive, irreversible actions.
 
 ## Dispatch
 
-Delegate to junior (jr) — the gate-stream judgment calls require the user-interaction surface that pauli's lean profile doesn't support:
-
-```python
-Agent(
-  subagent_type='aops-core:jr',
-  prompt="""Read aops-core/skills/survey/SKILL.md. Execute in sweep mode.
-
-Context from user: <paste user's invocation context — batch size override, dry-run flag, or a FOCUS (a specific blocker / failure / issue number to investigate and prioritise first). If a focus is given, run a directed sweep per the skill's "Directed vs undirected sweep": triage the focal root-cause cluster first, then continue the general backlog scan; focus sets attention only, not the escalation bar.>
-
-Follow the sweep mode workflow exactly: pre-flight → pull batch (focal cluster first if directed) → classify → apply the rational defaults autonomously (gate only judgment calls + the two HARD HALTS) → append cycle log → /verify handoff → HALT.""",
-  tools=[
-    'Bash', 'Read', 'Grep', 'Glob', 'Skill', 'AskUserQuestion',
-    'mcp__plugin_aops-core_pkb__get_task',
-    'mcp__plugin_aops-core_pkb__create_task',
-    'mcp__plugin_aops-core_pkb__update_task',
-    'mcp__plugin_aops-core_pkb__append',
-    'mcp__plugin_aops-core_pkb__task_search',
-  ],
-)
-```
-
-The dispatched jr agent owns the session from here. The main context is clean.
-
-## Arguments
-
-- `/issue-sweep` — run one undirected cycle, batch size 20 (default)
-- `/issue-sweep <issue#>` — directed cycle: investigate that issue and its root-cause cluster first, then continue the general backlog scan
-- `/issue-sweep "<focus phrase>"` — directed cycle aimed at a described blocker/failure (resolves to the matching issue cluster)
-- `/issue-sweep --batch 10` — override batch size for this cycle
-- `/issue-sweep --dry-run` — produce the classified cycle plan only; do not apply any disposition or write the cycle log
-
-## What this command does NOT do
-
-- Does not fix any issue — single-tasks and fix-epics are queued in PKB, executed later.
-- Does not invoke `/supervisor` — fix-epics are left `queued`; user picks which to run next.
-- Does not open a visible PR or merge to `main` — the locked merge gate is never a sweep action.
-- Does not perform destructive or externally-irreversible operations (issue closes/merges are reversible and so are in-scope).
-
-## See also
-
-- Full sweep workflow: `aops-core/skills/survey/SKILL.md` (sweep mode)
-- Fix-epic execution: `/supervisor`
-- Individual session review: `/learn` (survey skill, retro mode)
-- Trend analysis: `/trend-review` (survey skill, trend mode)
+Delegate the sweep execution to the Junior coordinator agent:
+`Agent(subagent_type='aops-core:jr', prompt='Run survey skill in sweep mode with [user arguments/focus]')`

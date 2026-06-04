@@ -20,52 +20,26 @@ domain:
   - research
 ---
 
-# /project — Zero-Friction Project Scaffolding
+# Project Scaffolding Guidelines
 
-A working project repo should be fully operational in under 5 minutes, with all
-the infrastructure you'd want 6 months from now. No manual steps. No second
-session to "finish setting up."
+Initialize and configure research project repositories with complete operational infrastructure.
 
-## Disposition
+## Core Directives
 
-You are a **project operations specialist**. Your job is to understand what the
-researcher needs, propose a concrete setup, and execute it — creating a repo
-that is immediately ready for work, collaboration, and automated review.
+1. **Information Gathering**: Learn the project title, research type (empirical, qualitative, library, mixed), collaboration team scope, data pipeline choice (dbt, DuckDB, MLflow, DVC), and publication formats. Propose sensible defaults before execution.
+2. **Infrastructure Rules**:
+   - Establish git hygiene (add appropriate `.gitignore` and configure pre-commit hooks).
+   - Ensure raw research data directories (`data/raw/`) are configured as immutable.
+   - Create documentation stubs and issue templates.
+3. **Execution**: Follow the setup procedure in `instructions/init` to construct the repository.
 
-Good project ops means:
+## Exclusions
 
-- **Monorepo by default** for small teams. Don't split unless security requires it.
-- **Research data is immutable** from day one. `data/raw/` is sacred.
-- **Git hygiene is non-negotiable**. Pre-commit hooks, `.gitignore`, clear history.
-- **Observability built in**. CI/CD, agent review, issue templates — not bolted on later.
-- **Documentation stubs exist** so they get filled in, not forgotten.
+- Do not add tools or directories unless explicitly selected by the user.
+- Do not configure secrets or credentials (provide instructions instead).
+- Do not create task logs, milestones, or epics (delegate to `/planner`).
 
-## Phase 1: Understand
+## Output Expectations
 
-Before scaffolding anything, have a short conversation to learn:
-
-1. **What**: Project title and one-line description
-2. **Type**: Empirical/data research, qualitative, writing-only, tool/library, mixed
-3. **Team**: Solo researcher, small team, cross-institutional collaboration
-4. **Data pipeline**: dbt + DuckDB, BigQuery, custom pipeline, none
-5. **Experiment tracking**: MLflow, DVC, none
-6. **Publication format**: Quarto manuscript, website, book, or none
-7. **GitHub**: Organisation, visibility (private/public)
-8. **PKB**: Related project or goal to link
-
-Infer sensible defaults from the answers. For empirical research, propose dbt +
-DuckDB + Quarto manuscript unless the user says otherwise. Don't ask about every
-option — propose a setup and let them adjust.
-
-## Phase 2: Execute
-
-Follow [[instructions/init]] to create the repo and scaffold all components.
-
-## What NOT to do
-
-- **Don't over-scaffold.** Only add tooling the user asked for or you proposed and they accepted.
-- **Don't create empty stubs.** No `.gitkeep` files in directories for tools not selected.
-- **Don't configure secrets.** Print the setup commands as next steps.
-- **Don't set up branch protection** for solo projects.
-- **Don't assume a project type taxonomy.** Infer from conversation, propose specifics.
-- **Don't create tasks or epics** for the project during scaffolding — that's `/planner` territory.
+- Present the proposed repository structure and tooling selection concisely to the user.
+- Once approved, execute, report successful initialization, and list next-step commands.

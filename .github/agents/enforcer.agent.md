@@ -63,9 +63,8 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
 
 File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
 
-- Always post a review to record your verdict, even if no violations are found. The workflow relies on reading your emitted verdict marker from this review.
+- Always post a review to record your verdict, even if no violations are found — use `--approve` for APPROVE, `--request-changes` otherwise. The workflow reads the review **state** (APPROVED / CHANGES_REQUESTED), not any parsed text.
 - Start every review body with `## Enforcer Review` so it can be found for future dismissal.
-- Include the machine-readable trailer (`<!-- aops-verdict: ... -->`, `<!-- aops-issues: N -->`) from the verdict format in your review body.
 
 If you push fixes, use the commit trailer:
 

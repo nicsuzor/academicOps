@@ -1995,7 +1995,8 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     # 2. Repo root version (sources point to ./dist/aops-claude)
     # Use json serialization for a deep copy
     root_data = json.loads(json.dumps(data))
-    for plugin in root_data.get("plugins", []):
+    root_plugins = root_data.get("plugins", [])  # allow-fallback: optional in marketplace.json
+    for plugin in root_plugins:
         if plugin.get("source"):
             src = plugin["source"]
             if src.startswith("./"):
@@ -2010,7 +2011,6 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
         json.dump(root_data, f, indent=2)
         f.write("\n")
     print(f"  ✓ Generated {root_marketplace} (for repository root)")
-
 
 
 def package_artifacts(
