@@ -43,6 +43,28 @@ jobs:
       - name: Acknowledge approval
         run: echo "Environment gate approved or bypassed"
 
+  # ─── Step 0.4: Guard — no built artifacts on dev ───────────────────
+  # dev is source-only. Built plugin dirs and dist/ live exclusively on the
+  # published `main` branch (see build-extension.yml). Fail fast if any PR
+  # targeting dev tracks distribution artifacts, so they can never land on
+  # dev and conflict with the source tree.
+  guard-no-dist:
+    name: Guard — no dist on dev
+    if: github.base_ref == 'dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert no distribution artifacts are tracked
+        run: |
+          set -euo pipefail
+          OFFENDERS="$(git ls-files -- dist aops-claude aops-tools-claude aops-cowork aops-gemini aops-tools-gemini aops-antigravity aops-tools-antigravity || true)"
+          if [ -n "$OFFENDERS" ]; then
+            echo "::error::Built distribution artifacts must never be committed to dev — they belong only on the published main branch."
+            echo "$OFFENDERS"
+            exit 1
+          fi
+          echo "✓ dev is clean — no dist/ or built plugin dirs tracked."
+
   # ─── Step 0.5: Initialize ──────────────────────────────────────────
   # On opened/reopened/ready_for_review: set merge-prep-status to pending.
   # On synchronize: carry forward a previous success unless new

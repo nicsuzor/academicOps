@@ -1,10 +1,13 @@
 name: Build and Deploy
 
 on:
+  # Tag-only: release-please creates the vX.Y.Z tag with AOPS_DIST_PAT, which
+  # triggers this run from the TAGGED commit's workflow (i.e. dev's version).
+  # We deliberately do NOT also trigger on `release: published` — that event
+  # would run main's copy of this file (default-branch semantics), which the
+  # release pipeline never updates, and would double-fire against the tag run.
   push:
     tags: ['v*']
-  release:
-    types: [published]
 
 concurrency:
   group: build-deploy
@@ -144,25 +147,47 @@ jobs:
           # Generic fallback
           uv run python scripts/build.py $VERSION_FLAG
 
-      - name: Mirror dist/ and manifests into main branch and commit
+      - name: Publish distribution to main
         run: |
-          # rsync --delete keeps the dist/ folder in sync
-          mkdir -p dist-repo/dist
-          rsync -a --delete dist/ dist-repo/dist/
+          set -euo pipefail
+          SRC="${GITHUB_WORKSPACE}"
 
-          # Copy manifests to dist-repo root
-          mkdir -p dist-repo/.claude-plugin
-          cp dist/.claude-plugin/marketplace.json dist-repo/.claude-plugin/marketplace.json
-          cp dist/aops-gemini/gemini-extension.json dist-repo/gemini-extension.json
+          # main is the published "dist repo". build.py emits
+          # dist/.claude-plugin/marketplace.json with ROOT-RELATIVE sources
+          # (./aops-claude, ./aops-tools-claude, ./aops-cowork), so the built
+          # plugin dirs must land as SIBLINGS of that marketplace at the main
+          # root — NOT nested under main/dist/ (the old bug that left the
+          # marketplace pointing at directories that never existed on main, so
+          # `claude` could not resolve the plugins).
+          cd "${SRC}/dist-repo"
 
-          cd dist-repo
+          # Publish every built plugin directory at the root, each kept clean
+          # with --delete. The `*/` glob skips dot-entries (dist/.claude-plugin
+          # and any generated dist/.github), so main's own source tree and CI
+          # workflows are never touched. Release archives (*.tar.gz / *.zip) are
+          # files at the dist root → not matched here; they ship as GitHub
+          # Release assets in the next step.
+          for d in "${SRC}"/dist/*/; do
+            name="$(basename "$d")"
+            rsync -a --delete "$d" "./${name}/"
+          done
+
+          # Claude marketplace (root-relative ./aops-* sources) + Gemini manifest.
+          mkdir -p .claude-plugin
+          cp "${SRC}/dist/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
+          cp "${SRC}/dist/aops-gemini/gemini-extension.json" gemini-extension.json
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f dist/ .claude-plugin/marketplace.json gemini-extension.json
+          git add -A
+          # -f to bypass any .gitignore rule that would hide plugin payload files.
+          git add -f aops-* .claude-plugin/marketplace.json gemini-extension.json 2>/dev/null || true
           if git diff --cached --quiet; then
-            echo "Nothing to commit, main is already in sync"
+            echo "main already in sync — nothing to publish"
           else
-            git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }} [skip ci]"
+            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
+            # Fast-forward (dist-repo is checked out at main HEAD) — no force push,
+            # so a non-fast-forward branch rule on main can stay enforced.
             git push origin main
           fi
 
@@ -189,16 +214,3 @@ jobs:
 
           gh release upload "v$VERSION" $ARCHIVES --clobber || \
           gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES
-
-      - name: Force-push deployment to main
-        if: github.event_name == 'release' || github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b temp-main
-          cp -r dist/.claude-plugin .
-          git add -f dist/ .claude-plugin/
-          git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }}"
-          git push origin temp-main:main --force

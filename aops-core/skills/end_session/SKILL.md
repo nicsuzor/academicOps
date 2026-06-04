@@ -107,7 +107,7 @@ If `TaskList` is unavailable (somehow running the cowork build outside Cowork), 
 
 <!-- /cowork:only -->
 
-1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill`. If no file changes, skip. Never end a session with uncommitted work — if work is genuinely incomplete, use `/dump` instead so it is captured as a resume task rather than abandoned.
+1. **Commit, push, file PR**. If file changes exist, commit them, push the branch, and run `gh pr create --fill --base dev`. If no file changes, skip. Never end a session with uncommitted work — if work is genuinely incomplete, use `/dump` instead so it is captured as a resume task rather than abandoned.
 
 2. **Update the project breadcrumb** (project → active epic → task linkage).
 

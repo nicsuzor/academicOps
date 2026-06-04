@@ -557,7 +557,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                         "--head",
                         branch_name,
                         "--base",
-                        "main",
+                        "dev",
                     ]
                     if is_partial:
                         create_args.append("--draft")
