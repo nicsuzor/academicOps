@@ -116,7 +116,7 @@ RUN umask 000 && uv tool install ruff
 # git clones that could diverge if the repo updated between them
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
 # pkb binary: downloaded separately from nicsuzor/mem releases.
-ARG AOPS_REPO_URL=https://github.com/nicsuzor/aops.git
+ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
 
 # Single clone → install both Claude plugin and Gemini extension from it.
 # Both CLIs internally set 444 on git objects — chmod after each install.
@@ -127,9 +127,14 @@ RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
     && claude plugin install aops-tools@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
-    && echo '{"/tmp/aops-dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-gemini --consent --pre-release \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/aops-tools-gemini --consent --pre-release \
+    && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-gemini --consent --pre-release \
+    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-tools-gemini --consent --pre-release \
+    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
+    && cp -r /tmp/aops-dist/dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-core \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
+    && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
     && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
