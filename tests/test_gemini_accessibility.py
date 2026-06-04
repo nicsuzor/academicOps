@@ -49,7 +49,12 @@ def test_core_agent_transformation_for_gemini(agent_name):
     assert "${CLAUDE_PLUGIN_ROOT}" not in final
     assert "${extensionPath}" in final
     if "AXIOMS.md" in content:
-        assert "@${extensionPath}/../.agents/rules/AXIOMS.md" in final
+        # Axioms are co-shipped INTO the plugin payload at
+        # <plugin>/.agents/rules/AXIOMS.md, so the import must resolve at
+        # ${extensionPath}/.agents/rules/AXIOMS.md (no parent-of-root path).
+        # Regression guard for #aops-75543e66.
+        assert "@${extensionPath}/.agents/rules/AXIOMS.md" in final
+        assert "/../.agents/rules/" not in final
 
 
 def test_gemini_hooks_parameter_replacement(tmp_path):
