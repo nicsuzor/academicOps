@@ -275,6 +275,14 @@ This sweep closes the loop on tasks whose completion can be inferred from extern
 
 **What counts as evidence**: An agent-confirmed merged PR, where the candidate was identified by one or more deterministic signals (PR number linked on the task, `pr_url` in frontmatter, task ID in PR body, `headRefName` matching branch, or PR title similar to task title). For email: an agent-confirmed sent reply where the candidate was identified by correspondent and approximate subject. A closed-but-not-merged PR is **not** evidence.
 
+### `partial` is a legitimate stop — not a sweep target
+
+A task in `status="partial"` (a draft PR plus a live continue task; see [[spec-partial-work]]) is **neither** a completion-drift case for the [Task Completion Sweep](#task-completion-sweep) **nor** a stuck PR for the [Red-CI / stuck-PR loop-closer](#red-ci--stuck-pr-loop-closer). Its work is _deliberately_ incomplete and _already owned_: the worker stopped honestly at a scope seam, shipped the clean smaller whole as a draft, and left the remainder as a wired continue task. So, distinct from `review`/`merge_ready`:
+
+- **Do not auto-close it** — the claimed whole is not finished; the draft PR is not merge evidence.
+- **Do not flag it as stalled or stuck** — a green `partial` draft is not a red/stuck PR, and the continue task is the next owner, not silence.
+- **The one failure mode worth catching is an _orphaned_ `partial`** — a `partial` task with no open continue task. That is the job of the dedicated `partial`-orphan loop-closer specified in [[spec-partial-work]] §6 (keyed off `list_tasks(status="partial")` + a missing continue task), which is a separate, not-yet-built backstop. Until it ships, if `/daily` happens upon an orphaned `partial`, surface it once under "Needs your call" — do not auto-close it and do not fabricate the backstop here.
+
 ### Red-CI / stuck-PR loop-closer
 
 This is the next-day backstop for the autonomous trust gate's red-CI posture (spec [[note-36c15a69]] → Modes → Autonomous → Trust gate; and `/aops-core:program` → Trust gate sub-property 4). The posture is: **a red-CI PR is first the GHA merge pipeline's job to self-heal; if it cannot, the loop must not let the PR silently stall — it converts the stuck PR into an enqueued, owned follow-up fix-task.** Never route around the failure; never merge despite red.

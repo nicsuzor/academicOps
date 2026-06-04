@@ -209,6 +209,8 @@ The brake is the **only** pre-dispatch check. It catches terminal loops; it does
 
 A direct `halt` recommendation from pauli is not a brake rule — it is just pauli's verdict, executed normally. Halt protocol: append the reason as a Pattern Memory row, set the epic status, emit a one-line summary, exit. **Never** substitute a different worker, repo, or scope. Brake reset happens only when a human explicitly clears the epic (status → `queued`).
 
+**`partial` is not a stall.** A work item a worker _released_ as `partial` (a draft PR + a live continue task, [[spec-partial-work]]) is no longer `in_progress` — it has reached a legitimate terminal stop with its remainder owned by the continue task. The Stalled-workers rule keys on `in_progress` items gone quiet; a `partial` release is an _advance_, not silence. Do not treat a `partial`+continue-task as a stalled worker, and do not substitute scope to "finish" what the worker honestly left for its continue task.
+
 ## Pattern Memory format
 
 The main agent appends one row per tick. Capped at 16 rows (drop the oldest when over). Lives in the epic body under `## Pattern Memory`:
@@ -337,7 +339,7 @@ State lives in the epic body (see [The Task File Is the Only State](#the-task-fi
 
 **Forbidden as state surfaces:** any new local JSON state file outside the epic body (Stop-hook JSON, `session-state.json`, `coordination-state.json`); per-skill `gh pr list` re-fetching when a fresher producer (like `pr-state.json`) is available.
 
-The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent for other deliverable types). Set the epic to `merge_ready` once every child is at the surface or escalated/blocked with a recorded reason. The async review pipeline takes over; emit the final summary and exit. See [[instructions/code-deliverable]] for the code case.
+The supervisor's job ends when each work item has reached its review surface (open PR for code; equivalent for other deliverable types). A child released as **`partial`** — a draft PR plus a live continue task ([[spec-partial-work]]) — has reached a _legitimate_ terminal stop: it is at its surface (the draft PR) with its remainder owned (the continue task), not a stall and not an escalation. Set the epic to `merge_ready` once every child is at the surface — `merge_ready`, `partial`, or `review` — or escalated/blocked with a recorded reason. The async review pipeline (and, for the `partial` remainder, the continue task) takes over; emit the final summary and exit. See [[instructions/code-deliverable]] for the code case.
 
 ## User Attention Notification
 
