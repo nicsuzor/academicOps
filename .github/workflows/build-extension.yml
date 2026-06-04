@@ -189,3 +189,15 @@ jobs:
 
           gh release upload "v$VERSION" $ARCHIVES --clobber || \
           gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES
+
+      - name: Force-push deployment to main
+        if: github.event_name == 'release' || github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b temp-main
+          git add -f dist/
+          git commit -m "chore: build distribution assets for v${{ steps.version.outputs.version }}"
+          git push origin temp-main:main --force
