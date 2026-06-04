@@ -409,6 +409,37 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 }
 
 # =============================================================================
+# SLASH-COMMAND PROMPT DETECTION
+# =============================================================================
+# A UserPromptSubmit whose prompt carries one of these markers is a
+# slash-command turn — i.e. a skill invocation (`/end-session`, `/dump`,
+# `/remember`, `/planner`, ...). Such a turn owns its own finishing format, so
+# the per-turn session-end gates (qa, handover, ida) must NOT re-arm (close) on
+# it. Re-arming would fire the gate a second time on the Stop that follows the
+# skill — e.g. a redundant ida honesty reflection right after /end-session has
+# already produced its own reflection blocks.
+#
+# These patterns are used ONLY as `prompt_exclude_patterns` on the gates'
+# UserPromptSubmit -> CLOSED re-arm triggers. They SUPPRESS the close; they
+# never open a gate. A gate keeps whatever status it already held.
+#
+# Surface formats (verified against real transcripts / existing triggers):
+#   Claude Code: the prompt carries `<command-name>/foo</command-name>`
+#                (with sibling <command-message>/<command-args> tags; tag order
+#                varies, so we match the tag anywhere, not anchored).
+#   Gemini CLI:  the slash command is injected as `# /foo — ...`.
+#
+# A BARE leading slash is deliberately NOT matched: real user prompts can be
+# bare file paths (e.g. "/home/nic/.../session-enforcer.md"), which must still
+# re-arm the gate. Matching `^/` would silently disarm the honesty/handover/qa
+# gates on any path-only prompt. The `<command-name>` tag and the Gemini `# /`
+# form are unambiguous; a bare path is not.
+SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
+    r"<command-name>\s*/",  # Claude Code slash command (skill invocation)
+    r"^\s*#\s*/\w",  # Gemini CLI slash-command injection (e.g. "# /dump …")
+]
+
+# =============================================================================
 # GATE MODES
 # =============================================================================
 # Gate enforcement modes are read directly from environment variables. The

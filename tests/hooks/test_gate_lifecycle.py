@@ -10,6 +10,7 @@ import pytest
 
 from tests.hooks.gate_helpers import (
     GateRegistry,
+    GateState,
     GateStatus,
     GateVerdict,
     HookContext,
@@ -332,3 +333,171 @@ class TestStopDenyMaxFireDowngrade:
             f"Handover should downgrade to WARN after 3 blocks, "
             f"got {r3.verdict.value if r3 else None}"
         )
+
+
+# --- Slash-command turns must not re-arm session-end gates ---
+
+# Verified prompt surface formats (see SLASH_COMMAND_PROMPT_PATTERNS in
+# aops-core/hooks/gate_config.py): Claude Code carries the slash command as
+# `<command-name>/foo</command-name>` (with sibling tags); Gemini injects it as
+# `# /foo — ...`. A BARE file-path prompt must STILL re-arm — matching `^/`
+# would silently disarm the gates on any path-only prompt.
+CLAUDE_SLASH_PROMPT = (
+    "<command-message>end_session</command-message>\n<command-name>/end_session</command-name>"
+)
+GEMINI_SLASH_PROMPT = "# /dump — Session Handover"
+BARE_PATH_PROMPT = (
+    "/home/nic/.claude/projects/x/20260101-session-enforcer.md\n\nThis is the session log"
+)
+NORMAL_PROMPT = "continue working on the gate fix"
+
+
+def _ups(prompt: str) -> HookContext:
+    return HookContext(
+        session_id="test-gate-mode",
+        hook_event="UserPromptSubmit",
+        raw_input={"prompt": prompt},
+    )
+
+
+class TestSlashCommandDoesNotRearmSessionEndGates:
+    """A slash-command turn (skill invocation) owns its own finishing format, so
+    the session-end gates (qa, handover, ida) must NOT re-arm (close) on it.
+
+    Directive (Turn-1): typing /end-session, /dump or /remember after an honesty
+    reflection has already fired must not arm a SECOND redundant reflection. The
+    exclusion suppresses the CLOSE only — it must never open a gate.
+    """
+
+    def _polecat_state(self, monkeypatch, session_id: str) -> SessionState:
+        # session_type is derived from AOPS_POLECAT_CONTAINER at create time;
+        # the handover UPS re-arm trigger is polecat/crew-only (aops-b368109a).
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
+        return SessionState.create(session_id)
+
+    @pytest.mark.parametrize(
+        "prompt", [CLAUDE_SLASH_PROMPT, GEMINI_SLASH_PROMPT], ids=["claude", "gemini"]
+    )
+    def test_ida_not_rearmed_on_slash(self, router, monkeypatch, prompt):
+        """ida (honesty reflection) — the directive's worked example."""
+        set_gate_modes(monkeypatch, ida="warn")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("ida")
+        # Post-reflection state: ida OPEN after a prior Stop fired it.
+        state.gates["ida"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(prompt), state)
+
+        assert state.gates["ida"].status == GateStatus.OPEN, (
+            "ida must NOT re-arm on a slash-command turn — re-arming fires a "
+            "redundant honesty reflection on the Stop after the skill"
+        )
+
+    @pytest.mark.parametrize(
+        "prompt", [BARE_PATH_PROMPT, NORMAL_PROMPT], ids=["bare-path", "normal"]
+    )
+    def test_ida_still_rearms_on_non_slash(self, router, monkeypatch, prompt):
+        """False-positive guard: a bare file path or normal prompt MUST re-arm."""
+        set_gate_modes(monkeypatch, ida="warn")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("ida")
+        state.gates["ida"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(prompt), state)
+
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "ida MUST re-arm on a normal / bare-path prompt — a leading slash in "
+            "a file path must not be mistaken for a slash command"
+        )
+
+    def test_qa_not_rearmed_on_slash(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, qa="block")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("qa")
+        state.main_agent.current_task = "task-xyz"  # has_bound_task
+        state.gates["qa"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
+
+        assert state.gates["qa"].status == GateStatus.OPEN, (
+            "qa must NOT re-arm on a slash-command turn"
+        )
+
+    def test_qa_still_rearms_on_normal_with_task(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, qa="block")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("qa")
+        state.main_agent.current_task = "task-xyz"
+        state.gates["qa"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(NORMAL_PROMPT), state)
+
+        assert state.gates["qa"].status == GateStatus.CLOSED, (
+            "qa MUST re-arm on a normal prompt when a task is bound"
+        )
+
+    def test_handover_not_rearmed_on_slash(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, handover="block")
+        reinit_gates_with_defaults()
+        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state.gates["handover"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
+
+        assert state.gates["handover"].status == GateStatus.OPEN, (
+            "handover must NOT re-arm on a slash-command turn in a polecat session"
+        )
+
+    def test_handover_still_rearms_on_normal(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, handover="block")
+        reinit_gates_with_defaults()
+        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state.gates["handover"].status = GateStatus.OPEN
+
+        router._dispatch_gates(_ups(NORMAL_PROMPT), state)
+
+        assert state.gates["handover"].status == GateStatus.CLOSED, (
+            "handover MUST re-arm on a normal prompt in a polecat session"
+        )
+
+    def test_slash_command_never_opens_a_closed_gate(self, router, monkeypatch):
+        """The exclusion suppresses CLOSE only — it must never OPEN a gate.
+        A gate that is CLOSED coming into a slash turn stays CLOSED (the
+        directive: 'don't take this to mean we should open any gates')."""
+        set_gate_modes(monkeypatch, ida="warn", qa="block", handover="block")
+        reinit_gates_with_defaults()
+        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state.main_agent.current_task = "task-xyz"
+        state.session_did_work = True
+        for g in ("qa", "handover", "ida"):
+            state.gates.setdefault(g, GateState()).status = GateStatus.CLOSED
+
+        router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
+
+        for g in ("qa", "handover", "ida"):
+            assert state.gates[g].status == GateStatus.CLOSED, (
+                f"{g} must stay CLOSED — the slash exclusion suppresses close, never opens"
+            )
+
+    @pytest.mark.parametrize("skill", ["end_session", "dump", "remember"])
+    def test_skill_tool_invocation_does_not_rearm_ida_or_qa(self, router, monkeypatch, skill):
+        """E2: the agent invoking Skill(end_session/dump/remember) — a PostToolUse,
+        not a UPS — must not re-arm ida or qa (they only close on UPS / task-claim)."""
+        set_gate_modes(monkeypatch, ida="warn", qa="block")
+        reinit_gates_with_defaults()
+        state = SessionState.create("test-gate-mode")
+        state.main_agent.current_task = "task-xyz"
+        for g in ("qa", "ida"):
+            state.gates.setdefault(g, GateState()).status = GateStatus.OPEN
+
+        ctx = HookContext(
+            session_id="test-gate-mode",
+            hook_event="PostToolUse",
+            tool_name="Skill",
+            tool_input={"skill": skill},
+            subagent_type=skill,
+        )
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["qa"].status == GateStatus.OPEN, f"Skill({skill}) must not re-arm qa"
+        assert state.gates["ida"].status == GateStatus.OPEN, f"Skill({skill}) must not re-arm ida"
