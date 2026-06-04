@@ -84,6 +84,22 @@ The user shouldn't have to remember things. They're constantly switching their a
 | Research Methodology       | Skill: `research`                 |
 | Session Wrap-up / Handover | Skill: `dump` / `end_session`     |
 
+### Gates — composition & exit semantics (WS7)
+
+Gate hygiene policy (no new gates). Runtime: `aops-core/hooks/gate_config.py` + `lib/gates/engine.py`.
+
+**Precedence.** DENY > WARN > ALLOW; within a tier, registration order wins. Order: **sentinel → enforcer → qa → handover → ida**.
+
+**Never-block.** `AskUserQuestion` and never-block tools are never denied or warned by any gate (`gate_config.is_never_block`).
+
+**Enforcer channel.** Enforcer gate invocations carry `<!-- aops:enforcer-channel -->` to distinguish framework-issued from smuggled input.
+
+**Register-scaling.** Register read from `AOPS_SESSION_REGISTER`. In capture/personal register, enforcer/ida/qa gates suppressed; sentinel and handover are not. Dormant until writer wired (fail-closed → `working`).
+
+**Turn vs session.** `/dump` = turn-end bail; `/end_session` = session-end canonical close. Both satisfy the handover gate.
+
+**Loop termination boundary (WS2).** Sessions reaching `done-pending-Nic` terminal state — there is no `/goal`/`/loop` continuation Stop hook in this repo to compose against; the harness-side half is a tracked needs-decision.
+
 ## Communication Style
 
 - Start responses with a single-line status summary and bulleted open items.
