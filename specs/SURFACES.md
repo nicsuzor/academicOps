@@ -24,6 +24,7 @@
 | ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------- |
 | WSL crew container      | Claude Code (interactive, in `polecat crew` container) | Persistent crew worktree (`/workspace`); container itself ephemeral | `dist/aops-claude/` baked into the crew Docker image                         | Container env at launch (no `launchctl` / `.zshenv` hop)                    | Orchestrator — full user trust | polecat (`run`/`crew`), Jules, GHA            |
 | Claude Code CLI on host | Claude Code                                            | Persistent                                                          | aops-core plugin from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` | ⚠ broken — stripped (see traps)                                             | Full user trust                | polecat (run/crew), Jules, host shell         |
+| Host SDK worker         | Claude Code (headless, Agent SDK dispatched)           | Host-persistent (`~/.claude/projects/…`, same dir as CLI sessions)  | ⚠ TBD — likely same as CLI on host; verify                                   | ⚠ TBD — likely same broken path as CLI on host; verify                      | ⚠ TBD — dispatched by `~/junior` SDK; scope not verified | ⚠ TBD — depends on `~/junior` SDK launcher |
 | Gemini CLI on host      | Gemini CLI (Google)                                    | Persistent                                                          | aops-gemini extension from `nicsuzor/academicOps`                            | ⚠ unknown — verify                                                          | Full user trust                | polecat (run/crew --model gemini), host shell |
 | `polecat run` Claude    | Claude Code (headless)                                 | Disposable worktree, Docker container                               | `dist/aops-claude/` from `nicsuzor/aops-dist` (built into image)             | Pre-resolved `*_GATE_MODE` + `AOPS_POLECAT_CONTAINER=1`                     | Autonomous, repo-scoped        | Nothing (terminal worker)                     |
 | `polecat run` Gemini    | Gemini CLI (headless)                                  | Disposable worktree, Docker container                               | `dist/aops-gemini/` from `nicsuzor/academicOps` (extension install)          | ⚠ unknown — verify                                                          | Autonomous, repo-scoped        | Nothing                                       |
@@ -76,6 +77,24 @@ Native Claude Code installation on a developer machine (laptop, WSL, services-ne
   - **Stale plugin cache directories** — multiple `0.3.23-dev.*` versions in `~/.claude/plugins/cache/academicOps/aops-core/`; Claude.app uses most recent but doesn't garbage-collect old ones.
   - **`AOPS_BOT_GH_TOKEN` leakage risk** — token sits in plaintext in `settings.json`. Anything dumping `env` to logs leaks it.
 - **Trust posture**: Full user trust.
+
+---
+
+### Host SDK worker (`claude-sdk`)
+
+A Claude Code session launched by the **Claude Agent SDK** directly on the host — not inside a polecat container. The JSONL is written to the same `~/.claude/projects/…` location as an interactive CLI session; the discriminator is `entrypoint=sdk-cli` in the JSONL entries. The typical producer is the `~/junior` SDK launcher dispatching task workers on the host.
+
+- **Engine**: Claude Code (headless), invoked by the Agent SDK (`sdk-cli` entrypoint).
+- **Persistence**: Host-persistent — same `~/.claude/projects/…` as interactive CLI sessions. Not ephemeral (no Docker worktree to nuke on completion).
+- **Plugin source**: ⚠ TBD — likely loaded from the same `~/.claude/plugins/cache/` path as CLI on host. Depends on how the `~/junior` SDK launcher configures Claude Code; verify.
+- **Hook env propagation**: ⚠ TBD — likely same broken path as `Claude Code CLI on host` (no `launchctl` / `.zshenv` hop, so hook subprocesses may not receive `*_GATE_MODE` env vars). Verify empirically.
+- **MCPs available**: ⚠ TBD — depends on what the SDK launcher passes at dispatch; not yet verified.
+- **Gates active**: ⚠ TBD — depends on hook-env propagation. Until verified, assume built-in defaults (all `warn`).
+- **Worker dispatch**: ⚠ TBD — the `~/junior` launcher's dispatch targets for SDK workers are not documented here. Verify before dispatching onward from this surface.
+- **Known traps**:
+  - **Path indistinguishable from interactive CLI** — JSONL lands in `~/.claude/projects/…` with no polecat path segment, so `infer_session_origin_from_path()` returns `claude-code-cli`. The `entrypoint=sdk-cli` field is the only reliable discriminator (see `aops-core/lib/session_naming.py` `infer_session_origin_from_entries()`).
+  - **Spec incomplete** — columns above marked `⚠ TBD` depend on the external `~/junior` SDK launcher and need empirical verification. PKB task for completion to be filed.
+- **Trust posture**: ⚠ TBD — dispatched autonomously by the `~/junior` SDK launcher; likely repo-scoped like a polecat worker, but not confirmed.
 
 ---
 
@@ -232,6 +251,7 @@ Tracking: archived-but-still-true [academicops-459eb8f3] and [aops-1bf76d85]. Re
 | ------------------------- | ------------------------------------------------------------------------------------ |
 | WSL crew container        | `dist/aops-claude/` baked into the crew Docker image (same as `polecat crew` Claude) |
 | Claude Code CLI on host   | `~/.claude/plugins/cache/academicOps/aops-core/<ver>/`; populated from marketplace   |
+| Host SDK worker           | ⚠ TBD — likely same as CLI on host; verify with `~/junior` SDK launcher config       |
 | Gemini CLI on host        | `~/.gemini/extensions/aops/` (via `gemini extensions install`)                       |
 | `polecat run/crew` Claude | `dist/aops-claude/` baked into Docker image at build time                            |
 | `polecat run/crew` Gemini | `dist/aops-gemini/` from extension install in image                                  |
@@ -256,6 +276,7 @@ For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls
 
 ## Gaps / open questions
 
+- **Host SDK worker (`claude-sdk`) spec completion** — plugin source, hook-env propagation, gate behaviour, trust posture, and dispatch targets all marked `⚠ TBD`; depend on the external `~/junior` SDK launcher. File a PKB task to verify these empirically once the launcher's dispatch flow is documented.
 - Gemini CLI hook env propagation — verify whether Gemini behaves like Claude Code CLI (stripped) or differently.
 - Gemini polecat (run & crew) gate-firing behaviour — empirically verify.
 - MCP availability per polecat surface — what reaches into a Docker container vs not.

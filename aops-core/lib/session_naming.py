@@ -435,8 +435,20 @@ def infer_session_origin_from_entries(
     Plain conversational text mentioning the marker is intentionally ignored
     — users can type the path into chat without it implying a LAM launch.
 
-    Crew/polecat/GHA path detection takes priority — if the path already
-    pinned a more specific surface, we leave it alone.
+    A third signal upgrades to ``surface=claude-sdk`` / ``client=sdk``: any
+    scanned entry whose ``entrypoint`` is ``"sdk-cli"``. A host JSONL written
+    by the Claude Agent SDK is a dispatched SDK worker (e.g. the junior
+    orchestrator spawning a task worker on the host), not a bare terminal
+    launch — but it lands in the same ``~/.claude/projects/...`` location, so
+    path inference can't distinguish it. Desktop-LAM detection takes priority:
+    ``entrypoint`` is single-valued, so a desktop launch reads ``claude-desktop``
+    (never ``sdk-cli``), but the path-marker scan is checked first regardless.
+
+    Crew/polecat/GHA path detection takes priority over all content signals —
+    if the path already pinned a more specific surface, we leave it alone. In
+    particular a containerized polecat run is pinned as ``claude-polecat`` by
+    path and is never reclassified here even though it, too, may carry an SDK
+    entrypoint.
     """
     origin = (
         dict(base_origin)
@@ -451,11 +463,20 @@ def infer_session_origin_from_entries(
     if origin.get("surface") != "claude-code-cli":
         return origin
 
+    saw_sdk_cli = False
     for entry in (entries or [])[:max_scan]:
         if _entry_signals_lam(entry):
             origin["surface"] = "claude-code-desktop"
             origin["client"] = "claude-desktop"
             return origin
+        if getattr(entry, "entrypoint", None) == "sdk-cli":
+            saw_sdk_cli = True
+
+    # No desktop-LAM signal in the scan window. Fall back to the SDK-worker
+    # upgrade if any scanned entry was SDK-launched.
+    if saw_sdk_cli:
+        origin["surface"] = "claude-sdk"
+        origin["client"] = "sdk"
 
     return origin
 
