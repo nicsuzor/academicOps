@@ -33,7 +33,7 @@ UV_CACHE_CANDIDATE="$HOOK_DIR/.uv-cache"
 if mkdir -p "$UV_CACHE_CANDIDATE" 2>/dev/null && [ -w "$UV_CACHE_CANDIDATE" ]; then
     export UV_CACHE_DIR="$UV_CACHE_CANDIDATE"
 else
-    export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache-$(id -u)"
+    export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache-$(id -u)"  # allow-fallback: TMPDIR is optional POSIX var
 fi
 
 exec uv --directory "$HOOK_DIR" run python "$HOOK_DIR/hooks/router.py" "$@"

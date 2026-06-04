@@ -2,8 +2,8 @@
 
 # Configure git identity if not already set in environment.
 # These variables are forwarded by polecat/cli.py but can be defaulted here.
-export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-aops-bot}"
-export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-aops-bot@users.noreply.github.com}"
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-aops-bot}"  # allow-fallback: git identity defaults
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-aops-bot@users.noreply.github.com}"  # allow-fallback: git identity defaults
 export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-$GIT_AUTHOR_NAME}"
 export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$GIT_AUTHOR_EMAIL}"
 

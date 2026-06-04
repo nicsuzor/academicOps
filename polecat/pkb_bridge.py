@@ -24,20 +24,20 @@ class PkbTask:
     """Duck-types the task attributes needed by polecat commands."""
 
     def __init__(self, data: dict[str, Any]):
-        fm = data.get("frontmatter") or {}
-        self.id: str = fm.get("id") or data.get("id", "")
-        self.title: str = fm.get("title") or data.get("title", "")
-        self.body: str = data.get("body", "")
+        fm = data.get("frontmatter") or {}  # allow-fallback: duck-types varied MCP shapes
+        self.id: str = fm.get("id") or data.get("id", "")  # allow-fallback: empty id ok
+        self.title: str = fm.get("title") or data.get("title", "")  # allow-fallback: display-only
+        self.body: str = data.get("body", "")  # allow-fallback: body is optional free text
         # project can be in frontmatter or computed at top level
         self.project: str | None = fm.get("project") or data.get("project")
         self.type: str = fm.get("type") or data.get("type", "task")
         self.status: str | None = fm.get("status")  # plain string, not enum
         self.parent: str | None = fm.get("parent")
         self.priority: int | None = fm.get("priority")
-        self.tags: list = fm.get("tags") or []
-        self.depends_on: list = data.get("depends_on") or []
-        self.soft_depends_on: list = fm.get("soft_depends_on") or []
-        self.children: list = data.get("children") or []
+        self.tags: list = fm.get("tags") or []  # allow-fallback: tags are optional metadata
+        self.depends_on: list = data.get("depends_on") or []  # allow-fallback: deps optional
+        self.soft_depends_on: list = fm.get("soft_depends_on") or []  # allow-fallback: optional
+        self.children: list = data.get("children") or []  # allow-fallback: optional API field
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
@@ -196,14 +196,14 @@ class PkbClient:
 
             # Top-level JSON-RPC error
             if "error" in resp:
-                err = resp["error"] or {}
+                err = resp["error"] or {}  # allow-fallback: null error body
                 code = err.get("code", "?")
                 msg = err.get("message", str(err))
                 self._last_error = msg
                 print(f"PKB MCP error {code} ({name}): {msg}", file=sys.stderr)
                 return None
 
-            result = resp.get("result", {})
+            result = resp.get("result", {})  # allow-fallback: missing result -> None below
             if result.get("isError"):
                 content = result.get("content")
                 err_text = "unknown error"
@@ -213,11 +213,11 @@ class PkbClient:
                 print(f"PKB error ({name}): {err_text}", file=sys.stderr)
                 return None
 
-            content = result.get("content", [])
+            content = result.get("content", [])  # allow-fallback: empty=no result, guarded below
             if not content:
                 return None
 
-            text = content[0].get("text", "")
+            text = content[0].get("text", "")  # allow-fallback: empty -> JSONDecodeError path
             try:
                 return json.loads(text)
             except json.JSONDecodeError:
@@ -317,7 +317,7 @@ def _poll_until_bound(client: PkbClient, task_id: str, timeout_secs: float = 10)
     while True:
         data = client.call_tool("get_task", {"id": task_id})
         if data and isinstance(data, dict):
-            fm = data.get("frontmatter") or {}
+            fm = data.get("frontmatter") or {}  # allow-fallback: not-yet-bound task transient
             if fm.get("id"):
                 print(
                     f"PKB indexer bound {task_id} (recovered after polling)",
@@ -375,11 +375,12 @@ _TERMINAL_STATUSES = frozenset(("done", "cancelled", "superseded", "archived"))
 
 
 def _open_children(task: PkbTask) -> list[str]:
-    return [
-        str((c or {}).get("id", ""))
-        for c in task.children
-        if (c or {}).get("status") not in _TERMINAL_STATUSES
-    ]
+    open_ids: list[str] = []
+    for c in task.children:
+        child = c or {}  # allow-fallback: child records may be partial
+        if child.get("status") not in _TERMINAL_STATUSES:  # allow-fallback: no status = open
+            open_ids.append(str(child.get("id", "")))  # allow-fallback: absent id -> ""
+    return open_ids
 
 
 def complete_task(
@@ -457,7 +458,7 @@ def create_task(
                         f"project. Specify project explicitly or verify the parent ID is correct."
                     )
                 break
-            _fm = _data.get("frontmatter") or {}
+            _fm = _data.get("frontmatter") or {}  # allow-fallback: ancestor may lack frontmatter
             _resolved_project = _fm.get("project") or _data.get("project")
             if _resolved_project:
                 break
@@ -540,7 +541,7 @@ def create_task(
             )
 
     # Reject checklist items in body — they diverge from the subtask graph
-    body = params.get("body", "")
+    body = params.get("body", "")  # allow-fallback: body optional; empty = no checklist
     if isinstance(body, str) and re.search(r"(?m)^\s*[-*+]\s+\[[ xX]\]", body):
         raise ValueError(
             "Task body contains checklist items. "
@@ -565,7 +566,7 @@ def create_task(
     # Error signature: "not yet visible in the graph (id=<task-id>)".
     # Root cause: concurrent Tier-1 graph rebuilds race on the nodes snapshot,
     # causing one rebuild to overwrite another's node insertion. See mem#XXX.
-    last_error = getattr(client, "_last_error", None) or ""
+    last_error = getattr(client, "_last_error", None) or ""  # allow-fallback: no error is normal
     if "not yet visible in the graph" in last_error or "retry get_task" in last_error.lower():
         task_id = _extract_id_from_binding_error(last_error)
         if task_id:
