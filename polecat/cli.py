@@ -70,8 +70,6 @@ _EFFORT_TO_MAX_TURNS: dict[str, int] = {
 }
 _DEFAULT_MAX_TURNS = 100
 
-EXIT_BUDGET_EXHAUSTED = 6
-
 
 # Canonical PKB status used as a rollback fallback when the task object does
 # not carry a captured prior status. `queued` is the human-promoted dispatch
@@ -121,65 +119,6 @@ def _compute_max_turns(task, override: int | str | None = None) -> str:
             )
             turns = _DEFAULT_MAX_TURNS
     return str(turns)
-
-
-def _emit_budget_hit_diagnostic(stdout: str, stderr: str, max_turns: str, task_id: str) -> bool:
-    """Detect and log a turn-budget exhaustion event.
-
-    Scans agent output for Claude's "Reached max turns" message.
-    When found, extracts the last tool call name from the output so
-    supervisors can see where the agent was when the budget ran out,
-    without having to dig through the full transcript.
-
-    Returns True if budget exhaustion was detected, False otherwise.
-    """
-    combined = (stdout or "") + (stderr or "")
-    if "Reached max turns" not in combined:
-        return False
-
-    print(
-        f"\n⛔ Turn budget exhausted (--max-turns {max_turns}).",
-        file=sys.stderr,
-    )
-    print(
-        "   Claude SDK semantics: one 'turn' = one assistant response + all tool results.\n"
-        "   Multiple tool calls within one response count as a single turn.",
-        file=sys.stderr,
-    )
-
-    # Find the last tool call name in the output.
-    # Claude prints tool use as "Tool: <name>" or similar patterns.
-    # We also look for JSON "tool_use" blocks and the CLI's "● <ToolName>" spinner lines.
-    last_tool: str | None = None
-
-    # Pattern: CLI spinner output "● ToolName(..." or "✓ ToolName(" or "✗ ToolName("
-    spinner_pattern = re.compile(r"[●✓✗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
-    for m in spinner_pattern.finditer(combined):
-        last_tool = m.group(1)
-
-    if last_tool:
-        print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
-    else:
-        # Fall back: scan for any line containing a known tool-call pattern
-        tool_line_pattern = re.compile(
-            r"(?:Tool|tool_use|tool_name)[^\n]*?\b([A-Za-z][A-Za-z0-9_]*)\b"
-        )
-        for m in tool_line_pattern.finditer(combined):
-            last_tool = m.group(1)
-        if last_tool:
-            print(f"   Last tool call observed: {last_tool}", file=sys.stderr)
-        else:
-            print("   Last tool call: (could not parse — check transcript)", file=sys.stderr)
-
-    print(
-        f"   RESUME_HINT task_id={task_id} command=polecat resume {task_id}",
-        file=sys.stderr,
-    )
-    print(
-        "   Supervisor action: raise effort tag (e.g. effort: L) or investigate over-exploration.",
-        file=sys.stderr,
-    )
-    return True
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -4415,14 +4354,8 @@ def run(
             L   → 150 turns   (large, multi-component)
             (no effort field) → 100 turns
 
-        If the budget is exhausted, the process exits with code 6.
-
         Hook overhead (~2–4 turns per session for the hydration gate and
         enforcer compliance check) counts against the budget.
-
-        When the budget is exhausted polecat emits a diagnostic showing the
-        last observed tool call so supervisors can assess over-exploration
-        without reading the full transcript.
 
     Examples:
         polecat run -p aops              # Run next ready task from aops project
@@ -4777,8 +4710,22 @@ def run(
             # Interactive: just append the prompt as positional arg
             cmd.append(prompt)
         else:
-            # Headless: use -p for print mode
-            cmd.extend(["-p", prompt, "--max-turns", _compute_max_turns(task, max_turns)])
+            # Headless: -p print mode. --output-format stream-json (which Claude
+            # requires --verbose to accompany in --print mode) streams the
+            # agent's events to stdout, so they reach the container's stdout →
+            # docker's json-file log driver. A run is then observable from
+            # outside the container via `docker logs -f polecat-<task-id>`.
+            cmd.extend(
+                [
+                    "-p",
+                    prompt,
+                    "--max-turns",
+                    _compute_max_turns(task, max_turns),
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                ]
+            )
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -4917,7 +4864,6 @@ def run(
         session_dir=str(run_session_dir),
     )
 
-    budget_exhausted = False
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -4986,20 +4932,12 @@ def run(
             except OSError as e:
                 print(f"⚠️  Warning: Failed to save transcript: {e}", file=sys.stderr)
 
-            # Detect turn-budget exhaustion and emit supervisor-friendly diagnostic
-            budget_exhausted = _emit_budget_hit_diagnostic(
-                result.stdout, result.stderr, _compute_max_turns(task, max_turns), task.id
-            )
-            if budget_exhausted:
-                exit_code = EXIT_BUDGET_EXHAUSTED
-
             # Write exit status for the transcription process to pick up.
             _write_lifecycle_event(
                 task_id=task.id,
                 phase="exit_status",
                 home_dir=manager.home_dir,
                 exit_code=exit_code,
-                budget_exhausted=budget_exhausted,
                 turns_max=_compute_max_turns(task, max_turns),
                 container_name=f"polecat-{task.id}" if docker_cmd else None,
                 docker_host=env.get("DOCKER_HOST") or None,
@@ -5173,8 +5111,7 @@ def run(
 
         if not worktree_removed:
             print(f"   Worktree: {worktree_path}")
-            if not budget_exhausted:
-                print(f"   To finish manually: cd {worktree_path} && polecat finish")
+            print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
     if exit_code != 0:
         sys.exit(exit_code)
