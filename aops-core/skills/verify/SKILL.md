@@ -223,7 +223,7 @@ without adding overwhelm. Spec: <link> (Fitness Rubric + AC there).
 
 [names what to assess, not what to conclude — identical neutral shape to the good pattern above]
 
-This is the QA-brief application of the framework-wide anti-anchoring doctrine in [[../aops/references/authoring-discipline]]: don't reduce the recipient's judgment to a foregone conclusion. If you are the dispatcher and you already believe the artifact passes, that belief is exactly what an independent reviewer exists to test — keep it out of the brief.
+This is the QA-brief application of the framework-wide anti-anchoring doctrine in [[skills/aops/references/authoring-discipline]]: don't reduce the recipient's judgment to a foregone conclusion. If you are the dispatcher and you already believe the artifact passes, that belief is exactly what an independent reviewer exists to test — keep it out of the brief.
 
 ## Follow-up tasks
 
