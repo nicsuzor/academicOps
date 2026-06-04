@@ -37,7 +37,7 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 - `mcp__pkb__create_memory`: Add a memory/note.
 - `mcp__pkb__append`: Extend an existing document.
 - `mcp__pkb__get_document`: Read a document.
-- `mcp__pkb__search`: Search before creating new content.
+- `mcp__pkb__search`: Search before creating new content — and before asserting a fact. Don't assume; look it up.
 
 ### Curation
 
@@ -142,7 +142,7 @@ Factual claims in episodic notes must be formatted as Obsidian callouts:
   - `established` (>= 0.8): verified, multiple sources.
   - `provisional` (0.4 - 0.79): limited evidence.
   - `speculative` (< 0.4): inference.
-- If a new observation contradicts an existing one, record both with sources. Do not overwrite silently.
+- If a new observation contradicts an existing one, record both with sources and flag the contradiction for the user. Do not overwrite silently.
 
 ### Provenance (Required for `type: knowledge`)
 

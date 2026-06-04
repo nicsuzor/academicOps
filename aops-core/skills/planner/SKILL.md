@@ -125,7 +125,7 @@ Incremental PKB and graph hygiene maintenance.
 - **Mismatches**: Identify prefix/type/filename mismatches (e.g. `epic-` prefix with `type: task`).
 - **Data Quality**: De-duplicate nodes, complete stale tasks with email/calendar evidence, reclassify email-dump tasks as memories, and fix reparenting/domain issues.
 
-## Decision Surfacing Rules
+## Decision Surfacing Heuristic
 
 Enforce the following classifications to save user attention:
 
@@ -133,12 +133,17 @@ Enforce the following classifications to save user attention:
 - **DEFER**: Missing runtime data. Document in the task body and wait.
 - **SURFACE**: True trade-off, naming, or high-blast-radius framework change. Present options, recommendation, and reasoning to the user.
 
-## Priority & Severity Assignment Rules
+## Priority Assignment Rules
 
-- **Tasks**: Default to **P3** and `severity: 0` (or omit). Do not assign high priority/severity to tasks based on agent importance estimates.
+- **Tasks**: Default to **P3**. Priority reflects user intent, not agent importance estimates; do not propagate a parent's priority to children. Elevate only on an explicit user signal.
+- **Never assign an epic to `nic`**: if a genuine human choice is needed, file a minimal binary-choice subtask that blocks the epic — don't hand the parent back.
+- **Deferrals**: Tasks waiting on other work must use `depends_on: [<id>]`, `status: blocked` (external events), or `status: someday` (parking). Do not leave deferrals in body prose.
+
+## Severity Assignment Rules
+
+- **Tasks**: Default to `severity: 0` (or omit). Do not assign severity from agent importance estimates.
 - **Targets**: May carry `severity` 1–4 and require explicit `consequence` prose.
 - **Goals**: Represent identity commitments. Carry no severity, consequence, or due dates.
-- **Deferrals**: Tasks waiting on other work must use `depends_on: [<id>]`, `status: blocked` (external events), or `status: someday` (parking). Do not leave deferrals in body prose.
 
 ## Output Expectations
 

@@ -27,7 +27,7 @@ Close a session cleanly by committing/pushing changes, filing PRs, resolving tas
 
 ## Contract
 
-- Output a 5–10 line markdown block (see [Session Handover](#session-handover)).
+- Output a 5–10 line markdown block (see [the Handover Block](#6-handover-block)).
 - Write structured session data via `release_task`.
 
 ## Execution Path
@@ -116,6 +116,7 @@ Include these three markdown headers in your response before the handover block:
 ```
 
 - All linked entities must include their stable identifiers and parenthesized precis (e.g., `task-acba1234 ( precis )`).
+- These blocks are parsed into structured session metadata — see `transcript-metadata-schema.md` for the field/warning contract. `## Output` must carry a real artefact link (PR/commit URL); if there genuinely is none, write `Output: none — <reason>`. No link and no explicit "none" → end-session does not pass.
 
 #### 6. Handover Block
 

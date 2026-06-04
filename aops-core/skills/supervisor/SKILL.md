@@ -116,7 +116,7 @@ zsh -i -c "polecat run -t <task-id> -p <project> [--gemini] [--model <name>]"
 ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--gemini] [--model <name>]\"'"
 ```
 
-- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-2.5-pro` (paired with `--gemini`).
+- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-2.5-pro` (paired with `--gemini`). `--opus` is not a valid flag and will error — use `--model opus`.
 
 ## Emergency Brake
 

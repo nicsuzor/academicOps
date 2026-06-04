@@ -45,6 +45,8 @@ Ensure instructions are free of the following defects:
 6. **Skimped Verification**: Require reading the complete output of files rather than simple grepping, keyword matching, or tail scans.
 7. **No Negative Verification**: Check for the absence of unexpected outputs (corruption, credentials leak, placeholders) in addition to the presence of expected results.
 
+These seven are common patterns, not an exhaustive list. If instructions feel shallow but match no named defect, trust the feeling, say so, and articulate why — and remember depth is verification specificity, not step count.
+
 ## Workflow
 
 ### Author Mode Workflow

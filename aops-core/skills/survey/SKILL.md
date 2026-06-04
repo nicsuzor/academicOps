@@ -62,9 +62,10 @@ Perform a critical, forensic review of a single session transcript.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
 - **Quality Gate**: Stop and alert the user if the transcript is:
-  - _Absent_: No matching markdown file found.
+  - _Absent_: No matching markdown file — but first confirm the month-shard dir (`$AOPS_SESSIONS/transcripts/YYYY-MM/`) exists and is non-empty. A zero-hit glob in a wrong or missing directory is a lookup error, not an absent transcript.
   - _Truncated_: File stops mid-turn or is drastically smaller than the raw JSONL line count.
   - _Stripped_: Tool calls/results are missing from a `-full.md` file.
+- On any gate failure, name the failed condition and stop. Never silently fall back to the raw `.jsonl` — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Recusal
 
@@ -211,5 +212,5 @@ Log results in the following format:
 - **Verification**: Verify closed issues are successfully set to `state: closed`.
 - **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
 - **Handoff**: Run verification after completing the cycle:
-  `Skill(skill="qa", args="Verify cycle <N> of /issue-sweep on epic-a0523a25.")`
+  `Skill(skill="verify", args="Verify cycle <N> of /issue-sweep on epic-a0523a25.")`
 - **Halt**: Exit after completing exactly one cycle.

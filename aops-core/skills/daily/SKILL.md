@@ -36,6 +36,8 @@ Compose and maintain the daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`. The 
 
 ## Daily Note Structure
 
+The canonical scaffold and per-section procedures live in this skill's `references/note-template.md` (the structural SSoT) and `instructions/` subfiles — load them for exact field shapes and display algorithms.
+
 The daily note must follow this exact section order:
 
 1. **Lede (Shape of Right Now)**: A 2–3 line, present-tense synthesis of the day's story and through-line. Persist to the `daily_narrative` frontmatter field.

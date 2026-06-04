@@ -57,6 +57,7 @@ Before writing instructions or propagating subagent results:
 
 - Commission a separate review agent (e.g. `/strategic-review` or `/verify`) to evaluate depth, accuracy, and fitness of the subagent's deliverables.
 - Enforce qualitative assessment by agents rather than relying on deterministic script checks.
+- For decompose-mode instruction tests, use `references/decomposition-eval.md` (epistemics rubric + worked gold-standard pair).
 
 ### Phase 5: Codify & Land
 

@@ -37,6 +37,7 @@ Run peer reviews of research funding applications or academic submissions, match
 ## Core Rules
 
 - **Evidence-Based**: Every claim must cite the application (page, section, or quote).
+- **Absent Evidence Is Feedback**: A missing required element is a scoreable weakness, not an omission to skip silently.
 - **Fetch Round Criteria**: Fetch current scheme guidelines (ARC, ERC, SNSF, NHMRC) for each round. Do not reuse prior criteria.
 - **Conflict of Interest (CoI)**: Declare CoI immediately upon identifying institutional, personal, collaborator, supervisory, or financial relationships.
 - **No AI-Text Policies**: Adhere to funding body policies (e.g., ARC) prohibiting AI-generated assessor text. Use the agent to organize, verify, and edit notes; the final text must reflect the user's voice.

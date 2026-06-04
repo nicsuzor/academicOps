@@ -24,3 +24,5 @@ Runs program-level supervision across multiple epics to achieve a release-level 
 
 Invoke the program skill directly:
 `Skill(skill="program", args="<program-task-id>")`
+
+`/program` runs a single tick. To drive a release continuously, wrap it in a loop: `/loop 30m /program <program-task-id>`.

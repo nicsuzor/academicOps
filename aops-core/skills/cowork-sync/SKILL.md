@@ -31,6 +31,7 @@ Defines procedures for aligning the Personal Knowledge Base (PKB) with the Cowor
 - Write native task updates (`in_progress`, `completed`) to the native list.
 - Sync native child completions back to PKB via `mcp__pkb__complete_task` in real time. Parent task sync is deferred to `/end_session`'s `release_task`.
 - Every native task must store its PKB task ID in its `description` (e.g. `"PKB task-acba1234 — Implement X"`).
+- Only `/pull` and `/end_session` drive this mirror; supervisor ticks and ad-hoc PKB writes bypass it and won't appear on the native list until the next `/pull`.
 
 ## Bootstrap
 
