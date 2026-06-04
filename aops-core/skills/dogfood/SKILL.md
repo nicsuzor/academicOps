@@ -140,7 +140,7 @@ This phase exists because of specific, observed failures:
 
 3. **Update the instructions.** Edit them in-place (skill file, or wherever they now live). Be careful not to over-fit to this specific execution — the instructions should work for the category of task, not just this instance.
 
-4. **Optionally re-run.** If friction was severe (agent couldn't complete the task), commission a second contextless execution with the updated instructions. If friction was minor (agent completed but output could be better), one iteration may suffice.
+4. **Optionally re-run.** If friction was severe (agent couldn't complete the task), commission a second contextless execution with the updated instructions. If friction was minor (agent completed but output could be better), one iteration may suffice. **When the re-run is a _verification_ — proving an edit closed a gap — run ≥2 per condition: a single before/after cannot separate the edit's effect from agent variance, so a clean N=1 delta is a strong signal, not proof.**
 
 ### Phase 4: Independent Quality Review
 
@@ -230,6 +230,7 @@ These were observed during dogfooding runs and should be watched for:
 | **Re-asked plan-approved steps after ExitPlanMode** (`exercise-authority` Edge 2, FM-5)       | After user approved a multi-step plan via ExitPlanMode, agent then asked "want me to do step 2 now?" — re-litigating a settled decision                                                                                               | Plan approval is blanket pre-authorisation for every step the plan enumerates. Only legitimate post-approval moves: do the next step, or report a real blocker.                                                                                                                                                                 |
 | **Built a deterministic check where agent judgment was needed** (`exercise-authority` Edge 3) | Wrote a regex/keyword classifier to grade subagent output instead of having an agent qualitatively assess fitness-for-purpose                                                                                                         | If the test is "does this serve the purpose?", default to agent invocation. Reserve scripts for counting, syntactic checks, idempotent transforms.                                                                                                                                                                              |
 | **Work produced but never landed** (silent drop)                                              | 4 PR reviews ran as local subagent exercises producing correct verdicts, but none posted to GitHub because auth was broken. Supervisor reported "review passed/failed" without verifying the deliverable actually reached its target. | **Verify deliverables landed.** After commissioning work, confirm the output reached its target: review posted to PR, fix pushed to remote, task filed in PKB. Auth/network failures that prevent landing are halts to surface, not conditions to silently skip. A review in your context that isn't on the PR is not a review. |
+| **Relayed a subagent's plausible finding to the user before verifying**                       | A subagent reported a "discovered bug" (a source-of-truth discrepancy); the supervisor relayed it in a user-facing message, then verified on disk and had to retract — the subagent had mis-stated it.                                | Verify a subagent's load-bearing _findings_ (not just its pass/fail verdict) against disk BEFORE relaying them upward. A plausible positive claim earns the same scrutiny as an "impossible" one — P#26 applies to discoveries too.                                                                                             |
 
 ## Handover
 
@@ -242,3 +243,4 @@ These were observed during dogfooding runs and should be watched for:
 - `aops-core/skills/survey/SKILL.md` — retro/trend/sweep modes (tasks this skill might dogfood)
 - `aops-core/skills/verify/SKILL.md` — quality assessment (used in Phase 4)
 - `aops-core/skills/craft/SKILL.md` — instruction quality gate (pre-flight before Phase 2)
+- `aops-core/skills/dogfood/references/decomposition-eval.md` — reusable test for decompose-mode decomposition quality (epistemics rubric + worked example)
