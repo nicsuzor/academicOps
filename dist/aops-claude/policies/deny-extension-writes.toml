@@ -1,0 +1,100 @@
+# academicOps: Protect extension files from being modified by the agent
+#
+# Priority semantics: higher number wins (Gemini CLI policy engine).
+# These rules use priority=100 so they override the sandbox allow rules
+# (priority=50 in sandbox.toml), ensuring extension/config files remain
+# protected even inside a worktree sandbox session.
+# Ref: https://cloud.google.com/gemini/docs/codeassist/policy-engine
+#
+# Parity: these rules mirror the Python sentinel gate in
+# aops-core/lib/gates/definitions.py (sentinel GateConfig) and the
+# is_destructive_env_op custom condition in lib/gates/custom_conditions.py.
+# Protected paths: ~/.gemini/extensions/, ~/.gemini/settings.json,
+#   ~/.claude/plugins/, ~/.claude/*.json, ~/.config/gemini/
+# Destructive commands: rm, mv, rmdir, unlink, truncate (word-bounded)
+
+# --- Write-file tools: deny writes to ANY protected path -----------------
+
+[[rule]]
+toolName = "write_file"
+argsPattern = ".*\\.gemini/extensions/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "replace"
+argsPattern = ".*\\.gemini/extensions/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "write_file"
+argsPattern = ".*\\.gemini/settings\\.json.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "replace"
+argsPattern = ".*\\.gemini/settings\\.json.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "write_file"
+argsPattern = ".*\\.claude/plugins/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "replace"
+argsPattern = ".*\\.claude/plugins/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "write_file"
+argsPattern = ".*\\.claude/[^/]+\\.json.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "replace"
+argsPattern = ".*\\.claude/[^/]+\\.json.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "write_file"
+argsPattern = ".*\\.config/gemini/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+[[rule]]
+toolName = "replace"
+argsPattern = ".*\\.config/gemini/.*"
+decision = "deny"
+priority = 100
+denyMessage = "Writing to protected environment paths is prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."
+
+# --- Shell tool: deny destructive commands targeting protected paths ------
+# commandRegex matches the full command string. The pattern requires BOTH a
+# destructive verb (word-bounded) AND a protected path reference. Mirrors
+# the two-condition AND logic in is_destructive_env_op for shell tools.
+# Note: truncate is included here (parity with _DESTRUCTIVE_CMD_RE) even
+# though the original rule only covered rm/mv/rmdir/unlink.
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "\\b(?:rm|mv|rmdir|unlink|truncate)\\b.*(?:\\.gemini/extensions|\\.gemini/settings\\.json|\\.claude/plugins|\\.claude/[^/\\s]+\\.json|\\.config/gemini)"
+decision = "deny"
+priority = 100
+denyMessage = "Destructive shell operations on protected environment paths are prohibited. Use SENTINEL_GATE_MODE=off to opt out consciously."

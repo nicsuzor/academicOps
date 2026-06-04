@@ -254,6 +254,8 @@ Moving the logic into the unified gate architecture gave lifecycle management, i
 
 ## Relationship to Claude Code auto mode (2026-03)
 
+> **Canonical spec for the classifier:** [`auto-mode-classifier.md`](auto-mode-classifier.md) is the design statement for the auto-mode classifier as a framework mechanism (admission criteria, cost model, rule-writing form). This section covers only how the **enforcer subagent** relates to it.
+
 Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) is a Sonnet 4.6 agent that reads the proposed tool call **alongside the conversation transcript and the rules expressed as prose**, then decides whether to allow, surface a permission prompt, or block. It is not a regex matcher and it is not limited to a single tool call's local arguments — explicit user intent in prior turns can override default rules, and stated boundaries in the conversation ("don't push", "wait until I review") become block signals the classifier observes.
 
 In framework terms: the classifier is **rbg-class judgment running at the per-action gate** — fast, transcript-aware, prose-reasoning. Treat it as a peer reviewer, not a pattern matcher.
@@ -279,7 +281,7 @@ In framework terms: the classifier is **rbg-class judgment running at the per-ac
 3. State limits and exceptions in prose so the classifier can apply them. ("Allow `--force` when validating; block `--force` when bypassing tests" — written as prose, the classifier handles the disjunction. Written as a keyword match, it cannot.)
 4. Enforcer remains valuable for verdicts the framework itself needs to **read and act on** (writing to the session-state file, feeding `/learn`, surfacing in the icon strip). The classifier's verdict goes to the user, not to the agent's tool stack.
 
-See `aops-core/.claude-plugin/plugin.json` (`autoMode` key) for the rule set and `aops-core/lib/automode.py` for installation (invoked via `scripts/install.py`). The rules are written as prose stating the axiom (by slug), the reasoning, and the kinds of action that count as a violation, with explicit carve-outs where they apply.
+See `templates/aops-core.plugin.json` (`autoMode` key) — the canonical, editable source of truth — for the rule set, and `aops-core/lib/automode.py` for installation (invoked via `scripts/install.py`). The build copies that manifest to `<plugin>/.claude-plugin/plugin.json`, which is what ships and what the runtime session-start hook reads; do not hand-edit the built copy. The rules are written as prose stating the axiom (by slug), the reasoning, and the kinds of action that count as a violation, with explicit carve-outs where they apply.
 
 ## References
 

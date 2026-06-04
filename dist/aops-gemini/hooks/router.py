@@ -1,0 +1,1019 @@
+#!/usr/bin/env -S uv run python
+"""
+Universal Hook Router.
+
+Handles hook events from both Claude Code and Gemini CLI.
+Consolidates multiple hooks per event into a single invocation.
+Manages session persistence for Gemini.
+
+Architecture:
+- Loads Pydantic SessionState object at start.
+- Passes SessionState to all gates via gate_registry.
+- Saves SessionState at end.
+- GateResult objects used internally, converted to JSON only at final output.
+"""
+
+import json
+import os
+import sys
+import tempfile
+import uuid
+from collections import deque
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+# --- Path Setup ---
+HOOK_DIR = Path(__file__).parent  # aops-core/hooks
+AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
+
+# Add aops-core to path for imports
+if str(AOPS_CORE_DIR) not in sys.path:
+    sys.path.insert(0, str(AOPS_CORE_DIR))
+
+try:
+    import lib.session_naming as session_naming
+    from lib.gate_model import GateResult, GateVerdict
+    from lib.gates.engine import GenericGate
+    from lib.gates.registry import GateRegistry
+    from lib.hook_utils import is_subagent_session
+    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_state import SessionState
+
+    from hooks.gate_config import extract_subagent_type
+    from hooks.schemas import (
+        CanonicalHookOutput,
+        ClaudeGeneralHookOutput,
+        ClaudeHookSpecificOutput,
+        ClaudeStopHookOutput,
+        GeminiHookOutput,
+        GeminiHookSpecificOutput,
+        HookContext,
+    )
+    from hooks.unified_logger import log_event_to_session, log_hook_event
+except ImportError as e:
+    # Fail fast if schemas missing
+    print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
+    sys.exit(1)
+
+
+# --- Configuration ---
+
+DEBUG_LOG_DIR = Path("/tmp")
+
+# Advisory text destined for the agent is wrapped in these markers by the gate
+# engine (lib/gates/engine.py). They are a model-facing signal only — nothing
+# parses them. On channels that are ALSO user-visible (the Stop `reason` field,
+# which Claude Code renders to the user as a notice), the raw tags read as a
+# system dump, so we strip them before display. Agent-only channels
+# (hookSpecificOutput.additionalContext) keep the markers intact.
+_HOOK_MARKER_OPEN = "<SYSTEM HOOK INSTRUCTION>"
+_HOOK_MARKER_CLOSE = "</SYSTEM HOOK INSTRUCTION>"
+
+
+def _strip_hook_markers(text: str | None) -> str | None:
+    """Remove the <SYSTEM HOOK INSTRUCTION> scaffold from user-visible text."""
+    if not text:
+        return text
+    return text.replace(_HOOK_MARKER_OPEN, "").replace(_HOOK_MARKER_CLOSE, "").strip()
+
+
+def _debug_log_path(session_id: str | None) -> Path:
+    """Return per-session debug log path.
+
+    DEBUG_HOOKS=1 raw-input dump. Lives next to the session state file in
+    ``$AOPS_SESSION_STATE_DIR`` (per-provider tmp dir) — never in
+    ``$AOPS_SESSIONS``, which is reserved for parsed transcripts/summaries
+    that get committed and synced.
+    """
+    slug = session_id if session_id else "unknown"
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if state_dir:
+        log_dir = Path(state_dir)
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / f"cc_hooks_{slug}.jsonl"
+    return DEBUG_LOG_DIR / f"cc_hooks_{slug}.jsonl"
+
+
+def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
+    """Append raw hook input to debug JSONL file if DEBUG_HOOKS=1."""
+    if not os.environ.get("DEBUG_HOOKS"):
+        return
+    try:
+        session_id = raw_input.get("session_id") or os.environ.get("AOPS_SESSION_ID")
+        entry = {
+            "ts": datetime.now().isoformat(),
+            "session_id": session_id,
+            "client": getattr(args, "client", None),
+            "event": getattr(args, "event", None),
+            "input": raw_input,
+        }
+        with _debug_log_path(session_id).open("a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print(f"DEBUG_LOG error: {e}", file=sys.stderr)
+
+
+# Event mapping: external client names -> internal canonical names.
+# Applied to all clients (Gemini event names passed via positional arg,
+# agy/Antigravity event names passed in the JSON payload as hook_event_name).
+GEMINI_EVENT_MAP = {
+    # Gemini CLI event names
+    "SessionStart": "SessionStart",
+    "BeforeTool": "PreToolUse",
+    "AfterTool": "PostToolUse",
+    "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
+    "AfterAgent": "Stop",  # This is the event after the agent returns their final response for a turn.
+    "SessionEnd": "SessionEnd",
+    "Notification": "Notification",
+    "PreCompress": "PreCompact",
+    "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
+    "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
+    # Antigravity CLI (agy) event names — mapped to canonical internal names
+    "PreInvocation": "UserPromptSubmit",  # agy: fires before each agent invocation
+    "PostInvocation": "Stop",  # agy: fires after each agent invocation
+}
+
+# --- Gate Status Display ---
+
+
+def format_gate_status_icons(state: SessionState) -> str:
+    """Format current gate statuses as a lifecycle-aware icon strip.
+
+    Only shows gates when they need attention:
+    - ◇ N  enforcer countdown active
+    - ◇    enforcer overdue (past threshold)
+    - ≡    handover complete (gate OPEN + handover invoked)
+    - ▶ T-id  active task bound
+    - ✓    nothing needs attention
+    """
+    from lib.gates.registry import GateRegistry
+
+    parts: list[str] = []
+
+    # Enforcer: countdown or overdue
+    enforcer = state.gates.get("enforcer")
+    if enforcer:
+        enforcer_gate = GateRegistry.get_gate("enforcer")
+        if enforcer_gate and enforcer_gate.config.countdown:
+            threshold = enforcer_gate.config.countdown.threshold
+            start_before = enforcer_gate.config.countdown.start_before
+            countdown_start = threshold - start_before
+            ops = enforcer.ops_since_open
+            if ops >= threshold:
+                parts.append("◇")
+            elif ops >= countdown_start:
+                remaining = threshold - ops
+                parts.append(f"◇ {remaining}")
+
+    # Handover: show only AFTER completion (gate OPEN + sticky)
+    handover = state.gates.get("handover")
+    if handover and handover.status == "open" and handover.sticky:
+        parts.append("≡")
+
+    # Active task
+    if state.main_agent.current_task:
+        parts.append(f"▶ {state.main_agent.current_task}")
+
+    return " ".join(parts) if parts else ""
+
+
+# --- Session Management ---
+
+
+def get_parent_pid(pid: int) -> int | None:
+    """Get parent PID cross-platform (supports Linux and macOS)."""
+    try:
+        import sys
+
+        if sys.platform == "darwin":
+            import subprocess
+
+            output = subprocess.check_output(
+                ["ps", "-o", "ppid=", "-p", str(pid)], encoding="utf-8"
+            )
+            return int(output.strip())
+        else:
+            with open(f"/proc/{pid}/stat") as f:
+                return int(f.read().split()[3])
+    except Exception:
+        return None
+
+
+def get_session_data() -> dict[str, Any]:
+    """Read session metadata, traversing up process tree if necessary."""
+    try:
+        # Try direct PPID first (fast path)
+        session_file = get_pid_session_map_path()
+        if session_file.exists():
+            return json.loads(session_file.read_text().strip())
+
+        # Fallback: walk up process tree
+        pid = os.getppid()
+        while pid and pid > 1:
+            session_file = Path("/tmp") / f"session-{pid}.json"
+            if session_file.exists():
+                try:
+                    data = json.loads(session_file.read_text().strip())
+                    if data:
+                        return data
+                except json.JSONDecodeError:
+                    pass
+            pid = get_parent_pid(pid)
+    except Exception as e:
+        print(f"WARNING: Failed to read session data: {e}", file=sys.stderr)
+    return {}
+
+
+def persist_session_data(data: dict[str, Any]) -> None:
+    """Write session metadata atomically."""
+    try:
+        session_file = get_pid_session_map_path()
+        existing = get_session_data()
+        existing.update(data)
+
+        # Atomic write
+        fd, temp_path = tempfile.mkstemp(dir=str(session_file.parent), text=True)
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(existing, f)
+            Path(temp_path).rename(session_file)
+        except Exception as e:
+            Path(temp_path).unlink(missing_ok=True)
+            print(f"CRITICAL: Failed to persist session data: {e}", file=sys.stderr)
+            raise
+    except OSError as e:
+        print(f"WARNING: OSError in persist_session_data: {e}", file=sys.stderr)
+
+
+# --- Router Logic ---
+
+
+class HookRouter:
+    def __init__(self):
+        self.session_data = get_session_data()
+        self._execution_timestamps = deque(maxlen=20)  # Store last 20 timestamps
+
+    @staticmethod
+    def _normalize_json_field(value: Any) -> Any:
+        """Normalize a field that may be a JSON string to its parsed form."""
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+        return value
+
+    def normalize_input(
+        self,
+        raw_input: dict[str, Any],
+        gemini_event: str | None = None,
+        client_type: str | None = None,
+    ) -> HookContext:
+        """Create a normalized HookContext from raw input.
+
+        Args:
+            raw_input: The raw stdin payload from the hook caller.
+            gemini_event: Event name when invoked by Gemini CLI (which passes
+                the event as a positional arg rather than in stdin).
+            client_type: Hook caller identity ("claude" or "gemini"), normally
+                taken from the ``--client`` flag. Stored on the resulting
+                HookContext so JSONL log entries can distinguish callers
+                instead of showing ``model=unknown``.
+        """
+
+        # 1. Determine Event Name
+        if gemini_event:
+            hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
+        else:
+            raw_event = raw_input.get("hook_event_name") or ""  # allow-fallback: maps to itself
+            hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
+
+        # 2. Determine Session ID
+        session_id = raw_input.get("session_id") or raw_input.get("conversationId")
+        if not session_id:
+            session_id = self.session_data.get("session_id") or os.environ.get("AOPS_SESSION_ID")
+
+        if not session_id and hook_event == "SessionStart":
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            short_uuid = str(uuid.uuid4())[:8]
+            session_id = f"gemini-{timestamp}-{short_uuid}"
+
+        if not session_id:
+            session_id = f"unknown-{str(uuid.uuid4())[:8]}"
+
+        # 3. Determine Agent ID and Subagent Type
+        # Check both payload and persisted session data (for subagent tool calls)
+        agent_id = (
+            raw_input.get("agent_id")
+            or raw_input.get("agentId")
+            or self.session_data.get("agent_id")
+        )
+        subagent_type = (
+            raw_input.get("subagent_type")
+            or raw_input.get("agent_type")
+            or self.session_data.get("subagent_type")
+        )
+
+        # Prefer explicit env var if set
+        if not subagent_type:
+            subagent_type = os.environ.get("CLAUDE_SUBAGENT_TYPE")
+
+        # 4. Transcript Path / Temp Root
+        transcript_path = raw_input.get("transcript_path") or raw_input.get("transcriptPath")
+
+        # Request Tracing (aops-32068a2e)
+        trace_id = raw_input.get("trace_id") or str(uuid.uuid4())
+
+        # 5. Tool Data
+        tool_name = raw_input.get("tool_name")
+        raw_ti = raw_input.get("tool_input", {})  # allow-fallback: type-coerced below
+        tool_input = self._normalize_json_field(raw_ti)
+        if not isinstance(tool_input, dict):
+            tool_input = {}
+
+        # Normalize tool_result and toolResult in raw_input (for PostToolUse/SubagentStop)
+        tool_output = {}
+        raw_tool_output = (
+            raw_input.get("tool_result")
+            or raw_input.get("toolResult")
+            or raw_input.get("tool_response")
+            or raw_input.get("subagent_result")
+        )
+        if raw_tool_output:
+            tool_output = self._normalize_json_field(raw_tool_output)
+
+        # 6. Extract subagent_type from spawning tools
+        # Uses the SPAWN_TOOLS table in gate_config for cross-platform detection
+        # (Claude Task/Skill, Gemini delegate_to_agent/activate_skill, extensible
+        # to Codex/Copilot). _subagent_type_from_skill prevents Skill invocations
+        # from being misclassified as subagent sessions.
+        _subagent_type_from_spawn_tool = False
+        _subagent_type_from_skill = False
+        if not subagent_type:
+            extracted, is_skill = extract_subagent_type(tool_name, tool_input)
+            if extracted:
+                subagent_type = extracted
+                _subagent_type_from_skill = is_skill
+                _subagent_type_from_spawn_tool = not is_skill
+
+        # 7. Detect Subagent Session
+        # Call is_subagent_session BEFORE popping fields from raw_input
+        is_subagent = is_subagent_session(raw_input)
+
+        # If we have subagent info from PID map or explicit flags, treat as subagent.
+        # Skip the override for:
+        #  - Skill/activate_skill calls (run in main session)
+        #  - Spawn tool calls like Agent(...) (main session dispatching a subagent)
+        #  - SubagentStart/SubagentStop events (main session events about subagents)
+        if (
+            not is_subagent
+            and not _subagent_type_from_skill
+            and not _subagent_type_from_spawn_tool
+            and (
+                subagent_type
+                or agent_id
+                or raw_input.get("is_sidechain")
+                or raw_input.get("isSidechain")
+            )
+        ):
+            is_subagent = True
+
+        # SubagentStart/SubagentStop fire in the MAIN agent's context ABOUT a
+        # subagent. They carry agent_id/agent_type metadata which causes false
+        # positives above. Override: these are never subagent events.
+        if hook_event in ("SubagentStart", "SubagentStop"):
+            is_subagent = False
+
+        # 8. Persist session data on session start only (not subagent start, as multiple
+        # subagents may run simultaneously and would clobber each other's entries)
+        if hook_event == "SessionStart":
+            persist_session_data(
+                {"session_id": session_id, "agent_id": agent_id, "subagent_type": subagent_type}
+            )
+
+        # 9. Precompute values
+        short_hash = get_session_short_hash(session_id)
+
+        # 10. Metadata (aops-d9ba7159)
+        machine = session_naming.get_machine_name()
+        repo = session_naming.get_repo_name()
+        crew = session_naming.resolve_crew_name()
+        provider = session_naming.get_provider_name()
+        task_id = os.environ.get("AOPS_TASK_ID")
+
+        # 11. Build Context and POP processed fields from raw_input
+        # We pop now so the remainder in ctx.raw_input is "extra" data
+        processed_fields = [
+            "hook_event_name",
+            "session_id",
+            "conversationId",
+            "transcript_path",
+            "transcriptPath",
+            "artifact_directory_path",
+            "artifactDirectoryPath",
+            "trace_id",
+            "tool_name",
+            "tool_input",
+            "tool_result",
+            "toolResult",
+            "tool_response",
+            "subagent_result",
+            "agent_id",
+            "agentId",
+            "slug",
+            "cwd",
+            "is_sidechain",
+            "isSidechain",
+            "subagent_type",
+            "agent_type",
+        ]
+        slug = raw_input.get("slug")
+        cwd = raw_input.get("cwd")
+
+        for field in processed_fields:
+            raw_input.pop(field, None)
+
+        return HookContext(
+            session_id=session_id,
+            trace_id=trace_id,
+            hook_event=hook_event,
+            agent_id=agent_id,
+            slug=slug,
+            client_type=client_type,
+            is_subagent=is_subagent,
+            subagent_type=subagent_type,
+            # Metadata (aops-d9ba7159)
+            machine=machine,
+            provider=provider,
+            crew=crew,
+            repo=repo,
+            task_id=task_id,
+            # Precomputed values
+            session_short_hash=short_hash,
+            # Event Data
+            tool_name=tool_name,
+            tool_input=tool_input,
+            tool_output=tool_output,
+            transcript_path=transcript_path,
+            cwd=cwd,
+            raw_input=raw_input,
+        )
+
+    @staticmethod
+    def _is_task_notification(ctx: HookContext) -> bool:
+        """Detect task-notification prompts (background task completions).
+
+        These are internal Claude Code plumbing, not real user input.
+        The prompt field contains <task-notification>...</task-notification>.
+        """
+        prompt = ctx.raw_input.get("prompt", "")  # allow-fallback: empty cannot match prefix
+        return isinstance(prompt, str) and prompt.lstrip().startswith("<task-notification>")
+
+    def _run_lightweight_hydrator(
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Inject lightweight hydrator skills-routing hint and context map matches.
+
+        Delivery: via the UserPromptSubmit hook hint (non-blocking).
+        Template: hydration.warn (repurposed for routing table).
+        Context map: .agents/context-map.json full entry list injected for LLM.
+        """
+        if ctx.is_subagent:
+            return
+
+        # Skip for background notifications
+        if self._is_task_notification(ctx):
+            return
+
+        # Render routing table hint
+        try:
+            from lib.template_registry import TemplateRegistry
+
+            variables = {
+                "session_id": ctx.session_id,
+            }
+            hint = TemplateRegistry.instance().render("hydration.warn", variables)
+            if hint:
+                if merged_result.context_injection:
+                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
+                else:
+                    merged_result.context_injection = hint
+        except Exception as e:
+            print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
+
+        # T0: static PKB-search nudge — injected on every real user prompt.
+        # No logic, no heuristics; the line nudges, the agent decides relevance.
+        try:
+            nudge = TemplateRegistry.instance().render("pkb.nudge")
+            if nudge:
+                if merged_result.context_injection:
+                    merged_result.context_injection = (
+                        f"{merged_result.context_injection}\n\n{nudge}"
+                    )
+                else:
+                    merged_result.context_injection = nudge
+        except Exception as e:
+            print(f"WARNING: pkb_nudge injection error: {e}", file=sys.stderr)
+
+        # Context map: match user prompt against .agents/context-map.json
+        self._inject_context_map_hints(ctx, merged_result)
+
+    def _inject_context_map_hints(
+        self, ctx: HookContext, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Inject .agents/context-map.json entries as context hints.
+
+        Looks for context-map.json in the working directory (ctx.cwd) only.
+        Injects the full entry list so the LLM can decide relevance (P#49).
+        """
+        try:
+            from lib.context_map import format_context_hints, load_context_map
+
+            if not ctx.cwd:
+                return
+            repo_root = Path(ctx.cwd)
+            if not (repo_root / ".agents" / "context-map.json").exists():
+                return
+
+            docs = load_context_map(repo_root)
+            if not docs:
+                return
+
+            hint = format_context_hints(docs)
+            if hint:
+                if merged_result.context_injection:
+                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
+                else:
+                    merged_result.context_injection = hint
+        except Exception as e:
+            print(f"WARNING: context_map injection error: {e}", file=sys.stderr)
+
+    def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
+        """Run all configured gates for the event and merge results.
+
+        Dispatches directly to GateRegistry and GenericGate methods,
+        eliminating the wrapper layers in gates.py and gate_registry.py.
+        """
+        # Task-notification prompts are internal plumbing — not real user input.
+        # Return empty output so agents aren't tricked into treating them as fresh prompts.
+        if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
+            output = CanonicalHookOutput(verdict=None)
+            try:
+                log_hook_event(ctx, output=output)
+            except Exception as e:
+                print(f"WARNING: Failed to log task-notification hook event: {e}", file=sys.stderr)
+            return output
+
+        merged_result = CanonicalHookOutput()
+
+        # Load Session State ONCE. Thread the harness routing signals so every
+        # event places artefacts in this session's real dir — required on agy,
+        # which has no SessionStart to set AOPS_SESSION_STATE_DIR (aops-bc8e18c5).
+        try:
+            state = SessionState.load(
+                ctx.session_id,
+                transcript_path=ctx.transcript_path,
+                client_type=ctx.client_type,
+            )
+        except Exception as e:
+            print(f"WARNING: Failed to load session state: {e}", file=sys.stderr)
+            state = SessionState.create(
+                ctx.session_id,
+                transcript_path=ctx.transcript_path,
+                client_type=ctx.client_type,
+            )
+
+        # Initialize gate registry
+        GateRegistry.initialize()
+
+        # Increment per-prompt turn counter (used by gate min_turns_since_open conditions)
+        if ctx.hook_event == "UserPromptSubmit":
+            state.global_turn_count += 1
+
+        # Run special handlers first (unified_logger, ntfy, etc.) then gates
+        self._run_special_handlers(ctx, state, merged_result)
+
+        # Lightweight hydrator hint (non-blocking)
+        if ctx.hook_event == "UserPromptSubmit":
+            self._run_lightweight_hydrator(ctx, state, merged_result)
+
+        # Dispatch to GenericGate methods based on event type.
+        # Subagent sessions return early (gates only evaluate in main session).
+        result = self._dispatch_gates(ctx, state)
+        if result:
+            hook_output = self._gate_result_to_canonical(result)
+            self._merge_result(merged_result, hook_output)
+
+            # Append gate status icons to system message
+            # but only if we were already going to print system message
+            try:
+                gate_status = format_gate_status_icons(state)
+                if gate_status:
+                    if merged_result.system_message:
+                        merged_result.system_message = (
+                            f"{merged_result.system_message} {gate_status}"
+                        )
+                    else:
+                        merged_result.system_message = gate_status
+            except Exception as e:
+                print(f"WARNING: Gate status icons failed: {e}", file=sys.stderr)
+
+        # Safety: auto-approve if Stop blocked >= 4 times within 2 minutes (aops-c67313ef)
+        if ctx.hook_event in ("Stop", "SessionEnd") and merged_result.verdict == "deny":
+            try:
+                now = datetime.now().timestamp()
+                block_timestamps = state.state.get("stop_block_timestamps", [])  # noqa: E501  # allow-fallback: lazy init  # fmt: skip
+                # Purge entries older than 2 minutes
+                block_timestamps = [ts for ts in block_timestamps if now - ts < 120.0]
+                block_timestamps.append(now)
+                state.state["stop_block_timestamps"] = block_timestamps
+                if len(block_timestamps) >= 5:
+                    merged_result.verdict = "allow"
+                    warn = (
+                        "⚠ SAFETY OVERRIDE: Stop hook blocked 5+ times in 2 minutes."
+                        " Auto-approving to prevent stall."
+                    )
+                    merged_result.system_message = (
+                        f"{merged_result.system_message}\n{warn}"
+                        if merged_result.system_message
+                        else warn
+                    )
+                    state.state["stop_block_timestamps"] = []
+            except Exception as e:
+                print(f"WARNING: Stop block safety check failed: {e}", file=sys.stderr)
+
+        # Save Session State ONCE
+        try:
+            state.save()
+        except Exception as e:
+            print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
+
+        # Log hook event with output AFTER all gates complete
+        try:
+            log_hook_event(ctx, output=merged_result)
+        except Exception as e:
+            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+
+        return merged_result
+
+    def _run_special_handlers(
+        self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
+    ) -> None:
+        """Run special handlers (logging, notifications) that aren't gates."""
+        # Unified logger
+        try:
+            log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input, state)
+        except Exception as e:
+            print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
+
+        # Session env setup on start
+        if ctx.hook_event == "SessionStart":
+            try:
+                from hooks.session_env_setup import run_session_env_setup
+
+                init_result = run_session_env_setup(ctx, state)
+                if init_result:
+                    hook_output = self._gate_result_to_canonical(init_result)
+                    self._merge_result(merged_result, hook_output)
+                    if init_result.verdict == GateVerdict.DENY:
+                        return  # Fail-fast on initialization failure
+            except Exception as e:
+                print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
+
+    def _run_generate_transcript(self, transcript_path: str) -> None:
+        """Run transcript generation on stop."""
+        try:
+            import subprocess
+            from pathlib import Path
+
+            root_dir = Path(__file__).parent.parent
+            script_path = root_dir / "scripts" / "transcript.py"
+
+            if script_path.exists():
+                subprocess.run(
+                    [sys.executable, str(script_path), transcript_path],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+        except Exception as e:
+            print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
+
+    def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
+        """Dispatch to GenericGate methods based on event type.
+
+        Maps hook events to GenericGate methods:
+        - PreToolUse -> gate.check()
+        - PostToolUse -> gate.on_tool_use()
+        - UserPromptSubmit -> gate.on_user_prompt()
+        - SessionStart -> gate.on_session_start()
+        - Stop/SessionEnd -> gate.on_stop()
+        - AfterAgent -> gate.on_after_agent()
+        - SubagentStart -> gate.on_subagent_start()
+        - SubagentStop -> gate.on_subagent_stop()
+        """
+        # Gates only evaluate in the main agent session for tool-call events.
+        # Stop/SubagentStop are exempt: Claude Code agents (background jobs)
+        # get is_subagent=True despite being independent sessions (#19220).
+        if ctx.is_subagent and ctx.hook_event not in ("Stop", "SessionEnd", "SubagentStop"):
+            return None
+
+        # Never block when the runtime signals a retry sequence. Both Claude
+        # Code (stop_hook_active) and Gemini CLI (stop_hook_active in
+        # AfterAgent) set this flag after an earlier block; re-blocking would
+        # loop until the runtime's own cap kills the session.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.raw_input.get("stop_hook_active"):
+            return None
+
+        # Ensure subagent_type is populated for trigger evaluation.
+        # normalize_input() handles this for production calls, but tests may
+        # construct HookContext directly. extract_subagent_type() covers both
+        # SPAWN_TOOLS lookup and Gemini's bare agent name pattern.
+        if not ctx.subagent_type and ctx.tool_name:
+            tool_input: dict[str, Any] = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+            extracted, _ = extract_subagent_type(ctx.tool_name, tool_input)
+            if extracted:
+                ctx.subagent_type = extracted
+
+        messages = []
+        context_injections = []
+        final_verdict = GateVerdict.ALLOW
+
+        for gate in GateRegistry.get_all_gates():
+            try:
+                result = self._call_gate_method(gate, ctx, state)
+
+                if result:
+                    if result.system_message:
+                        messages.append(result.system_message)
+                    if result.context_injection:
+                        context_injections.append(result.context_injection)
+
+                    # Verdict precedence: DENY > WARN > ALLOW
+                    if result.verdict == GateVerdict.DENY:
+                        final_verdict = GateVerdict.DENY
+                        break  # First deny wins
+                    elif result.verdict == GateVerdict.WARN:
+                        final_verdict = GateVerdict.WARN
+
+            except Exception as e:
+                import traceback
+
+                print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+
+        if messages or context_injections or final_verdict != GateVerdict.ALLOW:
+            return GateResult(
+                verdict=final_verdict,
+                system_message="\n".join(messages) if messages else None,
+                context_injection="\n\n".join(context_injections) if context_injections else None,
+            )
+        return None
+
+    def _call_gate_method(
+        self, gate: "GenericGate", ctx: HookContext, state: SessionState
+    ) -> GateResult | None:
+        """Call the appropriate gate method based on hook event."""
+        event = ctx.hook_event
+        if event == "PreToolUse":
+            return gate.check(ctx, state)
+        elif event == "PostToolUse":
+            return gate.on_tool_use(ctx, state)
+        elif event == "UserPromptSubmit":
+            return gate.on_user_prompt(ctx, state)
+        elif event == "SessionStart":
+            return gate.on_session_start(ctx, state)
+        elif event in ("Stop", "SessionEnd"):
+            return gate.on_stop(ctx, state)
+        elif event == "AfterAgent":
+            return gate.on_after_agent(ctx, state)
+        elif event == "SubagentStart":
+            return gate.on_subagent_start(ctx, state)
+        elif event == "SubagentStop":
+            return gate.on_subagent_stop(ctx, state)
+        return None
+
+    def _gate_result_to_canonical(self, result: GateResult) -> CanonicalHookOutput:
+        """Convert GateResult to CanonicalHookOutput."""
+        return CanonicalHookOutput(
+            verdict=result.verdict.value,
+            system_message=result.system_message,
+            context_injection=result.context_injection,
+            metadata=result.metadata,
+        )
+
+    def _merge_result(self, target: CanonicalHookOutput, source: CanonicalHookOutput):
+        """Merge source into target (in-place)."""
+        if source.verdict == "deny":
+            target.verdict = "deny"
+        elif source.verdict == "ask" and target.verdict != "deny":
+            target.verdict = "ask"
+        elif source.verdict == "warn" and target.verdict == "allow":
+            target.verdict = "warn"
+
+        if source.system_message:
+            target.system_message = (
+                f"{target.system_message}\n{source.system_message}"
+                if target.system_message
+                else source.system_message
+            )
+
+        if source.context_injection:
+            target.context_injection = (
+                f"{target.context_injection}\n\n{source.context_injection}"
+                if target.context_injection
+                else source.context_injection
+            )
+
+        target.metadata.update(source.metadata)
+
+    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
+        """Format for Gemini CLI."""
+        out = GeminiHookOutput()
+
+        if result.system_message:
+            out.systemMessage = result.system_message
+
+        # Set decision based on verdict
+        if result.verdict == "deny":
+            out.decision = "deny"
+            # Recovery payload (e.g. enforcer instructions) MUST go to
+            # hookSpecificOutput.additionalContext — `reason` is user-visible
+            # only and the model never sees it. Mirrors the Claude side, where
+            # context_injection lands on hookSpecificOutput.additionalContext.
+            if result.context_injection:
+                out.hookSpecificOutput = GeminiHookSpecificOutput(
+                    hookEventName=event, additionalContext=result.context_injection
+                )
+            out.reason = result.system_message
+        else:
+            out.decision = "allow"
+            if result.context_injection:
+                out.hookSpecificOutput = GeminiHookSpecificOutput(
+                    hookEventName=event, additionalContext=result.context_injection
+                )
+
+        out.metadata = result.metadata
+        return out
+
+    def output_for_claude(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ClaudeGeneralHookOutput | ClaudeStopHookOutput:
+        """Format for Claude Code."""
+        if event == "Stop" or event == "SessionEnd":
+            output = ClaudeStopHookOutput()
+
+            # Channel routing for Stop/SessionEnd (see aops-d10e7db6):
+            # - `reason` feeds the advisory to the agent when decision=="block"
+            #   (Claude Code Stop hook API: `reason` = "Feedback for Claude",
+            #   `systemMessage` = "Warning message for user", `stopReason` =
+            #   "Not shown to Claude"). This routing is per the Claude Code
+            #   Python SDK TypedDict; behaviour may differ for other clients.
+            # - `stopReason` and `systemMessage` are user-visible only —
+            #   do NOT route advisory/recovery text here.
+            #
+            # Advisory/recovery context (the <SYSTEM HOOK INSTRUCTION> block)
+            # MUST land in the agent's context. The only Stop channel that
+            # achieves that is decision=="block" + reason. WARN-with-context
+            # therefore upgrades the *output* decision to "block" at the output
+            # layer so the advisory reaches the agent. The internal verdict
+            # stays "warn" — the stop-block safety net (auto-approve after
+            # 5 blocks in 2 minutes) keys on the internal verdict field, not
+            # on this output decision, so routine RBG advisories do not trip it.
+            #
+            # hookSpecificOutput is deliberately NOT emitted on Stop. Claude
+            # Code's Stop output schema rejects it: the validator fails with
+            # "Hook JSON output validation failed — (root): Invalid input" and
+            # discards the ENTIRE payload, silently dropping decision+reason
+            # too. The validator's own expected-schema lists hookSpecificOutput
+            # only for PreToolUse / UserPromptSubmit / PostToolUse /
+            # PostToolBatch — never Stop. So Stop has no agent-only context
+            # channel; `reason` (also user-visible) is the only path to the
+            # model. Verified Claude Code 2.1.158, 2026-05-31 (see kb-fcc2b95c).
+            ctx_inj = result.context_injection
+            sys_msg = result.system_message
+
+            # The Stop `reason` field is BOTH user-visible (Claude Code renders
+            # a blocking Stop hook's reason as a notice) and agent-visible —
+            # there is no agent-only Stop channel. Strip the marker scaffold so
+            # the advisory reads as a clean notice rather than a raw system dump.
+            agent_reason = _strip_hook_markers(ctx_inj)
+
+            if result.verdict == "deny":
+                output.decision = "block"
+                if agent_reason:
+                    output.reason = agent_reason
+            elif result.verdict == "warn" and ctx_inj:
+                # Upgrade output decision to "block" so the advisory lands in
+                # the agent's context on the next turn. The internal verdict
+                # remains "warn" — only the Claude Code output decision field
+                # changes here, not the router's internal safety-net counter.
+                output.decision = "block"
+                output.reason = agent_reason
+            else:
+                output.decision = "approve"
+
+            # sys_msg is a short, user-facing summary (denial reason, banner).
+            # Surface via user-visible channels only. Do NOT echo ctx_inj here
+            # — that was the channel that leaked advisory text to the user
+            # transcript (aops-d10e7db6).
+            if sys_msg:
+                output.stopReason = sys_msg
+                output.systemMessage = sys_msg
+
+            return output
+
+        output = ClaudeGeneralHookOutput()
+        if result.system_message:
+            output.systemMessage = result.system_message
+
+        # Claude Code only accepts hookSpecificOutput for these events.
+        # Emitting it for other events causes the entire payload to be rejected.
+        _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
+        if event not in _CLAUDE_HSO_EVENTS:
+            return output
+
+        hso = ClaudeHookSpecificOutput(hookEventName=event)
+        has_hso = False
+
+        if result.verdict:
+            if result.verdict == "deny":
+                hso.permissionDecision = "deny"
+                hso.permissionDecisionReason = result.system_message
+                has_hso = True
+            elif result.verdict == "ask":
+                hso.permissionDecision = "ask"
+                hso.permissionDecisionReason = result.system_message
+                has_hso = True
+            elif result.verdict == "warn":
+                hso.permissionDecision = "allow"
+                has_hso = True
+            else:
+                hso.permissionDecision = "allow"
+                has_hso = True
+
+        if result.context_injection:
+            hso.additionalContext = result.context_injection
+            has_hso = True
+
+        if has_hso:
+            output.hookSpecificOutput = hso
+
+        return output
+
+
+# --- Main Entry Point ---
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Universal Hook Router")
+    parser.add_argument(
+        "--client", choices=["gemini", "claude", "agy"], help="Client type (gemini, claude, or agy)"
+    )
+    parser.add_argument(
+        "event", nargs="?", help="Event name (required for Gemini if not in payload)"
+    )
+
+    # Parse known args to avoid issues if extra flags are passed
+    args, unknown = parser.parse_known_args()
+
+    router = HookRouter()
+
+    # Read Input First (needed for detection)
+    raw_input = {}
+    try:
+        if not sys.stdin.isatty():
+            input_data = sys.stdin.read()
+            if input_data.strip():
+                raw_input = json.loads(input_data)
+    except Exception as e:
+        print(f"WARNING: Failed to read stdin: {e}", file=sys.stderr)
+
+    # Debug log all input (enable with DEBUG_HOOKS=1)
+    _debug_log_input(raw_input, args)
+
+    # Detect Invocation Mode, relying on explicit --client flag
+    if args.client:
+        client_type = args.client
+        gemini_event = args.event
+    else:
+        raise OSError("No --client flag provided on hook invocation.")
+
+    # Pipeline
+    ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
+    result = router.execute_hooks(ctx)
+
+    # Output (JSON conversion happens only here)
+    if client_type in ("gemini", "agy"):
+        output = router.output_for_gemini(result, ctx.hook_event)
+        print(output.model_dump_json(exclude_none=True))
+    else:
+        output = router.output_for_claude(result, ctx.hook_event)
+        print(output.model_dump_json(exclude_none=True))
+
+
+if __name__ == "__main__":
+    main()

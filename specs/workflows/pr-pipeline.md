@@ -114,6 +114,9 @@ Two workflows run independently on every `pull_request` push:
 
 The CI pipeline runs four jobs: initialization, lint, typecheck, and pytest.
 
+> [!NOTE]
+> **Release-Please Gating:** For release-please PRs (branches starting with `release-please`), both the CI pipeline (`pr-pipeline.yml`) via a gate job and the Enforcer (`agent-enforcer.yml`) are gated behind the `production` environment approval. They will pause and only run once approved by a maintainer, rather than running pre-emptively on every push.
+
 **Initialization (Always Pending Until Triage):** To prevent PRs from appearing "green" before the Merge-Prep Agent has triaged reviews, the pipeline starts with an `initialize` job. This job sets the `merge-prep-status` commit status to `pending` on the latest SHA. Because this status is required by the ruleset, the PR remains in a "yellow" state until the agent explicitly sets it to `success` (after triage) or `failure` (after persistent errors).
 
 | Workflow   | File              | Job name     | Required check?                 | Action                                                        |

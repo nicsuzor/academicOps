@@ -4642,8 +4642,21 @@ def run(
             # Interactive: just append the prompt as positional arg
             cmd.append(prompt)
         else:
-            # Headless: use -p for print mode
-            cmd.extend(["-p", prompt])
+            # Headless: -p print mode. --output-format stream-json (which Claude
+            # requires --verbose to accompany in --print mode) streams the
+            # agent's events to stdout, so they reach the container's stdout →
+            # docker's json-file log driver. A run is then observable from
+            # outside the container via `docker logs -f polecat-<task-id>`.
+            cmd.extend(
+                [
+                    "--max-turns",
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    "-p",
+                    prompt,
+                ]
+            )
 
     # Set session type environment variable for hooks to detect
     # Use sanitized env: SSH stripped, git auth set to bot token only
@@ -4782,7 +4795,6 @@ def run(
         session_dir=str(run_session_dir),
     )
 
-    budget_exhausted = False
     try:
         if interactive:
             # In interactive mode, we MUST NOT capture output or it will hang
@@ -5024,8 +5036,7 @@ def run(
 
         if not worktree_removed:
             print(f"   Worktree: {worktree_path}")
-            if not budget_exhausted:
-                print(f"   To finish manually: cd {worktree_path} && polecat finish")
+            print(f"   To finish manually: cd {worktree_path} && polecat finish")
 
     if exit_code != 0:
         sys.exit(exit_code)

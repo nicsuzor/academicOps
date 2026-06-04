@@ -34,11 +34,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ─── Step 0: Initialize ──────────────────────────────────────────
+  # ─── Step 0: Gate (Approval for release-please PRs) ──────────────
+  gate:
+    name: Release Gate Approval
+    runs-on: ubuntu-latest
+    environment: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref && startsWith(github.event.pull_request.head.ref, 'release-please')) && 'production' || '' }}
+    steps:
+      - name: Acknowledge approval
+        run: echo "Environment gate approved or bypassed"
+
+  # ─── Step 0.5: Initialize ──────────────────────────────────────────
   # On opened/reopened/ready_for_review: set merge-prep-status to pending.
   # On synchronize: carry forward a previous success unless new
   # CHANGES_REQUESTED reviews arrived since then.
   initialize:
+    needs: [gate]
     if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 45
     name: Initialize
@@ -107,6 +117,7 @@ jobs:
   # triggers a new synchronize event. This run is cancelled and the
   # pipeline restarts on the clean commit.
   lint:
+    needs: [gate]
     name: Lint
     uses: ./.github/workflows/lint.yml
     secrets: inherit

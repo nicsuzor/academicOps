@@ -337,9 +337,10 @@ class TestInferSessionOriginFromEntries(unittest.TestCase):
     """
 
     class _StubEntry:
-        def __init__(self, content=None, cwd=None):
+        def __init__(self, content=None, cwd=None, entrypoint=None):
             self.message = {"content": content} if content is not None else {}
             self.cwd = cwd
+            self.entrypoint = entrypoint
 
     _LAM_SKILL_REMINDER = (
         "<system-reminder>\n"
@@ -399,9 +400,58 @@ class TestInferSessionOriginFromEntries(unittest.TestCase):
         origin = session_naming.infer_session_origin_from_entries(entries, base)
         self.assertEqual(origin["surface"], "claude-code-desktop")
 
+    def test_sdk_cli_entrypoint_upgrades_to_sdk(self):
+        """A host JSONL written by the Agent SDK is a dispatched SDK worker."""
+        entries = [self._StubEntry("doing the task", entrypoint="sdk-cli")]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-sdk")
+        self.assertEqual(origin["client"], "sdk")
+
+    def test_sdk_cli_detected_on_later_entry(self):
+        """The first JSONL entry (agent-setting) carries no entrypoint; the
+        SDK marker only appears on the message entries that follow."""
+        entries = [
+            self._StubEntry(entrypoint=None),  # mirrors the agent-setting header
+            self._StubEntry("hello", entrypoint="sdk-cli"),
+        ]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-sdk")
+
+    def test_cli_entrypoint_stays_cli(self):
+        """An interactive terminal launch (entrypoint=cli) is not an SDK worker."""
+        entries = [self._StubEntry("hello", entrypoint="cli")]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+        self.assertEqual(origin["client"], "claude-code")
+
+    def test_lam_wins_over_sdk_cli(self):
+        """Desktop-LAM path markers take priority over a bare SDK entrypoint."""
+        entries = [self._StubEntry(self._LAM_SKILL_REMINDER, entrypoint="sdk-cli")]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base)
+        self.assertEqual(origin["surface"], "claude-code-desktop")
+        self.assertEqual(origin["client"], "claude-desktop")
+
+    def test_sdk_cli_beyond_max_scan_not_detected(self):
+        """Entries beyond max_scan must not trigger the SDK upgrade."""
+        entries = [self._StubEntry("clean") for _ in range(20)] + [
+            self._StubEntry("late", entrypoint="sdk-cli")
+        ]
+        base = {"surface": "claude-code-cli", "client": "claude-code", "crew": None}
+        origin = session_naming.infer_session_origin_from_entries(entries, base, max_scan=10)
+        self.assertEqual(origin["surface"], "claude-code-cli")
+
     def test_path_origin_wins_over_content(self):
-        """GHA/crew/polecat detection should not be downgraded by content."""
-        entries = [self._StubEntry(self._LAM_SKILL_REMINDER)]
+        """GHA/crew/polecat detection should not be downgraded by content.
+
+        Includes an ``sdk-cli`` entrypoint to prove a path-pinned containerized
+        polecat is never reclassified to ``claude-sdk`` even when it carries an
+        SDK launch marker.
+        """
+        entries = [self._StubEntry(self._LAM_SKILL_REMINDER, entrypoint="sdk-cli")]
         for base in (
             {"surface": "github-actions", "client": "github-actions", "crew": None},
             {"surface": "claude-crew", "client": "crew", "crew": "gloria"},
