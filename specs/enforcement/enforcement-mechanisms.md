@@ -186,7 +186,7 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Purpose**: Sonnet 4.6 pre-execution gate. Reads the proposed tool call alongside a **stripped** transcript (user messages + bare tool calls/params; **not** assistant prose or tool outputs) and the prose `autoMode.environment` / `allow` / `soft_deny` / `hard_deny` rules, then returns **allow or deny** (there is no "ask" verdict). A denial returns its reason to the agent as a tool result; the verdict also surfaces to the user (permission UI in interactive; in headless, 3 consecutive / 20 total denials terminate the run). Treat it as **`rbg`-class judgment running at the per-action gate**.
 - **Location**: rules in [`templates/aops-core.plugin.json`](../../templates/aops-core.plugin.json) (`autoMode` key); merge logic and installation in [`aops-core/lib/automode.py`](../../aops-core/lib/automode.py) (invoked by `scripts/install.py`); merged copy mirrored to `polecat/defaults/claude-settings.json`.
 - **Scope**: Claude Code only (polecat, crew, interactive — not Gemini, not GHA).
-- **Status**: **wired but unseeded** — the `autoMode` key is currently absent from the template and the rule set is effectively CC defaults (see `auto-mode-classifier.md` §"Current state"). Seeding the first 1–3 aops rules is in progress.
+- **Status**: **wired but unseeded** — the `autoMode` key is currently absent from the template and the rule set is effectively CC defaults (see `auto-mode-classifier.md` §"Current state"). By deliberate decision (2026-06-04) no behavioural rules are seeded this cycle; the first rule is evidence-gated (instruction tier walked first — see `auto-mode-classifier.md` §"Initial deployment decision").
 
 #### Hydration gate
 
