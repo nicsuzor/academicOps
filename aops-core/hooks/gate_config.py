@@ -435,8 +435,8 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
 # gates on any path-only prompt. The `<command-name>` tag and the Gemini `# /`
 # form are unambiguous; a bare path is not.
 SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
-    r"<command-name>\s*/",  # Claude Code slash command (skill invocation)
-    r"^\s*#\s*/\w",  # Gemini CLI slash-command injection (e.g. "# /dump …")
+    r"<command-name>\s*/[a-zA-Z0-9_-]+\s*</command-name>",  # Claude Code slash command (skill invocation)
+    r"^\s*#\s*/(?:end[-_]session|dump|remember|planner)\b",  # Gemini CLI slash-command injection (e.g. "# /dump …")
 ]
 
 # =============================================================================

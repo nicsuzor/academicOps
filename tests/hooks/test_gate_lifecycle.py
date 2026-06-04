@@ -338,7 +338,7 @@ class TestStopDenyMaxFireDowngrade:
 # --- Slash-command turns must not re-arm session-end gates ---
 
 # Verified prompt surface formats (see SLASH_COMMAND_PROMPT_PATTERNS in
-# aops-core/hooks/gate_config.py): Claude Code carries the slash command as
+# hooks/gate_config.py): Claude Code carries the slash command as
 # `<command-name>/foo</command-name>` (with sibling tags); Gemini injects it as
 # `# /foo — ...`. A BARE file-path prompt must STILL re-arm — matching `^/`
 # would silently disarm the gates on any path-only prompt.
