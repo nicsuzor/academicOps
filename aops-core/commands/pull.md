@@ -40,6 +40,8 @@ Per [[../skills/remember/references/TAXONOMY.md]] §Status Values: dispatch only
 - **`/pull <task-id>`**: call `mcp__pkb__get_task(id="<task-id>")`. If it has children, descend to the first `queued` leaf. Dispatch that leaf, not the parent.
 - **Nothing queued**: report "no queued tasks to dispatch" and stop. Do not reach into `ready`/`inbox` to manufacture work, and do not start doing anything yourself.
 
+**Supersession guard (do not dispatch a retired task).** Before dispatching the selected leaf, check its `superseded_by` frontmatter field (via `mcp__pkb__get_task`). If it is non-empty, the task's work was carved into the listed replacement(s) and its body is a fossil — **do not dispatch it**. Surface the redirect ("`<id>` is superseded by `<replacement-ids>`") and select the next candidate (or, for `/pull <id>`, redirect to the named replacements). Only dispatch a `superseded_by`-stamped task under an explicit operator override. Stamping `superseded_by` normally also closes the task, so it should not appear in `queued` at all — this guard is the backstop for a stamped-but-still-open task (e.g. legacy data) and the reason a `/pull <id>` descent never lands on a fossil. See [[../skills/remember/references/TAXONOMY.md#supersession-and-retirement-superseded_by]].
+
 ### Step 2: Route it to a surface (the dispatch-trigger heuristic)
 
 Choose exactly one surface for the selected task — this is the same routing decision the program loop's decision-order step 2 makes, at one-task granularity:
