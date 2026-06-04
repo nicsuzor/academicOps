@@ -24,10 +24,17 @@ version: 2.0.0
    - **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.
    - **High Uncertainty**: Priority is to reduce uncertainty. The decomposition should lean heavily into evidence gathering, audits, or probes (Step 3).
    - **Low Uncertainty + High Scope**: Parent is well-understood but large. The decomposition should focus on creating independent, parallelizable execution tasks.
+   - **Intent before mechanism**: for a build/change task, first pin down what the thing should _do_ and _why_ (spec-of-intent); confirming how the existing plumbing works is necessary but never a substitute for specifying the intent.
 
 2. **Search for Context**: Query PKB for existing related work, prior decompositions of similar scope, and established patterns. Use `pkb_context(id, hops=2)` to understand the neighbourhood.
 
 3. **Map Unknowns**: Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
+
+3.5. **Interrogate the task's epistemics** — before structuring, put three questions to the task _itself_. They are prompts, not steps; answer each in a line, then let the answers shape the tree:
+
+- **What evidence best answers this?** Name the _rawest, highest-signal_ source for _this_ question — including the negative/diagnostic record (rejected or closed PRs, reverts, abandoned spikes, recent lived complaints in daily notes), not only the distilled corpora you already reach for (open issues, retros). Where a mechanical fix was _tried and rejected_ is often the sharpest evidence of a problem only judgment can catch.
+- **What must be observable before success can be judged?** If the result's effect is not already visible in the artifacts you can inspect, building that instrumentation is a prerequisite task, not an afterthought — you cannot verify a gate you cannot see fire.
+- **Does the artifact's nature dictate the verification shape?** A qualitative or judgment-based output is proven by observation in the wild and deliberate boundary-probing; crafted pass/fail cases supplement but do not substitute for it. Match the test to the nature of the thing; do not mechanise a qualitative target.
 
 4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics — scope per-project queries with `list_tasks(project=<project-id>)` rather than inferring membership from ID prefixes or walking parent chains. Create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
@@ -43,7 +50,7 @@ version: 2.0.0
 8. **Identify Dependencies**: Which tasks must complete before others can start?
    - Use the [[planning]] skill's dependency-type heuristic: "What happens if the dependency never completes?" If impossible → hard dependency. If less informed → soft dependency.
 
-9. **Estimate Effort**: Assign rough duration (0.5d, 1d, 1w). Tasks over 0.5d probably need further decomposition. Single-session tasks (1–4 hours) are the right duration.
+9. **Estimate Effort**: Assign rough duration (0.5d, 1d, 1w). Tasks over 0.5d probably need further decomposition. Single-session tasks (1–4 hours) are the right duration. This single-session vs multi-session call feeds **thin-brief / `partial`-stop eligibility** (recorded at step 16): under the NARROW default ([[spec-partial-work]]), a single-session leaf may legitimately be dispatched thin and stop at `partial`, while epics and multi-session work keep the full review gate.
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
@@ -61,7 +68,7 @@ version: 2.0.0
     - **Student Assessment**: Rubric fidelity & Consistency review (runs AFTER execution, does not block promotion).
     - **Exploratory**: _Escape Hatch_ — Create minimal verification tasks and do not block promotion to ready for exploratory work.
 
-16. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`.
+16. **Record Promotion Decision** — Write a `## Promotion Log` entry to the parent body capturing the rationale for promotion and transition status from `inbox` to `ready`. Record **thin-brief / `partial`-stop eligibility** in this same entry ([[spec-partial-work]]): whether this node may be dispatched on a thin brief and whether a worker may stop at `partial` (draft PR + continue task). This is the promotion-log author's call — **not** a worker frontmatter field, because a worker cannot self-promote its own latitude. NARROW default: full gate for epics/multi-session; a single-session leaf (step 9) may go thin and stop `partial`.
 
 ## Hierarchy and Depth
 
@@ -71,15 +78,7 @@ version: 2.0.0
 
 ## Workflow-Step Mapping Example
 
-Epic: "Add user authentication" using `feature-dev` workflow:
-
-| Workflow Step              | Task(s)                                               |
-| -------------------------- | ----------------------------------------------------- |
-| 1. Understand Requirements | Write auth acceptance criteria (planning)             |
-| 2. Propose Plan            | Design auth architecture doc (planning)               |
-| 3. Draft Tests             | Write auth unit tests (execution)                     |
-| 4. Implement               | Implement auth middleware (execution)                 |
-| 5. Verify & Submit         | Run integration tests, review, open PR (verification) |
+See [[decomposition-patterns#workflow-step-mapping]] for a worked workflow-step → task mapping (the `feature-dev` example).
 
 ## Task Handoff Quality (P#120)
 

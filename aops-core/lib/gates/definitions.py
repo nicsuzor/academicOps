@@ -2,6 +2,7 @@ from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
     SENTINEL_GATE_MODE,
+    SLASH_COMMAND_PROMPT_PATTERNS,
 )
 
 from lib.gate_types import (
@@ -170,10 +171,14 @@ GATE_CONFIGS = [
             # trigger evaluates, so the transition to CLOSED proceeds.
             # Only re-arms when a task is bound — sessions without a
             # claimed task skip the QA gate entirely.
+            # Slash-command turns (skill invocations) are excluded: they own
+            # their own finishing format, so they must not re-arm the gate
+            # (prompt_exclude_patterns suppresses the close — never opens).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
                     custom_check="has_bound_task",
+                    prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
                 ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
@@ -310,10 +315,17 @@ GATE_CONFIGS = [
             ),
             # UserPromptSubmit -> re-arm for the next turn cycle (polecat/crew only).
             # Interactive sessions never close the handover gate.
+            # Slash-command turns (skill invocations such as /end-session,
+            # /dump, /remember) are excluded: a finishing/meta skill owns its
+            # own handover format and must not re-close the gate it just
+            # satisfied (prompt_exclude_patterns suppresses the close — never
+            # opens). The write-tool / task-claim close triggers above still
+            # fire, so a slash turn that does real work is still gated.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
                     session_type_filter=["polecat", "crew"],
+                    prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
                 ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
@@ -387,8 +399,16 @@ GATE_CONFIGS = [
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
             # On UserPromptSubmit: re-arm gate for the next turn cycle.
+            # Slash-command turns (skill invocations such as /end-session,
+            # /dump, /remember) are excluded: a finishing/meta skill that runs
+            # after an honesty reflection owns its own format and must not arm
+            # a second redundant ida reflection on the Stop that follows it
+            # (prompt_exclude_patterns suppresses the close — never opens).
             GateTrigger(
-                condition=GateCondition(hook_event="UserPromptSubmit"),
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
+                ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],
