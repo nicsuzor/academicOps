@@ -139,15 +139,14 @@ Present only when the session was a Gemini CLI session. Sourced from a sidecar `
 
 ## `token_metrics` Structure
 
-| Sub-object          | Contents                                                            |
-| ------------------- | ------------------------------------------------------------------- |
-| `totals`            | Aggregate token counts for the full session                         |
-| `by_model`          | Per-model breakdown: `{model_name: {input: int, output: int, ...}}` |
-| `by_tool`           | Per-tool token breakdown                                            |
-| `by_agent`          | Per-agent token breakdown                                           |
-| `efficiency`        | Derived metrics                                                     |
-| `attention`         | Human-attention proxies                                             |
-| `subagent_verdicts` | Per-subagent invocation verdict rows                                |
+| Sub-object   | Contents                                                            |
+| ------------ | ------------------------------------------------------------------- |
+| `totals`     | Aggregate token counts for the full session                         |
+| `by_model`   | Per-model breakdown: `{model_name: {input: int, output: int, ...}}` |
+| `by_tool`    | Per-tool token breakdown                                            |
+| `by_agent`   | Per-agent token breakdown                                           |
+| `efficiency` | Derived metrics                                                     |
+| `attention`  | Human-attention proxies                                             |
 
 ### `token_metrics.totals` fields
 
@@ -167,16 +166,6 @@ Present only when the session was a Gemini CLI session. Sourced from a sidecar `
 | `cache_hit_rate`           | float | 0.0–1.0     | Fraction of input tokens served from cache |
 | `tokens_per_minute`        | float |             | Session throughput                         |
 | `session_duration_minutes` | float |             | Wall-clock session length                  |
-
-### `token_metrics.subagent_verdicts` entry
-
-| Field           | Type              | Description                                            |
-| --------------- | ----------------- | ------------------------------------------------------ |
-| `invocation_id` | string (required) | Subagent invocation identifier                         |
-| `verdict`       | string or null    | One of `APPROVE`, `REVISE`, `PASS`, `FAIL`, `ESCALATE` |
-| `tokens`        | int (required)    | Tokens consumed by this subagent invocation            |
-| `issues_count`  | int or null       | Number of issues found                                 |
-| `agent_id`      | string or null    | Agent identifier                                       |
 
 ## Backward Compatibility
 

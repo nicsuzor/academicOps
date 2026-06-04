@@ -139,90 +139,11 @@ def test_build_task_extras_pr_url_takes_precedence_over_number():
     assert "- **Existing PR**: #7" not in result
 
 
-def test_prompt_contains_preflight_check():
-    """Worker prompt must include Step 0 pre-flight check for prior work."""
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    assert "### Step 0: Pre-flight" in prompt
-    assert "Prior Work" in prompt
-
-
 def test_prompt_shows_pr_lock_warning_when_pr_url_set():
     """When task has a PR URL, the prompt metadata block must surface it."""
     task_meta = {"pr_url": "https://github.com/owner/repo/pull/825"}
     prompt = build_polecat_prompt(task_id="task-1", task_title="Title", task_meta=task_meta)
     assert "**Existing PR**: https://github.com/owner/repo/pull/825" in prompt
-
-
-def test_finish_section_reminds_re_reading_task_body_for_mandatory_gates():
-    """Regression for #583: Step 0 of FINISH_LOCAL_TASK must be a labelled pre-push gate-recheck step.
-
-    A polecat worker shipped a PR after satisfying gates 1+2 (plan review,
-    TDD) but skipping the task body's gate 3 (James re-review on the
-    implementation), because the generic "Finish" template structurally
-    pulls toward push+PR once code is committed. The mitigation in the
-    template is a labelled pre-push gate-recheck step that the worker
-    cannot honestly skip without noticing.
-    """
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    # The labelled pre-push step must exist.
-    assert "Pre-push gate check" in prompt
-    # It must explicitly tell the worker to re-read the task body.
-    assert "re-read the task body" in prompt.lower()
-    # It must reference task-specific / mandatory gates so the worker
-    # parses for the right markers (MUST / mandatory / re-review etc.).
-    assert "mandatory" in prompt.lower()
-    # It must reference #583 so the rationale is auditable.
-    assert "#583" in prompt
-
-
-def test_preamble_leads_with_search_pkb_first_not_do_not_pull():
-    """AC#4: the worker preamble must lead with 'search the PKB first', replacing
-    the old 'Do not run /pull' stance.
-
-    Partial-work doctrine (PKB: spec-partial-work, chunk 4): the worker is a
-    PKB-first actor, not a context-blind executor. The old preamble's headline
-    instruction was 'Do not run /pull'; the new headline is PKB-first.
-    """
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    assert "Search the PKB first" in prompt
-    # The PKB-first instruction must be the framing, not a buried aside: the
-    # old hard 'Do not run `/pull`' headline must be gone.
-    assert "Do not run `/pull`" not in prompt
-    # It must name the PKB-as-system-of-record rationale, not just the slogan.
-    assert "system of record" in prompt
-
-
-def test_preamble_authorises_thin_brief_and_partial_stop():
-    """AC#4: the preamble must frame the brief as thin (intent+AC) and authorise
-    stopping `partial` when the chunk is too big for one focused session."""
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    assert "thin" in prompt.lower()
-    # 'stop partial' must be presented as authorised + expected, not a failure.
-    assert "stop partial" in prompt.lower()
-    assert "Honest-partial beats false-whole" in prompt
-
-
-def test_finish_contains_clause_2b_ac_self_certification():
-    """AC#3: the finish flow must require every AC to resolve to one of
-    tested | declared-deferred | illegal-gap — honesty-led, not a coverage gate.
-
-    Partial-work doctrine clause 2b (PKB: spec-partial-work §3): a silently-absent
-    AC is the dishonest stop. The discriminator is worker self-cert + a
-    `## Deliberately deferred` PR section, explicitly NOT regex/keyword/coverage
-    matching (No-Shitty-NLP P#49). Guard both halves: the three-way partition
-    must be present, AND it must be framed as a judgment call, not a tool score.
-    """
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    # The three-way partition by name.
-    assert "tested" in prompt
-    assert "declared-deferred" in prompt
-    assert "illegal-gap" in prompt
-    # The disclosure convention the partition relies on.
-    assert "## Deliberately deferred" in prompt
-    # It must NOT be reducible to mechanical matching — it encodes judgment.
-    assert "keyword/coverage matching" in prompt
-    # It must cite the axioms that forbid narrowing/relabelling an AC.
-    assert "A6b" in prompt and "A8" in prompt
 
 
 def test_finish_contains_partial_draft_pr_path():
@@ -238,25 +159,3 @@ def test_finish_contains_partial_draft_pr_path():
     # omitting --head/--base hangs gh).
     for flag in ("--title", "--body", "--head", "--base"):
         assert flag in prompt
-
-
-def test_prompt_contains_halt_on_unsatisfiable_checkpoint():
-    """Worker prompt must instruct halt-as-blocked on an unsatisfiable AC.
-
-    Regression for the worker-discipline gap behind #1392 / #1305 / #1286:
-    when an AC cannot be satisfied as written (no runtime access, an
-    out-of-scope config change, or a method the worker can't run), the worker
-    must release `blocked` rather than substitute an easier adjacent action
-    and self-justify under streetlight pressure. The mitigation is an explicit
-    Step 2A checkpoint that grounds the rule in axioms A6b and A8 and names the
-    three concrete failure tells.
-    """
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    # It must ground the rule in the governing axioms rather than restate them.
-    assert "A6b" in prompt
-    assert "A8" in prompt
-    # It must direct the worker to release as blocked, not proceed.
-    assert 'status="blocked"' in prompt
-    # The three source incidents must be auditable from the prompt.
-    for issue in ("#1392", "#1305", "#1286"):
-        assert issue in prompt

@@ -1483,10 +1483,6 @@ class UsageStats:
     user_messages: int = 0
     mid_session_corrections: int = 0
 
-    # Per-subagent-invocation verdict + issues_count rows (Build B of Safeguard
-    # ROI v0). Populated by `_aggregate_session_usage`. Empty when no subagents.
-    subagent_verdicts: list[dict[str, Any]] = field(default_factory=list)
-
     def add_entry(
         self,
         entry: Entry,
@@ -1632,7 +1628,6 @@ class UsageStats:
                 "user_messages": self.user_messages,
                 "mid_session_corrections": self.mid_session_corrections,
             },
-            "subagent_verdicts": self.subagent_verdicts,
             "efficiency": {
                 "cache_hit_rate": round(cache_hit_rate, 3),
             },
@@ -1659,7 +1654,7 @@ def _remap_by_agent_keys(
         by_agent: Mapping of agent file-id (UUID) → token stats. ``"main"`` is
             passed through unchanged.
         type_index: Mapping of agent file-id → subagent_type (e.g. ``"rbg"``)
-            produced by ``reviewer_verdicts._build_subagent_type_index``.
+            produced by ``subagent_transcript._build_subagent_type_index``.
 
     Returns:
         A new dict with names substituted for UUIDs where known. Multiple
@@ -5511,19 +5506,13 @@ session_id: {session_uuid}
                     stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
 
         if agent_entries:
-            from .reviewer_verdicts import _build_subagent_type_index, build_subagent_verdicts
-
-            stats.subagent_verdicts = build_subagent_verdicts(
-                entries, agent_entries, stats.by_agent
-            )
+            from .subagent_transcript import _build_subagent_type_index
 
             # Remap by_agent UUIDs → subagent names (rbg/pauli/marsha/…) so the
             # overwhelm-dashboard Insights view can attribute cost per agent
             # without re-resolving hashes. Unknown UUIDs are preserved verbatim
-            # (acceptance criterion: fall back rather than crash). When two
-            # invocations of the same subagent appear, sum their stats —
-            # per-invocation detail is preserved separately in
-            # ``subagent_verdicts``.
+            # (fall back rather than crash). When two invocations of the same
+            # subagent appear, sum their stats.
             type_index = _build_subagent_type_index(entries)
             if type_index:
                 stats.by_agent = _remap_by_agent_keys(stats.by_agent, type_index)
