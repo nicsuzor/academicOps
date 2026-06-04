@@ -79,7 +79,7 @@ def _task_tool_use_entry(
 ) -> dict:
     """Build an assistant entry whose content is a Task tool_use block.
 
-    Mirrors the shape used by reviewer_verdicts._build_subagent_type_index
+    Mirrors the shape used by subagent_transcript._build_subagent_type_index
     so subagent_type can be resolved by the helper.
     """
     ts = datetime(2026, 5, 12, 9, 0, tzinfo=UTC) + timedelta(minutes=offset_min)

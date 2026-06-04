@@ -209,36 +209,35 @@ jobs:
 
           # Only post if not already posted by the agent in a previous step, or if we need to replace pending
           if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
-            # Fetch the last review for this SHA
-            REVIEW_BODY=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\")] | last.body" 2>/dev/null || echo "")
-            VERDICT=$(echo "$REVIEW_BODY" | grep -oP '(?<=<!-- aops-verdict: )[A-Z]+' || echo "")
+            # Read the enforcer's review STATE for this SHA — structured GitHub
+            # data, no parsing of review prose. APPROVED → success;
+            # CHANGES_REQUESTED → failure; no verdict review → fail-safe failure.
+            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
 
-            if [ -z "$VERDICT" ]; then
-              if [ "${{ steps.review.outcome }}" != "success" ]; then
-                gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                  -f state=failure \
-                  -f context="${AGENT_NAME}-status" \
-                  -f description="Agent run failed without verdict" \
-                  -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-              else
-                gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                  -f state=failure \
-                  -f context="${AGENT_NAME}-status" \
-                  -f description="Missing verdict marker in review" \
-                  -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-              fi
-            elif [ "$VERDICT" = "APPROVE" ] || [ "$VERDICT" = "PASS" ]; then
+            if [ "$REVIEW_STATE" = "APPROVED" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=success \
                 -f context="${AGENT_NAME}-status" \
                 -f description="No violations found" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Violations found — see review" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            elif [ "${{ steps.review.outcome }}" != "success" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Agent run failed without a verdict review" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             else
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=failure \
                 -f context="${AGENT_NAME}-status" \
-                -f description="Violations found — see review ($VERDICT)" \
+                -f description="Enforcer posted no APPROVED/CHANGES_REQUESTED review" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             fi
           fi

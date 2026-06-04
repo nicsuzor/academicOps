@@ -21,7 +21,7 @@ Automatically extract action items from emails and create properly categorized t
 - **No Micromanagement**: Let the agent query tools and search files naturally to resolve details.
 - **Duplicate Prevention**: Always run `task_search(query="...")` for the email subject/key action phrase before creating a task. If a match exists, skip creation and link to it. If ambiguous, consult the user.
 
-## Summary Checklist
+## Checklist & Procedure
 
 1. **Fetch & Check**: Retrieve recent emails. Check if already responded to.
 2. **Classify**: Categorize emails into _Actionable_, _Important FYI_, or _Safe to Ignore_.

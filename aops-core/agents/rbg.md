@@ -48,14 +48,10 @@ Strategic alignment is Pauli's domain. Runtime fitness is Marsha's. Focus strict
 
 ## Verdict Output
 
-End with a `## Verdict` section: one or two sentences naming the axiom(s) at issue (or that none was found) and anything you fixed in place, then the machine-readable trailer the session-summary parser reads:
+End with a one-line `## Verdict` stating your judgment in prose, naming the axiom(s) at issue (or that none was found), what you fixed in place, and the count of distinct violations:
 
-```
-<!-- aops-verdict: APPROVE -->
-<!-- aops-issues: 0 -->
-```
+- `APPROVE` — no axiom violation found.
+- `REVISE` — a violation needs the caller's attention; name the axiom(s) and what is wrong.
+- `ESCALATE` — judgment exceeds your zone; the calling authority must decide. (`PASS`/`FAIL` are equivalent for non-axiom callers.)
 
-Both HTML-comment lines are mandatory and must be on their own lines — the rollup treats their absence as "unknown verdict / unknown issue count" and your review will not surface in the session summary.
-
-- `aops-verdict` MUST be exactly one of `APPROVE`, `REVISE`, `PASS`, `FAIL`, `ESCALATE` (uppercase). `APPROVE` = no violation; `REVISE` = a violation needs the caller's attention; `ESCALATE` = judgment exceeds your zone and the calling authority must decide.
-- `aops-issues` MUST be a non-negative integer counting the distinct violations raised (not bullet points). Emit `0` for a clean `APPROVE`.
+When reviewing a PR via the enforcer surface, encode the verdict as the GitHub review **state** — `gh pr review --approve` for APPROVE, `--request-changes` otherwise — which is the structured signal downstream reads. Do not emit machine-readable comment trailers; downstream reads your prose and your review state, not parsed markers.

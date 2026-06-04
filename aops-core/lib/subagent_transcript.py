@@ -42,7 +42,6 @@ from typing import TYPE_CHECKING, Any
 import lib.session_naming as session_naming
 from lib.insights_generator import write_insights_file
 from lib.paths import get_subagent_summaries_dir, get_subagent_transcripts_dir
-from lib.reviewer_verdicts import _build_subagent_type_index
 from lib.transcript_paths import ensure_rotated_dir
 
 if TYPE_CHECKING:
@@ -108,6 +107,60 @@ def _subagent_slug(subagent_type: str | None, invocation_id: str) -> str:
     return f"subagent-{invocation_id[:8]}"
 
 
+def _build_subagent_type_index(main_entries: list[Entry]) -> dict[str, str]:
+    """Map agent file id (the file-stem after ``agent-``) to its subagent_type.
+
+    Walks main session entries pairing Task/Agent tool_use blocks with their
+    tool_result. The result's ``tool_use_result.agentId`` is the file id; the
+    tool_use's ``input.subagent_type`` is the human-readable type
+    (e.g. ``rbg``, ``aops-core:pauli``). This reads structured tool-call
+    metadata only — it performs no parsing of model prose.
+    """
+    type_by_tool_id: dict[str, str] = {}
+    for entry in main_entries:
+        if entry.type != "assistant" or not entry.message:
+            continue
+        content = entry.message.get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") != "tool_use":
+                continue
+            if block.get("name") not in ("Task", "Agent"):
+                continue
+            tool_id = block.get("id")
+            if not tool_id:
+                continue
+            tool_input = block.get("input") or {}
+            subagent_type = tool_input.get("subagent_type")
+            if subagent_type:
+                type_by_tool_id[tool_id] = subagent_type
+
+    index: dict[str, str] = {}
+    for entry in main_entries:
+        if entry.type != "user":
+            continue
+        message = entry.message or {}
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_result":
+                continue
+            tool_id = block.get("tool_use_id")
+            if not tool_id or tool_id not in type_by_tool_id:
+                continue
+            result = entry.tool_use_result
+            agent_file_id = None
+            if isinstance(result, dict):
+                agent_file_id = result.get("agentId")
+            if agent_file_id:
+                index[agent_file_id] = type_by_tool_id[tool_id]
+    return index
+
+
 def iter_subagent_invocations(
     main_entries: list[Entry],
     agent_entries: dict[str, list[Entry]] | None,
@@ -118,7 +171,7 @@ def iter_subagent_invocations(
     "first_timestamp"}``. Order follows ``agent_entries`` insertion order
     (deterministic per filesystem listing of ``agent-*.jsonl``).
 
-    ``subagent_type`` is resolved via :func:`reviewer_verdicts._build_subagent_type_index`
+    ``subagent_type`` is resolved via :func:`_build_subagent_type_index`
     when possible; it may be ``None`` for stray agent files that have no
     matching Task tool_use in the main thread.
     """
