@@ -14,7 +14,7 @@
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "./dist/aops-claude",
+      "source": "./aops-claude",
       "category": "productivity"
     },
     {
@@ -24,7 +24,7 @@
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "./dist/aops-tools-claude",
+      "source": "./aops-tools-claude",
       "category": "productivity"
     },
     {
