@@ -38,12 +38,29 @@ from polecat.manager import PolecatManager
     help="Force task status to 'done' even if no git changes detected",
 )
 @click.option("--project", "-p", default=None, help="Override task project (used by auto-finish)")
+@click.option(
+    "--partial",
+    "is_partial",
+    is_flag=True,
+    help=(
+        "Honest partial stop: the chunk was too big for one session. Files the PR as a "
+        "DRAFT and releases the task as 'partial' (not 'merge_ready'). See the "
+        "partial-work doctrine — ship the finished part, declare the rest deferred."
+    ),
+)
 @click.pass_context
-def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
-    """Mark current task as ready for merge.
+def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
+    """Mark current task as ready for merge — or as a partial (draft) stop.
 
-    Must be run from within a polecat worktree.
-    Pushes branch and sets task status to 'merge_ready'.
+    Must be run from within a polecat worktree. Pushes the branch and, by
+    default, sets the task status to 'merge_ready' and files a normal PR.
+
+    With ``--partial`` the work is an honest-incomplete stop: the PR is filed
+    as a *draft* and the task is released as 'partial' rather than
+    'merge_ready', so it is visible as not-yet-mergeable to the reviewer. This
+    is the partial-work terminal state — a whole smaller thing, cut at a scope
+    seam, disclosed via a ``## Deliberately deferred`` PR section, with a live
+    follow-up task carrying the remainder.
     """
     import subprocess
 
@@ -94,7 +111,9 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
     # --- SAFEGUARD 0: Completion Protection ---
     # If the task is already DONE, or in review/merge phase, do NOT override it.
     # This prevents the "infinite retry loop" where auto-finish resets a manually completed task.
-    _TERMINAL_STATUSES = ("done", "review", "merge_ready", "cancelled")
+    # 'partial' is terminal for the worker too: an honest partial stop ships a
+    # draft PR + follow-up task and must NOT be reset by the auto-retry loop.
+    _TERMINAL_STATUSES = ("done", "review", "merge_ready", "cancelled", "partial")
     try:
         from lib.task_model import TaskStatus
 
@@ -105,6 +124,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                 getattr(TaskStatus, "REVIEW", None),
                 getattr(TaskStatus, "MERGE_READY", None),
                 getattr(TaskStatus, "CANCELLED", None),
+                getattr(TaskStatus, "PARTIAL", None),
             )
             if s is not None
         )
@@ -523,25 +543,26 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
                     )
                     print(f"  ✅ Updated PR #{pr_number}")
                 else:
-                    # Create new PR
-                    subprocess.run(
-                        [
-                            "gh",
-                            "pr",
-                            "create",
-                            "--title",
-                            task.title,
-                            "--body-file",
-                            body_file,
-                            "--head",
-                            branch_name,
-                            "--base",
-                            "main",
-                        ],
-                        check=True,
-                        capture_output=True,
-                    )
-                    print("  ✅ Created new PR")
+                    # Create new PR. A partial stop files a DRAFT PR — GitHub
+                    # enforces not-mergeable on drafts, so a `partial` task can
+                    # never satisfy the APPROVED-on-SHA merge trigger by accident.
+                    create_args = [
+                        "gh",
+                        "pr",
+                        "create",
+                        "--title",
+                        task.title,
+                        "--body-file",
+                        body_file,
+                        "--head",
+                        branch_name,
+                        "--base",
+                        "main",
+                    ]
+                    if is_partial:
+                        create_args.append("--draft")
+                    subprocess.run(create_args, check=True, capture_output=True)
+                    print("  ✅ Created new draft PR" if is_partial else "  ✅ Created new PR")
 
             except subprocess.CalledProcessError as e:
                 # Don't fail the whole finish command if PR creation fails
@@ -597,39 +618,72 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project):
     except Exception as e:
         print(f"  ⚠️  Could not get PR URL: {e}", file=sys.stderr)
 
+    target_status = "partial" if is_partial else "merge_ready"
+    released_ok = False
     try:
         from polecat.pkb_bridge import release_task as pkb_release
 
         released = pkb_release(
             task_id,
-            status="merge_ready",
+            status=target_status,
             summary=finish_summary,
             pr_url=pr_url_str,
             branch=branch_name,
         )
         if not released:
             raise RuntimeError("release_task returned False")
+        released_ok = True
     except Exception as _release_exc:
         from polecat.validation import PRURLValidationError as _PRURLValidationError
 
         if isinstance(_release_exc, _PRURLValidationError):
             print(f"  ❌  A3/A8 integrity gate — pr_url rejected: {_release_exc}", file=sys.stderr)
             sys.exit(1)
-        # Fallback to old path if release_task not available yet
-        try:
-            from lib.task_model import TaskStatus
 
-            task.status = TaskStatus.MERGE_READY.value
-            manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
-        except ImportError:
-            from polecat.pkb_bridge import save_task as pkb_save
+        # A `partial` stop must NEVER be laundered into `merge_ready`: that would
+        # convert an honest-incomplete stop into a false completion claim
+        # (clause-2b illegal-gap). If the PKB does not yet accept `partial` as a
+        # status (server-side enum not extended), leave the task non-terminal and
+        # hand off via the draft PR + follow-up task instead of falling back.
+        if is_partial:
+            print(
+                f"  ⚠️  Could not release task as 'partial': {_release_exc}",
+                file=sys.stderr,
+            )
+            print(
+                "  ↪︎ The draft PR and follow-up task carry the partial hand-off. "
+                "Leaving task non-terminal — refusing to mark 'merge_ready' "
+                "(that would falsely claim completion).",
+                file=sys.stderr,
+            )
+        else:
+            # merge_ready fallback path if release_task is unavailable.
+            try:
+                from lib.task_model import TaskStatus
 
-            task.status = "merge_ready"
-            pkb_save(task)
-    print("✅ Task marked as 'merge_ready'")
-    print(
-        "📋 If a PR was created, the review pipeline will handle merge. See logs above for PR status."
-    )
+                task.status = TaskStatus.MERGE_READY.value
+                manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
+                released_ok = True
+            except ImportError:
+                from polecat.pkb_bridge import save_task as pkb_save
+
+                task.status = "merge_ready"
+                pkb_save(task)
+                released_ok = True
+
+    if is_partial:
+        if released_ok:
+            print("✅ Task marked as 'partial' (honest partial stop)")
+        print(
+            "📋 Draft PR filed. The remainder lives in the follow-up task; this work "
+            "is not a merge candidate until promoted."
+        )
+    else:
+        print("✅ Task marked as 'merge_ready'")
+        print(
+            "📋 If a PR was created, the review pipeline will handle merge. "
+            "See logs above for PR status."
+        )
 
     # Optionally nuke
     if do_nuke:
