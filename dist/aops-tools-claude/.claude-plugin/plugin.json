@@ -1,0 +1,15 @@
+{
+  "name": "aops-tools",
+  "version": "0.3.33+gddf3f73a",
+  "description": "AcademicOps domain skills - fungible academic tools for research workflows (PDF generation, data analysis, document conversion, diagramming)",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "academic",
+    "tools"
+  ]
+}
