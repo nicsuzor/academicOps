@@ -107,7 +107,7 @@ activity, before this returns for re-verification.
 The original methodology _already contained_ "Red flags (HALT triggers) → immediate FAIL" and
 the reviewer had it loaded. It still PASSed, because nothing forced the sentinel count or the
 top-line read into the verdict — the reviewer kept the discretion to reframe `DERIVER_MISSING`
-as "honesty." The fix is structural: the [Verdict format](../SKILL.md#verdict-format) now
+as "honesty." The fix is structural: the [Verdict format](skills/verify/SKILL.md#verdict-format) now
 requires the three forcing-check answers as named fields. A reviewer cannot write "4 field
 groups are sentinels; primary value-signals absent" into a required field and still reach
 PASS without contradicting the record. That is the difference between prose and a gate.
