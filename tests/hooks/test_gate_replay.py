@@ -437,12 +437,13 @@ class TestCountdownWarning:
 
     def test_countdown_warning_in_range(self, router):
         """Ops at 45 (within 43-49 range) should produce countdown message."""
-        state = SessionState.create("test-countdown")
+        state = SessionState.create("test-countdown", client_type="claude")
         state.gates["enforcer"].status = GateStatus.OPEN
         state.gates["enforcer"].ops_since_open = 45  # threshold=50, start_before=7
 
         ctx = HookContext(
             session_id="test-countdown",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Read",  # Read-only: bypasses enforcer policy, but countdown still shows
             tool_input={"file_path": "/f.py"},
@@ -476,12 +477,13 @@ class TestCountdownWarning:
 
     def test_no_countdown_at_threshold(self, router):
         """Ops at 50 (at threshold) should produce policy block, not countdown."""
-        state = SessionState.create("test-at-threshold")
+        state = SessionState.create("test-at-threshold", client_type="claude")
         state.gates["enforcer"].status = GateStatus.OPEN
         state.gates["enforcer"].ops_since_open = 50
 
         ctx = HookContext(
             session_id="test-at-threshold",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Edit",  # Write tool: subject to enforcer policy
             tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
@@ -524,7 +526,7 @@ class TestTempPathValidation:
         # bypassing this test's tmp_path home.
         monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
 
-        path = get_gate_file_path("enforcer", "test-session-abc123")
+        path = get_gate_file_path("enforcer", "test-session-abc123", client_type="claude")
 
         # Path should be under ~/.claude/projects/
         assert str(path).startswith(str(Path.home() / ".claude" / "projects")), (

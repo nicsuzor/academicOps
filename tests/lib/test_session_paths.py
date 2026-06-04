@@ -95,10 +95,12 @@ class TestIsGeminiSession:
         with patch.dict(os.environ, {"GEMINI_SESSION_ID": "some-id"}):
             assert _is_gemini_session("any-id", None) is True
 
-    def test_detection_via_session_id_prefix(self):
-        """Test detection when session_id starts with 'gemini-'."""
-        assert _is_gemini_session("gemini-12345", None) is True
-        assert _is_gemini_session("gemini-abc-123", {}) is True
+    def test_session_id_prefix_alone_does_not_detect(self):
+        """NO FALLBACKS: a 'gemini-' session-id prefix is no longer a detection
+        signal (polecat emits '{hash}-gemini', and a session must declare itself
+        via --client / GEMINI_SESSION_ID / transcript_path). Prefix alone → False."""
+        assert _is_gemini_session("gemini-12345", None) is False
+        assert _is_gemini_session("gemini-abc-123", None) is False
 
     def test_detection_via_transcript_path(self):
         """Test detection when transcript_path contains '/.gemini/'."""
@@ -106,10 +108,12 @@ class TestIsGeminiSession:
             _is_gemini_session("some-id", "/home/user/.gemini/tmp/hash/chats/session.json") is True
         )
 
-    def test_detection_via_state_dir_env(self):
-        """Test detection when AOPS_SESSION_STATE_DIR contains '/.gemini/'."""
+    def test_state_dir_env_alone_does_not_detect(self):
+        """NO FALLBACKS: AOPS_SESSION_STATE_DIR is consumed directly by
+        get_session_status_dir (step 1); it is no longer a _is_gemini_session
+        signal. A '/.gemini/' state dir alone → False here."""
         with patch.dict(os.environ, {"AOPS_SESSION_STATE_DIR": "/home/user/.gemini/tmp/abc/"}):
-            assert _is_gemini_session("some-id", None) is True
+            assert _is_gemini_session("some-id", None) is False
 
     def test_claude_session_false(self):
         """Test that normal Claude sessions return False."""
@@ -219,7 +223,9 @@ class TestPolebcatSandboxRouting:
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 
-        path = get_hook_log_path("session-123", date="2024-05-20T10:00:00+00:00")
+        path = get_hook_log_path(
+            "session-123", date="2024-05-20T10:00:00+00:00", client_type="claude"
+        )
 
         mock_polecat_dir.assert_called_with("-home-worker-project", "state")
         assert str(path).startswith(str(tmp_path))
@@ -235,7 +241,7 @@ class TestPolebcatSandboxRouting:
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 
-        result = get_session_status_dir()
+        result = get_session_status_dir(client_type="claude")
 
         mock_polecat_dir.assert_called_once_with("-home-worker-project", "state")
         assert result == tmp_path
@@ -251,7 +257,9 @@ class TestPolebcatSandboxRouting:
         mock_project_folder.return_value = "-home-worker-project"
         mock_polecat_dir.return_value = tmp_path
 
-        path = get_gate_file_path("enforcer", "session-123", date="2024-05-20T10:00:00+00:00")
+        path = get_gate_file_path(
+            "enforcer", "session-123", date="2024-05-20T10:00:00+00:00", client_type="claude"
+        )
 
         mock_polecat_dir.assert_called_with("-home-worker-project", "state")
         assert str(path).startswith(str(tmp_path))

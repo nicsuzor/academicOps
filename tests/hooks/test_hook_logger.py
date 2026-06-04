@@ -49,7 +49,7 @@ class TestLogHookEvent:
 
     def test_creates_hook_log_file(self, temp_claude_projects):
         """Test that log_hook_event creates the JSONL file."""
-        session_id = "test-session-12345678"
+        session_id = "11111111-1111-4111-8111-111111111111"
 
         log_hook_event(
             HookContext(
@@ -70,7 +70,7 @@ class TestLogHookEvent:
 
     def test_log_entry_structure(self, temp_claude_projects):
         """Test that log entries have correct structure with separated input/output."""
-        session_id = "test-structure-abcd1234"
+        session_id = "22222222-2222-4222-8222-222222222222"
 
         log_hook_event(
             HookContext(
@@ -107,7 +107,7 @@ class TestLogHookEvent:
 
     def test_multiple_events_appended(self, temp_claude_projects):
         """Test that multiple events are appended to same file."""
-        session_id = "test-multi-events"
+        session_id = "33333333-3333-4333-8333-333333333333"
 
         for i in range(3):
             log_hook_event(
@@ -161,7 +161,7 @@ class TestLogHookEvent:
 
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-HH-shorthash-hooks.jsonl."""
-        session_id = "test-path-format-xyz"
+        session_id = "44444444-4444-4444-8444-444444444444"
         now = datetime.now().astimezone()
         today = now.strftime("%Y%m%d")
 
@@ -187,8 +187,20 @@ class TestLogHookEvent:
 
     def test_different_sessions_different_files(self, temp_claude_projects):
         """Test that different session IDs create different log files."""
-        log_hook_event(HookContext(session_id="session-aaa", hook_event="Test", raw_input={}))
-        log_hook_event(HookContext(session_id="session-bbb", hook_event="Test", raw_input={}))
+        log_hook_event(
+            HookContext(
+                session_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                hook_event="Test",
+                raw_input={},
+            )
+        )
+        log_hook_event(
+            HookContext(
+                session_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                hook_event="Test",
+                raw_input={},
+            )
+        )
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))
@@ -201,7 +213,7 @@ class TestLogHookEventEdgeCases:
 
     def test_nonserializable_data_handled(self, temp_claude_projects):
         """Test that non-JSON-serializable data is converted to strings."""
-        session_id = "test-serialize"
+        session_id = "55555555-5555-4555-8555-555555555555"
 
         # datetime is not JSON serializable by default
         log_hook_event(
@@ -219,7 +231,7 @@ class TestLogHookEventEdgeCases:
 
     def test_output_data_optional(self, temp_claude_projects):
         """Test that output_data is optional."""
-        session_id = "test-no-output"
+        session_id = "66666666-6666-4666-8666-666666666666"
 
         log_hook_event(
             HookContext(

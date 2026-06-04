@@ -213,11 +213,12 @@ class TestPreToolUseBlockHasContextInjection:
 
     def test_enforcer_block_has_context(self, router):
         """Enforcer gate blocking at threshold must include context_injection."""
-        state = SessionState.create("test-ptu-ctx")
+        state = SessionState.create("test-ptu-ctx", client_type="claude")
         state.gates["enforcer"].ops_since_open = 75
 
         ctx = HookContext(
             session_id="test-ptu-ctx",
+            client_type="claude",
             hook_event="PreToolUse",
             tool_name="Bash",
             tool_input={"command": "echo hello"},

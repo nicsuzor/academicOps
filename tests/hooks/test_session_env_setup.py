@@ -43,13 +43,14 @@ class TestSessionEnvSetup:
         """Test that run_session_env_setup persists required variables."""
         ctx = HookContext(
             session_id="test-session-123",
+            client_type="claude",
             session_short_hash="abc12345",
             hook_event="SessionStart",
             raw_input={},
         )
 
         # We need to mock get_session_status_dir to return a consistent path
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         with patch(
             "hooks.session_env_setup.get_session_status_dir",
             return_value="/tmp/aops/sessions",
@@ -88,11 +89,12 @@ class TestSessionEnvSetup:
         env_overrides = {"CLAUDE_ENV_FILE": str(env_file), "PYTHONPATH": ""}
         ctx = HookContext(
             session_id="test-session-456",
+            client_type="claude",
             session_short_hash="def56789",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         with (
             patch.dict("os.environ", env_overrides, clear=False),
             patch(
@@ -133,11 +135,12 @@ class TestSessionEnvSetup:
         }
         ctx = HookContext(
             session_id="test-session-oauth",
+            client_type="claude",
             session_short_hash="oauth123",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         with (
             patch.dict("os.environ", env_overrides, clear=False),
             patch(
@@ -174,6 +177,12 @@ class TestSessionEnvSetup:
             "PKB_MCP_URL": "http://services:8026/mcp",
             "AOPS_BOT_GH_TOKEN": "ghp_present",
             "GITHUB_ACTIONS": "",
+            # Isolate the host secret store: the FAILURE path drops
+            # AOPS_BOT_GH_TOKEN, but provisioning falls back to
+            # load_host_secrets() (real ~/.env.local) which would resurrect it
+            # and mask the "missing" case. Point at a nonexistent file so the
+            # fallback resolves to {} regardless of import-order home mocking.
+            "AOPS_HOST_ENV_FILE": str(tmp_path / "no-env-local"),
             # Resolved provider set is injected as env (host/container contract);
             # empty ⇒ no external agents, so session_naming uses builtins only and
             # never reaches for the (absent, sandboxed) polecat.yaml.
@@ -181,13 +190,14 @@ class TestSessionEnvSetup:
         }
         ctx = HookContext(
             session_id="test-session-prov",
+            client_type="claude",
             session_short_hash="prov1234",
             hook_event="SessionStart",
             raw_input={},
         )
 
         # SUCCESS path.
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         with (
             patch.dict("os.environ", base, clear=False),
             patch(
@@ -227,11 +237,12 @@ class TestSessionEnvSetup:
         env_file.touch()
         ctx = HookContext(
             session_id="test-session-gha",
+            client_type="claude",
             session_short_hash="gha12345",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         with (
             patch.dict(
                 "os.environ",
@@ -258,12 +269,13 @@ class TestSessionEnvSetup:
         """Verify setup is ignored for non-SessionStart events."""
         ctx = HookContext(
             session_id="test-session-123",
+            client_type="claude",
             session_short_hash="abc12345",
             hook_event="PreToolUse",
             raw_input={},
         )
 
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
         result = run_session_env_setup(ctx, state)
         assert result is None
 
@@ -278,11 +290,12 @@ class TestSessionEnvSetup:
 
         ctx = HookContext(
             session_id="test-session-daily",
+            client_type="claude",
             session_short_hash="daily123",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
 
         with patch(
             "hooks.session_env_setup.get_session_status_dir",
@@ -307,11 +320,12 @@ class TestSessionEnvSetup:
 
         ctx = HookContext(
             session_id="test-session-brain",
+            client_type="claude",
             session_short_hash="brain123",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
 
         with patch(
             "hooks.session_env_setup.get_session_status_dir",
@@ -343,11 +357,12 @@ class TestSessionEnvSetup:
 
         ctx = HookContext(
             session_id="test-session-existing",
+            client_type="claude",
             session_short_hash="ext12345",
             hook_event="SessionStart",
             raw_input={},
         )
-        state = SessionState.create(ctx.session_id)
+        state = SessionState.create(ctx.session_id, client_type="claude")
 
         with patch(
             "hooks.session_env_setup.get_session_status_dir",

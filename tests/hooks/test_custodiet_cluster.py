@@ -45,11 +45,13 @@ def _write_jsonl(path: Path, entries: list[dict]) -> None:
 
 
 def _make_state() -> SessionState:
-    return SessionState.create("test-custodiet-cluster")
+    return SessionState.create("test-custodiet-cluster", client_type="claude")
 
 
 def _make_ctx(**kwargs) -> HookContext:
-    defaults = dict(session_id="test-custodiet-cluster", hook_event="PreToolUse")
+    defaults = dict(
+        session_id="test-custodiet-cluster", client_type="claude", hook_event="PreToolUse"
+    )
     defaults.update(kwargs)
     return HookContext(**defaults)
 
