@@ -178,15 +178,15 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
     # hydration loop, crashed early, or other failure mode). Do NOT mark as done.
     # See: aops-91e4c3f2 - Gemini polecat workers stuck in hydration gate loop
     try:
-        # First, fetch to ensure we have latest origin/main
+        # First, fetch to ensure we have latest origin/dev
         subprocess.run(
-            ["git", "fetch", "origin", "main"],
+            ["git", "fetch", "origin", "dev"],
             capture_output=True,
             check=False,
         )
-        # Check if there are any commits on this branch vs origin/main
+        # Check if there are any commits on this branch vs origin/dev
         diff_check = subprocess.run(
-            ["git", "diff", "--quiet", "origin/main", "HEAD"],
+            ["git", "diff", "--quiet", "origin/dev", "HEAD"],
             capture_output=True,
             check=False,
         )
@@ -248,19 +248,19 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                 return  # Exit early, skip rest of finish flow
 
     except Exception as e:
-        print(f"Warning: Could not check for changes against origin/main: {e}")
-        # Fallback: try local main ref instead of origin/main
+        print(f"Warning: Could not check for changes against origin/dev: {e}")
+        # Fallback: try local dev ref instead of origin/dev
         try:
             diff_local = subprocess.run(
-                ["git", "diff", "--quiet", "main", "HEAD"],
+                ["git", "diff", "--quiet", "dev", "HEAD"],
                 capture_output=True,
                 check=False,
             )
             if diff_local.returncode == 0:
-                # Zero changes confirmed via local main ref
+                # Zero changes confirmed via local dev ref
                 if force_done:
                     print(
-                        "📭 No changes detected (local main fallback), but --force-done specified."
+                        "📭 No changes detected (local dev fallback), but --force-done specified."
                     )
                     print("✅ Proceeding to mark as DONE (verified complete without changes).")
                     _finish_evidence = (
@@ -280,7 +280,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                     return
                 else:
                     print(
-                        "📭 No changes detected (local main fallback). Worker may not have completed the task."
+                        "📭 No changes detected (local dev fallback). Worker may not have completed the task."
                     )
                     print(
                         "⚠️  Marking as 'review' for investigation (use --force-done for legitimate zero-change tasks)."
@@ -315,13 +315,13 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
             # else: diff_local.returncode != 0 means changes exist, fall through to normal flow
         except Exception as e2:
             print(f"Warning: Fallback change detection also failed: {e2}")
-            # Both origin/main and local main failed — needs human investigation
+            # Both origin/dev and local dev failed — needs human investigation
             print("⚠️  Cannot verify changes exist. Marking as 'review' (safe default).")
             task.assignee = None
             task.body = (
                 (task.body or "")
                 + "\n\n## ⚠️ Review needed (change detection failed)\n"
-                + "Could not compare against main to determine if worker made changes.\n"
+                + "Could not compare against dev to determine if worker made changes.\n"
                 + "- If the task legitimately requires no code changes, re-run with `--force-done`\n"
                 + "- If the worker failed silently, check transcript and retry\n"
             )
@@ -349,9 +349,9 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
     # Check if we are unexpectedly rewriting the whole repo
     # This prevents the "orphan branch" issue where an agent commits 1000+ files as new
     try:
-        # Get shortstat diff against origin/main to see scale of changes
+        # Get shortstat diff against origin/dev to see scale of changes
         diff_res = subprocess.run(
-            ["git", "diff", "--shortstat", "origin/main", "HEAD"],
+            ["git", "diff", "--shortstat", "origin/dev", "HEAD"],
             capture_output=True,
             text=True,
             check=False,
@@ -386,35 +386,35 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
             sys.exit(1)
 
         # --- REBASE BEFORE PUSH ---
-        # Fetch and rebase onto latest main to prevent orphan commits and merge conflicts
-        print("🔄 Syncing with latest main before push...")
+        # Fetch and rebase onto latest dev to prevent orphan commits and merge conflicts
+        print("🔄 Syncing with latest dev before push...")
         try:
             # Fetch latest from origin
             subprocess.run(
-                ["git", "fetch", "origin", "main"],
+                ["git", "fetch", "origin", "dev"],
                 check=True,
                 capture_output=True,
             )
 
-            # Check if we need to rebase (are we behind origin/main?)
+            # Check if we need to rebase (are we behind origin/dev?)
             merge_base = subprocess.run(
-                ["git", "merge-base", "HEAD", "origin/main"],
+                ["git", "merge-base", "HEAD", "origin/dev"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            origin_main = subprocess.run(
-                ["git", "rev-parse", "origin/main"],
+            origin_dev = subprocess.run(
+                ["git", "rev-parse", "origin/dev"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
 
-            if merge_base.stdout.strip() != origin_main.stdout.strip():
+            if merge_base.stdout.strip() != origin_dev.stdout.strip():
                 # We're behind, need to rebase
-                print("  📥 Branch is behind origin/main, rebasing...")
+                print("  📥 Branch is behind origin/dev, rebasing...")
                 rebase_result = subprocess.run(
-                    ["git", "rebase", "origin/main"],
+                    ["git", "rebase", "origin/dev"],
                     capture_output=True,
                     text=True,
                 )
@@ -426,7 +426,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                     print("  Task will be marked for review.", file=sys.stderr)
                     # Don't exit - let it fall through to mark as review
                     task.body += (
-                        "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto main.\n"
+                        "\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto dev.\n"
                     )
                     try:
                         from lib.task_model import TaskStatus
@@ -441,7 +441,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                     sys.exit(1)
                 print("  ✅ Rebase successful")
             else:
-                print("  ✅ Already up-to-date with main")
+                print("  ✅ Already up-to-date with dev")
 
         except subprocess.CalledProcessError as e:
             print(f"  ⚠️ Sync failed: {e}", file=sys.stderr)
@@ -582,7 +582,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
     finish_summary = task.title
     try:
         stat_res = subprocess.run(
-            ["git", "diff", "--shortstat", "origin/main", "HEAD"],
+            ["git", "diff", "--shortstat", "origin/dev", "HEAD"],
             capture_output=True,
             text=True,
             check=False,
