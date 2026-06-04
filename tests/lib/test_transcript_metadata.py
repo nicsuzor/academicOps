@@ -433,6 +433,29 @@ class TestAutoModeDecisions:
         assert entry.permission_denials[0]["tool_name"] == "Write"
         assert entry.permission_denials[0]["tool_use_id"].startswith("toolu_")
 
+    def test_from_dict_captures_permission_denials_camel_case(self):
+        """Envelope may use camelCase keys (CC CLI JSON serialisation style)."""
+        camel_entry = {
+            "type": "result",
+            "subtype": "success",
+            "is_error": False,
+            "num_turns": 2,
+            "permissionDenials": [
+                {
+                    "toolName": "Write",
+                    "toolUseId": "toolu_017eJ6SzcBteCqNWQBvjJ9JJ",
+                    "toolInput": {"filePath": "/home/nic/.claude/x.txt", "content": "test"},
+                }
+            ],
+            "terminalReason": "too_many_permission_denials",
+        }
+        entry = Entry.from_dict(camel_entry)
+        assert entry.type == "result"
+        assert len(entry.permission_denials) == 1
+        assert entry.permission_denials[0]["toolName"] == "Write"
+        assert entry.permission_denials[0]["toolUseId"].startswith("toolu_")
+        assert entry.terminal_reason == "too_many_permission_denials"
+
     def test_from_dict_defaults_when_absent(self):
         """A normal entry without the result-envelope keys → empty/None, no crash."""
         entry = Entry.from_dict({"type": "assistant", "message": {}})
