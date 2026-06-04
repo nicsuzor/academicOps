@@ -1995,7 +1995,9 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     # 2. Repo root version (sources point to ./dist/aops-claude)
     # Use json serialization for a deep copy
     root_data = json.loads(json.dumps(data))
-    for plugin in root_data.get("plugins", []):  # allow-fallback: plugins list is optional in marketplace.json
+    for plugin in root_data.get(
+        "plugins", []
+    ):  # allow-fallback: plugins list is optional in marketplace.json
         if plugin.get("source"):
             src = plugin["source"]
             if src.startswith("./"):
