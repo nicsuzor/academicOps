@@ -5,11 +5,6 @@
       ".get(..., [])": 3,
       ".get(..., {})": 1
     },
-    "aops-core/lib/context_map.py": {
-      "... or []": 1,
-      ".get(..., '')": 1,
-      ".get(..., [])": 3
-    },
     "aops-core/lib/gate_model.py": {
       "... or {}": 3
     },
