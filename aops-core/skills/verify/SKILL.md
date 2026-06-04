@@ -48,6 +48,20 @@ First decision in any verification: is this a mechanical task, a fitness task, o
 
 To detect a fitness bar, look for any of these signals in the brief or AC: adjectives of experience ("intuitive", "calm", "readable", "beautiful", "useful"); persona emotional/cognitive state ("tired", "anxious", "overwhelmed"); intended consumer is a human in a cognitively-loaded context; two reasonable evaluators could disagree on PASS/FAIL with the same evidence; fitness-for-purpose language ("serves the user", "lifeline not data dump"). Any one is sufficient. If you see these and the rubric is missing, that is the verdict — don't paper over it.
 
+## Forcing checks — resolve before any PASS on a user-facing artifact
+
+These are not advisory. Each is a question with a mechanical answer that MUST appear, by name, in your verdict before you may write PASS. They exist because everything above this line can be **loaded and then rationalised around**: a reviewer with this whole methodology in context saw an artifact rendering `DERIVER_MISSING` on every load-bearing field, praised its "honesty," and returned PASS. Prose red flags did not stop it because the reviewer kept the discretion to reframe them. Writing these answers down removes that discretion — you cannot record "11 of 12 value-signals are sentinels" in a required field and still reach PASS without contradicting yourself.
+
+**1. Sentinel / empty-state audit.** Count the load-bearing fields rendering as a sentinel, placeholder, or honest-failure token — `DERIVER_MISSING`, `NO_*`, `N/A`, `—`, `{variable}`, `TODO`, blank, or any "we couldn't compute this" stand-in. List them. **If the artifact's _primary_ value-signals are absent, the verdict is FAIL.** "Honest about being broken" is the floor every artifact must clear, never evidence that it works. An axiom-9-honest sentinel is still a missing value; do not launder honesty-about-emptiness into fitness.
+
+**2. Principal's-eye top-line read.** Identify the single most-prominent element on the artifact — the largest, first-read, or headline element. Read it _as the end user_, not as a reviewer who knows the internals. State verbatim what it says and whether it is _correct for that user_. (This is the check that catches a "WHERE YOU WERE" panel surfacing a background worker's dispatch prompt as the principal's own last activity: prominent, confidently rendered, and wrong.)
+
+**3. Floor vs ceiling — stated in the verdict.** Your verdict MUST answer, in these words: **"exceptional, or merely working?"** On a fitness bar, _"merely working" is not a PASS_ — the bar is the Fitness Rubric, which defines excellence, not minimum function. "REVISE — works but does not yet serve the user" is the honest verdict for merely-working; reserve PASS for artifacts that clear the rubric.
+
+If any of the three forces a FAIL, **HALT**: stop the verification, write the FAIL/HALT verdict, and do not continue softening it into "polish needed." A terminal finding _ends the pass_ — it is not logged-and-continued. (Checks 1 and 2 apply to any user-facing artifact; check 3 applies on a fitness or mixed bar.)
+
+Worked example — these checks replayed against the artifact that originally got a spurious PASS, returning FAIL/HALT: [[references/replay-overwhelm-dashboard-2026-06-03.md]].
+
 ## The QA loop
 
 1. **Read AC + Fitness Rubric.** One pass to understand what this is supposed to do, for whom, and what excellent looks like.
@@ -110,8 +124,12 @@ Eloquent narrative gives contamination cover. This rule blocks the substitution 
 
 ## Red flags (HALT triggers)
 
+**HALT means halt.** When you hit one of these, the verification is over: write the FAIL/HALT verdict and stop. Do not log it and keep walking the checklist hoping a later section redeems it, and do not downgrade it to "polish needed." A terminal violation is terminal — the most common way this skill fails in practice is a reviewer who _names_ the violation and then continues to a PASS anyway.
+
 Any of these requires immediate FAIL, not "polish needed":
 
+- Load-bearing fields rendering as sentinels / honest-failure tokens (`DERIVER_MISSING`, `NO_*`, `N/A`) where the artifact's primary value-signals should be — honesty about emptiness is the floor, not fitness (see forcing-check 1)
+- The single most-prominent element is wrong for the end user (see forcing-check 2)
 - Repeated section headers or empty sections between headers (template bug)
 - Placeholder text in production (`{variable}`, `TODO`, `FIXME`)
 - Overlapping or clipped text in rendered output
@@ -131,6 +149,12 @@ Any of these requires immediate FAIL, not "polish needed":
 
 ### Concrete observations
 [For visual artifacts: defect list with regions. Otherwise: short evidence list with file paths, line numbers, log excerpts.]
+
+### Forcing checks
+[REQUIRED for any user-facing artifact — omit only on a pure mechanical bar. Each must be answered explicitly; a PASS that skips these is invalid.]
+1. **Sentinel/empty-state audit:** [count + list of load-bearing fields rendering as sentinels/placeholders/honest-failure tokens. If primary value-signals are absent → FAIL.]
+2. **Principal's-eye top-line read:** [the single most-prominent element, quoted, read as the end user — correct for them, yes/no?]
+3. **Floor vs ceiling:** [answer verbatim: "exceptional, or merely working?" On a fitness bar, "merely working" is not a PASS.]
 
 ### Judgement
 [Mechanical bar: one paragraph against AC and Red Flags. Fitness bar: one paragraph per Fitness Rubric dimension, citing evidence from concrete observations. Mixed bar: both — and the synthesis paragraph must address how the two sides combine. If the rubric flagged a dimension as load-bearing, address it explicitly. Prose, not tables.]
@@ -175,6 +199,31 @@ anxious-academic persona. For each section...
 Verify the treemap dashboard at <URL>. Goal: surface the shape of Nic's work
 without adding overwhelm. Spec: <link> (Fitness Rubric + AC there).
 ```
+
+### Do not pre-state the verdict you expect
+
+Methodology-crowding (above) is one way a brief biases the reviewer; **verdict-priming** is the other, and it is more corrosive. The brief must not tell the reviewer what answer to reach. A QA brief is a request to _find out_, not to _confirm_. Verdict-priming language — "confirm this works", "verify the fix is good", "this should pass now", "just a quick sanity check", "make sure it's ready to merge" — pre-loads the conclusion and converts an independent verification into a rubber-stamp. The reviewer's default posture is IT'S BROKEN; a brief that asserts it works fights that posture before the reviewer has seen the artifact, and an anchored reviewer rationalises evidence toward the verdict the dispatcher signalled (this is precisely the failure that paired with the HALT failure in the originating incident).
+
+State the artifact, the goal, and the spec — neutrally. Let the verdict come from the evidence.
+
+**Anti-pattern (verdict pre-stated):**
+
+```
+Confirm the dashboard fix is working now — should be good. Quick QA before merge.
+```
+
+[the reviewer is told the answer; "confirm" + "should be good" + "before merge" all anchor to PASS]
+
+**Good pattern (verdict left open):**
+
+```
+Verify the overwhelm dashboard at <URL>. Goal: surface the shape of Nic's work
+without adding overwhelm. Spec: <link> (Fitness Rubric + AC there).
+```
+
+[names what to assess, not what to conclude — identical neutral shape to the good pattern above]
+
+This is the QA-brief application of the framework-wide anti-anchoring doctrine in [[skills/aops/references/authoring-discipline]]: don't reduce the recipient's judgment to a foregone conclusion. If you are the dispatcher and you already believe the artifact passes, that belief is exactly what an independent reviewer exists to test — keep it out of the brief.
 
 ## Follow-up tasks
 
