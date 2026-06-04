@@ -46,31 +46,6 @@ from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 # AOPS_ENABLED_PROVIDERS, AOPS_MACHINE). ``CONFIG_PATH_ENV`` is still skipped
 # in the env-forwarding loop so the host's own path never leaks inward.
 
-# Turn budget for headless Claude runs.
-#
-# Claude SDK semantics: one "turn" = one full agentic loop iteration.
-# An iteration starts when the model generates a response (which may contain
-# multiple tool_use blocks) and ends when all tool results are returned.
-# Calling 10 tools in a single response still counts as ONE turn.
-#
-# Tiered defaults by task effort (XS/S/M/L from task frontmatter):
-#   XS  →  40  (trivial, single-file edits)
-#   S   →  70  (small, a few files)
-#   M   → 100  (typical PR-scoped work — the new default)
-#   L   → 150  (large, multi-component or epic-decomposition-shaped)
-#   (no effort field) → 100
-#
-# Hook overhead: each session fires ~2-4 hook turns (hydration gate,
-# enforcer compliance check). These count against the budget.
-_EFFORT_TO_MAX_TURNS: dict[str, int] = {
-    "xs": 40,
-    "s": 70,
-    "m": 100,
-    "l": 150,
-}
-_DEFAULT_MAX_TURNS = 100
-
-
 # Canonical PKB status used as a rollback fallback when the task object does
 # not carry a captured prior status. `queued` is the human-promoted dispatch
 # gate per aops-core/skills/remember/references/TAXONOMY.md; restoring there
@@ -96,29 +71,6 @@ def _rollback_status_for(task) -> str:
     if prior_str in ("", "active", "in_progress"):
         return _ROLLBACK_FALLBACK_STATUS
     return prior_str
-
-
-def _compute_max_turns(task, override: int | str | None = None) -> str:
-    """Return the --max-turns value for a headless Claude run.
-
-    Derives the budget from the task's ``effort`` field (XS/S/M/L).
-    Falls back to _DEFAULT_MAX_TURNS when the field is absent or unrecognised.
-    Returns a string because subprocess args must be strings.
-    """
-    if override is not None:
-        return str(override)
-    effort = getattr(task, "effort", None)
-    turns = _DEFAULT_MAX_TURNS
-    if isinstance(effort, str) and effort:
-        turns = _EFFORT_TO_MAX_TURNS.get(effort.lower())
-        if turns is None:
-            print(
-                f"⚠️  Unrecognised effort value '{effort}' — "
-                f"expected XS/S/M/L. Using default {_DEFAULT_MAX_TURNS} turns.",
-                file=sys.stderr,
-            )
-            turns = _DEFAULT_MAX_TURNS
-    return str(turns)
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
@@ -4316,10 +4268,6 @@ class _IssueTask:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key.",
 )
-@click.option(
-    "--max-turns",
-    help="Override the max turns budget for this run.",
-)
 @click.pass_context
 def run(
     ctx,
@@ -4335,27 +4283,11 @@ def run(
     model,
     debug_flag,
     set_overrides,
-    max_turns,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
     Claims a task, spawns a worktree, and runs claude with the task context.
     On successful completion (exit code 0), automatically runs `polecat finish`.
-
-    Turn budget (--max-turns semantics):
-        One "turn" = one full agentic loop iteration: the model generates a
-        response (potentially with many tool_use blocks) and all tool results
-        are returned.  Calling 10 tools in a single response still counts as
-        ONE turn.  The budget is derived from the task's effort field:
-
-            XS  →  40 turns   (trivial, single-file edits)
-            S   →  70 turns   (small, a few files)
-            M   → 100 turns   (typical PR-scoped work — default)
-            L   → 150 turns   (large, multi-component)
-            (no effort field) → 100 turns
-
-        Hook overhead (~2–4 turns per session for the hydration gate and
-        enforcer compliance check) counts against the budget.
 
     Examples:
         polecat run -p aops              # Run next ready task from aops project
@@ -4717,13 +4649,12 @@ def run(
             # outside the container via `docker logs -f polecat-<task-id>`.
             cmd.extend(
                 [
-                    "-p",
-                    prompt,
                     "--max-turns",
-                    _compute_max_turns(task, max_turns),
                     "--output-format",
                     "stream-json",
                     "--verbose",
+                    "-p",
+                    prompt,
                 ]
             )
 
@@ -4938,16 +4869,10 @@ def run(
                 phase="exit_status",
                 home_dir=manager.home_dir,
                 exit_code=exit_code,
-                turns_max=_compute_max_turns(task, max_turns),
                 container_name=f"polecat-{task.id}" if docker_cmd else None,
                 docker_host=env.get("DOCKER_HOST") or None,
                 transcript_path=str(real_transcript) if real_transcript else None,
             )
-
-            # Analyze the transcript for failures
-            analyze_func = getattr(manager, "analyze_transcript", None)
-            if analyze_func:
-                analyze_func(task, result.stdout, result.stderr)
 
     except FileNotFoundError as exc:
         # Surface the binary the kernel actually couldn't find — not cli_tool.
@@ -5118,13 +5043,10 @@ def run(
 
 
 try:
-    from polecat.diagnostics import analyze as _analyze_cmd
     from polecat.diagnostics import reset_stalled as _reset_stalled_cmd
 except ImportError:
-    from diagnostics import analyze as _analyze_cmd  # type: ignore[no-redef]
     from diagnostics import reset_stalled as _reset_stalled_cmd  # type: ignore[no-redef]
 
-main.add_command(_analyze_cmd)
 main.add_command(_reset_stalled_cmd)
 
 
