@@ -29,6 +29,12 @@ version: 2.0.0
 
 3. **Map Unknowns**: Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
 
+3.5. **Interrogate the task's epistemics** — before structuring, put three questions to the task _itself_. They are prompts, not steps; answer each in a line, then let the answers shape the tree:
+
+- **What evidence best answers this?** Name the _rawest, highest-signal_ source for _this_ question — including the negative/diagnostic record (rejected or closed PRs, reverts, abandoned spikes, recent lived complaints in daily notes), not only the distilled corpora you already reach for (open issues, retros). Where a mechanical fix was _tried and rejected_ is often the sharpest evidence of a problem only judgment can catch.
+- **What must be observable before success can be judged?** If the result's effect is not already visible in the artifacts you can inspect, building that instrumentation is a prerequisite task, not an afterthought — you cannot verify a gate you cannot see fire.
+- **Does the artifact's nature dictate the verification shape?** A qualitative or judgment-based output is proven by observation in the wild and deliberate boundary-probing; crafted pass/fail cases supplement but do not substitute for it. Match the test to the nature of the thing; do not mechanise a qualitative target.
+
 4. **Cross-cutting Impact & Prerequisites** — Ask two questions: (a) "What other projects consume or depend on what's changing?" Search PKB for affected tasks/epics — scope per-project queries with `list_tasks(project=<project-id>)` rather than inferring membership from ID prefixes or walking parent chains. Create sibling tasks in THOSE projects with `depends_on` pointing back here. (b) "What must be true for this change to work?" For each unmet prerequisite, create a prep task that implementation `depends_on`. Both often live in different projects.
 
 5. **Derive a composite Workflow**:
@@ -71,15 +77,7 @@ version: 2.0.0
 
 ## Workflow-Step Mapping Example
 
-Epic: "Add user authentication" using `feature-dev` workflow:
-
-| Workflow Step              | Task(s)                                               |
-| -------------------------- | ----------------------------------------------------- |
-| 1. Understand Requirements | Write auth acceptance criteria (planning)             |
-| 2. Propose Plan            | Design auth architecture doc (planning)               |
-| 3. Draft Tests             | Write auth unit tests (execution)                     |
-| 4. Implement               | Implement auth middleware (execution)                 |
-| 5. Verify & Submit         | Run integration tests, review, open PR (verification) |
+See [[decomposition-patterns#workflow-step-mapping]] for a worked workflow-step → task mapping (the `feature-dev` example).
 
 ## Task Handoff Quality (P#120)
 
