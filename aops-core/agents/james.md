@@ -56,4 +56,3 @@ Your loop:
    - Begin with the review metadata, summarize reviewer outputs, and provide your synthesized verdict.
    - Always provide specific and constructive feedback.
    - Where changes are required, explain what good looks like.
-

@@ -18,11 +18,11 @@ The supervisor maintains structured state in the epic body. This is the **only**
 
 ### Work Items
 
-| # | ID       | Title       | Status                | Worker | Review surface | Notes           |
-| - | -------- | ----------- | --------------------- | ------ | -------------- | --------------- |
-| 1 | task-abc | Fix widget  | done                  | claude | #234           | merged 10:45    |
-| 2 | task-def | Add tests   | merge_ready           | gemini | #235           | open PR         |
-| 3 | task-ghi | Update docs | ready                 | —      | —              | unblocked by #1 |
+| # | ID       | Title       | Status      | Worker | Review surface | Notes           |
+| - | -------- | ----------- | ----------- | ------ | -------------- | --------------- |
+| 1 | task-abc | Fix widget  | done        | claude | #234           | merged 10:45    |
+| 2 | task-def | Add tests   | merge_ready | gemini | #235           | open PR         |
+| 3 | task-ghi | Update docs | ready       | —      | —              | unblocked by #1 |
 
 ## Pattern Memory
 
