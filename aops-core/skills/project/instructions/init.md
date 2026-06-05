@@ -602,9 +602,19 @@ dvc remote add -d storage <remote-path>  # configure with user
 Add `data/raw/` to DVC tracking. Ensure `.dvc/` is committed but
 `data/raw/` is in `.gitignore`.
 
-## Step 6: Context map
+## Step 6: Documentation Index
 
-Create `.agents/context-map.json` by following the [[context-map-audit]] workflow. This makes the repo's documentation discoverable by any agent. At scaffolding time, the map will typically contain entries for README.md, `.agents/CORE.md`, `docs/METHODOLOGY.md`, and any other documentation created in earlier steps.
+Create `.agents/INDEX.md`. This plain-text index makes the repo's documentation discoverable by any agent via the `@.agents/INDEX.md` include in `CORE.md`.
+
+```markdown
+# Available Documentation
+
+- **`README.md`**: Project overview, architecture, and installation
+- **`.agents/CORE.md`**: Core architecture decisions, agent instructions, and project rules
+- **`docs/METHODOLOGY.md`**: (if applicable) Research methods and design
+```
+
+Add any other documentation created in earlier steps to this list.
 
 ## Step 7: PKB integration
 

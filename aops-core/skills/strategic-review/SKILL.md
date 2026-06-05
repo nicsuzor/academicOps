@@ -51,7 +51,7 @@ You are the ARCHITECTURAL-FIT reviewer (Pauli). Correctness, tests, and basic ax
    - _Reimplementing Platform_: Building in-framework what is native to Git, GitHub, OS, etc.
    - _Coordination/Gate Creep_: Unnecessary new gates, hooks, or control mechanisms.
    - _Complexity without Demonstrated Benefit_: New fields/enums/code surfaces without an active, deterministic, downstream consumer.
-   - _Unregistered/Under-integrated Mechanism_: Adding a step, gate, or lifecycle hook without documenting it in its canonical spec, `specs/ENFORCEMENT-MAP.md`, `.agents/context-map.json`, or README.
+   - _Unregistered/Under-integrated Mechanism_: Adding a step, gate, or lifecycle hook without documenting it in its canonical spec, `specs/ENFORCEMENT-MAP.md`, `.agents/INDEX.md`, or README.
    - _Unjustified Removal_: Dropping existing checks/gates without replacing their safety invariants.
 5. **Propagation Completeness**: Enumerate all sites implementing the old pattern/schema across the entire repository (using PR diff, not just local branch status) and confirm they are migrated.
 6. **Persistence Trace**: Trace the full write path to a durable resting place (explicit filename/path) for any new/altered persistence mechanisms.

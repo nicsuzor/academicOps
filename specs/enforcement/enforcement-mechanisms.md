@@ -85,7 +85,7 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Pipeline layer**: L1 Context injection
 - **Pyramid tier**: base
 - **Trigger**: UserPromptSubmit hook event (non-subagent, non-task-notification)
-- **Purpose**: Inject the skills-routing table and context-map hints so the agent sees relevant skills/docs without a full hydration pass.
+- **Purpose**: Inject the skills-routing table so the agent sees relevant skills without a full hydration pass.
 - **Location**: `aops-core/hooks/router.py` — `_run_lightweight_hydrator` (~line 411)
 - **Scope**: polecat, crew, interactive
 - **Status**: active
@@ -119,16 +119,6 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Location**: TBD — verify at next pass (referenced in hydrator design; rendering path not isolated in one file)
 - **Scope**: polecat, crew, interactive
 - **Status**: active — verify
-
-#### Context-map injection
-
-- **Pipeline layer**: L1 Context injection
-- **Pyramid tier**: base
-- **Trigger**: UserPromptSubmit, when `.agents/context-map.json` exists in cwd
-- **Purpose**: Surface curated doc references keyed to user prompts so the agent reaches for known-good context.
-- **Location**: `aops-core/hooks/router.py` — `_inject_context_map_hints` (~line 447)
-- **Scope**: polecat, crew, interactive
-- **Status**: active
 
 ### L2 Decomposition
 

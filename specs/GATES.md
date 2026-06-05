@@ -31,7 +31,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 
-**Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint + context-map injection on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
+**Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
 **Historical name.** `custodiet` was the previous name for the `enforcer` gate. Old references to `custodiet_*` env vars or the `custodiet` gate map one-to-one onto `enforcer`. See the ultra-vires-enforcer spec (brain PKB) §rename-note.
 
@@ -436,20 +436,18 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 
 ## Reserved names: `hydration`
 
-`hydration` is accepted in the `gates.*` schema and exposed via `HYDRATION_GATE_MODE`, but `lib/gates/definitions.py` does not define a `hydration` `GateConfig`. The visible "hydration" behaviour is two non-blocking injections in the router:
+`hydration` is accepted in the `gates.*` schema and exposed via `HYDRATION_GATE_MODE`, but `lib/gates/definitions.py` does not define a `hydration` `GateConfig`. The visible "hydration" behaviour is one non-blocking injection in the router:
 
 - **Skills-routing hint** — `router.py:_run_lightweight_hydrator` adds template `hydration.warn` on every UserPromptSubmit in main-agent context.
-- **Context-map hint** — `_inject_context_map_hints` injects `.agents/context-map.json` entries on the same event.
 
-Both run unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
+It runs unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
 
-| Concern               | Path                                                                                   |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`)                            |
-| Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)                               |
-| Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`, `_inject_context_map_hints`) |
-| Routing-hint template | `aops-core/hooks/templates/hydration-gate-warn.md`                                     |
-| Context-map loader    | `aops-core/lib/context_map.py`                                                         |
+| Concern               | Path                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`) |
+| Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)    |
+| Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`)   |
+| Routing-hint template | `aops-core/hooks/templates/hydration-gate-warn.md`          |
 
 **Verify the injection landed**:
 
@@ -458,7 +456,7 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
   | jq -r 'select(.output.context_injection!=null) | "\(.logged_at) \(.output.context_injection[:120])"'
 ```
 
-**Common failures**: no injection at all → confirm `is_subagent=False` and `_is_task_notification` returned False. No context-map hints → confirm `<cwd>/.agents/context-map.json` exists. Expected a verdict and got none → there is no policy; this is by design.
+**Common failures**: no injection at all → confirm `is_subagent=False` and `_is_task_notification` returned False. Expected a verdict and got none → there is no policy; this is by design.
 
 ---
 

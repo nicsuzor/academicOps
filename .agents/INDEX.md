@@ -1,0 +1,23 @@
+# Available Documentation
+
+- **`README.md`**: academicOps framework overview, core loop, architecture, installation, and design principles
+- **`aops-core/skills/remember/references/TAXONOMY.md`**: Canonical definitions for all framework concepts — goal, project, epic, task, action, workflow, skill, procedure and their relationships
+- **`.agents/rules/AXIOMS.md`**: Inviolable principles and their logical derivations — fail-fast, DRY, verify-first, no workarounds
+- **`.agents/rules/AXIOMS-REVIEW.md`**: Review questions for universal axioms — used by rbg (the Judge) for compliance auditing
+- **`.agents/rules/HEURISTICS.md`**: Working hypotheses validated by evidence — task management, decomposition, CLI patterns
+- **`specs/CONSTRAINTS.md`**: Hard rules for framework internals — file length limits, naming conventions, enforced by pre-commit hooks
+- **`specs/ENFORCEMENT-MAP.md`**: Maps rules to enforcement mechanisms — which rules are enforced by hooks, gates, prompts, or detection
+- **`aops-core/hooks/gate_config.py`**: Gate configuration source of truth — tool categories, compliance subagent types, gate modes, env var injection
+- **`tests/hooks/test_gate_verdict_logic.py`**: Gate verdict regression tests — parameterised mode overrides and fixture-driven scenarios for all gates
+- **`tests/hooks/`**: All hook tests — gate verdicts, gate config, router formatting, hydration, session env setup, autocommit
+- **`tests/README.md`**: Test suite overview — directory structure, how to run tests, what's tested
+- **`aops-core/skills/project/workflows/context-map-audit.md`**: How to create and audit .agents/context-map.json — the repo's self-description for agent discovery
+- **`specs/audit/AGENT-COMPLIANCE-MATRIX.md`**: Compliance matrix for agents against the Agent Authority spec — required fields, naming, referential integrity
+- **`specs/CAPABILITIES.md`**: Framework Capabilities & Artifacts — conventions, transcript naming, and finding artifacts
+- **`specs/audit/AGENT-TOOLS.md`**: Authoritative agent × tool access matrix — groups tools by server, highlights exclusivity and drift
+- **`specs/audit/AGENT-REMEDIATION-BACKLOG.md`**: Backlog of required fixes to bring agents and skills into full compliance with authority specs
+- **`scripts/audit_agent_compliance.py`**: Generator script for agent compliance and tool matrices
+- **`specs/meta/doc-taxonomy.md`**: Documentation typology — five classes of document (instructions, specs, state, audit-artifact, docs), their audiences, and canonical file paths
+- **`specs/GATES.md`**: Runtime gate catalogue and forensic reference — what each gate is, where it lives, how to configure/verify/debug it
+- **`specs/SURFACES.md`**: Execution surfaces — where Claude Code and Gemini CLI run, what each surface can do, operational facts
+- **`specs/session-insights-metrics-schema.md`**: Schema for the already-extracted session-summaries corpus — timeline_events (user prompts, tool calls, events per session), token metrics, reflections. Query this corpus under $AOPS_SESSIONS/summaries/ instead of re-deriving from raw transcripts

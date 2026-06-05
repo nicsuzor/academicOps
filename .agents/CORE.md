@@ -23,14 +23,14 @@ If reading source code is your first move, you've skipped this step. Stop and ch
 
 ## Path Discovery (CRITICAL)
 
-To discover project locations, read `.agents/context-map.json` in the relevant repo. If the map is missing or any path it references does not exist, STOP and report.
+To discover project locations, read `.agents/INDEX.md` in the relevant repo. If the file is missing, STOP and report.
 
 ## Fail-Fast / Halt Rule (ENFORCED)
 
 If you cannot do what was asked, **STOP and report** — do NOT search broadly, do NOT invent workarounds.
 
 - **Missing Paths**: If a documented path does not exist, STOP and report.
-- **No Broad Grep**: Never grep `$HOME` or `/` to find source repos or documents. Use `context-map.json` for discovery.
+- **No Broad Grep**: Never grep `$HOME` or `/` to find source repos or documents. Use `.agents/INDEX.md` for discovery.
 - **Tool Failures**: If a tool doesn't work as documented, report the failure — do not invent alternatives.
 - **Ambiguity**: If instructions conflict or are ambiguous, ask for clarification.
 - **Unsatisfiable / out-of-scope AC**: If an acceptance criterion cannot be met _as written_ — it needs runtime access, a config/settings change outside your worktree, or a method you cannot run — HALT and report `blocked` with the specific impediment. Do NOT substitute an easier _adjacent_ action you _can_ perform and justify it against a loose reading of the AC; that is the streetlight effect (searching where the light is, not where the answer is). Per **A6b** you cannot weaken or substitute the criteria; per **A8** substituting a working-looking alternative is routing around a failure. This applies to methodology too: if a loaded methodology (e.g. a live self-test) requires a method you can't run, run it or halt — a synthetic stand-in is substitution, not the test.

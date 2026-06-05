@@ -9,9 +9,7 @@ Checks:
 1. Index wikilinks: WORKFLOWS.md wikilinks resolve to workflows/*.md files
 2. Index skills: SKILLS.md entries resolve to skills/*/SKILL.md or commands/*.md
 3. Workflow length: Workflow files must be <= 100 lines (C1 constraint)
-4. Context-map coverage: every spec under spec_dirs is indexed (docs[]) or
-   knowingly excluded (exclude[]); mapped/excluded paths still exist (#1364)
-5. Full wikilinks: All wikilinks across the codebase resolve (--full mode, CI only)
+4. Full wikilinks: All wikilinks across the codebase resolve (--full mode, CI only)
 """
 
 from __future__ import annotations
@@ -228,10 +226,7 @@ def main() -> int:
     # 3. Workflow length constraint
     all_errors.extend(check_workflow_length(plugin_root))
 
-    # 4. Context-map coverage (#1364): specs indexed or knowingly excluded
-    all_errors.extend(check_context_map_coverage(root))
-
-    # 5. Full codebase wikilinks (CI only)
+    # 4. Full codebase wikilinks (CI only)
     if full_mode:
         all_errors.extend(check_full_wikilinks(root))
 
