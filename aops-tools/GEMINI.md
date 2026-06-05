@@ -4,7 +4,7 @@ This package provides **fungible** academic domain skills for the academicOps fr
 
 ## Path Discovery (CRITICAL)
 
-To discover project locations, read `.agents/context-map.json` in the relevant repo. If the map is missing or any path it references does not exist, STOP and report.
+To discover project locations, read `.agents/INDEX.md` in the relevant repo. If the file is missing, STOP and report.
 
 ## Fail-Fast / Halt Rule (ENFORCED)
 

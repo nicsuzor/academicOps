@@ -341,5 +341,4 @@ Projects customise the framework by adding files to a `.agents/` directory:
 
 - **`.agents/rules/`** — Project-specific rules loaded as binding constraints
 - **`.agents/workflows/`** — Project-specific workflows supplementing the global index
-- **`.agents/context-map.json`** — Maps project documentation to topics for just-in-time context injection
-  index to aid discovery of project knowledge
+- **`.agents/INDEX.md`** — Plain-text index of project documentation to aid discovery of project knowledge

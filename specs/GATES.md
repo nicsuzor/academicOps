@@ -491,5 +491,3 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 ### Doc shape
 
 This file is a state-category SSoT per the doc-taxonomy spec (brain PKB). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for the Phase C subsystem consolidations (epic `aops-2b8dd7a7`).
-subsystem consolidations (epic `aops-2b8dd7a7`).
-ns (epic `aops-2b8dd7a7`).
