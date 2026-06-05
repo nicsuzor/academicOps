@@ -4670,9 +4670,8 @@ def run(
             # outside the container via `docker logs -f polecat-<task-id>`.
             cmd.extend(
                 [
-                    "--max-turns",
                     "--output-format",
-                    "stream-json",
+                    "--stream-json",
                     "--verbose",
                     "-p",
                     prompt,
