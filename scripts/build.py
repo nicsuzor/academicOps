@@ -2012,7 +2012,6 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     print(f"  ✓ Generated {root_marketplace} (for repository root)")
 
 
-
 def package_artifacts(
     aops_root: Path, dist_root: Path, version: str, target_platform: str | None = None
 ):
