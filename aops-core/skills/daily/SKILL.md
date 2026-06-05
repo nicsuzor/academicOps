@@ -45,13 +45,14 @@ The daily note must follow this exact section order:
    - **In-flight**: A chronological Morning Timeline anchored on verbatim user prompts with outcome summaries. Add "Needs your call" pending decision counts.
    - **Closed**: Factual editorial summary of progress, patterns, and blockers.
    - **Empty Morning**: Omit section entirely.
-3. **Status**: Factual snapshot. Includes SEV4 committed targets cap warning (warn if >2), ready tasks counts by priority denominator, deadlines (due ≤7 days sorted ascending), high-focus tasks sorted by `focus_score`, and calendar events. No recommendations.
-4. **What Needs Attention**:
+3. **Escalated Deadlines**: Hoisted conditional section shown only when there are active Tier 3 or Tier 4 tasks (under the Importance-to-Visibility Escalation Model). Includes verbatim consequence warnings for Tier 4 tasks.
+4. **Status**: Factual snapshot. Includes SEV4 committed targets cap warning (warn if >2), ready tasks counts by priority denominator, deadlines (due ≤7 days sorted ascending), high-focus tasks sorted by `focus_score`, and calendar events. No recommendations.
+5. **What Needs Attention**:
    - **Inbox items** with conversation content summaries and checkboxes.
    - **Mobile captures** scanned and routed to tasks/memories.
    - **Outstanding Workflows**: PR status snapshot (merged, review, fixes, stale, drafts) sourced from the `pr-state.json` artifact (flag as stale if artifact >24h old). PR Triage Dashboard if PRs ≥10.
-5. **Carryover**: Uncompleted tasks from yesterday (verified against live PKB state). Omit if empty.
-6. **Work Log**: Provenance data wrapped in a `<details>` collapsible tag, listing merged PRs and completed tasks. No session narrative duplication.
+6. **Carryover**: Uncompleted tasks from yesterday (verified against live PKB state). Omit if empty.
+7. **Work Log**: Provenance data wrapped in a `<details>` collapsible tag, listing merged PRs and completed tasks. No session narrative duplication.
 
 ## Loop-Closer Sweeps
 

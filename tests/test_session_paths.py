@@ -156,6 +156,7 @@ class TestSessionPaths(unittest.TestCase):
         )
         self.assertTrue(result)
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_is_gemini_session_prefix_not_detected(self):
         """NO FALLBACKS: a 'gemini-' session-id prefix is no longer a detection
         signal. Without GEMINI_SESSION_ID / a /.gemini/ transcript_path, it is

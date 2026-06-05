@@ -43,13 +43,65 @@ P3  265
 
 Do **not** fabricate a denominator, reuse the global `ready` total as a stand-in, or have the LLM count tasks to synthesise one. A wrong denominator is worse than none — it reintroduces exactly the impossible-ratio failure (#182) this surface was built to prevent.
 
+### 3.2a: Escalated Deadlines
+
+If there are any tasks matching the Tier 3 or Tier 4 criteria under the Importance-to-Visibility Escalation Model (defined in [[60-importance-escalation]]), render a hoisted section `## 🚨 ESCALATED DEADLINES` right above the `## Status` section.
+
+**Escalation Criteria Evaluation**:
+
+1. Load all active tasks (`status` in {`queued`, `ready`, `in_progress`}) with a non-empty `due` date.
+2. For each task, retrieve the following metadata:
+   - `due`: due date (string `YYYY-MM-DD`). Compute $T_{\text{due}} = t_{\text{due}} - t_{\text{now}}$ (in days).
+   - `severity` and `consequence` (either from task itself, or inherited from linked `target` nodes via `goals` field).
+   - `effort`: estimated effort (default to `0.1` days if not set, else `XS`=0.25, `S`=0.5, `M`=1.0, `L`=3.0, `XL`=5.0).
+   - `immovable`: boolean flag indicating if the deadline is external/immovable (default: false).
+3. Compute the **Slack Ratio** $SR = E / \max(0.5, T_{\text{due}})$ (with $SR = 1.0$ if $T_{\text{due}} \le 0$).
+4. Categorize tasks into Visibility Tiers:
+   - **Tier 4 (Unmissable)**:
+     - $T_{\text{due}} \le 0$ AND $S \ge \text{SEV2}$ (overdue high consequence)
+     - $S \ge \text{SEV3}$ AND $T_{\text{due}} \le 2$
+     - $S \ge \text{SEV2}$ AND $M = \text{true}$ AND $T_{\text{due}} \le 2$
+     - $SR \ge 0.5$ AND $T_{\text{due}} \le 2$
+   - **Tier 3 (Prominent)**:
+     - $S \ge \text{SEV3}$ AND $T_{\text{due}} \le 3$
+     - $S \ge \text{SEV2}$ AND $M = \text{true}$ AND $T_{\text{due}} \le 3$
+     - $SR \ge 0.35$ AND $T_{\text{due}} \le 5$
+   - **Tier 2 (Elevated)**:
+     - $S \ge \text{SEV2}$ AND $T_{\text{due}} \le 7$
+     - $S \ge \text{SEV1}$ AND $M = \text{true}$ AND $T_{\text{due}} \le 5$
+     - $SR \ge 0.20$ AND $T_{\text{due}} \le 7$
+
+**Rendering Logic**:
+If there are any Tier 3 or Tier 4 tasks, render `## 🚨 ESCALATED DEADLINES` as a top-level section above `## Status`:
+
+1. Render all **Tier 4 (Unmissable)** tasks first as callout/alert blocks:
+   ```markdown
+   > [!CAUTION]
+   >
+   > ### 🚨 CRITICAL DEADLINE: [task-id] [[Title]]
+   >
+   > **Consequence if missed**: <Verbatim consequence prose from task or linked target>\
+   > **Due**: YYYY-MM-DD (Nd away / today / overdue Nd) | **Effort**: E
+   >
+   > - [ ] **Action Required**: Resolve or progress this task immediately.
+   ```
+   Note: The consequence text MUST be printed verbatim. If the task itself does not carry `consequence`, pull the `consequence` text from the linked target node in its `goals` field.
+2. Render all **Tier 3 (Prominent)** tasks next as checkboxes:
+   ```markdown
+   - [ ] **[task-id]** [[Title]] — due YYYY-MM-DD (Nd away) — **[⚠ SEV<S> IMMOVABLE]** (Effort: E)
+   ```
+   If the task is not immovable, omit the `IMMOVABLE` keyword.
+3. If a task has escalated to Tier 3 or Tier 4, it is **hoisted out** of the standard `### 3.3: Deadline List` and `### 3.3a: High-Focus Surface` lists to prevent duplication.
+
 ### 3.3: Deadline List
 
-Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sort by due date ascending. List each on its own line:
+Pull tasks with `due` ≤ 7 days via `mcp__pkb__list_tasks(format=json)` and sort by due date ascending. Exclude tasks hoisted to `## 🚨 ESCALATED DEADLINES`. List each on its own line:
 
 ```
-- [task-id] [[Title]] — due YYYY-MM-DD (Nd away / overdue Nd)
+- [task-id] [[Title]] [⚠ SEV<S> IMMOVABLE] — due YYYY-MM-DD (Nd away / overdue Nd)
 ```
+
+_(Only include the [⚠ SEV<S> IMMOVABLE] badge if the task is in Tier 2/Elevated status and has those properties.)_
 
 ### 3.3a: High-Focus Surface (Target-Driven Grouping)
 

@@ -40,6 +40,19 @@ The morning is the framework eating its own dogfood: yesterday's PR wave landed 
 
 (Omit `## Today's Log` entirely on an empty morning with no sessions. See [[instructions/morning-timeline]] / [[instructions/work-summary]].)
 
+## 🚨 ESCALATED DEADLINES
+
+> [!CAUTION]
+>
+> ### 🚨 CRITICAL DEADLINE: [task-dp27] [[ARC DP27 Assessor Reviews]]
+>
+> **Consequence if missed**: 7 full grant reviews (~1+ day of work) will be missed, causing a SEV3 consequence for relationship with ARC.
+> **Due**: 2026-06-05 (today) | **Effort**: M (1.0 day) [IMMOVABLE]
+>
+> - [ ] **Action Required**: Complete the assessor reviews immediately.
+
+- [ ] **[task-xyz]** [[Other Escalated Work]] — due 2026-06-08 (3d away) — **[⚠ SEV2 IMMOVABLE]** (Effort: S)
+
 ## Status
 
 ```
@@ -132,7 +145,7 @@ No tasks completed today.
 
 ## Design Notes
 
-**Lede plus five sections, in order: Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log.** The note's headline job is US-5 recovery, so it is shape-first: the **lede** (2–3 line present-tense synthesis) leads because the returning user's first question is "what's the shape of right now?"; **Today's Log** sits immediately under it because "what was I just trying to do?" is the next question, and the Morning Timeline answers it verbatim (this is the recovery substrate, AC-14). **Status** (dashboard) and **What Needs Attention** (inbox/PRs) follow as factual inventory; **Carryover** is demoted to a supporting position (it used to lead, but a long checklist at the top is the scaffolding that buried the signal — AC-13); **Work Log** is provenance at the bottom. Earlier versions led with Carryover and buried the synthesis as a closing paragraph (AC-16 failure) — that is exactly the order this template now inverts.
+**Lede plus six sections, in order: Lede → Today's Log (recovery substrate) → Escalated Deadlines (hoisted conditional) → Status → What Needs Attention → Carryover → Work Log.** The note's headline job is US-5 recovery, so it is shape-first: the **lede** (2–3 line present-tense synthesis) leads because the returning user's first question is "what's the shape of right now?"; **Today's Log** sits immediately under it because "what was I just trying to do?" is the next question, and the Morning Timeline answers it verbatim (this is the recovery substrate, AC-14). **Escalated Deadlines** (if active) and **Status** (dashboard) follow; **What Needs Attention** (inbox/PRs) and **Carryover** follow as factual inventory; **Work Log** is provenance at the bottom. Earlier versions led with Carryover and buried the synthesis as a closing paragraph (AC-16 failure) — that is exactly the order this template now inverts.
 
 **The lede is a compression, hoisted — never a closing paragraph.** It is the _same_ synthesis Today's Log produces, distilled to 2–3 lines and placed at the top (persist to `daily_narrative`). It must not restate the full timeline. When a source genuinely failed (after a real load attempt + retry), a one-line **Degraded sources** block sits directly under the lede — the degradation is visible _as degradation, up front_, never as full stale sections with footnotes (AC-15).
 

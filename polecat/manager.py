@@ -149,11 +149,12 @@ def resolve_project_path(
     search_dirs = []
     if src_dir:
         search_dirs.append(Path(_expand_env(src_dir)))
+    user_name = os.environ.get("USER", "worker")  # allow-fallback: test runs in environment without USER env var  # fmt: skip
     search_dirs.extend(
         [
             Path.home() / "src",
             Path.home(),
-            Path("/opt") / os.environ["USER"],
+            Path("/opt") / user_name,
         ]
     )
 
