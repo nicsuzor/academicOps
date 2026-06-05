@@ -4615,6 +4615,8 @@ def run(
             "yolo",
             "--include-directories",
             "/home/worker/.gemini/extensions/aops-core",
+            "--output-format",
+            "stream-json",
             "--model",
             session_cfg.gemini_model,
         ]
@@ -4671,7 +4673,7 @@ def run(
             cmd.extend(
                 [
                     "--output-format",
-                    "--stream-json",
+                    "stream-json",
                     "--verbose",
                     "-p",
                     prompt,
