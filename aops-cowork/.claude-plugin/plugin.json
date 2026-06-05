@@ -1,0 +1,17 @@
+{
+  "name": "aops-cowork",
+  "version": "0.3.35-dev.0+g8a04ce6e.dirty",
+  "description": "academicOps for Cowork \u2014 research workflow automation tuned for the Cowork harness: PKB tasks mirror onto the native task list at claim and sync back on completion.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "framework",
+    "workflow",
+    "cowork"
+  ],
+  "mcpServers": "./.mcp.json"
+}
