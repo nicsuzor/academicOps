@@ -178,7 +178,7 @@ session — do not pad it to look complete. Honest-partial beats false-whole.
      --body "<what changed and why; add a '## Deliberately deferred' section \
 if anything was deferred>\\n\\nCloses {task_id}" \\
      --head <branch-name> \\
-     --base main
+     --base dev
    # For a PARTIAL stop, also pass --draft.
    ```
 

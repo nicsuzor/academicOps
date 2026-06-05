@@ -1,6 +1,6 @@
 # GitHub Ruleset: PR Review and Merge rules
 # Ruleset ID: 13762049
-# Applied to: default branch (~DEFAULT_BRANCH) of nicsuzor/academicOps
+# Applied to: dev integration branch (refs/heads/dev) of nicsuzor/academicOps
 #
 # This file is the authoritative reference for the repository ruleset.
 # It cannot be auto-applied via REST API (some rule types like merge_queue
@@ -31,7 +31,7 @@ target: branch
 conditions:
   ref_name:
     include:
-      - ~DEFAULT_BRANCH  # main branch
+      - refs/heads/dev  # dev integration branch (PRs target dev; main is publish-only)
     exclude: []
 
 enforcement: active
@@ -47,13 +47,13 @@ rules:
   # Prevent branch deletion
   # ─────────────────────────────────────────
   - type: deletion
-    # Purpose: Protects main from accidental deletion
+    # Purpose: Protects dev from accidental deletion
 
   # ─────────────────────────────────────────
   # Require linear history (no force-push)
   # ─────────────────────────────────────────
   - type: non_fast_forward
-    # Purpose: Prevents force-pushes that would rewrite history on main
+    # Purpose: Prevents force-pushes that would rewrite history on dev
 
   # ─────────────────────────────────────────
   # Require pull request before merging
