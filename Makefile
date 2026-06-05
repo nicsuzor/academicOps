@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -56,9 +56,10 @@ help:
 	@echo "  make install-windows - (WSL only) Install into Windows-side Claude/Gemini if present"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
-	@echo "Release Management (Automation):"
-	@echo "  make nextver        - Show next version number"
-	@echo "  make release        - Manually tag/push (prefer release-please PRs)"
+	@echo "Release Management:"
+	@echo "  make nextver        - Show current build, next prerelease, stable source"
+	@echo "  make release        - Cut a STABLE release via release-please (merge its PR)"
+	@echo "  make prerelease     - Cut a beta tag (vX.Y.Z-beta.N; --prerelease, main untouched)"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          - Remove dist/ and prune stale plugin cache"
@@ -321,22 +322,74 @@ install-crontab:
 	fi
 
 # --- Release Management ---
+#
+# Stable versions are owned by release-please. As Conventional-Commit changes land
+# on `dev`, release-please maintains a release PR; merging it tags vX.Y.Z, which
+# build-extension.yml builds and publishes to `main` (the stable install channel).
+# `make release` merges that PR. Prereleases are separate: `make prerelease` cuts a
+# vX.Y.Z-beta.N tag that ships ONLY as a `--prerelease` GitHub Release (main left
+# untouched) — see build-extension.yml's tag-shape classification.
 
-
-# Show current and next version
+# Show the version picture: current build, next prerelease tag, where stable comes from.
 nextver:
-	@current=$$(uv run python scripts/version.py --get); \
-	next=$$(uv run python scripts/version.py --next patch); \
-	echo "Current: v$$current → Suggested Next: v$$next"
+	@cur=$$(uv run python scripts/version.py --get); \
+	pre=$$(uv run python scripts/version.py --prerelease beta); \
+	echo "Current build:    $$cur"; \
+	echo "Next prerelease:  v$$pre   ->  make prerelease"; \
+	echo "Next stable:      via release-please  ->  make release"
 
-# Manual tag and push (Release-please is preferred)
+# Cut a STABLE release by merging release-please's open dev release PR. release-
+# please then tags vX.Y.Z (with AOPS_DIST_PAT) and build-extension.yml builds +
+# publishes the distribution to main. Only a dev-targeted release-please PR is
+# valid here; a stray `release-please--branches--main` PR is ignored (main is the
+# published dist branch, never a PR base).
 release:
-	@next=$$(uv run python scripts/version.py --next patch); \
-	branch=$$(git rev-parse --abbrev-ref HEAD); \
-	echo "Manual Release v$$next on $$branch..."; \
-	git tag -a "v$$next" -m "release v$$next" && \
-	git push origin "$$branch" "v$$next" && \
-	echo "✓ Released v$$next (Note: Release-please PR might be out of sync)"
+	@command -v gh >/dev/null 2>&1 || { echo "x gh CLI not found — needed to drive release-please."; exit 1; }; \
+	pr=$$(gh pr list --state open --base dev --json number,headRefName \
+	      --jq '[.[] | select(.headRefName | startswith("release-please"))][0].number // empty'); \
+	if [ -z "$$pr" ]; then \
+	  echo "No open dev-targeted release-please PR to merge."; \
+	  echo; \
+	  echo "  release-please opens the release PR automatically as commits land on dev."; \
+	  echo "  If none is open, either nothing release-worthy has landed, or release-"; \
+	  echo "  please state is out of sync (manifest behind the shipped tags)."; \
+	  echo; \
+	  echo "  Force a version (runs release-please on dev, NOT main):"; \
+	  echo "    gh workflow run release-please.yml --ref dev -f release_as=X.Y.Z"; \
+	  exit 1; \
+	fi; \
+	title=$$(gh pr view $$pr --json title --jq .title); \
+	echo "Merging release-please PR #$$pr — $$title"; \
+	gh pr merge $$pr --merge \
+	  && echo "Merged #$$pr. release-please will tag the release; build-extension.yml then builds + publishes to main." \
+	  || { echo "x Merge blocked (branch protection / checks). Retry: gh pr merge $$pr --merge --admin"; exit 1; }
+
+# Cut a beta/testing release for testers. Pushes a vX.Y.Z-<label>.N tag on the
+# CURRENT commit; build-extension.yml classifies the '-' suffix as a prerelease,
+# builds installable assets into a `--prerelease` GitHub Release, and leaves main
+# (the stable channel) untouched. release-please is intentionally NOT involved.
+#   make prerelease                 # next patch above latest stable in series, beta.N
+#   make prerelease LABEL=rc        # use rc.N instead of beta.N
+#   make prerelease VERSION=0.4.0   # force the base version (still auto-increments .N)
+LABEL ?= beta
+prerelease:
+	@branch=$$(git rev-parse --abbrev-ref HEAD); \
+	head=$$(git rev-parse --short HEAD); \
+	if [ -n "$(VERSION)" ]; then \
+	  tag="v$$(uv run python scripts/version.py --prerelease $(LABEL) --base $(VERSION))"; \
+	else \
+	  tag="v$$(uv run python scripts/version.py --prerelease $(LABEL))"; \
+	fi; \
+	if git rev-parse -q --verify "refs/tags/$$tag" >/dev/null; then \
+	  echo "x Tag $$tag already exists locally."; exit 1; \
+	fi; \
+	echo "Prerelease $$tag  (commit $$head on $$branch)"; \
+	if git rev-parse -q --verify "origin/$$branch" >/dev/null 2>&1 \
+	   && ! git merge-base --is-ancestor HEAD "origin/$$branch"; then \
+	  echo "!  HEAD is ahead of origin/$$branch — push your branch first if you want this commit on $$branch (the tag still carries it)."; \
+	fi; \
+	git tag "$$tag" && git push origin "$$tag" \
+	  && echo "Pushed $$tag → build-extension.yml cuts a --prerelease Release (main untouched)."
 
 # --- Docker ---
 
