@@ -188,8 +188,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          # -f to bypass any .gitignore rule that would hide plugin payload files.
-          git add -f aops-* .claude-plugin/marketplace.json gemini-extension.json 2>/dev/null || true
+          # The plugin payload is gitignored (.claude-plugin/marketplace.json and
+          # gemini-extension.json by name; built dirs by .gitignore on main), so
+          # `git add -A` skips it — force-add it. Per halt-on-failure, split the
+          # two error classes instead of masking both with `2>/dev/null || true`:
+          #  • an empty `aops-*` glob (no built dirs) is benign → xargs -r no-ops;
+          #  • a missing manifest is a broken build → `git add -f` exits non-zero
+          #    and `set -e` fails the publish loudly rather than shipping a
+          #    marketplace that points at directories it never staged.
+          find . -maxdepth 1 -name 'aops-*' -type d -print0 | xargs -0 -r git add -f
+          git add -f .claude-plugin/marketplace.json gemini-extension.json
           if git diff --cached --quiet; then
             echo "main already in sync — nothing to publish"
           else

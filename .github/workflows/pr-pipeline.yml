@@ -44,10 +44,14 @@ jobs:
         run: echo "Environment gate approved or bypassed"
 
   # ─── Step 0.4: Guard — no built artifacts on dev ───────────────────
-  # dev is source-only. Built plugin dirs and dist/ live exclusively on the
-  # published `main` branch (see build-extension.yml). Fail fast if any PR
-  # targeting dev tracks distribution artifacts, so they can never land on
-  # dev and conflict with the source tree.
+  # dev is source-only. Built plugin dirs, dist/, and the GENERATED manifests
+  # (.claude-plugin/marketplace.json + gemini-extension.json — produced by
+  # build.py from templates/, gitignored) live exclusively on the published
+  # `main` branch (see build-extension.yml). Fail fast if any PR targeting dev
+  # tracks distribution artifacts, so they can never land on dev and conflict
+  # with the source tree. The generated manifests are included because they are
+  # gitignored — once untracked, only a deliberate `git add -f` could re-commit
+  # them, which is exactly what this guard must catch.
   guard-no-dist:
     name: Guard — no dist on dev
     if: github.base_ref == 'dev'
@@ -57,13 +61,13 @@ jobs:
       - name: Assert no distribution artifacts are tracked
         run: |
           set -euo pipefail
-          OFFENDERS="$(git ls-files -- dist aops-claude aops-tools-claude aops-cowork aops-gemini aops-tools-gemini aops-antigravity aops-tools-antigravity || true)"
+          OFFENDERS="$(git ls-files -- dist aops-claude aops-tools-claude aops-cowork aops-gemini aops-tools-gemini aops-antigravity aops-tools-antigravity .claude-plugin/marketplace.json gemini-extension.json || true)"
           if [ -n "$OFFENDERS" ]; then
-            echo "::error::Built distribution artifacts must never be committed to dev — they belong only on the published main branch."
+            echo "::error::Built distribution artifacts (dirs or generated manifests) must never be committed to dev — they belong only on the published main branch."
             echo "$OFFENDERS"
             exit 1
           fi
-          echo "✓ dev is clean — no dist/ or built plugin dirs tracked."
+          echo "✓ dev is clean — no dist/, built plugin dirs, or generated manifests tracked."
 
   # ─── Step 0.5: Initialize ──────────────────────────────────────────
   # On opened/reopened/ready_for_review: set merge-prep-status to pending.
