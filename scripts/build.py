@@ -1606,7 +1606,7 @@ def main():
         install_pkb_binary(dist_root / "aops-cowork", pkb_binary)
         install_pkb_binary(dist_root / "aops-antigravity", pkb_binary)
 
-    # Generate marketplace.json for local dev and dist repo
+    # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
 
     package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
@@ -1916,14 +1916,15 @@ jobs:
 
 
 def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
-    """Generate reusable GHA workflows for the dist repo.
+    """Generate reusable GHA workflows for the published distribution.
 
     For each review agent (enforcer, qa), generates a workflow YAML
     that can be called from other repos:
-        uses: nicsuzor/aops/.github/workflows/agent-enforcer.yml@main
+        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@main
 
-    Each workflow checks out the dist repo for the generated agent prompt
-    (from dist/gha-agents/), so no private repo access is needed.
+    Each workflow checks out nicsuzor/academicOps for the generated agent
+    prompt (from `gha-agents/` at the repo root), so no private repo access
+    is needed.
     """
     print("\nGenerating reusable GHA workflows...")
     gha_agents_dir = dist_root / "gha-agents"
@@ -1956,17 +1957,19 @@ def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
 
 
 def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
-    """Generate marketplace.json for both local dev and dist repo consumption.
+    """Generate the single Claude marketplace.json at the repo root.
 
-    Reads the template from templates/marketplace.json and produces two outputs:
-    1. dist/.claude-plugin/marketplace.json — for local dev (paths: ./aops-claude)
-    2. .claude-plugin/marketplace.json — for the repository root (paths: ./dist/aops-claude)
+    Reads templates/marketplace.json — whose plugin sources are root-relative
+    ./dist/aops-* — injects the build version, and writes one
+    .claude-plugin/marketplace.json at the repo root. ONE file, ONE convention:
+    plugins live under dist/ in every consumer, so ./dist/aops-claude resolves
+    correctly whether the marketplace root is the local repo (`marketplace add
+    <repo-root>`, build output in repo/dist/) or the published main branch (the
+    publish step copies this file to the main root → main/dist/aops-claude).
 
-    aops-cowork is deliberately NOT advertised in the marketplace: Cowork on
-    personal Anthropic accounts has no marketplace mechanism, so the plugin is
-    shipped exclusively as `aops-cowork-v{version}.zip` for manual upload via
-    Customize → Add plugins → Upload a file. The aops-core entry in
-    templates/marketplace.json continues to point at the Claude Code CLI build.
+    aops-cowork is not installable via marketplace on personal Anthropic accounts
+    (no marketplace mechanism there); it ships as `aops-cowork-v{version}.zip` for
+    manual upload. The entry is retained so its version stays in lockstep.
     """
     template_path = aops_root / "templates" / "marketplace.json"
     if not template_path.exists():
@@ -1976,41 +1979,17 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     with open(template_path) as f:
         data = json.load(f)
 
-    # Inject versions
+    # Inject the build version into every plugin entry (template uses __VERSION__).
     for plugin in data.get("plugins", []):
-        if plugin.get("name") == "aops-core":
-            plugin["version"] = version
-        elif plugin.get("name") == "aops-tools":
-            plugin["version"] = version
+        plugin["version"] = version
 
-    # 1. Dist repo version (sources point to ./aops-claude)
-    dist_marketplace_dir = dist_root / ".claude-plugin"
-    dist_marketplace_dir.mkdir(parents=True, exist_ok=True)
-    dist_marketplace = dist_marketplace_dir / "marketplace.json"
-    with open(dist_marketplace, "w") as f:
+    marketplace_dir = aops_root / ".claude-plugin"
+    marketplace_dir.mkdir(parents=True, exist_ok=True)
+    marketplace = marketplace_dir / "marketplace.json"
+    with open(marketplace, "w") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
-    print(f"  ✓ Generated {dist_marketplace} (for local dev)")
-
-    # 2. Repo root version (sources point to ./dist/aops-claude)
-    # Use json serialization for a deep copy
-    root_data = json.loads(json.dumps(data))
-    root_plugins = root_data.get("plugins", [])  # allow-fallback: optional in marketplace.json
-    for plugin in root_plugins:
-        if plugin.get("source"):
-            src = plugin["source"]
-            if src.startswith("./"):
-                plugin["source"] = f"./dist/{src[2:]}"
-            else:
-                plugin["source"] = f"./dist/{src}"
-
-    root_marketplace_dir = aops_root / ".claude-plugin"
-    root_marketplace_dir.mkdir(parents=True, exist_ok=True)
-    root_marketplace = root_marketplace_dir / "marketplace.json"
-    with open(root_marketplace, "w") as f:
-        json.dump(root_data, f, indent=2)
-        f.write("\n")
-    print(f"  ✓ Generated {root_marketplace} (for repository root)")
+    print(f"  ✓ Generated {marketplace} (sources ./dist/aops-*)")
 
 
 def package_artifacts(

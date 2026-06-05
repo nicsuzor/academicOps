@@ -1,11 +1,18 @@
 name: Build and Deploy
 
 on:
-  # Tag-only: release-please creates the vX.Y.Z tag with AOPS_DIST_PAT, which
-  # triggers this run from the TAGGED commit's workflow (i.e. dev's version).
-  # We deliberately do NOT also trigger on `release: published` — that event
-  # would run main's copy of this file (default-branch semantics), which the
-  # release pipeline never updates, and would double-fire against the tag run.
+  # Tag-driven. The tag SHAPE selects the channel (classified in "Resolve build
+  # context" below):
+  #   vX.Y.Z                     → stable: build, publish dist to main, release.
+  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease: build + cut a `--prerelease`
+  #                                GitHub Release with installable assets; main
+  #                                (the stable install channel) is left UNTOUCHED.
+  # A tag push runs THIS file from the tagged commit (dev's version), which is why
+  # the prerelease path works even though the default branch (main) carries a
+  # stale copy. release-please creates the stable vX.Y.Z tag with AOPS_DIST_PAT;
+  # prerelease tags are pushed by hand (or a future release-please prerelease
+  # config). We deliberately do NOT trigger on `release: published` — that runs
+  # main's stale copy (default-branch semantics) and double-fires against the tag.
   push:
     tags: ['v*']
 
@@ -68,7 +75,14 @@ jobs:
       - name: Resolve build context
         id: ctx
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          if [[ "${{ github.ref }}" == refs/tags/v*-* ]]; then
+            # Pre-release tag (v1.2.3-rc.1, -dev.N, -beta.N, -alpha.N). Checked
+            # FIRST because the v*-* glob is a subset of the plain v* glob below;
+            # in semver a '-' only ever introduces a pre-release identifier.
+            REF="${{ github.ref_name }}"
+            RTYPE="testing"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Stable release tag (v1.2.3).
             REF="${{ github.ref_name }}"
             RTYPE="stable"
           elif [[ "${{ github.event_name }}" == "release" ]]; then
@@ -80,6 +94,7 @@ jobs:
           fi
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Build context::ref=$REF release_type=$RTYPE"
 
       - name: Checkout source
         uses: actions/checkout@v4
@@ -88,6 +103,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout main branch for publish target
+        # Stable only — prereleases never touch main (the stable install
+        # channel); see the "Publish distribution to main" step.
+        if: steps.ctx.outputs.release_type != 'testing'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -109,16 +127,16 @@ jobs:
         id: version
         run: |
           chmod +x scripts/version.py
-          BASE_VERSION=$(uv run python scripts/version.py --get)
           if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
-            if [[ "$BASE_VERSION" == *-dev.* ]]; then
-              VERSION="${BASE_VERSION}.${{ github.run_number }}"
-            else
-              CLEAN_VERSION=$(echo "$BASE_VERSION" | sed -E 's/([-+\.]dev|[-+]).*//')
-              VERSION="${CLEAN_VERSION}-dev.${{ github.run_number }}"
-            fi
+            # Pre-release: the tag IS the version (v0.3.36-rc.1 → 0.3.36-rc.1).
+            # build.py --set-version normalises it via sanitize_version(), and the
+            # patch-bump in get_project_version() already guarantees a dev/rc build
+            # sorts ABOVE the last stable tag and BELOW the next stable — the semver
+            # invariant the Claude marketplace and Gemini extension installers need.
+            VERSION="${{ steps.ctx.outputs.ref }}"
+            VERSION="${VERSION#v}"
           else
-            VERSION="$BASE_VERSION"
+            VERSION="$(uv run python scripts/version.py --get)"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -149,56 +167,58 @@ jobs:
           uv run python scripts/build.py $VERSION_FLAG
 
       - name: Publish distribution to main
+        # Stable only. A prerelease must NOT overwrite main's marketplace.json /
+        # gemini-extension.json — that would auto-ship the -rc/-dev build to every
+        # `marketplace add nicsuzor/academicOps` user. Prereleases live solely as
+        # `--prerelease` GitHub Releases (next step); testers install them by tag.
+        if: steps.ctx.outputs.release_type != 'testing'
         run: |
           set -euo pipefail
           SRC="${GITHUB_WORKSPACE}"
 
-          # main is the published "dist repo". build.py emits
-          # dist/.claude-plugin/marketplace.json with ROOT-RELATIVE sources
-          # (./aops-claude, ./aops-tools-claude, ./aops-cowork), so the built
-          # plugin dirs must land as SIBLINGS of that marketplace at the main
-          # root — NOT nested under main/dist/ (the old bug that left the
-          # marketplace pointing at directories that never existed on main, so
-          # `claude` could not resolve the plugins).
+          # main is the published "dist repo". Built plugin dirs live UNDER dist/
+          # on main (e.g. main/dist/aops-claude), matching both the marketplace
+          # sources (./dist/aops-*, generated at the SOURCE repo root by build.py)
+          # and the local-dev layout — one convention everywhere. `claude plugin
+          # marketplace add nicsuzor/academicOps` reads the root marketplace and
+          # resolves ./dist/aops-* into main/dist/.
           cd "${SRC}/dist-repo"
 
-          # Publish every built plugin directory at the root, each kept clean
-          # with --delete. The `*/` glob skips dot-entries (dist/.claude-plugin
-          # and any generated dist/.github), so main's own source tree and CI
-          # workflows are never touched. Release archives (*.tar.gz / *.zip) are
-          # files at the dist root → not matched here; they ship as GitHub
-          # Release assets in the next step.
+          # Mirror every built plugin directory under dist/, each kept clean with
+          # --delete. The `*/` glob skips dot-entries, so only the aops-* payload
+          # dirs are copied. Release archives (*.tar.gz / *.zip) are FILES under
+          # ${SRC}/dist/ → not matched by the dir glob; they ship as GitHub
+          # Release assets in the next step (never committed to main).
+          mkdir -p dist
           for d in "${SRC}"/dist/*/; do
             name="$(basename "$d")"
-            rsync -a --delete "$d" "./${name}/"
+            rsync -a --delete "$d" "dist/${name}/"
           done
 
-          # Claude marketplace (root-relative ./aops-* sources) + Gemini manifest.
+          # Single Claude marketplace at the main root (sources ./dist/aops-*).
+          # Gemini ships as a self-contained GitHub Release tarball, so no root
+          # gemini-extension.json is published here.
           mkdir -p .claude-plugin
-          cp "${SRC}/dist/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
-          cp "${SRC}/dist/aops-gemini/gemini-extension.json" gemini-extension.json
+          cp "${SRC}/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
 
           # main is the default branch, so pull_request_target workflows resolve
           # from HERE. Keep the stray-PR auto-retarget workflow on main (in sync
           # with source) so PRs opened against main are flipped to dev. This is
           # the only source-side workflow the publish step deliberately carries
-          # onto main; everything else on main is built artifacts.
+          # onto main; everything else on main is built artifacts under dist/.
           mkdir -p .github/workflows
           cp "${SRC}/.github/workflows/auto-retarget-pr.yml" .github/workflows/auto-retarget-pr.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          # The plugin payload is gitignored (.claude-plugin/marketplace.json and
-          # gemini-extension.json by name; built dirs by .gitignore on main), so
-          # `git add -A` skips it — force-add it. Per halt-on-failure, split the
-          # two error classes instead of masking both with `2>/dev/null || true`:
-          #  • an empty `aops-*` glob (no built dirs) is benign → xargs -r no-ops;
-          #  • a missing manifest is a broken build → `git add -f` exits non-zero
-          #    and `set -e` fails the publish loudly rather than shipping a
-          #    marketplace that points at directories it never staged.
-          find . -maxdepth 1 -name 'aops-*' -type d -print0 | xargs -0 -r git add -f
-          git add -f .claude-plugin/marketplace.json gemini-extension.json
+          # The built payload is gitignored (dist/ by .gitignore;
+          # .claude-plugin/marketplace.json by name), so `git add -A` skips it —
+          # force-add it. A missing marketplace is a broken build → `git add -f`
+          # exits non-zero and `set -e` fails the publish loudly rather than
+          # shipping a payload with no marketplace.
+          git add -f dist
+          git add -f .claude-plugin/marketplace.json
           if git diff --cached --quiet; then
             echo "main already in sync — nothing to publish"
           else

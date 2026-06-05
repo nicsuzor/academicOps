@@ -34,7 +34,7 @@
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "./aops-cowork",
+      "source": "./dist/aops-cowork",
       "category": "productivity"
     }
   ]

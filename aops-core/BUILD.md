@@ -2,26 +2,27 @@
 
 How AcademicOps plugin artifacts are built, packaged, and installed. End-users want `INSTALL.md` (repo root); this doc is for developers changing the build.
 
-## Three repos, one direction
+## Two repos, self-publishing to main
 
 ```
-nicsuzor/academicOps          nicsuzor/mem               nicsuzor/aops
-┌────────────────────┐        ┌──────────────────┐        ┌──────────────┐
-│ source of truth    │        │ pkb binary       │        │ dist repo    │
-│ (this repo)        │        │ releases per     │        │ (artifacts + │
-│                    │        │ platform         │        │  marketplace)│
-└─────────┬──────────┘        └────────┬─────────┘        └──────▲───────┘
-          │ checked out @ ref           │ binaries downloaded     │
-          │ (public, unauth)            │ (public, unauth)        │
-          └─────────────────┬───────────┘                         │
-                            ▼                                     │
-                 ┌──────────────────────┐                         │
-                 │  uv run scripts/     │  commit + release ──────┘
-                 │  build.py            │  (default GITHUB_TOKEN)
-                 └──────────────────────┘
+nicsuzor/academicOps  (source of truth: dev / feature branches)
+        │   uv run scripts/build.py        nicsuzor/mem
+        │   ───────────────────────  ◄──── pkb binary (per platform)
+        ▼
+   dist/   (local build artifacts)
+        │
+        │   v* tag → .github/workflows/build-extension.yml
+        ▼
+nicsuzor/academicOps @ main   (published distribution channel)
+   • built plugin dirs published under dist/:
+     dist/aops-claude/  dist/aops-tools-claude/  dist/aops-cowork/  dist/aops-gemini/  …
+   • .claude-plugin/marketplace.json at the root (sources ./dist/aops-claude, …)
+        │
+        ▼
+   end-users install from main  (marketplace nickname: academicOps)
 ```
 
-End-users install from `nicsuzor/aops` (the dist repo). They never touch `academicOps` directly. See `.github/aops-dist/build.yml` for the workflow definition that runs in the dist repo.
+There is no separate dist repo. `nicsuzor/academicOps` is both the source of truth (on `dev` / feature branches) and the published distribution: a `v*` tag fires `.github/workflows/build-extension.yml`, which builds the per-platform `dist/` artifacts and publishes the built plugin directories under `dist/` on `main` (`dist/aops-claude/`, `dist/aops-tools-claude/`, `dist/aops-cowork/`, `dist/aops-gemini/`, …) alongside a root `.claude-plugin/marketplace.json` whose sources are `./dist/aops-*`. End-users install from `main` and never build locally — see `INSTALL.md` / `README.md` (repo root) for the canonical Claude and Gemini install commands.
 
 ## What goes where
 
@@ -85,9 +86,11 @@ uv run scripts/build.py --platform gemini
 
 ## Release path
 
-`release-please` manages version bumps from conventional commits on `main`. A release PR opens automatically; merging it tags the source repo. The tag fires a `repository_dispatch` to `nicsuzor/aops` via the workflow in `.github/aops-dist/build.yml` (which is mirrored to that repo at install time). The dist repo builds artifacts and publishes a release.
+`release-please` manages version bumps from conventional commits; merging the release PR creates the stable `vX.Y.Z` tag. The tag push fires `.github/workflows/build-extension.yml` **in this repo** — there is no `repository_dispatch` and no separate dist repo (the old `.github/aops-dist/build.yml` reference workflow was deleted in commit 65d77adf, 2026-06-04). The workflow builds the per-platform `dist/` artifacts, publishes the built plugin directories under `dist/` on `main` (the install channel), and uploads the release archives as GitHub Release assets.
 
-Manual rebuild against a specific ref: `gh workflow run build.yml -R nicsuzor/aops -f ref=<sha> -f release_type=testing`.
+Pre-release tags (`vX.Y.Z-rc.N`, `-dev.N`, …) take the same workflow but **skip the `main` publish** — they ship only as `--prerelease` GitHub Releases, so testers install them by tag while `main` (the stable channel) is left untouched.
+
+Manual rebuild against a specific ref: push a pre-release tag at that commit — e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1` — which triggers `build-extension.yml` against the tagged commit.
 
 ## Local verification
 
@@ -119,7 +122,7 @@ echo '{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/
 - **Plugin enabled but `/hooks` doesn't list its events.** CC couldn't read `hooks/hooks.json` — usually a JSON syntax error or an unresolvable command path. Inspect with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
 - **`/hooks` lists events but no session-hooks log is written.** Router crashes before logging. Run the router manually with a synthetic event (see above).
 - **Subagent / isolated-worktree sessions don't run SessionStart.** Programmatically-spawned Claude sessions (Agent tool with `isolation: worktree`, FleetView-launched sessions) may not invoke SessionStart hooks the way the interactive `claude` CLI does. Symptom: hooks fire fine for normal `claude` sessions in the same project, but a subagent in the same repo has no env file written. This is a session-kind issue, not a plugin manifest issue.
-- **Plugin shows installed but version drifted.** `~/.claude/plugins/installed_plugins.json` pins an older version than `marketplace.json` advertises. Run `claude plugin update aops-core@aops` (note: the marketplace nickname is `aops`, the plugin name is `aops-core`).
+- **Plugin shows installed but version drifted.** `~/.claude/plugins/installed_plugins.json` pins an older version than `marketplace.json` advertises. Run `claude plugin update aops-core@academicOps` (note: the marketplace nickname is `academicOps`, the plugin name is `aops-core`).
 - **"Unrecognized keys" validation error on install.** `source` and `category` leaked into `dist/aops-claude/.claude-plugin/plugin.json`. `build.py` already strips these — if it recurs, check the template doesn't have them either.
 - **Gemini extension fails to load.** Usually `_generate_gemini_hooks_json()` rejecting the source hooks.json. Look for "Could not read hooks.json" or "hooks.json has no 'hooks' key" in the build output.
 

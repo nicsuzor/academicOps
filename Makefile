@@ -109,7 +109,10 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 [shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
 "
 	@echo "Configuring local Claude marketplace (overrides release source)..."
-	-command claude plugin marketplace add $(DIST_DIR)
+	@# Add the repo ROOT as the marketplace: its .claude-plugin/marketplace.json
+	@# sources are ./dist/aops-* (one convention everywhere), resolving to the
+	@# build output in $(DIST_DIR).
+	-command claude plugin marketplace add $(AOPS_ROOT)
 	@echo "Installing local build into Claude Code..."
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools install failed"
