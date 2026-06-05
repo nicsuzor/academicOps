@@ -1,0 +1,65 @@
+# GitHub Ruleset: only dists to main
+# Ruleset ID: 17264582
+# Applied to: default branch (~DEFAULT_BRANCH = main) of nicsuzor/academicOps
+#
+# Captured from the live ruleset on 2026-06-05 — companion to
+# pr-review-and-merge.yml. Same convention: a diff-reviewable, version-controlled
+# record of the active ruleset, and a reference for auditing or restoring it.
+#
+# Purpose: `main` is the published distribution branch. Only the release pipeline
+# (and admins) may write to it. This ruleset restricts branch creation, update
+# (any push — including force-push), and deletion for every actor NOT listed in
+# bypass_actors. That is the mechanism behind "only dists to main", and it is why
+# main needs no separate non_fast_forward rule — `update` already blocks it.
+#
+# NOTE: scripts/sync-ruleset.sh is currently hardcoded to ruleset 13762049
+# (pr-review-and-merge.yml) and does NOT push this file. Treat this as an
+# authoritative snapshot. To sync via API: PUT repos/<repo>/rulesets/17264582
+# with the creation/update/deletion rules below (all three are API-supported).
+
+name: only dists to main
+
+# Which branches this ruleset applies to
+target: branch
+conditions:
+  ref_name:
+    include:
+      - ~DEFAULT_BRANCH  # main branch
+    exclude: []
+
+enforcement: active
+
+# Who can bypass these rules — i.e. who may actually write to main.
+bypass_actors:
+  # Deploy key (no numeric actor_id)
+  - actor_id: null
+    actor_type: DeployKey
+    bypass_mode: always
+  # Built-in repository role (id 2)
+  - actor_id: 2
+    actor_type: RepositoryRole
+    bypass_mode: always
+  # Repository admin role (id 5)
+  - actor_id: 5
+    actor_type: RepositoryRole
+    bypass_mode: always
+  # GitHub App / Integration (id 2921286) — release/publish automation
+  - actor_id: 2921286
+    actor_type: Integration
+    bypass_mode: always
+
+rules:
+  # ─────────────────────────────────────────
+  # Block branch deletion by non-bypass actors
+  # ─────────────────────────────────────────
+  - type: deletion
+
+  # ─────────────────────────────────────────
+  # Block branch updates (any push, incl. force-push) by non-bypass actors
+  # ─────────────────────────────────────────
+  - type: update
+
+  # ─────────────────────────────────────────
+  # Block branch creation by non-bypass actors
+  # ─────────────────────────────────────────
+  - type: creation
