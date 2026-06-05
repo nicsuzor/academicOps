@@ -92,6 +92,7 @@ jobs:
         with:
           ref: main
           path: dist-repo
+          token: ${{ secrets.AOPS_DIST_PAT }}
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
