@@ -1,10 +1,16 @@
 name: Build and Deploy
 
 on:
+  # `release: published` removed 2026-06-05 to stop a release double-fire.
+  # main is the DEFAULT branch, so a release event runs THIS copy of the
+  # workflow (default-branch semantics) — which raced, via `concurrency`,
+  # against the real tag-triggered run that uses the tagged commit's (dev's)
+  # workflow. When the release run won, releases published with main's stale
+  # publish logic. Builds now run from the tag only. This main-side copy is
+  # effectively inert: a `push: tags` event resolves to the tagged commit's
+  # workflow, not main's, so this block never actually triggers a run here.
   push:
     tags: ['v*']
-  release:
-    types: [published]
 
 concurrency:
   group: build-deploy
