@@ -189,6 +189,31 @@ def test_ingest_subagent_bundles_native_layout(tmp_path):
     assert ingest.ingest_subagent_bundles(conv_dir, "abc12345", target_base) == 0
 
 
+def test_cowork_bundle_files_under_cowork_title(tmp_path):
+    """A recovered subagent bundle (`<task>.jsonl` under cowork-logs/) must file
+    under the SAME `cowork-<title>` repo as its parent — driving both the
+    filename slug and the frontmatter `repo:` field — so it's findable when
+    browsing cowork transcripts instead of surfacing as anonymous `claude`
+    (GH #1621). Before the fix only `session.jsonl` got the cowork title.
+    """
+    transcript = _import_transcript()
+
+    bundle = tmp_path / "cowork-logs" / "6b32f9e0-da55dfd3"
+    bundle.mkdir(parents=True)
+    (bundle / "metadata.json").write_text(json.dumps({"title": "ARC Review Workflow"}))
+    main = bundle / "da55dfd3-2e6f-463f-8380-225f96b2030d.jsonl"
+    main.write_text('{"type":"user","sessionId":"da55dfd3","message":{"content":"x"}}\n')
+
+    assert transcript._infer_project(main) == "cowork-arc-review-workflow"
+
+    # No metadata → still tagged cowork, never anonymous.
+    bare = tmp_path / "cowork-logs" / "abcd1234-eeee5678"
+    bare.mkdir(parents=True)
+    bare_main = bare / "eeee5678-0000-0000-0000-000000000000.jsonl"
+    bare_main.write_text('{"type":"user","message":{"content":"x"}}\n')
+    assert transcript._infer_project(bare_main) == "cowork"
+
+
 def test_cowork_ingested_discovery(tmp_path, monkeypatch):
     """Verify discovery of ingested Cowork sessions."""
     # Setup mock sessions repo

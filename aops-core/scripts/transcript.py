@@ -1016,8 +1016,14 @@ def _infer_project(
     Returns:
         Project name string
     """
-    # Handle Cowork ingested sessions
-    if session_path.name == "session.jsonl" and "cowork-logs" in str(session_path):
+    # Handle Cowork ingested sessions — both the parent thread (session.jsonl)
+    # and the nested native task bundles (<task-uuid>.jsonl), which both live
+    # under cowork-logs/ and carry a metadata.json holding the conversation
+    # title. Naming both from that title files the recovered subagent bundles
+    # under the same `cowork-<title>` repo as their parent, so they group
+    # together and are findable when browsing cowork transcripts (GH #1621).
+    # This drives BOTH the filename slug token and the frontmatter `repo:` field.
+    if "cowork-logs" in str(session_path) and session_path.suffix == ".jsonl":
         metadata_json = session_path.parent / "metadata.json"
         if metadata_json.exists():
             try:

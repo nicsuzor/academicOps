@@ -125,6 +125,14 @@ def ingest_subagent_bundles(conv_dir: Path, conv_id: str, target_base: Path) -> 
 
         # Native records — copy verbatim (preserves mtime, sessionId, isSidechain).
         shutil.copy2(main_file, target_main)
+
+        # Carry the parent conversation's metadata (title) into the bundle dir so
+        # the transcript namer files this under the cowork title — otherwise the
+        # bundle surfaces as an anonymous `claude` session and is invisible when
+        # browsing cowork transcripts (the work is captured but unfindable).
+        parent_metadata = conv_dir.parent / f"{conv_dir.name}.json"
+        if parent_metadata.exists():
+            shutil.copy2(parent_metadata, bundle_dir / "metadata.json")
         for agent_file in agent_files:
             shutil.copy2(agent_file, target_subagents / agent_file.name)
             # Carry the .meta.json sidecar if present (harmless; may hold type).
