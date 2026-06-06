@@ -220,10 +220,10 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 - GitHub CLI (`gh`) for artifact retrieval
 - Docker (optional, for sandboxing/testing)
 
-**Quick Install**:
+**Quick Install** (`@dist` pins the published distribution branch):
 
 ```bash
-command claude plugin marketplace add nicsuzor/academicOps
+command claude plugin marketplace add nicsuzor/academicOps@dist
 ```
 
 _(For Gemini users)_:
@@ -333,7 +333,7 @@ make build                                 # build Docker image
 uv run pytest -m slow -n 0 --timeout=300   # container e2e + live session tests
 ```
 
-Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `main`.
+Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `dev`.
 
 ## Project configuration
 

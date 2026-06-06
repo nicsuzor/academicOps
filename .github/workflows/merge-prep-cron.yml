@@ -1,4 +1,4 @@
-# Cron dispatcher for merge-prep: runs every 30 minutes on main.
+# Cron dispatcher for merge-prep: runs every 30 minutes on the default branch (dev).
 # Finds open PRs that qualify for merge-prep and dispatches the agent.
 #
 # Qualification criteria (label-free):
@@ -66,8 +66,8 @@ on:
     workflows: ["Agent: Merge Prep"]
     types: [completed]
     # No branches filter: agent-merge-prep runs via workflow_dispatch with
-    # ref=main, so head_branch is always 'main'. A branches-ignore: main
-    # filter would suppress every trigger from this workflow.
+    # ref=$DEFAULT_BRANCH (dev), so head_branch is always the default branch. A
+    # branches-ignore on it would suppress every trigger from this workflow.
 
 concurrency:
   group: merge-prep-dispatcher
@@ -221,9 +221,10 @@ jobs:
               #       triggered by merge-prep's own commits can finish after
               #       merge-prep declares success).
               #   (b) Base branch advanced and the PR is now CONFLICTING. Cron
-              #       is the ONLY trigger that catches this — workflow_run is
-              #       `branches-ignore: main`, so a merge into main never re-evaluates
-              #       other open PRs. Without this check, conflicts introduced by
+              #       is the ONLY trigger that catches this — workflow_run does
+              #       not re-fire on the base branch, so a merge into dev never
+              #       re-evaluates other open PRs. Without this check, conflicts
+              #       introduced by
               #       concurrent merges silently strand the PR forever.
 
               MP_CREATED=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
