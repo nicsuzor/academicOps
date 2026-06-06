@@ -1517,6 +1517,11 @@ def main():
         default=None,
         help="Override the auto-detected version (e.g. '0.3.1-dev.42')",
     )
+    parser.add_argument(
+        "--tag",
+        action="store_true",
+        help="Create git tags for the release",
+    )
     args = parser.parse_args()
 
     aops_root = Path(__file__).parent.parent.resolve()
