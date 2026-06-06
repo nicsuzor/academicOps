@@ -188,7 +188,7 @@ jobs:
               continue
             fi
 
-            # Check time gate: last commit must be >= 1 hour ago
+            # Check time gate: last commit must be >= BAZAAR_WINDOW_SECONDS (15 min) ago
             LAST_COMMIT_DATE=$(gh pr view "$PR_NUM" --repo "$REPO" \
               --json commits --jq '.commits[-1].committedDate')
             LAST_COMMIT_TS=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT_DATE" +%s 2>/dev/null)

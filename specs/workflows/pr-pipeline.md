@@ -11,6 +11,18 @@ supersedes: pr-process.md
 
 # PR Pipeline
 
+> [!IMPORTANT]
+> **Superseded by [[pr-pipeline-v2]] (operative, phased rollout).** This v1 document
+> remains the accurate description of the **merge-prep agent** only until v2 Phase 5
+> (mechanic) ships. Everything else here is historical. Two mechanisms described below
+> were **specified but never implemented as written** — do not treat them as live:
+> the `merge-prep-global` concurrency group (the workflows use per-PR + dispatcher
+> groups), and `gh run list`-based in-progress detection (the dispatcher uses a
+> `merge-prep-running` commit-status stake). The required-check names and 2-approval
+> gating in the §Ruleset section below are also stale — the live ruleset
+> (`.github/rulesets/pr-review-and-merge.yml`) is the source of truth, and v2 §7 is the
+> target. See [[pr-pipeline-v2]] §1 for why v1's no-op merge-prep is being retired.
+
 ## Giving Effect
 
 - [[.github/workflows/pr-pipeline.yml]] → CI-only orchestrator: sequential lint → typecheck → pytest
@@ -158,7 +170,7 @@ Phase 2 has two components:
 A PR qualifies for dispatch if ALL of the following are true:
 
 1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before the Merge-Prep Agent triages them.
-2. **No in-progress run:** `gh run list --workflow=agent-merge-prep.yml --json status` shows no `in_progress` or `queued` run. Replaces the `merge-prep-running` label.
+2. **No in-progress run:** the dispatcher checks for a `merge-prep-running` **commit-status stake** (`state: pending`) planted on HEAD by a running agent — not `gh run list`. (An earlier draft specified `gh run list --workflow=agent-merge-prep.yml`; the shipped dispatcher uses the commit-status stake instead.)
 3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status with `state: success` or `state: failure`. The Merge-Prep Agent sets `success` at the end of every successful run; it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so the agent will re-run. **Exception — late reviews:** If `merge-prep-status` is `success` but `CHANGES_REQUESTED` reviews arrived _after_ the status was set, the PR re-qualifies. This handles the race where merge-prep's own commits trigger the Axiom Review, which finishes after merge-prep has already declared success.
 4. **Not a merge-prep commit:** The HEAD commit message does not contain a `Merge-Prep-By:` trailer. This is a race-condition guard: the `workflow_run` trigger can fire before the agent workflow sets `merge-prep-status: success` on a freshly pushed commit. The trailer check prevents wasteful re-dispatch.
 
@@ -210,6 +222,12 @@ Once the workflow has set `merge-prep-status: success` and enabled auto-merge, t
 **No environment gate, no `summary-and-merge.yml` workflow.** An earlier design specified a separate `production` environment + decision-brief workflow as the human gate. That was not implemented; the simpler "pre-arm auto-merge, human approval gates merge via branch protection" path is what runs today. The triage comment posted by the agent (§7) serves the same role as the decision brief.
 
 ### Global concurrency
+
+> [!WARNING]
+> **Never implemented as written.** The workflows use a per-PR group
+> (`merge-prep-${pr_number}`) on `agent-merge-prep.yml` and a `merge-prep-dispatcher`
+> group on the cron — there is no `merge-prep-global` group; runs are not serialised
+> across PRs. The paragraph below describes a design that was not built.
 
 All merge-prep runs share a global concurrency group `merge-prep-global` to prevent API rate limit issues when multiple PRs qualify simultaneously. PRs are processed sequentially within each cron tick. The per-PR concurrency group (`merge-prep-{pr_number}`) also remains to prevent duplicate runs on the same PR across cron ticks.
 
