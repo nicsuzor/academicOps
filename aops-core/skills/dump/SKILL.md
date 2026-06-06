@@ -35,7 +35,7 @@ Call `mcp__pkb__update_task` on the bound task:
   - **State**: Current state of implementation (one sentence).
   - **Next**: Next concrete action.
   - **Watch out**: Any in-flight side-effects (uncommitted files, running processes, locks).
-- If no task is bound, call `mcp__pkb__create_task` with parent `"adhoc-sessions"`, `priority=3`, and the resume details as the body.
+- If no task is bound, call `mcp__pkb__create_task` with parent `"adhoc-sessions"`, `priority=3` (the uncurated default band — never elevate; intent authority: [[framework-conventions-summary#intent-authority]]), and the resume details as the body.
 
 ### 2. Output Handover Block
 

@@ -72,7 +72,7 @@ Manage the PKB task and knowledge graph. Enforce strategic prioritization, corre
 Quickly capture and log new tasks into the graph.
 
 - **Project Mapping**: Map tasks to projects using the `.agents/CORE.md` Component Topology table (e.g. `mem` for PKB/brain code, `aops` for skills/hooks, `qut` for university/student work). If ambiguous, inherit from parent; if still unclear, ask the user. Do not default.
-- **Priority**: Default all captured tasks and subtasks to **P3**. Only assign P0–P2 if the user explicitly requests it.
+- **Priority (intent authority)**: Default every captured task and subtask to the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that value in this request — never inferred from importance. Canonical rule: [[framework-conventions-summary#intent-authority]].
 - **Metadata**: Populate `due` (YYYY-MM-DD), `effort`, `consequence`, and `classification` (e.g., `spike`, `research`, or default execution) fields.
 - **Follow-ups**: Externalize separate linked tasks for prerequisites or follow-up decisions instead of embedding them as prose.
 - **Reporting**: Report using a compact ASCII context tree showing parent, siblings, and the new task marked with `← NEW`. Then halt.
@@ -135,7 +135,11 @@ Enforce the following classifications to save user attention:
 
 ## Priority Assignment Rules
 
-- **Tasks**: Default to **P3**. Priority reflects user intent, not agent importance estimates; do not propagate a parent's priority to children. Elevate only on an explicit user signal.
+`priority` is Nic's personally curated intent, never an agent's estimate of importance. Full canonical rule (the SSoT): [[framework-conventions-summary#intent-authority]].
+
+- **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children.
+- **Importance ≠ intent**: route urgency, severity, blocker-status, and your own assessment of value to `consequence`/`severity`/`due`/`status` — never `priority`.
+- **Surface, don't set**: when you think something deserves Nic's attention, raise it via status/escalation so _he_ sets intent — never set it for him as a shortcut.
 - **Never assign an epic to `nic`**: if a genuine human choice is needed, file a minimal binary-choice subtask that blocks the epic — don't hand the parent back.
 - **Deferrals**: Tasks waiting on other work must use `depends_on: [<id>]`, `status: blocked` (external events), or `status: someday` (parking). Do not leave deferrals in body prose.
 

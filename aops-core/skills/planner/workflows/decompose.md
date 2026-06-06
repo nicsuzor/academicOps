@@ -54,7 +54,7 @@ version: 2.0.0
 
 10. **Extract Structured Metadata**: Extract `due` and `consequence` for subtasks if mentioned or implied by the parent task.
 
-11. **Set Priority — default P3**: Subtasks default to **P3**. Do NOT propagate the parent's priority to children or infer priority from subtask content. Only elevate above P3 if the user explicitly signals urgency. See [[../SKILL.md#priority-assignment-rules]].
+11. **Leave Priority at default P3**: Subtasks stay at the uncurated default band (**P3**). Agents never originate a non-default band: do NOT propagate the parent's priority to children, and do NOT infer it from subtask content or apparent importance. Write a non-default band only when Nic expressly directs that value for that subtask. Canonical rule: [[framework-conventions-summary#intent-authority]] (see also [[../SKILL.md#priority-assignment-rules]]).
 
 12. **Apply the Decision Surfacing Heuristic** — Before drafting any user-facing "design conversation" or ratification message, classify each open decision as DECIDE / DEFER / SURFACE per [[../SKILL.md#decision-surfacing-heuristic]]. Bundling DECIDE-class items with SURFACE-class items trains rubber-stamping (issue #816).
 13. **Create in PKB** — Use `mcp__pkb__decompose_task(parent_id, subtasks)` for batch creation under the epic. Include dependencies, effort, due, consequence, priority, and deliverable descriptions as explicit fields.
