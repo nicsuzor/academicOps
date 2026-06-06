@@ -2,7 +2,7 @@
 name: daily
 type: skill
 category: instruction
-description: Daily note lifecycle - briefing and progress sync. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
+description: Daily note lifecycle — compose and maintain a factual daily note. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
 triggers:
   - "daily list"
   - "daily note"
@@ -14,62 +14,60 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,~~email
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
 owner: pauli
-version: 4.1.0
+version: 5.0.0
 permalink: skills-daily
 ---
 
-# Daily Note Guidelines
+# Daily Note
 
-Compose and maintain the daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md`. The note serves as a factual, non-judgmental report of the day's state (deadlines, inbox, open threads, calendar, session logs). Do not suggest task prioritization, sequences, or ratings.
+Compose and maintain the daily note at `$ACA_DATA/daily/YYYYMMDD-daily.md` (filename uses today's date, `date +%Y%m%d`). On every run, point the symlink at it: `ln -snf daily/YYYYMMDD-daily.md $ACA_DATA/daily.md`.
 
-## Core Directives
+Fill out the template in `references/note-template.md`. That file is the structural SSoT — follow its section order.
 
-1. **Date Anchor**: Base the note filename and relative date phrases strictly on today's calendar date (`date +%Y-%m-%d`).
-2. **Work Date vs. Calendar Date**: Narrative summaries or reflections written after midnight about yesterday's work must land in the note for yesterday's date, not today's.
-3. **Empty Morning Rule**: If today has no session activity yet, omit the narrative log entirely; do not backfill yesterday's narrative into today's note.
-4. **Bidirectional Sync**: Preserve user annotations, comments, and ticked states (`[x]`) on regenerated items. Match existing items by ID/PR/subject keyword and carry user ticks forward.
-5. **Tool Loading & Degraded Sources**:
-   - Explicitly load deferred tools (e.g. `mcp__outlook__*`) before querying email/calendar. Retry once with canonical names on transient tool-not-found errors.
-   - If a source genuinely fails after attempting to load and retry, list it in a single line under the lede (**Degraded sources:**) and collapse the corresponding section. Do not render empty sections with bare footnotes.
+## What this note is
 
-## Daily Note Structure
+A factual, reportive snapshot of the day: what happened, what's open, what's due, what's in the inbox. It is **not** prescriptive — never rank what the user should do next or suggest a sequence. Forward prioritisation is the user's, in `### My priorities` (create the empty heading; never write under it).
 
-The canonical scaffold and per-section procedures live in this skill's `references/note-template.md` (the structural SSoT) and `instructions/` subfiles — load them for exact field shapes and display algorithms.
+## Core rules
 
-The daily note must follow this exact section order:
+- **Update throughout the day.** Re-run freely; update in place with Edit, not full rewrites. Consolidate where it helps readability.
+- **Never remove user notes.** Preserve everything the user wrote, plus their ticks (`[x]`) and annotations, across regenerations. Match items by ID/PR/subject and carry ticks forward.
+- **You may turn user notes into neat, well-formatted prose** — but only if you lose no truth. When unsure, keep the original wording.
+- **No empty sections.** Omit a section rather than render an empty heading. On a morning with no sessions yet, omit Today's Log entirely.
 
-1. **Lede (Shape of Right Now)**: A 2–3 line, present-tense synthesis of the day's story and through-line. Persist to the `daily_narrative` frontmatter field.
-2. **Today's Log (Recovery Substrate)**:
-   - **In-flight**: A chronological Morning Timeline anchored on verbatim user prompts with outcome summaries. Add "Needs your call" pending decision counts.
-   - **Closed**: Factual editorial summary of progress, patterns, and blockers.
-   - **Empty Morning**: Omit section entirely.
-3. **Status**: Factual snapshot. Includes SEV4 committed targets cap warning (warn if >2), ready tasks counts by priority denominator, deadlines (due ≤7 days sorted ascending), high-focus tasks sorted by `focus_score`, and calendar events. No recommendations.
-4. **What Needs Attention**:
-   - **Inbox items** with conversation content summaries and checkboxes.
-   - **Mobile captures** scanned and routed to tasks/memories.
-   - **Outstanding Workflows**: PR status snapshot (merged, review, fixes, stale, drafts) sourced from the `pr-state.json` artifact (flag as stale if artifact >24h old). PR Triage Dashboard if PRs ≥10.
-5. **Carryover**: Uncompleted tasks from yesterday (verified against live PKB state). Omit if empty.
-6. **Work Log**: Provenance data wrapped in a `<details>` collapsible tag, listing merged PRs and completed tasks. No session narrative duplication.
+## Tools you may invoke
 
-## Loop-Closer Sweeps
+Available, not mandatory steps. Use them when the day's content calls for them:
 
-### 1. Task Completion Sweep
+- `/email --daily` — triage the inbox into tasks + FYI items.
+- `/q` — capture a task (e.g. routing a mobile capture from `$ACA_DATA/notes/mobile-captures/`; delete the original with `mcp__pkb__delete` once it's routed).
+- `/remember` — persist durable knowledge.
+- `/decision-extract` — expand the pending-decisions list if the user wants detail.
+- `/strategy` — if the user signals they want a priorities reset.
 
-Close review/merge_ready tasks where completion is evidenced by merged PRs or sent emails in `pr-state.json`.
+## Safety rules (load-bearing)
 
-- **Match Verification**: Use an agent to confirm correspondence between tasks and PR/email content. Enforce AC verification before completing.
-- **Auto-archive**: Weekly triage tasks stale >14d (add 'Still relevant?' prompt). Auto-complete clear cases. Auto-archive tasks stale >30d with tag `auto-archived: stale`.
-- **Partial Work**: Draft PRs / tasks with `status: partial` are not sweep targets; do not auto-close or flag as stalled.
+- **Verify carryover against live PKB before listing.** For each task carried from yesterday, call `mcp__pkb__get_task`; drop it if it's missing, `done`, `cancelled`, or already ticked in today's note. Copying blindly produces phantom-overdue items.
+- **Consume `$AOPS_SESSIONS/state/pr-state.json` for PR state; do NOT run `gh pr list`.** `repo-sync-cron` is the single producer. If the artefact is missing or >24h old, render one inline note saying so — never fall back to live `gh`.
+- **Consequence text is printed verbatim, never paraphrased.** Pull it from the task, or from a linked target in the task's `goals` field.
+- **Counts come from `mcp__pkb__task_summary`.** Never count tasks yourself — aggregation is the PKB's job.
 
-### 2. Red-CI / Stuck-PR Loop-Closer
+## Escalated deadlines (simple rule)
 
-Convert stalled, failing CI PRs into owned fix-tasks.
+Hoist a due task into a `## 🚨 ESCALATED DEADLINES` callout when it meets any of these conditions:
+- **Overdue** (past due date) AND ≥ SEV2; or
+- **Due within ~2 days** AND ≥ SEV3; or
+- **Due within ~2 days** AND ≥ SEV2 AND on an immovable external deadline.
 
-- Identify PRs with failing checks (`FAILURE` conclusion) updated >24h ago.
-- If no fix-task exists, create a task (title `Fix red CI on PR #<N>`, parented under the epic/project) with the original severity. Do not merge or bypass.
+Render its verbatim consequence text; drop it from the Status deadline list to avoid duplication. Do not hoist movable SEV2 tasks unless they are also overdue — that is false urgency inflation. Do not compute tiers or ratios — the full escalation model lives in `[[importance-visibility-escalation]]`, and a follow-up PKB-tool task will compute a real escalation tier upstream.
 
-## Output Expectations
+## Reconcile and cross-link
 
-- Respond with a concise update statement: "Daily note updated. Use `/pull` to start work." and halt.
+- When a merged PR or sent email is **clear** evidence that a `merge_ready`/`review` task is done, complete it (`mcp__pkb__complete_task`) with the evidence URL. Surface ambiguous cases under "Needs your call" — never auto-close on doubt.
+- You may append a `## Progress` note or tick checklist items on the task a day's accomplishment maps to. Never mark a parent task done, never delete task content.
+
+## Output
+
+End with a one-line confirmation: "Daily note updated. Use `/pull` to start work." Then halt.

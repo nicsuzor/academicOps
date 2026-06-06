@@ -52,6 +52,7 @@ The big-W "what to do and in what order" specs. Workflow engine, decomposition, 
 - [[pr-pipeline-v2]] — PR pipeline v2 (operative, phased — two-stage, Environment-gated, convergent; Phase 1 shipped)
 - [[audit-protocol]] — Framework audit standard
 - [[daily-briefing-bundle]] — `/daily` skill bundle
+- [[60-importance-escalation|workflows/daily/60-importance-escalation]] — Importance-to-visibility escalation model
 - [[feedback-loops]] — Where the framework learns from itself
 - [[reconcile]] — GH ↔ PKB close-the-loop reconciliation (agent-invoked)
 

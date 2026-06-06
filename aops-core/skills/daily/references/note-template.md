@@ -1,155 +1,98 @@
 ---
 name: daily-note-template
 category: reference
-description: Daily note structure template (SSoT)
+description: Daily note structure template (SSoT). Section order is load-bearing; rationale lives in specs/workflows/daily.
 ---
 
 # Daily Note Structure (SSoT)
 
-This template defines the sections and their purpose. The daily note is a hybrid: Carryover, Status, and What Needs Attention are **factual reports** (the agent lists, the user ranks); the Lede and Today's Log are **editorial synthesis** (the agent is a smart editor of past work). The user always owns forward prioritisation.
+Order is fixed: **Lede → Today's Log → (Escalated Deadlines, if any) → Status → What Needs Attention → Carryover → Work Log.** Omit any empty section. Fill the skeleton below.
 
-**Order is shape-first (AC-13 / AC-14 / AC-16):** Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log. The synthesis leads; the "what was I just trying to do?" surface sits immediately under it; the dashboard and carryover follow to support, not block.
-
-````markdown
+```markdown
 ---
 title: "Daily Summary - YYYY-MM-DD"
 type: daily
 date: YYYY-MM-DD
 daily_narrative: null
 daily_story: []
-narrative_generated: null
 ---
 
 # Daily Summary - YYYY-MM-DD
 
-The morning is the framework eating its own dogfood: yesterday's PR wave landed three fix-epics, today's first hour went to a stale-config bug that blocked polecat dispatch on WSL. You cut a prerelease to clear it; dispatch is reopening now. Nothing is on fire — one decision (the v2-obsoletes-v1 call) is waiting on you.
+<!-- Lede: 2–3 present-tense lines — the shape of right now. The distilled version of Today's Log; also persist to the daily_narrative frontmatter field. -->
 
-**Degraded sources:** Email — outlook MCP auth error, 0 items shown _(only when a source genuinely failed after a real attempt + retry; omit this line entirely when all sources loaded)_
+A stale-config bug ate the morning before polecat dispatch came back online; you cut a prerelease to clear it. Nothing on fire — one decision (v2-obsoletes-v1) is waiting on you.
+
+<!-- Degraded sources: one line, ONLY when a source genuinely failed after a real attempt. Omit otherwise. -->
 
 ## Today's Log
 
-**Morning timeline.** Verbatim prompts in order, one outcome line each.
+<!-- What happened so far today. While the day is in flight: verbatim user prompts in time order, one outcome line each, then a "what you were trying to do" line. At day's end: an editorial synthesis (proportional detail, named patterns, honest about dropped threads). Describe the past factually; never rank future work. Omit this whole section on an empty morning. -->
 
-**11:50–11:51 (nicwin/WSL, brain)** — _"/supervisor aops-5430c4c1 — dispatch with local gemini polecats"_ → first attempt denied; retry ran, supervisor found the epic undecomposed and called pauli for preflight.
+**11:50 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally"_ → failed at the config layer: `unknown gates keys: ['commit']`; blocked all dispatch on this host.
 
-**12:14 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally using gemini polecats"_ → dispatch failed at the config layer: `unknown gates keys: ['commit']`. Blocked all polecat dispatch on this host.
+**What you were trying to do**: dispatch a chain of SEV2 framework tasks; a stale-yaml bug ate ~75 min — caught it, cut a prerelease, dispatch reopened.
 
-**What you were trying to do**: dispatch a chain of SEV2 framework tasks to local gemini polecats; a stale-yaml / code-drift bug from yesterday's PR wave ate ~75 minutes — caught it, cut a prerelease, dispatch path now reopened.
+## 🚨 ESCALATED DEADLINES
 
-**Decisions in flight**: Pending decisions: 4 (ready + review assigned to you). Needs your call: [task-xyz] does the v2 work obsolete v1? (PR #501 linked).
+<!-- Conditional: only when a deadline meets the escalation rule (see SKILL.md). Consequence text VERBATIM. Hoisted tasks are dropped from the Status deadline list below. -->
 
-(Omit `## Today's Log` entirely on an empty morning with no sessions. See [[instructions/morning-timeline]] / [[instructions/work-summary]].)
+> [!CAUTION]
+>
+> ### 🚨 CRITICAL DEADLINE: [task-id] [[Title]]
+>
+> **Consequence if missed**: <verbatim consequence prose>
+> **Due**: YYYY-MM-DD (today) | **Effort**: M [IMMOVABLE]
 
 ## Status
 
-```
-P0 ░░░░░░░░░░ 3/85
-P1 █░░░░░░░░░ 12/85
-P2 ██████████ 55/85
-P3 ██░░░░░░░░ 15/85
-```
+<!-- Factual snapshot. No recommendations, no curated categories, no suggested sequences. Counts come from mcp__pkb__task_summary, never hand-counted. -->
 
-**Deadlines (≤ 7 days)**:
+Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 
-- [ns-xyz] [[Review Task]] — due 2026-04-24 (today)
-- [ns-abc] [[Committee Vote]] — due 2026-04-27 (3d)
-- [ns-def] [[Manuscript Review]] — due 2026-04-29 (5d)
+**Deadlines (≤ 7 days):**
 
-**Calendar (today)**:
+- [task-id] [[Title]] — due YYYY-MM-DD (3d)
 
-- 09:00 — [[Meeting Title]] — KG-Z9-607
-- 12:00 — ~~[[Canceled Event]]~~ (canceled)
-- 17:00 — [[Evening Event]]
+**Calendar (today):**
+
+- 09:00 — [[Meeting]] — (location)
 
 ### My priorities
 
-(User-owned. The agent never writes here.)
+<!-- User-owned. Create this heading empty; never write here. Preserve anything the user adds. -->
 
 ## What Needs Attention
 
-### [[Prospective Student]] — PhD Supervision Enquiry
+<!-- Inbox (from /email): self-contained FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). Outstanding Workflows: PR buckets from pr-state.json; ready-to-merge PRs as "- [ ]" checkboxes. "Needs your call": ambiguous task completions, never auto-closed. -->
 
-[[Prospective Student]] ([[External University]]) inquired about PhD supervision. Research topic: [[Topic Area]]. CV attached.
+### [[Contact]] — Subject
 
-- [ ] acknowledged
+> verbatim quote of the key content
 
-### [[External Contact]] — [[Partner Organisation]] Project
-
-[[External Contact]] coordinating a meeting with [[Project Lead]] to discuss [[Meeting Topic]]. Asks for a time slot.
-
-- **→ Task**: [academic-example1] Reply to [[External Contact]]
-- [ ] acknowledged
-
-### [[Academic Publisher]] — Editorial Board Invitation
-
-Invited to join [[Journal Name]] editorial board. Application via online form.
-
+- **→ Task**: [task-id] Reply to [[Contact]]
 - [ ] acknowledged
 
 ### Outstanding Workflows
 
 **Ready to merge:**
 
-- [ ] [#489](url) [[academicOps]] — Release 0.3.19
+- [ ] [#489](url) [[repo]] — title
 
-**Needs review:**
+## Carryover
 
-- [#501](url) [[buttermilk]] — Add extraction pipeline (open 2d)
+<!-- Uncompleted tasks from yesterday, VERIFIED against live PKB (drop missing/done/ticked). Omit entirely if empty. -->
 
-**Needs fixes:**
-
-- [#495](url) [[academicOps]] — Fix crontab paths — merge conflicts
-
-* 3 draft/autonomous PRs across 2 repos
-
-### PR Triage Dashboard
-
-_(Note: Rendered only when total open PRs ≥ 10. Contains cluster decision cards. See [[instructions/pr-triage-dashboard]].)_
-
-## Carryover (Human-Action Items)
-
-_(Positioned here to support, not lead — the lede and Today's Log already answer "what was I doing?". Omit entirely when empty.)_
-
-- [ ] [example-carryover-task] **[[Committee Task]]** — due tomorrow (orange) [DECIDE]
-- [ ] [academic-example1] Reply to [[External Contact]] — 2 days overdue (red) [CONFIRM] Draft reply ready: `<summary>`. [ ] send?
-- [ ] [fyi-item-1] Read the new proposal [FYI]
+- [ ] [task-id] [[Title]] — 2d overdue
 
 ## Work Log
 
+<!-- Provenance only, collapsed. Merged PRs + completed tasks. No session narrative (that lives in Today's Log). No open-PR table (that lives in Outstanding Workflows). -->
+
 <details>
-<summary>(collapsed — expand for merged PRs and completed tasks)</summary>
+<summary>(collapsed — merged PRs and completed tasks)</summary>
 
-### Merged PRs
-
-No PRs merged today.
-
-### Completed Tasks
-
-No tasks completed today.
+No PRs merged today. No tasks completed today.
 
 </details>
-````
-
-## Design Notes
-
-**Lede plus five sections, in order: Lede → Today's Log (recovery substrate) → Status → What Needs Attention → Carryover → Work Log.** The note's headline job is US-5 recovery, so it is shape-first: the **lede** (2–3 line present-tense synthesis) leads because the returning user's first question is "what's the shape of right now?"; **Today's Log** sits immediately under it because "what was I just trying to do?" is the next question, and the Morning Timeline answers it verbatim (this is the recovery substrate, AC-14). **Status** (dashboard) and **What Needs Attention** (inbox/PRs) follow as factual inventory; **Carryover** is demoted to a supporting position (it used to lead, but a long checklist at the top is the scaffolding that buried the signal — AC-13); **Work Log** is provenance at the bottom. Earlier versions led with Carryover and buried the synthesis as a closing paragraph (AC-16 failure) — that is exactly the order this template now inverts.
-
-**The lede is a compression, hoisted — never a closing paragraph.** It is the _same_ synthesis Today's Log produces, distilled to 2–3 lines and placed at the top (persist to `daily_narrative`). It must not restate the full timeline. When a source genuinely failed (after a real load attempt + retry), a one-line **Degraded sources** block sits directly under the lede — the degradation is visible _as degradation, up front_, never as full stale sections with footnotes (AC-15).
-
-**Status is reportive, not prescriptive.** Priority bars, deadline list, calendar, and decision counts — no SHOULD/DEEP/ENJOY/QUICK/UNBLOCK categories, no suggested sequences, no "start here because..." rationales. The `### My priorities` subsection is a user-owned space; the agent creates the empty heading and never writes to it.
-
-**Editor-friendly surfaces.** The note is designed to be kept open in a text editor throughout the day. Carryover items, inbox "acknowledged" markers, and Ready-to-merge PRs are rendered as checkboxes (`- [ ]`) so the user can tick them off. User ticks are preserved across regenerations.
-
-**Work Log is collapsed by default.** Wrap the Work Log block in `<details><summary>…</summary> … </details>`.
-
-**No empty placeholders.** If a section has no content, omit it or use a brief natural-language statement ("No sessions today"). Today's Log is omitted entirely in the morning before any sessions have run — no empty heading.
-
-**Carryover only when non-empty.** No section at all if nothing to carry over.
-
-**Proportional detail.** Inbox items involving real people get full context; routine notifications get a line. Today's Log treats a five-hour autonomous run that closed a framework bug as a paragraph and nine single-prompt dispatches as a clause. Do not inject forward urgency ("this is the most important thing to do today") — forward prioritisation belongs to `### My priorities` and the user.
-
-**Editorial synthesis on history; no ranking of what's next.** Today's Log is narrative prose — a smart editor's account of what happened, with named patterns, proportional detail, and honest silences. Status and the inbox are factual — they list what exists without weighting it. These are compatible: editorial judgment about past work is welcome; editorial judgment about future work is the user's.
-
-**No duplication.** Open PRs live in `## What Needs Attention / Outstanding Workflows` only. Merged PRs live in Work Log only. Session narration lives in Today's Log only — the Work Log does not carry a session table.
-
-**Actions linked to tasks.** Every actionable inbox item has a `→ Task` link with a task ID.
+```

@@ -142,8 +142,9 @@ def test_handover_unsticks_on_user_prompt(router):
     assert state.gates["handover"].status == GateStatus.CLOSED
 
 
-def test_bash_no_task_does_not_close_gate(router):
+def test_bash_no_task_does_not_close_gate(router, monkeypatch):
     """Verify that Bash without a bound task does not close the gate (aops-2283a8b0)."""
+    monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
     session_id = "test-no-task"
     state = SessionState.create(session_id)
     assert state.main_agent.current_task is None

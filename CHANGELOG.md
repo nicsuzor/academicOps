@@ -2,18 +2,16 @@
 
 ## [0.3.34](https://github.com/nicsuzor/academicOps/compare/v0.3.33...v0.3.34) (2026-06-04)
 
-
 ### Bug Fixes
 
-* **docker:** revert Dockerfile to pull from nicsuzor/aops dist repo and use correct agy installation paths ([4a45cc6](https://github.com/nicsuzor/academicOps/commit/4a45cc6d35a12bdb521cd6b378586771073f7b3f))
-
+- **docker:** revert Dockerfile to pull from nicsuzor/aops dist repo and use correct agy installation paths ([4a45cc6](https://github.com/nicsuzor/academicOps/commit/4a45cc6d35a12bdb521cd6b378586771073f7b3f))
 
 ### Miscellaneous
 
-* **ci:** remove legacy aops dist repo deployment workflow ([65d77ad](https://github.com/nicsuzor/academicOps/commit/65d77adf44fff17990e77ea121ec88e38bee3096))
-* **ci:** update marketplace.json for dist layout on main ([feeac8a](https://github.com/nicsuzor/academicOps/commit/feeac8af9fd4ea64b2f04b69f9641b5bb250cb38))
-* **git:** add pre-commit hook to prevent manual commits to dist/ ([60ecf5b](https://github.com/nicsuzor/academicOps/commit/60ecf5b5b129cad41687fcc7557c6bde8d6f11cf))
-* remove generated dist/ from git to avoid merge conflicts ([bf85b67](https://github.com/nicsuzor/academicOps/commit/bf85b671b86dc6b2c5b7b24f08abf8585fbd7966))
+- **ci:** remove legacy aops dist repo deployment workflow ([65d77ad](https://github.com/nicsuzor/academicOps/commit/65d77adf44fff17990e77ea121ec88e38bee3096))
+- **ci:** update marketplace.json for dist layout on main ([feeac8a](https://github.com/nicsuzor/academicOps/commit/feeac8af9fd4ea64b2f04b69f9641b5bb250cb38))
+- **git:** add pre-commit hook to prevent manual commits to dist/ ([60ecf5b](https://github.com/nicsuzor/academicOps/commit/60ecf5b5b129cad41687fcc7557c6bde8d6f11cf))
+- remove generated dist/ from git to avoid merge conflicts ([bf85b67](https://github.com/nicsuzor/academicOps/commit/bf85b671b86dc6b2c5b7b24f08abf8585fbd7966))
 
 ## [0.3.33](https://github.com/nicsuzor/academicOps/compare/v0.3.32...v0.3.33) (2026-06-04)
 
