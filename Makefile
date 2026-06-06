@@ -9,10 +9,11 @@ AOPS_ROOT := $(shell pwd)
 DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
-DIST_REPO := nicsuzor/academicOps
+DIST_REPO := nicsuzor/academicOps#dist
 DIST_REPO_URL := https://github.com/$(DIST_REPO)
 GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
 AGY_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-core
+AGY_TOOLS_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-tools
 
 # Extension names
 GEMINI_EXT_NAME := aops-core
@@ -273,6 +274,7 @@ install-gemini:
 # If dist/aops-antigravity exists (local dev build), use it directly.
 # Otherwise, download the latest release tarball from GitHub.
 AGY_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-antigravity-latest.tar.gz
+AGY_TOOLS_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-tools-antigravity-latest.tar.gz
 
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
@@ -281,12 +283,19 @@ install-agy:
 	fi
 	@echo "Installing aops plugin into Antigravity CLI (agy)..."
 	-@agy plugin uninstall aops-core >/dev/null 2>&1 || true
+	-@agy plugin uninstall aops-tools >/dev/null 2>&1 || true
 	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
 		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
 		rm -rf "$(AGY_PLUGIN_DIR)"; \
 		mkdir -p "$(AGY_PLUGIN_DIR)"; \
 		cp -r "$(DIST_DIR)/aops-antigravity/"* "$(AGY_PLUGIN_DIR)/"; \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
+		if [ -d "$(DIST_DIR)/aops-tools-antigravity" ]; then \
+			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
+			mkdir -p "$(AGY_TOOLS_PLUGIN_DIR)"; \
+			cp -r "$(DIST_DIR)/aops-tools-antigravity/"* "$(AGY_TOOLS_PLUGIN_DIR)/"; \
+			agy plugin install "$(AGY_TOOLS_PLUGIN_DIR)"; \
+		fi \
 	else \
 		echo "  Source: $(AGY_RELEASE_URL)"; \
 		TMP_DIR=$$(mktemp -d); \
@@ -296,8 +305,17 @@ install-agy:
 		cp -r "$$TMP_DIR/"* "$(AGY_PLUGIN_DIR)/"; \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		rm -rf "$$TMP_DIR"; \
+		TMP_DIR=$$(mktemp -d); \
+		curl -fsSL "$(AGY_TOOLS_RELEASE_URL)" | tar -xz -C "$$TMP_DIR" || echo "  ⚠️ aops-tools remote download failed"; \
+		if [ -d "$$TMP_DIR" ] && [ "$$(ls -A $$TMP_DIR)" ]; then \
+			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
+			mkdir -p "$(AGY_TOOLS_PLUGIN_DIR)"; \
+			cp -r "$$TMP_DIR/"* "$(AGY_TOOLS_PLUGIN_DIR)/"; \
+			agy plugin install "$(AGY_TOOLS_PLUGIN_DIR)"; \
+		fi; \
+		rm -rf "$$TMP_DIR"; \
 	fi
-	@echo "  Target: $(AGY_PLUGIN_DIR)"
+	@echo "  Target: $(AGY_PLUGIN_DIR) and $(AGY_TOOLS_PLUGIN_DIR)"
 	@echo "✓ Antigravity CLI plugin installed"
 
 # Optional: install into Windows-side Claude/Gemini when invoked from WSL.

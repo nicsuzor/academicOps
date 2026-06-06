@@ -2115,6 +2115,14 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
     print(f"  ✓ Packaged {antigravity_archive.name}")
     safe_symlink(antigravity_archive, dist_root / "aops-antigravity-latest.tar.gz")
 
+    # 4a. aops-tools-antigravity-v{version}.tar.gz
+    if (dist_root / "aops-tools-antigravity").exists():
+        tools_antigravity_archive = dist_root / f"aops-tools-antigravity-v{fs_version}.tar.gz"
+        with tarfile.open(tools_antigravity_archive, "w:gz") as tar:
+            tar.add(dist_root / "aops-tools-antigravity", arcname=".", filter=_source_filter)
+        print(f"  ✓ Packaged {tools_antigravity_archive.name}")
+        safe_symlink(tools_antigravity_archive, dist_root / "aops-tools-antigravity-latest.tar.gz")
+
 
 def create_git_tags(aops_root: Path, version: str):
     """Create git tags for release: v{version} and latest.
