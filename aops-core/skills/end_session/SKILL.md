@@ -59,7 +59,7 @@ Run `TaskList()` and reconcile mirrored tasks. For each native task marked `comp
 
 #### 2. Version Control
 
-If files changed, commit, push, and run `gh pr create --fill --base dev` (PRs target `dev`; `main` is publish-only).
+If files changed, commit, push, and open a PR against **this repo's default working branch**. For academicOps that branch is `dev` — `gh pr create --fill --base dev` (`main` is publish-only). For any other repo, target its own default branch (most use `main`) — do not copy academicOps's `dev` convention onto a repo that has no `dev` branch.
 
 #### 3. Update Project Breadcrumb
 

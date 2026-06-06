@@ -520,12 +520,50 @@ def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
     """
     if run_session_dir is None or not run_session_dir.is_dir():
         return None
-    jsonls = [
-        p for p in run_session_dir.rglob("*.jsonl") if not p.name.startswith("polecat-session")
-    ]
-    if not jsonls:
+    candidates: list[Path] = []
+    for p in run_session_dir.rglob("*.jsonl"):
+        if p.name.startswith("polecat-session"):
+            continue  # polecat's own lifecycle stub / hooks log, not the agent transcript
+        candidates.append(p)
+    # Gemini/antigravity (agy) write their session as ``session-*.json`` (single
+    # ``.json``, not ``.jsonl``) under ``.gemini-tmp/<hash>/chats/`` and, once
+    # extracted, under ``chats/``. The Claude-only ``*.jsonl`` glob above never
+    # matched these, which is why agy runs recorded ``real_transcript_path:
+    # null``. Include them so agy transcripts are captured too.
+    candidates += list(run_session_dir.rglob("session-*.json"))
+    candidates = list(dict.fromkeys(candidates))  # dedupe, preserve order
+    if not candidates:
         return None
-    return max(jsonls, key=lambda p: p.stat().st_mtime)
+
+    # Prefer the canonical persisted copy under ``chats/`` over the ephemeral
+    # ``.gemini-tmp/`` staging copy (same content, but staging is an
+    # implementation detail); break remaining ties by newest mtime.
+    def _rank(p: Path) -> tuple[int, float]:
+        is_staging = ".gemini-tmp" in p.parts
+        return (1 if is_staging else 0, -p.stat().st_mtime)
+
+    return min(candidates, key=_rank)
+
+
+def _resolve_pr_base_branch(manager, project_ref: str | None, task) -> str:
+    """Resolve the branch a polecat worker's PR must target.
+
+    Resolution order:
+        1. Explicit per-task override — ``task.base_branch`` when set. This is
+           the "unless the task says otherwise" escape hatch (forward-compatible
+           hook; harmless no-op until a task carries the field).
+        2. The target repo's ``default_branch`` from the project registry
+           (academicOps → ``dev``, external repos → their own default).
+        3. ``main`` as a last-resort fallback.
+
+    Replaces the legacy hardcoded ``dev`` that every worker received regardless
+    of repo, which broke cross-repo dispatch (e.g. overwhelm-dashboard, whose
+    default is ``main`` and which has no ``dev`` branch).
+    """
+    override = getattr(task, "base_branch", None)
+    if override:
+        return str(override).strip()
+    return manager.default_branch_for(project_ref)
 
 
 def _resolve_transcript_dir(home_dir: Path | None) -> Path:
@@ -2207,10 +2245,19 @@ def _extract_gemini_sessions(session_dir: Path) -> None:
     for session_file in itertools.chain(
         gemini_tmp.rglob("session-*.json"), gemini_tmp.rglob("session-*.jsonl")
     ):
+        src_size = session_file.stat().st_size
         target = dest / session_file.name
         if target.exists():
-            # Avoid collision: prefix with parent hash dir name
+            # Idempotency: a same-named, same-size copy is one WE already made
+            # (this runs twice — once before the transcript save, once in the
+            # run's finally block). Skip it rather than spawning a prefixed
+            # duplicate. (task-… repo-aware base / agy transcript capture)
+            if target.stat().st_size == src_size:
+                continue
+            # Genuine basename collision from a different hash dir: disambiguate.
             target = dest / f"{session_file.parent.parent.name}-{session_file.name}"
+            if target.exists() and target.stat().st_size == src_size:
+                continue
         shutil.copy2(session_file, target)
 
     # Also rescue hooks/gates if they were extracted via docker cp (remote daemons)
@@ -4559,6 +4606,12 @@ def run(
                     }
                 )
 
+    # Resolve the PR base branch from the project registry (academicOps → dev,
+    # external repos → their own default), overridable per-task. Replaces the
+    # legacy hardcoded `dev` that broke cross-repo dispatch (overwhelm-dashboard
+    # has no `dev` branch — its default is `main`).
+    base_branch = _resolve_pr_base_branch(manager, project or task.project, task)
+
     prompt = build_polecat_prompt(
         task_id=task.id,
         task_title=task.title,
@@ -4575,6 +4628,7 @@ def run(
         },
         soft_deps=soft_deps,
         is_issue=is_issue,
+        base_branch=base_branch,
     )
 
     # Step 4: Run agent in the worktree
@@ -4868,6 +4922,14 @@ def run(
             # Save transcript to $POLECAT_HOME/polecats/<task-id>.jsonl
             real_transcript = None
             try:
+                # Gemini/antigravity (agy) write session-*.json under
+                # .gemini-tmp; promote them to the canonical chats/ location
+                # BEFORE locating the transcript, so real_transcript_path points
+                # at the stable copy rather than the ephemeral staging dir (and
+                # so agy runs are captured at all). Idempotent with the
+                # finally-block extraction below.
+                if uses_gemini_runtime:
+                    _extract_gemini_sessions(run_session_dir)
                 real_transcript = _find_real_transcript(run_session_dir)
                 transcript_path = save_worker_transcript(
                     task_id=task.id,

@@ -477,6 +477,27 @@ class PolecatManager:
                 return slug
         raise ValueError(self._format_unknown_project_error(alias))
 
+    def default_branch_for(self, project: str | None) -> str:
+        """Resolve the PR base / default branch for a project slug or alias.
+
+        Single source of truth for "what branch do polecat PRs target in this
+        repo": reads the ``default_branch`` field from the project registry
+        (polecat.yaml). academicOps declares ``dev``; external repos declare
+        their own default (``main``/``master``). Replaces the old hardcoded
+        ``dev``, which was correct only for academicOps and broke cross-repo
+        dispatch (e.g. overwhelm-dashboard has no ``dev`` branch).
+
+        Unknown or ``None`` projects fall back to ``main``.
+        """
+        if not project:
+            return "main"
+        try:
+            slug = self.resolve_project_alias(project)
+        except ValueError:
+            slug = project
+        cfg = self.projects.get(slug) or {}  # allow-fallback: unknown project → main
+        return cfg.get("default_branch", "main")
+
     def _format_unknown_project_error(self, value: str) -> str:
         """Build an error message listing canonical projects and their aliases."""
         # Group aliases by canonical slug for a readable display.

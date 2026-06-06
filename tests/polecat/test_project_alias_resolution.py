@@ -185,6 +185,65 @@ class _Task:
         self.project = project
 
 
+class TestDefaultBranchFor:
+    """PR base / rebase target resolves from the per-repo registry field.
+
+    Regression: a polecat filed a PR against overwhelm-dashboard@dev — a branch
+    that does not exist (its default is `main`). The base branch must come from
+    the registry's `default_branch`, which is correctly `dev` for academicOps
+    but `main`/`master` elsewhere.
+    """
+
+    @pytest.fixture
+    def branch_manager(self, tmp_path):
+        projects = {
+            "aops": {
+                "path": tmp_path / "aops",
+                "default_branch": "dev",
+                "repo": "academicOps",
+                "aliases": ["acaops"],
+            },
+            "overwhelm-dashboard": {
+                "path": tmp_path / "od",
+                "default_branch": "main",
+                "repo": "overwhelm-dashboard",
+                "aliases": ["overwhelm"],
+            },
+            "legacy": {
+                "path": tmp_path / "legacy",
+                "default_branch": "master",
+                "repo": "legacy",
+                "aliases": [],
+            },
+        }
+        aliases = {
+            "aops": "aops",
+            "acaops": "aops",
+            "academicOps": "aops",
+            "overwhelm-dashboard": "overwhelm-dashboard",
+            "overwhelm": "overwhelm-dashboard",
+            "legacy": "legacy",
+        }
+        return _make_manager(tmp_path, projects, aliases)
+
+    @pytest.mark.parametrize(
+        "project_ref, expected",
+        [
+            ("aops", "dev"),  # academicOps convention preserved
+            ("academicOps", "dev"),  # via repo name
+            ("acaops", "dev"),  # via alias
+            ("overwhelm-dashboard", "main"),  # the regression case
+            ("overwhelm", "main"),  # via alias
+            ("legacy", "master"),  # non-main defaults honoured
+            ("not-a-project", "main"),  # unknown → safe fallback
+            (None, "main"),  # missing project → fallback
+            ("", "main"),  # empty project → fallback
+        ],
+    )
+    def test_default_branch_for(self, branch_manager, project_ref, expected):
+        assert branch_manager.default_branch_for(project_ref) == expected
+
+
 class TestGetRepoPathAcceptsAliases:
     def test_repo_name_resolves_to_project_path(self, manager, tmp_path):
         # Pre-create the repo path so get_repo_path returns it (no mirror present).

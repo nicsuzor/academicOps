@@ -54,7 +54,11 @@ _original_cli = sys.modules.get("cli")
 try:
     # Force re-import if cli was already partially loaded
     sys.modules.pop("cli", None)
-    from cli import _find_real_transcript, save_worker_transcript
+    from cli import (
+        _extract_gemini_sessions,
+        _find_real_transcript,
+        save_worker_transcript,
+    )
 finally:
     # Remove the stub-loaded cli so other test modules get a clean import.
     sys.modules.pop("cli", None)
@@ -136,6 +140,102 @@ class TestFindRealTranscript:
         result = _find_real_transcript(tmp_path / "run")
         assert result is not None
         assert result.name == "new.jsonl"
+
+
+# ---------------------------------------------------------------------------
+# _find_real_transcript — Gemini/antigravity (agy) sessions
+#
+# Regression: agy runs recorded ``real_transcript_path: null`` because the
+# finder globbed only ``*.jsonl`` while agy writes ``session-*.json`` (single
+# ``.json``). The finder must locate those AND prefer the canonical ``chats/``
+# copy over the ephemeral ``.gemini-tmp/`` staging copy.
+# ---------------------------------------------------------------------------
+
+
+class TestFindRealTranscriptGemini:
+    def test_finds_gemini_session_json(self, tmp_path: Path) -> None:
+        run = tmp_path / "run"
+        chats = run / "chats"
+        chats.mkdir(parents=True)
+        sess = chats / "session-abc123.json"
+        sess.write_text('{"role":"user","content":"hi"}\n')
+
+        result = _find_real_transcript(run)
+        assert result == sess
+
+    def test_excludes_polecat_stub_keeps_gemini_session(self, tmp_path: Path) -> None:
+        run = tmp_path / "run"
+        run.mkdir()
+        # polecat's own lifecycle stub is a .jsonl that must be ignored.
+        (run / "polecat-session-deadbeef.jsonl").write_text('{"phase":"started"}\n')
+        chats = run / "chats"
+        chats.mkdir()
+        sess = chats / "session-x.json"
+        sess.write_text("{}\n")
+
+        result = _find_real_transcript(run)
+        assert result == sess
+
+    def test_prefers_canonical_chats_over_gemini_tmp_staging(self, tmp_path: Path) -> None:
+        run = tmp_path / "run"
+        staging = run / ".gemini-tmp" / "hashdir" / "chats"
+        staging.mkdir(parents=True)
+        (staging / "session-x.json").write_text("{}\n")
+        canonical = run / "chats"
+        canonical.mkdir(parents=True)
+        canon = canonical / "session-x.json"
+        canon.write_text("{}\n")
+
+        result = _find_real_transcript(run)
+        assert result == canon
+        assert ".gemini-tmp" not in result.parts
+
+
+# ---------------------------------------------------------------------------
+# _extract_gemini_sessions — promotes .gemini-tmp/session-*.json to chats/,
+# and must be idempotent (it runs once before the transcript save and again in
+# the run's finally block; a second pass must not spawn prefixed duplicates).
+# ---------------------------------------------------------------------------
+
+
+class TestExtractGeminiSessions:
+    def _seed_staging(self, tmp_path: Path, name: str = "session-x.json") -> Path:
+        run = tmp_path / "run"
+        src = run / ".gemini-tmp" / "abc123hash" / "chats"
+        src.mkdir(parents=True)
+        (src / name).write_text('{"session":"data"}\n')
+        return run
+
+    def test_extracts_session_to_chats(self, tmp_path: Path) -> None:
+        run = self._seed_staging(tmp_path)
+        _extract_gemini_sessions(run)
+        assert (run / "chats" / "session-x.json").exists()
+
+    def test_idempotent_no_duplicate_on_second_pass(self, tmp_path: Path) -> None:
+        run = self._seed_staging(tmp_path)
+        _extract_gemini_sessions(run)
+        _extract_gemini_sessions(run)  # second pass (the finally-block call)
+
+        chats_files = sorted((run / "chats").glob("session-*.json"))
+        assert len(chats_files) == 1
+        assert chats_files[0].name == "session-x.json"
+
+    def test_distinct_sessions_same_basename_both_kept(self, tmp_path: Path) -> None:
+        # Two genuinely different sessions sharing a basename (different hash
+        # dirs, different content) must both survive — disambiguated, not lost.
+        run = tmp_path / "run"
+        a = run / ".gemini-tmp" / "hashA" / "chats"
+        b = run / ".gemini-tmp" / "hashB" / "chats"
+        a.mkdir(parents=True)
+        b.mkdir(parents=True)
+        (a / "session-x.json").write_text('{"a":1}\n')
+        (b / "session-x.json").write_text('{"b":22222}\n')  # different size
+
+        _extract_gemini_sessions(run)
+        _extract_gemini_sessions(run)  # idempotent across repeats
+
+        kept = sorted((run / "chats").glob("*session-x.json"))
+        assert len(kept) == 2
 
 
 # ---------------------------------------------------------------------------

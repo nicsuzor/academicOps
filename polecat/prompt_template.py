@@ -178,11 +178,13 @@ session — do not pad it to look complete. Honest-partial beats false-whole.
      --body "<what changed and why; add a '## Deliberately deferred' section \
 if anything was deferred>\\n\\nCloses {task_id}" \\
      --head <branch-name> \\
-     --base dev
+     --base {base_branch}
    # For a PARTIAL stop, also pass --draft.
    ```
 
-   All four flags (`--title`, `--body`, `--head`, `--base`) are required. \
+   The `--base {base_branch}` above is THIS repo's default branch — file the \
+PR against it, not against a branch copied from another repo's convention. \
+All four flags (`--title`, `--body`, `--head`, `--base`) are required. \
 Omitting `--head` or `--base` will cause `gh` to hang.
 
    For a **partial** stop you MUST also: (a) put every not-attempted AC under \
@@ -285,6 +287,7 @@ def build_polecat_prompt(
     task_meta: dict | None = None,
     soft_deps: list[dict] | None = None,
     is_issue: bool = False,
+    base_branch: str = "main",
 ) -> str:
     """Build a self-contained polecat work prompt.
 
@@ -297,6 +300,11 @@ def build_polecat_prompt(
         task_meta: Optional dict with parent, priority, tags, etc.
         soft_deps: Optional resolved soft dependency list.
         is_issue: If True, use GitHub issue finish instructions.
+        base_branch: The branch the worker's PR must target — THIS repo's
+            default branch, resolved from the project registry by the caller
+            (academicOps → ``dev``, external repos → their own default).
+            Defaults to ``main``. Replaces the legacy hardcoded ``dev`` that
+            broke cross-repo dispatch.
 
     Returns:
         Complete prompt string ready to pass to claude/gemini.
@@ -305,9 +313,12 @@ def build_polecat_prompt(
     soft_dep_context = build_soft_dep_context(soft_deps)
 
     if is_issue:
+        # Issues: the polecat-side finalize path pushes + opens the PR (it
+        # resolves the base branch from the registry), so no --base appears
+        # in the worker's own finish instructions.
         finish_instructions = FINISH_GITHUB_ISSUE
     else:
-        finish_instructions = FINISH_LOCAL_TASK.format(task_id=task_id)
+        finish_instructions = FINISH_LOCAL_TASK.format(task_id=task_id, base_branch=base_branch)
 
     return POLECAT_WORK_TEMPLATE.format(
         task_id=task_id,

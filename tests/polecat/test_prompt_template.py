@@ -1,3 +1,5 @@
+import pytest
+
 from polecat.prompt_template import (
     FINISH_GITHUB_ISSUE,
     FINISH_LOCAL_TASK,
@@ -74,7 +76,7 @@ def test_build_polecat_prompt_basic():
     assert "- **Type**: bug" in prompt
     assert "- **Project**: proj-1" in prompt
     assert "Fix the thing" in prompt
-    assert FINISH_LOCAL_TASK.format(task_id="task-123") in prompt
+    assert FINISH_LOCAL_TASK.format(task_id="task-123", base_branch="main") in prompt
 
 
 def test_polecat_prompt_does_not_start_with_dot():
@@ -159,3 +161,37 @@ def test_finish_contains_partial_draft_pr_path():
     # omitting --head/--base hangs gh).
     for flag in ("--title", "--body", "--head", "--base"):
         assert flag in prompt
+
+
+# ---------------------------------------------------------------------------
+# Repo-aware PR base branch (regression: a polecat filed a PR against
+# overwhelm-dashboard@dev, a branch that does not exist — the worker prompt
+# hardcoded `--base dev`, correct only for academicOps. The base must now be
+# the target repo's default branch, threaded in by the caller.)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("base_branch", ["main", "dev", "master"])
+def test_local_task_prompt_emits_given_base_branch(base_branch):
+    """The worker's `gh pr create` must target the base branch it was given —
+    not a hardcoded one."""
+    prompt = build_polecat_prompt(task_id="task-1", task_title="T", base_branch=base_branch)
+    assert f"--base {base_branch}" in prompt
+    # And it must NOT smuggle in any other branch as the base.
+    for other in {"main", "dev", "master"} - {base_branch}:
+        assert f"--base {other}" not in prompt
+
+
+def test_local_task_prompt_base_branch_defaults_to_main():
+    """Unset base_branch defaults to `main`, never the legacy `dev`."""
+    prompt = build_polecat_prompt(task_id="task-1", task_title="T")
+    assert "--base main" in prompt
+    assert "--base dev" not in prompt
+
+
+def test_issue_prompt_carries_no_base_flag():
+    """Issue runs let the polecat-side finalize path open the PR (it resolves
+    the base from the registry), so the worker's own finish instructions must
+    not pin a `--base` at all."""
+    prompt = build_polecat_prompt(task_id="issue-1", task_title="T", is_issue=True)
+    assert "--base" not in prompt
