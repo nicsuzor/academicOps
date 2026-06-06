@@ -74,7 +74,7 @@ Computed importance (`focus_score`) currently fails to map to proportional visua
   1. **Daily Note**: Hoisting logic, warning badges, and verbatim consequence alert blocks.
   2. **Overwhelm Dashboard**: Visual sizing, coloring, and alert overlays.
   3. **Shell/CLI Interlocks**: Login/session-start warnings.
-- Low-risk implementation for the daily note compiler (`status-snapshot.md` and `note-template.md`).
+- Low-risk implementation for the daily note compiler (`SKILL.md` and `note-template.md`).
 - Formulation of follow-up implementation subtasks for the Overwhelm Dashboard and CLI shell hooks.
 
 ### Out of Scope
@@ -107,11 +107,11 @@ Let a task $T$ carry the following properties:
 
 ### 2. Slack Ratio (SR)
 
-The **Slack Ratio** represents the portion of the remaining time window that must be spent working to complete the task:
-$$SR = \frac{E}{\max(0.5, T_{\text{due}})}$$
+The **Slack Ratio** represents the portion of the remaining time window that must be spent working to complete the task. The overdue case is a separate branch — it is not derived from the formula:
 
-- If $T_{\text{due}} \le 0$ (overdue), we treat $SR = 1.0$ (critical).
-- A higher $SR$ indicates a closing window. For example, a 1-day task due in 2 days has $SR = 1.0 / 2.0 = 0.5$ (high pressure).
+$$SR = \begin{cases} 1.0 & \text{if } T_{\text{due}} \le 0 \ \text{(overdue, critical)} \\[4pt] \dfrac{E}{\max(0.5,\, T_{\text{due}})} & \text{otherwise} \end{cases}$$
+
+A higher $SR$ indicates a closing window. For example, a 1-day task due in 2 days has $SR = 1.0 / 2.0 = 0.5$ (high pressure).
 
 ### 3. Visibility Tier Gate Logic
 
@@ -125,19 +125,19 @@ Tasks are mapped to one of four **Visibility Tiers** based on their properties a
 Is T_due <= 0 AND S >= SEV2?             ──(Yes)──>  [ Tier 4: Unmissable ]
 Or S >= SEV3 AND T_due <= 2?             ──(Yes)──>  [ Tier 4: Unmissable ]
 Or S >= SEV2 AND M == True AND T_due <= 2? ──(Yes)──>  [ Tier 4: Unmissable ]
-Or SR >= 0.5 AND T_due <= 2?             ──(Yes)──>  [ Tier 4: Unmissable ]
+Or SR >= 0.5 AND T_due <= 2 AND S >= SEV2? ──(Yes)──>  [ Tier 4: Unmissable ]
                          │
                        (No)
                          ▼
 Is S >= SEV3 AND T_due <= 3?             ──(Yes)──>  [ Tier 3: Prominent ]
 Or S >= SEV2 AND M == True AND T_due <= 3? ──(Yes)──>  [ Tier 3: Prominent ]
-Or SR >= 0.35 AND T_due <= 5?            ──(Yes)──>  [ Tier 3: Prominent ]
+Or SR >= 0.35 AND T_due <= 5 AND S >= SEV2? ──(Yes)──>  [ Tier 3: Prominent ]
                          │
                        (No)
                          ▼
 Is S >= SEV2 AND T_due <= 7?             ──(Yes)──>  [ Tier 2: Elevated ]
 Or S >= SEV1 AND M == True AND T_due <= 5? ──(Yes)──>  [ Tier 2: Elevated ]
-Or SR >= 0.20 AND T_due <= 7?            ──(Yes)──>  [ Tier 2: Elevated ]
+Or SR >= 0.20 AND T_due <= 7 AND S >= SEV2? ──(Yes)──>  [ Tier 2: Elevated ]
                          │
                        (No)
                          ▼
@@ -220,11 +220,20 @@ Prepare a mock PKB with three tasks:
 
 To execute this specification across all surfaces, the work is divided into the following tasks:
 
-### Task 1: Core Daily Note Surfacing [In-Scope for this PR]
+### Task 1: Core Daily Note Surfacing [Shipped — simplified]
 
-- Update `aops-core/skills/daily/instructions/status-snapshot.md` to load and group tasks matching Tier 3 and Tier 4.
-- Update `aops-core/skills/daily/references/note-template.md` and `aops-core/skills/daily/SKILL.md` to define the structural template for `## 🚨 ESCALATED DEADLINES`.
-- Implement the rendering logic in the daily note composer.
+The daily note (`aops-core/skills/daily/SKILL.md` + `references/note-template.md`) hoists
+urgent deadlines into `## 🚨 ESCALATED DEADLINES` with verbatim consequence text. To keep
+the composer free of arithmetic, the daily skill uses a **single judgment rule** rather than
+the full Slack-Ratio/tier computation: hoist when a task is overdue or due within ~2 days
+**and** is ≥ SEV2 or on an immovable external deadline. The detailed model in this spec is
+the authoritative source for the next task.
+
+### Task 1b: Move escalation-tier computation upstream into the PKB tool [Subtask]
+
+- File a task: the PKB tool emits a computed escalation tier (this spec's Slack-Ratio and
+  gate logic) as task metadata, so the daily note and other surfaces consume a field instead
+  of re-deriving it. The LLM never does the math.
 
 ### Task 2: Overwhelm Dashboard Focus→Size Curve [Subtask]
 
@@ -240,7 +249,7 @@ To execute this specification across all surfaces, the work is divided into the 
 
 - [ ] Spec document committed and linked in MOC.
 - [ ] Daily note template updated to include the `## 🚨 ESCALATED DEADLINES` section.
-- [ ] Daily note composer instructions updated with the escalation math and rendering logic.
-- [ ] Dashboard and CLI interlock implementation subtasks created in the PKB.
+- [ ] Daily note composer uses the simple judgment rule (no LLM math); tier computation deferred to the PKB tool.
+- [ ] Dashboard, CLI interlock, and PKB-tier implementation subtasks created in the PKB.
 - [ ] No regression introduced; all existing tests pass.
 - [ ] Verified against the ARC DP27 assessor Mon–Fri timeline trace.

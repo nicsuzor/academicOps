@@ -518,7 +518,7 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Pyramid tier**: base
 - **Trigger**: daily / pull flows inspect `depends_on` edges when a task closes
 - **Purpose**: Make newly unblocked tasks visible without requiring users to poll the graph.
-- **Location**: `aops-core/skills/daily/` (progress-sync / briefing-and-triage) and `aops-core/commands/pull.md`
+- **Location**: `aops-core/skills/daily/` (`SKILL.md` + `references/note-template.md`) and `aops-core/commands/pull.md`
 - **Scope**: polecat, crew, interactive
 - **Status**: active
 
