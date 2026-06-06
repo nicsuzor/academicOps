@@ -1776,7 +1776,7 @@ _GHA_WORKFLOW_TEMPLATE = """\
 # Prompt: gha-agents/__AGENT_NAME__.agent.md (generated from aops-core/agents/__AGENT_NAME__.md)
 #
 # Reusable workflow. Call from other repos:
-#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@dev
+#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@dist
 
 name: "Agent: __DISPLAY_NAME__"
 
@@ -1831,6 +1831,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: __DIST_REPO__
+          ref: dist
           path: .aops-dist
           sparse-checkout: gha-agents/__AGENT_NAME__.agent.md
 
@@ -1889,7 +1890,7 @@ def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
 
     For each review agent (enforcer, qa), generates a workflow YAML
     that can be called from other repos:
-        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@dev
+        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@dist
 
     Each workflow checks out nicsuzor/academicOps for the generated agent
     prompt (from `gha-agents/` at the repo root), so no private repo access
