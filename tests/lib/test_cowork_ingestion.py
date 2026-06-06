@@ -142,6 +142,53 @@ def test_is_test_session_cowork_not_filtered():
     assert not transcript._is_test_session(cowork_path)
 
 
+def test_ingest_subagent_bundles_native_layout(tmp_path):
+    """Cowork nests delegated work as native Claude Code bundles under
+    `<conv>/.claude/projects/<encoded>/<task>.jsonl` + `<task>/subagents/`.
+    The old ingest globbed audit.jsonl only and dropped this whole tree
+    (GH #1621). `ingest_subagent_bundles` must copy each bundle into its own
+    top-level `cowork-logs/<conv8>-<task8>/` dir in native layout so the
+    existing discovery + subagent-linking machinery picks it up unchanged.
+    """
+    ingest = _import_ingest()
+
+    conv_dir = tmp_path / "local_abc12345-aaaa-bbbb-cccc-dddddddddddd"
+    task_uuid = "da55dfd3-2e6f-463f-8380-225f96b2030d"
+    proj = conv_dir / ".claude" / "projects" / "encoded-cwd-outputs"
+    subagents = proj / task_uuid / "subagents"
+    subagents.mkdir(parents=True)
+
+    # Native main task thread + one subagent (sessionId == main stem).
+    (proj / f"{task_uuid}.jsonl").write_text(
+        json.dumps({"type": "user", "sessionId": task_uuid, "message": {"content": "do it"}}) + "\n"
+    )
+    (subagents / "agent-a080f46fff3908fee.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "assistant",
+                "sessionId": task_uuid,
+                "isSidechain": True,
+                "message": {"content": [{"type": "text", "text": "verified"}]},
+            }
+        )
+        + "\n"
+    )
+    (subagents / "agent-a080f46fff3908fee.meta.json").write_text("{}")
+
+    target_base = tmp_path / "sessions" / "cowork-logs"
+    target_base.mkdir(parents=True)
+
+    n = ingest.ingest_subagent_bundles(conv_dir, "abc12345", target_base)
+    assert n == 1
+
+    bundle = target_base / f"abc12345-{task_uuid[:8]}"
+    assert (bundle / f"{task_uuid}.jsonl").exists()  # main thread, native layout
+    assert (bundle / task_uuid / "subagents" / "agent-a080f46fff3908fee.jsonl").exists()
+
+    # Idempotent: a second pass with unchanged source copies nothing.
+    assert ingest.ingest_subagent_bundles(conv_dir, "abc12345", target_base) == 0
+
+
 def test_cowork_ingested_discovery(tmp_path, monkeypatch):
     """Verify discovery of ingested Cowork sessions."""
     # Setup mock sessions repo
