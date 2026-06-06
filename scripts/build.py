@@ -1508,20 +1508,6 @@ def build_aops_tools(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
-def install_pkb_binary(dist_dir: Path, binary_path: Path) -> None:
-    """Install pre-built binaries into a distribution directory.
-
-    Copies pkb binary to dist_dir/bin/ and sets executable permissions.
-    """
-    bin_dir = dist_dir / "bin"
-    bin_dir.mkdir(parents=True, exist_ok=True)
-
-    dest = bin_dir / "pkb"
-    shutil.copy2(binary_path, dest)
-    dest.chmod(0o755)
-    print(f"  ✓ Installed pkb binary -> {dest}")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1530,18 +1516,6 @@ def main():
         type=str,
         default=None,
         help="Override the auto-detected version (e.g. '0.3.1-dev.42')",
-    )
-    parser.add_argument(
-        "--pkb-binary",
-        type=str,
-        default=None,
-        help="Path to pre-built pkb binary to include in dist",
-    )
-    parser.add_argument(
-        "--target-platform",
-        type=str,
-        default=None,
-        help="Platform label for archive naming (e.g. 'linux-x86_64', 'macos-aarch64')",
     )
     args = parser.parse_args()
 
@@ -1595,25 +1569,14 @@ def main():
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
     build_aops_tools(aops_root, dist_root, "antigravity", version)
 
-    # Install PKB binary if provided
-    pkb_binary = Path(args.pkb_binary) if args.pkb_binary else None
-    if pkb_binary:
-        if not pkb_binary.exists():
-            print(f"Error: PKB binary not found at {pkb_binary}", file=sys.stderr)
-            sys.exit(1)
-        install_pkb_binary(dist_root / "aops-gemini", pkb_binary)
-        install_pkb_binary(dist_root / "aops-claude", pkb_binary)
-        install_pkb_binary(dist_root / "aops-cowork", pkb_binary)
-        install_pkb_binary(dist_root / "aops-antigravity", pkb_binary)
-
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
 
-    package_artifacts(aops_root, dist_root, version, target_platform=args.target_platform)
+    # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL); no
+    # per-platform binary is bundled, so packaging is platform-independent.
+    package_artifacts(aops_root, dist_root, version)
 
-    # Create git tags for release (only for generic builds, not platform-specific)
-    if not args.target_platform:
-        create_git_tags(aops_root, version)
+    create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
 
@@ -1992,21 +1955,15 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     print(f"  ✓ Generated {marketplace} (sources ./dist/aops-*)")
 
 
-def package_artifacts(
-    aops_root: Path, dist_root: Path, version: str, target_platform: str | None = None
-):
-    """Package the built components into archives for release.
+def package_artifacts(aops_root: Path, dist_root: Path, version: str):
+    """Package the built components into platform-independent archives for release.
 
-    If target_platform is set (e.g. 'linux-x86_64'), produces platform-specific archives:
-    - aops-gemini-linux-x86_64.tar.gz
-    - aops-claude-linux-x86_64.tar.gz
+    PKB ships as a remote MCP server (no bundled per-platform binary), so a
+    single set of generic archives serves every platform:
+    - aops-core.tar.gz / aops-tools.tar.gz (Gemini CLI install names)
+    - aops-claude-v{version}.tar.gz / aops-tools-claude-v{version}.tar.gz
 
-    Otherwise produces generic archives:
-    - aops-gemini-v{version}.tar.gz
-    - aops-claude-v{version}.tar.gz
-    - aops-antigravity-v{version}.tar.gz
-
-    Plus 'latest' symlinks for generic archives.
+    Plus 'latest' symlinks for the Claude archives.
     """
     print("\nPackaging artifacts for release...")
 
@@ -2015,33 +1972,6 @@ def package_artifacts(
         if any(part in BUILD_DETRITUS_NAMES for part in Path(tarinfo.name).parts):
             return None
         return tarinfo
-
-    if target_platform:
-        # Map our platform labels to Gemini CLI convention
-        # Gemini CLI expects: {platform}.{arch}.{name}.tar.gz
-        # Our labels: linux-x86_64, macos-aarch64
-        # Gemini labels: linux/darwin, x64/arm64
-        platform_map = {
-            "linux-x86_64": ("linux", "x64"),
-            "macos-aarch64": ("darwin", "arm64"),
-        }
-        gemini_os, gemini_arch = platform_map.get(target_platform, (None, None))
-
-        if gemini_os:
-            # Gemini archive: {platform}.{arch}.{name}.tar.gz (Gemini CLI convention)
-            gemini_archive = dist_root / f"{gemini_os}.{gemini_arch}.aops-core.tar.gz"
-        else:
-            gemini_archive = dist_root / f"aops-gemini-{target_platform}.tar.gz"
-        with tarfile.open(gemini_archive, "w:gz") as tar:
-            tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
-        print(f"  ✓ Packaged {gemini_archive.name}")
-
-        # Claude archive: keep existing naming (not consumed by Gemini CLI)
-        claude_archive = dist_root / f"aops-claude-{target_platform}.tar.gz"
-        with tarfile.open(claude_archive, "w:gz") as tar:
-            tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
-        print(f"  ✓ Packaged {claude_archive.name}")
-        return
 
     # Generic archives (no platform-specific binary)
     # Strip SemVer build metadata (+gSHA[.dirty]) from filenames only; it lives
