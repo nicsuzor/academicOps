@@ -1,7 +1,7 @@
 {
-  "name": "aops-cowork",
-  "version": "0.0.0",
-  "description": "academicOps for Cowork — research workflow automation tuned for the Cowork harness: PKB tasks mirror onto the native task list at claim and sync back on completion.",
+  "name": "aops-coworklocal",
+  "version": "0.0.1",
+  "description": "academicOps for Cowork Local — only install this one if cowork won't install the normal academicOps packages.",
   "author": {
     "name": "Nicolas Suzor"
   },
