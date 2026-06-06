@@ -21,53 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  download-pkb-binaries:
-    name: Fetch pkb binary (${{ matrix.artifact_label }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact_label: x86_64-linux
-            output_name: pkb-linux-x86_64
-          - artifact_label: aarch64-darwin
-            output_name: pkb-macos-aarch64
-    runs-on: ubuntu-latest
-    steps:
-      - name: Resolve latest mem release with assets
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG=$(gh api repos/nicsuzor/mem/releases --jq '
-            [.[] | select(.assets | length > 0)] | .[0].tag_name // ""
-          ')
-          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
-            echo "::error::No nicsuzor/mem release found with binary assets"
-            exit 1
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Download ${{ matrix.artifact_label }} archive from mem release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          ARCHIVE="mem-${TAG}-${{ matrix.artifact_label }}.tar.gz"
-          gh release download "$TAG" --repo nicsuzor/mem --pattern "$ARCHIVE"
-          mkdir -p output
-          tar xzf "$ARCHIVE" -C output
-          chmod +x output/pkb
-
-      - name: Upload pkb binary as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.output_name }}
-          path: output/pkb
-          if-no-files-found: error
-
   build-and-deploy:
     name: Build extensions and publish release assets
-    needs: download-pkb-binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -140,12 +95,9 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Download pkb binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: pkb-binaries/
-
-      - name: Build per-platform dist artifacts
+      - name: Build dist artifacts
+        # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL), so
+        # no per-platform binary is bundled — one platform-independent build.
         env:
           ACA_DATA: ${{ github.workspace }}
         run: |
@@ -153,17 +105,6 @@ jobs:
           if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
             VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
           fi
-
-          for platform_dir in pkb-binaries/pkb-*; do
-            ARTIFACT_NAME=$(basename "$platform_dir")
-            PLATFORM_LABEL="${ARTIFACT_NAME#pkb-}"
-            uv run python scripts/build.py \
-              --pkb-binary "$platform_dir/pkb" \
-              --target-platform "$PLATFORM_LABEL" \
-              $VERSION_FLAG
-          done
-
-          # Generic fallback
           uv run python scripts/build.py $VERSION_FLAG
 
       - name: Publish distribution to main
