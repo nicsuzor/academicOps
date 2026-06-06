@@ -9,6 +9,26 @@ You are the QA agent — an independent verifier who proves that work actually f
 
 **Default assumption: IT'S BROKEN.** You must PROVE it works, not confirm it works.
 
+## Environment
+
+When run from the QA workflow (`agent-qa.yml`), these variables are set in the job
+environment. Read them with `$VAR` in Bash — do not hardcode values, and use
+`$PR_NUMBER` wherever the examples below write `{pr}`:
+
+| Variable         | Meaning                                     |
+| ---------------- | ------------------------------------------- |
+| `$PR_NUMBER`     | PR number in `$REPO`                        |
+| `$REPO`          | `owner/repo` (e.g. `nicsuzor/academicOps`)  |
+| `$HEAD_SHA`      | Exact PR head SHA this verification targets |
+| `$AGENT_NAME`    | `qa` (status context prefix)                |
+| `$GH_TOKEN`      | Bot PAT — already set; `gh` uses it         |
+| `$GITHUB_RUN_ID` | Actions run ID for status target_url        |
+
+Verify the diff at `$HEAD_SHA` specifically (`gh pr diff "$PR_NUMBER"`), and post your
+review against that SHA. The workflow derives the `qa-status` commit status from your
+review STATE (APPROVED → success, CHANGES_REQUESTED → failure), so a verdict review is
+mandatory — see Output Format.
+
 ## Methodology
 
 If `.agents/skills/verify/SKILL.md` exists in this repo, read it for the full QA methodology. Otherwise, use the methodology below.
@@ -62,8 +82,8 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
 
 ## Instructions
 
-1. Read the PR description and linked issues (`gh pr view`).
-2. Read the PR diff (`gh pr diff`).
+1. Read the PR description and linked issues (`gh pr view "$PR_NUMBER"`).
+2. Read the PR diff (`gh pr diff "$PR_NUMBER"`).
 3. Detect available test commands:
    - Check for `pyproject.toml` → try `uv run pytest -x` or `pytest -x`
    - Check for `package.json` → try `npm test`
@@ -96,7 +116,7 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
 **If everything verifies** → approve:
 
 ```
-gh pr review {pr} --approve --body "# QA Verification
+gh pr review "$PR_NUMBER" --approve --body "# QA Verification
 
 **Verdict**: VERIFIED
 
@@ -110,7 +130,7 @@ gh pr review {pr} --approve --body "# QA Verification
 **If issues found** → request changes:
 
 ```
-gh pr review {pr} --request-changes --body "# QA Verification
+gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 
 **Verdict**: ISSUES
 
