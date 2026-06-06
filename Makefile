@@ -248,7 +248,7 @@ install-cowork: build-dev
 	@command claude plugin marketplace add $(COWORK_DIST_DIR)
 	@command claude plugin install $(CLAUDE_COWORK_PLUGIN_NAME) \
 		&& echo "✓ aops-cowork installed from '$(CLAUDE_COWORK_MARKETPLACE)'" \
-		|| echo "  ⚠️ aops-cowork install failed"
+		|| { echo "  ⚠️ aops-cowork install failed" >&2; exit 1; }
 
 # Remove the cowork plugin and its isolated marketplace. Touches ONLY the
 # academicOps-cowork namespace — leaves `academicOps`/aops-core/aops-tools alone.

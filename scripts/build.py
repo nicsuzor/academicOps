@@ -1948,8 +1948,7 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     """
     template_path = aops_root / "templates" / "marketplace.json"
     if not template_path.exists():
-        print("  ⚠ templates/marketplace.json not found, skipping marketplace generation")
-        return
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
 
     with open(template_path) as f:
         data = json.load(f)
@@ -1990,15 +1989,14 @@ def generate_cowork_marketplace(aops_root: Path, dist_root: Path, version: str):
     """
     template_path = aops_root / "templates" / "marketplace-cowork.json"
     if not template_path.exists():
-        print("  ⚠ templates/marketplace-cowork.json not found, skipping cowork marketplace")
-        return
+        raise FileNotFoundError(f"templates/marketplace-cowork.json not found at {template_path}")
 
     cowork_plugin_dir = dist_root / "aops-cowork" / ".claude-plugin"
     if not (cowork_plugin_dir / "plugin.json").exists():
-        print(
-            "  ⚠ dist/aops-cowork/.claude-plugin/plugin.json missing, skipping cowork marketplace"
+        raise FileNotFoundError(
+            f"dist/aops-cowork/.claude-plugin/plugin.json missing at {cowork_plugin_dir} "
+            "— run build_aops_core(platform='cowork') before generate_cowork_marketplace()"
         )
-        return
 
     with open(template_path) as f:
         data = json.load(f)
