@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 from lib.session_reader import find_sessions
-from lib.transcript_parser import SessionProcessor
+from lib.transcript_parser import Entry, SessionProcessor
 
 _REPO_ROOT = Path(__file__).parent.parent.parent
 
@@ -16,6 +16,65 @@ def _import_transcript():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _import_ingest():
+    spec = importlib.util.spec_from_file_location(
+        "ingest_cowork", _REPO_ROOT / "aops-core" / "scripts" / "ingest_cowork.py"
+    )
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_ingest_preserves_native_message_envelope():
+    """Current Cowork audit logs emit native Claude Code records (type=user/
+    assistant + top-level `message`). Ingest must pass `message` through, not
+    bury it under `content` — otherwise the transcript parser reads no content
+    and emits an empty transcript (regression: 875KB session → 429 bytes).
+    """
+    ingest = _import_ingest()
+
+    native = {
+        "type": "assistant",
+        "uuid": "abc",
+        "_audit_timestamp": "2026-06-05T13:03:46.922Z",
+        "_audit_hmac": "deadbeef",
+        "message": {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "hello"}],
+        },
+    }
+    out = ingest.normalize_cowork_entry(native)
+
+    # Envelope preserved at top level for Entry.from_dict
+    assert out["type"] == "assistant"
+    assert out["message"]["content"][0]["text"] == "hello"
+    assert "content" not in out  # not double-wrapped
+    # Audit bookkeeping normalized away
+    assert out["timestamp"] == "2026-06-05T13:03:46.922Z"
+    assert "_audit_hmac" not in out
+
+    # And the parser actually renders it
+    entry = Entry.from_dict(out)
+    assert entry.type == "assistant"
+    assert entry.message["content"][0]["text"] == "hello"
+
+
+def test_ingest_legacy_schema_still_normalized():
+    """Legacy flat audit events (type=message) must still get a synthesized
+    Claude Code message envelope."""
+    ingest = _import_ingest()
+    legacy = {
+        "type": "message",
+        "role": "user",
+        "content": "Help me",
+        "_audit_timestamp": "2026-04-28T10:00:01Z",
+    }
+    out = ingest.normalize_cowork_entry(legacy)
+    assert out["type"] == "user"
+    assert out["message"]["content"][0]["text"] == "Help me"
 
 
 def test_cowork_audit_parsing(tmp_path):

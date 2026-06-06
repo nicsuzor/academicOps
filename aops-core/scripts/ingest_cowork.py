@@ -33,7 +33,24 @@ except ImportError:
 def normalize_cowork_entry(data: dict) -> dict:
     """Normalize a Cowork audit entry to Claude Code schema for writing to JSONL."""
     timestamp = data.get("_audit_timestamp") or data.get("timestamp")
-    normalized: dict = {
+
+    # Current Cowork audit logs already emit native Claude Code records
+    # (type=user/assistant/system with a top-level `message` envelope, plus
+    # `_audit_*` bookkeeping fields). Pass these through verbatim so the
+    # transcript parser's Entry.from_dict reads `message` directly. Wrapping
+    # them under `content` (the old fallback) buried the envelope one level too
+    # deep and produced empty transcripts.
+    if "message" in data:
+        normalized = dict(data)
+        normalized["timestamp"] = timestamp
+        normalized.pop("_audit_timestamp", None)
+        normalized.pop("_audit_hmac", None)
+        normalized.setdefault("uuid", data.get("id", ""))
+        return normalized
+
+    # Legacy Cowork audit schema (type=message/tool_call/tool_result): synthesize
+    # the Claude Code message envelope from the flat event.
+    normalized = {
         "uuid": data.get("uuid", data.get("id", "")),
         "timestamp": timestamp,
     }
