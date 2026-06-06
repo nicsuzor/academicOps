@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
 
 # --- Configuration ---
 
@@ -19,6 +19,13 @@ GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
+
+# Cowork lives in its OWN isolated marketplace + plugin namespace so a local
+# install never clobbers the genuine `academicOps` marketplace or the
+# aops-core/aops-tools plugins. See install-cowork / generate_cowork_marketplace.
+CLAUDE_COWORK_MARKETPLACE := academicOps-cowork
+CLAUDE_COWORK_PLUGIN_NAME := aops-cowork@academicOps-cowork
+COWORK_DIST_DIR := $(DIST_DIR)/aops-cowork
 GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz
 
 # Platform detection for binaries
@@ -51,6 +58,8 @@ help:
 	@echo "  make install        - Install all components from GitHub releases (includes aops-tools)"
 	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
+	@echo "  make install-cowork - Install aops-cowork locally from its isolated 'academicOps-cowork' marketplace"
+	@echo "  make uninstall-cowork - Remove aops-cowork + its isolated marketplace"
 	@echo "  make install-gemini - Install Gemini extensions from main repo"
 	@echo "  make install-agy   - Install plugin into Antigravity CLI (agy)"
 	@echo "  make install-windows - (WSL only) Install into Windows-side Claude/Gemini if present"
@@ -221,6 +230,33 @@ package-cowork-windows:
 	cp "$$ZIP" "$$DEST/" && \
 		echo "✓ Copied $$(basename $$ZIP) → $$DEST" && \
 		echo "  In Claude desktop: Cowork → Customize → Add plugins → Upload a file → pick from Downloads."
+
+# Local install of the Cowork plugin from its OWN isolated marketplace.
+# Unlike `install-dev` (which legitimately overrides the genuine `academicOps`
+# marketplace with a newer build of the SAME aops-core plugin), the cowork build
+# is a DISTINCT plugin. This target registers a SEPARATE marketplace named
+# `academicOps-cowork` (containing only `aops-cowork`) and installs from it, so
+# it never adds/updates/replaces `academicOps` and never installs
+# aops-core/aops-tools. Running it leaves any genuine `academicOps` marketplace
+# fully intact. The marketplace source is a local DIRECTORY (dist/aops-cowork),
+# which survives Cowork restarts — github-source marketplaces get nuked on every
+# restart (RemotePluginManager.syncPlugins; cf. claude-code issues #38429/#40600).
+install-cowork: build-dev
+	@echo "Installing aops-cowork from isolated marketplace '$(CLAUDE_COWORK_MARKETPLACE)'..."
+	@echo "  Marketplace source: $(COWORK_DIST_DIR) (local directory)"
+	-command claude plugin uninstall $(CLAUDE_COWORK_PLUGIN_NAME)
+	@command claude plugin marketplace add $(COWORK_DIST_DIR)
+	@command claude plugin install $(CLAUDE_COWORK_PLUGIN_NAME) \
+		&& echo "✓ aops-cowork installed from '$(CLAUDE_COWORK_MARKETPLACE)'" \
+		|| { echo "  ⚠️ aops-cowork install failed" >&2; exit 1; }
+
+# Remove the cowork plugin and its isolated marketplace. Touches ONLY the
+# academicOps-cowork namespace — leaves `academicOps`/aops-core/aops-tools alone.
+uninstall-cowork:
+	@echo "Removing aops-cowork and its isolated marketplace '$(CLAUDE_COWORK_MARKETPLACE)'..."
+	-command claude plugin uninstall $(CLAUDE_COWORK_PLUGIN_NAME)
+	-command claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)
+	@echo "✓ aops-cowork + '$(CLAUDE_COWORK_MARKETPLACE)' removed"
 
 install-gemini:
 	@echo "Installing aops extension for Gemini CLI..."

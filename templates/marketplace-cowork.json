@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "academicOps-cowork",
+  "description": "Isolated marketplace for the AcademicOps Cowork plugin — keeps aops-cowork in its own namespace so a local Cowork install never clobbers the genuine academicOps marketplace or the aops-core/aops-tools plugins.",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
+  "plugins": [
+    {
+      "name": "aops-cowork",
+      "description": "AcademicOps variant for Cowork - includes native task list synchronization",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

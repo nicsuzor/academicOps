@@ -1577,6 +1577,11 @@ def main():
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
 
+    # Generate the ISOLATED cowork marketplace (academicOps-cowork) inside the
+    # built dist/aops-cowork plugin dir, so a local Cowork install lives in its
+    # own marketplace + plugin namespace and never clobbers `academicOps`.
+    generate_cowork_marketplace(aops_root, dist_root, version)
+
     # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL); no
     # per-platform binary is bundled, so packaging is platform-independent.
     package_artifacts(aops_root, dist_root, version)
@@ -1943,8 +1948,7 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     """
     template_path = aops_root / "templates" / "marketplace.json"
     if not template_path.exists():
-        print("  ⚠ templates/marketplace.json not found, skipping marketplace generation")
-        return
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
 
     with open(template_path) as f:
         data = json.load(f)
@@ -1960,6 +1964,59 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
         json.dump(data, f, indent=2)
         f.write("\n")
     print(f"  ✓ Generated {marketplace} (sources ./dist/aops-*)")
+
+
+def generate_cowork_marketplace(aops_root: Path, dist_root: Path, version: str):
+    """Generate the ISOLATED cowork marketplace manifest under dist/aops-cowork.
+
+    The cowork build is a DISTINCT plugin from aops-core (different platform
+    build, cowork-only skill blocks, bundled cowork-sync skill). A local Cowork
+    install therefore must never touch the genuine `academicOps` marketplace or
+    the `aops-core`/`aops-tools` plugin namespaces. To keep it isolated we emit
+    a SEPARATE marketplace named `academicOps-cowork` that lists ONLY the
+    `aops-cowork` plugin.
+
+    The manifest is written INTO the already-built plugin directory
+    (dist/aops-cowork/.claude-plugin/marketplace.json) with a self-referential
+    plugin source of "./", so `claude plugin marketplace add dist/aops-cowork`
+    resolves the co-located `.claude-plugin/plugin.json` as the aops-cowork
+    plugin — a local-directory marketplace that survives Cowork restarts (the
+    github-source marketplaces get nuked; see the install-cowork Makefile note).
+
+    Must run AFTER build_aops_core(platform="cowork", ...), which rebuilds the
+    dist/aops-cowork directory from scratch. The manifest is excluded from the
+    aops-cowork manual-upload zip so that artifact stays a pure plugin payload.
+    """
+    template_path = aops_root / "templates" / "marketplace-cowork.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace-cowork.json not found at {template_path}")
+
+    cowork_plugin_dir = dist_root / "aops-cowork" / ".claude-plugin"
+    if not (cowork_plugin_dir / "plugin.json").exists():
+        raise FileNotFoundError(
+            f"dist/aops-cowork/.claude-plugin/plugin.json missing at {cowork_plugin_dir} "
+            "— run build_aops_core(platform='cowork') before generate_cowork_marketplace()"
+        )
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    # Inject the build version into every plugin entry (template uses __VERSION__),
+    # keeping the cowork plugin in version lockstep with the rest of the build.
+    # The cowork template is the source of truth for the isolated marketplace; a
+    # missing/empty plugins list is a broken template, so fail fast rather than
+    # silently emit an empty marketplace.
+    plugins = data.get("plugins")
+    if not plugins:
+        raise ValueError(f"{template_path} has no 'plugins' — cannot generate cowork marketplace")
+    for plugin in plugins:
+        plugin["version"] = version
+
+    marketplace = cowork_plugin_dir / "marketplace.json"
+    with open(marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {marketplace} (name {data.get('name')}, source ./)")
 
 
 def package_artifacts(aops_root: Path, dist_root: Path, version: str):
@@ -2035,6 +2092,11 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
             for path in sorted(cowork_dir.rglob("*")):
                 rel = path.relative_to(cowork_dir)
                 if any(part in BUILD_DETRITUS_NAMES for part in rel.parts):
+                    continue
+                # The isolated academicOps-cowork marketplace manifest is for the
+                # local `make install-cowork` path only; the manual-upload zip must
+                # stay a pure plugin payload (.claude-plugin/plugin.json at root).
+                if rel.parts == (".claude-plugin", "marketplace.json"):
                     continue
                 zf.write(path, arcname=str(rel))
         print(f"  ✓ Packaged {cowork_zip.name} (Cowork manual upload)")
