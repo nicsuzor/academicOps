@@ -56,7 +56,12 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 
 ## Escalated deadlines (simple rule)
 
-Hoist a due task into a `## 🚨 ESCALATED DEADLINES` callout when it is **overdue, or due within ~2 days**, AND **high-consequence (≥ SEV2) or on an immovable external deadline**. Render its verbatim consequence text; drop it from the Status deadline list to avoid duplication. Otherwise it stays in the normal Status deadline list. Do not compute tiers or ratios — the full escalation model lives in `[[importance-visibility-escalation]]`, and a follow-up PKB-tool task will compute a real escalation tier upstream.
+Hoist a due task into a `## 🚨 ESCALATED DEADLINES` callout when it meets any of these conditions:
+- **Overdue** (past due date) AND ≥ SEV2; or
+- **Due within ~2 days** AND ≥ SEV3; or
+- **Due within ~2 days** AND ≥ SEV2 AND on an immovable external deadline.
+
+Render its verbatim consequence text; drop it from the Status deadline list to avoid duplication. Do not hoist movable SEV2 tasks unless they are also overdue — that is false urgency inflation. Do not compute tiers or ratios — the full escalation model lives in `[[importance-visibility-escalation]]`, and a follow-up PKB-tool task will compute a real escalation tier upstream.
 
 ## Reconcile and cross-link
 
