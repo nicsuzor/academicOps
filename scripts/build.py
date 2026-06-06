@@ -1581,7 +1581,8 @@ def main():
     # per-platform binary is bundled, so packaging is platform-independent.
     package_artifacts(aops_root, dist_root, version)
 
-    create_git_tags(aops_root, version)
+    if args.tag or os.environ.get("GITHUB_ACTIONS") == "true":
+        create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
 
