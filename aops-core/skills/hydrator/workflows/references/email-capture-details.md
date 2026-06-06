@@ -49,25 +49,14 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 - **Medium (50-80%)**: Suggest but flag for review (#suggested-categorization)
 - **Low (<50%)**: Create in inbox, needs manual categorization (#needs-categorization)
 
-## Step 5 & 6: Priority and Task Creation
+## Step 5 & 6: Metadata and Task Creation
 
-### Infer Priority and Metadata
+### Capture Metadata (do not infer priority)
 
-1. **Infer Priority**:
-
-   The canonical P0–P4 definitions live in [TAXONOMY.md → Priority Labels](../../../remember/references/TAXONOMY.md#priority-labels-p0p4). Use those labels — do not invent new bands. The mapping below is the **email-specific deadline heuristic** for inferring which canonical label applies to a freshly-captured email task.
-
-   | Email signal                                         | Canonical label |
-   | ---------------------------------------------------- | --------------- |
-   | Deadline < 48h, OSB votes, explicit urgent markers   | **P0**          |
-   | Deadline < 1 week, grant/paper deadlines             | **P1**          |
-   | General correspondence, FYI with follow-up (default) | **P2**          |
-   | No deadline, administrative                          | **P3**          |
-
-   Email capture does not produce P4 — backlog routing is a planner/maintain decision, not an inbox decision.
+1. **Leave `priority` at the uncurated default band.** Email capture **never** infers a priority band from the email's urgency, deadline, or apparent importance — inferring intent is an authority the agent does not have. Deadline pressure is carried by `due` (it enters ranking via `focus_score`, not the priority band) and importance by `consequence`; the band stays at the default. If Nic expressly directs a band in the captured message ("make this P1"), transcribe exactly that and nothing more. Intent/priority authority — the canonical rule: [[framework-conventions-summary#intent-authority]].
 
 2. **Extract Structured Metadata**:
-   - **due**: Extract deadline from email body. Format: ISO date (YYYY-MM-DD).
+   - **due**: Extract deadline from email body — this is where deadline urgency belongs, not the priority band. Format: ISO date (YYYY-MM-DD).
    - **effort**: Estimate effort required for the task. Format: duration (0.5d, 1d, 1w).
    - **consequence**: Extract stated or implied consequences if the task is not completed.
 

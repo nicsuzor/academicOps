@@ -49,6 +49,20 @@ When you encounter something you cannot derive:
 3. **ASK** - Use AskUserQuestion for clarification
 4. **DOCUMENT** - Once resolved, add the rule
 
+## Intent authority
+
+**Outcome this protects:** task ranking reflects Nic's personally curated signal of what matters — never an agent's estimate of importance. This block is the single authoritative statement of that rule; every skill, workflow, agent-def, and template that creates or updates a task points here instead of restating it.
+
+_The concept is **intent**. Today it is stored in the field still named `priority`; the field rename `priority`→`intent` is tracked in [[aops-e887faa4]]. Until it lands, "intent" below means the `priority` band, and the example "make this P1" uses the current P0–P4 labels (see [[../remember/references/TAXONOMY.md#priority-labels-p0p4]])._
+
+`intent` is **Nic's personally curated ranking of what matters** — his signal, never an agent's estimate of importance.
+
+- **Agents never originate intent.** On create/update, leave `intent` at the uncurated default band (the established default; do not elevate). Landing a task uncurated is _not_ setting intent — it is the explicit absence of curation, which is correct.
+- **Only Nic sets intent above the default.** An agent may write a non-default `intent` **only** when Nic expressly directs that specific value in that request ("make this P1"). Transcribing Nic's stated intent is allowed; inferring, guessing, or estimating it is not — even when the task is obviously important to you.
+- **Never propagate intent.** Do not inherit a parent's intent onto children or copy it across related tasks. Each elevation is an individual act of Nic's curation.
+- **Importance ≠ intent.** Urgency, severity, blocker-status, your own assessment of value → `consequence`/`severity`/`due`/`status`, never `intent`. `intent` answers only: _has Nic personally put this on his list, and where._
+- **When you think something deserves his attention,** surface it as status/escalation so _he_ sets intent — never set it for him as a shortcut.
+
 ## Core Conventions
 
 ### Single Source of Truth

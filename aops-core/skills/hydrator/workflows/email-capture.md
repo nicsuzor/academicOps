@@ -26,7 +26,7 @@ Automatically extract action items from emails and create properly categorized t
 1. **Fetch & Check**: Retrieve recent emails. Check if already responded to.
 2. **Classify**: Categorize emails into _Actionable_, _Important FYI_, or _Safe to Ignore_.
 3. **Context & Categorize**: Query the PKB to match tasks to active projects/epics.
-4. **Metadata & Priority**: Assign canonical priority labels (P0-P3, referencing [TAXONOMY.md](../../remember/references/TAXONOMY.md#priority-labels-p0p4)) and extract metadata (`due`, `effort`, `consequence`).
+4. **Metadata (not priority)**: Leave `priority` at the uncurated default band — never infer a band from the email's urgency or deadline. Route the deadline to `due` (deadline-aware ranking happens via `focus_score`, not the band) and extract `effort`, `consequence`. Intent/priority authority: [[framework-conventions-summary#intent-authority]].
 5. **Create Tasks**: Create a task with a clear title, body (including quoted email text, entry_id, and metadata), and parent linkage.
 6. **Present Summary**: Present created tasks and Important FYI items.
 

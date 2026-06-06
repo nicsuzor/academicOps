@@ -259,6 +259,8 @@ The tree hierarchy is a **spanning tree** of the underlying dependency graph. It
 
 The single canonical definition of priority. Other framework documents MUST link here rather than redefine these labels locally.
 
+> **Who may set these labels — the intent-authority rule.** This section defines what each label _means_. _Who_ may write a non-default band, and when, is governed by the SSoT at [[framework-conventions-summary#intent-authority]]: the band is **Nic's personally curated intent**, never an agent's estimate of importance. Agents leave new tasks at the default (P3) and never originate a non-default band — only Nic does, by express per-request instruction.
+
 | Label | Name          | Meaning                                                                                                                   |
 | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | P0    | Critical      | Blocking work, deadline overdue, or active incident. Drop everything. The default for "urgent" — escalate immediately.    |
@@ -269,7 +271,7 @@ The single canonical definition of priority. Other framework documents MUST link
 
 **Lower number = higher priority.** When sorting "highest priority first", sort ascending by label number (`P0` before `P1` before `P2`, etc.).
 
-**Priority is not urgency or severity.** Urgency is a time-decay function over `due` and slack (computed by the PKB; consumed as one component of `focus_score`, not used directly for ranking). Severity is a property of incidents (impact when they occur). Priority is the user-facing label that says "where does this slot in my queue right now?" — composed of, but distinct from, both. Skills that infer priority from deadlines (e.g. hydrator email capture) layer their own deadline-mapping rules on top of these definitions; they do not redefine the labels.
+**Priority is not urgency or severity.** Urgency is a time-decay function over `due` and slack (computed by the PKB; consumed as one component of `focus_score`, not used directly for ranking). Severity is a property of incidents (impact when they occur). Priority is the user-facing label that says "where does this slot in my queue right now?" — composed of, but distinct from, both. Deadline pressure belongs in `due` (it enters ranking via the `urgency` term of `focus_score`), not in the priority band: skills do **not** infer a band from deadlines or apparent importance (see [[framework-conventions-summary#intent-authority]]).
 
 ---
 
