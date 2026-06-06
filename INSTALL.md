@@ -4,8 +4,11 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 
 Claude Code
 
+`@dist` pins the published distribution branch (build artifacts live there; the
+default branch is the source trunk).
+
 ```bash
-command claude plugin marketplace add nicsuzor/academicOps
+command claude plugin marketplace add nicsuzor/academicOps@dist
 command claude plugin marketplace update academicOps && command claude plugin install aops-core@academicOps && command claude plugin install aops-tools@academicOps
 ```
 

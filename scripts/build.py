@@ -1776,7 +1776,7 @@ _GHA_WORKFLOW_TEMPLATE = """\
 # Prompt: gha-agents/__AGENT_NAME__.agent.md (generated from aops-core/agents/__AGENT_NAME__.md)
 #
 # Reusable workflow. Call from other repos:
-#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@main
+#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@dev
 
 name: "Agent: __DISPLAY_NAME__"
 
@@ -1889,7 +1889,7 @@ def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
 
     For each review agent (enforcer, qa), generates a workflow YAML
     that can be called from other repos:
-        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@main
+        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@dev
 
     Each workflow checks out nicsuzor/academicOps for the generated agent
     prompt (from `gha-agents/` at the repo root), so no private repo access
@@ -1933,8 +1933,8 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     .claude-plugin/marketplace.json at the repo root. ONE file, ONE convention:
     plugins live under dist/ in every consumer, so ./dist/aops-claude resolves
     correctly whether the marketplace root is the local repo (`marketplace add
-    <repo-root>`, build output in repo/dist/) or the published main branch (the
-    publish step copies this file to the main root → main/dist/aops-claude).
+    <repo-root>`, build output in repo/dist/) or the published `dist` branch (the
+    publish step copies this file to the dist-branch root → dist:dist/aops-claude).
 
     aops-cowork is not installable via marketplace on personal Anthropic accounts
     (no marketplace mechanism there); it ships as `aops-cowork-v{version}.zip` for

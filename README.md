@@ -220,10 +220,10 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 - GitHub CLI (`gh`) for artifact retrieval
 - Docker (optional, for sandboxing/testing)
 
-**Quick Install**:
+**Quick Install** (`@dist` pins the published distribution branch):
 
 ```bash
-command claude plugin marketplace add nicsuzor/academicOps
+command claude plugin marketplace add nicsuzor/academicOps@dist
 ```
 
 _(For Gemini users)_:
