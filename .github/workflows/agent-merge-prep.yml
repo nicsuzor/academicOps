@@ -62,7 +62,7 @@ jobs:
     # Bounds the *worst-case duration of a single invocation*, not aggregate
     # daily spend — that is driven by dispatch frequency (cron + workflow_run).
     # Verify cap enforcement across all workflows: `scripts/check_workflow_timeout_breaches.py`.
-    timeout-minutes: 45
+    timeout-minutes: 55
     name: Merge Prep
     runs-on: ubuntu-latest
     # Per-PR concurrency prevents duplicate runs on the same PR. This is the
@@ -246,7 +246,7 @@ jobs:
         if: steps.loop-check.outputs.skip != 'true' && steps.ceiling-check.outputs.exceeded != 'true' && steps.fast-path.outputs.skip_agent != 'true'
         id: claude
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 45
         uses: anthropics/claude-code-action@v1
         with:
           allowed_bots: "claude[bot],github-actions[bot]"
@@ -297,6 +297,7 @@ jobs:
             --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | length')
           if [ "$UNRESOLVED_CR" -gt 0 ]; then
             echo "ERROR: $UNRESOLVED_CR CHANGES_REQUESTED review(s) remain — cannot approve"
+            echo "::error::Merge Prep blocked: $UNRESOLVED_CR CHANGES_REQUESTED review(s) remain undismissed."
             REVIEWERS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
               --jq '[.[] | {state, login: .user.login}] | group_by(.login) | map(last) | map(select(.state == "CHANGES_REQUESTED")) | map(.login) | join(", ")')
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
@@ -360,6 +361,7 @@ jobs:
             || echo "WARNING: Could not enable auto-merge (may already be enabled)"
 
           echo "Enabled auto-merge for PR #$PR_NUMBER"
+          echo "SUCCESS_PATH_COMPLETED=true" >> "$GITHUB_ENV"
 
       - name: Handle skip (loop detection)
         if: steps.loop-check.outputs.skip == 'true'
@@ -381,6 +383,18 @@ jobs:
         run: |
           REPO="${{ github.repository }}"
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+
+          # Annotate agent failure or timeout
+          echo "::error::Merge Prep agent step failed or timed out. Check logs for details."
+
+          # Check for squash-merge ghost conflict annotation
+          GHOST_COMMENT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "'"$BOT_IDENTITY"'") | .body' | grep -i "Blocked: squash-merge ghost conflict" || true)
+          GHOST_REVIEW=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '.[] | select(.user.login == "'"$BOT_IDENTITY"'") | .body' | grep -i "Blocked: squash-merge ghost conflict" || true)
+          if [ -n "$GHOST_COMMENT" ] || [ -n "$GHOST_REVIEW" ]; then
+            echo "::error::Merge Prep blocked: Squash-merge ghost conflict detected."
+          fi
 
           # Count prior failures by counting "Merge Prep: Failed" comments from BOT_IDENTITY.
           # We cannot use `gh run list --conclusion failure` because continue-on-error
@@ -474,4 +488,32 @@ jobs:
               -f context="merge-prep-running" \
               -f description="Merge prep run finished" \
               -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+          fi
+
+      - name: Final check and hard-fail
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.ceiling-check.outputs.exceeded }}" = "true" ]; then
+            echo "::error::Merge Prep failed: Runaway loop ceiling reached."
+            FAILED=true
+          elif [ "${{ steps.claude.outcome }}" = "failure" ]; then
+            echo "::error::Merge Prep failed: Agent step failed or timed out."
+            FAILED=true
+          elif [ "${{ steps.loop-check.outputs.skip }}" = "true" ]; then
+            echo "::notice::Merge Prep succeeded (skipped via loop detection)."
+          elif [ "${{ steps.claude.outcome }}" = "success" ] || [ "${{ steps.fast-path.outputs.skip_agent }}" = "true" ]; then
+            if [ "$SUCCESS_PATH_COMPLETED" = "true" ]; then
+              echo "::notice::Merge Prep completed successfully."
+            else
+              echo "::error::Merge Prep failed: success handler did not complete."
+              FAILED=true
+            fi
+          else
+            echo "::error::Merge Prep failed: Unknown failure state or early pipeline failure."
+            FAILED=true
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            exit 1
           fi
