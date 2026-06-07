@@ -8,6 +8,10 @@ name: Lint
 on:
   workflow_dispatch:
   workflow_call:
+    outputs:
+      committed:
+        description: "true if lint pushed a commit in this pass"
+        value: ${{ jobs.lint.outputs.committed }}
   push:
     branches: [dev]
 
@@ -16,6 +20,8 @@ jobs:
     timeout-minutes: 10
     name: Lint
     runs-on: ubuntu-latest
+    outputs:
+      committed: ${{ steps.commit.outputs.committed || 'false' }}
     permissions:
       contents: write
     concurrency:
@@ -84,6 +90,7 @@ jobs:
           uv run ruff format
 
       - name: Commit and push fixes
+        id: commit
         if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.normalize-initial.outcome == 'failure' || steps.validate-initial.outcome == 'failure')
         timeout-minutes: 2
         run: |
@@ -92,9 +99,11 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "No formatting changes to commit"
+            echo "committed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "style: autofix lint, formatting, and MCP name normalization"
             git push
+            echo "committed=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Final gate: re-check after fixes (or confirm clean on first pass)

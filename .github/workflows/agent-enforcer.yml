@@ -37,6 +37,10 @@ on:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: "OAuth token for Claude agent"
         required: true
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
+        value: ${{ jobs.enforcer.outputs.committed }}
 
 jobs:
   enforcer:
@@ -44,6 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && inputs.ref && startsWith(inputs.ref, 'release-please')) && 'production' || '' }}
+    outputs:
+      committed: ${{ steps.check-commit.outputs.committed || 'false' }}
     concurrency:
       group: agent-enforcer-${{ inputs.pr_number }}
       cancel-in-progress: true
@@ -189,6 +195,19 @@ jobs:
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
           show_full_output: true
+
+      - name: Check for agent commits
+        id: check-commit
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          git fetch origin ${{ inputs.ref }}
+          REMOTE_SHA=$(git rev-parse origin/${{ inputs.ref }})
+          if [ "$REMOTE_SHA" != "${{ inputs.sha }}" ]; then
+            echo "Agent pushed a commit ($REMOTE_SHA != ${{ inputs.sha }})"
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload Claude session artifacts
         if: always()
