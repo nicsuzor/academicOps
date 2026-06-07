@@ -48,6 +48,8 @@ jobs:
         run: uv sync --frozen
 
       - name: Run issue-sweep agent
+        id: claude
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -84,3 +86,24 @@ jobs:
             - Number of issues processed
             - Disposition counts
             - Any human-gated dispositions surfaced to the daily note.
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Propagate issue sweep outcome
+        if: always()
+        run: |
+          if [ "${{ steps.claude.outcome }}" != "success" ]; then
+            echo "::error::Issue sweep agent failed or timed out."
+            exit 1
+          else
+            echo "::notice::Issue sweep completed successfully."
+          fi

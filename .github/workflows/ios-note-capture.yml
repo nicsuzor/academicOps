@@ -58,6 +58,7 @@ jobs:
 
       - name: Process note with Claude Code
         id: claude
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -89,6 +90,8 @@ jobs:
             Report success when the memory has been stored.
 
       - name: Commit and push note
+        id: commit
+        if: steps.claude.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -112,4 +115,28 @@ jobs:
             git push origin HEAD:${{ github.ref }}
           else
             echo "No new capture file found in notes/mobile-captures/. Skipping commit."
+          fi
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Propagate note capture outcome
+        if: always()
+        run: |
+          if [ "${{ steps.claude.outcome }}" != "success" ]; then
+            echo "::error::iOS Note Capture failed: Claude agent run failed or timed out."
+            exit 1
+          elif [ "${{ steps.commit.outcome }}" = "failure" ]; then
+            echo "::error::iOS Note Capture failed: Git commit or push failed."
+            exit 1
+          else
+            echo "::notice::iOS Note Capture completed successfully."
           fi

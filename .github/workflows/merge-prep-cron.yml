@@ -118,6 +118,7 @@ jobs:
 
       # ── Manual override: process a specific PR immediately ──
       - name: Manual override
+        id: manual
         if: (github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch') && inputs.pr_number != ''
         run: |
           PR_NUM="${{ inputs.pr_number }}"
@@ -284,6 +285,7 @@ jobs:
           done
 
       - name: Dispatch merge-prep for qualifying PRs
+        id: dispatch
         if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true'
         run: |
           REPO="${{ github.repository }}"
@@ -319,3 +321,25 @@ jobs:
               $FORCE_FLAG
             echo "  Dispatched PR #$PR_NUM"
           done < <(sort -t: -k1 -n /tmp/qualifying_prs.txt)
+
+      - name: Propagate dispatcher outcome
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.pr-count.outcome }}" = "failure" ] || [ "${{ steps.qualify.outcome }}" = "failure" ] || [ "${{ steps.dispatch.outcome }}" = "failure" ] || [ "${{ steps.manual.outcome }}" = "failure" ]; then
+            echo "::error::Merge Prep Dispatcher failed: one of the execution steps failed."
+            FAILED=true
+          fi
+
+          if [ "$FAILED" = "false" ]; then
+            if [ "${{ inputs.pr_number }}" != "" ]; then
+              echo "::notice::Merge Prep Dispatcher: Manually dispatched merge-prep for PR #${{ inputs.pr_number }}."
+            elif [ -f /tmp/qualifying_prs.txt ]; then
+              TOTAL=$(wc -l < /tmp/qualifying_prs.txt | tr -d ' ')
+              echo "::notice::Merge Prep Dispatcher completed successfully. Dispatched $TOTAL qualifying PR(s)."
+            else
+              echo "::notice::Merge Prep Dispatcher completed successfully. No qualifying PRs to dispatch."
+            fi
+          else
+            exit 1
+          fi
