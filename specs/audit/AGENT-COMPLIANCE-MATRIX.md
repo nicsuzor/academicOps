@@ -1,6 +1,6 @@
 # Agent Compliance Matrix
 
-Generated on Sat May 16 02:20:43 UTC 2026 from `scripts/audit_agent_compliance.py`.
+Generated on Sun Jun 7 00:29:09 UTC 2026 from `scripts/audit_agent_compliance.py`.
 
 ## Agents
 
@@ -21,12 +21,16 @@ Generated on Sat May 16 02:20:43 UTC 2026 from `scripts/audit_agent_compliance.p
 | Skill                                      | Conformance              |
 | :----------------------------------------- | :----------------------- |
 | aops-core/skills/aops/SKILL.md             | ❌ Missing allowed-tools |
+| aops-core/skills/cowork-sync/SKILL.md      | ❌ Missing allowed-tools |
+| aops-core/skills/craft/SKILL.md            | ✅                       |
 | aops-core/skills/daily/SKILL.md            | ✅                       |
+| aops-core/skills/design-rubric/SKILL.md    | ❌ Missing allowed-tools |
 | aops-core/skills/dogfood/SKILL.md          | ✅                       |
 | aops-core/skills/dump/SKILL.md             | ❌ Missing allowed-tools |
 | aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools |
 | aops-core/skills/peer-review/SKILL.md      | ✅                       |
 | aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools |
+| aops-core/skills/program/SKILL.md          | ❌ Missing allowed-tools |
 | aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools |
 | aops-core/skills/remember/SKILL.md         | ✅                       |
 | aops-core/skills/research/SKILL.md         | ✅                       |
