@@ -49,6 +49,10 @@ Agent(
 
 **CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops-core_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
 
+### PKB MCP Tool Mutator Invariants (dry_run Default)
+
+The PKB MCP bulk/merge tools (`batch_update`, `batch_reparent`, `batch_merge`, and `merge_node`) default to `dry_run=true`. To actually mutate the knowledge graph or execute the write operations, the agent MUST explicitly specify `dry_run=false` in the tool input. Calling these tools with the default parameter or omitting `dry_run` will result in a preview/simulation only and will not modify data.
+
 ### Halt Surfacing (Anti-Silent-Failure)
 
 Sub-agents are instructed to emit a literal `HALT:` line and the missing tool name when a required tool is unavailable, rather than fabricating output. The parent orchestrator MUST:
@@ -205,7 +209,7 @@ Before structural work, fix the data. Three activities, run in order. Each is bo
 ### Activity 1: Deduplication (mechanical, autonomous)
 
 1. Run `find_duplicates(mode="both")` to get clusters by title + semantic similarity.
-2. For high-confidence clusters: merge autonomously via `batch_merge`.
+2. For high-confidence clusters: merge autonomously via `batch_merge` (passing `dry_run=false` to execute).
 3. For ambiguous clusters: log in cycle summary for human review. Don't merge.
 4. Batch limit: up to 50 merges per cycle.
 
@@ -400,9 +404,9 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 
 ### Concrete Agent Instructions
 
-- **Split oversized containers**: If an epic has >20 direct children, split it by theme using `bulk_reparent`.
+- **Split oversized containers**: If an epic has >20 direct children, split it by theme using `batch_reparent` (passing `dry_run=false` to execute).
 - **Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans and reparent to an appropriate epic.
-- **Nest loose tasks**: For `flat_tasks`, read the task title and body, search for related epics, and `bulk_reparent` to the best match. If no match, check if 3+ loose tasks share a theme — if so, create an epic.
+- **Nest loose tasks**: For `flat_tasks`, read the task title and body, search for related epics, and `batch_reparent` (passing `dry_run=false` to execute) to the best match. If no match, check if 3+ loose tasks share a theme — if so, create an epic.
 - **Connect disconnected epics**: The parent for an orphan is an `epic` (or a root-level `epic` if it's a top-level area). The `frontmatter.project` field is a polecat slug — use it only to discover _which repo_ the work belongs to for context, not as a parent ID.
 
 ### Known Metric Limitations
@@ -423,7 +427,7 @@ Don't treat all-green metrics as "done." Spot-check qualitatively.
 
 ### Bounded Effort
 
-Process up to 100 items per cycle (configurable via `batch_limit` workflow input). Use `mcp__pkb__bulk_reparent` for efficiency.
+Process up to 100 items per cycle (configurable via `batch_limit` workflow input). Use `mcp__pkb__batch_reparent` (passing `dry_run=false` to execute) for efficiency.
 
 ### Terminal Condition
 

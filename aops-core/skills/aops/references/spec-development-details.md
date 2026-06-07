@@ -21,7 +21,7 @@ description: Process for collaboratively developing task specifications before i
 
 1. **Create specification document**
    - Copy `$AOPS/aops-core/skills/aops/templates/spec.md` to working location
-   - Specs live in the brain PKB (project: aops, type: spec); use `mcp__plugin_aops-core_pkb__create_document` to persist
+   - Specs live in the brain PKB (project: aops, type: spec); use `mcp__plugin_aops-core_pkb__create` to persist
    - This is a collaborative working document
 
 1. **Fill Problem Statement section (collaborative)**

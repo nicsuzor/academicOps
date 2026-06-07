@@ -42,7 +42,7 @@ VALID_MCP_SERVERS = {
 
 EXCLUSIVE_INTENT = {
     "mcp__plugin_aops-core_pkb__batch_archive": "pauli",
-    "mcp__plugin_aops-core_pkb__bulk_reparent": "pauli",
+    "mcp__plugin_aops-core_pkb__batch_reparent": "pauli",
     "mcp__plugin_aops-core_pkb__merge_node": "pauli",
     "mcp__playwright__*": "marsha",
     "Edit": "rbg",  # on .agents/rules/* - but we just track the tool for now
