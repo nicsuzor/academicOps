@@ -94,6 +94,7 @@ jobs:
 
           if [ "${CHANGES:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already reviewed (CHANGES_REQUESTED) — re-posting failure"
+            echo "::error::Enforcer Review: Head SHA $HEAD_SHA already reviewed and CHANGES_REQUESTED. Re-posting failure."
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state=failure \
               -f context="${AGENT_NAME}-status" \
@@ -102,6 +103,7 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [ "${APPROVED:-0}" -gt 0 ] || [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already reviewed (approved) — re-posting idempotent success"
+            echo "::notice::Enforcer Review: Head SHA $HEAD_SHA already reviewed and approved. Skipping run."
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state=success \
               -f context="${AGENT_NAME}-status" \
@@ -240,4 +242,44 @@ jobs:
                 -f description="Enforcer posted no APPROVED/CHANGES_REQUESTED review" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             fi
+          fi
+
+      - name: Final check and hard-fail
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.sha-skip.outputs.skip }}" = "true" ]; then
+            # Retrieve latest status state for context enforcer-status
+            STATUS_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+              --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state' 2>/dev/null || echo "")
+            if [ "$STATUS_STATE" = "success" ]; then
+              echo "::notice::Enforcer succeeded: Head SHA already reviewed and approved (skipped run)."
+            else
+              echo "::error::Enforcer failed: Head SHA already reviewed with violations."
+              FAILED=true
+            fi
+          elif [ "${{ steps.review.outcome }}" = "failure" ]; then
+            echo "::error::Enforcer failed: Agent step failed or timed out."
+            FAILED=true
+          else
+            # Get latest review state
+            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
+
+            if [ "$REVIEW_STATE" = "APPROVED" ]; then
+              echo "::notice::Enforcer review completed successfully (APPROVED)."
+            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
+              echo "::error::Enforcer failed: Violations found (CHANGES_REQUESTED)."
+              FAILED=true
+            elif [ -z "${{ steps.review.outcome }}" ]; then
+              echo "::error::Enforcer failed: Early pipeline failure."
+              FAILED=true
+            else
+              echo "::error::Enforcer failed: Agent finished but no verdict review (APPROVED or CHANGES_REQUESTED) was posted."
+              FAILED=true
+            fi
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            exit 1
           fi

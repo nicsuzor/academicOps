@@ -153,9 +153,11 @@ def resolve_project_path(
         [
             Path.home() / "src",
             Path.home(),
-            Path("/opt") / os.environ["USER"],
         ]
     )
+    user = os.environ.get("USER")
+    if user:
+        search_dirs.append(Path("/opt") / user)
 
     for base in search_dirs:
         candidate = base / repo_name
