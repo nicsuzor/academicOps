@@ -1,0 +1,114 @@
+# Trigger: QA (academicOps)
+#
+# Fires the v2 QA reusable workflow on PR events in academicOps.
+# This is the academicOps-side shim — external consumers define an
+# equivalent file pointing to @qa-v1 (see specs/workflows/pr-pipeline-v2.md §9).
+#
+# The reusable workflow (agent-qa.yml) accepts explicit pr_number, ref, and sha
+# inputs — no event-context magic inside the callee.
+#
+# NOTE: in the two-stage convergent model (§3), the triage orchestrator
+# (pr-pipeline.yml, reworked in P3) will call agent-qa.yml via `needs:` + the
+# §3.4 ordered short-circuit. This standalone trigger gives QA parity with the
+# enforcer NOW (its own PR/`/qa` entrypoint) and remains the manual route once
+# the orchestrator owns the automatic path.
+
+name: "Trigger: QA"
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to verify'
+        required: true
+        type: string
+      ref:
+        description: 'Git ref to checkout (PR head branch)'
+        required: false
+        type: string
+      sha:
+        description: 'PR head SHA'
+        required: false
+        type: string
+
+# Mirror trigger-enforcer.yml's permissions union (RCA aops-31798611): a reusable
+# callee's job can never be granted more than the caller holds, so the caller must
+# grant at least the union of permissions any nested job requests — else GitHub
+# rejects the workflow at graph-build time (startup_failure) for 100% of invocations.
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  id-token: write
+
+jobs:
+  resolve:
+    name: Resolve PR context
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/qa') && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association))
+    outputs:
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Resolve PR details
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_REF: ${{ github.event.pull_request.head.ref }}
+          EVENT_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_SHA: ${{ inputs.sha }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -e
+
+          PR_NUMBER=""
+          REF=""
+          SHA=""
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            PR_NUMBER="$EVENT_PR_NUMBER"
+            REF="$EVENT_REF"
+            SHA="$EVENT_SHA"
+
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            PR_NUMBER="$INPUT_PR_NUMBER"
+            REF="$INPUT_REF"
+            SHA="$INPUT_SHA"
+
+          elif [[ "$EVENT_NAME" == "issue_comment" ]]; then
+            PR_NUMBER="$ISSUE_NUMBER"
+          fi
+
+          if [[ -z "$REF" || -z "$SHA" ]]; then
+            echo "Fetching PR details for PR $PR_NUMBER..."
+            PR_JSON=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER")
+            REF=$(echo "$PR_JSON" | jq -r .head.ref)
+            SHA=$(echo "$PR_JSON" | jq -r .head.sha)
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  qa:
+    needs: resolve
+    uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: "${{ needs.resolve.outputs.pr_number }}"
+      ref: ${{ needs.resolve.outputs.ref }}
+      sha: ${{ needs.resolve.outputs.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

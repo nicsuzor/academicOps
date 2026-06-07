@@ -1,0 +1,251 @@
+# Agent: QA (Marsha)
+# Personality: The QA Reviewer — runtime verification, "it's broken until proven otherwise".
+# Status check: qa-status (posted to PR head SHA via statuses API)
+# Prompt: aops-core/agents/marsha.md + .github/agents/qa.agent.md
+#
+# This is a reusable workflow. academicOps installs its own trigger in:
+#   .github/workflows/trigger-qa.yml
+# External consumers pin to a release tag:
+#   uses: nicsuzor/academicOps/.github/workflows/agent-qa.yml@qa-v1
+#
+# v2 contract (specs/workflows/pr-pipeline-v2.md — revised two-stage spec, PR #1617):
+#   §4.1 workflow_call only — no pull_request, workflow_run, workflow_dispatch, push.
+#         Declares the `committed` output (drives the §3.4 ordered short-circuit).
+#         QA never commits (it verifies, it does not fix) so `committed` is always false.
+#   §4.2 one named status: qa-status, posted to inputs.sha. Required gate (added to the
+#         ruleset in P4, "once it reliably posts" — not in this phase).
+#   §4.6 / §10 per-pass SHA-based loop-skip (have we judged THIS exact SHA?).
+#
+# Modelled structurally on the shipped agent-enforcer.yml (P1). The differences:
+#   - sources marsha.md (not rbg.md) and qa.agent.md (not enforcer.agent.md);
+#   - the review marker is "QA Verification" (not "Enforcer Review");
+#   - allowed-tools omits Edit/Write — marsha verifies, it must not modify code.
+
+name: "Agent: QA (Marsha)"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "PR number to verify"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to checkout (PR head branch)"
+        type: string
+        required: true
+      sha:
+        description: "PR head SHA — explicit, not derived (§4.1)"
+        type: string
+        required: true
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: "PAT for GitHub API operations (statuses, reviews)"
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: "OAuth token for Claude agent"
+        required: true
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (§3.4 short-circuit). QA never commits → always false."
+        value: ${{ jobs.qa.outputs.committed }}
+
+jobs:
+  qa:
+    name: QA Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-qa-${{ inputs.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+      id-token: write
+    outputs:
+      # QA verifies; it never modifies code (§4.2, qa.agent.md "Never modify code").
+      # The output exists so the Stage-1/2 orchestrator (§3.4) can read it uniformly
+      # across every agent job; for QA it is a constant false.
+      committed: "false"
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.sha }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      AGENT_NAME: qa
+
+    steps:
+      # §4.6 / §10 SHA-based loop-skip: re-post the verdict if this exact SHA was
+      # already GENUINELY verified. Keyed on "have we judged THIS diff?", never on
+      # commit author (the v1 anti-pattern that caused P2 / PR #1037). Mirrors the
+      # shipped enforcer's loop-skip (regression-hardened: aops-330a87e3).
+      #
+      # A diff counts as already-verified ONLY when a genuine completed review exists
+      # for this exact SHA:
+      #   (a) an actual QA PR review (CHANGES_REQUESTED or APPROVED) whose body carries
+      #       the "QA Verification" marker (qa.agent.md §Identity), or
+      #   (b) a genuine terminal success status (NOT a "Skipped: …" echo, failure, or
+      #       pending — those must not poison the SHA).
+      - name: SHA-skip check
+        id: sha-skip
+        run: |
+          # (a) Genuine QA PR reviews posted against this exact SHA.
+          CHANGES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"QA Verification\")) | select(.state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"QA Verification\")) | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
+
+          # (b) Genuine success status anywhere in this SHA's status history.
+          #     "Skipped: …" echoes and failures/pendings are excluded, so a clean
+          #     approve (which may post no further status) is still durably detected.
+          GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
+
+          if [ "${CHANGES:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already verified (CHANGES_REQUESTED) — re-posting failure"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Verification failed — see review (already reviewed)" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${APPROVED:-0}" -gt 0 ] || [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already verified (approved) — re-posting idempotent success"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already reviewed" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post pending status
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="${AGENT_NAME}-status" \
+            -f description="QA verification in progress" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+      - uses: actions/checkout@v4
+        if: steps.sha-skip.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      # Fetch and assemble the QA prompt:
+      #   marsha.md (personality + verification methodology)
+      #   + shared-error-handling.md (common agent error contract)
+      #   + qa.agent.md (PR-context framing + review format).
+      # Pinned to the PR ref for academicOps's own runs; external consumers calling
+      # @qa-v1 implicitly freeze all three files at the tag's commit (§4.5).
+      - name: Fetch QA prompt
+        id: prompt
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          if [ "$REPO" = "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
+            git clone -b "${{ inputs.ref }}" --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          else
+            git clone --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          fi
+          # --no-cone: treat the arguments as file path patterns, not cone-mode
+          # directories (cone mode never materialises the files; see aops-2be8f5c7).
+          cd .aops && git sparse-checkout set --no-cone \
+            /aops-core/agents/marsha.md \
+            /.github/agents/shared-error-handling.md \
+            /.github/agents/qa.agent.md && cd ..
+          if [ ! -f .aops/aops-core/agents/marsha.md ] || [ ! -f .aops/.github/agents/qa.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
+            echo "::error::QA prompt files were not materialised by sparse-checkout" >&2
+            ls -la .aops/aops-core/agents/ .aops/.github/agents/ 2>&1 || true
+            exit 1
+          fi
+          PROMPT=$(cat .aops/aops-core/agents/marsha.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/qa.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run QA Verification
+        id: review
+        if: steps.sha-skip.outputs.skip != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: qa
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          # marsha verifies; it must NOT modify code (qa.agent.md "Never modify code").
+          # Edit/Write are deliberately withheld to enforce that structurally; Bash is
+          # how it runs tests and posts its review via gh.
+          claude_args: '--model sonnet --allowed-tools "Bash,Read"'
+          show_full_output: true
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # Post terminal status based on the agent's PR review STATE (structured GitHub
+      # data, no prose parsing). APPROVED → success; CHANGES_REQUESTED → failure;
+      # no verdict review → fail-safe failure. Mirrors the enforcer's terminal step.
+      - name: Post terminal status
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state' \
+            2>/dev/null || echo "")
+
+          # Only post if not already posted by the agent, or if we need to replace pending.
+          if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
+            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
+
+            if [ "$REVIEW_STATE" = "APPROVED" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=success \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Verified — runtime checks pass" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Verification failed — see review" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            elif [ "${{ steps.review.outcome }}" != "success" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Agent run failed without a verdict review" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            else
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="QA posted no APPROVED/CHANGES_REQUESTED review" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            fi
+          fi
