@@ -356,7 +356,18 @@ def test_subagent_transcripts_emitted_end_to_end(tmp_path: Path, monkeypatch):
         f"{[p.name for p in sub_insights]}"
     )
 
-    # Each subagent insights JSON carries the parent linkage and type.
+    # Parent insights JSON still present under summaries/.
+    parent_insights = list((sessions / "summaries" / "2026-05").glob("*.json"))
+    assert parent_insights, "expected parent insights JSON"
+    parent_ins = json.loads(parent_insights[0].read_text())
+    parent_surface = parent_ins.get("surface")
+    parent_client = parent_ins.get("client")
+    assert parent_surface, "parent insights missing surface"
+
+    # Each subagent insights JSON carries the parent linkage and type, and
+    # inherits the parent's launch surface/client (aops-29... surface accuracy:
+    # the JSON previously dropped surface/client, leaving subagents
+    # unclassifiable by surface even though the .md frontmatter carried them).
     seen_types: set[str] = set()
     for ins_path in sub_insights:
         ins = json.loads(ins_path.read_text())
@@ -364,12 +375,14 @@ def test_subagent_transcripts_emitted_end_to_end(tmp_path: Path, monkeypatch):
         assert ins["parent_session_id"] == session_uuid[:8]
         assert ins["subagent_type"] in {"rbg", "aops-core:pauli"}
         assert ins["transcript_path"]  # non-empty
+        assert ins["surface"] == parent_surface, (
+            f"subagent surface {ins.get('surface')!r} != parent {parent_surface!r}"
+        )
+        assert ins["client"] == parent_client, (
+            f"subagent client {ins.get('client')!r} != parent {parent_client!r}"
+        )
         seen_types.add(ins["subagent_type"])
     assert seen_types == {"rbg", "aops-core:pauli"}
-
-    # Parent insights JSON still present under summaries/.
-    parent_insights = list((sessions / "summaries" / "2026-05").glob("*.json"))
-    assert parent_insights, "expected parent insights JSON"
 
     # Parent transcript has the subagent footer with both types and links.
     parent_text = parent_md.read_text(encoding="utf-8")

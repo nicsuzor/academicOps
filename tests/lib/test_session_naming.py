@@ -285,6 +285,30 @@ class TestInferSessionOriginFromPath(unittest.TestCase):
         self.assertEqual(origin["client"], "polecat")
         self.assertIsNone(origin["crew"])
 
+    def test_cowork_path(self):
+        """Cowork-ingested sessions ($AOPS_SESSIONS/cowork-logs/...) map to the
+        claude-cowork surface, not the claude-code-cli default (aops surface
+        accuracy investigation 2026-06-07)."""
+        from pathlib import Path
+
+        p = Path(
+            "/Users/suzor/src/sessions/cowork-logs/6b32f9e0-da55dfd3/"
+            "da55dfd3-2e6f-463f-8380-225f96b2030d.jsonl"
+        )
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "claude-cowork")
+        self.assertEqual(origin["client"], "cowork")
+        self.assertIsNone(origin["crew"])
+
+    def test_cowork_path_ingested_form(self):
+        """The ingested cowork-logs/<id>/session.jsonl shape also resolves."""
+        from pathlib import Path
+
+        p = Path("/Users/suzor/src/sessions/cowork-logs/abc123/session.jsonl")
+        origin = session_naming.infer_session_origin_from_path(p)
+        self.assertEqual(origin["surface"], "claude-cowork")
+        self.assertEqual(origin["client"], "cowork")
+
     def test_gemini_cli_path(self):
         from pathlib import Path
 

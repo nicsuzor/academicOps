@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import lib.session_naming as session_naming
+from lib.secret_redaction import redact_secrets
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -1463,6 +1464,11 @@ class UsageStats:
     by_model: dict[str, dict[str, int]] = field(default_factory=dict)
     by_tool: dict[str, dict[str, int]] = field(default_factory=dict)
     by_agent: dict[str, dict[str, int]] = field(default_factory=dict)
+    # Call-level skill attribution (aops-29d77844). Keyed by the Skill tool's
+    # `input.skill` argument (e.g. "aops-core:planner"). Counts + tokens are
+    # CALL-LEVEL ONLY: the work a skill prompt unfurls into stays attributed to
+    # the calling agent in by_agent — skills are not isolated execution contexts.
+    by_skill: dict[str, dict[str, int]] = field(default_factory=dict)
 
     # Aggregations (CC 2.1+)
     attribution: dict[str, Any] = field(
@@ -1492,8 +1498,13 @@ class UsageStats:
         entry: Entry,
         tool_name: str | None = None,
         agent_id: str | None = None,
+        skill_name: str | None = None,
     ) -> None:
-        """Add token usage from an entry to the aggregate stats."""
+        """Add token usage from an entry to the aggregate stats.
+
+        ``skill_name`` is the ``input.skill`` argument of a ``Skill`` tool call,
+        accumulated into ``by_skill`` (call-level attribution, aops-29d77844).
+        """
         if entry.input_tokens:
             self.input_tokens += entry.input_tokens
         if entry.output_tokens:
@@ -1564,6 +1575,15 @@ class UsageStats:
             self.by_tool[tool_name]["input"] += entry.input_tokens or 0
             self.by_tool[tool_name]["output"] += entry.output_tokens or 0
 
+        # Aggregate by skill (call-level). Mirrors by_tool per-name shape so a
+        # consumer can read by_skill[name] identically to by_tool[name].
+        if skill_name:
+            if skill_name not in self.by_skill:
+                self.by_skill[skill_name] = {"count": 0, "input": 0, "output": 0}
+            self.by_skill[skill_name]["count"] += 1
+            self.by_skill[skill_name]["input"] += entry.input_tokens or 0
+            self.by_skill[skill_name]["output"] += entry.output_tokens or 0
+
         # Aggregate by agent (main vs subagents)
         agent_key = agent_id or "main"
         if agent_key not in self.by_agent:
@@ -1627,6 +1647,7 @@ class UsageStats:
             },
             "by_model": self.by_model,
             "by_tool": self.by_tool,
+            "by_skill": self.by_skill,
             "by_agent": self.by_agent,
             "attention": {
                 "user_messages": self.user_messages,
@@ -4964,7 +4985,9 @@ session_id: {session_uuid}
         # but the markdown stays purely chronological. The ``reflection_header``
         # parameter is kept for caller compatibility; it is intentionally unused.
         _ = reflection_header
-        return frontmatter + header + markdown
+        # Write-time secret scrub (aops-9f290e36): tool output / bash stdout can
+        # carry an env dump or echoed credential into this git-tracked artifact.
+        return redact_secrets(frontmatter + header + markdown)
 
     def _group_sidechain_entries(
         self, sidechain_entries: list[Entry]
@@ -5461,6 +5484,7 @@ session_id: {session_uuid}
         seen_assistant_tool_use = False
         for entry in entries:
             tool_name = None
+            skill_name = None
             # Extract tool name from assistant tool_use blocks
             if entry.type == "assistant" and entry.message:
                 content = entry.message.get("content", [])
@@ -5468,6 +5492,8 @@ session_id: {session_uuid}
                     for block in content:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             tool_name = block.get("name")
+                            if tool_name == "Skill" and isinstance(block.get("input"), dict):
+                                skill_name = block["input"].get("skill")
                             break
 
             # Attention counters: count real user messages on the main session.
@@ -5493,22 +5519,29 @@ session_id: {session_uuid}
             if tool_name and not seen_assistant_tool_use:
                 seen_assistant_tool_use = True
 
-            stats.add_entry(entry, tool_name=tool_name, agent_id=None)
+            stats.add_entry(entry, tool_name=tool_name, agent_id=None, skill_name=skill_name)
 
         # Process subagent entries
         if agent_entries:
             for agent_id, agent_entry_list in agent_entries.items():
                 for entry in agent_entry_list:
                     tool_name = None
+                    skill_name = None
                     if entry.type == "assistant" and entry.message:
                         content = entry.message.get("content", [])
                         if isinstance(content, list):
                             for block in content:
                                 if isinstance(block, dict) and block.get("type") == "tool_use":
                                     tool_name = block.get("name")
+                                    if tool_name == "Skill" and isinstance(
+                                        block.get("input"), dict
+                                    ):
+                                        skill_name = block["input"].get("skill")
                                     break
 
-                    stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
+                    stats.add_entry(
+                        entry, tool_name=tool_name, agent_id=agent_id, skill_name=skill_name
+                    )
 
         if agent_entries:
             from .reviewer_verdicts import _build_subagent_type_index, build_subagent_verdicts

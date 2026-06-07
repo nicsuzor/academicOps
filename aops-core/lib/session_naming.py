@@ -337,6 +337,8 @@ def infer_session_origin_from_path(
       surface=``{provider}-crew``, client=``crew``, crew=``<crew_name>``
     - ``$AOPS_SESSIONS/polecats/<task_id>/...`` →
       surface=``{provider}-polecat``, client=``polecat``, crew=None
+    - ``$AOPS_SESSIONS/cowork-logs/<session_id>/...`` →
+      surface=``claude-cowork``, client=``cowork``, crew=None
     - ``~/.gemini/...`` or any ``.gemini/`` segment →
       surface=``gemini-cli``, client=``gemini-cli``, crew=None
     - default →
@@ -377,6 +379,13 @@ def infer_session_origin_from_path(
             "client": "polecat",
             "crew": None,
         }
+
+    # Claude Cowork: $AOPS_SESSIONS/cowork-logs/<session_id>/... — sessions
+    # ingested from the Claude Cowork product (claude.ai), always Claude-backed.
+    # Without this branch they fall through to the claude-code-cli default and
+    # are indistinguishable from a bare terminal launch.
+    if "cowork-logs" in parts:
+        return {"surface": "claude-cowork", "client": "cowork", "crew": None}
 
     # Antigravity CLI (Google's agentic CLI, Gemini-backed). Its brain dirs
     # live at ~/.gemini/antigravity{,-cli}/brain/<uuid>/ — distinct surface
