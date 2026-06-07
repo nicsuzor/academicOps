@@ -289,6 +289,8 @@ def _build_subagent_insights(
     entries: list[Entry],
     timestamp: datetime,
     transcript_path: Path,
+    parent_surface: str | None = None,
+    parent_client: str | None = None,
 ) -> dict[str, Any]:
     """Construct a minimal insights dict for one subagent invocation.
 
@@ -310,6 +312,11 @@ def _build_subagent_insights(
         "repo": parent_repo,
         "task_id": parent_task_id,
         "provider": parent_provider,
+        # Launch surface/client inherited from the parent session — the .md
+        # frontmatter already carries these (via SessionSummary), but the JSON
+        # dropped them, leaving subagent summaries unclassifiable by surface.
+        "surface": parent_surface,
+        "client": parent_client,
         # Subagent-specific provenance.
         "artifact_type": "subagent",
         "parent_session_id": parent_session_id,
@@ -438,6 +445,8 @@ def write_subagent_transcripts(
             parent_session_id=parent_session_id,
             parent_repo=parent_summary.repo,
             parent_provider=parent_summary.provider,
+            parent_surface=parent_summary.surface,
+            parent_client=parent_summary.client,
             parent_task_id=parent_summary.task_id,
             invocation_id=invocation_id,
             subagent_type=subagent_type,

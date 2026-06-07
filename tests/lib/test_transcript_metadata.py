@@ -176,6 +176,67 @@ class TestThinkingTurns:
 
 
 # ---------------------------------------------------------------------------
+# TestBySkill
+# ---------------------------------------------------------------------------
+
+
+class TestBySkill:
+    """Call-level skill attribution (aops-29d77844): the Skill tool's
+    input.skill argument is accumulated into UsageStats.by_skill and surfaced
+    in token_metrics, parallel to by_tool."""
+
+    def test_add_entry_accumulates_by_skill(self):
+        stats = UsageStats()
+        stats.add_entry(
+            Entry(type="assistant", input_tokens=100, output_tokens=10),
+            tool_name="Skill",
+            skill_name="aops-core:planner",
+        )
+        stats.add_entry(
+            Entry(type="assistant", input_tokens=50, output_tokens=5),
+            tool_name="Skill",
+            skill_name="aops-core:planner",
+        )
+        assert stats.by_skill == {"aops-core:planner": {"count": 2, "input": 150, "output": 15}}
+
+    def test_no_skill_calls_yields_empty_dict_not_missing_key(self):
+        """Acceptance: sessions with no skill calls produce by_skill: {} (present)."""
+        stats = UsageStats()
+        stats.add_entry(Entry(type="assistant", input_tokens=5), tool_name="Bash")
+        assert stats.by_skill == {}
+        assert stats.to_token_metrics()["by_skill"] == {}
+
+    def test_aggregate_extracts_skill_name_from_tool_use(self):
+        """Full path: _aggregate_session_usage pulls input.skill from a Skill
+        tool_use block; Skill stays in by_tool (back-compat) while the named
+        skill lands only in by_skill."""
+        from lib.transcript_parser import SessionProcessor
+
+        entries = [
+            Entry(
+                type="assistant",
+                input_tokens=10,
+                output_tokens=2,
+                message={
+                    "content": [{"type": "tool_use", "name": "Skill", "input": {"skill": "verify"}}]
+                },
+            ),
+            Entry(
+                type="assistant",
+                input_tokens=5,
+                output_tokens=1,
+                message={
+                    "content": [{"type": "tool_use", "name": "Bash", "input": {"command": "ls"}}]
+                },
+            ),
+        ]
+        stats = SessionProcessor()._aggregate_session_usage(entries)
+        assert stats.by_skill.get("verify", {}).get("count") == 1
+        assert "Skill" in stats.by_tool  # back-compat: generic Skill tool entry retained
+        assert "verify" not in stats.by_tool  # the skill name lives only in by_skill
+
+
+# ---------------------------------------------------------------------------
 # TestSessionMetadataBackwardCompat
 # ---------------------------------------------------------------------------
 

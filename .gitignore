@@ -336,9 +336,6 @@ reference-graph.csv
 # Plugin-specific MCP configs (generated from templates)
 aops-core/.mcp.json
 
-# Distribution artifacts - built by CI, pushed to nicsuzor/aops
-dist/
-
 # Generated marketplace.json (produced by build.py from templates/marketplace.json)
 .claude-plugin/marketplace.json
 gemini-extension.json

@@ -19,6 +19,7 @@ from typing import Any
 
 import lib.session_naming as session_naming
 from lib.paths import get_summaries_dir
+from lib.secret_redaction import redact_obj
 from lib.session_reader import extract_gate_context, find_sessions
 from lib.transcript_paths import ensure_rotated_dir, iter_rotated_files
 
@@ -680,8 +681,11 @@ def write_insights_file(
     temp_path = Path(temp_path_str)
 
     try:
-        # Write JSON with pretty formatting
-        os.write(fd, json.dumps(insights, indent=2).encode())
+        # Write JSON with pretty formatting. Scrub credential shapes from string
+        # values at write time (aops-9f290e36) — reflection/summary text or
+        # passed-through tool output can carry an echoed secret into this
+        # git-tracked artifact.
+        os.write(fd, json.dumps(redact_obj(insights), indent=2).encode())
         os.close(fd)
         # Atomic rename
         temp_path.rename(path)
