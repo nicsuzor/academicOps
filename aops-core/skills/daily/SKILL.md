@@ -57,6 +57,7 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 ## Escalated deadlines (simple rule)
 
 Hoist a due task into a `## 🚨 ESCALATED DEADLINES` callout when it meets any of these conditions:
+
 - **Overdue** (past due date) AND ≥ SEV2; or
 - **Due within ~2 days** AND ≥ SEV3; or
 - **Due within ~2 days** AND ≥ SEV2 AND on an immovable external deadline.
