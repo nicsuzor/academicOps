@@ -21,22 +21,27 @@ allowed-tools: Agent
 permalink: commands/learn
 ---
 
-# /learn — Analyze Session Transcripts (retro mode)
+# /learn — Analyze Session Transcripts & Apply Immediate Fixes
 
-Reviews recent session transcripts through a framework-development lens, identifies problems, and files GitHub issues. Delegates to the `survey` skill in `retro` mode.
+Reviews recent session transcripts through a framework-development lens, identifies problems, files GitHub issues for root-cause analysis, and applies immediate fixes. Delegates to the `survey` skill in `retro` mode.
 
-## Privacy & Recusal Rules
+## Privacy & Forensic Issue Rules
 
 - **Privacy**: Anonymize all findings. No real names, emails, student details, or raw session dumps in GitHub issues.
-- **Recusal**: Focus strictly on forensic findings (causal chain and framework layer fields). You are recused from proposing how to fix the issue or suggesting new axioms/gates in the report.
+- **RCA Rigor (The Issue Report)**: The filed GitHub issue must focus strictly on forensic findings (incident facts, structural shape, and concrete impact). Do NOT suggest or guess speculative remediations inside the issue report itself. Keep the issue report strictly factual so it serves as high-quality training/evidence data.
+- **No Fixing Inhibition**: The recusal on _proposing speculative solutions in the issue report_ does NOT prohibit or restrict the agent from fixing the live codebase immediately. You are expected to fix the live problem whenever permitted or instructed.
 
-## Invocation & Arguments
+## Immediate Fixes Policy (Fix AND File)
 
-- `/learn` — auto-select the most recent unreviewed markdown transcript.
-- `/learn <path>` — review the specified markdown transcript path.
-- `/learn <session-id>` — review the session matching the ID.
+You may apply immediate codebase fixes (for minor tweaks or framework-caused defects) AND you must still file the tracking GitHub issue. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the immediate problem now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/survey/SKILL.md](skills/survey/SKILL.md#mode-retro) for details.
+
+## Invocation Styles
+
+- `/learn` — Auto-select the most recent unreviewed markdown transcript.
+- `/learn <path>` or `/learn <session-id>` — Review the specified transcript/session.
+- `/learn that last task should have been xyz` — Dual action: fix the target behavior immediately AND file the tracking RCA issue in the background.
 
 ## Workflow
 
 Delegate the retro execution to the Junior coordinator agent:
-`Agent(subagent_type='junior', prompt='Run survey skill in retro mode with [transcript context]')`
+`Agent(subagent_type='junior', prompt='Run survey skill in retro mode with [transcript context] [optional directive context]')`
