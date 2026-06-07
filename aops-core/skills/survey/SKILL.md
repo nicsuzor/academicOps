@@ -55,7 +55,7 @@ This skill delegates execution to keep the main context clean:
 
 ## Mode: retro
 
-Perform a critical, forensic review of a single session transcript.
+Perform a critical, forensic review of a single session transcript, apply immediate fixes where appropriate, and file the tracking GitHub issues.
 
 ### 1. Transcript Selection & Quality Gate
 
@@ -67,10 +67,19 @@ Perform a critical, forensic review of a single session transcript.
   - _Stripped_: Tool calls/results are missing from a `-full.md` file.
 - On any gate failure, name the failed condition and stop. Never silently fall back to the raw `.jsonl` — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
-### 2. Forensic Analysis & Recusal
+### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
-- Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g. `/craft` defects: compliance framing, missing artifact chain, etc.).
-- **Recusal Rule**: Limit findings to forensic facts (what failed, how the framework contributed, concrete impact). Do not suggest or author remediation rules (e.g., "we should add an axiom").
+- Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
+- **Immediate Fixes Policy**:
+  - **Minor Tweaks**: You are authorized to fix minor issues immediately (e.g., typos, wrong paths, simple one-line instruction updates, formatting, or obvious logic bugs) directly in the source files, without seeking user permission.
+  - **Framework-Caused Defects**: Problems caused by the framework itself (bugs in hooks, gates, skills, tools) MUST be fixed immediately. Fixing it is the job.
+  - **First-Class Invocation: `/learn that last task should have been xyz`**: When Nic invokes this style with a description of what _should_ have happened, treat it as a directive to perform a **dual action**:
+    1. **Fix the immediate problem now**: Edit the codebase, rules, or instruction surfaces to enforce the correct behavior immediately.
+    2. **File the RCA issue in the background**: Run the standard retro analysis to file a forensic GitHub issue.
+       Never pick one and drop the other; you must perform both actions.
+  - **Complex Fixes**: If a fix is too complex, large, or requires unavailable permissions/runtime setups, file a follow-up task instead of attempting a partial fix that degrades system reliability.
+  - **The "Fix AND File" Invariant**: An immediate fix NEVER replaces the GitHub issue. You must STILL file the issue carrying the root-cause analysis. Do both: **Fix AND File**. The systemic lesson must survive even if the local symptom is already patched.
+- **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on the agent actually modifying the codebase to fix the live problem.
 
 ### 3. Output Requirements
 
@@ -91,13 +100,16 @@ Produce a review in this exact format. Keep text concise:
 [Upstream/structural root cause spanning multiple findings.]
 ```
 
-### 4. File Issues
+### 4. File Issues & Apply Changes
 
 - Search existing issues/PRs using `gh issue list` and `gh pr list` to avoid duplication.
 - If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
 - If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
-- Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions.
+- Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
 - Stamp the transcript frontmatter with the `reviewed_by` block.
+- **Execution & Validation**:
+  - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
+  - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
 
 ---
 
