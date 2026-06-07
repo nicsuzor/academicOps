@@ -159,6 +159,52 @@ def main():
         tag_name = f"v{next_v}"
         print(f"Bumping {current} -> {next_v}...")
         try:
+            # 1. Update version in pyproject.toml
+            pyproject_path = aops_root / "pyproject.toml"
+            if pyproject_path.exists():
+                content = pyproject_path.read_text()
+                new_content = re.sub(
+                    r'(version\s*=\s*")[^"]+(")', rf"\g<1>{next_v}\g<2>", content, count=1
+                )
+                pyproject_path.write_text(new_content)
+                print("  ✓ Updated pyproject.toml")
+
+            # 2. Update version in template files consistent with release-please config
+            extra_files = [
+                "templates/aops-core.gemini-extension.json",
+                "templates/aops-core.plugin.json",
+                "templates/aops-tools.gemini-extension.json",
+                "templates/aops-tools.plugin.json",
+            ]
+            template_paths = []
+            for rel_path in extra_files:
+                p = aops_root / rel_path
+                if p.exists():
+                    content = p.read_text()
+                    new_content = re.sub(
+                        r'("version"\s*:\s*")\d+\.\d+\.\d+[^"]*(")',
+                        rf"\g<1>{next_v}\g<2>",
+                        content,
+                        count=1,
+                    )
+                    p.write_text(new_content)
+                    print(f"  ✓ Updated {rel_path}")
+                    template_paths.append(rel_path)
+
+            # 3. Run uv lock
+            print("  Running uv lock...")
+            subprocess.run(["uv", "lock"], cwd=aops_root, check=True)
+            print("  ✓ Updated uv.lock")
+
+            # 4. Commit updated files
+            files_to_commit = ["pyproject.toml", "uv.lock"] + template_paths
+            subprocess.run(["git", "add"] + files_to_commit, cwd=aops_root, check=True)
+
+            commit_msg = f"chore: bump version to {next_v}"
+            subprocess.run(["git", "commit", "-m", commit_msg], cwd=aops_root, check=True)
+            print("  ✓ Committed version bump files")
+
+            # 5. Create tag
             subprocess.run(["git", "tag", "-a", tag_name, "-m", f"release {tag_name}"], check=True)
             print(f"Created tag {tag_name}")
 

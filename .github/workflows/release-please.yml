@@ -52,7 +52,7 @@ jobs:
             echo "uv.lock is already up to date"
           else
             git commit -m "chore: update uv.lock for release"
-            git push
+            git push origin HEAD:${{ fromJson(steps.release.outputs.pr).headBranchName }}
           fi
 
       # build-extension.yml triggers automatically via push:tags and release:published
