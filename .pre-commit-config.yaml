@@ -57,17 +57,8 @@ repos:
         args: [--check]
         exclude: '^archived/'
 
-  # Framework integrity checks (index wikilinks, skill entries, workflow length).
-  # Consolidates check-workflow-length + index integrity.
   - repo: local
     hooks:
-      - id: check-framework-integrity
-        name: framework integrity check
-        entry: uv run python scripts/check_framework_integrity.py
-        language: system
-        pass_filenames: false
-        files: '(WORKFLOWS|SKILLS)\.md$|workflows/.*\.md$|skills/.*/SKILL\.md$|commands/.*\.md$|^specs/.*\.md$'
-
       # Auto-heal Gemini-form MCP tool names (mcp_pkb_get_task) back to
       # canonical Claude form (mcp__pkb__get_task). Inverse of the transform
       # in scripts/build.py:698. Gemini polecat workers see single-underscore
@@ -133,13 +124,3 @@ repos:
         pass_filenames: true
         files: '^(aops-core|polecat|scripts|aops-tools)/.*\.(py|sh)$|^aops-core/agent-env-map\.conf$'
         exclude: '(^|/)(\.venv|dist|node_modules|__pycache__|\.claude)/'
-
-  # Type checking and full framework health checks run in CI only
-  # (see .github/workflows/framework-health.yml)
-  #
-  # Moved to CI:
-  # - basedpyright: full type analysis too slow for every commit
-  # - check-skill-line-count: whole-repo scan, not file-scoped
-  # - check-orphan-files: whole-repo scan, not file-scoped
-  # - check-framework-integrity --full: slow full codebase wikilink scan
-  # - audit_framework_health: comprehensive audit
