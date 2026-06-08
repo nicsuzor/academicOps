@@ -42,7 +42,7 @@ Walk layers in order; stop at first failure:
 
 > **Permission mode:** Crew smoke tests for autonomous-worker validation must match the production permission model — use the same flags as `polecat run` (bypass-permissions / auto-approval). **Do not start crew containers in plan mode for these tests**: plan mode does not reflect actual polecat dispatch behavior and will not catch permission-related failures. Plan mode is acceptable only when explicitly testing interactive crew workflows where human-in-the-loop approval is the intended behavior.
 
-**§2 First UserPromptSubmit** — send a trivial prompt. Hook-blocked error = hook fired and errored. Treat error text as primary evidence.
+**§2 First UserPromptSubmit** — send a trivial prompt. Hook-blocked error = hook fired and errored. Treat error text as primary evidence. **Liveness check before polling**: before writing a poll loop here, check whether the callee already surfaces liveness or completion — the hook-blocked error IS the liveness signal; do not build a poll loop if the callee already exposes one.
 
 **§3 Environment sanity** (if §2 failed) — UID resolution, fast-path artifacts, plugin install path vs. expected path.
 
