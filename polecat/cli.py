@@ -3570,8 +3570,8 @@ def crew_alias(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    with_sessions,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
@@ -3648,8 +3648,8 @@ def crew(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    with_sessions,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Start an interactive crew session with worker isolation.
 
@@ -4396,7 +4396,7 @@ def run(
     model,
     debug_flag,
     set_overrides,
-    with_sessions,
+    with_sessions=False,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
