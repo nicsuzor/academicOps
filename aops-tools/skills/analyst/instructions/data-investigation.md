@@ -132,10 +132,10 @@ For simple one-time checks, throwaway queries are fine:
 
 ```bash
 # Quick count - OK as one-liner (uses db_resolver to find canonical path)
-uv run python -c "import sys, duckdb; sys.path.insert(0, 'aops-tools/skills/analyst/scripts'); from db_resolver import get_canonical_db_path; print(duckdb.connect(str(get_canonical_db_path())).execute('SELECT COUNT(*) FROM fct_cases').fetchone())"
+uv run python -c "import sys, subprocess, duckdb; sys.path.insert(0, subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()+'/aops-tools/skills/analyst/scripts'); from db_resolver import get_canonical_db_path; print(duckdb.connect(str(get_canonical_db_path())).execute('SELECT COUNT(*) FROM fct_cases').fetchone())"
 
 # Checking if column exists - OK as one-liner
-uv run python -c "import sys, duckdb; sys.path.insert(0, 'aops-tools/skills/analyst/scripts'); from db_resolver import get_canonical_db_path; conn = duckdb.connect(str(get_canonical_db_path())); print(conn.execute('PRAGMA table_info(fct_cases)').df())"
+uv run python -c "import sys, subprocess, duckdb; sys.path.insert(0, subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()+'/aops-tools/skills/analyst/scripts'); from db_resolver import get_canonical_db_path; conn = duckdb.connect(str(get_canonical_db_path())); print(conn.execute('PRAGMA table_info(fct_cases)').df())"
 ```
 
 But if you run MORE THAN ONE query to investigate something, that's a signal to create a script.

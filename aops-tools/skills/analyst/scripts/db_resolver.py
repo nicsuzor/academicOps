@@ -28,10 +28,10 @@ def get_project_root() -> Path:
             f"git rev-parse failed (exit {e.returncode}). "
             "Set CLAUDE_PROJECT_DIR or run within a git repository."
         ) from e
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         raise RuntimeError(
             "git executable not found. Set CLAUDE_PROJECT_DIR or ensure git is installed."
-        )
+        ) from exc
 
 
 def get_canonical_db_path(db_filename: str = "warehouse.db") -> Path:
@@ -57,17 +57,16 @@ def get_canonical_db_path(db_filename: str = "warehouse.db") -> Path:
 
     # Find duplicate database files to assert that none are used by mistake
     confusable_files = []
-    for path in project_root.rglob(db_filename):
-        resolved = path.resolve()
-        if resolved != canonical_path:
-            # Skip common environment and build folders to avoid false positives
-            if any(
-                part.startswith(".")
-                or part in ("venv", "node_modules", "dist", "output", "build", "_book", "_site")
-                for part in resolved.parts
-            ):
-                continue
-            confusable_files.append(resolved)
+    for root, dirs, files in os.walk(project_root):
+        dirs[:] = [
+            d for d in dirs
+            if not d.startswith(".")
+            and d not in ("venv", "node_modules", "dist", "output", "build", "_book", "_site")
+        ]
+        if db_filename in files:
+            resolved = (Path(root) / db_filename).resolve()
+            if resolved != canonical_path:
+                confusable_files.append(resolved)
 
     if confusable_files:
         confusable_str = ", ".join(str(p) for p in confusable_files)
