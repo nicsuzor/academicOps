@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 # Add the analyst scripts path to sys.path so we can import db_resolver
-ANALYST_SCRIPTS = Path("/workspace/aops-tools/skills/analyst/scripts")
+ANALYST_SCRIPTS = Path(__file__).resolve().parent.parent / "aops-tools" / "skills" / "analyst" / "scripts"
 if str(ANALYST_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(ANALYST_SCRIPTS))
 
@@ -17,10 +17,10 @@ def test_get_project_root_env(monkeypatch):
 
 
 def test_get_project_root_fallback(monkeypatch):
-    """Verify that get_project_root resolves root directory correctly without the env variable."""
+    """Verify that get_project_root discovers the git root when CLAUDE_PROJECT_DIR is unset."""
     monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
-    # When running within this git repository, it should resolve to the git root (/workspace)
-    assert get_project_root().resolve() == Path("/workspace").resolve()
+    root = get_project_root().resolve()
+    assert (root / ".git").exists(), f"Expected a git root, got {root}"
 
 
 def test_get_canonical_db_path_success(tmp_path, monkeypatch):

@@ -11,36 +11,28 @@ from pathlib import Path
 
 
 def get_project_root() -> Path:
-    """Find the project root directory using environment variables, git, or parent traversal."""
-    # 1. Check if CLAUDE_PROJECT_DIR is set (standard framework env var)
+    """Find the project root directory using environment variables or git."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
     if project_dir:
         return Path(project_dir).resolve()
 
-    # 2. Try git rev-parse
     try:
         root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
             text=True,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         ).strip()
         return Path(root).resolve()
-    except Exception:
-        pass
-
-    # 3. Fallback: traverse upwards from cwd
-    current = Path.cwd().resolve()
-    for parent in [current] + list(current.parents):
-        if (
-            (parent / ".git").exists()
-            or (parent / "dbt").exists()
-            or (parent / "pyproject.toml").exists()
-        ):
-            return parent
-
-    raise RuntimeError(
-        "Could not determine project root. Ensure you are running within the project repository."
-    )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"git rev-parse failed (exit {e.returncode}). "
+            "Set CLAUDE_PROJECT_DIR or run within a git repository."
+        ) from e
+    except FileNotFoundError:
+        raise RuntimeError(
+            "git executable not found. "
+            "Set CLAUDE_PROJECT_DIR or ensure git is installed."
+        )
 
 
 def get_canonical_db_path(db_filename: str = "warehouse.db") -> Path:
