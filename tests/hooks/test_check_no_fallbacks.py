@@ -200,3 +200,84 @@ def test_real_baseline_is_consistent_with_current_scan(mod):
         f"bare run not clean against committed baseline:\n{r.stdout}\n{r.stderr}"
     )
     assert isinstance(baseline, dict)
+
+
+def test_allow_fallback_ruff_wrapped(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "wrapped.py"
+    target.parent.mkdir(parents=True)
+    source = (
+        "def some_function():\n"
+        '    return data.get("some_extremely_long_key_to_force_ruff_wrapping_the_statement_over_one_hundred_characters", {})  # allow-fallback: some descriptive reason here\n'
+    )
+    target.write_text(source)
+
+    # Run ruff format
+    subprocess.run(["ruff", "format", str(target)], check=True)
+
+    formatted_source = target.read_text()
+    lines = formatted_source.splitlines()
+    assert len(lines) > 2
+
+    # Run check_no_fallbacks.py
+    r = _run_on(target)
+    assert r.returncode == 0, (
+        f"Expected clean run, got: {r.stdout}\n{r.stderr}\nSource:\n{formatted_source}"
+    )
+
+
+def test_allow_fallback_negative_no_over_suppression(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "neighbor.py"
+    target.parent.mkdir(parents=True)
+    source = (
+        "import os\n"
+        'x = os.getenv("OPT_X", "default")  # allow-fallback: this statement is allowed\n'
+        'y = os.getenv("BAD_Y", "default")\n'
+    )
+    target.write_text(source)
+    r = _run_on(target)
+    assert r.returncode == 1, "Expected linter to fail on neighbor.py"
+    assert "neighbor.py:3" in r.stdout
+    assert "neighbor.py:2" not in r.stdout
+
+
+def test_allow_fallback_idempotence(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "idempotent.py"
+    target.parent.mkdir(parents=True)
+    source = (
+        "def f():\n"
+        '    return data.get("some_extremely_long_key_to_force_ruff_wrapping_the_statement_over_one_hundred_characters", {})  # allow-fallback: some descriptive reason here\n'
+    )
+    target.write_text(source)
+
+    # 1. Check with linter before ruff format (unwrapped)
+    r = _run_on(target)
+    assert r.returncode == 0, f"Linter failed before formatting: {r.stdout}\n{r.stderr}"
+
+    # 2. Run ruff format
+    subprocess.run(["ruff", "format", str(target)], check=True)
+
+    # 3. Check with linter after ruff format (wrapped)
+    r = _run_on(target)
+    assert r.returncode == 0, f"Linter failed after formatting: {r.stdout}\n{r.stderr}"
+
+
+def test_allow_fallback_shell_wrapped(tmp_path):
+    target = tmp_path / "scripts" / "wrapped.sh"
+    target.parent.mkdir(parents=True)
+    # A shell default that is continued onto the next line carrying allow-fallback
+    source = "export VAR=${VAR:-default} \\\n  # allow-fallback: continued line reason\n"
+    target.write_text(source)
+    r = _run_on(target)
+    assert r.returncode == 0, f"Expected clean shell run, got: {r.stdout}\n{r.stderr}"
+
+    # Negative test: a different command with allow-fallback comment does not suppress:
+    source_negative = (
+        "export VAR=${VAR:-default}\n"
+        "# allow-fallback: this is for a different command\n"
+        "export VAR2=${VAR2:-default2}\n"
+    )
+    target.write_text(source_negative)
+    r2 = _run_on(target)
+    assert r2.returncode == 1, "Expected linter to fail on separate shell commands"
+    assert "VAR2" in r2.stdout
+    assert "VAR " not in r2.stdout
