@@ -137,11 +137,13 @@ jobs:
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       # Fetch canonical enforcer prompt from academicOps.
-      # Uses sparse checkout to pull only the two prompt files.
-      # Self-runs (REPO = nicsuzor/academicOps): always clone from main so that
-      # prompt files introduced to main are always present, regardless of which
-      # branch inputs.ref points at (the PR head branch may diverge from main
-      # and predate a file added in a recent merge — see aops-59a6cba6).
+      # Uses sparse checkout to pull only the three prompt files.
+      # Self-runs (REPO = nicsuzor/academicOps): always clone from the repo's
+      # default branch (the bare `git clone` below takes no -b flag, so it
+      # checks out the GitHub default branch) so that prompt files introduced
+      # to the default branch are always present, regardless of which branch
+      # inputs.ref points at (the PR head branch may diverge from the default
+      # branch and predate a file added in a recent merge — see aops-59a6cba6).
       # External consumers calling @enforcer-v1: pin to inputs.ref (release tag)
       # so their prompt files are consistent with the workflow version they pinned.
       - name: Fetch enforcer prompt
