@@ -23,8 +23,4 @@ echo "--- 🐍 Formatting with ruff ---"
 # ruff format runs after check so linter fixes are properly formatted
 uv run ruff format .
 
-echo "--- 🏛️  Checking framework integrity ---"
-# This mirrors the check-framework-integrity hook
-uv run python scripts/check_framework_integrity.py
-
 echo "--- ✓ Formatting complete ---"
