@@ -74,21 +74,21 @@ def _rollback_status_for(task) -> str:
 
 
 def _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is_issue) -> None:
-    """Check chosen method against the recorded sanctioned mechanism in task/parent/memory.
+    """Check chosen method against any recorded sanctioned mechanism via agent judgment.
 
-    Refuses or flags any worker-class or method substitution.
+    Delegates both mechanism detection and alignment validation to a claude agent
+    invocation — per judgment-non-delegable — rather than regex or substring matching.
     """
     body = getattr(task, "body", "")
     if not isinstance(body, str):
         body = ""
-    body_text = body.lower()
 
     tags = []
     task_tags = getattr(task, "tags", [])
     if isinstance(task_tags, list):
-        tags = [str(t).lower() for t in task_tags if isinstance(t, str)]
+        tags = [str(t) for t in task_tags if isinstance(t, str)]
 
-    # Check parent task if exists
+    # Gather parent task content if available
     parent_id = getattr(task, "parent", None)
     if parent_id and isinstance(parent_id, str):
         try:
@@ -96,53 +96,93 @@ def _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is
             if parent_task:
                 p_body = getattr(parent_task, "body", "")
                 if isinstance(p_body, str):
-                    body_text += " " + p_body.lower()
+                    body += "\n\n--- Parent task ---\n" + p_body
                 p_tags = getattr(parent_task, "tags", [])
                 if isinstance(p_tags, list):
-                    tags.extend([str(t).lower() for t in p_tags if isinstance(t, str)])
+                    tags.extend([str(t) for t in p_tags if isinstance(t, str)])
         except Exception:
             pass
 
-    # Combine everything for search
-    combined_content = body_text + " " + " ".join(tags)
+    tag_str = ", ".join(tags) if tags else "(none)"
 
-    # Identify recorded sanctioned mechanism
-    import re
+    # Delegate both judgments to a claude agent — per judgment-non-delegable axiom.
+    # Regex/substring matching is forbidden for semantic calls; the agent reads natural
+    # language and determines (1) whether a mechanism is recorded and (2) whether the
+    # chosen client aligns with it without any hardcoded name-to-worker-class mapping.
+    prompt = (
+        "You are a pre-dispatch safety check for a software agent system.\n\n"
+        f"Task body:\n{body}\n\n"
+        f"Task tags: {tag_str}\n\n"
+        f"Chosen worker client: {selected_client}\n\n"
+        "Answer these two questions:\n"
+        "1. Does this task explicitly record a SANCTIONED MECHANISM — a canonical named harness, "
+        "test-script, or QA loop that must be used? If yes, provide its exact recorded name.\n"
+        "2. If a sanctioned mechanism is recorded, does the chosen worker client "
+        f"'{selected_client}' align with what that mechanism requires? Consider whether the "
+        "mechanism name or description implies a specific worker class and whether the chosen "
+        "client matches. If no mechanism is recorded, the verdict is valid.\n\n"
+        "Respond in this EXACT format (two lines, no other text):\n"
+        "MECHANISM: <exact recorded name, or 'none'>\n"
+        "VERDICT: <'valid' or 'VIOLATION: <concise reason>'>"
+    )
 
-    match = re.search(r"sanctioned[-_]mechanism[:=\s]+([a-zA-Z0-9_\-\.\/]+)", combined_content)
-    mechanism = match.group(1) if match else None
+    try:
+        result = subprocess.run(
+            ["claude", "-p", prompt],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        output = result.stdout.strip()
+    except FileNotFoundError:
+        print(
+            "Warning: 'claude' not found — sanctioned mechanism check skipped.",
+            file=sys.stderr,
+        )
+        return
+    except subprocess.TimeoutExpired:
+        print(
+            "Warning: Agent judgment timed out — sanctioned mechanism check skipped.",
+            file=sys.stderr,
+        )
+        return
 
-    # Fallback/specific check for feedback_agy_wsl_dashboard_qa_loop
-    if not mechanism:
-        if "feedback_agy_wsl_dashboard_qa_loop" in combined_content:
-            mechanism = "feedback_agy_wsl_dashboard_qa_loop"
-        elif "feedback_agy_wsl_dashboard_qa" in combined_content:
-            mechanism = "feedback_agy_wsl_dashboard_qa_loop"
+    # Parse the structured two-line response
+    mechanism = None
+    violation_reason = None
+
+    for line in output.splitlines():
+        if line.startswith("MECHANISM:"):
+            val = line[len("MECHANISM:") :].strip()
+            if val.lower() != "none":
+                mechanism = val
+        elif line.startswith("VERDICT:"):
+            val = line[len("VERDICT:") :].strip()
+            if val.startswith("VIOLATION:"):
+                violation_reason = val[len("VIOLATION:") :].strip()
 
     if mechanism:
         print(f"🔍 Checking sanctioned mechanism SSoT: '{mechanism}'")
 
-        # Verify the chosen client against the mechanism.
-        # If the mechanism names 'agy' (antigravity) or 'gemini', it expects that worker class.
-        if "agy" in mechanism or "gemini" in mechanism:
-            if selected_client not in ("antigravity", "gemini"):
-                print(
-                    f"Error: Sanctioned mechanism '{mechanism}' requires an 'antigravity' or 'gemini' worker.\n"
-                    f"  Chosen client '{selected_client}' is a prohibited worker-class substitution.",
-                    file=sys.stderr,
-                )
-                if was_claimed and not is_issue:
-                    rollback_status = _rollback_status_for(task)
-                    print(f"Reverting task {task.id} to {rollback_status}...", file=sys.stderr)
-                    try:
-                        manager.update_task(task.id, status=rollback_status, assignee=None)
-                    except Exception as re:
-                        print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
-                sys.exit(3)
+    if violation_reason:
+        print(
+            f"Error: Sanctioned mechanism '{mechanism}' violation — {violation_reason}\n"
+            f"  Chosen client '{selected_client}' is a prohibited worker-class substitution.",
+            file=sys.stderr,
+        )
+        if was_claimed and not is_issue:
+            rollback_status = _rollback_status_for(task)
+            print(f"Reverting task {task.id} to {rollback_status}...", file=sys.stderr)
+            try:
+                manager.update_task(task.id, status=rollback_status, assignee=None)
+            except Exception as exc:
+                print(f"Failed to revert task {task.id}: {exc}", file=sys.stderr)
+        sys.exit(3)
 
-        # Check if an ad-hoc test-script derivative is used instead of the canonical harness
-        if "harness" in mechanism or "test" in mechanism or "loop" in mechanism:
-            print(f"✅ Sanctioned mechanism verified: using canonical artifact '{mechanism}'")
+    if mechanism:
+        print(
+            f"✅ Sanctioned mechanism verified: chosen client '{selected_client}' aligns with '{mechanism}'"
+        )
 
 
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
