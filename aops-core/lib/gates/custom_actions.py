@@ -126,7 +126,13 @@ def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:
         gate, session_id, transcript_path=ctx.transcript_path, client_type=ctx.client_type
     )
     gate_path.parent.mkdir(parents=True, exist_ok=True)
-    gate_path.write_text(content, encoding="utf-8")
+
+    # Scrub known secrets before writing to the gate/narrative file (aops-efc4592f)
+    from lib.secret_redaction import redact_secrets
+
+    content_redacted = redact_secrets(content)
+
+    gate_path.write_text(content_redacted, encoding="utf-8")
     return gate_path
 
 
