@@ -201,7 +201,7 @@ def load_projects(
             "aliases": aliases,
             "mounts": mounts,
         }
-        for key in ("auto_commit", "merge_strategy"):
+        for key in ("auto_commit", "merge_strategy", "sessions_access", "session_access"):
             if key in proj:
                 entry[key] = proj[key]
         projects[slug] = entry
