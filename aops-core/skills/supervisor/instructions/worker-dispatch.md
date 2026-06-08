@@ -13,27 +13,29 @@ Before pauli emits a `dispatch` verdict, she validates the task purely through P
 ### 1. Pre-flight Confirmation Summary (Code / Edit Tasks)
 
 **Inputs**: Task body, existing file paths.
-**Checks (4-row table)**:
+**Checks (5-row table)**:
 
 1. **Task ID:** The epic / subtask being dispatched.
 2. **Source repo:** Inferred from file paths the task names (file-path grep validates source repo).
 3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
 4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
+5. **Sanctioned mechanism:** Check memory/loop spec for a recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Verify chosen worker/method aligns; refuse ad-hoc harness/test-script substitutions.
 
-**Halt conditions:** Any row is unknown, source repo cannot be inferred, `project` is missing and ancestors are ambiguous, or dependencies are not met.
+**Halt conditions:** Any row is unknown, source repo cannot be inferred, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
 ### 2. Pre-flight Confirmation Summary (Design / Spec / Research Tasks)
 
 **Inputs**: Task body, Acceptance Criteria.
-**Checks (4-row table)**:
+**Checks (5-row table)**:
 
 1. **Task ID:** The epic / subtask being dispatched.
 2. **Output artefact location:** Canonical spec or reference doc the design edits will land in (taken from AC).
 3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
 4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
+5. **Sanctioned mechanism:** Check memory/loop spec for a recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Verify chosen worker/method aligns; refuse ad-hoc harness/test-script substitutions.
 
-**Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, or dependencies are not met.
+**Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
 ### Existing PR Check

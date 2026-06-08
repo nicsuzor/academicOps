@@ -73,6 +73,78 @@ def _rollback_status_for(task) -> str:
     return prior_str
 
 
+def _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is_issue) -> None:
+    """Check chosen method against the recorded sanctioned mechanism in task/parent/memory.
+
+    Refuses or flags any worker-class or method substitution.
+    """
+    body = getattr(task, "body", "")
+    if not isinstance(body, str):
+        body = ""
+    body_text = body.lower()
+
+    tags = []
+    task_tags = getattr(task, "tags", [])
+    if isinstance(task_tags, list):
+        tags = [str(t).lower() for t in task_tags if isinstance(t, str)]
+
+    # Check parent task if exists
+    parent_id = getattr(task, "parent", None)
+    if parent_id and isinstance(parent_id, str):
+        try:
+            parent_task = manager.get_task(parent_id)
+            if parent_task:
+                p_body = getattr(parent_task, "body", "")
+                if isinstance(p_body, str):
+                    body_text += " " + p_body.lower()
+                p_tags = getattr(parent_task, "tags", [])
+                if isinstance(p_tags, list):
+                    tags.extend([str(t).lower() for t in p_tags if isinstance(t, str)])
+        except Exception:
+            pass
+
+    # Combine everything for search
+    combined_content = body_text + " " + " ".join(tags)
+
+    # Identify recorded sanctioned mechanism
+    import re
+
+    match = re.search(r"sanctioned[-_]mechanism[:=\s]+([a-zA-Z0-9_\-\.\/]+)", combined_content)
+    mechanism = match.group(1) if match else None
+
+    # Fallback/specific check for feedback_agy_wsl_dashboard_qa_loop
+    if not mechanism:
+        if "feedback_agy_wsl_dashboard_qa_loop" in combined_content:
+            mechanism = "feedback_agy_wsl_dashboard_qa_loop"
+        elif "feedback_agy_wsl_dashboard_qa" in combined_content:
+            mechanism = "feedback_agy_wsl_dashboard_qa_loop"
+
+    if mechanism:
+        print(f"🔍 Checking sanctioned mechanism SSoT: '{mechanism}'")
+
+        # Verify the chosen client against the mechanism.
+        # If the mechanism names 'agy' (antigravity) or 'gemini', it expects that worker class.
+        if "agy" in mechanism or "gemini" in mechanism:
+            if selected_client not in ("antigravity", "gemini"):
+                print(
+                    f"Error: Sanctioned mechanism '{mechanism}' requires an 'antigravity' or 'gemini' worker.\n"
+                    f"  Chosen client '{selected_client}' is a prohibited worker-class substitution.",
+                    file=sys.stderr,
+                )
+                if was_claimed and not is_issue:
+                    rollback_status = _rollback_status_for(task)
+                    print(f"Reverting task {task.id} to {rollback_status}...", file=sys.stderr)
+                    try:
+                        manager.update_task(task.id, status=rollback_status, assignee=None)
+                    except Exception as re:
+                        print(f"Failed to revert task {task.id}: {re}", file=sys.stderr)
+                sys.exit(3)
+
+        # Check if an ad-hoc test-script derivative is used instead of the canonical harness
+        if "harness" in mechanism or "test" in mechanism or "loop" in mechanism:
+            print(f"✅ Sanctioned mechanism verified: using canonical artifact '{mechanism}'")
+
+
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
 
 
@@ -4530,6 +4602,8 @@ def run(
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
+
+    _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is_issue)
 
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")

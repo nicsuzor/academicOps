@@ -13,5 +13,6 @@ description: |
 - Didn't run or read it this turn? Say so. No inferences dressed as observations.
 - Flag anything you substituted, skipped, or relayed from a subagent unverified.
 - Give your own view, not a menu or a status echo.
+- Verify that the chosen QA/work method matches the recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Refuse/flag any substitution or ad-hoc derivative of the canonical harness/test-script.
 
 For shippable claims (a PR, a merge call, a fix you say works), point at the artifact that backs it and name any limitation. Don't manufacture confidence numbers or hypotheses. Full doctrine: [[agents/junior]] § Layer 1.
