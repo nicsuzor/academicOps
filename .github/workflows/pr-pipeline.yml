@@ -20,6 +20,9 @@ on:
       AOPS_BOT_GH_TOKEN:
         description: 'PAT for GitHub API operations'
         required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'OAuth token for Claude agent'
+        required: false
 
 permissions:
   contents: write
@@ -141,6 +144,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+  # ─── Stage 1 Triage Orchestrator (§3.4) ──────────────────────────
+
   # ─── Step 1: Lint ─────────────────────────────────────────────────
   # If lint autofixes and pushes (using AOPS_BOT_GH_TOKEN), the push
   # triggers a new synchronize event. This run is cancelled and the
@@ -151,14 +156,45 @@ jobs:
     uses: ./.github/workflows/lint.yml
     secrets: inherit
 
-  # ─── Step 2: Type Check ──────────────────────────────────────────
+  # ─── Step 2: Enforcer ────────────────────────────────────────────
+  enforcer:
+    needs: [lint]
+    if: needs.lint.outputs.committed != 'true'
+    name: Enforcer Review
+    uses: ./.github/workflows/agent-enforcer.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # ─── Step 3: QA (Marsha) ─────────────────────────────────────────
+  qa:
+    needs: [enforcer, lint]
+    if: always() && needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true'
+    name: QA Verification
+    uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # ─── Read-only checks (typecheck, pytest) ────────────────────────
+  # These contribute statuses but never end a pass. They only run if
+  # upstream agents didn't commit, because a commit restarts the orchestrator.
+
   typecheck:
     name: Type Check
     needs: [lint]
+    if: needs.lint.outputs.committed != 'true'
     uses: ./.github/workflows/typecheck.yml
     secrets: inherit
 
-  # ─── Step 3: Pytest ──────────────────────────────────────────────
   pytest:
     name: Pytest
     needs: [typecheck]
