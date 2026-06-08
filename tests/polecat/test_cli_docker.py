@@ -603,41 +603,6 @@ class TestBuildDockerCmd:
         expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
         assert expected_mount in vol_args
 
-    def test_sessions_mount_via_project_singular(self, tmp_path, monkeypatch):
-        """Verify sessions transcripts mount when project has session_access config (singular spelling)."""
-        sessions_dir = tmp_path / "sessions"
-        monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
-
-        from unittest.mock import MagicMock
-
-        from polecat.manager import PolecatManager
-
-        manager = MagicMock(spec=PolecatManager)
-        manager.resolve_project_alias.side_effect = lambda slug: slug
-        manager.projects = {
-            "myproj": {
-                "session_access": True,
-                "mounts": [],
-            }
-        }
-
-        docker_cmd = _build_docker_cmd(
-            cli_tool="claude",
-            work_dir=Path("/tmp/worktree"),
-            env={},
-            agent_cmd=["claude"],
-            is_interactive=False,
-            project_slug="myproj",
-            manager=manager,
-        )
-
-        env_args = [docker_cmd.cmd[i + 1] for i, x in enumerate(docker_cmd.cmd) if x == "-e"]
-        assert "AOPS_SESSIONS=/sessions" in env_args
-
-        vol_args = [docker_cmd.cmd[i + 1] for i, x in enumerate(docker_cmd.cmd) if x == "-v"]
-        expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
-        assert expected_mount in vol_args
-
     def test_sessions_mount_not_present_by_default(self, tmp_path, monkeypatch):
         """Verify sessions transcripts are NOT mounted by default."""
         sessions_dir = tmp_path / "sessions"

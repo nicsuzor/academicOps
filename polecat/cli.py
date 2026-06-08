@@ -1488,9 +1488,7 @@ def _build_docker_cmd(
         except ValueError:
             _canonical_slug = project_slug
         _project_entry = manager.projects.get(_canonical_slug)
-        if _project_entry and (
-            _project_entry.get("sessions_access") or _project_entry.get("session_access")
-        ):
+        if _project_entry and _project_entry.get("sessions_access"):
             has_sessions_access = True
 
     if has_sessions_access:
