@@ -33,8 +33,13 @@ Selects the next queued task from the PKB and dispatches it to the appropriate e
 
 - Search for task nodes with `status: "queued"`.
 - If no argument is provided, list the top candidates via `mcp__pkb__list_tasks(status="queued")` and pick the one with the highest `focus_score`.
-- If the task has a non-empty `superseded_by` field, do not dispatch it; surface the redirection and select the next candidate.
 - Descend to leaf tasks if the selected task has children.
+- **Freshness Pre-check**: For the selected candidate leaf task:
+  - **Path Resolution Check**: Scan the task body (and title) for file or directory paths (e.g. paths starting with `aops-core/`, `specs/`, `tests/`, `.agents/`, `.github/`, or matching pattern `dir/file.ext`). Check if each path exists in the repository workspace.
+    - If a path is referenced but does not exist, print a warning naming the stale reference: `[WARNING] Task brief references non-existent path: <stale-path>`.
+  - **Supersession Check**:
+    - If the task has a non-empty `superseded_by` field (consumes the field added by aops-a75b1fe8 #1), do not dispatch it; print a redirection warning: `[WARNING] Task <id> is superseded by <replacement-ids>` and select the next candidate.
+    - If the task has a parent, retrieve the parent's children (siblings) via `mcp__pkb__get_task_children`. If the task's siblings are already `done`, the task may be superseded. Print a warning (`[WARNING] Task <id>'s siblings are already done`) and skip or flag it rather than dispatching silently.
 
 ### 2. Route the Task
 
