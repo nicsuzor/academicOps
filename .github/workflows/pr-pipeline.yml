@@ -144,6 +144,79 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # admit-status carry-forward (pr-pipeline-v2 §5). admit-status is the required
+      # human gate; it is set to success only by the Stage-2 Admission Gate
+      # (stage2-admission.yml) when the maintainer approves the `pr-fix-loop`
+      # Environment. This step manages the NON-admit transitions so the gate stays
+      # honest across the Stage-2 fix loop:
+      #   - opened/reopened/ready_for_review → pending (a fresh PR is not admitted).
+      #   - synchronize: an AGENT-authored fix commit carries a prior admission
+      #     forward (the decision stands); a new HUMAN push resets to pending (a
+      #     substantive human change must be re-judged at the gate).
+      # Reuses the structure of the merge-prep carry above; the reset trigger here is
+      # "a new human push" rather than "a new CHANGES_REQUESTED review" (§5).
+      - name: Set admit status (carry-forward)
+        run: |
+          NEW_SHA="${{ github.event.pull_request.head.sha }}"
+          REPO="${{ github.repository }}"
+          ACTION="${{ github.event.action }}"
+
+          set_admit_pending() {
+            gh api "repos/${REPO}/statuses/${NEW_SHA}" \
+              -f state="pending" \
+              -f context="admit-status" \
+              -f description="Awaiting admission at the pr-fix-loop Environment gate"
+          }
+
+          # Fresh PR (or re-opened) is never pre-admitted.
+          if [ "$ACTION" != "synchronize" ]; then
+            echo "Action is '${ACTION}' — admit-status pending"
+            set_admit_pending
+            exit 0
+          fi
+
+          # synchronize: only carry an admission forward across agent-authored commits.
+          OLD_SHA="${{ github.event.before }}"
+          PREV_ADMIT=$(gh api "repos/${REPO}/commits/${OLD_SHA}/statuses" \
+            --jq '[.[] | select(.context == "admit-status")] | sort_by(.updated_at) | last | .state // empty')
+
+          if [ "$PREV_ADMIT" != "success" ]; then
+            echo "Previous admit-status was '${PREV_ADMIT:-none}' — admit-status pending"
+            set_admit_pending
+            exit 0
+          fi
+
+          # Previous HEAD was admitted. Carry forward ONLY if the new HEAD commit was
+          # authored by a pipeline agent (bot). A human push resets to pending.
+          # Agent commits are authored by the bot identities the agents commit as
+          # (lint/release: github-actions[bot]; Claude agents: claude[bot]) — both have
+          # GitHub account type "Bot". We treat a commit as agent-authored if either the
+          # author or committer account type is "Bot" or its login carries a "[bot]" suffix.
+          COMMIT_JSON=$(gh api "repos/${REPO}/commits/${NEW_SHA}")
+          AUTHOR_LOGIN=$(echo "$COMMIT_JSON" | jq -r '.author.login // ""')
+          AUTHOR_TYPE=$(echo "$COMMIT_JSON" | jq -r '.author.type // ""')
+          COMMITTER_TYPE=$(echo "$COMMIT_JSON" | jq -r '.committer.type // ""')
+          echo "New HEAD author='${AUTHOR_LOGIN}' author_type='${AUTHOR_TYPE}' committer_type='${COMMITTER_TYPE}'"
+
+          IS_AGENT=false
+          if [ "$AUTHOR_TYPE" = "Bot" ] || [ "$COMMITTER_TYPE" = "Bot" ]; then
+            IS_AGENT=true
+          fi
+          case "$AUTHOR_LOGIN" in *"[bot]"*) IS_AGENT=true ;; esac
+
+          if [ "$IS_AGENT" = "true" ]; then
+            echo "Agent-authored fix commit — carrying admission forward to ${NEW_SHA}"
+            gh api "repos/${REPO}/statuses/${NEW_SHA}" \
+              -f state="success" \
+              -f context="admit-status" \
+              -f description="Admission carried forward across agent fix commit"
+          else
+            echo "Human push detected — resetting admission to pending (must be re-judged)"
+            set_admit_pending
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   # ─── Stage 1 Triage Orchestrator (§3.4) ──────────────────────────
 
   # ─── Step 1: Lint ─────────────────────────────────────────────────
@@ -200,3 +273,50 @@ jobs:
     needs: [typecheck]
     uses: ./.github/workflows/pytest.yml
     secrets: inherit
+
+  # ─── Convergence → dispatch the Stage-2 Admission Gate (§3.2) ──────
+  # CONVERGENCE = a pass where the chain ran all the way through and NO agent
+  # committed (§3.4). At that point every agent has posted an authoritative status
+  # on the current HEAD. We then dispatch the Admission Gate as a SEPARATE run that
+  # parks at the `pr-fix-loop` Environment (it cannot be a job here — an
+  # Environment-gated job would pause THIS run, leaving Stage 1 hanging; §3.2 callout).
+  #
+  # Idempotence: we only dispatch when admit-status is not already success. Once the
+  # maintainer admits, carry-forward (initialize) keeps admit-status green across
+  # agent fix commits, so subsequent convergences do NOT re-park at the gate (§12 Q1).
+  dispatch-admission:
+    name: Dispatch Admission Gate
+    needs: [lint, enforcer, qa]
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.qa.result == 'success' &&
+      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Dispatch admission run if not already admitted
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot dispatch the Admission Gate." >&2
+            exit 1
+          fi
+
+          ADMIT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/statuses" \
+            --jq '[.[] | select(.context == "admit-status")] | sort_by(.updated_at) | last | .state // empty')
+          if [ "$ADMIT" = "success" ]; then
+            echo "PR #$PR_NUMBER already admitted (admit-status=success) — not re-parking at the gate."
+            exit 0
+          fi
+
+          echo "Stage 1 converged on $HEAD_SHA — dispatching the Admission Gate to park at pr-fix-loop."
+          gh workflow run stage2-admission.yml \
+            --repo "$REPO" \
+            --ref "${{ github.base_ref }}" \
+            -f pr_number="$PR_NUMBER" \
+            || echo "WARNING: Could not dispatch stage2-admission.yml (already parked, or workflow absent on base)."
