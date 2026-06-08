@@ -30,8 +30,7 @@ def get_project_root() -> Path:
         ) from e
     except FileNotFoundError:
         raise RuntimeError(
-            "git executable not found. "
-            "Set CLAUDE_PROJECT_DIR or ensure git is installed."
+            "git executable not found. Set CLAUDE_PROJECT_DIR or ensure git is installed."
         )
 
 

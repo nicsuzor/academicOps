@@ -2,7 +2,9 @@ import sys
 from pathlib import Path
 
 # Add the analyst scripts path to sys.path so we can import db_resolver
-ANALYST_SCRIPTS = Path(__file__).resolve().parent.parent / "aops-tools" / "skills" / "analyst" / "scripts"
+ANALYST_SCRIPTS = (
+    Path(__file__).resolve().parent.parent / "aops-tools" / "skills" / "analyst" / "scripts"
+)
 if str(ANALYST_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(ANALYST_SCRIPTS))
 
