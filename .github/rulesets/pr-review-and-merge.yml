@@ -60,10 +60,14 @@ rules:
   # ─────────────────────────────────────────
   - type: pull_request
     parameters:
-      required_approving_review_count: 2
-      # Approval #1: Merge Prep (github-actions[bot]) — runs on cron, approves when ready
-      # Approval #2: Human Maintainer
-      # NOTE (Phase 3): count reduces to 1 when merge-prep becomes mechanic (no bot approval).
+      required_approving_review_count: 0
+      # v2 (Phase 4): the human gate is the `pr-fix-loop` GitHub Environment approval,
+      # which sets the required `admit-status` (see required_status_checks below and
+      # specs/workflows/pr-pipeline-v2.md §5). There is no bot approval to count and no
+      # separate human review-approval — the Environment approval IS the human decision.
+      # This drop (2 → 0) is made in the SAME change that adds `admit-status` to the
+      # required checks; otherwise green checks alone would permit a gate-bypassing
+      # manual merge (§5 sequencing note).
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -99,21 +103,20 @@ rules:
         # returns 0 errors on a clean clone of main).
         # - context: "Type Check / Type Check"
         - context: "Pytest / Pytest"
-        # merge-prep-status is an API-driven commit status (see pr-pipeline.yml Initialize
-        # job and agent-merge-prep.yml). It is the true merge gate — merge-prep triages
-        # Axiom Review output before setting success.
-        - context: "merge-prep-status"
-        # NOTE: "Axiom Review" (pr-review.yml) is intentionally NOT required here.
-        # Its job uses a strategy matrix, so GitHub emits dynamic names like
-        # "Axiom Review (558, polecat/task-a984b5ad)" which cannot match a static
-        # required context. Axiom Review is gated transitively via merge-prep-status
-        # (merge-prep reads and triages its review output). To require it directly,
-        # add a non-matrix gate job downstream of `review` with a fixed name, or
-        # publish a commit status via the Statuses API.
-        #
-        # v2 framework agents (specs/pr-pipeline-v2.md §5) — each owns its AND-gate slot.
-        # merge-prep-status stays required until Phase 3 strips down merge-prep to mechanic.
+        # v2 framework agents (specs/workflows/pr-pipeline-v2.md §7) — each owns its
+        # AND-gate slot directly; there is no transitive merge-prep-status gate.
+        # enforcer-status: rbg — axiom review (agent-enforcer.yml)
         - context: "enforcer-status"
+        # qa-status: marsha — runtime QA (agent-qa.yml)
+        - context: "qa-status"
+        # Human gate (Environment approval, §5) — NOT an agent. Set to success only by
+        # the Stage-2 Admission Gate (stage2-admission.yml) when the maintainer approves
+        # the `pr-fix-loop` Environment. Replaces v1's merge-prep-status as the merge gate.
+        - context: "admit-status"
+        # NOTE: alignment-status is advisory (§6) and is intentionally NOT required —
+        # pauli runs host-side and informs the human gate, never deadlocks a merge.
+        # NOTE: merge-prep-status is REMOVED (Phase 4) — replaced by admit-status. The
+        # no-op merge-prep run on every green PR (pathology P5) is gone.
 
   # ─────────────────────────────────────────
   # Code quality (CodeQL / Copilot analysis)
