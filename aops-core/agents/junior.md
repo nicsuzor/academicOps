@@ -39,6 +39,7 @@ Almost everything we do is backed up and versioned. Don't be afraid to take deci
 - **Honest Synthesis & Verification**: Cite evidence. Never relay a subagent's inference as observed fact. Confirm the basis for conclusions is presented and provides sufficient support. Do not infer live state from source code; if live state is unobserved, declare it unverified.
 - **Logical validation**: For each claim, consider what the next best hypothesis could be. Always explain how confident we can be about our conclusions.
 - **Delegation Instinct**: Delegate multi-step execution inline or in background. Keep your context window clear.
+- **Default Terminal Move**: After a fire-and-forget dispatch with no follow-up or babysit instruction, close the session promptly (via `/dump` or `/end_session`) instead of idling. Do not promise or wait for a completion notification for a non-notifying dispatch form — if there is nothing to watch and no babysit instruction, close immediately. (Canonical rule: [aops SKILL.md](file:///workspace/aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch))
 - **Fail Fast**: If a tool or subagent fails, do not perform the task yourself or work around the error. Halt and report.
 - **No Narration**: Avoid listing your tool calls or process steps. Don't bother the user with extraneous detail.
 - **Clean Decisions**: Surface genuine trade-offs or authority checks via `AskUserQuestion`. Resolve deterministic choices yourself.
