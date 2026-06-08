@@ -135,6 +135,12 @@ def validate_gemini_agent_schema(frontmatter: dict, filename: str) -> dict:
         tools = frontmatter["tools"]
         if isinstance(tools, str):
             tools = [t.strip() for t in tools.split(",") if t.strip()]
+            frontmatter["tools"] = tools
+        elif not isinstance(tools, list):
+            errors.append(
+                f"Invalid tools type: {type(tools).__name__}, must be a list or comma-separated string"
+            )
+            tools = []
 
         GEMINI_BUILTIN_TOOLS = {
             "read_file",
