@@ -35,11 +35,11 @@ Selects the next queued task from the PKB and dispatches it to the appropriate e
 - If no argument is provided, list the top candidates via `mcp__pkb__list_tasks(status="queued")` and pick the one with the highest `focus_score`.
 - Descend to leaf tasks if the selected task has children.
 - **Freshness Pre-check**: For the selected candidate leaf task:
-  - **Path Resolution Check**: Scan the task body (and title) for file or directory paths (e.g. paths starting with `commands/`, `specs/`, `tests/`, `.agents/`, `.github/`, or matching pattern `dir/file.ext`). Check if each path exists in the repository workspace.
-    - If a path is referenced but does not exist, print a warning naming the stale reference: `[WARNING] Task brief references non-existent path: <stale-path>`.
+  - **Path Resolution Check**: Read the task body and title and identify the file/directory paths it points an executor at — the ones a worker would open or edit (e.g. backtick- or quote-delimited tokens naming a real file: a known repo top-level segment like `commands/`, `specs/`, `tests/`, `.agents/`, `.github/`, or a token carrying a file extension). Use judgment, not a blanket slash-match: skip prose mentions, tool names (`mcp__pkb__list_tasks`), and code identifiers (`focus_score`) — they are not the brief's working paths. Then, only if the task names a `project`/repo you have checked out in this session, verify each identified path resolves there (`Read`/`ls`); if no relevant checkout is available, skip this check rather than warn on a path you cannot verify.
+    - If a verified path does not resolve, print a warning naming the stale reference: `[WARNING] Task brief references non-existent path: <stale-path>` (warn, do not hard-block — the dispatching coordinator decides).
   - **Supersession Check**:
     - If the task has a non-empty `superseded_by` field (consumes the field added by aops-a75b1fe8 #1), do not dispatch it; print a redirection warning: `[WARNING] Task <id> is superseded by <replacement-ids>` and select the next candidate.
-    - If the task has a parent, retrieve the parent's children (siblings) via `mcp__pkb__get_task_children`. If the task's siblings are already `done`, the task may be superseded. Print a warning (`[WARNING] Task <id>'s siblings are already done`) and skip or flag it rather than dispatching silently.
+    - If the task has a parent, retrieve the parent's children (siblings) via `mcp__pkb__get_task_children`. If **all** siblings are already `done` (a heuristic, not proof — parallel siblings legitimately finish at different times), the task may be a leftover from a completed decomposition. Print a warning (`[WARNING] Task <id>'s siblings are all done — may be a stale leftover`) and flag it for the coordinator rather than dispatching silently; do not auto-skip on this signal alone.
 
 ### 2. Route the Task
 
