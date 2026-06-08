@@ -99,6 +99,10 @@ Before presenting any plan or conclusion, invoke the critic agent:
 Task(subagent_type="aops-core:pauli", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
 ```
 
+### Terminal Move after Dispatch
+
+After a fire-and-forget dispatch with no follow-up or babysit instruction, the default terminal move is to close the session promptly (via `/dump` or `/end_session`) instead of idling. (Canonical rule: [[aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch]])
+
 ### File Categories
 
 | Category    | Purpose                        |

@@ -25,8 +25,10 @@ RULESET_FILE=".github/rulesets/pr-review-and-merge.yml"
 # (not by a workflow job). They have no corresponding job name in workflow files
 # and must be explicitly listed here to pass validation.
 API_DRIVEN_STATUSES=(
-  "merge-prep-status"   # set by agent-merge-prep.yml and pr-pipeline.yml Initialize job
   "enforcer-status"     # set by agent-enforcer.yml via GitHub Statuses API (Phase 1 v2 enforcer)
+  "qa-status"           # set by agent-qa.yml via GitHub Statuses API (Phase 2 v2 QA / marsha)
+  "admit-status"        # set by stage2-admission.yml on Environment approval (Phase 4 human gate)
+  "merge-prep-status"   # legacy v1 gate (set by agent-merge-prep.yml + Initialize); no longer required
 )
 
 # ── Extract required check names ────────────────────────────────────────────
@@ -103,6 +105,19 @@ while IFS= read -r required; do
     if [[ "$required" == "enforcer-status" ]]; then
       if ! grep -q "agent-enforcer.yml" "$WORKFLOWS_DIR"/*.yml 2>/dev/null; then
         echo "  ✗ '$required' — API-driven status is required, but no workflow in $WORKFLOWS_DIR calls agent-enforcer.yml!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    elif [[ "$required" == "qa-status" ]]; then
+      if ! grep -q "agent-qa.yml" "$WORKFLOWS_DIR"/*.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but no workflow in $WORKFLOWS_DIR calls agent-qa.yml!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    elif [[ "$required" == "admit-status" ]]; then
+      # Set by the Stage-2 Admission Gate on `pr-fix-loop` Environment approval.
+      if ! grep -q "admit-status" "$WORKFLOWS_DIR"/stage2-admission.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/stage2-admission.yml does not set admit-status!"
         ERRORS=$((ERRORS + 1))
         continue
       fi
