@@ -30,6 +30,7 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 
 - [[agent-authority]] — Permissions and skill delegation envelope
 - [[agent-permissions]] — Tool allowlists per agent
+- [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
 - [[agent-compliance-matrix]] — Audit state against authority spec
 - [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
 - [[effectual-planning-agent]] — Planner agent design
