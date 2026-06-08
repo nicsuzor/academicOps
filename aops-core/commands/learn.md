@@ -37,11 +37,18 @@ You may apply immediate codebase fixes (for minor tweaks or framework-caused def
 
 ## Invocation Styles
 
-- `/learn` — Auto-select the most recent unreviewed markdown transcript.
+- `/learn` — Review the current session/transcript (auto-detect the current session context/ID and pass it).
 - `/learn <path>` or `/learn <session-id>` — Review the specified transcript/session.
 - `/learn that last task should have been xyz` — Dual action: fix the target behavior immediately AND file the tracking RCA issue in the background.
 
 ## Workflow
 
-Delegate the retro execution to the Junior coordinator agent:
-`Agent(subagent_type='junior', prompt='Run survey skill in retro mode with [transcript context] [optional directive context]')`
+1. **Resolve Session Context**:
+   - If a specific `<path>` or `<session-id>` is provided, use that.
+   - If no explicit path or session ID is provided, locate the current session ID or the active transcript path for the current conversation.
+   - **No Random Fallback**: You must NEVER dispatch Pauli without specifying the target session or transcript, and Pauli must never select a random transcript. If no session context, ID, or path can be resolved, halt and report an error.
+
+2. **Dispatch Pauli**:
+   - Delegate the retro execution to the **Pauli** coordinator agent (not junior):
+     `Agent(subagent_type='pauli', prompt='Run survey skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
+   - You MUST explicitly pass the target session ID or transcript path in the prompt to Pauli. Same-session review by a fresh subagent (like `pauli` dispatched within the session) is explicitly allowed.
