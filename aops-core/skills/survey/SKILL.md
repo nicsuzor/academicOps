@@ -2,7 +2,7 @@
 name: survey
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to junior/jr to keep main context clean."
+description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli (retro/trend) or jr (sweep) to keep main context clean."
 triggers:
   - "survey"
   - "retro"
@@ -48,7 +48,7 @@ Survey a corpus, classify findings, and dispatch outputs according to the select
 
 This skill delegates execution to keep the main context clean:
 
-- **`retro` / `trend` mode**: Dispatch `junior` with access to PKB and system tools.
+- **`retro` / `trend` mode**: Dispatch `pauli` with access to PKB and system tools.
 - **`sweep` mode**: Dispatch `jr` to handle interactive triage and confirmation gates.
 
 ---
