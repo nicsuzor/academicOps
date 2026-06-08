@@ -72,11 +72,17 @@ from pathlib import Path, PurePosixPath
 _ALLOW_RE = re.compile(r"#\s*allow-fallback:\s*(\S.*)$")
 
 
-def _line_allowed(source_lines: list[str], lineno: int) -> bool:
-    """Return True if line `lineno` (1-based) ends with an `allow-fallback`
-    comment carrying a non-empty reason."""
-    if 0 < lineno <= len(source_lines):
-        return bool(_ALLOW_RE.search(source_lines[lineno - 1]))
+def _line_allowed(
+    source_lines: list[str], start_lineno: int, end_lineno: int | None = None
+) -> bool:
+    """Return True if any line in the range [start_lineno, end_lineno] (1-based, inclusive)
+    ends with an `allow-fallback` comment carrying a non-empty reason."""
+    if end_lineno is None:
+        end_lineno = start_lineno
+    for line_num in range(start_lineno, end_lineno + 1):
+        if 0 < line_num <= len(source_lines):
+            if _ALLOW_RE.search(source_lines[line_num - 1]):
+                return True
     return False
 
 
@@ -113,11 +119,31 @@ class FallbackDetector(ast.NodeVisitor):
         self.filepath = filepath
         self.source_lines = source_lines
         self.violations: list[dict] = []
+        self.current_statement_span: tuple[int, int] | None = None
+
+    def visit(self, node: ast.AST) -> None:
+        is_stmt = isinstance(node, ast.stmt)
+        old_span = self.current_statement_span
+        if is_stmt:
+            self.current_statement_span = (
+                node.lineno,
+                getattr(node, "end_lineno", None) or node.lineno,
+            )
+        try:
+            super().visit(node)
+        finally:
+            if is_stmt:
+                self.current_statement_span = old_span
 
     # -- helpers ------------------------------------------------------------
 
     def _record(self, node: ast.expr, pattern: str, message: str) -> None:
-        if _line_allowed(self.source_lines, node.lineno):
+        if self.current_statement_span:
+            start_line, end_line = self.current_statement_span
+        else:
+            start_line = node.lineno
+            end_line = getattr(node, "end_lineno", None) or start_line
+        if _line_allowed(self.source_lines, start_line, end_line):
             return
         self.violations.append(
             {
@@ -225,6 +251,19 @@ def check_python_file(filepath: Path) -> list[dict]:
 _SHELL_DEFAULT_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(:-|:=)([^}]*)\}")
 
 
+def _shell_logical_end(source_lines: list[str], lineno: int) -> int:
+    """Find the ending line number of a shell statement that continues via backslash."""
+    idx = lineno - 1
+    while idx < len(source_lines):
+        line = source_lines[idx]
+        code, _, _ = line.partition("#")
+        if code.rstrip().endswith("\\"):
+            idx += 1
+        else:
+            break
+    return min(idx + 1, len(source_lines))
+
+
 def check_shell_file(filepath: Path) -> list[dict]:
     try:
         source = filepath.read_text(encoding="utf-8")
@@ -245,7 +284,8 @@ def check_shell_file(filepath: Path) -> list[dict]:
             # Skip computed defaults (env-var delegation, command substitution).
             if not default or "$" in default or "`" in default:
                 continue
-            if _line_allowed(lines, lineno):
+            end_lineno = _shell_logical_end(lines, lineno)
+            if _line_allowed(lines, lineno, end_lineno):
                 continue
             violations.append(
                 {
@@ -429,7 +469,9 @@ def _load_baseline() -> dict[str, dict[str, int]]:
     if not isinstance(data, dict):
         return {}
     # Absent "baseline" key genuinely means "no grandfathered sites".
-    return data.get("baseline", {})  # allow-fallback: no baseline key = no grandfathered sites
+    return data.get(
+        "baseline", {}
+    )  # allow-fallback: the absence of a baseline key in the loaded configuration JSON dictionary means that there are no grandfathered sites to track
 
 
 def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]]) -> list[dict]:
@@ -440,7 +482,9 @@ def _apply_baseline(violations: list[dict], baseline: dict[str, dict[str, int]])
     for v in violations:
         rel = _rel_key(Path(v["file"]))
         pattern = v["pattern"]
-        file_baseline = baseline.get(rel) or {}  # allow-fallback: absent file = no grandfathered
+        file_baseline = (
+            baseline.get(rel) or {}
+        )  # allow-fallback: when a file is absent from the baseline configuration, it is treated as having zero grandfathered violations initially
         allowed = file_baseline.get(pattern, 0)
         seen[(rel, pattern)] += 1
         if seen[(rel, pattern)] > allowed:

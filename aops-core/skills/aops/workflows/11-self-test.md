@@ -34,7 +34,7 @@ Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin pack
 
 Walk layers in order; stop at first failure:
 
-**§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make build-docker`.
+**§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make verify-docker` (**not** `make build-docker` — verification requires a clean build; `--no-cache` prevents stale cached layers from producing a false-green result; issue #1452).
 
 **§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container (and `gemini extensions list` for Gemini sessions) to verify plugins and extensions loaded correctly. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either command returns no plugins / no extensions, halt and diagnose before proceeding.
 

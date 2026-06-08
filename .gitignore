@@ -26,6 +26,7 @@ aops-core/pyproject.toml
 
 # Distribution / packaging
 .Python
+dist/
 build/
 develop-eggs/
 downloads/

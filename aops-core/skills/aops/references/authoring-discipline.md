@@ -84,3 +84,10 @@ _Rule of thumb:_ If the question can be answered by reading the documentation, m
 ## 5. Verification Honesty in Completion Summaries
 
 When a worker reports what it did, the summary must keep two things apart: what it **observed this session**, and what it **inferred**. State the command (or tool call) that produced an observed result; an inferred conclusion is fine but must read as inferred, not be dressed up in observed language. Phrasing a guess as a fact ("tests pass", "the build is green") when you did not run the thing this session is the failure this principle exists to prevent — it launders an assumption into the record a reviewer trusts. This is prose, not a template: no required manifest section, no `OBSERVED`/`ASSERTED` tags, no mandatory `cmd:`/`out:` fields — just the discipline of not claiming as seen what you only assumed.
+
+## 6. P0/SEV Calibration and Guard-rails
+
+Setting P0 priority or assigning severity requires strict, deliberate calibration upstream to prevent task queue distortion and boundary violations:
+
+- **P0 Priority Calibration**: Setting `priority=0` (P0) is strictly restricted to active incidents, pipeline-blocking work, or overdue critical deadlines. Do not assign P0 to a new or triaged task without a documented, verified justification. Refer to [[../../remember/references/TAXONOMY.md#p0-calibration-bar]] for the canonical calibration bar.
+- **Severity Target Boundary**: Severity is an SRE-style impact scale that belongs **only** on milestone target nodes (`type: target`). Do not assign non-zero severity to ordinary tasks, epics, or leaf nodes, as doing so will incorrectly hijack the focus queue. Refer to [[../../remember/references/TAXONOMY.md#severity-target-boundary]] for the canonical severity rules.

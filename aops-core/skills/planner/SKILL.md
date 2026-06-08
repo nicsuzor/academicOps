@@ -96,6 +96,14 @@ Synthesize prior context and prioritize tasks strategically.
 
 Break down epics into structured, verifiable single-session tasks.
 
+- **Earn-its-keep gate (runs before authorising any decomposition)**: Ask first — _should this exist at all, and who actually needs it?_ That judgment is cheapest here (one sentence) and most expensive after the work is sunk. Five judgment prompts to apply before proceeding:
+  - _Real consumer?_ Name one whose need is real — "a consumer COULD use this" is not the same as "a consumer NEEDS this."
+  - _Deterministic action?_ A value earns mechanical structure only when a downstream consumer DETERMINISTICALLY ACTS on it (branches, gates, brakes) — not merely counts or displays it.
+  - _Benefit proportional to complexity?_ Complexity without demonstrated benefit is a defect on its own — sufficient grounds to kill the idea here, before any work begins.
+  - _Should a smart agent just handle this qualitatively?_ Usually yes — do not reflexively mechanise what judgment handles better ([[mem-231996ac]]).
+  - _What is the obligation cost?_ A change that obligates many surfaces to emit or maintain something carries a proportionally higher bar.
+    If the idea does not survive, record why and halt — do not proceed to decomposition. See [[aops-8d4a2e14]] (the primary-catch intent behind this gate). The arch-fit lens ([[aops-8c7f7b88]]) is the post-hoc backstop for anything that reaches PR; this gate is cheaper.
+
 - **Epistemics**: Establish concrete deliverables and observable verification criteria for all subtasks.
 - **No Checklist Duplication**: Replace body checklists (`- [ ]`) with linked child subtasks to avoid parallel tracking divergence.
 - **Review Gates**: For every decomposed epic, create a blocking `james review (pauli + rbg + revise)` subtask. For standalone tasks, add `pauli + rbg review` as the first subtask and `james review` as the last.
@@ -138,6 +146,7 @@ Enforce the following classifications to save user attention:
 `priority` is Nic's personally curated intent, never an agent's estimate of importance. Full canonical rule (the SSoT): [[framework-conventions-summary#intent-authority]].
 
 - **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children.
+- **Priority P0 Calibration**: Setting `priority=0` (P0) is prohibited unless it is deliberately calibrated for active incidents, pipeline-blocking work, or overdue critical deadlines, backed by a documented justification. Refer to [[../remember/references/TAXONOMY.md#p0-calibration-bar]] to avoid boundary violations.
 - **Importance ≠ intent**: route urgency, severity, blocker-status, and your own assessment of value to `consequence`/`severity`/`due`/`status` — never `priority`.
 - **Surface, don't set**: when you think something deserves Nic's attention, raise it via status/escalation so _he_ sets intent — never set it for him as a shortcut.
 - **Never assign an epic to `nic`**: if a genuine human choice is needed, file a minimal binary-choice subtask that blocks the epic — don't hand the parent back.
@@ -145,8 +154,8 @@ Enforce the following classifications to save user attention:
 
 ## Severity Assignment Rules
 
-- **Tasks**: Default to `severity: 0` (or omit). Do not assign severity from agent importance estimates.
-- **Targets**: May carry `severity` 1–4 and require explicit `consequence` prose.
+- **Tasks**: Default to `severity: 0` (or omit). Do not assign severity from agent importance estimates. Assigning non-zero severity to ordinary tasks, epics, or non-target leaf nodes is prohibited and blocked by the write-boundary guard.
+- **Targets**: May carry `severity` 1–4 and require explicit `consequence` prose. Refer to the canonical [[../remember/references/TAXONOMY.md#severity-target-boundary]] for target constraints.
 - **Goals**: Represent identity commitments. Carry no severity, consequence, or due dates.
 
 ## Output Expectations

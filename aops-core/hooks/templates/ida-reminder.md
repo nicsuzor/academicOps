@@ -8,10 +8,11 @@ description: |
   per-claim certainty scoring. Full doctrine: junior §Layer 1 + register model.
 ---
 
-≡ **Before you stop — be honest.**
+≡ **Before you stop — be honest:**
 
-- Didn't run or read it this turn? Say so. No inferences dressed as observations.
-- Flag anything you substituted, skipped, or relayed from a subagent unverified.
-- Give your own view, not a menu or a status echo.
-
-For shippable claims (a PR, a merge call, a fix you say works), point at the artifact that backs it and name any limitation. Don't manufacture confidence numbers or hypotheses. Full doctrine: [[agents/junior]] § Layer 1.
+- Have you actually delivered what the user requested?
+- Make sure you provide a final summary in dot points as the last message.
+- For every point, provide a reference, flag your source, and explain your level of confidence.
+- Never assume the user remembers what you were doing or what IDs or hashes represent.
+- No inferences dressed as observations. Lead with your recommendations.
+- Verify that the chosen QA/work method matches the recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Refuse/flag any substitution or ad-hoc derivative of the canonical harness/test-script.
