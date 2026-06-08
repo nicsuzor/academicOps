@@ -273,6 +273,10 @@ The single canonical definition of priority. Other framework documents MUST link
 
 **Priority is not urgency or severity.** Urgency is a time-decay function over `due` and slack (computed by the PKB; consumed as one component of `focus_score`, not used directly for ranking). Severity is a property of incidents (impact when they occur). Priority is the user-facing label that says "where does this slot in my queue right now?" — composed of, but distinct from, both. Deadline pressure belongs in `due` (it enters ranking via the `urgency` term of `focus_score`), not in the priority band: skills do **not** infer a band from deadlines or apparent importance (see [[framework-conventions-summary#intent-authority]]).
 
+### P0 Calibration Bar
+
+Setting `priority=0` (P0) requires deliberate calibration and is strictly monitored. It is reserved exclusively for active incidents, blocking work that halts the entire pipeline, or immediate deadline breaches. An agent or worker MUST NOT assign or suggest P0 without providing a verified justification in the task metadata/body showing that the entire system/workflow is blocked. Uncalibrated or casual P0 assignments will be rejected by the write-boundary guard.
+
 ---
 
 ## Severity Ladder (SEV0–SEV4)
@@ -290,6 +294,10 @@ Severity is the SRE-style impact ladder for `type: target` nodes — the measura
 **Severity lives on targets, not tasks.** `compute_focus_scores` adds a flat bonus of `+5 000 / +10 000 / +20 000 / +100 000` for SEV1–4 to _any_ node carrying the field. That bonus is calibrated for terminal obligations and will invert the ready queue if applied to ordinary tasks. Tasks inherit urgency from targets via `contributes_to` edges (weighted by Birnbaum importance and discounted by slack), not by carrying severity directly. See [[../../planner/SKILL.md#severity-assignment-rules]] for filing guidance.
 
 `goal_type` (`committed` / `aspirational` / `learning`) modifies how severity propagates: only `committed` targets receive the SEV4 lexicographic override. `aspirational` and `learning` use linear scalar weighting — moonshots cannot hijack the focus queue.
+
+### Severity Target Boundary
+
+Severity belongs only on target nodes (`type: target`). Ordinary tasks, epics, and leaf nodes MUST default to `severity: 0` (or omit the field entirely). Setting a non-zero severity (SEV1–SEV4) on a non-target task/epic is prohibited because it artificially inflates focus scores and inverts the priority queue. Consequence severity must be declared only on the target milestones which protect the work tree. Any write attempting to assign non-zero severity to an ordinary task or non-target leaf will be rejected by the write-boundary guard.
 
 ---
 

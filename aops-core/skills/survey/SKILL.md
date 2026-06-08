@@ -230,7 +230,8 @@ Log results in the following format:
 
 ### 3. Execution Rules
 
-- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep.
+- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]).
+- **Priority P0 Calibration**: Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
 - **Verification**: Verify closed issues are successfully set to `state: closed`.
 - **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
 - **Handoff**: Run verification after completing the cycle:

@@ -138,6 +138,7 @@ Enforce the following classifications to save user attention:
 `priority` is Nic's personally curated intent, never an agent's estimate of importance. Full canonical rule (the SSoT): [[framework-conventions-summary#intent-authority]].
 
 - **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children.
+- **Priority P0 Calibration**: Setting `priority=0` (P0) is prohibited unless it is deliberately calibrated for active incidents, pipeline-blocking work, or overdue critical deadlines, backed by a documented justification. Refer to [[../remember/references/TAXONOMY.md#p0-calibration-bar]] to avoid boundary violations.
 - **Importance ≠ intent**: route urgency, severity, blocker-status, and your own assessment of value to `consequence`/`severity`/`due`/`status` — never `priority`.
 - **Surface, don't set**: when you think something deserves Nic's attention, raise it via status/escalation so _he_ sets intent — never set it for him as a shortcut.
 - **Never assign an epic to `nic`**: if a genuine human choice is needed, file a minimal binary-choice subtask that blocks the epic — don't hand the parent back.
@@ -145,8 +146,8 @@ Enforce the following classifications to save user attention:
 
 ## Severity Assignment Rules
 
-- **Tasks**: Default to `severity: 0` (or omit). Do not assign severity from agent importance estimates.
-- **Targets**: May carry `severity` 1–4 and require explicit `consequence` prose.
+- **Tasks**: Default to `severity: 0` (or omit). Do not assign severity from agent importance estimates. Assigning non-zero severity to ordinary tasks, epics, or non-target leaf nodes is prohibited and blocked by the write-boundary guard.
+- **Targets**: May carry `severity` 1–4 and require explicit `consequence` prose. Refer to the canonical [[../remember/references/TAXONOMY.md#severity-target-boundary]] for target constraints.
 - **Goals**: Represent identity commitments. Carry no severity, consequence, or due dates.
 
 ## Output Expectations
