@@ -101,7 +101,7 @@ Task(subagent_type="aops-core:pauli", model="opus", prompt="Review this for erro
 
 ### Terminal Move after Dispatch
 
-After a fire-and-forget dispatch with no follow-up or babysit instruction, the default terminal move is to close the session promptly (via `/dump` or `/end_session`) instead of idling. (Canonical rule: [aops SKILL.md](file:///workspace/aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch))
+After a fire-and-forget dispatch with no follow-up or babysit instruction, the default terminal move is to close the session promptly (via `/dump` or `/end_session`) instead of idling. (Canonical rule: [[aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch]])
 
 ### File Categories
 
