@@ -59,7 +59,8 @@ def get_canonical_db_path(db_filename: str = "warehouse.db") -> Path:
     confusable_files = []
     for root, dirs, files in os.walk(project_root):
         dirs[:] = [
-            d for d in dirs
+            d
+            for d in dirs
             if not d.startswith(".")
             and d not in ("venv", "node_modules", "dist", "output", "build", "_book", "_site")
         ]
