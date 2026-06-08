@@ -236,7 +236,8 @@ def test_verify_docker_target_uses_no_cache() -> None:
             continue
         if in_recipe:
             if line.startswith("\t"):
-                recipe_lines.append(line)
+                if not line.strip().startswith("#"):
+                    recipe_lines.append(line)
             elif line.strip() and not line.startswith("#"):
                 break
 
@@ -268,7 +269,8 @@ def test_build_docker_lacks_no_cache() -> None:
             continue
         if in_recipe:
             if line.startswith("\t"):
-                recipe_lines.append(line)
+                if not line.strip().startswith("#"):
+                    recipe_lines.append(line)
             elif line.strip() and not line.startswith("#"):
                 break
 
