@@ -45,9 +45,9 @@ Determine if session was Read-only (no mutating tools used, no tasks modified/cr
 
 Identify the active task:
 
-1. `/pull`-written binding file: read first line of `$AOPS_SESSION_STATE_DIR/${AOPS_SESSION_ID}-bound-task.txt` (or `${GEMINI_SESSION_ID}-bound-task.txt`).
+1. In-context task ID: Read the active task ID from the `$AOPS_TASK_ID` environment variable (which is populated automatically in the session context) or extract it from the git branch name; do not read or synthesise a filesystem-state file.
 2. Explicit argument: task ID passed directly to command.
-3. Fallback: If no binding, `release_task` will auto-create an ad-hoc task.
+3. Fallback: If no binding or task ID environment variable is present, `release_task` will auto-create an ad-hoc task.
 
 <!-- cowork:only -->
 
@@ -93,7 +93,7 @@ mcp__plugin_aops-core_pkb__release_task(
 ```
 
 - `release_summary` must be result-oriented, self-contained, and name specific resources/issues (`org/repo#NNN`).
-- On success, delete `$AOPS_SESSION_STATE_DIR/${AOPS_SESSION_ID}-bound-task.txt`.
+- On success, delete the `$AOPS_SESSION_STATE_DIR/${AOPS_SESSION_ID}-bound-task.txt` file if present (though none is synthesised for standard bound tasks).
 
 #### 5. Output Reflection Blocks
 
