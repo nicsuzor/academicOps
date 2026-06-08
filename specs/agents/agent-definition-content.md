@@ -23,7 +23,7 @@ Agent files are loaded on every invocation and paid for in tokens each time. The
 
 ## What Belongs In an Agent Definition
 
-An agent definition file (`aops-core/agents/<name>.md`) may contain exactly four categories of content:
+An agent definition file (`agents/<name>.md`) may contain exactly four categories of content:
 
 ### 1. Identity and role statement
 
