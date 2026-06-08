@@ -63,6 +63,7 @@ if command -v pre-commit &>/dev/null; then
     pre-commit install
     echo "pre-commit hook installed in $SESSIONS_REPO"
 else
-    echo "Warning: pre-commit not on PATH — run:" >&2
+    echo "Error: pre-commit not on PATH — install it first:" >&2
     echo "  uv tool install pre-commit && cd $SESSIONS_REPO && pre-commit install" >&2
+    exit 1
 fi
