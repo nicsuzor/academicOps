@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell
 
 # --- Configuration ---
 
@@ -77,6 +77,7 @@ help:
 	@echo ""
 	@echo "Docker:"
 	@echo "  make build          - Build the aops crew worker image"
+	@echo "  make verify-docker  - Build from clean (--no-cache) — required for verification; prevents false-green from cached layers"
 	@echo "  make shell          - Interactive shell in the crew image"
 	@echo ""
 	@echo "Detected Platform: $(or $(PLATFORM),unknown)"
@@ -457,6 +458,16 @@ build-docker:
 	@echo "Building aops crew image..."
 	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Image built: $(DOCKER_IMAGE) (also tagged $(notdir $(DOCKER_IMAGE)):latest)"
+	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
+
+# Build from a clean checkout — required when verifying Dockerfile changes.
+# --no-cache forces every layer to rebuild from source: a stale cached layer
+# cannot produce a false-green result (issue #1452).
+verify-docker:
+	@echo "Building aops crew image (clean build — no layer cache)..."
+	@docker build --no-cache --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
+	@echo "✓ Clean build complete: $(DOCKER_IMAGE)"
+	@echo "  Every Dockerfile layer rebuilt from source — no cached layer can produce a false-green result."
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
 # Aliases
