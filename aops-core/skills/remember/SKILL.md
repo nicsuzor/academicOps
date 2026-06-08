@@ -46,12 +46,13 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 
 ### Storage Hierarchy
 
-| Content               | Write Via                                       | Target Location          |
-| :-------------------- | :---------------------------------------------- | :----------------------- |
-| **Epics/projects**    | `mcp__pkb__create(type="epic"\|"project")`      | `projects/`              |
-| **Tasks/issues**      | `gh issue create` (GitHub primary)              | Synced automatically     |
-| **Durable knowledge** | `mcp__pkb__create` or `mcp__pkb__create_memory` | `knowledge/`, `context/` |
-| **Session findings**  | `mcp__pkb__update_task` on parent task          | Task body                |
+| Content                      | Write Via                                                    | Target Location                            |
+| :--------------------------- | :----------------------------------------------------------- | :----------------------------------------- |
+| **Epics/projects**           | `mcp__pkb__create(type="epic"\|"project")`                   | `projects/`                                |
+| **Tasks/issues**             | `gh issue create` (GitHub primary)                           | Synced automatically                       |
+| **Durable knowledge**        | `mcp__pkb__create` or `mcp__pkb__create_memory`              | `knowledge/`, `context/`                   |
+| **Session findings**         | `mcp__pkb__update_task` on parent task                       | Task body                                  |
+| **Axioms / framework rules** | Invoke `/framework` skill — do NOT write to `brain/context/` | `aops-core/skills/` via framework workflow |
 
 ### File Locations
 
