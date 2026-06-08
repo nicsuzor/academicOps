@@ -31,6 +31,6 @@ streamlit run streamlit/dashboard.py
 ## DuckDB Warehouse
 
 ```bash
-# Query warehouse
-duckdb data/warehouse.db -c "SELECT * FROM fct_cases LIMIT 10"
+# Query warehouse using absolute resolved path to avoid confusable duplicates
+duckdb "$(uv run python -c "import sys; sys.path.insert(0, 'aops-tools/skills/analyst/scripts'); from db_resolver import get_canonical_db_path; print(get_canonical_db_path())")" -c "SELECT * FROM fct_cases LIMIT 10"
 ```

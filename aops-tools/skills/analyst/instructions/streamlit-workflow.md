@@ -26,7 +26,8 @@ st.set_page_config(page_title="Project Analysis", layout="wide")
 # Data loading (cached)
 @st.cache_data
 def load_data():
-    conn = duckdb.connect("data/warehouse.db")
+    from db_resolver import get_canonical_db_path
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_cases").df()
 
 
@@ -66,13 +67,14 @@ if __name__ == "__main__":
 **Step 1: Load data from dbt model**
 
 ```python
+from db_resolver import get_canonical_db_path
 import streamlit as st
 import duckdb
 
 
 @st.cache_data
 def load_data():
-    conn = duckdb.connect("data/warehouse.db")
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_cases").df()
 
 

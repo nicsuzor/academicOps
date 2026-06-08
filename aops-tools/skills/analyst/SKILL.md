@@ -35,6 +35,21 @@ Source datasets, ground truth labels, experimental records, and research configu
 
 **Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
 
+## 🚨 CRITICAL: Absolute Canonical-Path Addressing
+
+**ALL database and data files MUST be addressed using absolute canonical paths. Relative pathing (cwd-relative resolution) is strictly prohibited.**
+
+To prevent stale cache addressing (where the app runs in a different directory and accidentally queries a stale, duplicate database cache), you must always use `get_canonical_db_path()` from the `db_resolver` utility. This utility:
+
+1. Locates the absolute canonical project root directory.
+2. Resolves the database file (e.g., `data/warehouse.db`) absolutely.
+3. **Asserts that no confusable duplicate cache exists** elsewhere in the repository (excluding `.venv`, `venv`, `.git`, etc.), halting execution immediately if a duplicate is found.
+
+### Implementation Checklist
+
+- ✅ Import and use `get_canonical_db_path()` for all DuckDB or SQLite connections in Streamlit dashboards, notebooks, and analysis scripts.
+- ✅ Ensure any duplicate cache files (e.g., `warehouse.db` located in project root, `streamlit/`, or subfolders) are deleted or resolved.
+
 ## 🚨 CRITICAL: Transformation Boundary Rule
 
 **ALL data transformation happens in dbt. Period.**
@@ -261,16 +276,17 @@ response = requests.get("https://api.example.com/data")
 
 ```python
 # Query through dbt mart - CORRECT
+from db_resolver import get_canonical_db_path
 import duckdb
 
-conn = duckdb.connect("data/warehouse.db")
+conn = duckdb.connect(str(get_canonical_db_path()))
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
 
 
 # Or reference in Streamlit
 @st.cache_data
 def load_data():
-    conn = duckdb.connect("data/warehouse.db")
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_case_decisions").df()
 ```
 

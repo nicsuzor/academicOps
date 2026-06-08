@@ -575,10 +575,11 @@ dbt compile
 ### DuckDB (typical academicOps setup)
 
 ```python
+from db_resolver import get_canonical_db_path
 import duckdb
 
 # Connect to warehouse
-conn = duckdb.connect("data/warehouse.db")
+conn = duckdb.connect(str(get_canonical_db_path()))
 
 # Query materialized dbt models
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
@@ -590,6 +591,7 @@ print(df.describe())
 ### Streamlit
 
 ```python
+from db_resolver import get_canonical_db_path
 import streamlit as st
 import duckdb
 
@@ -597,7 +599,7 @@ import duckdb
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect("data/warehouse.db")
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_case_decisions").df()
 
 
@@ -608,12 +610,13 @@ st.dataframe(df)
 ### Jupyter
 
 ```python
+from db_resolver import get_canonical_db_path
 import duckdb
 import pandas as pd
 import plotly.express as px
 
 # Load from dbt warehouse
-conn = duckdb.connect("data/warehouse.db")
+conn = duckdb.connect(str(get_canonical_db_path()))
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
 
 # Analyze

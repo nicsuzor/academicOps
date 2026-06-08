@@ -54,16 +54,17 @@ response = requests.get("https://api.example.com/data")
 
 ```python
 # Query through dbt mart - CORRECT
+from db_resolver import get_canonical_db_path
 import duckdb
 
-conn = duckdb.connect("data/warehouse.db")
+conn = duckdb.connect(str(get_canonical_db_path()))
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
 
 
 # Or reference in Streamlit
 @st.cache_data
 def load_data():
-    conn = duckdb.connect("data/warehouse.db")
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_case_decisions").df()
 ```
 

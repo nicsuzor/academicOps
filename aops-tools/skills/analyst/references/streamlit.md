@@ -34,7 +34,8 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect("data/warehouse.db")
+    from db_resolver import get_canonical_db_path
+    conn = duckdb.connect(str(get_canonical_db_path()))
     return conn.execute("SELECT * FROM fct_cases").df()
 
 
@@ -117,7 +118,8 @@ import duckdb
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect("data/warehouse.db", read_only=True)
+    from db_resolver import get_canonical_db_path
+    conn = duckdb.connect(str(get_canonical_db_path()), read_only=True)
     query = """
         SELECT
             case_id,
@@ -142,13 +144,15 @@ def load_data():
 ```python
 @st.cache_data
 def load_cases():
-    conn = duckdb.connect("data/warehouse.db", read_only=True)
+    from db_resolver import get_canonical_db_path
+    conn = duckdb.connect(str(get_canonical_db_path()), read_only=True)
     return conn.execute("SELECT * FROM fct_case_decisions").df()
 
 
 @st.cache_data
 def load_jurisdictions():
-    conn = duckdb.connect("data/warehouse.db", read_only=True)
+    from db_resolver import get_canonical_db_path
+    conn = duckdb.connect(str(get_canonical_db_path()), read_only=True)
     return conn.execute("SELECT * FROM dim_jurisdictions").df()
 
 

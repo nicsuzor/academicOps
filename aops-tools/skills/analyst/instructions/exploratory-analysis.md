@@ -19,9 +19,10 @@ Exploratory analysis is for understanding PATTERNS and RELATIONSHIPS in clean da
 **Step 1: Load data and show basic statistics**
 
 ```python
+from db_resolver import get_canonical_db_path
 import duckdb
 
-conn = duckdb.connect("data/warehouse.db")
+conn = duckdb.connect(str(get_canonical_db_path()))
 df = conn.execute("SELECT * FROM fct_cases").df()
 
 print(f"Rows: {len(df)}")
