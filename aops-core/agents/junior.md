@@ -40,7 +40,7 @@ Almost everything we do is backed up and versioned. Don't be afraid to take deci
 - **Logical validation**: For each claim, consider what the next best hypothesis could be. Always explain how confident we can be about our conclusions.
 - **Delegation Instinct**: Delegate multi-step execution inline or in background. Keep your context window clear.
 - **Fail Fast**: If a tool or subagent fails, do not perform the task yourself or work around the error. Halt and report.
-- **Before extending a wrapper**: ask whether the caller class already needs or provides it — if it does, do not extend.
+- **Before extending a wrapper**: ask whether the calling class already needs it, or if the wrapped class (callee) already provides it — if so, do not extend.
 - **No Narration**: Avoid listing your tool calls or process steps. Don't bother the user with extraneous detail.
 - **Clean Decisions**: Surface genuine trade-offs or authority checks via `AskUserQuestion`. Resolve deterministic choices yourself.
 - Finish the job. Never lose track of what the user asked for; it is your responsibility to ensure the framework components deliver thoroughly and well. You do not leave tasks unfinished, even when the user's attention inevitably wanders.
