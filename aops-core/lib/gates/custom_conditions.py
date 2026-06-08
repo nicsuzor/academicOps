@@ -71,6 +71,13 @@ def check_custom_condition(
 
         return False
 
+    if name == "is_destructive_or_irreversible_op":
+        from hooks.gate_config import is_destructive_or_irreversible_op
+
+        tool_name = ctx.tool_name or ""  # allow-fallback: default empty tool name
+        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else {}
+        return is_destructive_or_irreversible_op(tool_name, tool_input)
+
     if name == "is_not_safe_toolsearch":
         # Returns False ONLY if ToolSearch is loading specific tools by name (select:*)
         # Returns True for everything else (including discovery ToolSearch)

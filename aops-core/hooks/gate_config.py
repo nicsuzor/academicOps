@@ -711,6 +711,42 @@ def extract_subagent_type(
 NEVER_BLOCK_CATEGORIES: frozenset[str] = frozenset({"always_available", "infrastructure"})
 
 
+def is_destructive_or_irreversible_op(
+    tool_name: str | None, tool_input: dict[str, Any] | None = None
+) -> bool:
+    """Return True if the tool invocation represents a destructive or irreversible operation.
+
+    Includes PKB reindexing with force, or destructive shell commands targeting PKB reindexing with force.
+    """
+    if not tool_name:
+        return False
+
+    # Check for reindex --force (issue #1497) in shell commands
+    if tool_name in ("Bash", "run_shell_command", "shell", "execute_code"):
+        inp = tool_input if isinstance(tool_input, dict) else {}
+        command = inp.get("command", "")  # allow-fallback: optional shell command input
+        if isinstance(command, str):
+            cmd_lower = command.lower()
+            if "reindex" in cmd_lower and (
+                "force" in cmd_lower or "-f" in cmd_lower or "--force" in cmd_lower
+            ):
+                return True
+
+    # Check for direct PKB reindex tool call with force
+    # e.g., mcp__pkb__reindex, mcp__plugin_aops-core_pkb__reindex, etc.
+    if "reindex" in tool_name.lower() and (
+        "pkb" in tool_name.lower() or "pbk" in tool_name.lower()
+    ):
+        if tool_input and isinstance(tool_input, dict):
+            force_val = tool_input.get("force")
+            if force_val:
+                return True
+            if "force" in tool_input and tool_input["force"]:
+                return True
+
+    return False
+
+
 def is_never_block(tool_name: str | None, tool_input: dict[str, Any] | None = None) -> bool:
     """Return True if the tool must never be denied/warned by any gate policy.
 
@@ -721,6 +757,12 @@ def is_never_block(tool_name: str | None, tool_input: dict[str, Any] | None = No
     """
     if not tool_name:
         return False
+
+    # Destructive or irreversible operations carry a strict carve-out and never
+    # qualify as never-block/defensible-defaults.
+    if is_destructive_or_irreversible_op(tool_name, tool_input):
+        return False
+
     return get_tool_category(tool_name, tool_input) in NEVER_BLOCK_CATEGORIES
 
 

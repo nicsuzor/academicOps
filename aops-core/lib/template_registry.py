@@ -230,6 +230,20 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Context injection when sentinel gate blocks a destructive env op",
         env_override="SENTINEL_POLICY_CONTEXT_TEMPLATE",
     ),
+    "sentinel.policy_message_destructive": TemplateSpec(
+        name="sentinel.policy_message_destructive",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="sentinel-policy-message-destructive.md",
+        required_vars=(),
+        description="Short message when sentinel gate blocks a destructive or irreversible op",
+    ),
+    "sentinel.policy_context_destructive": TemplateSpec(
+        name="sentinel.policy_context_destructive",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="sentinel-policy-context-destructive.md",
+        required_vars=(),
+        description="Context injection when sentinel gate blocks a destructive or irreversible op",
+    ),
     # --- Ida (Ida B. Wells — proof-of-claim reminder) gate ---
     "ida.reminder": TemplateSpec(
         name="ida.reminder",

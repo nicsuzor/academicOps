@@ -513,3 +513,59 @@ class TestSentinelGateModes:
         )
         assert result is not None
         assert result.verdict == GateVerdict.DENY
+
+
+class TestSentinelDestructiveOrIrreversible:
+    """Sentinel gate blocks general destructive or irreversible operations."""
+
+    def test_shell_reindex_force_denied(self, router):
+        result = _dispatch(router, "Bash", {"command": "pkb reindex --force"})
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
+
+    def test_shell_reindex_f_denied(self, router):
+        result = _dispatch(router, "run_shell_command", {"command": "pkb reindex -f"})
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
+
+    def test_mcp_reindex_force_denied(self, router):
+        result = _dispatch(
+            router,
+            "mcp__pkb__reindex",
+            {"force": True},
+        )
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
+
+    def test_mcp_plugin_reindex_force_denied(self, router):
+        result = _dispatch(
+            router,
+            "mcp__plugin_aops-core_pkb__reindex",
+            {"force": True},
+        )
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
+
+    def test_mcp_reindex_no_force_allowed(self, router):
+        result = _dispatch(
+            router,
+            "mcp__pkb__reindex",
+            {"force": False},
+        )
+        # Should be allowed (None or ALLOW) because no force parameter is set to true
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY
+
+    def test_shell_reindex_no_force_allowed(self, router):
+        result = _dispatch(router, "Bash", {"command": "pkb reindex"})
+        if result is not None:
+            assert result.verdict != GateVerdict.DENY
+
+    def test_is_never_block_overridden_for_destructive(self):
+        from hooks.gate_config import is_never_block
+
+        # Normal reindex is never-block
+        assert is_never_block("mcp__pkb__reindex", {"force": False}) is True
+        # Force reindex is NOT never-block (carve-out overrides)
+        assert is_never_block("mcp__pkb__reindex", {"force": True}) is False
+        assert is_never_block("Bash", {"command": "pkb reindex --force"}) is False

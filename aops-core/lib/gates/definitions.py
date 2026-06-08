@@ -57,6 +57,22 @@ GATE_CONFIGS = [
                 message_key="sentinel.policy_message",
                 context_key="sentinel.policy_context",
             ),
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    # Covers shell tools and PKB reindex tool variants.
+                    tool_name_pattern=(
+                        r"^(?:Bash|run_shell_command|shell|execute_code"
+                        r"|reindex|mcp__pkb__reindex"
+                        r"|mcp__plugin_aops-core_pkb__reindex"
+                        r"|mcp__pbk__reindex)$"
+                    ),
+                    custom_check="is_destructive_or_irreversible_op",
+                ),
+                verdict=SENTINEL_GATE_MODE,
+                message_key="sentinel.policy_message_destructive",
+                context_key="sentinel.policy_context_destructive",
+            ),
         ],
     ),
     # --- Enforcer ---
