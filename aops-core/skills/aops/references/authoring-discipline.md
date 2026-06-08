@@ -42,7 +42,11 @@ The canonical pattern is **two agent invocations, mediated by PKB**:
 **Rules**:
 
 - **No same-agent author-then-dispatch**: if the brief was authored or substantially refined in the current invocation, dispatch is the next agent invocation's job.
-- **Dispatch by task-ID**: invoke the worker with `polecat run -t <task-id>`; the worker reads the brief from PKB. Never inline a freshly-composed brief as prompt text in the same invocation where it was composed.
+- **Dispatch by task-ID**: invoke the worker with `polecat run -t <task-id>`; the worker reads the brief from PKB. Never inline a freshly-composed brief as prompt text in the same invocation where it was composed. This method assumes the worker has PKB access.
+- **Worker-Type ↔ Required-Capability Dispatch Guard**: Before dispatching, verify whether the target worker type carries the required capabilities to fulfill the brief. Specifically:
+  - **PKB-dependent briefs** (tasks requiring `get_task`, `get_document`, or other `mcp__plugin_aops-core_pkb__*` tools) must only be briefed by task-ID to worker types that carry the PKB MCP tools (e.g., `junior` / `aops-core:jr`, `james`, `pauli`, `rbg`, `marsha`, and local/remote `polecat` containers).
+  - **Non-PKB Worker Types** (e.g., `general-purpose` subagents, `Jules`, and `GHA` runners) do not carry PKB MCP tools. When dispatching to these worker types, the brief content **must** be passed inline (in the prompt argument or piped via `pkb task <task-id> | jules new`) rather than by PKB-ID. Never instruct a non-PKB worker to "read your brief fresh from PKB" or run `get_task`.
+  - **Pre-dispatch Verification**: A reader or dispatching agent must determine, prior to dispatching, whether the chosen worker type carries the capabilities required by the brief format.
 - **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
 - **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. A malformed verdict is recorded and the tick exits; do not improvise. See [[../../supervisor/SKILL#verdict-structural-shape-guard-mandatory-before-acting]].
 
