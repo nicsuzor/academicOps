@@ -34,6 +34,9 @@ def _scan_file(path: Path) -> list[int]:
         print(f"check-transcript-secrets: cannot read {path}: {exc}", file=sys.stderr)
         return []
 
+    if redact_secrets(text) == text:
+        return []
+
     return [i for i, line in enumerate(text.splitlines(), start=1) if redact_secrets(line) != line]
 
 

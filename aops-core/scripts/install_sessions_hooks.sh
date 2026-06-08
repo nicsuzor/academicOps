@@ -49,7 +49,7 @@ repos:
     hooks:
       - id: check-transcript-secrets
         name: block secrets in transcripts/summaries
-        entry: python $SCANNER
+        entry: python3 "$SCANNER"
         language: system
         pass_filenames: true
         files: '^(transcripts|summaries|subagent-transcripts|subagent-summaries)/.*\.(md|json)\$'
