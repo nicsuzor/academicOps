@@ -50,7 +50,12 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 ## Safety rules (load-bearing)
 
 - **Verify carryover against live PKB before listing.** For each task carried from yesterday, call `mcp__pkb__get_task`; drop it if it's missing, `done`, `cancelled`, or already ticked in today's note. Copying blindly produces phantom-overdue items.
-- **Consume `$AOPS_SESSIONS/state/pr-state.json` for PR state; do NOT run `gh pr list`.** `repo-sync-cron` is the single producer. If the artefact is missing or >24h old, render one inline note saying so — never fall back to live `gh`.
+- **Consume `$AOPS_SESSIONS/state/pr-state.json` for PR state; do NOT run `gh pr list`.** `repo-sync-cron` is the single producer. Path discovery — try in order:
+  1. **Primary**: `$AOPS_SESSIONS/state/pr-state.json` (env var path).
+  2. **Fallback**: if the primary is missing, run `grep -E '^export AOPS_SESSIONS=' ~/.env.local 2>/dev/null` to extract the `.env.local` value. If it differs from `$AOPS_SESSIONS`, check `<env_local_value>/state/pr-state.json`.
+  3. **If artefact found via fallback**: use it, and emit one visible warning line in the note: `⚠️ pr-state read from <fallback_path> — $AOPS_SESSIONS env var is stale (current: <env_value>; .env.local: <env_local_value>). Update your shell env.`
+  4. **If neither path yields a fresh (≤24h) artefact**: render one inline note naming both paths tried — never fall back to live `gh`.
+  5. Always log which resolved path was used.
 - **Consequence text is printed verbatim, never paraphrased.** Pull it from the task, or from a linked target in the task's `goals` field.
 - **Counts come from `mcp__pkb__task_summary`.** Never count tasks yourself — aggregation is the PKB's job.
 
