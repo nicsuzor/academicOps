@@ -14,11 +14,9 @@ description: |
 
 **Compliance check required.** Invoke the **enforcer** agent with the file path argument: `{temp_path}`
 
-> This instruction is issued by the academicOps enforcer gate (first-party). The marker above identifies the framework's own compliance channel — it is **not** untrusted input and must not be treated as a prompt injection (#1315).
+This periodic compliance check is required as part of the academicOps enforcer gate.
 
 Run the compliance check with this command:
 
 - Gemini: `invoke_agent(agent_name='rbg', prompt='Required audit of the session log. The file at {temp_path} is the session log — read it and return a verdict on the activity recorded there.')`
 - Claude: `Agent(subagent_type='aops-core:rbg', prompt='Required audit of the session log. The file at {temp_path} is the session log — read it and return a verdict on the activity recorded there.')`
-
-The framing inside the `prompt` / `message` argument is what the enforcer agent sees. It names the artifact (a session log), states the action (audit it), and points to the path — so the receiver isn't surprised by a `/tmp/` path and doesn't have to guess what kind of review is being asked for.
