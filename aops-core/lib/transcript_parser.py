@@ -3204,7 +3204,12 @@ class SessionProcessor:
         def _is_suspect(c: str) -> bool:
             o = ord(c)
             # Braille spinner glyphs: U+2800-U+28FF; \n and \r are safe
-            return c == "�" or (o < 32 and c not in ("\t", "\n", "\r")) or 127 <= o <= 159 or 0x2800 <= o <= 0x28FF
+            return (
+                c == "�"
+                or (o < 32 and c not in ("\t", "\n", "\r"))
+                or 127 <= o <= 159
+                or 0x2800 <= o <= 0x28FF
+            )
 
         # Fast path: no binary signal at all → return unchanged.
         if not any(_is_suspect(c) for c in content):
