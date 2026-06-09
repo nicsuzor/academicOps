@@ -102,8 +102,9 @@ The ruleset `.github/rulesets/pr-review-and-merge.yml` (ID `13762049`, applied t
   required checks (otherwise green checks alone would permit a gate-bypassing manual
   merge — see [[pr-pipeline]] §5 sequencing note).
 - **Not required (deliberately):** `Type Check / Type Check` (advisory — §8.1),
-  `alignment-status` (does not exist — §8.2), the old `merge-prep-status` (removed,
-  replaced by `admit-status`).
+  `alignment-status` (advisory by design — §8.2; the in-pipeline queue surface is LIVE but
+  the host-side dispatcher is SPEC-ONLY, and either way it is intentionally not in the
+  ruleset), the old `merge-prep-status` (removed, replaced by `admit-status`).
 
 ### 3.2 Stage-1 triage (every push) — LIVE
 
@@ -263,21 +264,28 @@ emits 236 pre-existing errors on every PR; re-adding it would gate on noise.
 - **Acceptance to re-gate (recorded in the ruleset):** basedpyright returns **0 errors on
   a clean clone**. DO NOT re-add `Type Check / Type Check` to required checks before then.
 
-### 8.2 Alignment (pauli) — NOT wired into CI; manual stand-in only
+### 8.2 Alignment (pauli) — advisory by design; queue surface LIVE, host dispatch SPEC-ONLY
 
-Alignment is **SPEC-ONLY (Phase 6 of [[pr-pipeline]])**. As of today:
+Alignment is **PARTIALLY LIVE (Phase 6 of [[pr-pipeline]])** and is **intentionally advisory
+— `alignment-status` is NOT in the branch-protection ruleset** by design. As of today:
 
-- **There is no `alignment-status` check, no alignment workflow, no host dispatch** wired
-  into CI. [[pr-pipeline]] §6 describes the eventual light host-side dispatch; none of
-  it is live.
-- **The live way to run an alignment check is the MANUAL `/strategic-review` skill**
-  (`aops-core/skills/strategic-review/SKILL.md`); `--critic` runs a fast pauli-only
-  pre-hoc critique. The maintainer invokes it by hand when they want alignment input
-  before admitting a PR.
-- **Current model:** alignment is **advisory input to the human admit gate** (§3.3),
-  produced manually via `/strategic-review --critic`, until Phase 6 wires the host-side
-  dispatch. A host outage degrades advice; it never deadlocks a merge (there is nothing to
-  deadlock on, because there is no required alignment status).
+- **In-pipeline queue surface — LIVE.** `pr-pipeline.yml`'s `alignment-queue` job posts
+  `alignment-status: pending` on HEAD and files (or refreshes) one `alignment:queued` GitHub
+  issue per PR with deterministic title `alignment:queued PR #<num>`. The body carries the
+  head SHA / ref / repo so a host-side dispatcher can drain the queue without re-querying
+  the PR API per entry. See [[pr-pipeline]] §6.1.
+- **Host-side cron + polecat-pauli dispatcher — SPEC-ONLY.** A host cron (outside this
+  repo's worktree, where the PKB MCP is reachable) drains the queue, reconciles each issue
+  against the commit status (only dispatches if `alignment-status` is still `pending`),
+  dispatches `polecat run … pauli`, and closes stale issues. Until it ships, the queue
+  surface is plumbing only — see [[pr-pipeline]] §6.2.
+- **The live way to run an alignment check today** is the MANUAL `/strategic-review` skill
+  (`aops-core/skills/strategic-review/SKILL.md`); `--critic` runs a fast pauli-only pre-hoc
+  critique. The maintainer invokes it by hand when they want alignment input before
+  admitting a PR.
+- **Current model:** alignment is **advisory input to the human admit gate** (§3.3) by
+  design. A host outage (cron unavailable, pauli unreachable) degrades advice; it never
+  deadlocks a merge — there is no required alignment status to deadlock on.
 
 ### 8.3 Advisory / non-fatal findings are NOT tracked to closure — OPEN design question
 
