@@ -193,59 +193,6 @@ jobs:
             git push origin dist
           fi
 
-      - name: Publish distribution to nicsuzor/aops (Cowork mirror)
-        # Mirror the exact dist-branch tree (.claude-plugin/marketplace.json +
-        # dist/aops-*) onto nicsuzor/aops' default branch so Cowork — which can't
-        # pin academicOps@dist — installs the identical distribution from
-        # `nicsuzor/aops`. Same layout, same relative paths; only the remote
-        # differs. Stable only (testing builds never ship to a stable channel).
-        if: steps.ctx.outputs.release_type != 'testing'
-        run: |
-          set -euo pipefail
-          SRC="${GITHUB_WORKSPACE}"
-          cd "${SRC}/aops-repo"
-
-          # Migrate the legacy root-level payload (aops-claude/ at the repo root,
-          # marketplace sourcing ./aops-*) to the dist-branch convention: payload
-          # under dist/, marketplace sourcing ./dist/aops-*. Drop the stale
-          # top-level dirs + root gemini-extension.json so the mirror is a clean
-          # twin of the dist branch, not a hybrid of both layouts. No-op once
-          # migrated. .github/ is left untouched.
-          rm -rf aops-claude aops-cowork aops-gemini aops-tools-claude \
-                 aops-tools-gemini aops-antigravity aops-tools-antigravity \
-                 gemini-extension.json
-
-          # Same publish convention as the dist branch: each built plugin dir
-          # mirrored under dist/ with --delete; the */ glob skips dot-entries and
-          # the *.tar.gz release archives (those are FILES, shipped only as GitHub
-          # Release assets on academicOps).
-          mkdir -p dist
-          for d in "${SRC}"/dist/*/; do
-            name="$(basename "$d")"
-            rsync -a --delete "$d" "dist/${name}/"
-          done
-
-          # Root Claude marketplace (sources ./dist/aops-*), identical to the dist
-          # branch root. This adds the aops-cowork plugin entry the legacy aops
-          # marketplace lacked.
-          mkdir -p .claude-plugin
-          cp "${SRC}/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          # dist/ and marketplace.json are gitignored in the SOURCE repo; force-add
-          # so the mirror carries them. A missing marketplace is a broken build →
-          # `git add -f` exits non-zero under set -e and fails loudly.
-          git add -f dist
-          git add -f .claude-plugin/marketplace.json
-          if git diff --cached --quiet; then
-            echo "nicsuzor/aops already in sync — nothing to publish"
-          else
-            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
-            git push origin HEAD:main
-          fi
-
       # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
       # Built AFTER the dist publish so the image's `git clone --branch dist` (see
       # Dockerfile) pulls the version just shipped. Prereleases never publish the

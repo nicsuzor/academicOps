@@ -31,13 +31,13 @@ tags:
 The repo de-inverted its branch topology (PR #1616, 2026-06-06): the default branch
 is the **source trunk**, built artifacts live on a non-default **orphan branch**.
 
-| Ref                          | Role                                                                                                                                                     |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dev`                        | **default branch**, source trunk — all work lands here; release-please runs here                                                                         |
-| `dist`                       | orphan **artifacts** branch — `.claude-plugin/marketplace.json` + `dist/aops-*`; installed via `claude plugin marketplace add nicsuzor/academicOps@dist` |
-| `nicsuzor/aops` `main`       | **Cowork mirror** of `dist` — Cowork can't pin a non-default ref, so it installs the same payload from this repo's default branch                        |
-| `ghcr.io/nicsuzor/aops-crew` | **worker/crew container** — polecat pulls it (`polecat/cli.py:_ensure_docker_image`)                                                                     |
-| `academicOps` `main`         | **deprecated** — stale orphan from the pre-migration topology; deleted after the first clean release verifies `@dist` + the mirror (§6 D1)               |
+| Ref                          | Role                                                                                                                                                                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dev`                        | **default branch**, source trunk — all work lands here; release-please runs here                                                                                                                                                                                     |
+| `dist`                       | orphan **artifacts** branch — `.claude-plugin/marketplace.json` + `dist/aops-*`; installed via `claude plugin marketplace add nicsuzor/academicOps@dist`                                                                                                             |
+| `aops-coworklocal` ZIP       | **Cowork delivery** — isolated `academicOps-cowork` marketplace + a manual-upload `aops-coworklocal-v{version}.zip` (Cowork nukes github-source marketplaces on restart, so it needs the ZIP/local path). Replaced the old `nicsuzor/aops` full-mirror in `20549c70` |
+| `ghcr.io/nicsuzor/aops-crew` | **worker/crew container** — polecat pulls it (`polecat/cli.py:_ensure_docker_image`)                                                                                                                                                                                 |
+| `academicOps` `main`         | **deprecated** — stale orphan from the pre-migration topology; deleted after the first clean release verifies `@dist` + Cowork install (§6 D1)                                                                                                                       |
 
 There are exactly **two human gates**, both owned by the maintainer:
 
@@ -68,13 +68,16 @@ break fixed in `2fcf8c2f`). The tag SHAPE selects the channel:
 - **Stable `vX.Y.Z`** — build from the tagged commit, then:
   - publish plugins to the **`dist` branch** (fast-forward push; `dist/aops-*` + root
     `.claude-plugin/marketplace.json`),
-  - mirror the identical tree to **`nicsuzor/aops`** `main` (Cowork channel),
   - build & push **`ghcr.io/nicsuzor/aops-crew:vX.Y.Z` and `:latest`** (§6 A3),
   - upload archives to the **GitHub Release `vX.Y.Z`**.
+
+  Cowork is served by the published `aops-cowork` plugin on `dist` (above) plus a
+  manual-upload `aops-coworklocal-v{version}.zip` that `build.py` emits; the old
+  `nicsuzor/aops` mirror was retired in `20549c70`. ⚠️ Whether that `.zip` is auto-attached
+  to the Release is unverified — the upload step globs `dist/*.tar.gz` only.
 - **Prerelease `vX.Y.Z-rc.N` / `-dev.N` / …** — build, cut a `--prerelease` GitHub
-  Release with installable assets. The `dist` branch, the mirror, and the published
-  Docker tags are **left untouched** (the stable install channels must never receive a
-  prerelease).
+  Release with installable assets. The `dist` branch and the published Docker tags are
+  **left untouched** (the stable install channels must never receive a prerelease).
 
 ## 4. Version & uv.lock — never out of sync (the technique)
 
