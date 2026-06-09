@@ -52,4 +52,5 @@ Selects the next queued task from the PKB and dispatches it to the appropriate e
 
 - Do not mark the task as `in_progress` from this session. The executing surface will claim it.
 - If using a subagent that does not self-claim, update the task `assignee` to the subagent and add a dispatch note via `mcp__pkb__update_task`.
+- The task ID is propagated directly to the execution surface via the `$AOPS_TASK_ID` environment variable and git branch name; do not synthesise a filesystem-state binding file.
 - Halt execution after dispatching.
