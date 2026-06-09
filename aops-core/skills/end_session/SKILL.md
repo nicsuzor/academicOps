@@ -61,6 +61,8 @@ Run `TaskList()` and reconcile mirrored tasks. For each native task marked `comp
 
 If files changed, commit, push, and open a PR against **this repo's default working branch**. For academicOps that branch is `dev` — `gh pr create --fill --base dev` (`main` is publish-only). For any other repo, target its own default branch (most use `main`) — do not copy academicOps's `dev` convention onto a repo that has no `dev` branch.
 
+The PR body describes the change for its reviewer. **Do not add merge-gate / do-not-merge / "awaiting Nic" banners** — branch protection is the real gate, so a banner warns nobody who can act on it. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
+
 #### 3. Update Project Breadcrumb
 
 Resolve the parent epic and project node from the bound task. Append to the project file's **Active Epics** section:

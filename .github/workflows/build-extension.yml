@@ -3,17 +3,24 @@ name: Build and Deploy
 on:
   # Tag-driven. The tag SHAPE selects the channel (classified in "Resolve build
   # context" below):
-  #   vX.Y.Z                     → stable: build, publish dist to the `dist`
-  #                                branch, release.
-  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease: build + cut a `--prerelease`
-  #                                GitHub Release with installable assets; the
-  #                                `dist` branch (the stable install channel) is
-  #                                left UNTOUCHED.
+  #   vX.Y.Z                     → stable: build, publish to the `dist` branch,
+  #                                cut a normal GitHub Release, push Docker.
+  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease ("testing"): build and publish to
+  #                                the `dist` branch TOO — we DO ship dev builds
+  #                                to dist. The published plugin version is a
+  #                                semver prerelease (-dev/-beta/-rc), and the
+  #                                GitHub Release is cut `--prerelease`. Because
+  #                                the version is a semver prerelease, semver-aware
+  #                                consumers don't pick it as latest-stable (the
+  #                                stable-tag filter is scripts/version.py
+  #                                `_STABLE_TAG_RE`), so a client CHOOSES whether to
+  #                                install a dev build — but see the marketplace
+  #                                single-version caveat on the publish step below.
+  #                                Docker is NOT pushed (`:latest` tracks stable).
   # A tag push runs THIS file from the tagged commit, which is the source trunk
   # (dev, the default branch). release-please creates the stable vX.Y.Z tag with
-  # AOPS_DIST_PAT;
-  # prerelease tags are pushed by hand (or a future release-please prerelease
-  # config). We deliberately do NOT trigger on `release: published` — a release
+  # AOPS_DIST_PAT; prerelease tags are pushed by hand (see `make prerelease`).
+  # We deliberately do NOT trigger on `release: published` — a release
   # event runs the DEFAULT branch's copy of this file (default-branch semantics)
   # and would double-fire against the tag-triggered run.
   push:
@@ -34,6 +41,10 @@ jobs:
       - name: Resolve build context
         id: ctx
         run: |
+          # ${{ github.ref }} is a runtime value, but actionlint substitutes a
+          # static placeholder before shellcheck, which then misreads these glob
+          # tests as SC2193 "can never be equal". The runtime comparison is correct.
+          # shellcheck disable=SC2193
           if [[ "${{ github.ref }}" == refs/tags/v*-* ]]; then
             # Pre-release tag (v1.2.3-rc.1, -dev.N, -beta.N, -alpha.N). Checked
             # FIRST because the v*-* glob is a subset of the plain v* glob below;
@@ -62,9 +73,9 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout dist branch for publish target
-        # Stable only — prereleases never touch the dist branch (the stable
-        # install channel); see the "Publish distribution to dist" step.
-        if: steps.ctx.outputs.release_type != 'testing'
+        # Runs for BOTH stable and prerelease builds — dev/testing builds publish
+        # to `dist` too (see the "Publish distribution to dist" step), so the dist
+        # branch is always checked out as the publish target.
         uses: actions/checkout@v4
         with:
           ref: dist
@@ -126,8 +137,6 @@ jobs:
           echo "Version coherence OK: $TAG_V"
 
       - name: Build dist artifacts
-        # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL), so
-        # no per-platform binary is bundled — one platform-independent build.
         env:
           ACA_DATA: ${{ github.workspace }}
         run: |
@@ -135,15 +144,21 @@ jobs:
           if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
             VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
           fi
+          # $VERSION_FLAG must word-split into separate args (empty, or
+          # "--set-version X.Y.Z"), so SC2086 quoting would break it.
+          # shellcheck disable=SC2086
           uv run python scripts/build.py $VERSION_FLAG
 
       - name: Publish distribution to dist
-        # Stable only. A prerelease must NOT overwrite the dist branch's
-        # marketplace.json — that would auto-ship the -rc/-dev build to every
-        # `marketplace add nicsuzor/academicOps@dist` user. Prereleases live
-        # solely as `--prerelease` GitHub Releases (next step); testers install
-        # them by tag.
-        if: steps.ctx.outputs.release_type != 'testing'
+        # Runs for BOTH stable and prerelease builds. We DO ship dev builds to the
+        # `dist` branch so testers/clients can install them. The published plugin
+        # version is a semver prerelease (-dev/-beta/-rc); stable resolution
+        # excludes prereleases (tests/test_semver_regression.py), so a client
+        # CHOOSES whether to install a dev build rather than being force-upgraded.
+        # NOTE: the dist-branch root marketplace.json carries a single version per
+        # plugin and is refreshed on every publish, so the most recent build (dev
+        # or stable) is what a fresh `marketplace add …@dist` + `plugin install`
+        # resolves. Docker (below) stays stable-only — `:latest` must track stable.
         run: |
           set -euo pipefail
           SRC="${GITHUB_WORKSPACE}"
@@ -245,5 +260,8 @@ jobs:
             exit 1
           fi
 
+          # $ARCHIVES (space-separated file list) and $PRERELEASE_FLAG must
+          # word-split into multiple args, so SC2086 quoting would break them.
+          # shellcheck disable=SC2086
           gh release upload "v$VERSION" $ARCHIVES --clobber || \
           gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES

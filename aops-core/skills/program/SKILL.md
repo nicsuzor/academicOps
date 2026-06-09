@@ -79,6 +79,8 @@ Ensure all shippable changes pass through a fully-green PR meeting these conditi
 3. **CI check**: PR must have clean-checkout CI green (do not trust incremental-only passes).
 4. **Policy Enforcement**: Read and follow the launch directory's `CLAUDE.md` policy. If absent or unreadable, default to the gated posture.
 
+This gate is enforced by **branch protection**, not by PR prose. Do not add do-not-merge / merge-gate banners to PR bodies — they warn nobody who can act on the merge. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
+
 | Repo           | Policy                                        | Gate status / action                                      |
 | -------------- | --------------------------------------------- | --------------------------------------------------------- |
 | **aops**       | Nic-review required (never merge without Nic) | Branch protection present + current ✓                     |
