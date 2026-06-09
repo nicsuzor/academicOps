@@ -1,26 +1,6 @@
 # Changelog
 
-## [0.3.35](https://github.com/nicsuzor/academicOps/compare/v0.3.34...v0.3.35) (2026-06-06)
-
-
-### Bug Fixes
-
-* **ci:** stop release-event double-fire of Build and Deploy on main ([2fcf8c2](https://github.com/nicsuzor/academicOps/commit/2fcf8c2f08455d6a1ee82471971eeb18e9a39331))
-
-
-### CI/CD
-
-* **main:** replace stale build-extension.yml with corrected copy ([31efc31](https://github.com/nicsuzor/academicOps/commit/31efc315a2c9235069b61460e60f3ba027eb94a4))
-
-
-### Miscellaneous
-
-* **main:** release 0.3.34 ([3f29098](https://github.com/nicsuzor/academicOps/commit/3f2909885c42c58033a31ac1b67fa1586691aa3e))
-* **main:** release 0.3.34 ([195c5ec](https://github.com/nicsuzor/academicOps/commit/195c5ec8a25b1375b8f8e2e928e4526dc46b0b15))
-* publish v0.3.35-dev.0+g8a04ce6e.dirty distribution [skip ci] ([e7cc69b](https://github.com/nicsuzor/academicOps/commit/e7cc69b46ec3a5d0b8971ebd33bb28e0b80dccd7))
-* update uv.lock for release ([c62572e](https://github.com/nicsuzor/academicOps/commit/c62572e3017d77978755c2813a511bda6136475e))
-
-## [0.3.34](https://github.com/nicsuzor/academicOps/compare/v0.3.33...v0.3.34) (2026-06-05)
+## [0.3.34](https://github.com/nicsuzor/academicOps/compare/v0.3.33...v0.3.34) (2026-06-04)
 
 ### Bug Fixes
 
