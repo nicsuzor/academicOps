@@ -124,3 +124,14 @@ repos:
         pass_filenames: true
         files: '^(aops-core|polecat|scripts|aops-tools)/.*\.(py|sh)$|^aops-core/agent-env-map\.conf$'
         exclude: '(^|/)(\.venv|dist|node_modules|__pycache__|\.claude)/'
+
+      # G3 (release-publish-pipeline §4) — uv.lock must stay in sync with
+      # pyproject.toml. release-please regenerates the lock in the release PR; this
+      # catches local dep edits that forget to relock, BEFORE CI's `uv sync --frozen`
+      # would fail the build. Runs only when either file is staged.
+      - id: uv-lock-check
+        name: uv.lock in sync with pyproject.toml (G3)
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock)$'

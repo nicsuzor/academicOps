@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write   # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)
     steps:
       - name: Resolve build context
         id: ctx
@@ -85,18 +86,44 @@ jobs:
         id: version
         run: |
           chmod +x scripts/version.py
-          if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
-            # Pre-release: the tag IS the version (v0.3.36-rc.1 → 0.3.36-rc.1).
-            # build.py --set-version normalises it via sanitize_version(), and the
-            # patch-bump in get_project_version() already guarantees a dev/rc build
-            # sorts ABOVE the last stable tag and BELOW the next stable — the semver
-            # invariant the Claude marketplace and Gemini extension installers need.
-            VERSION="${{ steps.ctx.outputs.ref }}"
-            VERSION="${VERSION#v}"
+          REF="${{ steps.ctx.outputs.ref }}"
+          if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # Tag-driven build — the tag IS the version, for BOTH stable (vX.Y.Z) and
+            # prerelease (vX.Y.Z-rc.N / -dev.N) tags. Use it verbatim. Do NOT run
+            # `version.py --get` here: it derives from `git describe --dirty`, and by
+            # this point the build has dirtied the working tree, so it would emit
+            # `X.Y.Z-dev.0+gSHA.dirty` even on a clean stable tag (G1 — see
+            # specs/releases/release-publish-pipeline.md §4). release-please owns the
+            # stable tag = manifest; the next step asserts that coherence. For a
+            # prerelease, build.py --set-version normalises via sanitize_version() (the
+            # semver-sort invariant the Claude/Gemini installers need).
+            VERSION="${REF#v}"
           else
+            # Non-tag build (manual workflow_dispatch on a SHA): no tag to read, so
+            # fall back to the computed dev version.
             VERSION="$(uv run python scripts/version.py --get)"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Version::$VERSION"
+
+      - name: Assert version coherence (stable tag only)
+        # G2 — fail closed if the tag, the committed pyproject version, and the
+        # release-please manifest disagree. Guards against a hand-pushed or
+        # release_as-overridden tag publishing a version that does not match the
+        # committed source. Stable tags only: prereleases are hand-cut and not tracked
+        # by the manifest; manual SHA builds have no tag.
+        if: steps.ctx.outputs.release_type == 'stable' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          TAG_V="${{ steps.version.outputs.version }}"
+          PYPROJECT_V="$(uv run python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+          MANIFEST_V="$(python3 -c "import json, pathlib; print(json.loads(pathlib.Path('.release-please-manifest.json').read_text())['.'])")"
+          echo "tag=$TAG_V pyproject=$PYPROJECT_V manifest=$MANIFEST_V"
+          if [ "$TAG_V" != "$PYPROJECT_V" ] || [ "$TAG_V" != "$MANIFEST_V" ]; then
+            echo "::error title=Version mismatch::tag=$TAG_V pyproject=$PYPROJECT_V manifest=$MANIFEST_V — stable release aborted (G2)"
+            exit 1
+          fi
+          echo "Version coherence OK: $TAG_V"
 
       - name: Build dist artifacts
         # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL), so
@@ -165,6 +192,91 @@ jobs:
             # so a non-fast-forward branch rule on dist can stay enforced.
             git push origin dist
           fi
+
+      - name: Publish distribution to nicsuzor/aops (Cowork mirror)
+        # Mirror the exact dist-branch tree (.claude-plugin/marketplace.json +
+        # dist/aops-*) onto nicsuzor/aops' default branch so Cowork — which can't
+        # pin academicOps@dist — installs the identical distribution from
+        # `nicsuzor/aops`. Same layout, same relative paths; only the remote
+        # differs. Stable only (testing builds never ship to a stable channel).
+        if: steps.ctx.outputs.release_type != 'testing'
+        run: |
+          set -euo pipefail
+          SRC="${GITHUB_WORKSPACE}"
+          cd "${SRC}/aops-repo"
+
+          # Migrate the legacy root-level payload (aops-claude/ at the repo root,
+          # marketplace sourcing ./aops-*) to the dist-branch convention: payload
+          # under dist/, marketplace sourcing ./dist/aops-*. Drop the stale
+          # top-level dirs + root gemini-extension.json so the mirror is a clean
+          # twin of the dist branch, not a hybrid of both layouts. No-op once
+          # migrated. .github/ is left untouched.
+          rm -rf aops-claude aops-cowork aops-gemini aops-tools-claude \
+                 aops-tools-gemini aops-antigravity aops-tools-antigravity \
+                 gemini-extension.json
+
+          # Same publish convention as the dist branch: each built plugin dir
+          # mirrored under dist/ with --delete; the */ glob skips dot-entries and
+          # the *.tar.gz release archives (those are FILES, shipped only as GitHub
+          # Release assets on academicOps).
+          mkdir -p dist
+          for d in "${SRC}"/dist/*/; do
+            name="$(basename "$d")"
+            rsync -a --delete "$d" "dist/${name}/"
+          done
+
+          # Root Claude marketplace (sources ./dist/aops-*), identical to the dist
+          # branch root. This adds the aops-cowork plugin entry the legacy aops
+          # marketplace lacked.
+          mkdir -p .claude-plugin
+          cp "${SRC}/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          # dist/ and marketplace.json are gitignored in the SOURCE repo; force-add
+          # so the mirror carries them. A missing marketplace is a broken build →
+          # `git add -f` exits non-zero under set -e and fails loudly.
+          git add -f dist
+          git add -f .claude-plugin/marketplace.json
+          if git diff --cached --quiet; then
+            echo "nicsuzor/aops already in sync — nothing to publish"
+          else
+            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
+      # Built AFTER the dist publish so the image's `git clone --branch dist` (see
+      # Dockerfile) pulls the version just shipped. Prereleases never publish the
+      # image — `:latest` must track the stable channel, exactly like the dist branch.
+      - name: Set up Docker Buildx
+        if: steps.ctx.outputs.release_type != 'testing'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.ctx.outputs.release_type != 'testing'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Build and push aops-crew image
+        if: steps.ctx.outputs.release_type != 'testing'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/nicsuzor/aops-crew:v${{ steps.version.outputs.version }}
+            ghcr.io/nicsuzor/aops-crew:latest
+          build-args: |
+            AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
+            AOPS_DIST_REF=dist
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
         if: github.event_name == 'release' || github.event_name == 'push'

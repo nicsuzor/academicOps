@@ -115,12 +115,16 @@ RUN umask 000 && uv tool install ruff
 # always get the same commit. The previous approach used two independent
 # git clones that could diverge if the repo updated between them
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
-# pkb binary: downloaded separately from nicsuzor/mem releases.
 ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
+# The published distribution lives on the non-default `dist` branch (orphan branch:
+# .claude-plugin/marketplace.json + dist/aops-*). The default branch is the SOURCE
+# trunk and carries no built dist/, so the framework must be cloned from the dist ref.
+# Overridable so a release build can pin the exact ref it just published.
+ARG AOPS_DIST_REF=dist
 
-# Single clone → install both Claude plugin and Gemini extension from it.
-# Both CLIs internally set 444 on git objects — chmod after each install.
-RUN umask 000 && git clone --depth 1 ${AOPS_REPO_URL} /tmp/aops-dist \
+# Single clone of the dist branch → install both Claude plugin and Gemini extension
+# from it. Both CLIs internally set 444 on git objects — chmod after each install.
+RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} /tmp/aops-dist \
     && claude plugin marketplace add /tmp/aops-dist \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \
@@ -151,18 +155,9 @@ m = json.loads(mp.read_text()); \
 [p.__setitem__('source', './' + p['name'] + '/' + next((e.name for e in (cache / p['name']).iterdir() if e.is_dir()), '')) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
 mp.write_text(json.dumps(m, indent=2))"
 
-# Install pkb binary from nicsuzor/mem releases.
-# Uses /releases list (not /latest) so empty releases with no uploaded assets are skipped.
-RUN umask 000 && TMPDIR=$(mktemp -d) \
-    && PLATFORM="x86_64-linux" \
-    && MEM_TAG=$(curl -s https://api.github.com/repos/nicsuzor/mem/releases \
-         | jq -r '[.[] | select(.assets | map(select(.name | endswith("'"${PLATFORM}"'.tar.gz"))) | length > 0)][0].tag_name') \
-    && curl -fsSL "https://github.com/nicsuzor/mem/releases/download/${MEM_TAG}/mem-${MEM_TAG}-${PLATFORM}.tar.gz" \
-         -o "${TMPDIR}/mem.tar.gz" \
-    && tar xzf "${TMPDIR}/mem.tar.gz" -C "${TMPDIR}" \
-    && cp "${TMPDIR}/pkb" "$HOME/.local/bin/pkb" \
-    && chmod +x "$HOME/.local/bin/pkb" \
-    && rm -rf "${TMPDIR}"
+# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-core's
+# scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
+# The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 
 # Set permissive extension enablement so hooks fire for any workspace path.
 # `gemini extensions install` restricts to /home/<user>/* which doesn't match
