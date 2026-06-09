@@ -280,7 +280,7 @@ Alignment is **PARTIALLY LIVE (Phase 6 of [[pr-pipeline]])** and is **intentiona
   dispatches `polecat run … pauli`, and closes stale issues. Until it ships, the queue
   surface is plumbing only — see [[pr-pipeline]] §6.2.
 - **The live way to run an alignment check today** is the MANUAL `/strategic-review` skill
-  (`aops-core/skills/strategic-review/SKILL.md`); `--critic` runs a fast pauli-only pre-hoc
+  (`skills/strategic-review/SKILL.md`); `--critic` runs a fast pauli-only pre-hoc
   critique. The maintainer invokes it by hand when they want alignment input before
   admitting a PR.
 - **Current model:** alignment is **advisory input to the human admit gate** (§3.3) by
