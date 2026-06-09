@@ -1,4 +1,4 @@
-# Stage 2: Admission Gate (pr-pipeline §3.2 + §5)
+# Stage 2: Admission Gate (pr-pipeline-v2 §3.2 + §5)
 #
 # The single HUMAN gate of the v2 pipeline. On Stage-1 convergence the triage
 # orchestrator (pr-pipeline.yml `dispatch-admission` job) dispatches THIS workflow
@@ -27,7 +27,7 @@
 # Until it exists, `environment: pr-fix-loop` resolves to an environment with no
 # protection rules and the job runs WITHOUT pausing — so the gate is not enforced.
 #
-# See specs/workflows/pr-pipeline.md §3.2, §5, §11 (Phase 4).
+# See specs/workflows/pr-pipeline-v2.md §3.2, §5, §11 (Phase 4).
 
 name: "Stage 2: Admission Gate"
 

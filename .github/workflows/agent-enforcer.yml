@@ -8,7 +8,7 @@
 # External consumers pin to a release tag:
 #   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
 #
-# v2 contract (specs/workflows/pr-pipeline.md):
+# v2 contract (specs/pr-pipeline-v2.md):
 #   §3.1 workflow_call only — no pull_request, workflow_run, workflow_dispatch
 #   §3.2 one named status: enforcer-status, posted to inputs.sha
 #   §3.6 SHA-based loop-skip (replaces broken Enforcer-By trailer check)

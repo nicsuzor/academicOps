@@ -144,7 +144,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      # admit-status carry-forward (pr-pipeline §5). admit-status is the required
+      # admit-status carry-forward (pr-pipeline-v2 §5). admit-status is the required
       # human gate; it is set to success only by the Stage-2 Admission Gate
       # (stage2-admission.yml) when the maintainer approves the `pr-fix-loop`
       # Environment. This step manages the NON-admit transitions so the gate stays
