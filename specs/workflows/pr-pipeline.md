@@ -127,7 +127,7 @@ This pipeline reframes around three structural decisions:
                                  │ approved
                                  ▼
 ┌───────────────────────────────────────────────────────────────────────┐
-│  STAGE 2 — FIX LOOP  (post-admission, the "new environment")           │   SPEC-ONLY*
+│  STAGE 2 — FIX LOOP  (post-admission, the "new environment")           │   LIVE*
 │  same orchestrator + short-circuit + convergence, now WITH:           │
 │     … → dev/mechanic agent (real development) + conflict resolution    │
 │  enforcer + qa RE-VERIFY each mechanic SHA (§3.5) · bounded (§3.6)     │
@@ -135,17 +135,19 @@ This pipeline reframes around three structural decisions:
 │  CONVERGED + all-green → MERGE   |   loop bound exhausted → escalate    │
 │  admission armed `gh pr merge --auto`; merge fires when checks green   │
 └───────────────────────────────────────────────────────────────────────┘
-   * the gate + armed auto-merge are LIVE; the dev/mechanic agent is not yet built.
-     Today the post-admission fixer is still the v1 merge-prep agent on cron (§8).
+   * Phase 5 complete: dev/mechanic agent (`agent-mechanic.yml`) is built and
+     wired into the admitted Stage-2 loop; the v1 merge-prep cron is retired (§8).
 ```
 
 Key properties:
 
 - **No triage box.** Branch protection AND-gates the named statuses mechanically; there is
   no LLM whose job is "decide whether the verdicts add up to mergeable." **LIVE.**
-- **No mechanic-on-a-timer (target).** The dev/mechanic agent runs only _inside_ an
+- **No mechanic-on-a-timer.** The dev/mechanic agent runs only _inside_ an
   admitted fix loop, and conflict resolution only when the PR is `CONFLICTING`; no per-PR
-  no-op run. **SPEC-ONLY** — until Phase 5, the cron-driven merge-prep still runs (§8, §11).
+  no-op run. **LIVE** (Phase 5) — `agent-mechanic.yml` is `workflow_call`-only, dispatched
+  by `pr-pipeline.yml`'s `mechanic` job gated on `admit-status=success`; the v1 cron-driven
+  merge-prep is retired (§8, §11).
 - **Alignment is an input to the human gate, not a required check.** A host outage
   degrades advice, never deadlocks a merge. **LIVE for the "not required" part; the
   host-side dispatch is SPEC-ONLY** (§6).

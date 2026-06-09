@@ -34,7 +34,7 @@ academicOps/
 │   └── skills/       # Domain skills
 ├── .github/
 │   ├── agents/       # Agent prompts (pr-reviewer, enforcer, mechanic, qa)
-│   └── workflows/    # GitHub Actions (12 workflows)
+│   └── workflows/    # GitHub Actions (17 workflows)
 ├── aops-core/        # Framework core
 │   ├── hooks/        # Session lifecycle hooks
 │   ├── lib/          # Shared libraries (gates, hydration, tasks, etc.)
