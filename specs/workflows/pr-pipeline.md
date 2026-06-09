@@ -1,542 +1,847 @@
 ---
 id: pr-pipeline
-title: PR Pipeline
+title: "PR Pipeline"
 type: spec
-status: ready
+created: 2026-05-15T02:07:45.675923357+00:00
+modified: 2026-06-09T00:00:00.000000000+00:00
+alias:
+  - "pr-pipeline-v2"
+permalink: pr-pipeline
+status: operative
 tier: workflow
-depends_on: []
-tags: [workflow, pr-pipeline]
 supersedes: pr-process.md
+tags:
+  - workflow
+  - pr-pipeline
 ---
 
-# PR Pipeline
+# PR Pipeline — Two-Stage, Environment-Gated, Convergent (single SSoT)
 
-> [!IMPORTANT]
-> **Superseded by [[pr-pipeline-v2]] (operative, phased rollout).** This v1 document
-> remains the accurate description of the **merge-prep agent** only until v2 Phase 5
-> (mechanic) ships. Everything else here is historical. Two mechanisms described below
-> were **specified but never implemented as written** — do not treat them as live:
-> the `merge-prep-global` concurrency group (the workflows use per-PR + dispatcher
-> groups), and `gh run list`-based in-progress detection (the dispatcher uses a
-> `merge-prep-running` commit-status stake). The required-check names and 2-approval
-> gating in the §Ruleset section below are also stale — the live ruleset
-> (`.github/rulesets/pr-review-and-merge.yml`) is the source of truth, and v2 §7 is the
-> target. See [[pr-pipeline-v2]] §1 for why v1's no-op merge-prep is being retired.
+> Status: **operative**. This is the **single source of truth** for the PR **merge**
+> pipeline (PR opened → squash-merged to `dev`). It consolidates the former
+> `pr-pipeline.md` (v1, the merge-prep model) and `pr-pipeline-v2.md` (the two-stage
+> convergent model) into one target-state contract; both predecessors are retired into
+> this file. The **release/publish** half (merge → tag → artifacts) lives in
+> [[release-publish-pipeline]] and is cross-referenced here, never duplicated.
+>
+> **Honesty discipline (load-bearing).** This is a _target-state_ spec. Every claim is
+> flagged **LIVE** (verified on `origin/dev` and/or the live GitHub ruleset today) or
+> **SPEC-ONLY** (the target, not yet wired). Do not read a SPEC-ONLY claim as current
+> reality, and do not silently upgrade one to LIVE. The LIVE/SPEC-ONLY flags in this
+> file were re-verified against the actual workflow files, the live ruleset
+> (`gh api repos/.../rulesets/13762049`), and the live Environment list on 2026-06-09 —
+> not inherited from prior session-synthesis.
+>
+> Epic: `aops-10d5b344` (Modular GHA agent pipeline v2).
 
-## Giving Effect
+## 0. What is LIVE vs SPEC-ONLY today (the honest summary)
 
-- [[.github/workflows/pr-pipeline.yml]] → CI-only orchestrator: sequential lint → typecheck → pytest
-- [[.github/workflows/lint.yml]] → uses `AOPS_BOT_GH_TOKEN` for checkout so autofix pushes trigger workflow restart
-- [[.github/workflows/typecheck.yml]] → basedpyright type checking
-- [[.github/workflows/pytest.yml]] → unit tests
-- [[.github/workflows/agent-enforcer.yml]] → axiom compliance reviewer; fires automatically on `workflow_run` (PR Review Pipeline completion) + reusable via `workflow_call` for other repos
-- [[.github/workflows/agent-merge-prep.yml]] → cron-driven merge prep agent; on success enables `gh pr merge --auto`
-- [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "PR Review Pipeline" completion + 30-min cron fallback
-- GitHub Ruleset: required checks = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0` — the human merge gate is the `pr-fix-loop` GitHub Environment approval (sets `admit-status`)
+Read this table first; the sections below carry the detail and repeat the flags inline.
 
-## Overview
+| Capability                                                                                                                                                                                | State                   | Evidence (2026-06-09)                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
+| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, `dispatch-admission` on convergence | **LIVE**                | `.github/workflows/pr-pipeline.yml`                                                        |
+| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                               | **LIVE**                | `agent-enforcer.yml` + `trigger-enforcer.yml`                                              |
+| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                       | **LIVE**                | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                           |
+| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; `stage2-admission.yml` parks, sets `admit-status`, arms auto-merge                         | **LIVE**                | `gh api .../environments/pr-fix-loop` + `stage2-admission.yml`                             |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`       | **LIVE**                | live ruleset ID `13762049` (API-verified, matches the in-repo file)                        |
+| `admit-status` carry-forward across agent commits / reset on human push; `merge-prep-status` initialize carry-forward                                                                     | **LIVE**                | `pr-pipeline.yml` `initialize` job                                                         |
+| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                 | **SPEC-ONLY**           | `agent-mechanic.yml` / `mechanic.agent.md` **absent**                                      |
+| `mechanic-status` informational status                                                                                                                                                    | **SPEC-ONLY**           | not posted by any workflow                                                                 |
+| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                              | **SPEC-ONLY**           | governs the mechanic when Phase 5 ships                                                    |
+| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                   | **SPEC-ONLY**           | carries v1's `MAX_MERGE_PREP_RUNS=5` precedent forward                                     |
+| Alignment (pauli) queue surface — orchestrator posts `alignment-status: pending` and files an `alignment:queued` issue per PR                                                             | **LIVE**                | `pr-pipeline.yml` `alignment-queue` job                                                    |
+| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                             | **SPEC-ONLY**           | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6) |
+| **Live fixer today** = v1 `agent-merge-prep.yml` + `merge-prep-cron.yml` (cron `*/30` + `workflow_run`), still posts (now non-required) `merge-prep-status`                               | **LIVE (transitional)** | both files present; retired at Phase 5 (§11)                                               |
 
-**As** the repository maintainer,
-**I want** a PR pipeline where bots handle all preparation automatically on a timer,
-**So that** when I look at a PR, it is already reviewed, fixed, and ready — and I provide the final approval to merge.
+The single most important honest caveat: **the "Stage 2 fix loop" as a dev/mechanic agent
+inside an admitted orchestrator run is not built.** Today, the fixing/conflict-resolution
+work is still performed by the v1 `merge-prep` agent on a cron, in parallel with the new
+two-stage scaffolding. The gate, the convergence orchestrator, the two reviewer agents,
+and the ruleset are all LIVE; the post-admission _developer_ is not. Nic's two new design
+decisions (§3.5, §3.6) are therefore **SPEC-ONLY contracts the mechanic must implement at
+Phase 5** — they are written here so Phase 5 can be built without re-deriving them.
 
-The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger merge-prep. This created a sequencing problem: merge-prep fixes failing checks, so it cannot wait for checks to pass before running. The current design inverts the dependency — merge-prep runs automatically on a cron, bots prepare everything, and the human approves or denies once at the end.
+## 1. Why this shape — and why it can now be simpler
 
-**Where the human gate lives.** The human gate is the `pr-fix-loop` GitHub Environment approval, which sets the `admit-status` required check (Phase 4). `required_approving_review_count` is 0 — there is no PR-review-count gate. The bot pipeline's job is to leave each PR green and armed: all CI passing and `admit-status: success` set by the Stage-2 Admission Gate after the maintainer approves the Environment. The human Environment approval is the decision point.
+v1 collapsed three concerns into two workflows: mechanical CI, axiom enforcement, and a
+monolithic `merge-prep` that read everyone's reviews, fixed what it could, approved, set
+the _required_ `merge-prep-status`, and armed auto-merge.
 
-## Design Principles
+The pathologies this produced:
 
-1. **Bots prepare, human decides.** All mechanical work (lint fixes, review triage, conflict resolution) happens before the human looks at the PR. The human's job is approval or rejection, not preparation.
-2. **Single decision point.** The human approves (or denies) once via the standard PR review UI. Auto-merge is pre-armed, so the maintainer's approval immediately satisfies branch protection and the merge fires automatically.
-3. **No labels for coordination.** Labels are unreliable state machines. In-progress detection uses `gh run list`; halt state uses the `merge-prep-status` commit status API. No load-bearing labels; no comment-text scanning.
-4. **Auto-merge for graduation.** Merge-prep signals readiness by setting `merge-prep-status: success` and calling `gh pr merge --auto --squash --delete-branch`. The merge is then queued behind the unmet requirements (the maintainer's approval). When the maintainer approves, GitHub fires the merge with no further bot involvement.
-5. **Event-driven + cron fallback.** Merge-prep dispatch fires immediately when Phase 1 checks complete (`workflow_run` trigger), plus a 30-minute cron as safety net. The existing qualification logic (age gate, in-progress check, commit status) handles premature firings gracefully. No human trigger needed, no label gate.
-6. **Sequential CI, independent review.** CI checks run sequentially (lint → typecheck → pytest) so that if lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. The Enforcer fires independently after CI completes (`workflow_run` on PR Review Pipeline), not on every push — reducing review frequency while preserving axiom compliance coverage. Lint uses a PAT (`AOPS_BOT_GH_TOKEN`) for checkout so autofix pushes trigger a new `synchronize` event, restarting the pipeline on the clean commit with correct check run names on the actual HEAD.
-7. **GitHub affordances only.** Required status checks, PR reviews, commit status API, and auto-merge handle state. No custom orchestration where GitHub provides a native mechanism. No comment parsing; no label-based state machines.
+| #  | Pathology                                                                                                                           | Evidence                                   |
+| -- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| P1 | Loose triggers waste cache (`pull_request` + `workflow_run` + … fan-out)                                                            | `aops-638a351e` (~130M cache_r/wk)         |
+| P2 | Enforcer self-skipped on agent-authored HEAD → merge-prep substituted its own approval for an absent verdict → PR landed unreviewed | PR #1037 → issue #1039                     |
+| P3 | Pauli (alignment) cannot run from GHA (no PKB MCP reachability) → alignment verdict missing from the gate                           | issue #1034                                |
+| P4 | Cross-repo install is "copy three workflow files", not "pick the agents you want"                                                   | `examples/cross-repo-shim/`                |
+| P5 | **merge-prep runs as a no-op on every green PR** — a full runner + two full-history checkouts to make ~4 API calls on its fast-path | PR #1614 (docs-only) is the worked example |
 
-## Architecture: Four Phases
+**The v1 improvements changed the economics.** v1 gained an `initialize` job that holds a
+required status pending until triage (with carry-forward on `synchronize`), a working
+fast-path, and the enforcer rewrite. That means the pipeline no longer needs a heavy
+"triage agent that decides mergeability" — most of that work is now either mechanical or
+belongs to the named agents directly. The pipeline can be both **simpler** (no triage LLM,
+no per-PR mechanic timer) and **stronger** (a real human "good idea" gate; convergence
+that never re-runs heavy agents on cheap fixes).
 
-```mermaid
-flowchart TD
-    PR["PR opened / push"]
+This pipeline reframes around three structural decisions:
 
-    %% CI Pipeline (sequential)
-    PR --> Lint["<b>Lint</b><br/>Autofix + push if needed<br/><i>Required status check</i>"]
+- **One LLM agent ≡ one `workflow_call`-only reusable ≡ one named status check.** No
+  anonymous Claude runs; no agent self-triggers (the anti-cascade substrate; §4.1, §10).
+  Enforcer and qa already obey this (**LIVE**).
+- **Two stages with one human gate between them.** Cheap triage runs on every commit; the
+  expensive development loop runs _only after a human admits the PR_ as a good idea (§3).
+  We never spend development effort on a bad idea.
+- **The merge gate is a cheap human-approval status, not an agent.** The required
+  `admit-status` is set by an Environment-gated job (no checkout, no LLM) — this is what
+  removes P5's no-op merge-prep run.
 
-    Lint --> LintFix{Issues?}
-    LintFix -- Yes --> AutoFix["Autofix + push commit<br/>(PAT triggers synchronize)"]
-    AutoFix --> PR
-    LintFix -- No --> TC["<b>Type Check</b><br/>basedpyright<br/><i>Required status check</i>"]
+## 2. Architecture
 
-    TC --> Test["<b>Pytest</b><br/>Unit tests<br/><i>Required status check</i>"]
-
-    %% Enforcer (fires after CI completes)
-    Test --> AR["<b>Enforcer Review</b><br/>Axiom compliance agent<br/>Posts review feedback"]
-
-    AR --> ARV{Verdict}
-    ARV -- REQUEST_CHANGES --> Blocked["<b>Merge blocked</b><br/>Author or agent revises"]
-    ARV -- APPROVE --> Phase2
-
-    Test --> Phase2["<b>Bazaar window</b><br/>External reviews arrive<br/>(Gemini, Copilot, commenters)"]
-
-    %% Phase 2: Cron — no human trigger needed
-    Phase2 --> Cron
-
-    Cron["<b>Merge-Prep Dispatcher</b><br/>workflow_run + cron every 30 min<br/>Qualifies PRs ≥ 15 min old<br/>No in-progress run<br/>No merge-prep-status<br/>No Merge-Prep-By trailer"]
-
-    Cron --> MPCheck{Agent needed?}
-    MPCheck -- "All green,<br/>no CR reviews,<br/>no conflicts" --> FastPath["<b>Fast-path</b><br/>Skip Claude agent"]
-    MPCheck -- "Failing checks,<br/>CR reviews, or<br/>conflicts" --> MP["<b>Merge-Prep Agent</b><br/>Triage ALL review feedback<br/>Fix issues, resolve conflicts<br/>Run lint + typecheck + tests<br/>Push fixes"]
-
-    MP --> MPV{Outcome}
-    MPV -- Failure --> RetryOrEscalate["Retry next cron tick<br/>After 3 failures: set commit<br/>status failure, notify"]
-    MPV -- Success --> Graduate
-    FastPath --> Graduate
-
-    Graduate["<b>Graduation</b><br/>Approve PR + set merge-prep-status: success<br/>Enable gh pr merge --auto"]
-
-    %% Phase 3: Human approval (branch protection)
-    Graduate --> HumanGate{"<b>Maintainer reviews PR</b><br/>Approve or Request Changes<br/>in GitHub PR review UI"}
-    HumanGate -- "Approve" --> Merge
-    HumanGate -- "Request Changes" --> Blocked
-
-    %% Phase 4: Merge (auto-merge fires when approval lands)
-    Merge["<b>Auto-merge fires</b><br/>Squash merge + delete branch"]
-
-    %% Styling
-    classDef check fill:#e8f4fd,stroke:#2196f3
-    classDef agent fill:#fff3e0,stroke:#ff9800
-    classDef human fill:#e8f5e9,stroke:#4caf50
-    classDef success fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
-    classDef fail fill:#ffebee,stroke:#f44336
-    classDef cron fill:#f3e5f5,stroke:#9c27b0
-    class Lint,TC,Test check
-    class AR,MP,AgentFix agent
-    class EnvGate human
-    class Merge,Graduate success
-    class Blocked,RetryOrEscalate fail
-    class Cron cron
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│  STAGE 1 — TRIAGE  (GHA, every push, cheap, one convergence, no dev)   │   LIVE
+│                                                                       │
+│  orchestrator runs committing agents in COST ORDER, short-circuit:    │
+│     lint (autofix) → enforcer/rbg → qa/marsha                         │
+│  read-only checks (typecheck, pytest) post status, never commit       │
+│  pauli/alignment: SPEC-ONLY (manual /strategic-review today, §6)      │
+│                                                                       │
+│  each agent: fix what it can (commit) · red status for what it can't  │
+│  a pass stops at the FIRST agent that commits; its push = next pass    │
+│  CONVERGED = a full pass with zero commits → statuses fresh on HEAD    │
+└───────────────────────────────────────────────────────────────────────┘
+                                 │ on convergence, dispatch a Stage-2 run
+                                 ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  THE GATE — `pr-fix-loop` GitHub Environment (required reviewer = you) │   LIVE
+│  Stage-2 run PARKS here. You read the statuses + reviews + pauli's     │
+│  verdict and Approve (admit) or Reject. "All green or I click" → click.│
+│  Admission = the single human decision: "good idea — make it mergeable"│
+└───────────────────────────────────────────────────────────────────────┘
+                                 │ approved
+                                 ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│  STAGE 2 — FIX LOOP  (post-admission, the "new environment")           │   SPEC-ONLY*
+│  same orchestrator + short-circuit + convergence, now WITH:           │
+│     … → dev/mechanic agent (real development) + conflict resolution    │
+│  enforcer + qa RE-VERIFY each mechanic SHA (§3.5) · bounded (§3.6)     │
+│  required-green to merge: cheap checks + enforcer + qa + no conflicts  │
+│  CONVERGED + all-green → MERGE   |   loop bound exhausted → escalate    │
+│  admission armed `gh pr merge --auto`; merge fires when checks green   │
+└───────────────────────────────────────────────────────────────────────┘
+   * the gate + armed auto-merge are LIVE; the dev/mechanic agent is not yet built.
+     Today the post-admission fixer is still the v1 merge-prep agent on cron (§8).
 ```
 
-## Phase 1: On Every Push (CI + Axiom Review)
+Key properties:
 
-Two workflows run independently on every `pull_request` push:
+- **No triage box.** Branch protection AND-gates the named statuses mechanically; there is
+  no LLM whose job is "decide whether the verdicts add up to mergeable." **LIVE.**
+- **No mechanic-on-a-timer (target).** The dev/mechanic agent runs only _inside_ an
+  admitted fix loop, and conflict resolution only when the PR is `CONFLICTING`; no per-PR
+  no-op run. **SPEC-ONLY** — until Phase 5, the cron-driven merge-prep still runs (§8, §11).
+- **Alignment is an input to the human gate, not a required check.** A host outage
+  degrades advice, never deadlocks a merge. **LIVE for the "not required" part; the
+  host-side dispatch is SPEC-ONLY** (§6).
 
-### CI Pipeline (`pr-pipeline.yml`) — sequential
+## 3. The two stages and the gate
 
-The CI pipeline runs four jobs: initialization, lint, typecheck, and pytest.
+### 3.1 Stage 1 — Triage (every push) — **LIVE**
 
-> [!NOTE]
-> **Release-Please Gating:** For release-please PRs (branches starting with `release-please`), both the CI pipeline (`pr-pipeline.yml`) via a gate job and the Enforcer (`agent-enforcer.yml`) are gated behind the `production` environment approval. They will pause and only run once approved by a maintainer, rather than running pre-emptively on every push.
+A single **triage orchestrator** (`pr-pipeline.yml`) is the workflow triggered by
+`pull_request` (`opened`, `synchronize`, `ready_for_review`, `reopened`). It runs the
+committing agents in cost order under the **ordered short-circuit** rule (§3.4). The
+dev/mechanic agent does **not** run in Stage 1 — triage is cheap by construction.
 
-**Initialization (Always Pending Until Triage):** To prevent PRs from appearing "green" before the Merge-Prep Agent has triaged reviews, the pipeline starts with an `initialize` job. This job sets the `merge-prep-status` commit status to `pending` on the latest SHA. Because this status is required by the ruleset, the PR remains in a "yellow" state until the agent explicitly sets it to `success` (after triage) or `failure` (after persistent errors).
+Each agent **fixes what it can and leaves its status red for what it can't.** There is no
+clean "autofixer vs reviewer" split: `lint` autofixes formatting but goes red on a lint
+error needing a real code change; `enforcer` autofixes some violations but goes red on the
+ones needing judgement or development. **A red status is a handoff** — the next agent down
+the chain (ultimately the mechanic in Stage 2) is who clears it. (Today, qa never commits —
+it verifies only; `committed` is always `false` — so the only Stage-1 committers are lint
+and enforcer.)
 
-| Workflow   | File              | Job name     | Required check?                 | Action                                                        |
-| ---------- | ----------------- | ------------ | ------------------------------- | ------------------------------------------------------------- |
-| Init       | `pr-pipeline.yml` | `Initialize` | Yes (`merge-prep-status`)       | Sets `merge-prep-status: pending` via GitHub Statuses API.    |
-| Lint       | `lint.yml`        | `Lint`       | Yes (`Lint / Lint`)             | `ruff check --fix` + `ruff format`. Autofix + push if needed. |
-| Type Check | `typecheck.yml`   | `Type Check` | Yes (`Type Check / Type Check`) | `basedpyright`. Read-only.                                    |
-| Pytest     | `pytest.yml`      | `Pytest`     | Yes (`Pytest / Pytest`)         | `pytest -m "not slow"`. Read-only.                            |
+`pauli`/`alignment` runs as an out-of-chain advisory surface, not inside the lint→enforcer→qa
+chain. The orchestrator's `alignment-queue` job is **LIVE** (it posts `alignment-status:
+pending` on HEAD and files an `alignment:queued` issue per PR); the host-side cron +
+polecat-pauli dispatcher that drains the queue is **SPEC-ONLY**, so until it ships the live
+stand-in is the manual `/strategic-review --critic` skill the maintainer runs by hand before
+admitting (§6).
 
-**Why sequential?** When lint pushes an autofix commit, typecheck and pytest haven't started yet — no wasted compute on the cancelled run. The `cancel-in-progress` concurrency group cancels the old run and a new pipeline starts on the clean commit.
+Stage 1 ends when the pass converges (§3.4). The orchestrator's `dispatch-admission` job
+then dispatches a Stage-2 admission run that parks at the gate (§3.2).
 
-**Lint autofix with PAT:** Lint checks out using `AOPS_BOT_GH_TOKEN` (a PAT). When it pushes an autofix commit, the PAT push triggers a new `synchronize` event, restarting the pipeline on the new commit. This ensures check runs appear on the actual HEAD — pushes with `GITHUB_TOKEN` are deliberately ignored by GitHub Actions and would leave the new commit with zero check runs.
+### 3.2 The gate — `pr-fix-loop` GitHub Environment — **LIVE**
 
-**Loop safety:** Lint is idempotent — the second run finds nothing to fix, no push, pipeline completes normally.
+Admission to the development loop is a **GitHub Environment with a required reviewer**
+(`pr-fix-loop`, required reviewer `nicsuzor` — verified to exist on 2026-06-09), reusing
+the `production`-style environment pattern already used for release-please gating
+(`pr-pipeline.yml` `gate` job).
 
-### Enforcer Review (`agent-enforcer.yml`) — fires after CI
+On Stage-1 convergence, `dispatch-admission` dispatches `stage2-admission.yml` as a
+**separate run** whose only job targets the `pr-fix-loop` environment and **pauses**. The
+maintainer reads the triage statuses, the agents' reviews, and pauli's alignment verdict
+(if they ran `/strategic-review` by hand), then **Approves (admit) or Rejects**.
+"If it's all green or I click the button" — approving the pending deployment _is_ the
+button. This is the single human decision in the pipeline: _this is a good idea; make it
+mergeable._
 
-The Enforcer fires automatically via `workflow_run` when the PR Review Pipeline completes. This means one enforcer run per CI cycle (not per push), reducing Claude API calls compared to a per-push trigger.
+On approval, `stage2-admission.yml` (with the bot PAT) does two things: (a) sets the
+required `admit-status` to `success` on HEAD, and (b) arms
+`gh pr merge --auto --squash --delete-branch`.
 
-**PR discovery:** The enforcer extracts the PR number from the triggering branch name (`github.event.workflow_run.head_branch`). If no open PR is found for that branch, it exits cleanly. `branches-ignore: [main, release-please*]` prevents spurious fires on non-PR branches.
+> An Environment-gated job pauses the whole run awaiting approval. Admission is therefore a
+> **separately dispatched run** that parks at the gate — never a job inside the Stage-1 run
+> (which would leave Stage 1 hanging). `pr-pipeline.yml`'s `dispatch-admission` is
+> idempotent: it dispatches only when `admit-status` is not already `success`, so
+> carry-forward (§5) keeps the gate from re-parking on every later convergence.
+>
+> **Enforcement caveat (verified):** the `pr-fix-loop` Environment exists _with_ a required
+> reviewer, so the run genuinely parks. If that Environment were ever deleted or stripped of
+> its reviewer, `environment: pr-fix-loop` would resolve to an unprotected environment and
+> the admit job would run **without pausing** — silently setting `admit-status` and arming
+> auto-merge with no human in the loop. The gate's integrity depends on that Environment's
+> protection rule, which lives in repo Settings (out of any worktree).
 
-**Enforcement:** The enforcer agent checks compliance against axioms and project rules. It can push fixes directly to the PR branch (`Enforcer-By: agent` trailer) or post a `REQUEST_CHANGES` review for issues requiring human judgment.
+### 3.3 Stage 2 — Fix loop (post-admission) — gate LIVE, dev/mechanic **SPEC-ONLY**
 
-**Loop detection:** Skips if the last commit has an agent trailer (`Enforcer-By`, `Autofix-By`, `Merge-Prep-By`) to avoid processing its own output.
+The admitted run is intended to use the **same orchestrator, ordered short-circuit, and
+convergence** as Stage 1, with two additions:
 
-**Reusable:** Also available as `workflow_call` for installation on other repos.
+- the **dev/mechanic agent** is appended last in the cost order — it does real development
+  to clear the red that the autofixers couldn't; and
+- **conflict resolution** runs when the PR is `CONFLICTING` (`git merge origin/<base>`).
 
-**Not a required status check.** The enforcer's review is read by the Merge-Prep Agent as part of its normal triage — no separate required check needed.
+**SPEC-ONLY status:** `agent-mechanic.yml` / `mechanic.agent.md` do not exist. Until
+Phase 5 ships, the post-admission fixing is performed by the LIVE v1 `merge-prep` agent
+(`agent-merge-prep.yml` dispatched by `merge-prep-cron.yml`), whose folded behaviour is
+documented in §8. The two new contracts below (§3.5 re-verify, §3.6 bound) define how the
+mechanic must behave once built.
 
-## Phase 2: Merge Prep (Cron-Driven)
+Required-green to merge is **cheap checks + `enforcer` + `qa` + no conflicts** — **not**
+alignment. The loop iterates to convergence:
 
-Phase 2 has two components:
+- **converged + all-green → merge** (auto-merge was armed at admission, §5).
+- **loop bound exhausted + still-red → escalate and stop** (§3.6) — post a
+  rejection/escalation review, leave the PR un-merged, surface back to the human gate.
 
-- **Merge-Prep Dispatcher** (`merge-prep-cron.yml`) — finds qualifying PRs and dispatches the agent. Runs on `workflow_run` (when PR Review Pipeline completes) + 30-minute cron as safety net.
-- **Merge-Prep Agent** (`agent-merge-prep.yml` + `merge-prep.agent.md`) — the Claude agent that does the actual work: triaging reviews, fixing CI failures, resolving conflicts, and gating graduation.
+### 3.4 Convergence and the ordered short-circuit (normative) — **LIVE**
 
-### Dispatcher qualification criteria (label-free)
+This is the mechanism that makes the loop cheap. The cascade failure ("rbg re-runs on every
+lint fix") is an artifact of giving each agent its own push trigger. This pipeline forbids
+that (§4.1) and runs agents only from the orchestrator:
 
-A PR qualifies for dispatch if ALL of the following are true:
+1. Within a pass, committing agents run in **cost order**: `lint → enforcer → qa
+   [→ mechanic, Stage 2 only]`. Each agent job exposes a boolean output `committed`.
+2. A pass **stops at the first agent that commits**: every downstream agent job is guarded
+   `if: <no upstream agent in this pass committed>` (live form in `pr-pipeline.yml`:
+   `needs.lint.outputs.committed != 'true'`, `&& needs.enforcer.outputs.committed != 'true'`,
+   …). The single push from that agent starts the next pass from the cheapest agent.
+3. **Convergence** = a pass in which the chain runs all the way through and **no agent
+   commits**. At that point every agent has posted an authoritative status on the _current_
+   HEAD SHA.
+4. Read-only checks (typecheck, pytest) never commit, so they never end a pass; they only
+   contribute statuses. (Typecheck is **not** a required gate — §7, debt `aops-1c3de214`.)
 
-1. **Age gate:** Last commit was >= 15 minutes ago. This preserves a bazaar window for external reviews (Gemini, Copilot) to arrive before the Merge-Prep Agent triages them.
-2. **No in-progress run:** the dispatcher checks for a `merge-prep-running` **commit-status stake** (`state: pending`) planted on HEAD by a running agent — not `gh run list`. (An earlier draft specified `gh run list --workflow=agent-merge-prep.yml`; the shipped dispatcher uses the commit-status stake instead.)
-3. **Not already completed or permanently halted:** The latest commit does not have a `merge-prep-status` commit status with `state: success` or `state: failure`. The Merge-Prep Agent sets `success` at the end of every successful run; it sets `failure` after 3 consecutive failures. A new commit from any actor clears this automatically — the new SHA has no status yet, so the agent will re-run. **Exception — late reviews:** If `merge-prep-status` is `success` but `CHANGES_REQUESTED` reviews arrived _after_ the status was set, the PR re-qualifies. This handles the race where merge-prep's own commits trigger the Axiom Review, which finishes after merge-prep has already declared success.
-4. **Not a merge-prep commit:** The HEAD commit message does not contain a `Merge-Prep-By:` trailer. This is a race-condition guard: the `workflow_run` trigger can fire before the agent workflow sets `merge-prep-status: success` on a freshly pushed commit. The trailer check prevents wasteful re-dispatch.
+Because autofixes are idempotent, convergence is fast (passes ≈ the depth of the
+fix-dependency chain, typically 1–3). Heavy agents never run "on every lint fix" because a
+lint commit ends the pass before they are reached. A short debounce on Stage-1 entry —
+`concurrency: cancel-in-progress: true` keyed on the PR — collapses rapid human pushes
+before heavy agents are reached.
 
-The dispatcher does not check whether checks are passing. The Merge-Prep Agent runs regardless — it will fix what it can and post an honest outcome.
+Worked trace (a PR needing a lint autofix and an enforcer-fixable issue):
 
-### What the Merge-Prep Agent does
+```
+pass 1: lint commits a format fix → STOP (push)
+pass 2: lint no-op, enforcer commits an axiom fix → STOP (push)
+pass 3: lint no-op, enforcer no-op, qa no-op → CONVERGED; all statuses fresh on HEAD
+```
 
-The agent workflow (`agent-merge-prep.yml`) performs pre-checks, then either invokes the Claude agent or takes the fast-path:
+`enforcer` ran **once**, not once per lint fix.
 
-**Pre-checks (always run):**
+### 3.5 Stage-2 re-verification contract — enforcer + qa run _inside_ the fix loop (Nic, 2026-06-09) — **SPEC-ONLY**
 
-1. **Dismiss prior merge-prep approval** — `gh pr review --dismiss` any existing approval from `github-actions[bot]` on this PR (ensures approval always reflects the latest code state, not a prior run).
-2. **Self-loop detection** — if the last commit has a `Merge-Prep-By:` trailer, skip (prior run's work is still valid; set `merge-prep-status: success` and exit).
-3. **Runaway loop ceiling** (see below) — halt if exceeded.
+This makes explicit a property the convergence machinery already guarantees, stated as a
+**contract** the mechanic and orchestrator must uphold — not merely an emergent side
+effect:
 
-**Fast-path (no Claude call):** If all CI checks pass, no `CHANGES_REQUESTED` reviews remain, and the PR has no merge conflicts, the Claude agent is skipped entirely. The workflow proceeds directly to the graduation steps (approve, set `merge-prep-status: success`, enable auto-merge). This preserves the architectural invariant — the Merge-Prep Agent always gates graduation — while avoiding expensive Claude API calls when nothing needs fixing.
+1. **Enforcer (rbg) and qa (marsha) run inside the Stage-2 fix loop, not only in Stage 1.**
+   The admitted run uses the _same_ orchestrator and cost order, so every Stage-2 pass runs
+   `lint → enforcer → qa → mechanic`. The reviewers are not "Stage-1 only".
+2. **They re-run whenever the SHA changes.** Per the per-SHA loop-skip protocol (§10), an
+   agent skips _only_ when re-triggered on a SHA it has already judged. The mechanic's fix
+   is a **new commit → new HEAD SHA**, which neither enforcer nor qa has judged, so on the
+   next pass they **review the new SHA** (they do _not_ skip). Author identity is
+   irrelevant (this is exactly the P2 fix): "have we judged _this diff_?" never "was the
+   author a bot?".
+3. **A red re-verdict returns the loop to the mechanic.** If, on the mechanic's new SHA,
+   `enforcer-status` or `qa-status` comes back red, the pass converges with a red required
+   check; the mechanic (the agent that clears red the autofixers can't) is dispatched again
+   to address it. The fix loop is precisely "mechanic fixes → rbg+marsha re-verify → if red,
+   mechanic again", bounded by §3.6.
+4. **Merge requires `enforcer-status` AND `qa-status` green on the _final_ SHA.** Unlike
+   `admit-status` (which carries forward across agent commits, §5), the reviewer statuses
+   do **not** carry forward — each is re-posted per SHA (§4.6, §10). Therefore the armed
+   auto-merge can fire only when the **latest** SHA carries fresh green `enforcer-status`
+   _and_ `qa-status` (plus green cheap checks and `admit-status`). The convergence property
+   guarantees this; this clause makes it a stated requirement so an implementer cannot
+   "optimise" the reviewers out of the post-admission passes.
 
-**PR classifier (judgement layer on top of the mechanical fast-path):** The mechanical fast-path catches "nothing failed". It does not catch stale-task PRs, over-engineered implementations, or intent mismatches. Those risks are addressed by the tier classifier defined in [[aops-core/commands/review-pr.md]] Step 3 (signals 1–10, Tier 0–3 definitions). The classifier is currently specified for the local `review-pr` command; integrating it into `agent-merge-prep.yml` is a follow-up so the pipeline can auto-reject stale-task PRs (Tier 0) and auto-approve trusted sanity-check PRs (Tier 1) without invoking the full Claude agent. Until that integration, the full agent path below handles these cases via its normal review triage.
+**Why state it explicitly.** A tempting but wrong optimisation is to treat enforcer/qa as
+"already passed at admission" and skip them after the mechanic commits — which is the P2
+failure (a fix lands unreviewed). The carry-forward in §5 is deliberately scoped to
+`admit-status` _only_; the reviewer verdicts must always reflect the SHA that actually
+merges.
 
-**Full agent path (Claude call):** When there is work to do (failing checks, unresolved reviews, or conflicts):
+### 3.6 Stage-2 bounded loop + exhaustion escalation (Nic, 2026-06-09 — NEW) — **SPEC-ONLY**
 
-4. Resolves merge conflicts if present (`git merge origin/main --no-edit`).
-5. Reads ALL GitHub PR review feedback: Axiom Review, external bots (Gemini, Copilot), human reviewers. Triages each piece: fix, dismiss, or defer.
-6. Runs `ruff check --fix && ruff format`, `basedpyright`, `pytest` locally.
-7. Commits and pushes fixes with `Merge-Prep-By: agent` trailer (if any fixes are needed).
-8. Posts a triage summary comment.
+Stage 2 must **not iterate forever**. The fix loop is bounded on two independent axes; the
+first is the primary contract, the second is a backstop:
 
-**Graduation (both paths) — performed by the workflow's `Handle success` step, not by the agent:**
-
-9. Posts `gh pr review --approve` from `github-actions[bot]` if the agent did not already approve (one bot approval; the human's approval is still required separately).
-10. Sets `merge-prep-status: success` commit status on the latest commit, using `AOPS_BOT_GH_TOKEN` (the bot PAT — the Claude action's own token lacks `statuses: write`, which is why the agent must not attempt this itself).
-11. Calls `gh pr merge --auto --squash --delete-branch` to arm GitHub's native auto-merge. The merge is queued behind any remaining unmet branch-protection requirement — in practice, the maintainer's approval.
-
-The agent itself stops at step 8 (approve). Steps 9–11 belong to the workflow.
-
-**No comment parsing.** The Merge-Prep Agent reads GitHub PR _reviews_ (step 5) — a structured, native GitHub mechanism. It does not scan arbitrary comment text for instructions. Human direction comes through the review mechanism (REQUEST_CHANGES with notes), not freeform comments. Failure counting uses `gh run list` (run history), not comment text.
-
-### Graduation mechanism: pre-armed auto-merge + human approval
-
-Once the workflow has set `merge-prep-status: success` and enabled auto-merge, the PR is fully prepped. From the maintainer's perspective:
-
-- All bot work is finished. The PR is green.
-- The PR's review tab shows the bot approval and any external bot reviews (Gemini, Copilot, Enforcer).
-- Branch protection still requires `required_approving_review_count` ≥ 1 from a human maintainer.
-- The maintainer reads the PR, the triage summary comment, and the diff, and either **Approves** or **Requests Changes** in the standard PR review UI.
-- An approval immediately satisfies branch protection and GitHub fires the queued auto-merge. Squash + branch delete happen automatically.
-- A change request reopens the loop: merge-prep will pick up the new commits on the next dispatch.
-
-**No environment gate, no `summary-and-merge.yml` workflow.** An earlier design specified a separate `production` environment + decision-brief workflow as the human gate. That was not implemented; the simpler "pre-arm auto-merge, human approval gates merge via branch protection" path is what runs today. The triage comment posted by the agent (§7) serves the same role as the decision brief.
-
-### Global concurrency
-
-> [!WARNING]
-> **Never implemented as written.** The workflows use a per-PR group
-> (`merge-prep-${pr_number}`) on `agent-merge-prep.yml` and a `merge-prep-dispatcher`
-> group on the cron — there is no `merge-prep-global` group; runs are not serialised
-> across PRs. The paragraph below describes a design that was not built.
-
-All merge-prep runs share a global concurrency group `merge-prep-global` to prevent API rate limit issues when multiple PRs qualify simultaneously. PRs are processed sequentially within each cron tick. The per-PR concurrency group (`merge-prep-{pr_number}`) also remains to prevent duplicate runs on the same PR across cron ticks.
-
-### Failure handling (label-free)
-
-Failure counting uses `gh run list --workflow=agent-merge-prep.yml` filtered by PR branch — no comment-text parsing.
-
-| Failure count | Action                                                                                                                                                                                                                                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1st failure   | Workflow run shows as failed in Actions tab. Retry on next cron tick (≤30 min) or next Phase 1 completion.                                                                                                                                                                                             |
-| 2nd failure   | Same.                                                                                                                                                                                                                                                                                                  |
-| 3rd failure   | (1) Dismiss any prior merge-prep approval. (2) Set `merge-prep-status: failure` commit status on latest commit via GitHub API. (3) Post notification comment for human visibility. Subsequent cron ticks skip this PR (detected via commit status API, not comment text).                              |
-| Manual retry  | Human uses Actions → Agent: Merge Prep → Run workflow (with PR number). The workflow_dispatch trigger already exists. The Merge-Prep Agent re-runs; if successful, posts `gh pr review --approve`, sets `merge-prep-status: success`, and arms `gh pr merge --auto` (same as a normal successful run). |
-
-No `merge-prep-failed` label. No `merge-prep-running` label. No comment-text scanning. State is read from run history (in-progress check via `gh run list`) and the commit status API (halt check).
-
-### Runaway loop protection
-
-**Self-loop detection** (existing): If the last commit on the branch has a `Merge-Prep-By:` trailer, merge-prep skips the run. Prevents processing on top of its own unreviewed output.
-
-**Cascade ceiling** (new, replaces v1 cascade limit): Count commits in the branch since diverging from `origin/main` that contain a `Merge-Prep-By:` trailer:
+**(A) Convergence-pass cap (primary).** Count the mechanic's own fix-commits on the branch
+since it diverged from the base:
 
 ```bash
-git log origin/main..HEAD --grep="^Merge-Prep-By:" --oneline | wc -l
+git fetch origin "$DEFAULT_BRANCH"
+MECH_COUNT=$(git log "origin/$DEFAULT_BRANCH..HEAD" --grep="^Mechanic-By:" --oneline | wc -l)
 ```
 
-If this count reaches `MAX_MERGE_PREP_RUNS` (default: **5**, provisional), merge-prep treats the situation as a permanent failure: dismisses its approval, sets `merge-prep-status: failure`, and posts a notification. No further cron runs occur until manual retry.
+The cap is **`MAX_MECHANIC_RUNS = 5`** mechanic fix-commits. This carries forward v1's
+proven `MAX_MERGE_PREP_RUNS = 5` ceiling unchanged (which counts `Merge-Prep-By:` commits;
+the mechanic's trailer is `Mechanic-By:`). Justification for the value and the mechanism:
 
-This ceiling is:
+- **5 is conservative.** A healthy convergent fix loop produces 1–3 mechanic commits.
+  Reaching 5 without converging green is strong evidence of a structural problem (a fix the
+  agent keeps re-attempting, an approach the reviewers keep rejecting, or a genuinely
+  human-judgement issue) — exactly the case that should escalate, not spin.
+- **Mathematically bounded.** Counting actual commits caps total mechanic activity
+  regardless of the success/failure mix — a convergent oscillation (e.g. mechanic ↔ lint)
+  cannot exceed `MAX_MECHANIC_RUNS` mechanic commits.
+- **Label-free, comment-parsing-free, transparent.** The count is derived from immutable
+  git history (`git log --grep`), visible to any reader, with no external state to query —
+  the same robustness argument that retired v1's comment-counted cascade limit (PR 582
+  post-mortem).
+- **Calibrate after real PRs.** 5 is provisional; review actual `Mechanic-By:` counts over
+  the first ~20 admitted PRs and adjust. Too low → false escalations; too high → defeats the
+  purpose.
 
-- **Label-free and comment-parsing-free** — derived entirely from git history.
-- **Mathematically bounded** — convergent cycles (e.g., lint + merge-prep alternating) cannot exceed MAX_MERGE_PREP_RUNS total merge-prep commits regardless of success/failure mix.
-- **Transparent** — visible in `git log` with no external state to query.
-- **Equivalent to the v1 cascade limit** from the PR 582 post-mortem, but more robust: the old limit counted pipeline runs via comment-tracked counters; this counts actual merge-prep commits in git history.
-- **Provisional** — 5 is conservative. Normal convergent cycles produce 2–3 merge-prep commits. If 5 have accumulated without the PR stabilising, something structural is wrong. Calibrate based on real-world data over the first 20 PRs.
+**(B) Per-pass wall-clock cap (backstop).** Each mechanic invocation runs under the GHA job
+`timeout-minutes` ceiling (carry v1's `timeout-minutes: 55` on `agent-merge-prep.yml`).
+This bounds the worst-case duration of a _single_ pass (GitHub cancels the job at the
+limit); it does **not** bound the aggregate loop — that is axis (A)'s job. A cancelled pass
+is treated as a failed pass for the purpose of the exhaustion handler.
 
-## Phase 3: Human Approval (Branch Protection Gate)
+**On exhaustion — the loop STOPS and ESCALATES (never silently merges, never silently
+abandons).** When `MECH_COUNT >= MAX_MECHANIC_RUNS` and the PR is still not green
+(any of `enforcer-status` / `qa-status` / a required cheap check red, or the PR
+`CONFLICTING`), the loop terminates with this **exact end state**:
 
-By the time the human looks at the PR:
+1. **The mechanic agent does not commit, does not approve, does not merge.** It posts a
+   single **escalation/rejection PR review** (state `REQUEST_CHANGES` or `COMMENT` with a
+   clear "loop ceiling reached" heading) that names **each still-red signal individually**
+   (which of enforcer / qa / which cheap check / conflicts), what it attempted across the
+   passes, and precisely what a human must decide or do to unblock.
+2. **The workflow's exhaustion handler** (the post-agent step, holding `AOPS_BOT_GH_TOKEN`
+   — the agent's own token lacks `statuses: write`, §4.7) sets `mechanic-status: failure`
+   on HEAD with a descriptive message
+   (`"Halted: Stage-2 loop ceiling reached (N mechanic commits)"`).
+3. **`admit-status` is reset to `pending`** by the same handler. This is the mechanism that
+   "surfaces the PR back to the human admit gate": resetting admission means the PR cannot
+   merge on the stale "good idea" decision, and the next Stage-1 convergence re-parks it at
+   `pr-fix-loop` for the maintainer to re-judge (re-admit after intervening, or reject). It
+   is a third admit-status transition alongside §5's "carry across agent commits / reset on
+   human push".
+4. **The PR is left un-merged.** Because the required reviewer status(es) are red **and**
+   `admit-status` is now pending, the armed auto-merge cannot fire. No silent merge.
+5. **The maintainer is pinged** (`gh pr edit --add-reviewer nicsuzor`) so the escalation
+   is visible, not buried.
+6. **The loop stops auto-dispatching the mechanic.** Resumption requires an explicit human
+   action: either (a) a **new human push** (which independently resets `admit-status` to
+   pending per §5 and re-enters the gate), or (b) a **manual `workflow_dispatch`**
+   re-invocation of the mechanic with a force flag. This mirrors v1's "manual retry resets
+   the halt" semantics.
 
-- Cheap checks (Lint, Type Check, Pytest) are green on the latest commit.
-- Enforcer Review has posted its assessment.
-- External reviews (Gemini, Copilot) have arrived and been triaged.
-- Merge Prep has fixed what it could, posted a triage summary comment, and approved with `github-actions[bot]`.
-- `merge-prep-status: success` is set on HEAD.
-- `gh pr merge --auto --squash --delete-branch` is armed.
+> Net: on exhaustion the PR sits **admitted-no-more, reviewer-red, un-merged, with a named
+> escalation review and the maintainer requested.** A reader can implement this without
+> guessing the cap (`MAX_MECHANIC_RUNS = 5`, counting `Mechanic-By:` commits) or the
+> on-exhaustion state (mechanic-status=failure, admit-status=pending, no merge, escalation
+> review posted, maintainer pinged, auto-dispatch stopped).
 
-The maintainer opens the PR, reads the agent's triage summary comment plus the diff, and decides in the standard PR review UI:
+## 4. Per-agent contract (locked)
 
-- **Approve** → branch protection's `required_approving_review_count` is satisfied → GitHub fires the queued auto-merge → squash + branch delete → done.
-- **Request Changes** → merge stays blocked. Author revises (or merge-prep picks up the new commits on the next dispatch).
+Every agent in the pipeline — enforcer, qa, mechanic, alignment, and any future agent —
+obeys these rules. Enforcer and qa already implement them (**LIVE**); they are the template
+the mechanic must follow (**SPEC-ONLY** until Phase 5).
 
-The bot approval from `github-actions[bot]` does **not** count toward the human approval requirement; branch protection requires the approval to come from a maintainer. This is the system's actual human gate.
+### 4.1 `workflow_call` is the only invocation surface — **LIVE** (enforcer, qa)
 
-## Phase 4: Merge
-
-Merge fires automatically when the human approval lands, via GitHub's native auto-merge (armed in Phase 2 step 11):
-
-1. GitHub detects all branch-protection requirements are met
-2. `gh pr merge --auto --squash --delete-branch` executes the squash merge
-3. Source branch is deleted
-4. Done
-
-No separate workflow runs at merge time. The bot pipeline's job ends at "armed and green"; GitHub's auto-merge feature handles the actual merge once the human approves.
-
-## Session Artifacts (Observability)
-
-All three agent workflows upload Claude session files as GHA artifacts on every run, including failures. This enables post-mortem analysis of turn usage, tool call sequences, and failure modes — without which resource exhaustion failures (e.g. `FatalTurnLimitedError`) are impossible to diagnose correctly.
-
-### Pattern
-
-Each agent job uses a three-part pattern:
-
-1. **`continue-on-error: true`** on the agent step — allows cleanup steps to always run.
-2. **Upload artifact** (immediately after agent step, `if: always()`):
-   ```yaml
-   - name: Upload Claude session artifacts
-     if: always()
-     uses: actions/upload-artifact@v4
-     with:
-       name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
-       path: ~/.claude/projects/
-       if-no-files-found: ignore
-       retention-days: 30
-   ```
-3. **Propagate exit status** (final step, `if: always()`):
-   ```yaml
-   - name: Propagate agent exit status
-     if: always()
-     run: |
-       if [ "${{ steps.claude.outcome }}" != "success" ]; then
-         echo "::error::Agent run failed. Session artifacts uploaded for post-mortem analysis."
-         exit 1
-       fi
-   ```
-
-**`agent-merge-prep.yml` exception:** Merge-prep omits the propagate step because it uses explicit `Handle success` / `Handle failure` steps with their own exit codes and commit status API calls. It does upload artifacts.
-
-### Accessing artifacts
-
-In the GHA run view → **Artifacts** section, download `claude-session-{job}-{run_id}-{attempt}`. Then:
-
-```bash
-uv run python aops-core/scripts/transcript.py <path/to/session.jsonl>
-```
-
-Session files live at `~/.claude/projects/-workspace/*.jsonl` on the runner (project dir name = workspace path with `/` → `-`).
-
-**Retention:** 30 days. Sufficient for PR post-mortems; adjustable.
-
-**Why not Gemini CLI?** Consumer repos using Gemini CLI (e.g. `nicsuzor/mem`) need equivalent steps targeting `~/.gemini/tmp/`. That is tracked as a follow-up in the consumer repo — this spec covers the academicOps Claude workflows only.
-
-## Workflow Files
-
-| File                   | Purpose                                                                                                               |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `pr-pipeline.yml`      | CI orchestrator: sequential lint → typecheck → pytest. Triggers on `pull_request`.                                    |
-| `lint.yml`             | Ruff lint + format with autofix. Uses `AOPS_BOT_GH_TOKEN` so pushes trigger workflow restart.                         |
-| `typecheck.yml`        | basedpyright. Read-only gate.                                                                                         |
-| `pytest.yml`           | Unit tests. Read-only gate.                                                                                           |
-| `merge-prep-cron.yml`  | Dispatcher: `workflow_run` (PR Review Pipeline) + 30-min cron. Label-free qualification.                              |
-| `agent-merge-prep.yml` | Merge-prep agent: triage reviews, fix issues, approve, set status. Uploads session artifacts.                         |
-| `agent-enforcer.yml`   | Axiom compliance reviewer. Fires on `workflow_run` (PR Review Pipeline) + `workflow_call`. Uploads session artifacts. |
-| `claude.yml`           | Interactive Claude Code agent triggered by `@claude` mentions. Uploads session artifacts.                             |
-
-## GitHub Ruleset
+The agent's workflow file declares **only** `workflow_call`. No `pull_request`, no
+`workflow_run`, no `schedule`, no `push`. Triggers are a separate concern: the orchestrator
+(Stage 1/2) and consumer shims (§9) compose them. This is what guarantees no agent
+self-triggers, which is what makes §3.4 convergence possible.
 
 ```yaml
-rules:
-  - type: pull_request
-    parameters:
-      required_approving_review_count: 2
-      dismiss_stale_reviews_on_push: false
-
-  - type: required_status_checks
-    parameters:
-      strict_required_status_checks_policy: false
-      required_status_checks:
-        - context: "PR Review Pipeline / lint / Lint"          # pr-pipeline.yml → lint.yml
-        - context: "PR Review Pipeline / typecheck / Type Check"  # pr-pipeline.yml → typecheck.yml
-        - context: "PR Review Pipeline / pytest / Pytest"      # pr-pipeline.yml → pytest.yml
-        - context: "merge-prep-status"                         # agent-merge-prep.yml (status API)
+# .github/workflows/agent-<name>.yml — framework
+name: "Agent: <Name>"
+on:
+  workflow_call:
+    inputs:
+      pr_number: { required: true, type: string }
+      ref:       { required: true, type: string }
+      sha:       { required: true, type: string }   # explicit, not derived
+    secrets:
+      AOPS_BOT_GH_TOKEN: { required: true }
+      CLAUDE_CODE_OAUTH_TOKEN: { required: true }
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
+        value: ${{ jobs.<job>.outputs.committed }}
 ```
 
-**Note on check run names:** The compound format (`Caller / Callee`) is produced by `workflow_call`. The caller job name and callee job name must both match to produce the expected check run name. Changing either job name will break the required status check. The `PR Review Pipeline` prefix comes from the `pr-pipeline.yml` workflow name.
+> **Known LIVE wart (transitional).** Today both `trigger-enforcer.yml`/`trigger-qa.yml`
+> (which fire on `pull_request`) **and** the `pr-pipeline.yml` orchestrator (which calls
+> `agent-enforcer.yml`/`agent-qa.yml` via `needs:`) dispatch the same agents on each push.
+> The per-SHA loop-skip (§10) dedupes the _review work_ (the second invocation on the same
+> SHA short-circuits to a no-op success), but the double _dispatch_ is real and is a tracked
+> cleanup (release-publish §9 C4). The agent files themselves remain `workflow_call`-only;
+> the duplication is in the trigger surfaces.
 
-**Two Approvals Requirement:** The ruleset requires 2 approvals. Approval #1 is provided by the Merge-Prep Agent after its successful run (`github-actions[bot]`). Approval #2 must come from a human maintainer. Branch protection does not distinguish bot vs. human approvals at the count level, but the bot approval alone never satisfies the human-judgement gate in practice — the maintainer's approval is what permits the merge to fire.
+### 4.2 One named commit status, posted to HEAD SHA — **LIVE** (enforcer, qa)
 
-## Reusable workflow surface
+The status name **equals** the agent name with `-status`:
 
-The PR pipeline workflows are designed to be reusable in other repositories (cross-repo shims). Consumers should pin to a versioned ref (e.g., `@pipeline-v1`) to ensure stability.
+| Agent                           | Status name        | Required gate?        | State         |
+| ------------------------------- | ------------------ | --------------------- | ------------- |
+| Enforcer (rbg)                  | `enforcer-status`  | yes                   | **LIVE**      |
+| QA (marsha)                     | `qa-status`        | yes                   | **LIVE**      |
+| Mechanic / dev (was merge-prep) | `mechanic-status`  | no (work, not a gate) | **SPEC-ONLY** |
+| Alignment (pauli)               | `alignment-status` | **no** (advisory, §6) | **SPEC-ONLY** |
 
-### `@pipeline-v1` Convention
+> **Naming reality check.** The agent name is settled as **`mechanic`** (status
+> `mechanic-status`) — a locked decision. But the **live file is still
+> `agent-merge-prep.yml`** and the **live status it posts is still `merge-prep-status`**
+> (now a _non-required_ status — it was removed from the ruleset at Phase 4, §7). The rename
+> `agent-merge-prep.yml → agent-mechanic.yml` and `merge-prep-status → mechanic-status` is
+> **Phase 5, pending** (§11). Do not read "mechanic" as a live file name.
+>
+> **`mechanic-status` necessity (resolving v2's open question).** The mechanic does work,
+> not a verdict, so it is **not** a required gate. But §3.6 needs a surface to record the
+> exhaustion/halt outcome, so `mechanic-status` exists as a **non-required, informational**
+> status (`pending` while working, `success` on a clean converged pass, `failure` on loop
+> exhaustion). It never gates the merge — the merge gate is enforcer + qa + cheap checks +
+> admit.
 
-The `pipeline-v1` tag represents the stable surface for the reusable workflows. Consumers should use this tag in their `uses:` declarations:
+Skip is a **success outcome with descriptive text** — never `exit 1`. Examples: `success` /
+"Skipped: HEAD SHA already reviewed" (§10); `failure` / "2 axiom violations — see review"
+(real verdict).
+
+### 4.3 One row in `specs/ENFORCEMENT-MAP.md`
+
+Every agent declares which axioms / rules / lifecycle points it covers, under the
+"PR-pipeline agents" section. A PR adding an agent that omits its enforcement-map row fails
+enforcer review.
+
+### 4.4 One `.github/agents/<name>.agent.md` prompt file
+
+The prompt file is the agent's behaviour contract. It sources the canonical personality
+(e.g. `aops-core/agents/rbg.md`) and adds PR-context wrapping (read `.agents/CORE.md`, run
+`gh pr view`, format the review). Orchestration (the workflow) and behaviour (the prompt)
+version independently.
+
+### 4.5 Versioned ref per agent
+
+Each agent ships under its own ref (`enforcer-v1`, `qa-v1`, `mechanic-v1`, `alignment-v1`).
+Consumers pin to refs, never `@main`. Breaking changes ship as a new tag with a migration
+note and a deprecation window.
+
+### 4.6 Per-pass SHA-based loop-skip — **LIVE** (enforcer, qa)
+
+Every agent checks "have I already reviewed _this exact SHA_?" before doing expensive work
+— never "was the last commit authored by a bot?" (the v1 anti-pattern that caused P2). Full
+protocol in §10.
+
+### 4.7 Graduation/status writes are workflow-owned, not agent-owned — **LIVE**
+
+The Claude agent runs under the `anthropics/claude-code-action@v1` token (the Claude GitHub
+App installation token), which **lacks `statuses: write`** — any `gh api .../statuses/$SHA`
+call from inside the agent returns `403 Resource not accessible by integration`. So all
+status writes and merge arming live in the **workflow's** shell steps, which hold
+`AOPS_BOT_GH_TOKEN` (a bot PAT with `statuses: write`). The agent's job ends at "post the
+review / commit fixes"; the workflow's post-agent steps set the statuses and arm auto-merge.
+This split is intentional and applies to enforcer, qa, the admission job, and (at Phase 5)
+the mechanic's exhaustion handler (§3.6). The defunct `summary-and-merge.yml` dispatch and
+the agent-side `merge-prep-status` write that v1 instructions once carried were removed for
+exactly this reason (PRs #735/#754).
+
+## 5. Graduation — `admit-status` + armed auto-merge — **LIVE**
+
+Graduation is deliberately cheap: no bot approval, no agent, no checkout.
+
+- The Environment-gated admission job (`stage2-admission.yml`, §3.2) does two things on
+  approval: (1) sets the required **`admit-status`** to `success` on HEAD, and (2) arms
+  `gh pr merge --auto --squash --delete-branch`.
+- The merge fires the moment **all required checks are green and the PR is mergeable** —
+  immediately for an already-green PR, or after the Stage-2 loop converges green.
+- **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
+  set by a human-approval-driven job rather than a merge-prep run, the no-op runner on every
+  green PR (P5) is gone.
+- **Carry-forward (LIVE, in `pr-pipeline.yml`'s `initialize` job).** Once admitted at SHA
+  _X_, `admit-status` carries forward across _agent-authored_ fix commits during the loop
+  (the admission decision stands). The live rule: on `synchronize`, if the previous HEAD had
+  `admit-status: success` and the new HEAD commit was authored/committed by a bot (account
+  type `Bot` or a `[bot]` login suffix), carry `success` forward; **a new human push resets
+  admission to `pending`** (a substantive human change must be re-judged at the gate). A
+  **third reset trigger** is added by §3.6: **loop exhaustion resets `admit-status` to
+  pending.** (The `initialize` job also still manages a `merge-prep-status` pending/
+  carry-forward transition; that status is now non-required and is vestigial pending the
+  Phase 5 cleanup — see §8/§11.)
+- **`required_approving_review_count: 2 → 0` (LIVE).** v1 needed two approvals because
+  merge-prep counted as approval #1. This pipeline has no bot approval — the Environment
+  gate plus `admit-status` is the human decision point. There is no review-approval to count.
+
+> Sequencing (already done): `admit-status` was added to required checks in the _same_ change
+> that dropped approvals to 0 — otherwise there would be a window where green checks alone
+> permit a manual merge that bypasses the gate. This is **LIVE** in ruleset `13762049`.
+
+## 6. Alignment (pauli) — advisory, host-side, not a gate — **PARTIALLY LIVE** (queue surface LIVE; host dispatch SPEC-ONLY)
+
+Pauli's value is PKB context, and GHA cannot reach the Tailnet-internal PKB MCP (P3). The
+**target**: pauli runs **host-side** (where the PKB lives), dispatched by a light host cron,
+and posts a **review verdict** that informs the human gate (§3.2). It is **not** a required
+status check.
+
+**LIVE today:** the orchestrator's `alignment-queue` job (`pr-pipeline.yml`) posts
+`alignment-status: pending` on HEAD and files (or refreshes) a single `alignment:queued`
+GitHub issue per PR. This is plumbing: the queue surface exists and is being kept current on
+every push. The **host-side cron + polecat-pauli dispatcher that drains the queue is not yet
+wired** — until it ships, the queue surface is the to-do list, not an actual alignment read.
+The live way for the maintainer to get an alignment read remains the **manual
+`/strategic-review --critic` skill** (`aops-core/skills/strategic-review/SKILL.md`), which
+they invoke by hand before admitting a PR. So alignment is **advisory input to the human
+admit gate, produced manually**, until the host-side dispatch ships.
+
+This is the deliberate simplification over an earlier draft that specced alignment as a
+required, fail-closed gate with a watchdog. In the two-stage model the **human Environment
+approval is the alignment decision point** — the maintainer reads pauli's verdict (or runs
+it themselves) and decides. Consequences: no host-availability deadlock (if pauli has not
+run, the maintainer admits on their own judgement); no watchdog, no `pending → failure`
+flip, no required-status machinery.
+
+### 6.1 Queue surface — **LIVE** (orchestrator `alignment-queue` job)
+
+The triage orchestrator's `alignment-queue` job runs in parallel with the lint→enforcer→qa
+chain (it never delays the merge-gate agents) and does exactly two things on every same-repo
+push:
+
+1. **Set `alignment-status: pending`** on the HEAD SHA via the GitHub statuses API. Skipped
+   if `alignment-status` is already terminal (`success`/`failure`/`error`) on this SHA — that
+   means pauli has already reviewed it and we must not overwrite the verdict.
+2. **Upsert one `alignment:queued` issue per PR.** Deterministic title:
+   `alignment:queued PR #<num>` (one PR ↔ one issue). The body is a stable
+   `<!-- aops:alignment-queue -->`-fenced block carrying `PR`, `Repository`, `Head ref`,
+   `Head SHA`, and `Queued` timestamp — everything the host dispatcher needs to dispatch
+   pauli without re-querying the PR API per entry. On a new push the body is refreshed to
+   the new HEAD SHA; if the issue was closed by the dispatcher last time, it is reopened (a
+   new SHA = a new alignment review is needed).
+
+Fork-origin PRs are skipped at the job's `if:` (no bot write token).
+
+### 6.2 Host-side cron + dispatcher — **SPEC-ONLY**
+
+A host cron (outside this repo's worktree, where the PKB MCP is reachable) drains the
+`alignment:queued` queue across the repos it watches. For each open issue it:
+
+1. **Parses the queue entry** — extracts repo / PR / head SHA from the issue body
+   (`<!-- aops:alignment-queue -->` block).
+2. **Reconciles against the commit status** — re-reads `alignment-status` on the current
+   HEAD; only dispatches if still `pending` (if the PR closed, was merged, or pauli already
+   posted a terminal status, the cron closes the issue and moves on — this is the "close
+   stale issues" contract).
+3. **Dispatches `polecat run … pauli`** with the PR context. Pauli reviews the PR diff
+   against PKB design intent and posts a PR review verdict (the maintainer reads this at the
+   Env gate, §3.2) plus a terminal `alignment-status` (informational only — see §6.3).
+4. **Closes the issue** when pauli's terminal status is posted on the current HEAD.
+
+The dispatcher script lives outside this repo's worktree by design — PKB MCP reachability is
+its precondition, and that lives host-side.
+
+### 6.3 What pauli posts — **SPEC-ONLY**
+
+Pauli posts (a) a PR review verdict the maintainer reads at the human Env gate (§3.2), and
+(b) a terminal `alignment-status` on HEAD (`success`/`failure`/neutral) — informational
+only. Because the merge gate does not require `alignment-status`, a `failure` verdict does
+not block merge; it informs the maintainer's admission decision. A missing alignment review
+(host cron down, pauli unreachable) likewise does not deadlock the gate — the maintainer
+admits on their own judgement.
+
+> If pauli later proves reliable enough to gate on, promoting `alignment-status` to a
+> required check is a one-line ruleset change — explicitly out of scope here.
+
+## 7. Branch protection — required status checks — **LIVE** (API-verified)
+
+The live ruleset (`.github/rulesets/pr-review-and-merge.yml`, ID `13762049`,
+`enforcement: active`, applied to `refs/heads/dev`) requires — verified against the live
+GitHub API on 2026-06-09 (the in-repo file and the live ruleset match):
 
 ```yaml
-uses: nicsuzor/academicOps/.github/workflows/agent-merge-prep.yml@pipeline-v1
+- type: required_status_checks
+  parameters:
+    strict_required_status_checks_policy: false
+    required_status_checks:
+      # Mechanical CI — academicOps emits check-run names (§8)
+      - context: "Lint / Lint"
+      # - context: "Type Check / Type Check"   # DISABLED — debt task aops-1c3de214
+      - context: "Pytest / Pytest"
+      # Framework agents — each owns its AND-gate slot
+      - context: "enforcer-status"
+      - context: "qa-status"
+      # Human gate (Environment approval, §5) — NOT an agent
+      - context: "admit-status"
+      # NOTE: alignment-status is advisory (§6) and is NOT required.
+      # NOTE: merge-prep-status is REMOVED (replaced by admit-status).
+
+- type: pull_request
+  parameters:
+    required_approving_review_count: 0   # Env gate + admit-status is the human gate
+    dismiss_stale_reviews_on_push: false
 ```
 
-### Secrets Contract
+**No transitive gating.** Each agent owns its status directly; there is no single
+`merge-prep-status` that an agent could forget to wait for or silently substitute.
 
-The following secrets must be explicitly provided by the caller if the corresponding workflow is used:
+> `mechanic-status` is **not** in this list and must never be added — the mechanic does work,
+> not a verdict (§4.2). The reviewer statuses (`enforcer-status`, `qa-status`) are what
+> ensure the mechanic's output is verified before merge (§3.5).
 
-- `AOPS_BOT_GH_TOKEN`: PAT with `contents: write`, `pull-requests: write`, `statuses: write`, and `actions: read/write` permissions. Required for `agent-merge-prep.yml` and `pr-pipeline.yml` (for lint autofix).
-- `CLAUDE_CODE_OAUTH_TOKEN`: OAuth token for the Claude agent. Required for `agent-merge-prep.yml`.
-- `GITHUB_TOKEN`: Standard repository token. Required for `merge-prep-cron.yml`.
+## 8. Live merge-prep behaviour folded in (transitional) — **LIVE** until Phase 5
 
-### Workflow Inputs
+Until the mechanic (Phase 5) is built, the post-admission fixing — and, today, most fixing
+generally — is done by the v1 `merge-prep` agent: `agent-merge-prep.yml` (the worker) +
+`merge-prep-cron.yml` (the dispatcher: `*/30` cron + `workflow_run` on "Agent: Merge Prep"
+completions) + `.github/agents/merge-prep.agent.md` (the behaviour). This section preserves
+the **still-live behaviour** so it is not lost on the v1 spec's deletion; **every item here
+becomes the mechanic's responsibility at Phase 5** (and the mechanic adds the §3.5 re-verify
+discipline and the §3.6 bound on top).
 
-#### `agent-merge-prep.yml`
+Folded live behaviour (each is a contract the mechanic inherits):
 
-| Input          | Type    | Default               | Description                                         |
-| -------------- | ------- | --------------------- | --------------------------------------------------- |
-| `pr_number`    | string  | **Required**          | PR number to prepare                                |
-| `force`        | boolean | `false`               | Skip self-loop detection                            |
-| `bot_identity` | string  | `github-actions[bot]` | Identity of the bot for failure counting/dismissals |
+- **F1 — Conflict resolution by merge, never rebase; never force-push.** Resolve conflicts
+  with `git fetch origin <base>; git merge origin/<base> --no-edit`. Force-push is
+  prohibited (it would rewrite shared history and dismiss approvals). **Live bug to fix at
+  Phase 5:** `merge-prep.agent.md` hardcodes `origin/main`; the base is now `dev` — change
+  to the repo's default branch (release-publish §9 C5).
+- **F2 — Squash-merge ghost conflicts.** When a PR was stacked on another PR's branch and
+  that upstream PR squash-merged into the base, the branch carries the upstream's
+  un-squashed commits; GitHub reports `mergeable: CONFLICTING` even though `git merge
+  origin/<base>` reports "Already up to date" (nothing to merge locally). Diagnostic
+  signature: `mergeable == CONFLICTING` **and** local merge is a no-op/clean **and**
+  `git log --oneline origin/<base>..HEAD` shows subjects already squashed into the base.
+  Resolve carefully with a merge commit (never a force-push); if the resolution needs author
+  judgement, halt with a "Blocked: squash-merge ghost conflict" comment naming the upstream
+  PR. The live failure path detects this annotation specifically.
+- **F3 — Ground truth is the server, not the working tree.** Every "Conflicts: none / CI
+  passing / approval standing" claim must be verified against server state
+  (`gh pr view --json mergeable,mergeStateStatus`, `gh pr checks --required`) **after** the
+  last write to the branch. A clean local merge is not proof; only `mergeable: MERGEABLE`
+  counts. A false "success" is worse than an honest halt — it arms auto-merge on a PR GitHub
+  will refuse to merge.
+- **F4 — Conflict vs review-decision are different blocking conditions** (from PKB node
+  `pr-3a3dbf43`). `mergeable: CONFLICTING` is mechanically fixable (F1/F2);
+  `reviewDecision: CHANGES_REQUESTED` is **not** — it requires addressing the review
+  content. A PR can be `MERGEABLE` yet blocked by a standing `CHANGES_REQUESTED`. In
+  particular, **scope-violation reviews (P#5 — bundled unrelated changes) cannot be resolved
+  mechanically**: the options are split the offending commits into their own PR, re-scope/
+  re-title the PR to own all changes, or dismiss only if the reviewer is demonstrably wrong.
+  Re-running the fixer never unblocks a scope violation.
+- **F5 — Feedback triage at the intent level, not the surface words.** Read ALL reviews
+  (framework agents + Gemini + Copilot + humans). For each: FIX genuine bugs / CI failures,
+  FIX safe improvements, DISMISS false positives with written justification, DEFER scope
+  creep with a comment. For every human `CHANGES_REQUESTED`: state the inferred intent in one
+  sentence, find **all** surface forms of that intent across the diff (not just the cited
+  line), fix every one, and verify completeness. **Repeat-request escalation:** if a
+  reviewer re-raises a point after you "addressed" it, that is evidence of surface-only delta
+  — do not re-justify the same partial fix; either find the missed surface forms or halt with
+  a precise list (the PR #974 routing-table incident is the worked example).
+- **F6 — Refuse to approve while any `CHANGES_REQUESTED` stands.** The success path counts
+  the latest review per author; if any is `CHANGES_REQUESTED` and undismissed, it sets the
+  status to `failure` and refuses to approve/merge (it does not silently approve over a
+  standing objection). This guard is the LIVE mechanism that keeps a fatal finding from
+  merging silently.
+- **F7 — Late-review re-qualification (the race).** The fixer can declare success, then a
+  `CHANGES_REQUESTED` review arrives _after_ (e.g. an enforcer run triggered by the fixer's
+  own commit finishes late). The dispatcher re-qualifies a `success` PR when a
+  `CHANGES_REQUESTED` review's `submitted_at` is later than the success status's
+  `created_at`, and (cron-only) when the base advanced and the PR is now `CONFLICTING`
+  (`UNKNOWN` mergeability does **not** re-qualify — it means GitHub hasn't computed it yet).
+  In the two-stage model this race is structurally reduced because the reviewers re-run per
+  SHA inside the loop (§3.5), but the late-arriving-review case is preserved as a
+  re-qualification trigger.
+- **F8 — Self-loop detection + runaway ceiling.** Skip a run whose HEAD commit carries the
+  fixer's own trailer (`Merge-Prep-By:`, → `Mechanic-By:` at Phase 5). Halt permanently at
+  the **ceiling of 5** fixer-commits in the branch (the §3.6 bound; v1 counts `Merge-Prep-By:`
+  via `git log origin/<base>..HEAD --grep`). v1 also halts after **3 consecutive run
+  failures** (dismiss approval, set `failure`, notify). Both are loud halts requiring manual
+  retry — never silent abandonment.
+- **F9 — Bounded polling, no indefinite waits.** Never use `gh pr checks --watch`,
+  `gh run watch`, or `tail -f` inside a runner — they leak background processes that burn the
+  job's wall-clock budget and cause "timed out" failures. Use a capped poll loop; if the cap
+  expires, halt and report. (This is the per-pass wall-clock discipline behind §3.6 axis B.)
+- **F10 — Session artifacts on every run.** Agent workflows upload Claude session files as
+  GHA artifacts (`~/.claude/projects/`, `if: always()`, 30-day retention) so resource-
+  exhaustion failures (e.g. `FatalTurnLimitedError`) are diagnosable post-hoc.
 
-#### `merge-prep-cron.yml`
+## 9. Cross-repo install
 
-| Input                   | Type   | Default                | Description                                             |
-| ----------------------- | ------ | ---------------------- | ------------------------------------------------------- |
-| `pr_number`             | string | `''`                   | Override: process specific PR immediately               |
-| `workflow_ref`          | string | `agent-merge-prep.yml` | Filename/ID of the agent workflow to dispatch           |
-| `bot_identity`          | string | `github-actions[bot]`  | Identity of the bot for state checks                    |
-| `trigger_workflow_name` | string | `''`                   | Name of the workflow that triggered this dispatch       |
-| `trigger_sha`           | string | `''`                   | SHA of the commit that triggered this dispatch          |
-| `trigger_repo`          | string | `''`                   | Full name of the repository (owner/repo) of the trigger |
+A consumer installs **only the agents it wants**, each via a one-file shim in
+`.github/workflows/` (never a nested subdirectory — GitHub ignores nested workflow files).
+Example — enforcer + qa, no mechanic:
 
-## CHANGELOG
+```yaml
+# consumer-repo/.github/workflows/trigger-enforcer.yml
+name: "Trigger: Enforcer"
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+jobs:
+  enforce:
+    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref:       ${{ github.event.pull_request.head.ref }}
+      sha:       ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
 
-### [2026-04-27] - pipeline-v1
+Mechanical CI is consumer-owned (the **naming contract** below). Add or remove an agent by
+adding or deleting a shim file — no wider rewrite.
 
-- **Initial reusable surface**: Refactored `agent-merge-prep.yml` and `merge-prep-cron.yml` with `workflow_call` support.
-- **Defensive Primitives**:
-  - Added `bot_identity` input for venue-neutral bot identity.
-  - Added `workflow_ref` input for configurable agent dispatch.
-  - Added `trigger_workflow_name`, `trigger_sha`, `trigger_repo` inputs to `merge-prep-cron.yml` for caller-supplied trigger context.
-  - Explicit `secrets:` contract in `workflow_call` blocks.
-- **Cross-repo shims**: Added working fixtures at `examples/cross-repo-shim/`.
+**Mechanical-CI naming contract.** The framework declares names; consumers implement them
+from whatever pipeline they like. academicOps itself **keeps check-run names**
+(`Lint / Lint`, `Pytest / Pytest`) — they already exist and the ruleset gates on them, so
+re-emitting them as commit statuses is pure churn for one repo. For cross-repo consumers with
+heterogeneous stacks (Rust/Node/…), the portable form is a commit status per concern:
 
-## Acceptance Criteria
+| Status name        | Required? | Semantic                                         |
+| ------------------ | --------- | ------------------------------------------------ |
+| `lint-status`      | required  | Style/format checks pass (ruff/eslint/clippy/…). |
+| `typecheck-status` | required  | Static type checks pass (or `success` + "n/a").  |
+| `test-status`      | required  | Test suite passes.                               |
+| `build-status`     | optional  | Build/compile/dist check.                        |
 
-- [ ] A PR triggers Lint, Type Check, Pytest, and Agent Review concurrently on every push
-- [ ] Lint autofixes and pushes without blocking Type Check or Pytest
-- [ ] Agent Review posts a `gh pr review` (not a commit status)
-- [ ] An Agent Review `REQUEST_CHANGES` blocks merge via branch protection
-- [ ] Merge Prep runs automatically within ~20 minutes of a PR being opened (Phase 1 completion triggers dispatcher; 15-min age gate; 30-min cron fallback)
-- [ ] Merge Prep dismisses its prior approval before each run (approval always reflects latest code state)
-- [ ] On success, the Merge Prep workflow enables `gh pr merge --auto --squash --delete-branch`
-- [ ] After human maintainer approval, GitHub's auto-merge fires and the PR is squash-merged with branch deleted
-- [ ] No `lgtm`, `merge-prep-running`, or `merge-prep-failed` labels in any workflow file
-- [ ] No comment-text scanning in merge-prep-cron.yml (halt detection uses commit status API)
-- [ ] In-progress detection uses `gh run list` — no duplicate merge-prep runs
-- [ ] On every successful merge-prep run: `gh pr review --approve` posted, `merge-prep-status: success` commit status set on latest commit, auto-merge enabled
-- [ ] Cron qualification skips PRs where latest commit has `merge-prep-status: success` (already processed) or `failure` (halted), unless `CHANGES_REQUESTED` reviews arrived after the `success` status was set (late-review re-qualification)
-- [ ] After 3 consecutive merge-prep failures: merge-prep approval dismissed, `merge-prep-status: failure` commit status set, notification comment posted, cron skips the PR
-- [ ] Runaway loop ceiling: merge-prep halts (same as above) when `Merge-Prep-By:` commit count in branch ≥ 5
-- [ ] Manual retry via workflow_dispatch resets halt state (re-runs full success sequence if successful)
-- [ ] Merge-prep does not parse arbitrary comment text for instructions (reads PR reviews only)
-- [ ] Global concurrency group prevents simultaneous merge-prep runs across PRs
-- [ ] `validate-ruleset.yml` passes with new job names
-- [ ] `Merge-Prep-By: agent` self-loop detector still works
+"The name is the contract" — branch protection requires the name; the framework does not
+require any particular action/runner. A consumer may satisfy the contract with either
+check-run names or `-status` commit statuses.
 
-## Design Decisions
+## 10. Loop-skip protocol (normative) — **LIVE** (enforcer, qa)
 
-**Why event-driven dispatch + cron fallback?**
-The original design used cron-only dispatch (every 10 minutes), but GitHub Actions cron is unreliable — observed gaps of 30–80+ minutes between ticks, and sometimes cron stops firing entirely for hours. Adding `workflow_run` triggers on Phase 1 check completions provides reliable, event-driven dispatch: when checks finish, the dispatcher fires immediately. The existing qualification logic (15-min age gate, in-progress check, commit status halt check) means premature firings are gracefully skipped — no new guard logic needed. The 30-minute cron remains as a safety net for edge cases where `workflow_run` events are missed. Note: merge-prep is triggered on check _completion_ (regardless of pass/fail), not check _success_ — so it still runs on PRs with failing checks.
+For an agent `<name>` invoked by the orchestrator on PR HEAD SHA `H`:
 
-**Why 15-minute age gate?**
-The age gate ensures external reviews (Gemini, Copilot) have time to arrive before merge-prep triages them. 15 minutes is a provisional estimate based on observed bot review latency (Gemini ~2 min, Copilot ~6 min on PR #878); validate against actual response times and adjust if needed. With the `workflow_run` trigger, the dispatcher fires when each Phase 1 check completes — the age gate causes early firings to skip gracefully, and later firings (after the bazaar window) proceed to dispatch.
+1. Fetch the agent's own latest status on `H`:
+   `GET /repos/{owner}/{repo}/commits/{H}/statuses`, filter `context == "<name>-status"`,
+   sort `created_at` desc, take first.
+2. Parse `target_sha` from that status's `target_url` (query param `?target_sha=<sha>`).
+3. **If `target_sha == H`:** skip. Re-post `success` with the same `target_sha=H` and a
+   "Skipped: SHA already reviewed" description. Exit 0. `committed=false`.
+4. **Else:** review HEAD; fix what you can (`committed=true` if you pushed); post a terminal
+   status with `target_url` ending `?target_sha=H`.
 
-**Why pre-armed auto-merge instead of a separate environment gate?**
-An earlier draft of this spec proposed a `production` GitHub Environment + `summary-and-merge.yml` workflow as the human gate, on the rationale that environments offer a clean separate UI from the noisy PR review thread. That was not built. In practice, branch protection's `required_approving_review_count` already provides a single human decision point (the maintainer's PR review approval), and `gh pr merge --auto` already provides the queue-and-fire mechanism. Adding a separate environment-gated workflow on top would duplicate the gate without adding signal. The agent's triage summary comment (§7) already serves the role the "decision brief" was meant to play.
+**Not in the contract:** author identity (the agent does not care _who_ pushed `H`, only
+whether _this diff_ has been judged — conflating the two caused P2) and commit trailers
+(advisory metadata for humans, never control flow).
 
-**Why `agent-review.yml` (not `agent-strategic-review.yml`)?**
-The original name `agent-conceptual-review.yml` was already being renamed. `agent-strategic-review.yml` risks collision with other agent workflows and is unnecessarily specific. `agent-review.yml` is simple, descriptive, and leaves room for the review scope to evolve.
+This decouples "have we judged this SHA?" from "is the author a bot?" A benign
+merge-from-base produces a new SHA, so the agent reviews it (a fast no-op verdict on the
+real SHA); a re-trigger on the _same_ SHA short-circuits. **This is precisely why §3.5
+holds:** a mechanic fix is a new SHA, so enforcer + qa re-verify it; only an identical-SHA
+re-trigger skips.
 
-**Why commit status for halt detection, not comment text?**
-Comment text scanning is fragile: a human quoting the halt string in a comment would accidentally suppress merge-prep. It also lacks delete-reset semantics that are easy to reason about. The `merge-prep-status` commit status uses GitHub's native Commit Statuses API — queryable without text parsing, set and cleared programmatically, and visible in the PR UI alongside other checks. The cron can query `GET /repos/{owner}/{repo}/commits/{sha}/statuses` for a `merge-prep-status` context with state `failure` in one deterministic API call.
+## 11. Migration plan (phased)
 
-**Why a runaway loop ceiling based on git history?**
-The v1 cascade limit (max 3 pipeline runs, tracked via comments) was added after a real bot-loop incident (PR 582 post-mortem). This spec removes that safeguard and replaces it with a stronger one: counting `Merge-Prep-By:` commits in git history. This is preferable because: (a) the count is derived from immutable git history rather than mutable comments; (b) it caps total merge-prep activity regardless of success/failure mix, not just consecutive failures; (c) it is label-free and comment-parsing-free. The ceiling of 5 is provisional — calibrate based on real-world data.
+Each phase is independently shippable and leaves the pipeline working.
 
-**Why dismiss merge-prep's prior approval before each run?**
-`dismiss_stale_reviews_on_push: false` is set so that the _human's_ approval is not wiped out by every bot push. Without this setting, a lint autofix push would dismiss the human's approval and require a second human action. However, this means merge-prep's approval from a prior run would also survive subsequent pushes. If merge-prep then runs again (because new commits arrived), its old approval might represent code that no longer exists. Dismissing the prior approval at the start of each run ensures merge-prep's approval is always freshly earned.
+- **Phase 1 — Enforcer. DONE / LIVE.** `agent-enforcer.yml` (`workflow_call`-only, SHA-skip,
+  `enforcer-status`) + `.github/agents/enforcer.agent.md` + `trigger-enforcer.yml`;
+  `enforcer-status` required.
+- **Phase 2 — QA agent (marsha) to parity. DONE / LIVE.** `agent-qa.yml` +
+  `.github/agents/qa.agent.md` + `trigger-qa.yml`; posts `qa-status`; required check.
+- **Phase 3 — Triage orchestrator + convergence. DONE / LIVE.** `pr-pipeline.yml` reworked
+  into the triage orchestrator: `lint → enforcer → qa` via `needs:` + `committed`-output
+  short-circuit (§3.4), keeping the `gate`/`guard-no-dist`/`initialize` jobs.
+- **Phase 4 — Environment gate + `admit-status` + graduation. DONE / LIVE.** `pr-fix-loop`
+  Environment created with required reviewer; `stage2-admission.yml` parks and (on approval)
+  sets `admit-status` + arms auto-merge; `dispatch-admission` job in `pr-pipeline.yml`.
+  Ruleset: `merge-prep-status → admit-status`, added `qa-status`, approvals `2 → 0`, in one
+  atomic change (verified live on ruleset `13762049`).
+- **Phase 5 — Stage-2 dev/mechanic. PENDING / SPEC-ONLY.** Repurpose `agent-merge-prep.yml`
+  into the admitted-loop dev agent `agent-mechanic.yml` (development to clear red +
+  conflict resolution only when `CONFLICTING`); fold in §8's F1–F10; implement §3.5
+  (re-verify) and §3.6 (bound + exhaustion). Rename `merge-prep-status → mechanic-status`
+  (non-required). Delete the v1 fast-path/graduation steps. Retire `merge-prep-cron.yml`'s
+  per-PR dispatch and the vestigial `merge-prep-status` writes in `initialize`. Fix the
+  hardcoded `origin/main` base (F1 / release-publish §9 C5).
+- **Phase 6 — Alignment (pauli) advisory. PARTIALLY LIVE.** In-repo queue surface LIVE
+  (orchestrator `alignment-queue` job: posts `alignment-status: pending`, files
+  `alignment:queued` issue with deterministic title `alignment:queued PR #<num>` — §6.1).
+  Host-side cron + polecat-pauli dispatcher still SPEC-ONLY — drains the queue, reconciles
+  against the commit status, dispatches pauli, closes stale issues (§6.2). `alignment-status`
+  must remain advisory (NOT in the branch-protection ruleset — §6, §7). Cleanup of any
+  remaining dead v1 references lands here.
 
-**Why set `merge-prep-status: success` on every successful run, not just manual retry?**
-Without a `success` status, the cron qualification criteria only check for `failure` (permanent halt) and in-progress runs. If merge-prep succeeds without pushing any commits (all checks pass, no review feedback to address), there is no `Merge-Prep-By:` trailer on the latest commit (the self-loop check relies on this), so the next cron tick dispatches merge-prep again. This repeats every 30 minutes until the human approves — posting duplicate triage summaries and re-arming auto-merge for no reason. Setting `merge-prep-status: success` after every successful completion closes this gap: the cron skips the PR until a new commit arrives (which creates a new SHA without any status, resetting the check naturally). This uses zero new infrastructure — the same commit status API already specified for the failure path.
+## 12. Open questions
 
-**Why must the agent itself not set `merge-prep-status` or call `gh api .../statuses/$SHA`?**
-The Claude agent runs under the `anthropics/claude-code-action@v1` token, which is the Claude GitHub App's installation token. That token does not have `statuses: write` — `gh api .../statuses/$SHA` returns `403 Resource not accessible by integration` from inside the agent. The job-level `GH_TOKEN: AOPS_BOT_GH_TOKEN` (a bot PAT with `statuses: write`) is available to the workflow's shell steps, not to the agent's tool calls. So graduation steps (set commit status, enable auto-merge) live in the workflow's `Handle success` step, which runs after the agent exits. The agent's job ends at §8 (approve). No permission change is required — the split is intentional.
+1. **Stage-2 loop driver (SPEC-ONLY).** The fix loop re-triggers via the agents' pushes
+   through the orchestrator (a new `synchronize` per pass). Confirm on a scratch PR that an
+   admitted run re-enters cleanly and that `admit-status` carry-forward (§5) keeps the gate
+   satisfied across agent commits without re-parking at the environment.
+2. **`MAX_MECHANIC_RUNS` calibration.** 5 is provisional (§3.6); calibrate against actual
+   `Mechanic-By:` counts over the first ~20 admitted PRs.
+3. **`target_sha` channel.** The `target_url` query-param hack (§10) is ugly but
+   parsimonious; revisit only if a downstream consumer needs to query target-sha cleanly.
+4. **Advisory-finding tracking (open, owned by [[release-publish-pipeline]] §8.3).** Fatal
+   findings are tracked (F6); non-fatal `COMMENT`-level reviews and "Deferred" triage rows
+   have no machine mechanism ensuring closure. Undecided whether to require a PKB task id on
+   every non-"Fixed" triage row. Recorded as a candidate, not adopted.
 
-**Why remove LGTM entirely?**
-The LGTM workflow was a dispatch mechanism because merge-prep was event-driven. With cron, there is no dispatch to coordinate — the cron finds qualifying PRs itself. The `lgtm` label, comment pattern, and LGTM workflow are all eliminated.
+## 13. Cross-references
 
-**Why split `code-quality.yml`?**
-The current `needs: lint` dependency in Type Check is a false dependency. Running them in parallel is faster and respects the independence principle.
+- [[release-publish-pipeline]] — the **release/publish** half (merge → tag → artifacts +
+  version-sync). It owns topology, release-please, `build-extension.yml`, Docker, and the
+  uv.lock discipline; it cross-references **this** spec for all merge-gate detail and must
+  not duplicate it.
+- `.github/rulesets/pr-review-and-merge.yml` — the live ruleset (ID `13762049`).
+- `.github/workflows/{pr-pipeline,stage2-admission,agent-enforcer,trigger-enforcer,agent-qa,trigger-qa}.yml`
+  — the LIVE two-stage scaffolding.
+- `.github/workflows/{agent-merge-prep,merge-prep-cron}.yml` + `.github/agents/merge-prep.agent.md`
+  — the LIVE transitional fixer (retired at Phase 5; behaviour folded into §8).
+- `specs/ENFORCEMENT-MAP.md` — "PR-pipeline agents" rows (§4.3).
+- PR #1037 / issue #1039 — the P2 worked example (enforcer skip + approval substitution).
+- PR #1614 — the P5 worked example (no-op merge-prep on a docs PR).
+- `aops-638a351e` — loose-trigger cache-waste evidence (P1).
+- PR #974 — the surface-only-delta worked example (F5).
+- PR 582 post-mortem — the cascade-loop incident behind the runaway ceiling (§3.6, F8).
 
-**Why `dismiss_stale_reviews_on_push: false`?**
-Ensures the human's approval survives subsequent bot pushes (lint autofixes, merge-prep commits). See "Why dismiss merge-prep's prior approval" above for how this interacts with merge-prep's own approval management.
+### Consolidation record (2026-06-09)
 
-**Why global concurrency for merge-prep?**
-Without a global limit, 5+ merge-prep runs could fire simultaneously when the cron ticks, all calling GitHub APIs and Claude. A `merge-prep-global` concurrency group serialises runs across PRs, preventing API rate limits and reducing cost. Each PR still gets processed — just sequentially within a cron tick rather than in parallel.
+This file is the single SSoT, consolidated from:
 
-## Migration History
+- **`pr-pipeline.md` (v1, the merge-prep model) — KILLED.** Its file content is replaced by
+  this consolidated spec. Its still-live behaviour was extracted into §8 (F1–F10) and §5
+  (the `initialize` carry-forward) so nothing live was lost on deletion.
+- **`pr-pipeline-v2.md` (the two-stage model) — PROMOTED.** This spec _is_ v2, completed and
+  promoted to the single SSoT; the `pr-pipeline-v2.md` file is deleted and its permalink is
+  retained here as an alias.
+- **PKB node `pr-pipeline-d5c0b611` ("PR Pipeline v2") — ARCHIVED.** Was already a relocated
+  stub; archived so it cannot be mistaken for a live spec.
+- **PKB node `pr-3a3dbf43` ("merge-prep behavior and late review handling") — ARCHIVED.** Its
+  unique still-true content (conflict-vs-review-decision distinction; scope-violation
+  reviews are not mechanically resolvable; graduation is workflow-owned) was folded into §8
+  (F4, F6) and §4.7.
 
-The pipeline reached its current state through these steps. Retained for context; the current pipeline is described in the sections above.
-
-### Step 1: Split `code-quality.yml`
-
-1. Created `lint.yml` (autofix), `typecheck.yml` (no `needs:` on lint), `pytest.yml`.
-2. Updated `validate-ruleset.yml` check list and deleted `code-quality.yml`.
-
-### Step 2: Convert Agent Review to PR review
-
-1. Renamed `agent-conceptual-review.yml` → `agent-review.yml` (later → `agent-enforcer.yml`).
-2. Replaced `gh api .../statuses/` with `gh pr review` in agent instructions.
-
-### Step 3: Rewrite merge-prep and cron
-
-- Cron: schedule `*/30` + `workflow_run` trigger on Phase 1 completions; label-free qualification via `gh run list` and the `merge-prep-status` commit status; 15-min age gate.
-- Merge-prep: dropped `lgtm-gate`, removed all label ops, added dismiss-prior-approval, added loop ceiling, added global concurrency.
-- Graduation moved into the workflow's `Handle success` step (set `merge-prep-status: success` + `gh pr merge --auto`), not the agent.
-
-### Step 4: Ruleset and cleanup
-
-1. Added `Pytest` and `merge-prep-status` to required checks.
-2. Removed unused label definitions (`lgtm`, `merge-prep-running`, `merge-prep-failed`).
-3. Marked `specs/pr-process.md` as superseded.
-
-## Open Questions
-
-1. **Pytest reliability.** Before adding Pytest as a required check, verify it passes reliably on bot-authored PRs and PRs with non-Python changes. If flaky, keep it advisory until stabilised.
-
-2. **Copilot review timing.** Copilot is configured with `review_on_push: false`. If changed to `true`, its reviews will arrive during Phase 1/2. No pipeline change needed, but worth confirming timing against the 15-minute age gate.
-
-3. **Multiple concurrent PRs.** The global concurrency group `merge-prep-global` serialises merge-prep across PRs. Monitor whether this causes excessive queueing when many PRs are open. If so, consider raising the limit or switching to per-PR concurrency only.
-
-4. **Human approval before merge-prep.** If the human approves before merge-prep runs, auto-merge waits for required checks. After merge-prep pushes fixes and checks re-run, auto-merge fires without any further human action.
-
-5. **`validate-ruleset.yml` update.** After the split, the validation script needs to find `Lint` in `lint.yml`, `Type Check` in `typecheck.yml`, and `Pytest` in `pytest.yml`. Verify the script handles multi-file checks.
-
-6. **PR reviewer integration.** ~~Resolved~~: Axiom Review (`pr-review.yml`) runs as a standalone workflow using `pr-reviewer.agent.md`. The enforcer agent (`agent-enforcer.yml`) is available as a reusable workflow for other repos but is not wired into this repo's pipeline.
-
-7. **Loop ceiling calibration.** The ceiling of 5 is conservative. After 20 real PRs, review actual `Merge-Prep-By:` commit counts and adjust if warranted. A ceiling too low causes false halts; too high defeats the purpose.
-
-## Related Specifications
-
-- [[specs/pr-process.md]] — superseded by this spec
-- [[specs/polecat-supervision.md]] — polecat PR auto-merge criteria
-- [[specs/non-interactive-agent-workflow-spec.md]] — Phase 5 (PR Review and Merge) references this pipeline
+Two design decisions new in this consolidation (both Nic, 2026-06-09; both **SPEC-ONLY**,
+governing the Phase-5 mechanic): the **Stage-2 re-verify contract** (§3.5) and the
+**Stage-2 bounded loop + exhaustion escalation** (§3.6).

@@ -3141,7 +3141,8 @@ class SessionProcessor:
 
         Tool steps such as RUN_COMMAND piping a gzipped download, or a task log
         capturing a binary file, embed raw bytes that decode to U+FFFD
-        replacement characters and C0/C1 control codes. Real text (incl.
+        replacement characters and C0/C1 control codes. Spinner glyphs (Braille
+        Unicode U+2800-U+28FF) also leak into output. Real text (incl.
         non-Latin scripts and emoji — neither triggers the heuristic) passes
         through verbatim; any *line* that is dominantly binary is dropped, and
         consecutive binary lines collapse into a single
@@ -3152,7 +3153,13 @@ class SessionProcessor:
 
         def _is_suspect(c: str) -> bool:
             o = ord(c)
-            return c == "�" or (o < 32 and c != "\t") or 127 <= o <= 159
+            # Braille spinner glyphs: U+2800-U+28FF; \n and \r are safe
+            return (
+                c == "�"
+                or (o < 32 and c not in ("\t", "\n", "\r"))
+                or 127 <= o <= 159
+                or 0x2800 <= o <= 0x28FF
+            )
 
         # Fast path: no binary signal at all → return unchanged.
         if not any(_is_suspect(c) for c in content):
@@ -3179,11 +3186,11 @@ class SessionProcessor:
         """Parse an antigravity-cli structured transcript jsonl into entries.
 
         Each line is one step:
-        ``{step_index, source, type, status, created_at, content}``.
+        ``{step_index, source, type, status, created_at, content, thinking, tool_calls}``.
 
         - USER_INPUT          → user text turn
-        - PLANNER_RESPONSE    → assistant text turn
-        - tool steps          → assistant tool_use + matching user tool_result
+        - PLANNER_RESPONSE    → assistant thinking + tool_use items (from tool_calls field)
+        - tool steps          → user tool_result (paired with preceding PLANNER_RESPONSE tool_calls)
         - SYSTEM_MESSAGE/ERROR_MESSAGE → tool_result-style feedback turns
         - EPHEMERAL_MESSAGE / CONVERSATION_HISTORY → skipped (boilerplate/empty)
         """
@@ -3224,6 +3231,22 @@ class SessionProcessor:
                 )
             )
 
+        def _unwrap_json_string(value: str) -> str:
+            """Unwrap double-JSON-encoded strings (e.g., '\"gh pr view\"' → 'gh pr view')."""
+            if not value or not isinstance(value, str):
+                return value
+            # Antigravity args are JSON-encoded strings: "\"gh pr view 1604 --comments\""
+            # Strip outer quotes if present
+            if value.startswith('"') and value.endswith('"'):
+                try:
+                    return json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    return value
+            return value
+
+        # Track pending tool calls from PLANNER_RESPONSE to pair with tool results
+        pending_tool_calls: list[tuple[str, dict]] = []  # [(tool_use_id, tool_call_dict)]
+
         for obj in records:
             rtype = obj.get("type")
             status = obj.get("status")
@@ -3249,58 +3272,168 @@ class SessionProcessor:
                 continue
 
             if rtype == "PLANNER_RESPONSE":
-                text = content.strip()
-                if not text:
+                blocks = []
+
+                # Add thinking block if present
+                thinking = obj.get(
+                    "thinking", ""
+                )  # allow-fallback: thinking is optional in PLANNER_RESPONSE
+                thinking = thinking.strip() if isinstance(thinking, str) else ""
+                if thinking:
+                    blocks.append({"type": "thinking", "thinking": thinking})
+
+                # Process tool_calls into tool_use blocks
+                tool_calls = obj.get("tool_calls", [])  # allow-fallback: tool_calls is optional
+                if tool_calls and isinstance(tool_calls, list):
+                    for idx, call in enumerate(tool_calls):
+                        if not isinstance(call, dict):
+                            continue
+
+                        tool_name = call.get("name") or ""
+                        args = call.get("args", {})
+
+                        # Map antigravity tool names to readable names
+                        if tool_name == "run_command":
+                            display_name = "RunCommand"
+                        elif tool_name == "view_file":
+                            display_name = "ViewFile"
+                        elif tool_name == "grep_search":
+                            display_name = "GrepSearch"
+                        else:
+                            display_name = tool_name.title().replace("_", "")
+
+                        # Build tool input from args - unwrap JSON strings
+                        tool_input = {}
+                        if isinstance(args, dict):
+                            # Extract key fields: CommandLine, toolSummary, toolAction
+                            cmd_line = _unwrap_json_string(
+                                args.get("CommandLine", "")
+                            )  # allow-fallback: optional arg
+                            tool_summary = _unwrap_json_string(
+                                args.get("toolSummary", "")
+                            )  # allow-fallback: optional arg
+                            tool_action = _unwrap_json_string(
+                                args.get("toolAction", "")
+                            )  # allow-fallback: optional arg
+                            abs_path = _unwrap_json_string(
+                                args.get("AbsolutePath", "")
+                            )  # allow-fallback: optional arg
+
+                            # Use toolSummary as the primary description
+                            if tool_summary:
+                                tool_input["description"] = tool_summary
+                            elif tool_action:
+                                tool_input["description"] = tool_action
+
+                            # Add command line if present
+                            if cmd_line:
+                                tool_input["command"] = cmd_line
+
+                            # Add file path if present
+                            if abs_path:
+                                tool_input["path"] = abs_path
+
+                        # Generate unique tool_use_id for pairing with result
+                        tid = f"{session_id}-t-{step}-{idx}"
+                        blocks.append(
+                            {
+                                "type": "tool_use",
+                                "id": tid,
+                                "name": display_name,
+                                "input": tool_input,
+                            }
+                        )
+
+                        # Track this tool call for pairing with the next tool result
+                        pending_tool_calls.append((tid, call))
+
+                # Old format: no thinking/tool_calls fields; fall back to content as text.
+                if not blocks:
+                    text = content.strip()
+                    if text:
+                        blocks.append({"type": "text", "text": text})
+
+                if blocks:
+                    _add(
+                        "assistant",
+                        f"{session_id}-a-{step}",
+                        blocks,
+                        ts,
+                        model=model_name,
+                    )
+                continue
+
+            # Tool result steps - pair with pending tool calls
+            if rtype in self._ANTIGRAVITY_TOOL_NAMES or rtype in (
+                "SYSTEM_MESSAGE",
+                "ERROR_MESSAGE",
+            ):
+                if not content.strip():
                     continue
-                _add(
-                    "assistant",
-                    f"{session_id}-a-{step}",
-                    [{"type": "text", "text": text}],
-                    ts,
-                    model=model_name,
-                )
+
+                is_error = status == "ERROR" or rtype == "ERROR_MESSAGE"
+                clean = self._scrub_binary(content)
+
+                if pending_tool_calls:
+                    # New format: PLANNER_RESPONSE declared tool_calls; use paired id.
+                    tid, _call = pending_tool_calls.pop(0)
+                    _add(
+                        "user",
+                        f"{session_id}-tr-{step}",
+                        [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tid,
+                                "content": clean,
+                                "is_error": is_error,
+                            }
+                        ],
+                        ts,
+                    )
+                else:
+                    # Old format: no pending call; create tool_use + tool_result pair.
+                    if rtype in self._ANTIGRAVITY_TOOL_NAMES:
+                        name = self._ANTIGRAVITY_TOOL_NAMES[rtype]
+                    elif rtype == "SYSTEM_MESSAGE":
+                        name = "System"
+                    else:
+                        name = "Error"
+                    tid = f"{session_id}-t-{step}"
+                    desc = self._antigravity_tool_desc(clean)
+                    tool_input = {"description": desc} if desc else {}
+                    _add(
+                        "assistant",
+                        f"{session_id}-ac-{step}",
+                        [{"type": "tool_use", "id": tid, "name": name, "input": tool_input}],
+                        ts,
+                        model=model_name,
+                    )
+                    _add(
+                        "user",
+                        f"{session_id}-tr-{step}",
+                        [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tid,
+                                "content": clean,
+                                "is_error": is_error,
+                            }
+                        ],
+                        ts,
+                    )
                 continue
 
-            if not content.strip():
-                continue
-
-            # Tool steps + system/error feedback → tool_use/tool_result pairs so
-            # the existing renderer attaches each result to its call.
-            if rtype in self._ANTIGRAVITY_TOOL_NAMES:
-                name = self._ANTIGRAVITY_TOOL_NAMES[rtype]
-            elif rtype == "SYSTEM_MESSAGE":
-                name = "System"
-            elif rtype == "ERROR_MESSAGE":
-                name = "Error"
             else:
                 # Unknown step type — surface it rather than dropping silently.
-                name = (rtype or "Unknown").title().replace("_", "")
-
-            is_error = status == "ERROR" or rtype == "ERROR_MESSAGE"
-            tid = f"{session_id}-t-{step}"
-            clean = self._scrub_binary(content)
-            desc = self._antigravity_tool_desc(clean)
-            tool_input = {"description": desc} if desc else {}
-            _add(
-                "assistant",
-                f"{session_id}-ac-{step}",
-                [{"type": "tool_use", "id": tid, "name": name, "input": tool_input}],
-                ts,
-                model=model_name,
-            )
-            _add(
-                "user",
-                f"{session_id}-tr-{step}",
-                [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": tid,
-                        "content": clean,
-                        "is_error": is_error,
-                    }
-                ],
-                ts,
-            )
+                if content.strip():
+                    clean = self._scrub_binary(content)
+                    display_name = (rtype or "Unknown").title().replace("_", "")
+                    _add(
+                        "user",
+                        f"{session_id}-unk-{step}",
+                        [{"type": "text", "text": f"[{display_name}] {clean}"}],
+                        ts,
+                    )
 
         summary_text = (
             f"Antigravity Session: {first_user[:50]}" if first_user else "Antigravity Session"
