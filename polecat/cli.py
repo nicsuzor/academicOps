@@ -2915,6 +2915,25 @@ def _run_git_network(
         return None
 
 
+# SSH GitHub remotes, in every form git accepts. Two shapes exist:
+#
+#   1. SCP-like:   [user@]github.com:owner/repo[.git]
+#   2. URL scheme: (ssh|git+ssh)://[user@]github.com[:port]/owner/repo[.git]
+#
+# Both are matched case-insensitively on the host (git treats hostnames as
+# case-insensitive); the optional ``user@`` and ``:port`` are discarded (the
+# HTTPS endpoint carries neither); the captured ``owner/repo`` path has any
+# leading slashes stripped so we never emit ``https://github.com//owner/repo``.
+_GITHUB_SSH_SCP_RE = re.compile(
+    r"^(?:[^@/]+@)?github\.com:(?P<path>.+)$",
+    re.IGNORECASE,
+)
+_GITHUB_SSH_URL_RE = re.compile(
+    r"^(?:ssh|git\+ssh)://(?:[^@/]+@)?github\.com(?::\d+)?/(?P<path>.+)$",
+    re.IGNORECASE,
+)
+
+
 def _normalize_origin_to_https(repo_path: Path) -> None:
     """Rewrite an SSH GitHub origin to HTTPS, in place, idempotently.
 
@@ -2924,6 +2943,11 @@ def _normalize_origin_to_https(repo_path: Path) -> None:
     force every fetch/push onto SSH: silently failing under cron (no agent) and,
     interactively, triggering a 1Password approval prompt on each operation.
     Normalising the stored remote to HTTPS fixes both at the source.
+
+    Handles every SSH form git accepts — SCP-like (``git@github.com:owner/repo``),
+    URL-scheme (``ssh://`` and ``git+ssh://``), with or without ``user@``, with or
+    without an explicit ``:port``, case-insensitive on the host — and strips any
+    leading slash from the repo path so the rewrite never doubles the separator.
 
     Reads the RAW stored URL via ``git config`` (not ``git remote get-url``,
     which would apply any ``insteadOf`` rewrite and mask the real value).
@@ -2939,16 +2963,35 @@ def _normalize_origin_to_https(repo_path: Path) -> None:
     if result.returncode != 0:
         return
     url = result.stdout.strip()
-    for prefix in ("git@github.com:", "ssh://git@github.com/"):
-        if url.startswith(prefix):
-            https = "https://github.com/" + url[len(prefix) :]
-            subprocess.run(
-                ["git", "remote", "set-url", "origin", https],
-                cwd=repo_path,
-                capture_output=True,
-                check=False,
-            )
-            return
+    https = _ssh_github_to_https(url)
+    if https is None or https == url:
+        return
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", https],
+        cwd=repo_path,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _ssh_github_to_https(url: str) -> str | None:
+    """Return the HTTPS form of an SSH GitHub *url*, or ``None`` if it is not one.
+
+    Pure string transform (no I/O) so it can be unit-tested exhaustively.
+    Returns ``None`` for HTTPS, git://, non-GitHub, or unparseable remotes —
+    the caller treats ``None`` as "leave the remote untouched".
+    """
+    # URL-scheme form must be tried first: it owns the ``://``, so a stray
+    # ``github.com:`` inside the SCP regex can never misfire on a real URL.
+    match = _GITHUB_SSH_URL_RE.match(url)
+    if match is None and "://" not in url:
+        match = _GITHUB_SSH_SCP_RE.match(url)
+    if match is None:
+        return None
+    path = match.group("path").lstrip("/")
+    if not path:
+        return None
+    return "https://github.com/" + path
 
 
 def _sync_working_repo(
