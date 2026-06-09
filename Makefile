@@ -21,12 +21,14 @@ CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 
-# Cowork lives in its OWN isolated marketplace + plugin namespace so a local
-# install never clobbers the genuine `academicOps` marketplace or the
-# aops-core/aops-tools plugins. See install-cowork / generate_cowork_marketplace.
+# The local-dev cowork plugin lives in its OWN isolated marketplace + plugin
+# namespace (`aops-coworklocal`) so a local install never clobbers the published
+# `aops-cowork` plugin or the genuine `academicOps` marketplace. The published
+# plugin is `aops-cowork` (dist/aops-cowork); the local copy is `aops-coworklocal`
+# (dist/aops-coworklocal). See install-cowork / build_coworklocal_plugin.
 CLAUDE_COWORK_MARKETPLACE := academicOps-cowork
-CLAUDE_COWORK_PLUGIN_NAME := aops-cowork@academicOps-cowork
-COWORK_DIST_DIR := $(DIST_DIR)/aops-cowork
+CLAUDE_COWORK_PLUGIN_NAME := aops-coworklocal@academicOps-cowork
+COWORK_DIST_DIR := $(DIST_DIR)/aops-coworklocal
 GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz
 
 # Platform detection for binaries
@@ -216,7 +218,10 @@ package-cowork-windows:
 	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
 		echo "Not on WSL — nothing to copy."; exit 0; \
 	fi; \
-	ZIP=$$(ls -1t $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | head -1); \
+	ZIP=$$(ls -1t $(DIST_DIR)/aops-coworklocal-v*.zip 2>/dev/null | head -1); \
+	if [ -z "$$ZIP" ]; then \
+		ZIP=$$(ls -1t $(DIST_DIR)/aops-cowork-v*.zip 2>/dev/null | head -1); \
+	fi; \
 	if [ -z "$$ZIP" ]; then \
 		ZIP=$$(ls -1t $(DIST_DIR)/aops-core-v*.zip 2>/dev/null | head -1); \
 	fi; \

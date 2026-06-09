@@ -1577,10 +1577,12 @@ def main():
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
 
-    # Generate the ISOLATED cowork marketplace (academicOps-cowork) inside the
-    # built dist/aops-cowork plugin dir, so a local Cowork install lives in its
-    # own marketplace + plugin namespace and never clobbers `academicOps`.
-    generate_cowork_marketplace(aops_root, dist_root, version)
+    # Emit the LOCAL-dev cowork plugin (dist/aops-coworklocal, name
+    # aops-coworklocal) + its isolated academicOps-cowork marketplace. The
+    # PUBLISHED plugin (dist/aops-cowork, name aops-cowork) stays a clean plugin
+    # for the github dist marketplaces; the local copy takes a distinct name so a
+    # developer's `make install-cowork` never clobbers an installed aops-cowork.
+    build_coworklocal_plugin(aops_root, dist_root, version)
 
     # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL); no
     # per-platform binary is bundled, so packaging is platform-independent.
@@ -1966,45 +1968,69 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
     print(f"  ✓ Generated {marketplace} (sources ./dist/aops-*)")
 
 
-def generate_cowork_marketplace(aops_root: Path, dist_root: Path, version: str):
-    """Generate the ISOLATED cowork marketplace manifest under dist/aops-cowork.
+def build_coworklocal_plugin(aops_root: Path, dist_root: Path, version: str):
+    """Emit the LOCAL-dev cowork plugin (dist/aops-coworklocal) + its marketplace.
 
-    The cowork build is a DISTINCT plugin from aops-core (different platform
-    build, cowork-only skill blocks, bundled cowork-sync skill). A local Cowork
-    install therefore must never touch the genuine `academicOps` marketplace or
-    the `aops-core`/`aops-tools` plugin namespaces. To keep it isolated we emit
-    a SEPARATE marketplace named `academicOps-cowork` that lists ONLY the
-    `aops-cowork` plugin.
+    One cowork build, two artifacts that differ ONLY in name:
+      • dist/aops-cowork — the PUBLISHED plugin (name `aops-cowork`), resolved by
+        the github dist marketplaces via `./dist/aops-cowork`. An ordinary
+        published plugin: it carries NO marketplace.json of its own.
+      • dist/aops-coworklocal — a rename-only COPY (name `aops-coworklocal`) for
+        local development. `make package-cowork` zips it for manual upload and
+        `make install-cowork` adds it as a local-directory marketplace. The
+        distinct name keeps a developer's local build in its own plugin/skill
+        namespace so it never clobbers an installed `aops-cowork`.
 
-    The manifest is written INTO the already-built plugin directory
-    (dist/aops-cowork/.claude-plugin/marketplace.json) with a self-referential
-    plugin source of "./", so `claude plugin marketplace add dist/aops-cowork`
-    resolves the co-located `.claude-plugin/plugin.json` as the aops-cowork
-    plugin — a local-directory marketplace that survives Cowork restarts (the
-    github-source marketplaces get nuked; see the install-cowork Makefile note).
+    The ISOLATED `academicOps-cowork` marketplace (name from
+    templates/marketplace-cowork.json, plugin source "./") is written INTO
+    dist/aops-coworklocal so `claude plugin marketplace add dist/aops-coworklocal`
+    resolves the co-located plugin.json — a local-directory marketplace that
+    survives Cowork restarts (github-source marketplaces get nuked; see the
+    install-cowork Makefile note).
 
-    Must run AFTER build_aops_core(platform="cowork", ...), which rebuilds the
-    dist/aops-cowork directory from scratch. The manifest is excluded from the
-    aops-cowork manual-upload zip so that artifact stays a pure plugin payload.
+    Must run AFTER build_aops_core(platform="cowork", ...), which builds
+    dist/aops-cowork. The marketplace.json is excluded from the manual-upload zip
+    so that artifact stays a pure plugin payload.
     """
+    published_dir = dist_root / "aops-cowork"
+    published_plugin_json = published_dir / ".claude-plugin" / "plugin.json"
+    if not published_plugin_json.exists():
+        raise FileNotFoundError(
+            f"dist/aops-cowork/.claude-plugin/plugin.json missing at {published_plugin_json} "
+            "— run build_aops_core(platform='cowork') before build_coworklocal_plugin()"
+        )
+
     template_path = aops_root / "templates" / "marketplace-cowork.json"
     if not template_path.exists():
         raise FileNotFoundError(f"templates/marketplace-cowork.json not found at {template_path}")
 
-    cowork_plugin_dir = dist_root / "aops-cowork" / ".claude-plugin"
-    if not (cowork_plugin_dir / "plugin.json").exists():
-        raise FileNotFoundError(
-            f"dist/aops-cowork/.claude-plugin/plugin.json missing at {cowork_plugin_dir} "
-            "— run build_aops_core(platform='cowork') before generate_cowork_marketplace()"
-        )
+    # Rename-only copy of the published plugin → the local-dev variant.
+    local_dir = dist_root / "aops-coworklocal"
+    if local_dir.exists():
+        shutil.rmtree(local_dir)
+    shutil.copytree(published_dir, local_dir)
 
+    # The local variant differs from the published aops-cowork plugin only in
+    # name (its own plugin/skill namespace) and the install-guidance description.
+    local_plugin_json = local_dir / ".claude-plugin" / "plugin.json"
+    with open(local_plugin_json) as f:
+        manifest = json.load(f)
+    manifest["name"] = "aops-coworklocal"
+    manifest["description"] = (
+        "academicOps for Cowork Local — only install this one if Cowork won't "
+        "install the normal academicOps packages."
+    )
+    with open(local_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+
+    # Isolated academicOps-cowork marketplace (lists aops-coworklocal, source ./).
     with open(template_path) as f:
         data = json.load(f)
 
     # Inject the build version into every plugin entry (template uses __VERSION__),
     # keeping the cowork plugin in version lockstep with the rest of the build.
-    # The cowork template is the source of truth for the isolated marketplace; a
-    # missing/empty plugins list is a broken template, so fail fast rather than
+    # A missing/empty plugins list is a broken template, so fail fast rather than
     # silently emit an empty marketplace.
     plugins = data.get("plugins")
     if not plugins:
@@ -2012,11 +2038,14 @@ def generate_cowork_marketplace(aops_root: Path, dist_root: Path, version: str):
     for plugin in plugins:
         plugin["version"] = version
 
-    marketplace = cowork_plugin_dir / "marketplace.json"
+    marketplace = local_dir / ".claude-plugin" / "marketplace.json"
     with open(marketplace, "w") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
-    print(f"  ✓ Generated {marketplace} (name {data.get('name')}, source ./)")
+    print(
+        f"  ✓ Built dist/aops-coworklocal (name aops-coworklocal) + isolated "
+        f"marketplace {data.get('name')!r}"
+    )
 
 
 def package_artifacts(aops_root: Path, dist_root: Path, version: str):
@@ -2074,23 +2103,23 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
         print(f"  ✓ Packaged {tools_claude_archive.name}")
         safe_symlink(tools_claude_archive, dist_root / "aops-tools-claude-latest.tar.gz")
 
-    # 3. aops-cowork-v{version}.zip — manual upload artifact for Cowork.
+    # 3. aops-coworklocal-v{version}.zip — manual upload artifact for Cowork.
     # Cowork on personal Anthropic accounts has no marketplace; users upload
     # plugins via Customize → Add plugins → Upload a file. The validator
     # requires `.claude-plugin/plugin.json` at the archive root, so zip from
     # *inside* the plugin directory rather than from its parent.
     #
-    # The cowork build is a separate plugin (`aops-cowork`) — Claude-shaped
-    # layout but with cowork-only skill blocks kept and the `cowork-sync`
-    # skill included. See `build_aops_core(platform="cowork", ...)`. The legacy
-    # filename `aops-core-v{version}.zip` is kept as a symlink so existing
-    # download URLs continue to resolve.
-    cowork_dir = dist_root / "aops-cowork"
-    if cowork_dir.exists():
-        cowork_zip = dist_root / f"aops-cowork-v{fs_version}.zip"
+    # The manual-upload artifact is the LOCAL-dev variant (`aops-coworklocal`,
+    # built by build_coworklocal_plugin) so a developer uploading it gets a
+    # plugin in its own namespace that never clobbers a published `aops-cowork`.
+    # Legacy filenames (aops-cowork-v*.zip / aops-core-v{version}.zip) are kept
+    # as symlinks so existing download URLs continue to resolve.
+    coworklocal_dir = dist_root / "aops-coworklocal"
+    if coworklocal_dir.exists():
+        cowork_zip = dist_root / f"aops-coworklocal-v{fs_version}.zip"
         with zipfile.ZipFile(cowork_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-            for path in sorted(cowork_dir.rglob("*")):
-                rel = path.relative_to(cowork_dir)
+            for path in sorted(coworklocal_dir.rglob("*")):
+                rel = path.relative_to(coworklocal_dir)
                 if any(part in BUILD_DETRITUS_NAMES for part in rel.parts):
                     continue
                 # The isolated academicOps-cowork marketplace manifest is for the
@@ -2100,10 +2129,10 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
                     continue
                 zf.write(path, arcname=str(rel))
         print(f"  ✓ Packaged {cowork_zip.name} (Cowork manual upload)")
+        safe_symlink(cowork_zip, dist_root / "aops-coworklocal-latest.zip")
+        # Backward-compat aliases for the historical zip names + 'latest'
+        # symlinks (pre-split marketing surface and the aops-cowork-v* name).
         safe_symlink(cowork_zip, dist_root / "aops-cowork-latest.zip")
-        # Backward-compat alias for the historical aops-core-v*.zip name and
-        # its 'latest' symlink. The aops-core-latest.zip name was the
-        # marketing surface before the cowork plugin was split out.
         legacy_zip = dist_root / f"aops-core-v{fs_version}.zip"
         safe_symlink(cowork_zip, legacy_zip)
         safe_symlink(cowork_zip, dist_root / "aops-core-latest.zip")

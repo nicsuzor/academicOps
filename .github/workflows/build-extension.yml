@@ -70,21 +70,6 @@ jobs:
           path: dist-repo
           token: ${{ secrets.AOPS_DIST_PAT }}
 
-      - name: Checkout nicsuzor/aops (Cowork default-branch mirror)
-        # Cowork installs with `claude plugin marketplace add nicsuzor/aops` and
-        # cannot pin a non-default branch, so it can't read academicOps' `@dist`.
-        # nicsuzor/aops carries the SAME distribution on its DEFAULT branch
-        # (main) — a default-branch twin of the dist branch. Stable only, exactly
-        # like the dist publish. Requires AOPS_DIST_PAT to have write access to
-        # nicsuzor/aops (the PAT already scopes the aops dist repo).
-        if: steps.ctx.outputs.release_type != 'testing'
-        uses: actions/checkout@v4
-        with:
-          repository: nicsuzor/aops
-          ref: main
-          path: aops-repo
-          token: ${{ secrets.AOPS_DIST_PAT }}
-
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -179,59 +164,6 @@ jobs:
             # Fast-forward (dist-repo is checked out at dist HEAD) — no force push,
             # so a non-fast-forward branch rule on dist can stay enforced.
             git push origin dist
-          fi
-
-      - name: Publish distribution to nicsuzor/aops (Cowork mirror)
-        # Mirror the exact dist-branch tree (.claude-plugin/marketplace.json +
-        # dist/aops-*) onto nicsuzor/aops' default branch so Cowork — which can't
-        # pin academicOps@dist — installs the identical distribution from
-        # `nicsuzor/aops`. Same layout, same relative paths; only the remote
-        # differs. Stable only (testing builds never ship to a stable channel).
-        if: steps.ctx.outputs.release_type != 'testing'
-        run: |
-          set -euo pipefail
-          SRC="${GITHUB_WORKSPACE}"
-          cd "${SRC}/aops-repo"
-
-          # Migrate the legacy root-level payload (aops-claude/ at the repo root,
-          # marketplace sourcing ./aops-*) to the dist-branch convention: payload
-          # under dist/, marketplace sourcing ./dist/aops-*. Drop the stale
-          # top-level dirs + root gemini-extension.json so the mirror is a clean
-          # twin of the dist branch, not a hybrid of both layouts. No-op once
-          # migrated. .github/ is left untouched.
-          rm -rf aops-claude aops-cowork aops-gemini aops-tools-claude \
-                 aops-tools-gemini aops-antigravity aops-tools-antigravity \
-                 gemini-extension.json
-
-          # Same publish convention as the dist branch: each built plugin dir
-          # mirrored under dist/ with --delete; the */ glob skips dot-entries and
-          # the *.tar.gz release archives (those are FILES, shipped only as GitHub
-          # Release assets on academicOps).
-          mkdir -p dist
-          for d in "${SRC}"/dist/*/; do
-            name="$(basename "$d")"
-            rsync -a --delete "$d" "dist/${name}/"
-          done
-
-          # Root Claude marketplace (sources ./dist/aops-*), identical to the dist
-          # branch root. This adds the aops-cowork plugin entry the legacy aops
-          # marketplace lacked.
-          mkdir -p .claude-plugin
-          cp "${SRC}/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          # dist/ and marketplace.json are gitignored in the SOURCE repo; force-add
-          # so the mirror carries them. A missing marketplace is a broken build →
-          # `git add -f` exits non-zero under set -e and fails loudly.
-          git add -f dist
-          git add -f .claude-plugin/marketplace.json
-          if git diff --cached --quiet; then
-            echo "nicsuzor/aops already in sync — nothing to publish"
-          else
-            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
-            git push origin HEAD:main
           fi
 
       - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}

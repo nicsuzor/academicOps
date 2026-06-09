@@ -233,6 +233,9 @@ def test_cowork_ingested_discovery(tmp_path, monkeypatch):
     found = [s for s in sessions if s.session_id == session_id]
     assert len(found) == 1
     assert found[0].project == session_id
+    # Ingested Cowork sessions must be labelled source="cowork", not "claude"
+    # (they share the discovery loop with ~/.claude/projects/ but originate in Cowork).
+    assert found[0].source == "cowork"
 
     # include_cowork=False: ingested session must NOT be discovered
     sessions_no_cowork = find_sessions(
