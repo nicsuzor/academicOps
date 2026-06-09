@@ -193,7 +193,6 @@ jobs:
           AGENT_NAME: enforcer
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
-          allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'

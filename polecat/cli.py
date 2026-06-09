@@ -3,7 +3,6 @@ import functools
 import hashlib
 import itertools
 import json
-import logging
 import os
 import re
 import shutil
@@ -37,11 +36,9 @@ from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from lib.session_naming import derive_polecat_session_id
 
-from polecat.manager import PolecatManager, _ssh_github_to_https
+from polecat.manager import PolecatManager
 from polecat.observability import metrics
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
-
-_log = logging.getLogger(__name__)
 
 # NOTE: polecat.yaml is NOT staged into containers. The container reads no
 # config file; the host resolves polecat.yaml + the local.yaml overlay and
@@ -2918,59 +2915,6 @@ def _run_git_network(
         return None
 
 
-def _normalize_origin_to_https(repo_path: Path) -> None:
-    """Rewrite an SSH GitHub origin to HTTPS, in place, idempotently.
-
-    Automation authenticates via the bot token (AOPS_BOT_GH_TOKEN over HTTPS),
-    never the SSH agent — which it cannot reach in cron and must not borrow from
-    the interactive user. A repo cloned with a ``git@github.com:`` origin would
-    force every fetch/push onto SSH: silently failing under cron (no agent) and,
-    interactively, triggering a 1Password approval prompt on each operation.
-    Normalising the stored remote to HTTPS fixes both at the source.
-
-    Handles every SSH form git accepts — SCP-like (``git@github.com:owner/repo``),
-    URL-scheme (``ssh://`` and ``git+ssh://``), with or without ``user@``, with or
-    without an explicit ``:port``, case-insensitive on the host — and strips any
-    leading slash from the repo path so the rewrite never doubles the separator.
-
-    Reads the RAW stored URL via ``git config`` (not ``git remote get-url``,
-    which would apply any ``insteadOf`` rewrite and mask the real value).
-    No-op for already-HTTPS remotes, non-GitHub remotes, or missing origin.
-    """
-    result = subprocess.run(
-        ["git", "config", "--get", "remote.origin.url"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return
-    url = result.stdout.strip()
-    https = _ssh_github_to_https(url)
-    if https is None or https == url:
-        return
-    set_url = subprocess.run(
-        ["git", "remote", "set-url", "origin", https],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if set_url.returncode != 0:
-        # A failed rewrite is not fatal — the subsequent fetch may still work
-        # over the existing remote — but it must not vanish silently, or a later
-        # fetch failure gets mis-attributed to the network instead of the remote
-        # never having been normalised to HTTPS. Surface it at DEBUG.
-        stderr = set_url.stderr.strip() if set_url.stderr else ""
-        _log.debug(
-            "git remote set-url origin failed in %s (rc=%d): %s",
-            repo_path,
-            set_url.returncode,
-            stderr,
-        )
-
-
 def _sync_working_repo(
     repo_path: Path,
     *,
@@ -2989,9 +2933,6 @@ def _sync_working_repo(
 
     if not _clear_stale_git_lock(repo_path):
         return False, f"{name}: git lock held by active process"
-
-    # Force HTTPS so all network ops use the bot token, not the SSH agent.
-    _normalize_origin_to_https(repo_path)
 
     # Fetch
     if _run_git_network(["git", "fetch", "--quiet"], repo_path) is None:

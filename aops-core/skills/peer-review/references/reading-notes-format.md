@@ -6,15 +6,22 @@ tags: [reference, peer-review]
 
 # Reading Notes Format
 
-The reading notes are the document the user reads alongside the source PDF/text during the in-depth pass. They are not the assessment. Their job is to make the read efficient: pointers to the right place, factual extracts, flags for re-read.
+The reading notes are the document the user reads alongside the source PDF/text during the in-depth pass. They are not the assessment. Their job is to make the read efficient: pointers to the right place, factual extracts, flags for re-read — **and** to capture the reviewer's raw, forming judgement before it is tidied.
+
+The notes carry **two layers, deliberately separated** (see [[voice-and-detemplating]] on the two registers):
+
+1. a **factual, line-mapped** layer (where to look + what the application states, line-cited); and
+2. a **raw judgement block** — the reviewer's actual hunches and reservations, kept verbatim and never sanitised, quarantined from any submission text.
+
+The raw judgement block is **first-class**, not a contaminant. In practice it is where the real assessment forms: a blunt note like "this claim ignores the obvious counter-literature" becomes the spine of a criterion critique. Keep it candid; do not pre-soften it into blandness. It never goes to the platform — it feeds the verified draft, which is then voice-matched.
 
 ## Location
 
-`~/brain/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md` (or `${ACA_DATA}/reviews/...` if `ACA_DATA` set).
+`${ACA_DATA:-~/brain}/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md`.
 
 ## Structure
 
-```markdown
+````markdown
 ---
 title: {APPID} — Reading Notes
 scheme: {SCHEME}
@@ -50,7 +57,7 @@ Working text: `{path}` ({N} lines, line-numbered via `pdftotext -layout`).
 
 ## Read-along: facts per criterion
 
-For each criterion, a **factual** account of what the application claims, with line refs. No "good", "weak", "strong", "concerning". Just what's there. Judgment goes in step 5 of the workflow, not here.
+For each criterion, a **factual** account of what the application claims, with line refs. Keep this layer evidentiary — what the application states, where — so it stays checkable in seconds. Evaluation lives in the raw judgement block (below) and the drafted comments, not interleaved here; keeping the factual map clean is what lets verification re-check it fast. **Mark paraphrase as paraphrase** — never write a phrase here that a downstream reader could mistake for a quotable string from the application.
 
 ### Criterion N — {Name}
 
@@ -67,6 +74,27 @@ For each criterion, a **factual** account of what the application claims, with l
 - ...
 
 (Repeat for each criterion.)
+
+## Raw judgement block
+
+The reviewer's actual, forming assessment — verbatim, candid, **never tidied**. This is a first-class element, quarantined from submission text. Capture per criterion or as a single top-line read; candour is the point.
+
+```markdown
+## Raw judgement (private — never submitted)
+
+**Top-line read**: {blunt first impression — informal, candid}.
+
+**Largest analytical vulnerability**: {the single biggest theory-of-change / construct / feasibility problem — see [[review-probes]]}.
+
+**Per criterion (hunches)**:
+
+- {Criterion}: {the real reservation, in your own words, even if unpolished}.
+
+**Net call (provisional, reviewer-owned)**: {where this is heading and why}.
+```
+````
+
+These notes feed the **verified draft** (which strips anything not source-anchored), then the voice-match pass. They are not the assessment and never go to the platform.
 
 ## Cross-cutting flags
 
@@ -88,12 +116,11 @@ Two or three concrete bias risks for _this_ application:
 ## Next step
 
 What the workflow says to do next, instantiated for this case.
-```
 
 ## Tone rules for reading notes
 
-- **Factual, not evaluative.** "The application proposes 20 participants over 2 weeks" — not "the sample is small". Save evaluation for the assessment file.
+- **Keep the two layers separate.** The factual layer stays evidentiary ("the application proposes 20 participants over 2 weeks"); the evaluative read ("the sample looks small for the claim") goes in the raw judgement block — _not_ mixed into the factual map. This is a separation of layers, **not** a ban on judgement: the old "factual-only, no evaluative" rule was wrong, because the raw block is where the assessment actually forms.
 - **Cite line numbers.** Every factual claim should be checkable in 5 seconds.
-- **Tag uncertainty as `[?]`.** Future-you will thank present-you.
-- **Use paraphrase over long quotes.** Quotes pull the user's eye out of the source; paraphrase + line ref keeps them in it.
+- **Tag uncertainty as `[?]`** — and never use `[?]` to dress a guess as a fact. A flag is "verify this", not licence to assert.
+- **Use paraphrase over long quotes in the factual layer, and mark it as paraphrase.** Quotes pull the eye out of the source; paraphrase + line ref keeps it in. Never write a paraphrase a downstream reader could mistake for a verbatim string.
 - **No restatement-in-disguise.** If a paragraph of notes just retells the application, cut it.

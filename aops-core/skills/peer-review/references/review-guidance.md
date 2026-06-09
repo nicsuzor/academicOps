@@ -59,17 +59,18 @@ Scores and comments must be consistent. An "A" with mostly mild praise, or a "D"
 
 Source: PKB `extraction_022_Meese`, `extraction_011_Bowrey` — derived from the user's prior reviews.
 
-## Anti-bias checks (per ARC Handbook §3.5; transferable)
+## Anti-bias — the agent's drafting discipline (not a checklist for the human)
 
-Before scoring, slow down on:
+Bias control belongs in **how the agent drafts**, not in a checklist handed to the academic at scoring time. The academic does not need to be told to "watch for halo effect" — the draft itself should already embody the fair-drafting moves. Bake these into PREP and the voice pass:
 
-- **Halo / horns**: one strong (or weak) feature driving the whole assessment.
-- **Confirmation**: picking out information that matches existing low/high views.
-- **Conformity**: drifting to match a panel view or a fellow assessor's score.
-- **Affinity**: favouring familiar disciplines, methods, or institutions.
-- **Anchor**: letting the first piece of information set the frame.
+- **Criticise the proposal, never the person.** Every reservation attaches to the application's design, claims, or evidence — not to the applicant's character or worth.
+- **Frame an early-career record as a strength, never a deficit.** Opportunity-relative-to-career (ROPE) means a shorter track record is read in context, not penalised.
+- **Aim support / resourcing critiques at the institution, never the vulnerable researcher.** "The teaching load undercuts the proposed research intensity" targets the structure; it must not read as a knock on the individual.
+- **Let evidence, not surface signals, carry the score.** Don't let one strong (or weak) feature drive the whole assessment (halo / horns), don't pick out only what matches a prior view (confirmation), don't favour familiar disciplines or institutions (affinity), and don't let the first thing you read set the frame (anchor). Prestige signals and typos are not evidence.
 
-Specific to the application at hand, name two or three risks ahead of scoring (e.g. "this candidate is at my prior institution — check affinity"; "the LoS appears strong; check anchoring"). Putting the risks in writing reduces them.
+The agent **drafts as if these are already true** and surfaces a residual bias risk to the academic only when the application genuinely raises one (e.g. a declared affinity the agent cannot resolve). The agent does **not** hand the academic a generic "slow down on halo/horns/confirmation" worksheet — that was a reviewer-facing checklist; the real control lives in the drafting.
+
+Conformity is handled structurally: draft and verify **before** reading other assessors' scores or comments, so the draft is the agent's own independent read.
 
 ## Things to never include in assessment text
 
