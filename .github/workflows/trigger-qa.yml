@@ -2,7 +2,7 @@
 #
 # Fires the v2 QA reusable workflow on PR events in academicOps.
 # This is the academicOps-side shim — external consumers define an
-# equivalent file pointing to @qa-v1 (see specs/workflows/pr-pipeline-v2.md §9).
+# equivalent file pointing to @qa-v1 (see specs/workflows/pr-pipeline.md §9).
 #
 # The reusable workflow (agent-qa.yml) accepts explicit pr_number, ref, and sha
 # inputs — no event-context magic inside the callee.

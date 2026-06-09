@@ -2,7 +2,7 @@
 #
 # Fires the v2 enforcer reusable workflow on PR events in academicOps.
 # This is the academicOps-side shim — external consumers define an
-# equivalent file pointing to @enforcer-v1 (see specs/pr-pipeline-v2.md §7).
+# equivalent file pointing to @enforcer-v1 (see specs/workflows/pr-pipeline.md §7).
 #
 # The reusable workflow (agent-enforcer.yml) accepts explicit pr_number,
 # ref, and sha inputs — no event-context magic inside the callee.

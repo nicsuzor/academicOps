@@ -18,7 +18,7 @@ tags:
 
 > Status: **operative-target**. This is the single owner-approvable contract for the
 > **whole** pipeline: merge → release → publish → version-sync. The merge-gate detail
-> lives in [[pr-pipeline-v2]] and is cross-referenced here, not duplicated. Most of this
+> lives in [[pr-pipeline]] and is cross-referenced here, not duplicated. Most of this
 > is **live on `origin/dev`**; the gaps are tracked fixes in §9. Every claim below is
 > flagged **LIVE** (in production on `origin/dev` today) or **SPEC-ONLY** (the v2 target,
 > not yet wired) so the document never overstates reality.
@@ -50,7 +50,7 @@ author opens PR ──► STAGE-1 TRIAGE (every push, cheap, no dev) ──► A
 There are exactly **two human gates**, both owned by the maintainer:
 
 1. **Admit** a PR into the Stage-2 fix loop — the per-PR gate (§3.3, detail in
-   [[pr-pipeline-v2]] §3.2/§5). Live today as the `pr-fix-loop` Environment approval.
+   [[pr-pipeline]] §3.2/§5). Live today as the `pr-fix-loop` Environment approval.
 2. **Approve + merge** the Release PR — the per-release gate (§5).
 
 Everything between those two clicks is mechanical or agent-driven.
@@ -78,10 +78,10 @@ the source trunk**, and built artifacts live on a non-default **orphan branch**.
 
 ## 3. Merge gate (PR → merged on dev) — LIVE, v2
 
-The merge half is owned by [[pr-pipeline-v2]]; this section is the **current-reality
+The merge half is owned by [[pr-pipeline]]; this section is the **current-reality
 summary** and the authoritative list of what the live ruleset requires. For the
 convergence mechanics, per-agent contract, and loop-skip protocol, read
-[[pr-pipeline-v2]] §3–§10 — they are not duplicated here.
+[[pr-pipeline]] §3–§10 — they are not duplicated here.
 
 ### 3.1 Required checks (LIVE)
 
@@ -100,7 +100,7 @@ The ruleset `.github/rulesets/pr-review-and-merge.yml` (ID `13762049`, applied t
   separate human review-approval — the Environment approval **is** the human decision.
   The drop `2 → 0` was made in the **same** ruleset change that added `admit-status` to
   required checks (otherwise green checks alone would permit a gate-bypassing manual
-  merge — see [[pr-pipeline-v2]] §5 sequencing note).
+  merge — see [[pr-pipeline]] §5 sequencing note).
 - **Not required (deliberately):** `Type Check / Type Check` (advisory — §8.1),
   `alignment-status` (does not exist — §8.2), the old `merge-prep-status` (removed,
   replaced by `admit-status`).
@@ -118,7 +118,7 @@ A pass stops at the first agent that commits; its push starts the next pass from
 cheapest agent. **Convergence** = a full pass with zero commits, leaving every status
 fresh on HEAD. Read-only checks (pytest, and typecheck — §8.1) post status, never commit.
 Cost-ordered short-circuit means a heavy agent never re-runs "on every lint fix"
-([[pr-pipeline-v2]] §3.4 is normative).
+([[pr-pipeline]] §3.4 is normative).
 
 ### 3.3 The one human gate — `pr-fix-loop` admit (LIVE)
 
@@ -130,14 +130,21 @@ mergeable._ Approval (a) sets the required `admit-status` to `success` on HEAD a
 arms `gh pr merge --auto --squash --delete-branch`. **Alignment/pauli is advisory input
 to this decision, never a required check** (§8.2).
 
-### 3.4 Stage-2 fix loop + merge (LIVE)
+### 3.4 Stage-2 fix loop + merge — armed auto-merge LIVE; dev/mechanic loop SPEC-ONLY
 
-The admitted run reuses the same orchestrator + short-circuit + convergence, now with the
-dev/mechanic agent appended last (real development to clear red the autofixers couldn't)
-and conflict resolution when the PR is `CONFLICTING`. Required-green to merge = cheap
-checks + `enforcer` + `qa` + no conflicts (**not** alignment). Converged + all-green →
-the armed auto-merge **squash-merges to `dev`**. Converged + still-red → the dev agent
-could not fix it → rejection/escalation review, stop.
+The **armed auto-merge** half is **LIVE**: once admitted, `gh pr merge --auto --squash
+--delete-branch` is armed, and the moment all required checks are green and the PR is
+mergeable it **squash-merges to `dev`**. Required-green to merge = cheap checks +
+`enforcer` + `qa` + no conflicts (**not** alignment).
+
+The **dev/mechanic agent appended to the cost order** (real development to clear red the
+autofixers couldn't, + conflict resolution when `CONFLICTING`) is **SPEC-ONLY** —
+`agent-mechanic.yml` does not exist yet (Phase 5). Today the post-admission fixing is still
+performed by the LIVE v1 `merge-prep` agent on cron (`agent-merge-prep.yml` +
+`merge-prep-cron.yml`); see [[pr-pipeline]] §8 for the folded live behaviour and §3.5/§3.6
+for the re-verify and bounded-loop contracts the mechanic must implement. Converged +
+all-green → the armed auto-merge fires. Loop exhausted + still-red → escalation review,
+reset admission, stop (no silent merge — [[pr-pipeline]] §3.6).
 
 ## 4. Release (dev → tag) — LIVE
 
@@ -242,10 +249,10 @@ emits 236 pre-existing errors on every PR; re-adding it would gate on noise.
 
 ### 8.2 Alignment (pauli) — NOT wired into CI; manual stand-in only
 
-Alignment is **SPEC-ONLY (Phase 6 of [[pr-pipeline-v2]])**. As of today:
+Alignment is **SPEC-ONLY (Phase 6 of [[pr-pipeline]])**. As of today:
 
 - **There is no `alignment-status` check, no alignment workflow, no host dispatch** wired
-  into CI. [[pr-pipeline-v2]] §6 describes the eventual light host-side dispatch; none of
+  into CI. [[pr-pipeline]] §6 describes the eventual light host-side dispatch; none of
   it is live.
 - **The live way to run an alignment check is the MANUAL `/strategic-review` skill**
   (`aops-core/skills/strategic-review/SKILL.md`); `--critic` runs a fast pauli-only
@@ -307,7 +314,7 @@ Status legend: **LIVE** (on `origin/dev`) · **PENDING** · **DONE-by-owner**.
 - **G1 / G2 / G3 — LIVE** (see §7). G1+G2 in `build-extension.yml`; G3 in
   `.pre-commit-config.yaml` (`uv-lock-check`).
 
-**C · Complete v2 merge gate** (see [[pr-pipeline-v2]] §11, Phases 4–6)
+**C · Complete v2 merge gate** (see [[pr-pipeline]] §11, Phases 4–6)
 
 - **C1 — DONE-by-owner.** The v2 ruleset is applied to live `13762049`: `0` approvals +
   required `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`,
@@ -334,7 +341,7 @@ Status legend: **LIVE** (on `origin/dev`) · **PENDING** · **DONE-by-owner**.
 
 ## 10. Cross-references
 
-- [[pr-pipeline-v2]] — the merge half (PR → merged on `dev`): convergence mechanics,
+- [[pr-pipeline]] — the merge half (PR → merged on `dev`): convergence mechanics,
   per-agent contract, the `pr-fix-loop` admit gate, the loop-skip protocol. **Read it for
   merge-gate detail; this spec does not duplicate it.**
 - [[project_dist_branch_migration]] — the de-inversion decision (#1616).
