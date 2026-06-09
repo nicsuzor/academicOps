@@ -3203,8 +3203,8 @@ class SessionProcessor:
 
         def _is_suspect(c: str) -> bool:
             o = ord(c)
-            # Braille spinner glyphs: U+2800-U+28FF
-            return c == "�" or (o < 32 and c != "\t") or 127 <= o <= 159 or 0x2800 <= o <= 0x28FF
+            # Braille spinner glyphs: U+2800-U+28FF; \n and \r are safe
+            return c == "�" or (o < 32 and c not in ("\t", "\n", "\r")) or 127 <= o <= 159 or 0x2800 <= o <= 0x28FF
 
         # Fast path: no binary signal at all → return unchanged.
         if not any(_is_suspect(c) for c in content):
@@ -3323,7 +3323,7 @@ class SessionProcessor:
                 thinking = obj.get(
                     "thinking", ""
                 )  # allow-fallback: thinking is optional in PLANNER_RESPONSE
-                thinking = thinking.strip() if thinking else ""
+                thinking = thinking.strip() if isinstance(thinking, str) else ""
                 if thinking:
                     blocks.append({"type": "thinking", "thinking": thinking})
 
@@ -3334,7 +3334,7 @@ class SessionProcessor:
                         if not isinstance(call, dict):
                             continue
 
-                        tool_name = call.get("name", "")
+                        tool_name = call.get("name") or ""
                         args = call.get("args", {})
 
                         # Map antigravity tool names to readable names
@@ -3392,7 +3392,12 @@ class SessionProcessor:
                         # Track this tool call for pairing with the next tool result
                         pending_tool_calls.append((tid, call))
 
-                # Only add entry if we have content (thinking or tool_calls)
+                # Old format: no thinking/tool_calls fields; fall back to content as text.
+                if not blocks:
+                    text = content.strip()
+                    if text:
+                        blocks.append({"type": "text", "text": text})
+
                 if blocks:
                     _add(
                         "assistant",
@@ -3408,33 +3413,59 @@ class SessionProcessor:
                 "SYSTEM_MESSAGE",
                 "ERROR_MESSAGE",
             ):
-                # Try to pair with a pending tool call
-                if pending_tool_calls:
-                    tid, _call = pending_tool_calls.pop(0)
-                else:
-                    # Fallback for orphaned results (shouldn't happen with correct data)
-                    tid = f"{session_id}-t-{step}"
-
                 if not content.strip():
                     continue
 
                 is_error = status == "ERROR" or rtype == "ERROR_MESSAGE"
                 clean = self._scrub_binary(content)
 
-                # Add tool_result entry
-                _add(
-                    "user",
-                    f"{session_id}-tr-{step}",
-                    [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tid,
-                            "content": clean,
-                            "is_error": is_error,
-                        }
-                    ],
-                    ts,
-                )
+                if pending_tool_calls:
+                    # New format: PLANNER_RESPONSE declared tool_calls; use paired id.
+                    tid, _call = pending_tool_calls.pop(0)
+                    _add(
+                        "user",
+                        f"{session_id}-tr-{step}",
+                        [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tid,
+                                "content": clean,
+                                "is_error": is_error,
+                            }
+                        ],
+                        ts,
+                    )
+                else:
+                    # Old format: no pending call; create tool_use + tool_result pair.
+                    if rtype in self._ANTIGRAVITY_TOOL_NAMES:
+                        name = self._ANTIGRAVITY_TOOL_NAMES[rtype]
+                    elif rtype == "SYSTEM_MESSAGE":
+                        name = "System"
+                    else:
+                        name = "Error"
+                    tid = f"{session_id}-t-{step}"
+                    desc = self._antigravity_tool_desc(clean)
+                    tool_input = {"description": desc} if desc else {}
+                    _add(
+                        "assistant",
+                        f"{session_id}-ac-{step}",
+                        [{"type": "tool_use", "id": tid, "name": name, "input": tool_input}],
+                        ts,
+                        model=model_name,
+                    )
+                    _add(
+                        "user",
+                        f"{session_id}-tr-{step}",
+                        [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tid,
+                                "content": clean,
+                                "is_error": is_error,
+                            }
+                        ],
+                        ts,
+                    )
                 continue
 
             else:

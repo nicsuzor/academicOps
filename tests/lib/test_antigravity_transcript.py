@@ -80,15 +80,18 @@ def test_antigravity_planner_response_with_thinking_and_tool_calls(tmp_path: Pat
         "Thinking blocks must contain reasoning text"
     )
 
-    # AC 4: Tool use blocks have descriptions from toolSummary, NOT "The command completed successfully"
+    # AC 4: Tool use blocks from new-format PLANNER_RESPONSE.tool_calls use toolSummary as
+    # description, not result text. Distinguishing signal: new-format RunCommand blocks have a
+    # "command" key (from CommandLine arg); orphaned old-format blocks do not.
     found_good_description = False
     for block in tool_use_blocks:
         tool_input = block.get("input", {})
         desc = tool_input.get("description", "")
-        # Verify we're using the intent summary, not the result message
-        assert "The command completed successfully" not in desc, (
-            f"Tool use description must come from toolSummary, not result. Got: {desc}"
-        )
+        if tool_input.get("command"):
+            # This block came from a new-format PLANNER_RESPONSE tool_call.
+            assert "The command completed successfully" not in desc, (
+                f"Tool use description must come from toolSummary, not result. Got: {desc}"
+            )
         if "View PR 1604" in desc or "Checkout PR branch" in desc:
             found_good_description = True
     assert found_good_description, "Must find at least one tool use with intent summary"
