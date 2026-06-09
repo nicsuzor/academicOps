@@ -49,7 +49,7 @@ The work changes meaningfully depending on which seat you're in. Identify the ro
 
 ## Cross-role rules (always apply)
 
-- CoI declared and re-checked.
+- **CoI declared once, carried as a flag.** Scan for conflicts at intake, declare, and carry the result as a one-line header flag on the review — don't re-litigate it every turn. The single residual that must recur is "confirm against your own records": the scan can't see private collaboration history, so the academic confirms that personally before submitting.
 - No personal attacks.
 - No integrity allegations in assessment text — route separately.
 - No AI-generated assessment text under ARC policy (and verify equivalent policies for other schemes).
