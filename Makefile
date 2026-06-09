@@ -71,7 +71,7 @@ help:
 	@echo "Release Management:"
 	@echo "  make nextver        - Show current build, next prerelease, stable source"
 	@echo "  make release        - Cut a STABLE release via release-please (merge its PR)"
-	@echo "  make prerelease     - Cut a beta tag (vX.Y.Z-beta.N; --prerelease, main untouched)"
+	@echo "  make prerelease     - Cut a beta tag (vX.Y.Z-beta.N; --prerelease Release + published to dist as a prerelease build)"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          - Remove dist/ and prune stale plugin cache"
@@ -449,7 +449,7 @@ prerelease:
 	  echo "!  HEAD is ahead of origin/$$branch — push your branch first if you want this commit on $$branch (the tag still carries it)."; \
 	fi; \
 	git tag "$$tag" && git push origin "$$tag" \
-	  && echo "Pushed $$tag → build-extension.yml cuts a --prerelease Release (main untouched)."
+	  && echo "Pushed $$tag → build-extension.yml cuts a --prerelease Release + publishes to dist (semver prerelease; clients opt in to dev builds)."
 
 # --- Docker ---
 
