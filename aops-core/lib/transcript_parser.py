@@ -3437,6 +3437,18 @@ class SessionProcessor:
                 )
                 continue
 
+            else:
+                # Unknown step type — surface it rather than dropping silently.
+                if content.strip():
+                    clean = self._scrub_binary(content)
+                    display_name = (rtype or "Unknown").title().replace("_", "")
+                    _add(
+                        "user",
+                        f"{session_id}-unk-{step}",
+                        [{"type": "text", "text": f"[{display_name}] {clean}"}],
+                        ts,
+                    )
+
         summary_text = (
             f"Antigravity Session: {first_user[:50]}" if first_user else "Antigravity Session"
         )
