@@ -1080,11 +1080,18 @@ def find_sessions(
         claude_projects_dir = Path.home() / ".claude" / "projects"
 
     # Search in ~/.claude/projects/ and (if include_cowork) framework-persisted Cowork logs
+    cowork_logs_dir = (get_sessions_repo() / "cowork-logs") if include_cowork else None
     claude_dirs = [claude_projects_dir]
-    if include_cowork:
-        claude_dirs.append(get_sessions_repo() / "cowork-logs")
+    if cowork_logs_dir is not None:
+        claude_dirs.append(cowork_logs_dir)
 
     for project_base in claude_dirs:
+        # Sessions ingested under cowork-logs/ originate from Cowork (normalised
+        # into this dir by ingest_cowork.py); label them source="cowork" so
+        # source filters and per-source metadata are correct. They were
+        # previously mislabeled "claude" because this loop is shared with the
+        # genuine ~/.claude/projects/ scan.
+        base_source = "cowork" if project_base == cowork_logs_dir else "claude"
         if not project_base.exists():
             continue
 
@@ -1128,7 +1135,7 @@ def find_sessions(
                         project=project_name,
                         session_id=session_id,
                         last_modified=mtime,
-                        source="claude",
+                        source=base_source,
                     )
                 )
 
