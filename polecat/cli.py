@@ -3,6 +3,7 @@ import functools
 import hashlib
 import itertools
 import json
+import logging
 import os
 import re
 import shutil
@@ -36,9 +37,11 @@ from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from lib.session_naming import derive_polecat_session_id
 
-from polecat.manager import PolecatManager
+from polecat.manager import PolecatManager, _ssh_github_to_https
 from polecat.observability import metrics
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
+
+_log = logging.getLogger(__name__)
 
 # NOTE: polecat.yaml is NOT staged into containers. The container reads no
 # config file; the host resolves polecat.yaml + the local.yaml overlay and
@@ -2915,25 +2918,6 @@ def _run_git_network(
         return None
 
 
-# SSH GitHub remotes, in every form git accepts. Two shapes exist:
-#
-#   1. SCP-like:   [user@]github.com:owner/repo[.git]
-#   2. URL scheme: (ssh|git+ssh)://[user@]github.com[:port]/owner/repo[.git]
-#
-# Both are matched case-insensitively on the host (git treats hostnames as
-# case-insensitive); the optional ``user@`` and ``:port`` are discarded (the
-# HTTPS endpoint carries neither); the captured ``owner/repo`` path has any
-# leading slashes stripped so we never emit ``https://github.com//owner/repo``.
-_GITHUB_SSH_SCP_RE = re.compile(
-    r"^(?:[^@/]+@)?github\.com:(?P<path>.+)$",
-    re.IGNORECASE,
-)
-_GITHUB_SSH_URL_RE = re.compile(
-    r"^(?:ssh|git\+ssh)://(?:[^@/]+@)?github\.com(?::\d+)?/(?P<path>.+)$",
-    re.IGNORECASE,
-)
-
-
 def _normalize_origin_to_https(repo_path: Path) -> None:
     """Rewrite an SSH GitHub origin to HTTPS, in place, idempotently.
 
@@ -2966,32 +2950,25 @@ def _normalize_origin_to_https(repo_path: Path) -> None:
     https = _ssh_github_to_https(url)
     if https is None or https == url:
         return
-    subprocess.run(
+    set_url = subprocess.run(
         ["git", "remote", "set-url", "origin", https],
         cwd=repo_path,
         capture_output=True,
+        text=True,
         check=False,
     )
-
-
-def _ssh_github_to_https(url: str) -> str | None:
-    """Return the HTTPS form of an SSH GitHub *url*, or ``None`` if it is not one.
-
-    Pure string transform (no I/O) so it can be unit-tested exhaustively.
-    Returns ``None`` for HTTPS, git://, non-GitHub, or unparseable remotes —
-    the caller treats ``None`` as "leave the remote untouched".
-    """
-    # URL-scheme form must be tried first: it owns the ``://``, so a stray
-    # ``github.com:`` inside the SCP regex can never misfire on a real URL.
-    match = _GITHUB_SSH_URL_RE.match(url)
-    if match is None and "://" not in url:
-        match = _GITHUB_SSH_SCP_RE.match(url)
-    if match is None:
-        return None
-    path = match.group("path").lstrip("/")
-    if not path:
-        return None
-    return "https://github.com/" + path
+    if set_url.returncode != 0:
+        # A failed rewrite is not fatal — the subsequent fetch may still work
+        # over the existing remote — but it must not vanish silently, or a later
+        # fetch failure gets mis-attributed to the network instead of the remote
+        # never having been normalised to HTTPS. Surface it at DEBUG.
+        stderr = set_url.stderr.strip() if set_url.stderr else ""
+        _log.debug(
+            "git remote set-url origin failed in %s (rc=%d): %s",
+            repo_path,
+            set_url.returncode,
+            stderr,
+        )
 
 
 def _sync_working_repo(

@@ -6,15 +6,25 @@ op so automation authenticates with the bot token over HTTPS rather than the SSH
 agent (unreachable under cron; a 1Password prompt interactively). These tests
 pin both halves of that behaviour:
 
-  * `_ssh_github_to_https` — the pure string transform — across every SSH form
+  * `_ssh_github_to_https` — the pure string transform, now the single
+    authoritative converter living in ``polecat.manager`` — across every SSH form
     git accepts, every no-op case (already-HTTPS, non-GitHub, git://), and the
     lookalike-host attack (`github.com.evil.com`).
+  * `_to_https_url` — the best-effort wrapper the manager mirror/worktree call
+    sites use, which must return a usable remote URL in EVERY case (HTTPS for an
+    SSH GitHub URL, the original string otherwise) and now shares the
+    comprehensive SSH-form coverage of the pure transform.
   * `_normalize_origin_to_https` — the in-place git-config rewrite — against a
     real on-disk repo, confirming it actually mutates the stored remote, is
-    idempotent, leaves non-SSH/non-GitHub remotes untouched, and no-ops cleanly
-    when there is no origin at all.
+    idempotent, leaves non-SSH/non-GitHub remotes untouched, no-ops cleanly
+    when there is no origin at all, and logs at DEBUG when ``set-url`` fails.
+
+Both call sites (the cli origin-normaliser and the manager mirror/worktree
+paths) route through the one converter in ``polecat.manager`` — this module
+pins that single source of truth so a future divergence breaks a test.
 """
 
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -24,12 +34,19 @@ import pytest
 REPO_ROOT = Path(__file__).parents[2].resolve()
 sys.path.insert(0, str(REPO_ROOT / "polecat"))
 
-from cli import (  # noqa: E402
-    _normalize_origin_to_https,
-    _ssh_github_to_https,
-)
+# The pure transform is authoritative in polecat.manager; cli imports it from
+# there. Import from both to assert they are the *same* object (no duplicate).
+import cli  # noqa: E402
+from cli import _normalize_origin_to_https  # noqa: E402
+
+from polecat.manager import _ssh_github_to_https, _to_https_url  # noqa: E402
 
 _HTTPS = "https://github.com/nicsuzor/academicOps.git"
+
+
+def test_single_source_of_truth_no_duplicate_converter():
+    """The cli call site must reuse the manager converter, not redefine one."""
+    assert cli._ssh_github_to_https is _ssh_github_to_https
 
 
 # --------------------------------------------------------------------------- #
@@ -101,6 +118,54 @@ def test_transform_is_idempotent_on_its_own_output():
     assert once == _HTTPS
     # Feeding the HTTPS result back in is a no-op (returns None → "leave it").
     assert _ssh_github_to_https(once) is None
+
+
+# --------------------------------------------------------------------------- #
+# Best-effort wrapper: _to_https_url (the manager mirror/worktree call sites)  #
+#                                                                              #
+# Unlike the pure transform, this MUST return a usable remote URL in every     #
+# case — it is handed straight to ``git`` as a remote. It now shares the       #
+# comprehensive SSH-form coverage, closing the gap on the mirror/worktree      #
+# paths that previously only handled ``git@github.com:owner/repo.git``.        #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "git@github.com:nicsuzor/academicOps.git",
+        "github.com:nicsuzor/academicOps.git",
+        "ssh://git@github.com/nicsuzor/academicOps.git",
+        "ssh://github.com/nicsuzor/academicOps.git",
+        "ssh://git@github.com:22/nicsuzor/academicOps.git",
+        "git+ssh://git@github.com/nicsuzor/academicOps.git",
+        "git@GitHub.com:nicsuzor/academicOps.git",
+        "ssh://git@GITHUB.COM/nicsuzor/academicOps.git",
+        "git@github.com:/nicsuzor/academicOps.git",
+    ],
+)
+def test_to_https_url_rewrites_every_ssh_form(url):
+    # The manager call sites now gain the full SSH-form coverage, not just the
+    # narrow git@github.com: case the old _to_https_url handled.
+    assert _to_https_url(url) == _HTTPS
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # Already HTTPS / non-SSH / non-GitHub — returned UNCHANGED (usable URL),
+        # never None: these strings are fed straight to git as a remote.
+        "https://github.com/nicsuzor/academicOps.git",
+        "https://github.com:443/nicsuzor/academicOps.git",
+        "git://github.com/nicsuzor/academicOps.git",
+        "git@gitlab.com:foo/bar.git",
+        "ssh://git@bitbucket.org/foo/bar.git",
+        "git@github.com.evil.com:foo/bar.git",
+        "git@notgithub.com:foo/bar.git",
+    ],
+)
+def test_to_https_url_passes_through_non_ssh_github_unchanged(url):
+    assert _to_https_url(url) == url
 
 
 # --------------------------------------------------------------------------- #
@@ -185,3 +250,30 @@ def test_reads_raw_url_not_insteadof_rewrite(repo):
     _normalize_origin_to_https(repo)
     # The stored value is normalised to HTTPS regardless of the insteadOf rule.
     assert _origin_url(repo) == _HTTPS
+
+
+def test_failed_set_url_is_logged_at_debug(repo, monkeypatch, caplog):
+    """A failed ``git remote set-url`` must surface at DEBUG, not vanish — so a
+    later fetch failure is not mis-attributed to the network when the remote was
+    never actually normalised.
+    """
+    _git(["remote", "add", "origin", "git@github.com:nicsuzor/academicOps.git"], repo)
+
+    real_run = subprocess.run
+
+    def fake_run(args, *a, **kw):
+        # Let the read (`git config --get`) through; force the set-url to fail.
+        if args[:3] == ["git", "remote", "set-url"]:
+            return subprocess.CompletedProcess(
+                args, returncode=1, stdout="", stderr="boom: set-url refused"
+            )
+        return real_run(args, *a, **kw)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    with caplog.at_level(logging.DEBUG, logger=cli._log.name):
+        _normalize_origin_to_https(repo)
+
+    assert any(
+        "set-url" in rec.getMessage() and rec.levelno == logging.DEBUG for rec in caplog.records
+    ), f"expected a DEBUG log mentioning set-url; got {[r.getMessage() for r in caplog.records]}"
