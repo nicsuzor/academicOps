@@ -2915,6 +2915,42 @@ def _run_git_network(
         return None
 
 
+def _normalize_origin_to_https(repo_path: Path) -> None:
+    """Rewrite an SSH GitHub origin to HTTPS, in place, idempotently.
+
+    Automation authenticates via the bot token (AOPS_BOT_GH_TOKEN over HTTPS),
+    never the SSH agent — which it cannot reach in cron and must not borrow from
+    the interactive user. A repo cloned with a ``git@github.com:`` origin would
+    force every fetch/push onto SSH: silently failing under cron (no agent) and,
+    interactively, triggering a 1Password approval prompt on each operation.
+    Normalising the stored remote to HTTPS fixes both at the source.
+
+    Reads the RAW stored URL via ``git config`` (not ``git remote get-url``,
+    which would apply any ``insteadOf`` rewrite and mask the real value).
+    No-op for already-HTTPS remotes, non-GitHub remotes, or missing origin.
+    """
+    result = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return
+    url = result.stdout.strip()
+    for prefix in ("git@github.com:", "ssh://git@github.com/"):
+        if url.startswith(prefix):
+            https = "https://github.com/" + url[len(prefix) :]
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", https],
+                cwd=repo_path,
+                capture_output=True,
+                check=False,
+            )
+            return
+
+
 def _sync_working_repo(
     repo_path: Path,
     *,
@@ -2933,6 +2969,9 @@ def _sync_working_repo(
 
     if not _clear_stale_git_lock(repo_path):
         return False, f"{name}: git lock held by active process"
+
+    # Force HTTPS so all network ops use the bot token, not the SSH agent.
+    _normalize_origin_to_https(repo_path)
 
     # Fetch
     if _run_git_network(["git", "fetch", "--quiet"], repo_path) is None:
