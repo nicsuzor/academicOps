@@ -38,20 +38,21 @@ tags:
 
 Read this table first; the sections below carry the detail and repeat the flags inline.
 
-| Capability                                                                                                                                                                                | State                   | Evidence (2026-06-09)                                                  |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------- |
-| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, `dispatch-admission` on convergence | **LIVE**                | `.github/workflows/pr-pipeline.yml`                                    |
-| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                               | **LIVE**                | `agent-enforcer.yml` + `trigger-enforcer.yml`                          |
-| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                       | **LIVE**                | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`       |
-| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; `stage2-admission.yml` parks, sets `admit-status`, arms auto-merge                         | **LIVE**                | `gh api .../environments/pr-fix-loop` + `stage2-admission.yml`         |
-| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`       | **LIVE**                | live ruleset ID `13762049` (API-verified, matches the in-repo file)    |
-| `admit-status` carry-forward across agent commits / reset on human push; `merge-prep-status` initialize carry-forward                                                                     | **LIVE**                | `pr-pipeline.yml` `initialize` job                                     |
-| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                 | **SPEC-ONLY**           | `agent-mechanic.yml` / `mechanic.agent.md` **absent**                  |
-| `mechanic-status` informational status                                                                                                                                                    | **SPEC-ONLY**           | not posted by any workflow                                             |
-| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                              | **SPEC-ONLY**           | governs the mechanic when Phase 5 ships                                |
-| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                   | **SPEC-ONLY**           | carries v1's `MAX_MERGE_PREP_RUNS=5` precedent forward                 |
-| Alignment (pauli) host-side advisory dispatch + `alignment-status`                                                                                                                        | **SPEC-ONLY**           | no workflow; live stand-in is manual `/strategic-review --critic` (§6) |
-| **Live fixer today** = v1 `agent-merge-prep.yml` + `merge-prep-cron.yml` (cron `*/30` + `workflow_run`), still posts (now non-required) `merge-prep-status`                               | **LIVE (transitional)** | both files present; retired at Phase 5 (§11)                           |
+| Capability                                                                                                                                                                                | State                   | Evidence (2026-06-09)                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
+| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, `dispatch-admission` on convergence | **LIVE**                | `.github/workflows/pr-pipeline.yml`                                                        |
+| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                               | **LIVE**                | `agent-enforcer.yml` + `trigger-enforcer.yml`                                              |
+| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                       | **LIVE**                | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                           |
+| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; `stage2-admission.yml` parks, sets `admit-status`, arms auto-merge                         | **LIVE**                | `gh api .../environments/pr-fix-loop` + `stage2-admission.yml`                             |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`       | **LIVE**                | live ruleset ID `13762049` (API-verified, matches the in-repo file)                        |
+| `admit-status` carry-forward across agent commits / reset on human push; `merge-prep-status` initialize carry-forward                                                                     | **LIVE**                | `pr-pipeline.yml` `initialize` job                                                         |
+| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                 | **SPEC-ONLY**           | `agent-mechanic.yml` / `mechanic.agent.md` **absent**                                      |
+| `mechanic-status` informational status                                                                                                                                                    | **SPEC-ONLY**           | not posted by any workflow                                                                 |
+| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                              | **SPEC-ONLY**           | governs the mechanic when Phase 5 ships                                                    |
+| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                   | **SPEC-ONLY**           | carries v1's `MAX_MERGE_PREP_RUNS=5` precedent forward                                     |
+| Alignment (pauli) queue surface — orchestrator posts `alignment-status: pending` and files an `alignment:queued` issue per PR                                                             | **LIVE**                | `pr-pipeline.yml` `alignment-queue` job                                                    |
+| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                             | **SPEC-ONLY**           | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6) |
+| **Live fixer today** = v1 `agent-merge-prep.yml` + `merge-prep-cron.yml` (cron `*/30` + `workflow_run`), still posts (now non-required) `merge-prep-status`                               | **LIVE (transitional)** | both files present; retired at Phase 5 (§11)                                               |
 
 The single most important honest caveat: **the "Stage 2 fix loop" as a dev/mechanic agent
 inside an admitted orchestrator run is not built.** Today, the fixing/conflict-resolution
@@ -163,9 +164,12 @@ the chain (ultimately the mechanic in Stage 2) is who clears it. (Today, qa neve
 it verifies only; `committed` is always `false` — so the only Stage-1 committers are lint
 and enforcer.)
 
-`pauli`/`alignment` is **SPEC-ONLY**: there is no `alignment-status` workflow. The live
-stand-in is the manual `/strategic-review --critic` skill the maintainer runs by hand
-before admitting (§6).
+`pauli`/`alignment` runs as an out-of-chain advisory surface, not inside the lint→enforcer→qa
+chain. The orchestrator's `alignment-queue` job is **LIVE** (it posts `alignment-status:
+pending` on HEAD and files an `alignment:queued` issue per PR); the host-side cron +
+polecat-pauli dispatcher that drains the queue is **SPEC-ONLY**, so until it ships the live
+stand-in is the manual `/strategic-review --critic` skill the maintainer runs by hand before
+admitting (§6).
 
 Stage 1 ends when the pass converges (§3.4). The orchestrator's `dispatch-admission` job
 then dispatches a Stage-2 admission run that parks at the gate (§3.2).
@@ -502,18 +506,22 @@ Graduation is deliberately cheap: no bot approval, no agent, no checkout.
 > that dropped approvals to 0 — otherwise there would be a window where green checks alone
 > permit a manual merge that bypasses the gate. This is **LIVE** in ruleset `13762049`.
 
-## 6. Alignment (pauli) — advisory, host-side, not a gate — **SPEC-ONLY** (manual stand-in LIVE)
+## 6. Alignment (pauli) — advisory, host-side, not a gate — **PARTIALLY LIVE** (queue surface LIVE; host dispatch SPEC-ONLY)
 
 Pauli's value is PKB context, and GHA cannot reach the Tailnet-internal PKB MCP (P3). The
 **target**: pauli runs **host-side** (where the PKB lives), dispatched by a light host cron,
 and posts a **review verdict** that informs the human gate (§3.2). It is **not** a required
 status check.
 
-**LIVE reality today:** there is **no** `alignment-status` check, no alignment workflow, and
-no host dispatch wired into CI. The live way to get an alignment read is the **manual
+**LIVE today:** the orchestrator's `alignment-queue` job (`pr-pipeline.yml`) posts
+`alignment-status: pending` on HEAD and files (or refreshes) a single `alignment:queued`
+GitHub issue per PR. This is plumbing: the queue surface exists and is being kept current on
+every push. The **host-side cron + polecat-pauli dispatcher that drains the queue is not yet
+wired** — until it ships, the queue surface is the to-do list, not an actual alignment read.
+The live way for the maintainer to get an alignment read remains the **manual
 `/strategic-review --critic` skill** (`aops-core/skills/strategic-review/SKILL.md`), which
-the maintainer invokes by hand before admitting a PR. So alignment is **advisory input to
-the human admit gate, produced manually**, until the host-side dispatch (Phase 6) ships.
+they invoke by hand before admitting a PR. So alignment is **advisory input to the human
+admit gate, produced manually**, until the host-side dispatch ships.
 
 This is the deliberate simplification over an earlier draft that specced alignment as a
 required, fail-closed gate with a watchdog. In the two-stage model the **human Environment
@@ -522,11 +530,52 @@ it themselves) and decides. Consequences: no host-availability deadlock (if paul
 run, the maintainer admits on their own judgement); no watchdog, no `pending → failure`
 flip, no required-status machinery.
 
-Target mechanism (light Option A, SPEC-ONLY): the triage orchestrator posts
-`alignment-status: pending` and files an `alignment:queued` issue (cross-PR enumeration
-surface, since commit statuses are not enumerable by label across SHAs); a host cron drains
-the queue, dispatches `polecat run … pauli`, and pauli posts the review + a terminal
-`alignment-status` (informational, advisory only).
+### 6.1 Queue surface — **LIVE** (orchestrator `alignment-queue` job)
+
+The triage orchestrator's `alignment-queue` job runs in parallel with the lint→enforcer→qa
+chain (it never delays the merge-gate agents) and does exactly two things on every same-repo
+push:
+
+1. **Set `alignment-status: pending`** on the HEAD SHA via the GitHub statuses API. Skipped
+   if `alignment-status` is already terminal (`success`/`failure`/`error`) on this SHA — that
+   means pauli has already reviewed it and we must not overwrite the verdict.
+2. **Upsert one `alignment:queued` issue per PR.** Deterministic title:
+   `alignment:queued PR #<num>` (one PR ↔ one issue). The body is a stable
+   `<!-- aops:alignment-queue -->`-fenced block carrying `PR`, `Repository`, `Head ref`,
+   `Head SHA`, and `Queued` timestamp — everything the host dispatcher needs to dispatch
+   pauli without re-querying the PR API per entry. On a new push the body is refreshed to
+   the new HEAD SHA; if the issue was closed by the dispatcher last time, it is reopened (a
+   new SHA = a new alignment review is needed).
+
+Fork-origin PRs are skipped at the job's `if:` (no bot write token).
+
+### 6.2 Host-side cron + dispatcher — **SPEC-ONLY**
+
+A host cron (outside this repo's worktree, where the PKB MCP is reachable) drains the
+`alignment:queued` queue across the repos it watches. For each open issue it:
+
+1. **Parses the queue entry** — extracts repo / PR / head SHA from the issue body
+   (`<!-- aops:alignment-queue -->` block).
+2. **Reconciles against the commit status** — re-reads `alignment-status` on the current
+   HEAD; only dispatches if still `pending` (if the PR closed, was merged, or pauli already
+   posted a terminal status, the cron closes the issue and moves on — this is the "close
+   stale issues" contract).
+3. **Dispatches `polecat run … pauli`** with the PR context. Pauli reviews the PR diff
+   against PKB design intent and posts a PR review verdict (the maintainer reads this at the
+   Env gate, §3.2) plus a terminal `alignment-status` (informational only — see §6.3).
+4. **Closes the issue** when pauli's terminal status is posted on the current HEAD.
+
+The dispatcher script lives outside this repo's worktree by design — PKB MCP reachability is
+its precondition, and that lives host-side.
+
+### 6.3 What pauli posts — **SPEC-ONLY**
+
+Pauli posts (a) a PR review verdict the maintainer reads at the human Env gate (§3.2), and
+(b) a terminal `alignment-status` on HEAD (`success`/`failure`/neutral) — informational
+only. Because the merge gate does not require `alignment-status`, a `failure` verdict does
+not block merge; it informs the maintainer's admission decision. A missing alignment review
+(host cron down, pauli unreachable) likewise does not deadlock the gate — the maintainer
+admits on their own judgement.
 
 > If pauli later proves reliable enough to gate on, promoting `alignment-status` to a
 > required check is a one-line ruleset change — explicitly out of scope here.
@@ -735,8 +784,13 @@ Each phase is independently shippable and leaves the pipeline working.
   (non-required). Delete the v1 fast-path/graduation steps. Retire `merge-prep-cron.yml`'s
   per-PR dispatch and the vestigial `merge-prep-status` writes in `initialize`. Fix the
   hardcoded `origin/main` base (F1 / release-publish §9 C5).
-- **Phase 6 — Alignment (pauli) advisory. PENDING / SPEC-ONLY.** Light host-side dispatch
-  (§6); not a required check. Plus cleanup of dead v1 references.
+- **Phase 6 — Alignment (pauli) advisory. PARTIALLY LIVE.** In-repo queue surface LIVE
+  (orchestrator `alignment-queue` job: posts `alignment-status: pending`, files
+  `alignment:queued` issue with deterministic title `alignment:queued PR #<num>` — §6.1).
+  Host-side cron + polecat-pauli dispatcher still SPEC-ONLY — drains the queue, reconciles
+  against the commit status, dispatches pauli, closes stale issues (§6.2). `alignment-status`
+  must remain advisory (NOT in the branch-protection ruleset — §6, §7). Cleanup of any
+  remaining dead v1 references lands here.
 
 ## 12. Open questions
 

@@ -219,6 +219,113 @@ jobs:
 
   # ─── Stage 1 Triage Orchestrator (§3.4) ──────────────────────────
 
+  # ─── Alignment queue (§6) — ADVISORY, never a merge gate ──────────
+  # Light "Option A" queue surface: post `alignment-status: pending` on HEAD and
+  # file (or refresh) a single open issue per PR carrying the head SHA / ref /
+  # repo so a host-side cron can dispatch polecat → pauli (the PKB MCP is only
+  # reachable host-side; GHA cannot run pauli — P3). The host dispatcher
+  # reconciles each issue against the commit status, only dispatching if
+  # `alignment-status` is still `pending`, and closes stale issues on completion.
+  #
+  # DESIGN INVARIANT (specs/workflows/pr-pipeline.md §6): `alignment-status` is
+  # ADVISORY. It is INTENTIONALLY NOT in the branch-protection ruleset — the
+  # maintainer reads pauli's verdict at the human Environment gate; alignment
+  # never blocks merge. Do not promote it to a required check without a
+  # deliberate spec change.
+  #
+  # Same-repo PRs only (fork-origin runs cannot mint a write token for the bot,
+  # same gating as `initialize`). Independent of lint/enforcer/qa — runs in
+  # parallel so a slow alignment surface never delays the merge-gate agents.
+  alignment-queue:
+    needs: [gate]
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    name: Alignment Queue
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Post alignment-status pending (skip if already terminal on this HEAD)
+        run: |
+          set -euo pipefail
+          CURRENT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/statuses" \
+            --jq '[.[] | select(.context == "alignment-status")] | sort_by(.updated_at) | last | .state // empty')
+          case "$CURRENT" in
+            success|failure|error)
+              echo "alignment-status already terminal (${CURRENT}) on ${HEAD_SHA} — pauli has reviewed this SHA. Skipping queue refresh."
+              echo "ALIGNMENT_SKIP=1" >> "$GITHUB_ENV"
+              exit 0
+              ;;
+          esac
+          gh api "repos/${REPO}/statuses/${HEAD_SHA}" \
+            -f state="pending" \
+            -f context="alignment-status" \
+            -f description="Queued for pauli alignment review (advisory; see pr-pipeline.md §6)"
+
+      - name: Ensure alignment:queued label exists
+        if: env.ALIGNMENT_SKIP != '1'
+        run: |
+          set -euo pipefail
+          gh label create "alignment:queued" \
+            --repo "${REPO}" \
+            --color FFA500 \
+            --description "PR awaiting pauli alignment review (host cron drains; advisory only — pr-pipeline.md §6)" \
+            --force
+
+      - name: File or refresh alignment:queued issue
+        if: env.ALIGNMENT_SKIP != '1'
+        run: |
+          set -euo pipefail
+          TITLE="alignment:queued PR #${PR_NUMBER}"
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          BODY=$(cat <<EOF
+          <!-- aops:alignment-queue -->
+
+          - **PR**: #${PR_NUMBER}
+          - **Repository**: \`${REPO}\`
+          - **Head ref**: \`${HEAD_REF}\`
+          - **Head SHA**: \`${HEAD_SHA}\`
+          - **Queued**: ${NOW}
+
+          The host-side alignment cron drains this queue (outside this repo's worktree —
+          PKB MCP is Tailnet-internal, GHA cannot reach it). It dispatches \`polecat run …
+          pauli\` against this PR, then pauli posts a PR review verdict and a terminal
+          \`alignment-status\` on the head SHA. The dispatcher closes this issue on
+          completion or when the PR is no longer open.
+
+          **Advisory only.** \`alignment-status\` is NOT in the branch-protection ruleset
+          (\`specs/workflows/pr-pipeline.md\` §6). The maintainer reads pauli's verdict at
+          the human Environment gate (§3.2); alignment never blocks merge.
+          EOF
+          )
+
+          # Find the existing issue (open or closed) by exact title. One issue per PR;
+          # body updates per push.
+          EXISTING=$(gh api "repos/${REPO}/issues?state=all&labels=alignment:queued&per_page=100" \
+            --jq "[.[] | select(.title == \"${TITLE}\" and (.pull_request | not))] | sort_by(.updated_at) | last")
+          NUM=$(echo "$EXISTING" | jq -r '.number // empty')
+          STATE=$(echo "$EXISTING" | jq -r '.state // empty')
+
+          if [ -z "$NUM" ]; then
+            echo "No existing alignment:queued issue for PR #${PR_NUMBER} — creating."
+            gh issue create --repo "${REPO}" \
+              --title "${TITLE}" \
+              --body "${BODY}" \
+              --label "alignment:queued"
+            exit 0
+          fi
+
+          echo "Found existing alignment:queued issue #${NUM} (state=${STATE}); refreshing body to HEAD ${HEAD_SHA}."
+          gh issue edit "${NUM}" --repo "${REPO}" --body "${BODY}"
+          if [ "$STATE" = "closed" ]; then
+            echo "Reopening — a new push since pauli last completed warrants a new alignment review."
+            gh issue reopen "${NUM}" --repo "${REPO}"
+          fi
+
   # ─── Step 1: Lint ─────────────────────────────────────────────────
   # If lint autofixes and pushes (using AOPS_BOT_GH_TOKEN), the push
   # triggers a new synchronize event. This run is cancelled and the
