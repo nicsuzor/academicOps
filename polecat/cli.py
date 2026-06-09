@@ -37,7 +37,7 @@ from lib.agent_env import apply_env_mappings, get_container_env_forwards
 from lib.polecat_config import CONFIG_PATH_ENV, PolecatConfig, load_polecat_config
 from lib.session_naming import derive_polecat_session_id
 
-from polecat.manager import PolecatManager, _ssh_github_to_https, _ssh_github_to_https
+from polecat.manager import PolecatManager, _ssh_github_to_https
 from polecat.observability import metrics
 from polecat.validation import TaskIDValidationError, validate_task_id_or_raise
 
