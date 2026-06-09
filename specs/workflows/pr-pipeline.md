@@ -6,7 +6,6 @@ created: 2026-05-15T02:07:45.675923357+00:00
 modified: 2026-06-09T00:00:00.000000000+00:00
 alias:
   - "pr-pipeline-v2"
-  - "pr-pipeline-v2-pr-pipeline-v2"
 permalink: pr-pipeline
 status: operative
 tier: workflow
