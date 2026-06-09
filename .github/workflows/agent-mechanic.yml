@@ -6,7 +6,8 @@
 # real development to clear the red the autofixers (lint, enforcer) couldn't,
 # plus conflict resolution when the PR is `CONFLICTING`. It does NOT approve,
 # does NOT set merge-blocking statuses, and does NOT arm auto-merge — those
-# are the human Environment gate's job (`stage2-admission.yml`).
+# are the human Environment gate's job (the in-pipeline `admit` job in
+# `pr-pipeline.yml`).
 #
 # Status check: `mechanic-status` (posted to PR head SHA via statuses API).
 # This status is INFORMATIONAL and is NOT a required gate — the mechanic does

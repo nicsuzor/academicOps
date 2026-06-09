@@ -110,8 +110,9 @@ rules:
         # qa-status: marsha — runtime QA (agent-qa.yml)
         - context: "qa-status"
         # Human gate (Environment approval, §5) — NOT an agent. Set to success only by
-        # the Stage-2 Admission Gate (stage2-admission.yml) when the maintainer approves
-        # the `pr-fix-loop` Environment. Replaces v1's merge-prep-status as the merge gate.
+        # the in-pipeline Stage-2 Admission Gate (the `admit` job in pr-pipeline.yml)
+        # when the maintainer approves the `pr-fix-loop` Environment. Replaces v1's
+        # merge-prep-status as the merge gate.
         - context: "admit-status"
         # NOTE: alignment-status is advisory (§6) and is intentionally NOT required —
         # pauli runs host-side and informs the human gate, never deadlocks a merge.

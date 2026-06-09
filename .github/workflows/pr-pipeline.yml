@@ -3,8 +3,8 @@
 # Stage 1 (every push): committing agents run in cost order under the §3.4 ordered
 # short-circuit — `lint → enforcer → qa`. Read-only checks (typecheck, pytest)
 # post statuses but never end a pass. On convergence (a pass where the chain ran
-# all the way through and no agent committed), `dispatch-admission` dispatches
-# `stage2-admission.yml` to park at the `pr-fix-loop` Environment.
+# all the way through and no agent committed), the in-pipeline `admit` job parks at
+# the `pr-fix-loop` Environment for the maintainer's single PR-attached approval.
 #
 # Stage 2 (post-admission, when `admit-status` is `success`): the same orchestrator
 # appends the **mechanic** to the cost order — real development to clear the red
@@ -93,12 +93,17 @@ jobs:
     timeout-minutes: 45
     name: Initialize
     runs-on: ubuntu-latest
+    outputs:
+      # Emitted by the admit-status carry-forward step below. Drives the
+      # idempotence guard on the in-pipeline `admit` job — see §3.2 / §12-Q1
+      # carry-forward: do NOT re-park an already-admitted PR at pr-fix-loop.
+      already_admitted: ${{ steps.admit-carry.outputs.already_admitted }}
     steps:
       # admit-status carry-forward (pr-pipeline §5). admit-status is the required
-      # human gate; it is set to success only by the Stage-2 Admission Gate
-      # (stage2-admission.yml) when the maintainer approves the `pr-fix-loop`
-      # Environment. This step manages the NON-admit transitions so the gate stays
-      # honest across the Stage-2 fix loop:
+      # human gate; it is set to success only by the Stage-2 Admission Gate (the
+      # in-pipeline `admit` job below, §3.2) when the maintainer approves the
+      # `pr-fix-loop` Environment. This step manages the NON-admit transitions so
+      # the gate stays honest across the Stage-2 fix loop:
       #   - opened/reopened/ready_for_review → pending (a fresh PR is not admitted).
       #   - synchronize: an AGENT-authored fix commit carries a prior admission
       #     forward (the decision stands); a new HUMAN push resets to pending (a
@@ -106,7 +111,14 @@ jobs:
       # The reset trigger is "a new human push" (§5); an additional reset trigger lives
       # in the Stage-2 mechanic's exhaustion handler (§3.6) — `agent-mechanic.yml` resets
       # admit-status to pending on loop-ceiling breach to surface the PR back to the gate.
+      # Also emits the `already_admitted` job output that gates the in-pipeline
+      # `admit` job — when a prior admission carries forward to HEAD, the admit
+      # job must NOT re-park at pr-fix-loop on every subsequent convergence
+      # (§12-Q1 carry-forward). A gated job pauses on the Environment binding
+      # BEFORE any step runs, so idempotence cannot be expressed as a "skip the
+      # park" first step — it MUST be a job-level `if`.
       - name: Set admit status (carry-forward)
+        id: admit-carry
         run: |
           NEW_SHA="${{ github.event.pull_request.head.sha }}"
           REPO="${{ github.repository }}"
@@ -117,6 +129,7 @@ jobs:
               -f state="pending" \
               -f context="admit-status" \
               -f description="Awaiting admission at the pr-fix-loop Environment gate"
+            echo "already_admitted=false" >> "$GITHUB_OUTPUT"
           }
 
           # Fresh PR (or re-opened) is never pre-admitted.
@@ -161,6 +174,7 @@ jobs:
               -f state="success" \
               -f context="admit-status" \
               -f description="Admission carried forward across agent fix commit"
+            echo "already_admitted=true" >> "$GITHUB_OUTPUT"
           else
             echo "Human push detected — resetting admission to pending (must be re-judged)"
             set_admit_pending
@@ -385,49 +399,80 @@ jobs:
     uses: ./.github/workflows/pytest.yml
     secrets: inherit
 
-  # ─── Convergence → dispatch the Stage-2 Admission Gate (§3.2) ──────
+  # ─── Convergence → in-pipeline Stage-2 Admission Gate (§3.2) ──────
   # CONVERGENCE = a pass where the chain ran all the way through and NO agent
   # committed (§3.4). At that point every agent has posted an authoritative status
-  # on the current HEAD. We then dispatch the Admission Gate as a SEPARATE run that
-  # parks at the `pr-fix-loop` Environment (it cannot be a job here — an
-  # Environment-gated job would pause THIS run, leaving Stage 1 hanging; §3.2 callout).
+  # on the current HEAD. We then park HERE at the `pr-fix-loop` Environment, in
+  # this same workflow run, so the maintainer's native "Review deployments →
+  # Approve" button is **PR-attached** (one click from the PR page).
   #
-  # Idempotence: we only dispatch when admit-status is not already success. Once the
-  # maintainer admits, carry-forward (initialize) keeps admit-status green across
-  # agent fix commits, so subsequent convergences do NOT re-park at the gate (§12 Q1).
-  dispatch-admission:
-    name: Dispatch Admission Gate
-    needs: [lint, enforcer, qa]
+  # Why this is safe in-pipeline (correcting v2's separate-dispatch rationale):
+  # A GitHub Environment gate pauses ONLY the gated job and its `needs:`-dependents,
+  # NOT the whole run. This job has no downstream `needs:`, so nothing hangs while
+  # it waits. The earlier design that dispatched a separate `stage2-admission.yml`
+  # was built on a factually wrong "the whole run pauses" premise; its only effect
+  # was to detach the approval prompt from the PR.
+  #
+  # Trust: for `pull_request` events GitHub executes the workflow file from the
+  # base branch (dev), so this gated job runs trusted dev gate code unconditionally
+  # — strictly safer than `gh workflow run … --ref base_ref`, which had to pin the
+  # ref correctly by hand. The `--ref pr-branch` trust objection does not apply.
+  #
+  # Idempotence: a gated job pauses on the Environment binding BEFORE any step
+  # runs, so "skip the park" cannot live in a first step. Idempotence is the
+  # job-level `if` gated on `needs.initialize.outputs.already_admitted` — once
+  # admit-status has carried forward to HEAD (§5), this job never re-parks, even
+  # though every later convergence still satisfies the lint/enforcer/qa predicate
+  # (§12-Q1 carry-forward).
+  #
+  # Per-PR concurrency at the workflow level (`pr-pipeline-${{ pr.number }}`,
+  # `cancel-in-progress: true`) handles the re-push case: a new push cancels the
+  # superseded parked deployment and the new run re-parks on the new SHA. No
+  # waiting-run pileup.
+  admit:
+    name: Stage-2 Admission Gate
+    needs: [initialize, lint, enforcer, qa]
     if: >-
       always() &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.qa.result == 'success' &&
-      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
+      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true' &&
+      needs.initialize.outputs.already_admitted != 'true'
     runs-on: ubuntu-latest
+    # PARKS this job here until a required reviewer of `pr-fix-loop` approves.
+    # Only THIS job pauses — lint/enforcer/qa are already done; no downstream `needs:`.
+    environment: pr-fix-loop
     env:
+      # Bot PAT is required to arm `gh pr merge --auto` and to write the
+      # `admit-status` commit status (the Claude App token lacks `statuses: write`;
+      # §4.7). No `github.token` fallback (halt-on-failure: no silent fallbacks).
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Dispatch admission run if not already admitted
+      - name: Admit — set admit-status and arm auto-merge
         run: |
           set -euo pipefail
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot dispatch the Admission Gate." >&2
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot admit PR." >&2
             exit 1
           fi
 
-          ADMIT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/statuses" \
-            --jq '[.[] | select(.context == "admit-status")] | sort_by(.updated_at) | last | .state // empty')
-          if [ "$ADMIT" = "success" ]; then
-            echo "PR #$PR_NUMBER already admitted (admit-status=success) — not re-parking at the gate."
-            exit 0
-          fi
+          # Re-fetch HEAD: the PR may have advanced while the run was parked.
+          # (Workflow-level concurrency cancels superseded parked runs, but a
+          # re-fetch is still the honest read of the current state.)
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Admitting PR #$PR_NUMBER at HEAD $HEAD_SHA"
 
-          echo "Stage 1 converged on $HEAD_SHA — dispatching the Admission Gate to park at pr-fix-loop."
-          gh workflow run stage2-admission.yml \
-            --repo "$REPO" \
-            --ref "${{ github.base_ref }}" \
-            -f pr_number="$PR_NUMBER" \
-            || echo "WARNING: Could not dispatch stage2-admission.yml (already parked, or workflow absent on base)."
+          # (a) Set the required admit-status to success on HEAD.
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="success" \
+            -f context="admit-status" \
+            -f description="Admitted by maintainer — good idea, make it mergeable" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # (b) Arm auto-merge. Fires when all required checks are green + PR mergeable.
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
+            || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
+
+          echo "PR #$PR_NUMBER admitted: admit-status=success, auto-merge armed."
