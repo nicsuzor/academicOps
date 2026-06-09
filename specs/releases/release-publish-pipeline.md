@@ -189,19 +189,21 @@ break fixed in `2fcf8c2f`). The tag SHAPE selects the channel:
   published version is a semver prerelease, semver-aware consumers don't pick it as
   latest-stable (the stable-tag filter `scripts/version.py:_STABLE_TAG_RE`, exercised by
   `tests/test_semver_regression.py`) — **a client chooses whether to install a dev build**
-  rather than being force-upgraded. (But see the marketplace single-version caveat below.) The dist-push change
+  rather than being force-upgraded. (See the `@dist` rolling-latest design note below.) The dist-push change
   landed in `5ccd4977` (removed the `release_type != 'testing'` guards on the dist
   checkout + publish steps). The published **Docker** tags are still **left untouched** by
   prereleases (`:latest` must track the stable channel — §6).
 
-  ⚠️ **Caveat (marketplace single-version).** The dist-branch root
+  **Design decision (marketplace single-version) — `@dist` is a rolling-latest channel
+  (Nic, 2026-06-09; resolves [[aops-360f954d]]).** The dist-branch root
   `.claude-plugin/marketplace.json` lists ONE version per plugin and is refreshed on every
-  publish, so a fresh `claude plugin marketplace add …@dist` + `plugin install` right after
-  a dev build resolves that prerelease version. The semver prerelease exclusion protects
-  tag/range-based selectors and the stable-tag filter, **not** a bare single-entry
-  marketplace install. If `@dist` must stay stable-by-default at the marketplace level, the
-  marketplace.json copy in the publish step needs a stable-only guard. Documented, not yet
-  changed.
+  publish, so `@dist` always advertises the **most recent build, dev or stable**. A dev
+  build overwriting the marketplace is **intended** — `@dist` is the single published
+  channel (`INSTALL.md`/`README.md`), not a stable-only one, and there is no separate stable
+  marketplace ref. Clients choose because install/update is **client-initiated** and
+  prerelease builds are visibly versioned (`-dev`/`-beta`/`-rc`), so a client who wants
+  stability holds or pins a stable `vX.Y.Z` instead of pulling latest. Deliberately **no**
+  stable-only guard on the publish step's marketplace copy.
 
 ## 6. Docker (`ghcr.io/nicsuzor/aops-crew`) — LIVE
 
