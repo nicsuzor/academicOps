@@ -1375,6 +1375,7 @@ def _build_docker_cmd(
     project_slug: str | None = None,
     manager: PolecatManager | None = None,
     verbose: bool = False,
+    with_sessions: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1588,6 +1589,27 @@ def _build_docker_cmd(
                         )
                     if (host_path / "profiles.yml").exists():
                         cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
+
+    # Opt-in sessions transcripts mount
+    has_sessions_access = False
+    if with_sessions:
+        has_sessions_access = True
+    elif project_slug and manager:
+        try:
+            _canonical_slug = manager.resolve_project_alias(project_slug)
+        except ValueError:
+            _canonical_slug = project_slug
+        _project_entry = manager.projects.get(_canonical_slug)
+        if _project_entry and _project_entry.get("sessions_access"):
+            has_sessions_access = True
+
+    if has_sessions_access:
+        sessions_base = _get_sessions_base()
+        transcripts_path = (sessions_base / "transcripts").resolve()
+        transcripts_path.mkdir(parents=True, exist_ok=True)
+        if not _is_remote_daemon():
+            cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
+        cmd.extend(["-e", "AOPS_SESSIONS=/sessions"])
 
     # Pattern-arm forwarding — POLECAT_* and AOPS_* prefix, plus the explicit
     # gate-mode env vars stamped by ``_apply_gate_env``. Gate modes are
@@ -3639,6 +3661,11 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     default=None,
     help="On exit, bundle session artifacts into this directory.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew_alias(
@@ -3653,7 +3680,8 @@ def crew_alias(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
@@ -3668,6 +3696,7 @@ def crew_alias(
         debug_flag=debug_flag,
         set_overrides=set_overrides,
         capture_on_exit=capture_on_exit,
+        with_sessions=with_sessions,
         agent_args=agent_args,
     )
 
@@ -3710,6 +3739,11 @@ def crew_alias(
     default=None,
     help="On exit, bundle session artifacts into this directory.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew(
@@ -3724,7 +3758,8 @@ def crew(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Start an interactive crew session with worker isolation.
 
@@ -4136,6 +4171,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4168,6 +4204,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -4188,6 +4225,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -4448,6 +4486,11 @@ class _IssueTask:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.pass_context
 def run(
     ctx,
@@ -4463,6 +4506,7 @@ def run(
     model,
     debug_flag,
     set_overrides,
+    with_sessions=False,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -4919,6 +4963,7 @@ def run(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4948,6 +4993,7 @@ def run(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")
