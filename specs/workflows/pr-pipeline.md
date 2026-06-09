@@ -32,7 +32,7 @@ supersedes: pr-process.md
 - [[.github/workflows/agent-enforcer.yml]] → axiom compliance reviewer; fires automatically on `workflow_run` (PR Review Pipeline completion) + reusable via `workflow_call` for other repos
 - [[.github/workflows/agent-merge-prep.yml]] → cron-driven merge prep agent; on success enables `gh pr merge --auto`
 - [[.github/workflows/merge-prep-cron.yml]] → `workflow_run` trigger watches "PR Review Pipeline" completion + 30-min cron fallback
-- GitHub Ruleset: required checks = `PR Review Pipeline / lint / Lint`, `PR Review Pipeline / typecheck / Type Check`, `PR Review Pipeline / pytest / Pytest`, `merge-prep-status`; `required_approving_review_count` ≥ 1 maintainer approval is the human merge gate
+- GitHub Ruleset: required checks = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0` — the human merge gate is the `pr-fix-loop` GitHub Environment approval (sets `admit-status`)
 
 ## Overview
 
@@ -42,7 +42,7 @@ supersedes: pr-process.md
 
 The previous pipeline ([[specs/pr-process.md]]) required a human LGTM to trigger merge-prep. This created a sequencing problem: merge-prep fixes failing checks, so it cannot wait for checks to pass before running. The current design inverts the dependency — merge-prep runs automatically on a cron, bots prepare everything, and the human approves or denies once at the end.
 
-**Where the human gate lives.** GitHub branch protection enforces `required_approving_review_count` ≥ 1 maintainer approval. The bot pipeline's job is to leave each PR green and armed: all CI passing, `merge-prep-status: success`, and `gh pr merge --auto --squash --delete-branch` enabled. When the maintainer adds the human approval, GitHub fires the queued auto-merge automatically. The human approval review is the decision point; no separate environment gate or summary-and-merge dispatcher is in use.
+**Where the human gate lives.** The human gate is the `pr-fix-loop` GitHub Environment approval, which sets the `admit-status` required check (Phase 4). `required_approving_review_count` is 0 — there is no PR-review-count gate. The bot pipeline's job is to leave each PR green and armed: all CI passing and `admit-status: success` set by the Stage-2 Admission Gate after the maintainer approves the Environment. The human Environment approval is the decision point.
 
 ## Design Principles
 

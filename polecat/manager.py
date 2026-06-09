@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import fcntl
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -293,14 +294,67 @@ def configure_git_credentials(repo_path: Path):
     )
 
 
+# --------------------------------------------------------------------------- #
+# Authoritative SSH→HTTPS GitHub remote converter (single source of truth).    #
+#                                                                              #
+# Every caller that needs a bot-token-compatible (HTTPS) GitHub remote routes  #
+# through this one transform — the cli.py origin-normaliser and all four       #
+# manager.py mirror/worktree call sites. Two GitHub SSH spellings are handled: #
+#                                                                              #
+#   1. SCP-like:   [user@]github.com:owner/repo[.git]                          #
+#   2. URL scheme: (ssh|git+ssh)://[user@]github.com[:port]/owner/repo[.git]   #
+#                                                                              #
+# Both are matched case-insensitively on the host (git treats hostnames as     #
+# case-insensitive); the optional ``user@`` and ``:port`` are discarded (the   #
+# HTTPS endpoint carries neither); the captured ``owner/repo`` path has any    #
+# leading slashes stripped so we never emit ``https://github.com//owner/repo``.#
+# A lookalike host such as ``github.com.evil.com`` is rejected (anchored host).#
+_GITHUB_SSH_SCP_RE = re.compile(
+    r"^(?:[^@/]+@)?github\.com:(?P<path>.+)$",
+    re.IGNORECASE,
+)
+_GITHUB_SSH_URL_RE = re.compile(
+    r"^(?:ssh|git\+ssh)://(?:[^@/]+@)?github\.com(?::\d+)?/(?P<path>.+)$",
+    re.IGNORECASE,
+)
+
+
+def _ssh_github_to_https(url: str) -> str | None:
+    """Return the HTTPS form of an SSH GitHub *url*, or ``None`` if it is not one.
+
+    Pure string transform (no I/O) so it can be unit-tested exhaustively.
+    Returns ``None`` for HTTPS, git://, non-GitHub, or unparseable remotes —
+    callers that need "rewrite-or-leave-untouched" treat ``None`` as "leave it".
+
+    Handles every SSH form git accepts — SCP-like (``git@github.com:owner/repo``),
+    URL-scheme (``ssh://`` and ``git+ssh://``), with or without ``user@``, with or
+    without an explicit ``:port``, case-insensitive on the host.
+    """
+    # URL-scheme form must be tried first: it owns the ``://``, so a stray
+    # ``github.com:`` inside the SCP regex can never misfire on a real URL.
+    match = _GITHUB_SSH_URL_RE.match(url)
+    if match is None and "://" not in url:
+        match = _GITHUB_SSH_SCP_RE.match(url)
+    if match is None:
+        return None
+    path = match.group("path").lstrip("/")
+    if not path:
+        return None
+    return "https://github.com/" + path
+
+
 def _to_https_url(url: str) -> str:
-    """Converts a GitHub SSH URL to an HTTPS URL for bot compatibility.
+    """Best-effort SSH→HTTPS rewrite that always returns a usable remote URL.
+
+    Thin wrapper over the authoritative :func:`_ssh_github_to_https` transform
+    for the call sites that feed the result straight to ``git`` as a remote URL
+    and therefore need a string in every case: returns the HTTPS form for an SSH
+    GitHub URL, or the original *url* unchanged for anything else (already-HTTPS,
+    git://, non-GitHub).
 
     Example: git@github.com:owner/repo.git -> https://github.com/owner/repo.git
     """
-    if url.startswith("git@github.com:"):
-        return url.replace("git@github.com:", "https://github.com/")
-    return url
+    return _ssh_github_to_https(url) or url
 
 
 class PolecatManager:
