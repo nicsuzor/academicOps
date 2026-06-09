@@ -63,6 +63,14 @@ _The concept is **intent**. Today it is stored in the field still named `priorit
 - **Importance ≠ intent.** Urgency, severity, blocker-status, your own assessment of value → `consequence`/`severity`/`due`/`status`, never `intent`. `intent` answers only: _has Nic personally put this on his list, and where._
 - **When you think something deserves his attention,** surface it as status/escalation so _he_ sets intent — never set it for him as a shortcut.
 
+## PR body conventions
+
+**Outcome this protects:** a PR body describes the change for its reviewer. It is not the place to warn about merging. This block is the single authoritative statement of that rule; every surface that authors PR bodies points here instead of restating it.
+
+- **Never add merge-gate / do-not-merge banners.** Do not stamp "DO NOT MERGE", "gated repo — Nic is the merge gate", "opened for redline, not merge", "awaiting Nic", or any equivalent banner into a PR body. The real gate is **branch protection** (enforcer/required-status checks + human approval) — it stops the merge whether or not the body says so, so the banner warns nobody who can act on it. It is pure noise.
+- **Why the merge-gate doctrine still holds.** "Never run `gh pr merge` on a gated repo / Nic is the merge gate" remains correct as an _action_ constraint on the agent — keep obeying it. This convention only forbids restating it as _prose addressed to nobody_ in the PR body.
+- **If gating status is genuinely relevant, state it once, factually, in prose** — e.g. "aops is gated; merge is on Nic after approval" — never as a banner. Default is to say nothing about merging at all.
+
 ## Core Conventions
 
 ### Single Source of Truth

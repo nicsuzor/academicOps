@@ -1,16 +1,5 @@
 # Daily Note Pipeline — Architecture
 
-**Status**: draft (cowork-sandbox), proposed 2026-05-19. To land at `projects/aops/specs/daily/00-architecture.md` via PR.
-
-**Sibling specs**:
-
-- [10-daily-orchestrator.md](10-daily-orchestrator.md) — `/daily` skill (aops-core)
-- [20-email-capture.md](20-email-capture.md) — `/email` workflow (aops-tools)
-- [30-news-briefing.md](30-news-briefing.md) — `/news-briefing` workflow (aops-tools)
-- [40-pdf-render.md](40-pdf-render.md) — daily PDF render workflow (aops-tools)
-
-## Purpose
-
 Define the daily-note pipeline as a single coherent system: which component owns which slice of the morning briefing, how data flows between them, and which side of the aops-core / aops-tools split each component sits on. This spec is the SSoT for **shared types and pipeline wiring**. Child specs describe individual workflows and inherit the definitions here.
 
 ## Pipeline

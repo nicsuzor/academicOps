@@ -175,10 +175,26 @@ break fixed in `2fcf8c2f`). The tag SHAPE selects the channel:
   caveat:** the Release upload step globs `dist/*.tar.gz` **only**, so the `.zip` is
   **not** auto-attached to the Release — it is genuinely a manual upload until/unless the
   glob is widened. Documented, not yet changed.
-- **Prerelease `vX.Y.Z-rc.N` / `-dev.N` / …** — build, cut a `--prerelease` GitHub
-  Release with installable assets (`build-extension.yml:236,249`). The `dist` branch and
-  the published Docker tags are **left untouched** (the stable install channels must
-  never receive a prerelease).
+- **Prerelease `vX.Y.Z-rc.N` / `-dev.N` / …** — build, **publish to the `dist` branch
+  too** (the plugin version is a semver prerelease, e.g. `X.Y.Z-beta.N`), and cut a
+  `--prerelease` GitHub Release with installable assets (`build-extension.yml:236,249`).
+  We **do** ship dev builds to `dist` so clients/testers can install them; because the
+  published version is a semver prerelease, semver-aware consumers don't pick it as
+  latest-stable (the stable-tag filter `scripts/version.py:_STABLE_TAG_RE`, exercised by
+  `tests/test_semver_regression.py`) — **a client chooses whether to install a dev build**
+  rather than being force-upgraded. (But see the marketplace single-version caveat below.) The dist-push change
+  landed in `5ccd4977` (removed the `release_type != 'testing'` guards on the dist
+  checkout + publish steps). The published **Docker** tags are still **left untouched** by
+  prereleases (`:latest` must track the stable channel — §6).
+
+  ⚠️ **Caveat (marketplace single-version).** The dist-branch root
+  `.claude-plugin/marketplace.json` lists ONE version per plugin and is refreshed on every
+  publish, so a fresh `claude plugin marketplace add …@dist` + `plugin install` right after
+  a dev build resolves that prerelease version. The semver prerelease exclusion protects
+  tag/range-based selectors and the stable-tag filter, **not** a bare single-entry
+  marketplace install. If `@dist` must stay stable-by-default at the marketplace level, the
+  marketplace.json copy in the publish step needs a stable-only guard. Documented, not yet
+  changed.
 
 ## 6. Docker (`ghcr.io/nicsuzor/aops-crew`) — LIVE
 

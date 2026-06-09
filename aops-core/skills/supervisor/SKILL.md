@@ -151,6 +151,7 @@ Valid Classes: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `re
 - **Drive-by Fix Policy**: Bundle unrelated trivial fixes only if blocking, obvious, and describable in one sentence. Otherwise, file a separate task.
 - **Keep the Pipe Flowing**: Delegate decomposition and planning to workers. Restrict supervisor concurrency dynamically based on rate limits.
 - **Intent Authority**: When filing or decomposing tasks, leave `priority` at the uncurated default band — never originate a non-default band from importance or urgency. Only Nic sets intent, by express per-request instruction. Canonical rule: [[framework-conventions-summary#intent-authority]].
+- **PR Body Hygiene**: PR bodies describe the change for the reviewer — never carry do-not-merge / merge-gate / "awaiting Nic" banners. Branch protection is the enforced gate. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
 - **Engineering Integrity**: Failing tests/validations must be resolved, not bypassed.
 - **Critic Gate**: High-risk tasks must undergo preflight validation by Pauli before dispatch.
 - **Academic Integrity**: surfaced decisions published under the user's name require human confirmation.
