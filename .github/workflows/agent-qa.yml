@@ -169,6 +169,12 @@ jobs:
             exit 1
           fi
           PROMPT=$(cat .aops/aops-core/agents/marsha.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/qa.agent.md)
+          # Append an explicit user-turn directive (aops-2a3b4c71). Without it
+          # the prompt is just concatenated agent-def markdown and the model
+          # intermittently treats it as a pasted artifact ("what would you like
+          # me to do?") instead of starting the review — qa-status then never
+          # resolves and hard-blocks the PR.
+          PROMPT="${PROMPT}"$'\n\n## Your task — start now\n\n'"Review PR #${PR_NUMBER} in ${REPO} at HEAD ${HEAD_SHA} per the methodology above, and post your verdict via \`gh pr review\` (APPROVE for passing runtime checks, REQUEST_CHANGES otherwise, with the \"QA Verification\" marker in the body) so that qa-status resolves. Do not ask for clarification — the task is fully specified by the environment variables already in scope (REPO, PR_NUMBER, HEAD_SHA, AGENT_NAME)."
           {
             echo "prompt<<AGENT_EOF"
             echo "$PROMPT"
