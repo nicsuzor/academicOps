@@ -1,14 +1,21 @@
-# CI Pipeline: lint → typecheck → pytest (sequential)
+# PR Review Pipeline — Stage-1 triage orchestrator (and Stage-2 fix-loop driver).
 #
-# Sequential ordering avoids wasted compute when lint pushes autofix
-# commits — typecheck and pytest haven't started yet, so the cancelled
-# run discards no work. The new synchronize event restarts the pipeline
-# on the clean commit.
+# Stage 1 (every push): committing agents run in cost order under the §3.4 ordered
+# short-circuit — `lint → enforcer → qa`. Read-only checks (typecheck, pytest)
+# post statuses but never end a pass. On convergence (a pass where the chain ran
+# all the way through and no agent committed), `dispatch-admission` dispatches
+# `stage2-admission.yml` to park at the `pr-fix-loop` Environment.
 #
-# PR Review (pr-review.yml) runs as a separate workflow on every push.
-# Agent Fix has been removed — merge-prep handles all fix work.
+# Stage 2 (post-admission, when `admit-status` is `success`): the same orchestrator
+# appends the **mechanic** to the cost order — real development to clear the red
+# the autofixers couldn't, plus conflict resolution. Enforcer + qa re-verify each
+# mechanic SHA (§3.5); the §3.6 bounded loop is enforced inside `agent-mechanic.yml`.
 #
-# See specs/pr-pipeline.md for the full process documentation.
+# `merge-prep-status` is retired (Phase 5) — replaced by `admit-status` at P4 and
+# no longer carried forward here. `mechanic-status` is informational only and is
+# never required by the ruleset; it lives entirely on the mechanic workflow side.
+#
+# See specs/workflows/pr-pipeline.md for the full process documentation.
 
 name: PR Review Pipeline
 
@@ -76,9 +83,10 @@ jobs:
           echo "✓ dev is clean — no dist/, built plugin dirs, or generated manifests tracked."
 
   # ─── Step 0.5: Initialize ──────────────────────────────────────────
-  # On opened/reopened/ready_for_review: set merge-prep-status to pending.
-  # On synchronize: carry forward a previous success unless new
-  # CHANGES_REQUESTED reviews arrived since then.
+  # admit-status carry-forward (pr-pipeline §5). admit-status is the only required
+  # human gate; the vestigial merge-prep-status carry-forward was retired at Phase 5
+  # (the merge-prep agent was repurposed into the post-admission mechanic; its
+  # informational mechanic-status is owned by agent-mechanic.yml, not initialize).
   initialize:
     needs: [gate]
     if: github.event.pull_request.head.repo.full_name == github.repository
@@ -86,65 +94,7 @@ jobs:
     name: Initialize
     runs-on: ubuntu-latest
     steps:
-      - name: Set merge-prep status
-        run: |
-          NEW_SHA="${{ github.event.pull_request.head.sha }}"
-          REPO="${{ github.repository }}"
-          ACTION="${{ github.event.action }}"
-
-          set_pending() {
-            gh api "repos/${REPO}/statuses/${NEW_SHA}" \
-              -f state="pending" \
-              -f context="merge-prep-status" \
-              -f description="Waiting for bazaar window and triage..."
-          }
-
-          # For opened/reopened/ready_for_review, always start fresh
-          if [ "$ACTION" != "synchronize" ]; then
-            echo "Action is '${ACTION}' — setting pending"
-            set_pending
-            exit 0
-          fi
-
-          # synchronize: check if previous HEAD had a successful merge-prep
-          OLD_SHA="${{ github.event.before }}"
-          echo "Checking merge-prep-status on previous HEAD ${OLD_SHA}..."
-
-          PREV_STATUS=$(gh api "repos/${REPO}/commits/${OLD_SHA}/statuses" \
-            --jq '[.[] | select(.context == "merge-prep-status")] | sort_by(.updated_at) | last')
-
-          PREV_STATE=$(echo "$PREV_STATUS" | jq -r '.state // empty')
-
-          if [ "$PREV_STATE" != "success" ]; then
-            echo "Previous status was '${PREV_STATE}' — setting pending"
-            set_pending
-            exit 0
-          fi
-
-          # Previous was success — check for CHANGES_REQUESTED reviews after it
-          SUCCESS_TIME=$(echo "$PREV_STATUS" | jq -r '.updated_at')
-          echo "Previous success at ${SUCCESS_TIME} — checking for newer change requests..."
-
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          NEW_CHANGE_REQUESTS=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-            --jq "[.[] | select(.state == \"CHANGES_REQUESTED\" and .submitted_at > \"${SUCCESS_TIME}\")] | length")
-
-          if [ "${NEW_CHANGE_REQUESTS}" -gt 0 ]; then
-            echo "Found ${NEW_CHANGE_REQUESTS} change request(s) after previous success — setting pending"
-            set_pending
-            exit 0
-          fi
-
-          # No new change requests — carry forward success to new SHA
-          echo "No new change requests — carrying forward success to ${NEW_SHA}"
-          gh api "repos/${REPO}/statuses/${NEW_SHA}" \
-            -f state="success" \
-            -f context="merge-prep-status" \
-            -f description="Carried forward — no new review requests"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      # admit-status carry-forward (pr-pipeline-v2 §5). admit-status is the required
+      # admit-status carry-forward (pr-pipeline §5). admit-status is the required
       # human gate; it is set to success only by the Stage-2 Admission Gate
       # (stage2-admission.yml) when the maintainer approves the `pr-fix-loop`
       # Environment. This step manages the NON-admit transitions so the gate stays
@@ -153,8 +103,9 @@ jobs:
       #   - synchronize: an AGENT-authored fix commit carries a prior admission
       #     forward (the decision stands); a new HUMAN push resets to pending (a
       #     substantive human change must be re-judged at the gate).
-      # Reuses the structure of the merge-prep carry above; the reset trigger here is
-      # "a new human push" rather than "a new CHANGES_REQUESTED review" (§5).
+      # The reset trigger is "a new human push" (§5); an additional reset trigger lives
+      # in the Stage-2 mechanic's exhaustion handler (§3.6) — `agent-mechanic.yml` resets
+      # admit-status to pending on loop-ceiling breach to surface the PR back to the gate.
       - name: Set admit status (carry-forward)
         run: |
           NEW_SHA="${{ github.event.pull_request.head.sha }}"
@@ -356,6 +307,59 @@ jobs:
     if: always() && needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true'
     name: QA Verification
     uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # ─── Step 4: Mechanic (Stage-2 only — admitted runs) ─────────────
+  # The post-admission DEV agent. Runs ONLY when:
+  #   - Stage 1 converged this pass (lint/enforcer/qa all succeeded with no commit), AND
+  #   - admit-status is `success` on HEAD (the human gate passed at pr-fix-loop).
+  # Otherwise it is a no-op (`check-admit` outputs admitted=false).
+  #
+  # mechanic-status is informational, never required by the ruleset (§4.2);
+  # enforcer/qa re-verify the mechanic's pushed SHA on the next pass (§3.5);
+  # the §3.6 bounded loop is enforced inside agent-mechanic.yml.
+
+  check-admit:
+    name: Check admit-status
+    needs: [lint, enforcer, qa]
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.qa.result == 'success' &&
+      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      admitted: ${{ steps.check.outputs.admitted }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Read admit-status on HEAD
+        id: check
+        run: |
+          ADMIT=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "admit-status")] | sort_by(.updated_at) | last | .state // empty' \
+            2>/dev/null || echo "")
+          if [ "$ADMIT" = "success" ]; then
+            echo "admitted=true" >> "$GITHUB_OUTPUT"
+            echo "PR is admitted (admit-status=success) — Stage-2 mechanic will run."
+          else
+            echo "admitted=false" >> "$GITHUB_OUTPUT"
+            echo "PR is not admitted (admit-status='${ADMIT:-absent}') — mechanic skipped (Stage-1 only)."
+          fi
+
+  mechanic:
+    name: Mechanic (Stage 2)
+    needs: [check-admit]
+    if: needs.check-admit.outputs.admitted == 'true'
+    uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref: ${{ github.event.pull_request.head.ref }}

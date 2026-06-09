@@ -30,11 +30,11 @@ Per `specs/agent-authority.md`. Rows: every agent file in scope. Columns: spec d
 
 These grant tools via the invoking workflow's `claude_args`; the frontmatter surface is minimal by design (see spec §GitHub Action Agents). Left as-is per user decision.
 
-| Agent         | Frontmatter present    | Notes               |
-| ------------- | ---------------------- | ------------------- |
-| `merge-prep`  | ✅ (name, description) | No change required. |
-| `pr-reviewer` | ✅ (name, description) | No change required. |
-| `qa`          | ✅ (name, description) | No change required. |
+| Agent         | Frontmatter present    | Notes                           |
+| ------------- | ---------------------- | ------------------------------- |
+| `mechanic`    | ✅ (name, description) | Phase 5 rename of `merge-prep`. |
+| `pr-reviewer` | ✅ (name, description) | No change required.             |
+| `qa`          | ✅ (name, description) | No change required.             |
 
 ## Plugin Agents
 

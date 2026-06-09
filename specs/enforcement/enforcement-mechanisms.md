@@ -450,25 +450,25 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 
 ### L10 Merge gates
 
-#### agent-merge-prep auto-merge
+#### stage2-admission auto-merge arm
 
 - **Pipeline layer**: L10 Merge gates
 - **Pyramid tier**: tip
-- **Trigger**: PR reaches merge-ready state; runs after review fixes
-- **Purpose**: Apply agent-produced merge-prep fixes and enable auto-merge so PRs land once checks pass and a human approves.
-- **Location**: `.github/workflows/agent-merge-prep.yml` (auto-merge at ~L271)
-- **Scope**: GHA
+- **Trigger**: Stage-1 convergence dispatches `stage2-admission.yml`, which parks at the `pr-fix-loop` Environment; the maintainer approves the pending deployment
+- **Purpose**: Single human "good idea, make it mergeable" decision — sets the required `admit-status` to success and arms `gh pr merge --auto --squash --delete-branch`. Replaces v1's bot-approval / cron / auto-merge mechanism (the no-op runner on every green PR is gone).
+- **Location**: `.github/workflows/stage2-admission.yml`
+- **Scope**: GHA + GitHub Environment
 - **Status**: active
 
-#### merge-prep-cron
+#### agent-mechanic Stage-2 dev loop
 
-- **Pipeline layer**: L10 Merge gates
+- **Pipeline layer**: L10 Merge gates (informational only — never a required check)
 - **Pyramid tier**: tip
-- **Trigger**: cron schedule
-- **Purpose**: Periodic sweep that retries merge-prep across open PRs so stalled PRs get rechecked without user action.
-- **Location**: `.github/workflows/merge-prep-cron.yml`
+- **Trigger**: `pr-pipeline.yml` orchestrator appends `mechanic` after Stage-1 (lint → enforcer → qa) when `admit-status=success` on HEAD
+- **Purpose**: Real development to clear the red the autofixers couldn't + conflict resolution only when `mergeable: CONFLICTING`. Does NOT approve, does NOT set required statuses, does NOT arm auto-merge — enforcer + qa re-verify each mechanic SHA (`pr-pipeline.md` §3.5); the armed auto-merge fires when their fresh APPROVED lands on the new SHA.
+- **Location**: `.github/workflows/agent-mechanic.yml` + `.github/agents/mechanic.agent.md`
 - **Scope**: GHA
-- **Status**: active — verify
+- **Status**: active (Phase 5)
 
 #### Branch protection
 
@@ -480,15 +480,15 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Scope**: GHA
 - **Status**: active — verify
 
-#### Loop detector (merge-prep self-loop guard)
+#### Mechanic loop-ceiling (Stage-2 bounded loop, §3.6)
 
 - **Pipeline layer**: L10 Merge gates
 - **Pyramid tier**: tip
-- **Trigger**: every merge-prep run inspects prior commit authorship
-- **Purpose**: Skip merge-prep if the previous commit was itself merge-prep, and halt entirely after a ceiling of consecutive merge-prep commits, to stop runaway bot loops.
-- **Location**: `.github/workflows/agent-merge-prep.yml:86-137` (loop-check + ceiling-check steps)
+- **Trigger**: every mechanic run counts `Mechanic-By:` commits on the branch since the PR's base via `git log "origin/$BASE_BRANCH..HEAD" --grep="^Mechanic-By:"`; at `MAX_MECHANIC_RUNS=5` the exhaustion handler fires
+- **Purpose**: Stop a runaway Stage-2 loop. On exhaustion: post a single escalation PR review naming each still-red signal, set `mechanic-status=failure`, **reset `admit-status` to pending** (surfaces PR back to the human gate), request the maintainer as reviewer, leave the PR un-merged. Carries v1's `MAX_MERGE_PREP_RUNS=5` precedent unchanged.
+- **Location**: `.github/workflows/agent-mechanic.yml` (SHA-skip + Loop-ceiling check + Exhaustion handler steps)
 - **Scope**: GHA
-- **Status**: active
+- **Status**: active (Phase 5)
 
 #### Project-owner / admin approval
 
