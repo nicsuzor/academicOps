@@ -1289,7 +1289,8 @@ def resolve_task_title(task_id: str | None) -> str | None:
             task = pkb_bridge.get_task(task_id)
             if task and task.title:
                 title = task.title
-    except Exception:
+    except Exception as e:
+        print(f"[resolve_task_title] PKB lookup failed for {task_id!r}: {e}", file=sys.stderr)
         title = None
 
     _TASK_TITLE_CACHE[task_id] = title
