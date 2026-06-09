@@ -73,6 +73,118 @@ def _rollback_status_for(task) -> str:
     return prior_str
 
 
+def _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is_issue) -> None:
+    """Check chosen method against any recorded sanctioned mechanism via agent judgment.
+
+    Delegates both mechanism detection and alignment validation to a claude agent
+    invocation — per judgment-non-delegable — rather than regex or substring matching.
+    """
+    body = getattr(task, "body", "")
+    if not isinstance(body, str):
+        body = ""
+
+    tags = []
+    task_tags = getattr(task, "tags", [])
+    if isinstance(task_tags, list):
+        tags = [str(t) for t in task_tags if isinstance(t, str)]
+
+    # Gather parent task content if available
+    parent_id = getattr(task, "parent", None)
+    if parent_id and isinstance(parent_id, str):
+        try:
+            parent_task = manager.get_task(parent_id)
+            if parent_task:
+                p_body = getattr(parent_task, "body", "")
+                if isinstance(p_body, str):
+                    body += "\n\n--- Parent task ---\n" + p_body
+                p_tags = getattr(parent_task, "tags", [])
+                if isinstance(p_tags, list):
+                    tags.extend([str(t) for t in p_tags if isinstance(t, str)])
+        except Exception:
+            pass
+
+    tag_str = ", ".join(tags) if tags else "(none)"
+
+    # Delegate both judgments to a claude agent — per judgment-non-delegable axiom.
+    # Regex/substring matching is forbidden for semantic calls; the agent reads natural
+    # language and determines (1) whether a mechanism is recorded and (2) whether the
+    # chosen client aligns with it without any hardcoded name-to-worker-class mapping.
+    prompt = (
+        "You are a pre-dispatch safety check for a software agent system.\n\n"
+        f"Task body:\n{body}\n\n"
+        f"Task tags: {tag_str}\n\n"
+        f"Chosen worker client: {selected_client}\n\n"
+        "Answer these two questions:\n"
+        "1. Does this task explicitly record a SANCTIONED MECHANISM — a canonical named harness, "
+        "test-script, or QA loop that must be used? If yes, provide its exact recorded name.\n"
+        "2. If a sanctioned mechanism is recorded, does the chosen worker client "
+        f"'{selected_client}' align with what that mechanism requires? Consider whether the "
+        "mechanism name or description implies a specific worker class and whether the chosen "
+        "client matches. If no mechanism is recorded, the verdict is valid.\n\n"
+        "Respond in this EXACT format (two lines, no other text):\n"
+        "MECHANISM: <exact recorded name, or 'none'>\n"
+        "VERDICT: <'valid' or 'VIOLATION: <concise reason>'>"
+    )
+
+    try:
+        result = subprocess.run(
+            ["claude", "-p", prompt],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        output = result.stdout.strip()
+    except FileNotFoundError:
+        print(
+            "Warning: 'claude' not found — sanctioned mechanism check skipped.",
+            file=sys.stderr,
+        )
+        return
+    except subprocess.TimeoutExpired:
+        print(
+            "Warning: Agent judgment timed out — sanctioned mechanism check skipped.",
+            file=sys.stderr,
+        )
+        return
+
+    # Parse the structured two-line response
+    mechanism = None
+    violation_reason = None
+
+    for line in output.splitlines():
+        if line.startswith("MECHANISM:"):
+            val = line[len("MECHANISM:") :].strip()
+            if val.lower() != "none":
+                mechanism = val
+        elif line.startswith("VERDICT:"):
+            val = line[len("VERDICT:") :].strip()
+            if val.startswith("VIOLATION:"):
+                violation_reason = val[len("VIOLATION:") :].strip()
+
+    if mechanism:
+        print(f"🔍 Checking sanctioned mechanism SSoT: '{mechanism}'")
+
+    if violation_reason:
+        print(
+            f"Error: Sanctioned mechanism '{mechanism}' violation — {violation_reason}\n"
+            f"  Chosen client '{selected_client}' is a prohibited worker-class substitution.",
+            file=sys.stderr,
+        )
+        if was_claimed and not is_issue:
+            rollback_status = _rollback_status_for(task)
+            print(f"Reverting task {task.id} to {rollback_status}...", file=sys.stderr)
+            try:
+                manager.update_task(task.id, status=rollback_status, assignee=None)
+            except Exception as exc:
+                print(f"Failed to revert task {task.id}: {exc}", file=sys.stderr)
+        sys.exit(3)
+
+    if mechanism:
+        print(
+            f"✅ Sanctioned mechanism verified: chosen client '{selected_client}' aligns with '{mechanism}'"
+        )
+
+
 # --- GitHub helpers (inlined from deleted polecat/github.py) ---
 
 
@@ -1263,6 +1375,7 @@ def _build_docker_cmd(
     project_slug: str | None = None,
     manager: PolecatManager | None = None,
     verbose: bool = False,
+    with_sessions: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1476,6 +1589,27 @@ def _build_docker_cmd(
                         )
                     if (host_path / "profiles.yml").exists():
                         cmd.extend(["-e", f"DBT_PROFILES_DIR={container_path}/"])
+
+    # Opt-in sessions transcripts mount
+    has_sessions_access = False
+    if with_sessions:
+        has_sessions_access = True
+    elif project_slug and manager:
+        try:
+            _canonical_slug = manager.resolve_project_alias(project_slug)
+        except ValueError:
+            _canonical_slug = project_slug
+        _project_entry = manager.projects.get(_canonical_slug)
+        if _project_entry and _project_entry.get("sessions_access"):
+            has_sessions_access = True
+
+    if has_sessions_access:
+        sessions_base = _get_sessions_base()
+        transcripts_path = (sessions_base / "transcripts").resolve()
+        transcripts_path.mkdir(parents=True, exist_ok=True)
+        if not _is_remote_daemon():
+            cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
+        cmd.extend(["-e", "AOPS_SESSIONS=/sessions"])
 
     # Pattern-arm forwarding — POLECAT_* and AOPS_* prefix, plus the explicit
     # gate-mode env vars stamped by ``_apply_gate_env``. Gate modes are
@@ -3527,6 +3661,11 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     default=None,
     help="On exit, bundle session artifacts into this directory.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew_alias(
@@ -3541,7 +3680,8 @@ def crew_alias(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Shorthand for 'crew'. See 'polecat crew --help'."""
     ctx.invoke(
@@ -3556,6 +3696,7 @@ def crew_alias(
         debug_flag=debug_flag,
         set_overrides=set_overrides,
         capture_on_exit=capture_on_exit,
+        with_sessions=with_sessions,
         agent_args=agent_args,
     )
 
@@ -3598,6 +3739,11 @@ def crew_alias(
     default=None,
     help="On exit, bundle session artifacts into this directory.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.argument("agent_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def crew(
@@ -3612,7 +3758,8 @@ def crew(
     debug_flag,
     set_overrides,
     capture_on_exit,
-    agent_args,
+    with_sessions=False,
+    agent_args=(),
 ):
     """Start an interactive crew session with worker isolation.
 
@@ -4024,6 +4171,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4056,6 +4204,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     else:
@@ -4076,6 +4225,7 @@ def crew(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {session_dir}")
@@ -4336,6 +4486,11 @@ class _IssueTask:
     metavar="KEY=VALUE",
     help="Override an arbitrary config key.",
 )
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
 @click.pass_context
 def run(
     ctx,
@@ -4351,6 +4506,7 @@ def run(
     model,
     debug_flag,
     set_overrides,
+    with_sessions=False,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -4530,6 +4686,8 @@ def run(
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
+
+    _verify_sanctioned_mechanism(task, manager, selected_client, was_claimed, is_issue)
 
     if is_issue:
         print(f"🎯 Issue: {task.title} ({getattr(task, 'issue_url', '') or task.id})")
@@ -4805,6 +4963,7 @@ def run(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4834,6 +4993,7 @@ def run(
             project_slug=project_slug,
             manager=manager,
             verbose=manager.verbose,
+            with_sessions=with_sessions,
         )
         final_cmd = docker_cmd.cmd
     print(f"   Sessions: {run_session_dir}")

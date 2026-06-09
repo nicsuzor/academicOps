@@ -92,6 +92,14 @@ Follow the **Plan -> Act -> Validate** cycle:
 2. **Act**: Execute changes.
 3. **Validate**: Test locally, commit, push, and release task.
 
+### Terminal Move after Dispatch
+
+When a coordinator executes a fire-and-forget dispatch with no follow-up or babysit instruction:
+
+- The default terminal move is to close the session promptly (via `/dump` or `/end_session`) rather than idling.
+- Do not promise or wait for a completion notification for a non-notifying dispatch form. If the session has nothing to watch and no babysit instruction, close it immediately.
+- Do not create a tracking task per dispatch (dispatch operations should not spawn overhead tracking tasks).
+
 ## HALT Protocol
 
 When unable to derive a decision:

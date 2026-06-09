@@ -2,7 +2,7 @@
 name: survey
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to junior/jr to keep main context clean."
+description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli (retro/trend) or jr (sweep) to keep main context clean."
 triggers:
   - "survey"
   - "retro"
@@ -48,7 +48,7 @@ Survey a corpus, classify findings, and dispatch outputs according to the select
 
 This skill delegates execution to keep the main context clean:
 
-- **`retro` / `trend` mode**: Dispatch `junior` with access to PKB and system tools.
+- **`retro` / `trend` mode**: Dispatch `pauli` with access to PKB and system tools.
 - **`sweep` mode**: Dispatch `jr` to handle interactive triage and confirmation gates.
 
 ---
@@ -59,6 +59,8 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 
 ### 1. Transcript Selection & Quality Gate
 
+- **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
+- **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
 - **Quality Gate**: Stop and alert the user if the transcript is:
@@ -110,6 +112,14 @@ Produce a review in this exact format. Keep text concise:
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
+
+### 5. Retro Anti-Patterns
+
+| Anti-pattern                                                                                                                                    | What to do instead                                                                                                                                                                                                                   |
+| :---------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary) | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed. |
+| Including remediation proposals in the report (`recusal`)                                                                                       | Stop at facts, structural context, and impact. Propose fixes directly in the codebase (if permitted) but keep the filed issue strictly forensic.                                                                                     |
+| Citing a single session as justification for a new mechanism                                                                                    | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                       |
 
 ---
 
@@ -220,7 +230,8 @@ Log results in the following format:
 
 ### 3. Execution Rules
 
-- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep.
+- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]).
+- **Priority P0 Calibration**: Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
 - **Verification**: Verify closed issues are successfully set to `state: closed`.
 - **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
 - **Handoff**: Run verification after completing the cycle:

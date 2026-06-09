@@ -51,11 +51,13 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 
 ## Step 5 & 6: Metadata and Task Creation
 
-### Capture Metadata (do not infer priority)
+### Capture Metadata (do not infer priority/severity)
 
-1. **Leave `priority` at the uncurated default band.** Email capture **never** infers a priority band from the email's urgency, deadline, or apparent importance — inferring intent is an authority the agent does not have. Deadline pressure is carried by `due` (it enters ranking via `focus_score`, not the priority band) and importance by `consequence`; the band stays at the default. If Nic expressly directs a band in the captured message ("make this P1"), transcribe exactly that and nothing more. Intent/priority authority — the canonical rule: [[framework-conventions-summary#intent-authority]].
+1. **Leave `priority` at the uncurated default band.** Email capture **never** infers a priority band from the email's urgency, deadline, or apparent importance — inferring intent is an authority the agent does not have. Deadline pressure is carried by `due` (it enters ranking via `focus_score`, not the priority band) and importance by `consequence`; the band stays at the default. Setting `priority=0` (P0) requires deliberate calibration and justification (see [[../../../remember/references/TAXONOMY.md#p0-calibration-bar]]). If Nic expressly directs a band in the captured message ("make this P1"), transcribe exactly that and nothing more. Intent/priority authority — the canonical rule: [[framework-conventions-summary#intent-authority]].
 
-2. **Extract Structured Metadata**:
+2. **Omit severity.** Tasks created from emails are ordinary work items. Never assign non-zero severity to these tasks, as severity belongs exclusively on target milestones (see [[../../../remember/references/TAXONOMY.md#severity-target-boundary]]).
+
+3. **Extract Structured Metadata**:
    - **due**: Extract deadline from email body — this is where deadline urgency belongs, not the priority band. Format: ISO date (YYYY-MM-DD).
    - **effort**: Estimate effort required for the task. Format: duration (0.5d, 1d, 1w).
    - **consequence**: Extract stated or implied consequences if the task is not completed.

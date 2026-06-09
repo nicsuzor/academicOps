@@ -150,10 +150,14 @@ def _check_dist_not_stale() -> None:
             continue
         for p in src_dir.rglob("*"):
             if p.is_file():
-                if any(
-                    part in {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
-                    for part in p.parts
-                ) or p.suffix in (".pyc", ".pyo", ".DS_Store"):
+                if (
+                    any(
+                        part in {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+                        for part in p.parts
+                    )
+                    or p.suffix in (".pyc", ".pyo", ".DS_Store")
+                    or p.name == ".aops-version"
+                ):
                     continue
                 mt = p.stat().st_mtime
                 if mt > newest_mtime:

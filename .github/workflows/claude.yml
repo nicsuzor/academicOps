@@ -9,11 +9,22 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to operate on (optional)'
+        required: false
+        type: string
+      prompt:
+        description: 'Instructions for Claude (optional — defaults to reviewing the PR)'
+        required: false
+        type: string
 
 jobs:
   claude:
     timeout-minutes: 45
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
@@ -31,6 +42,29 @@ jobs:
         with:
           fetch-depth: 1
 
+      # For workflow_dispatch: build an explicit prompt so Claude knows the PR and task.
+      # For comment-triggered events: this step is skipped; the action reads from the event.
+      - name: Build dispatch prompt
+        if: github.event_name == 'workflow_dispatch'
+        id: dispatch
+        env:
+          DISPATCH_PR: ${{ inputs.pr_number }}
+          DISPATCH_PROMPT: ${{ inputs.prompt }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -n "$DISPATCH_PR" ] && [ -n "$DISPATCH_PROMPT" ]; then
+            FULL="Working on PR #${DISPATCH_PR} in ${REPO}: ${DISPATCH_PROMPT}"
+          elif [ -n "$DISPATCH_PR" ]; then
+            FULL="Review PR #${DISPATCH_PR} in ${REPO} and address any pending issues."
+          else
+            FULL="${DISPATCH_PROMPT}"
+          fi
+          {
+            echo "prompt<<DISPATCH_EOF"
+            echo "$FULL"
+            echo "DISPATCH_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code
         id: claude
         continue-on-error: true
@@ -42,8 +76,9 @@ jobs:
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          # For workflow_dispatch: use the prompt built above.
+          # For comment triggers: empty string → action reads instructions from the comment.
+          prompt: ${{ steps.dispatch.outputs.prompt }}
 
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md

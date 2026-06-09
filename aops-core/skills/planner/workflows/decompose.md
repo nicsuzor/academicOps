@@ -19,6 +19,7 @@ version: 2.0.0
 
 ## Core Process
 
+0. **Earn-its-keep gate** — Before authorising decomposition, apply the five prompts from [[../SKILL.md#3-decompose]] (SSoT). If the idea does not survive, record why and halt. Good ideas killed here cost a sentence; bad ideas survived to PR cost a revert. ([[aops-8d4a2e14]] primary-catch intent · [[mem-231996ac]] no-shitty-NLP corollary · [[aops-8c7f7b88]] arch-fit backstop)
 1. **Understand the Target**: What are we decomposing -- a project, an epic (needs tasks), or a task (needs actions)? Clarify the primary objective and constraints.
    - **Target structure**: `Project → Epic → Task → Action` (see [[../../remember/references/TAXONOMY.md]])
    - **Property Check**: Examine the parent's `scope`, `uncertainty`, and `criticality`.

@@ -207,3 +207,75 @@ def test_cc_can_link() -> None:
         "libc6-dev is likely missing — ensure the Dockerfile installs "
         "`build-essential` (not just `gcc`)."
     )
+
+
+def test_verify_docker_target_uses_no_cache() -> None:
+    """verify-docker Makefile target must pass --no-cache to docker build (issue #1452).
+
+    A build that reuses cached layers can appear green even when the committed
+    Dockerfile would fail on a fresh build (the #1452 incident: a broken RUN
+    block cleared every verification gate because its layer was cached).
+    --no-cache guarantees every layer is rebuilt from the committed source.
+    """
+    makefile = REPO_ROOT / "Makefile"
+    assert makefile.exists(), "Makefile not found at repo root"
+    content = makefile.read_text()
+
+    assert "verify-docker" in content, (
+        "Makefile must define a 'verify-docker' target for clean-build verification "
+        "(issue #1452: stale cached layers produced false-green results). "
+        "Add a target that runs `docker build --no-cache ...`."
+    )
+
+    lines = content.splitlines()
+    in_recipe = False
+    recipe_lines: list[str] = []
+    for line in lines:
+        if line.startswith("verify-docker:"):
+            in_recipe = True
+            continue
+        if in_recipe:
+            if line.startswith("\t"):
+                if not line.strip().startswith("#"):
+                    recipe_lines.append(line)
+            elif line.strip() and not line.startswith("#"):
+                break
+
+    assert any("--no-cache" in ln for ln in recipe_lines), (
+        "verify-docker recipe must pass --no-cache to docker build so that "
+        "stale cached layers cannot produce a false-green verification result. "
+        f"Recipe lines found: {recipe_lines!r}"
+    )
+
+
+def test_build_docker_lacks_no_cache() -> None:
+    """build-docker (dev target) must NOT use --no-cache (issue #1452).
+
+    build-docker is the fast dev-iteration target; --no-cache would rebuild
+    every layer on every edit cycle. The clean-build target is verify-docker.
+    This test ensures the two targets remain distinct so developers are not
+    penalised on every iteration while verification still mandates a clean build.
+    """
+    makefile = REPO_ROOT / "Makefile"
+    assert makefile.exists(), "Makefile not found at repo root"
+    content = makefile.read_text()
+
+    lines = content.splitlines()
+    in_recipe = False
+    recipe_lines: list[str] = []
+    for line in lines:
+        if line.startswith("build-docker:"):
+            in_recipe = True
+            continue
+        if in_recipe:
+            if line.startswith("\t"):
+                if not line.strip().startswith("#"):
+                    recipe_lines.append(line)
+            elif line.strip() and not line.startswith("#"):
+                break
+
+    assert not any("--no-cache" in ln for ln in recipe_lines), (
+        "build-docker must NOT use --no-cache — it is the fast dev-iteration target. "
+        "Use verify-docker for clean verification builds. "
+        f"Recipe lines found: {recipe_lines!r}"
+    )

@@ -199,6 +199,14 @@ external_agents:
 # Project registry (read by polecat/manager.py).
 # Each entry maps a slug to a GitHub repo + per-project metadata. Slugs are
 # the canonical names; aliases below let `polecat crew <alias>` resolve.
+#
+# Project entries support:
+#   repo: <name>            # Optional repository name on GitHub
+#   default_branch: <name>  # Default branch (e.g. main, dev)
+#   aliases: [...]          # Shorthand names accepted by CLI
+#   sessions_access: true   # (Optional) Mount read-only sessions transcripts
+#                           # directory and set $AOPS_SESSIONS.
+#   mounts:                 # List of additional bind mounts
 # ---------------------------------------------------------------------------
 projects:
   aops:

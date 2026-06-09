@@ -124,3 +124,43 @@ def test_translate_plugin_root_claude_unchanged():
     translated = translate_tool_calls(body, "claude")
     assert "${CLAUDE_PLUGIN_ROOT}" in translated
     assert "${extensionPath}" not in translated
+
+
+def test_gemini_agent_schema_tool_validation():
+    """Test that validate_gemini_agent_schema raises ValueError for invalid tools."""
+    from scripts.transforms.agent_schema import validate_gemini_agent_schema
+
+    valid_fm = {
+        "name": "valid-agent",
+        "description": "A valid agent description",
+        "tools": ["read_file", "mcp_pkb_search", "mcp_outlook_*"],
+    }
+    # Should not raise
+    validate_gemini_agent_schema(valid_fm, "valid-agent.md")
+
+    # Invalid tool name (not built-in and not mcp_)
+    invalid_name_fm = {
+        "name": "invalid-agent",
+        "description": "An invalid agent description",
+        "tools": ["AskUserQuestion"],
+    }
+    with pytest.raises(ValueError, match="Invalid tool name 'AskUserQuestion'"):
+        validate_gemini_agent_schema(invalid_name_fm, "invalid-agent.md")
+
+    # Double underscores (Claude format)
+    double_underscore_fm = {
+        "name": "invalid-agent",
+        "description": "An invalid agent description",
+        "tools": ["mcp__pkb__search"],
+    }
+    with pytest.raises(ValueError, match="contains double underscores"):
+        validate_gemini_agent_schema(double_underscore_fm, "invalid-agent.md")
+
+    # Plugin namespace prefix
+    plugin_prefix_fm = {
+        "name": "invalid-agent",
+        "description": "An invalid agent description",
+        "tools": ["mcp_plugin_aops-core_pkb_search"],
+    }
+    with pytest.raises(ValueError, match="contains Claude plugin namespace prefix"):
+        validate_gemini_agent_schema(plugin_prefix_fm, "invalid-agent.md")
