@@ -819,6 +819,14 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
 CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
 
+# The full register vocabulary — the SINGLE authoritative accepted set, derived
+# from the capture/personal values plus the working default and review-grade
+# register. This is the SSoT: the reader (get_session_register, below) returns
+# a register only if it is in this set, and the launcher's config/CLI validator
+# imports THIS constant (lib/polecat_config.py::_validate_register) so the
+# accepted vocabulary is defined exactly once and the two can never drift.
+VALID_REGISTERS: frozenset[str] = CAPTURE_REGISTER_VALUES | frozenset({"working", "review"})
+
 # Gates suppressed in the capture/personal register (the review-grade ceremony).
 # ida's gate fires are suppressed here — the honesty floor is enforced via
 # tiered instructions in ida-reminder.md, not by hard gate enforcement.
@@ -837,11 +845,10 @@ def get_session_register() -> str:
     # to the 'working' register explicitly (no silent empty-string fallback).
     raw_env = os.environ.get(REGISTER_ENV_VAR)
     raw = (raw_env or "working").strip().lower()
-    if raw in CAPTURE_REGISTER_VALUES:
-        return raw
-    if raw == "review":
-        return "review"
-    return "working"
+    # A recognised register passes through; anything else falls back to the
+    # 'working' default — register-scaling never fails open onto a *lighter*
+    # register (capture/personal), only onto the working default.
+    return raw if raw in VALID_REGISTERS else "working"
 
 
 def is_capture_register() -> bool:

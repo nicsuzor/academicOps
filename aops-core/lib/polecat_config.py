@@ -65,13 +65,13 @@ CONFIG_PATH_ENV = "AOPS_POLECAT_CONFIG"
 # Permitted gate verdict modes. Anything else ⇒ ValueError at load time.
 _GATE_MODES = frozenset({"warn", "block", "off"})
 
-# Permitted session registers (WS6/WS7 register-scaling). Mirrors the reader's
-# accepted set in hooks/gate_config.py::get_session_register(). A session's
-# register is its *stakes* declaration: 'capture'/'personal' drop review-grade
-# ceremony (qa/enforcer/ida gates), 'working' is the default, 'review' is
-# review-grade. Validated at the config/CLI boundary so a typo fails fast rather
-# than silently falling back to 'working' inside the container.
-_REGISTERS = frozenset({"capture", "personal", "working", "review"})
+# NOTE on the session-register vocabulary (WS6/WS7 register-scaling): the
+# authoritative accepted set is NOT defined here — it lives once in
+# hooks/gate_config.py::VALID_REGISTERS (the reader owns register semantics).
+# _validate_register imports it lazily so the config/CLI boundary and the
+# in-container reader can never drift. A register is a session's *stakes*
+# declaration: 'capture'/'personal' drop review-grade ceremony (qa/enforcer/ida
+# gates), 'working' is the default, 'review' is review-grade.
 
 
 @dataclass(frozen=True)
@@ -219,14 +219,20 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
 def _validate_register(value: Any) -> str:
     """Coerce + validate a ``register`` value against the permitted set.
 
-    Accepts a string (case-insensitive); rejects anything outside ``_REGISTERS``
-    so a typo (e.g. ``capure``) hard-fails at the config/CLI boundary instead of
-    silently degrading to 'working' inside the container. Returns the normalised
-    lowercase register.
+    Accepts a string (case-insensitive); rejects anything outside the
+    authoritative ``hooks.gate_config.VALID_REGISTERS`` set (imported here so the
+    vocabulary is single-sourced) so a typo (e.g. ``capure``) hard-fails at the
+    config/CLI boundary instead of silently degrading to 'working' inside the
+    container. Returns the normalised lowercase register.
     """
+    # Lazy import (the lib→hooks convention, mirroring lib/gates/*): keeps
+    # polecat_config importable even where hooks is not yet on the path, and
+    # binds the accepted set to its one definition in the reader.
+    from hooks.gate_config import VALID_REGISTERS
+
     normalised = str(value).strip().lower()
-    if normalised not in _REGISTERS:
-        raise ValueError(f"invalid register: {value!r}; expected one of {sorted(_REGISTERS)}")
+    if normalised not in VALID_REGISTERS:
+        raise ValueError(f"invalid register: {value!r}; expected one of {sorted(VALID_REGISTERS)}")
     return normalised
 
 
