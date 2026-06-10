@@ -29,7 +29,7 @@ Scheduled, cheap-model routine that reads the day's session evidence (session-su
 2. [ ] A fresh agent given only the last two digest files correctly answers "what did I start but forget yesterday?" — naming dropped threads with their references — in a dogfood test, without reading any transcript.
 3. [ ] User corrections present in the period's prompts (e.g. "no, stop, you should have…", "why didn't you…", explicit /learn requests) are detected and dispatched to `/learn` (survey retro mode) with the transcript path; resulting GitHub issues are deduplicated by /learn's existing process.
 4. [ ] Facts stated by the user but absent from the PKB (people, decisions, preferences, project state) are surfaced in the digest's **Unrecorded facts** section with provenance quotes; in supervised phase they are proposals, not writes.
-5. [ ] Each cycle runs on a cheap model (Haiku-class or Flash-Lite-class) and completes incrementally — only sessions newer than the watermark are processed; a no-activity cycle is a no-op costing ~nothing.
+5. [ ] Each cycle runs on a cheap model (Haiku-class or Flash-Lite-class) and completes incrementally — the unit of increment is the **prompt timestamp**, not the session: only prompts/events newer than the watermark are processed, so a still-open session with new prompts IS revisited, and a cycle with no new prompts anywhere is a no-op costing ~nothing.
 6. [ ] The overwhelm dashboard's narrative panel can render the digest's narrative directly (file is parseable: stable headings + frontmatter), satisfying dashboard US-D3 ("a narrative, not a list of accomplishments").
 
 ### Failure Modes (If ANY occur, implementation is WRONG)
@@ -39,6 +39,7 @@ Scheduled, cheap-model routine that reads the day's session evidence (session-su
 3. [ ] **Duplicate issue spam** — the same correction filed as a new GitHub issue on every cycle. Dispatch must be once-per-correction (watermark + /learn's own dedup).
 4. [ ] **Silent death** — cron stops producing digests and nothing notices. The daily note's progress-sync must flag a stale digest (no update in >3h during waking hours).
 5. [ ] **Autonomous PKB pollution** — unverified cheap-model facts written directly to the PKB before the supervised phase has been ratified (see Rollout).
+6. [ ] **Silent thread loss** — a thread present in cycle N's digest is absent from cycle N+1 without having moved to Completed threads. For a context-recovery artifact this is the catastrophic case: it converts the tool into a context-_loss_ amplifier, and the user is the person least able to notice. Every update must be monotone over threads.
 
 ## Problem Statement
 
@@ -74,7 +75,7 @@ Context recovery is the dashboard's entire job and currently its weakest input. 
 
 **Boundary rationale**: One feature = one artifact (the digest file) plus the routine that maintains it. Everything downstream consumes a stable file contract.
 
-**Prior art / superseded decisions**: `synthesis.json` + `synthesize_dashboard.py` (mechanical, deleted in task-4270206e; task-4eb9c193 cancelled) failed because it was a _script_ synthesising narrative — P#49 territory. The old `/recap` skill (PR #857, since removed) proved the read-summaries-tell-story shape worked but was on-demand and frontier-priced. This spec revives that shape as a scheduled cheap-model routine with references, which is what the dashboard epic (task-ebba9ea1, US-D3) was waiting on.
+**Prior art and explicit supersession**: This spec **reintroduces a synthesis intermediary, which a prior decision forbade** — naming that squarely: the session-handover-contract model (task-1598bd4c, PR #707; recorded in kb-4e4feb21) cancelled task-4eb9c193 with "dashboard reads `$AOPS_SESSIONS/summaries/*.json` directly; no intermediary synthesis step needed," and the handover-contract spec said _do not reintroduce a synthesis intermediary_. That decision's premise — that summaries would carry the story — has failed empirically: sessions rarely reach `/dump`, so summaries are mostly null (Problem Statement). This spec therefore **formally supersedes** the no-intermediary rule for the narrative use-case, on that evidence. Landing checklist: update kb-4e4feb21 and the handover-contract's successor doc (now in the brain PKB, moved in commit a311b670) to point here. Two further differences from the failed attempt: the old intermediary was a mechanical script (`synthesize_dashboard.py`, deleted in task-4270206e) — here judgment lives in an agent per P#49; and the removed `/recap` skill (PR #857) proved the summaries→narrative shape but was on-demand and frontier-priced — this is its scheduled, referenced, cheap-model successor, which is what the dashboard epic (task-ebba9ea1, US-D3) was waiting on.
 
 ## Dependencies
 
@@ -88,7 +89,7 @@ Context recovery is the dashboard's entire job and currently its weakest input. 
 
 ### Data Requirements
 
-- `$AOPS_SESSIONS/summaries/YYYY-MM/*.json` — session metadata, token metrics; `summary` frequently null (must not be assumed present).
+- `$AOPS_SESSIONS/summaries/YYYY-MM/*.json` — session metadata, token metrics; `summary` frequently null (must not be assumed present). Note: aops-efffc1f7 (merge_ready) adds incremental enrichment in `transcript.py` so summaries gain `initial_prompt` and timeline descriptions _without_ waiting for `/end_session` — this partially erodes the "mostly null" premise and is welcome: it improves the digest's _inputs_ but replaces none of its jobs (narrative synthesis, correction dispatch, fact surfacing remain agent judgment over those inputs).
 - `$AOPS_SESSIONS/transcripts/YYYY-MM/*-abridged.md` / `*-full.md` — reference targets; abridged versions used for spot-verification of claims.
 - Prior digest file — watermark + thread continuity (yesterday's digest seeds "carried over / dropped" detection).
 - Missing/malformed inputs: skip the session, record it in the digest's `gaps` frontmatter list — never fabricate, never crash the whole cycle.
@@ -101,8 +102,9 @@ Context recovery is the dashboard's entire job and currently its weakest input. 
 cron (hourly, 07–22)
   └─ scripts/session-digest-cron.sh
        ├─ 1. gather: uv run aops-core/scripts/user_prompts.py --period today
-       │           + ls new summaries since watermark (mtime > last_processed)
-       ├─ 2. no new sessions? → exit 0 (no agent invocation)
+       │           → filter to prompts with timestamp > watermark
+       │           + summaries with mtime > watermark (metadata only)
+       ├─ 2. no new prompts anywhere (incl. still-open sessions)? → exit 0 (no agent invocation)
        └─ 3. invoke headless cheap-model agent with /digest skill
               ├─ (a) update $AOPS_SESSIONS/digests/YYYYMMDD-digest.md
               ├─ (b) corrections → dispatch /learn retro per flagged transcript
@@ -117,6 +119,15 @@ consumers:
 
 Division of labour per P#49: the **shell script** does only deterministic gathering (globs, watermark check, CLI invocation). All judgment — narrative, correction detection, fact extraction — happens **inside the agent** running the skill. No API-wrapping Python.
 
+### Automation-session exclusion
+
+The digest consumes **interactive sessions only**. Excluded entirely from narrative and correction inputs: the digest's own headless cycles, the `/learn` sessions it dispatches, scheduled-task runs, polecat workers, and GHA sessions (classifiable from filename conventions and surface metadata; precedent: task-46e0b027 made automation sessions observability-only for the dashboard). Two reasons this is load-bearing, not cosmetic:
+
+1. **Quote-requote loop**: a dispatched `/learn` session's transcript quotes the correction verbatim. If automation transcripts were inputs, every cycle would re-flag the quoted correction from the _new_ transcript (the `learn_dispatched` ledger keys on the original ref, so it wouldn't catch the requote) → infinite re-dispatch. Exclusion breaks the loop at the source.
+2. **Narrative pollution**: "the digest ran" ×15 is not the day's story.
+
+Automation sessions may still be _referenced_ by the narrative when an interactive thread dispatched them (e.g. "Nic dispatched a /learn retro [ref]") — the exclusion is about what the digest reads, not what it may mention.
+
 ### Digest file contract
 
 `$AOPS_SESSIONS/digests/YYYYMMDD-digest.md`:
@@ -127,7 +138,8 @@ date: 2026-06-11
 updated: 2026-06-11T14:05:00+10:00
 cycles: 6
 model: claude-haiku-4-5
-sessions_covered: [469aa856, 1ec4c5ce, ...]   # watermark
+watermark: 2026-06-11T13:58:12+10:00           # last processed PROMPT timestamp — the increment unit
+sessions_covered: [469aa856, 1ec4c5ce, ...]    # informational; NOT the watermark (sessions grow across cycles)
 gaps: []                                       # skipped/malformed inputs
 learn_dispatched: ["transcripts/2026-06/...-abridged.md#L198"]  # dedup ledger
 status: ok | stale | error
@@ -145,11 +157,11 @@ but task-88f27ffd was never updated [transcript L280–298] — and dispatched a
 
 ## Threads
 
-### Active / where we're up to
+### Ongoing threads / where we're up to
 
 - <thread> — <state, next step if stated> [refs]
 
-### Finished
+### Completed threads
 
 - <thread> — <outcome> [refs]
 
@@ -180,11 +192,13 @@ The digest never files issues itself and never proposes framework changes — fl
 
 ### Fact capture (c)
 
-The digest agent compares user-stated facts against what it can see was captured in-session (a `/remember` call, a task update visible in the timeline). Anything plausibly uncaptured goes in **Unrecorded facts** with a provenance quote. Persistence is staged — see Rollout. When Phase 3 lands, writes go through PKB MCP `create_memory`/`append` tagged `digest, unverified` for `/sleep` to QA, per the existing consolidation-QA rule (consolidation output requires qualitative QA before merge).
+The digest agent compares user-stated facts against what it can see was captured in-session (a `/remember` call, a task update visible in the timeline). Anything plausibly uncaptured goes in **Unrecorded facts** with a provenance quote. Persistence is staged — see Rollout. When Phase 3 lands, writes go through the canonical PKB MCP tools — `mcp__pkb__create_memory` for new facts, `mcp__pkb__append` to add to an existing note — tagged `digest, unverified` for `/sleep` to QA, per the existing consolidation-QA rule (consolidation output requires qualitative QA before merge).
 
 ### Redaction rule
 
 The digest quotes **user prompts only**, never tool output embedded in prompt extracts. Any token matching a credential shape (`sk-…`, `key=`, `Bearer …`, etc.) is replaced with `[REDACTED]`. This is a hard rule in the skill, tested in the dogfood run.
+
+Consumer-side redaction is defense-in-depth, **not** the fix for the standing leak that motivated it: live credentials already sit in `summaries/user-prompts-2026-06.txt` in the synced sessions repo, and every consumer of the prompt timeline re-propagates them until the _producer_ (`user_prompts.py`) redacts at extraction time. Remediation (audit, scrub, rotate, producer-side redaction) is tracked as **aops-f2a57c5c** (P1) and is not gated on this spec.
 
 ### Cadence & cost
 
@@ -196,15 +210,16 @@ The digest quotes **user prompts only**, never tool output embedded in prompt ex
 
 Tests implement the acceptance criteria above. All run against a fixture day assembled from real (sanitised) session artifacts in `tests/fixtures/digest/`.
 
-| Test                           | Validates | Method                                                                                                                                                               |
-| ------------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1 reference integrity         | AC1 / FM1 | Run one cycle on fixtures; extract every `[ref]`; assert each session ID exists in fixtures, each path exists, each task ID matches fixture task list.               |
-| T2 context recovery            | AC2       | Dogfood: fresh headless agent + two fixture digests + question "what did I start but forget yesterday?"; PASS iff named dropped thread matches fixture ground truth. |
-| T3 correction dispatch + dedup | AC3 / FM3 | Fixture transcript with two corrections; run two cycles; assert exactly two /learn dispatches (mock), zero on second cycle.                                          |
-| T4 fact surfacing              | AC4 / FM5 | Fixture with an uncaptured fact; assert it appears under Unrecorded facts with quote; assert zero PKB writes in supervised phase.                                    |
-| T5 incremental + idle          | AC5       | Second run with no new sessions exits 0 without invoking the agent CLI (assert via mock).                                                                            |
-| T6 redaction                   | FM2       | Fixture prompt containing a planted fake API key; assert digest contains `[REDACTED]` and not the key.                                                               |
-| T7 staleness flag              | FM4       | progress-sync fixture run with digest `updated` >3h old; assert daily note flags it.                                                                                 |
+| Test                           | Validates | Method                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1 reference integrity         | AC1 / FM1 | Run one cycle on fixtures; extract every `[ref]`; assert each session ID exists in fixtures, each path exists, each task ID matches fixture task list.                                                                                                                                                                                  |
+| T2 context recovery            | AC2       | Dogfood: fresh headless agent + two fixture digests + question "what did I start but forget yesterday?"; PASS iff named dropped thread matches fixture ground truth.                                                                                                                                                                    |
+| T3 correction dispatch + dedup | AC3 / FM3 | Fixture transcript with two corrections; run two cycles; assert exactly two /learn dispatches (mock), zero on second cycle. Then add the dispatched /learn session's own transcript (quoting the correction) to fixtures and run a third cycle: assert zero new dispatches (quote-requote loop broken by automation-session exclusion). |
+| T4 fact surfacing              | AC4 / FM5 | Fixture with an uncaptured fact; assert it appears under Unrecorded facts with quote; assert zero PKB writes in supervised phase.                                                                                                                                                                                                       |
+| T5 incremental + idle          | AC5       | Second run with no new prompts — including a fixture session that is still open but has no prompts past the watermark — exits 0 without invoking the agent CLI (assert via mock). Then append a new prompt to the still-open session and assert the next cycle DOES process it.                                                         |
+| T6 redaction                   | FM2       | Fixture prompt containing a planted fake API key; assert digest contains `[REDACTED]` and not the key.                                                                                                                                                                                                                                  |
+| T7 staleness flag              | FM4       | progress-sync fixture run with digest `updated` >3h old; assert daily note flags it.                                                                                                                                                                                                                                                    |
+| T8 thread monotonicity         | FM6       | Two-cycle run over fixtures; assert every thread present in cycle N's Threads section appears in SOME Threads subsection (Ongoing / Completed / Started-but-dropped) at cycle N+1.                                                                                                                                                      |
 
 Each test must fail before implementation (fixtures + assertions land first).
 
@@ -214,12 +229,13 @@ Each test must fail before implementation (fixtures + assertions land first).
 2. **Cron rot / silent death** — Detection: digest `status`/`updated` checked by `/daily` (T7) and visible on dashboard. Recovery: manual run of the cron script; log at `/tmp/session-digest.log`.
 3. **Cheap-model narrative drift** (vague, unreferenced, or wrong-thread prose) — Detection: periodic `/verify` pass against the digest rubric (see Rollout phase gates); the digest is regenerable from transcripts at any time, so quality failures are recoverable, not fatal.
 4. **Double-truth divergence** (digest says X, daily note says Y) — Prevention: daily note _consumes_ the digest (single derivation chain); digest carries references so conflicts resolve by following them.
+5. **Silent thread loss (FM6)** — Detection: T8 in CI + each cycle mechanically diffs the prior digest's thread list against its rewrite before saving (cheap string check, not model judgment); any missing thread is restored or the cycle aborts with `status: error`. Recovery: digests are regenerable from transcripts; the prior version is one `git log` away (sessions repo is versioned).
 
 ## Rollout
 
 Maturity ladder (Manual → Assisted → Supervised → Autonomous):
 
-- **Phase 1 — Assisted (manual trigger)**: `/digest` runs on demand; Nic reviews output for ~3 days of real use. Corrections section populated but `/learn` dispatch is listed-not-fired. Gate to proceed: T1–T6 pass; Nic rates 3 consecutive digests as accurate ("would have answered my morning question").
+- **Phase 1 — Assisted (manual trigger)**: `/digest` runs on demand; Nic reviews output for ~3 days of real use. Corrections section populated but `/learn` dispatch is listed-not-fired. Gate to proceed: T1–T6 and T8 pass; Nic rates 3 consecutive digests as accurate ("would have answered my morning question").
 - **Phase 2 — Supervised (cron, propose-only)**: hourly cron live; `/learn` dispatch live; facts remain propose-only; dashboard + `/daily` consume the digest. Gate: 1 week with zero FM1/FM2/FM3 occurrences; /learn issues spot-checked as non-duplicative.
 - **Phase 3 — Autonomous fact writes**: PKB writes tagged `digest, unverified`, QA'd by `/sleep`. Gate: Nic explicitly ratifies after reviewing a week of proposed-facts precision.
 
