@@ -86,8 +86,6 @@ Several lifecycle gates can fire on one event, so they need a defined way to **c
 
 **Enforcer channel ≠ injection (item 4, #1315).** The enforcer gate's "invoke rbg with the session log" instruction is marked with a first-party sentinel (`<!-- aops:enforcer-channel -->`) so the injection defence treats it as a framework-issued gate, not smuggled input. The marker is the trust boundary — identical text **without** it is still untrusted (`gate_config.is_enforcer_channel`).
 
-**Register-scaling (item 6, ties to the register model above).** The session register is read from `AOPS_SESSION_REGISTER`. In the **capture/personal** register the review-grade gates (enforcer, ida, qa) are **suppressed** — a capture or personal aside must not draw a compliance audit or an honesty loop. The **sentinel** (destructive-op safety) and **handover** (work-loss) gates are **not** suppressed: those are harm, not ceremony. Unknown register values fail closed to `working`, never to a lighter register.
-
 **Turn-end vs session-end (item 3).** `/dump` is the **turn-end / emergency-bail** signal — a fast resume-task + short handover, no commit/PR/reflection; `/end_session` is the **session-end / canonical close** — full quality bar (commit, push, PR, `release_task`, reflection). Both satisfy the handover gate (the gate opens on either skill completing); they differ in ceremony, not in whether the gate is cleared. Use `/dump` mid-flight when context is full or work isn't committable; `/end_session` when the task is genuinely done.
 
 **Legal termination for a `/goal` / `/loop` session (item 2) — boundary, see below.** The intended fix is: a session that has reached the **done-pending-Nic** terminal state (defined in WS2's program skill — "autonomously complete; N items surfaced for the human") has a legal way to stop instead of the continuation hook forcing another empty retry against the handover gate. **In this repo there is no `/goal`/`/loop` continuation Stop hook to compose against** — `/loop`/`/goal` are harness-level session constructs, not aops gates (no goal gate exists in `GATE_CONFIGS`, and adding one would violate "no new gates"). The composable half — the handover gate already opens on `/dump` and `/end_session`, so a loop that reaches done-pending-Nic and runs either skill terminates legally — is in place. The harness-side continuation half cannot be wired here; it is recorded as a needs-decision (see the task report). The program skill and `/pull` already name this same WS7 boundary.
@@ -114,8 +112,6 @@ Gate hygiene policy (no new gates). Runtime: `aops-core/hooks/gate_config.py` + 
 **Never-block.** `AskUserQuestion` and never-block tools are never denied or warned by any gate (`gate_config.is_never_block`).
 
 **Enforcer channel.** Enforcer gate invocations carry `<!-- aops:enforcer-channel -->` to distinguish framework-issued from smuggled input.
-
-**Register-scaling.** Register read from `AOPS_SESSION_REGISTER`. In capture/personal register, enforcer/ida/qa gates suppressed; sentinel and handover are not. Dormant until writer wired (fail-closed → `working`).
 
 **Turn vs session.** `/dump` = turn-end bail; `/end_session` = session-end canonical close. Both satisfy the handover gate.
 

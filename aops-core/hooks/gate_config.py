@@ -690,7 +690,7 @@ def extract_subagent_type(
 
 
 # =============================================================================
-# WS7 — GATE HYGIENE: never-block, precedence, register-scaling, enforcer channel
+# WS7 — GATE HYGIENE: never-block, precedence, enforcer channel
 # =============================================================================
 # Composition primitives for WS7 (gate composition & exit semantics). They do
 # NOT add gates — they make the EXISTING gates compose deterministically and stop
@@ -780,74 +780,3 @@ GATE_PRECEDENCE: tuple[str, ...] = (
     "handover",
     "ida",
 )
-
-
-# --- Item 6: register-scaling (capture/personal) ------------------------------
-# WS6 defined three registers (capture/personal, working, review-grade) as
-# doctrine in junior.md; the enforcement is WS7's lane. The register is selected
-# per-session from the AOPS_SESSION_REGISTER env var. In the capture/personal
-# register the review-grade gates (enforcer self-check, ida honesty reminder, qa
-# verification) are suppressed — a "vacuum the garage" capture must not draw a
-# compliance audit or an honesty loop (thread 10, retro MF4). The handover and
-# sentinel gates are NOT suppressed: losing a capture or running a destructive
-# op is still real harm.
-#
-# ida (honesty) is suppressed as a *gate* here, but its injected instructions
-# are TIERED (hooks/templates/ida-reminder.md, updated 2026-05-30): the honesty
-# floor (don't claim inferred as observed; flag substitutions/skips/unverified
-# subagent results; no relayed menus) is woven into the template and applied by
-# the agent's judgment on every turn — only the heavyweight evidence ceremony
-# (confidence %, competing hypotheses, artifact manifest) is gate-suppressed in
-# capture. This is the "instructions first" approach: improve guidance before
-# escalating to harder enforcement. If instruction tiering proves insufficient,
-# we can remove ida from the suppressed set to hard-enforce later.
-#
-# NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
-# repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
-# SessionStart hook writes it — so get_session_register() always resolves to
-# 'working' in the running system and register-scaling is dormant (fail-closed:
-# dormant means full ceremony, never less). Activating it (deciding *when* a
-# session is capture/personal and writing the var) is a separate follow-up, not
-# something this code assumes is live. The reader + engine wiring + tests are
-# correct and safe to ship ahead of the writer.
-REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
-CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
-
-# Gates suppressed in the capture/personal register (the review-grade ceremony).
-# ida's gate fires are suppressed here — the honesty floor is enforced via
-# tiered instructions in ida-reminder.md, not by hard gate enforcement.
-GATES_SUPPRESSED_IN_CAPTURE: frozenset[str] = frozenset({"enforcer", "ida", "qa"})
-
-
-def get_session_register() -> str:
-    """Return the active session register, defaulting to 'working'.
-
-    Read from AOPS_SESSION_REGISTER. Recognised values: 'capture'/'personal'
-    (lightest), 'working' (default), 'review' (review-grade). Unknown values fall
-    back to 'working' — register-scaling never fails open onto a *lighter*
-    register, only onto the working default.
-    """
-    # os.environ.get with no default returns None when unset; we normalise that
-    # to the 'working' register explicitly (no silent empty-string fallback).
-    raw_env = os.environ.get(REGISTER_ENV_VAR)
-    raw = (raw_env or "working").strip().lower()
-    if raw in CAPTURE_REGISTER_VALUES:
-        return raw
-    if raw == "review":
-        return "review"
-    return "working"
-
-
-def is_capture_register() -> bool:
-    """Return True if the session is in the capture/personal register."""
-    return get_session_register() in CAPTURE_REGISTER_VALUES
-
-
-def is_gate_suppressed_in_register(gate_name: str) -> bool:
-    """Return True if this gate's ceremony is dropped in the current register.
-
-    In the capture/personal register the review-grade gates (enforcer, ida, qa)
-    are suppressed so low-stakes capture work drops below review-grade ceremony
-    (WS6 register model, WS7 enforcement). Sentinel and handover always fire.
-    """
-    return is_capture_register() and gate_name in GATES_SUPPRESSED_IN_CAPTURE

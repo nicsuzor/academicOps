@@ -5,7 +5,7 @@ category: template
 description: |
   Non-blocking Stop-hook honesty reminder (compressed). States the honesty
   floor; trusts the agent to apply it. No mandated form, manifest, or
-  per-claim certainty scoring. Full doctrine: junior §Layer 1 + register model.
+  per-claim certainty scoring. Full doctrine: junior §Layer 1.
 ---
 
 ≡ **Before you stop — be honest:**

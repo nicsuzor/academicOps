@@ -20,16 +20,12 @@ from hooks.gate_config import (  # noqa: E402
     COMPLIANCE_SUBAGENT_TYPES,
     ENFORCER_CHANNEL_SENTINEL,
     GATE_PRECEDENCE,
-    GATES_SUPPRESSED_IN_CAPTURE,
     NEVER_BLOCK_CATEGORIES,
     SPAWN_TOOLS,
     TOOL_CATEGORIES,
     extract_subagent_type,
-    get_session_register,
     get_tool_category,
-    is_capture_register,
     is_enforcer_channel,
-    is_gate_suppressed_in_register,
     is_never_block,
 )
 
@@ -387,50 +383,3 @@ class TestGatePrecedence:
 
     def test_precedence_has_no_duplicates(self):
         assert len(GATE_PRECEDENCE) == len(set(GATE_PRECEDENCE))
-
-
-class TestRegisterScaling:
-    """WS7 item 6: capture/personal register drops review-grade ceremony.
-
-    Failure being guarded: review-grade evidence/honesty ceremony mis-fires on
-    capture/personal work (the "vacuum the garage" evidence theatre, retro MF4).
-    """
-
-    def test_default_register_is_working(self, monkeypatch):
-        monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
-        assert get_session_register() == "working"
-        assert not is_capture_register()
-
-    def test_capture_register_detected(self, monkeypatch):
-        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-        assert get_session_register() == "capture"
-        assert is_capture_register()
-
-    def test_personal_register_detected(self, monkeypatch):
-        monkeypatch.setenv("AOPS_SESSION_REGISTER", "personal")
-        assert is_capture_register()
-
-    def test_unknown_register_falls_back_to_working_not_lighter(self, monkeypatch):
-        # Fail-closed: an unrecognised value must NOT silently drop ceremony.
-        monkeypatch.setenv("AOPS_SESSION_REGISTER", "bogus")
-        assert get_session_register() == "working"
-        assert not is_capture_register()
-
-    def test_review_grade_gates_suppressed_in_capture(self, monkeypatch):
-        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-        for gate in ("enforcer", "ida", "qa"):
-            assert is_gate_suppressed_in_register(gate), f"{gate} should be suppressed"
-
-    def test_safety_gates_not_suppressed_in_capture(self, monkeypatch):
-        # sentinel (destructive-op safety) + handover (work-loss) still fire.
-        monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-        assert not is_gate_suppressed_in_register("sentinel")
-        assert not is_gate_suppressed_in_register("handover")
-
-    def test_nothing_suppressed_in_working_register(self, monkeypatch):
-        monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
-        for gate in ("enforcer", "ida", "qa", "sentinel", "handover"):
-            assert not is_gate_suppressed_in_register(gate)
-
-    def test_suppressed_set_is_the_review_grade_gates(self):
-        assert GATES_SUPPRESSED_IN_CAPTURE == frozenset({"enforcer", "ida", "qa"})
