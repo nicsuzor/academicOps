@@ -92,5 +92,5 @@ for rid in $dismiss; do
   echo "reconcile: dismissing superseded enforcer review ${rid}"
   gh api -X PUT "repos/${REPO}/pulls/${PR_NUMBER}/reviews/${rid}/dismissals" \
     -f message="Superseded — exactly one enforcer verdict stands per SHA (aops-1adfd28d)" \
-    >/dev/null 2>&1 || echo "::warning::failed to dismiss enforcer review ${rid} (continuing)"
+    >/dev/null || echo "::warning::failed to dismiss enforcer review ${rid} (continuing)"
 done

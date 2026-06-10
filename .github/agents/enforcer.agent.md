@@ -71,7 +71,7 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
 
 File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
 
-- **`gh pr review` prints nothing on success.** Empty output means it WORKED — do not treat silence as failure and re-run it. If you must confirm, re-list reviews (step 4) and look for your verdict; never blind-post a second time. (Blind re-posting on silent success caused the duplicate review on run 27250704371.)
+- **`gh pr review` prints nothing on success.** Empty output means it WORKED — do not treat silence as failure and re-run it. If you must confirm, re-list reviews (step 4) and look for your verdict; never blind-post a second time.
 - Always post a review to record your verdict, even if no violations are found — use `--approve` for APPROVE, `--request-changes` otherwise. The workflow reads the review **state** (APPROVED / CHANGES_REQUESTED), not any parsed text.
 - Start every review body with `## Enforcer Review` so it can be found for future dismissal.
 - The workflow also reconciles to a single standing verdict per SHA as a safety net, but you should still post exactly once — the safety net is not licence to double-post.
