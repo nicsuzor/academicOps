@@ -175,7 +175,9 @@ jobs:
           cd .aops && git sparse-checkout set --no-cone \
             /aops-core/agents/rbg.md \
             /.github/agents/shared-error-handling.md \
-            /.github/agents/enforcer.agent.md && cd ..
+            /.github/agents/enforcer.agent.md \
+            /scripts/ci/reap-agent-processes.sh \
+            /scripts/ci/reconcile-enforcer-reviews.sh && cd ..
           if [ ! -f .aops/aops-core/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::Enforcer prompt files were not materialised by sparse-checkout" >&2
             ls -la .aops/aops-core/agents/ .aops/.github/agents/ 2>&1 || true
@@ -249,6 +251,33 @@ jobs:
             echo "retry=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Reap the cancelled first attempt BEFORE the retry launches (aops-1adfd28d).
+      # `rate_limit_event` surfaces as a step `cancelled`, but the underlying
+      # claude process can survive on the runner as a "zombie", race the retry,
+      # and double-post reviews (observed run 27250704371: three reviews, two
+      # dismissed, on one SHA). Killing the zombie's process group here is what
+      # deterministically guarantees only ONE agent is ever live per job — the
+      # single-verdict ordering guarantee rests on this reap, not on the
+      # post-hoc reconcile below. Best-effort: the script never aborts the job,
+      # so the retry runs whether or not a zombie was present.
+      #
+      # The script is sourced from the canonical academicOps copy in .aops
+      # (present for external consumers too); on the bootstrap PR that adds it,
+      # .aops (default branch) lacks it, so we fall back to the checked-out PR
+      # head copy.
+      - name: Reap cancelled first-attempt agent
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        run: |
+          SCRIPT=""
+          for p in ".aops/scripts/ci/reap-agent-processes.sh" "scripts/ci/reap-agent-processes.sh"; do
+            if [ -f "$p" ]; then SCRIPT="$p"; break; fi
+          done
+          if [ -z "$SCRIPT" ]; then
+            echo "::warning::reap-agent-processes.sh not found in .aops or checkout; skipping zombie reap"
+            exit 0
+          fi
+          bash "$SCRIPT" claude
+
       - name: Run Enforcer Review (retry)
         id: review-retry
         if: always() && steps.first-attempt.outputs.retry == 'true'
@@ -292,6 +321,25 @@ jobs:
             ~/.claude/sessions/
           if-no-files-found: ignore
           retention-days: 30
+
+      # Idempotent single-verdict reconcile (aops-1adfd28d). Defence-in-depth
+      # behind the reap above: if a zombie ever slips the reap and posts, ensure
+      # AT MOST ONE enforcer verdict review stands per SHA by dismissing all but
+      # the newest. Runs BEFORE "Post terminal status" so the terminal status is
+      # derived from the single standing review. Fail-open: a missing script or
+      # API hiccup must not block a genuine verdict.
+      - name: Reconcile enforcer reviews (single verdict per SHA)
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          SCRIPT=""
+          for p in ".aops/scripts/ci/reconcile-enforcer-reviews.sh" "scripts/ci/reconcile-enforcer-reviews.sh"; do
+            if [ -f "$p" ]; then SCRIPT="$p"; break; fi
+          done
+          if [ -z "$SCRIPT" ]; then
+            echo "::warning::reconcile-enforcer-reviews.sh not found in .aops or checkout; skipping reconcile"
+            exit 0
+          fi
+          bash "$SCRIPT" || echo "::warning::reconcile step errored (continuing)"
 
       # Post terminal status based on the agent's PR review
       - name: Post terminal status
