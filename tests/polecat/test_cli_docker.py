@@ -646,6 +646,70 @@ class TestBuildDockerCmd:
             assert expected_mount not in vol_args
 
 
+class TestAgyCliLogPersistence:
+    """The agy harness log (~/.gemini/antigravity-cli/cli.log) is the only place
+    hook adjudication is recorded; it lived only in-container and was lost on
+    auto-nuke. Persist it to the host session_dir via a live bind mount when the
+    dispatched client is antigravity (aops-59e55ed3). Antigravity routes through
+    the gemini runtime, so _build_docker_cmd is always called with
+    cli_tool="gemini" and the antigravity-specific flag persist_agy_log=True.
+    """
+
+    _CONTAINER_LOG = "/home/worker/.gemini/antigravity-cli/cli.log"
+
+    def _volumes(self, cmd):
+        return [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+
+    def test_agy_log_bind_mounted_when_enabled(self, tmp_path):
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=False):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["agy"],
+                is_interactive=False,
+                session_dir=session_dir,
+                persist_agy_log=True,
+            )
+        host_log = (session_dir / "agy-cli.log").resolve()
+        expected = f"{host_log}:{self._CONTAINER_LOG}"
+        assert expected in self._volumes(docker_cmd.cmd)
+        # Host file must pre-exist so Docker bind-mounts a file (not a dir).
+        assert host_log.is_file()
+
+    def test_agy_log_not_mounted_by_default(self, tmp_path):
+        """Pure gemini runs (persist_agy_log defaults False) get no agy log mount."""
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=False):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["gemini"],
+                is_interactive=False,
+                session_dir=session_dir,
+            )
+        assert not any(self._CONTAINER_LOG in v for v in self._volumes(docker_cmd.cmd))
+        assert not (session_dir / "agy-cli.log").exists()
+
+    def test_agy_log_not_bind_mounted_on_remote_daemon(self, tmp_path):
+        """Remote daemons can't bind-mount; the file is copied out at the call
+        site instead. _build_docker_cmd must add no bind mount."""
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=True):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["agy"],
+                is_interactive=False,
+                session_dir=session_dir,
+                persist_agy_log=True,
+            )
+        assert not any(self._CONTAINER_LOG in v for v in self._volumes(docker_cmd.cmd))
+
+
 class TestClaudeAuthEnvOnly:
     """Claude auth must be env-var only: no `.claude.json`/`.credentials.json`/
     `settings.json` staging from the host. See aops-06ab3ee0."""
