@@ -75,7 +75,8 @@ jobs:
       # A diff counts as already-reviewed ONLY when a genuine completed review
       # exists for this exact SHA:
       #   (a) an actual enforcer PR review (CHANGES_REQUESTED or APPROVED), or
-      #   (b) a genuine terminal success status ("No violations found").
+      #   (b) the LATEST enforcer-status entry is a genuine terminal success
+      #       ("No violations found", not a "Skipped: …" echo).
       # Failure, pending, and "Skipped: …" statuses do NOT count. The earlier
       # design keyed off any status carrying ?target_sha=<HEAD_SHA> in its
       # target_url — but the pending status, the crash-fallback failure status,
@@ -92,11 +93,19 @@ jobs:
           APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
             --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
 
-          # (b) Genuine success status anywhere in this SHA's status history.
-          #     "Skipped: …" echoes and failures/pendings are excluded, so a
-          #     clean approve (which posts no PR review) is still durably detected.
+          # (b) Read the LATEST enforcer-status entry for this SHA, NOT a count
+          #     of "any non-Skipped success ever in history". Statuses are
+          #     append-only — counting historical successes means a transient
+          #     or erroneous success can permanently green a SHA: a later
+          #     failure entry does NOT erase the historical success, so a
+          #     subsequent re-run finds it and re-greens off stale evidence.
+          #     Observed live 2026-06-10: a 14:33 success was reverted to
+          #     failure at 14:34, then a 22:33 re-run re-greened the SHA from
+          #     the stale 14:33 history entry without any fresh review.
+          #     Reading the latest state preserves the maintainer's authority
+          #     to revoke a status via a later post (aops-221211fa).
           GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | if . == null then 0 elif (.state == \"success\" and ((.description // \"\") | startswith(\"Skipped:\") | not)) then 1 else 0 end" 2>/dev/null || echo "0")
 
           if [ "${CHANGES:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already reviewed (CHANGES_REQUESTED) — re-posting failure"
@@ -205,6 +214,53 @@ jobs:
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
           show_full_output: true
 
+      # One-shot retry for transient claude-code-action infra failures (app-token
+      # exchange 401, rate_limit_event at run start, runner hiccups). The action
+      # exits non-success WITHOUT posting a verdict, which is exactly what makes
+      # enforcer-status flake to a hard-required red on otherwise-mergeable PRs.
+      # We retry only when (a) the first attempt's step exited non-success AND
+      # (b) no Enforcer PR review exists yet for this SHA — re-running after a
+      # posted verdict would create a duplicate review. (aops-221211fa)
+      #
+      # NOTE: the action's own workflow-validation 401 ("workflow file must have
+      # identical content to the default branch") is DETERMINISTIC — a retry
+      # cannot clear it on a PR that modifies the calling workflow. For that
+      # case the retry just confirms the failure and we surface a clearer
+      # diagnostic via the terminal-status step below.
+      - name: Check first-attempt verdict
+        id: first-attempt
+        if: steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
+        run: |
+          POSTED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          if [ "${POSTED:-0}" -gt 0 ]; then
+            echo "Verdict already posted by first attempt — not retrying"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "First attempt failed and posted no verdict — will retry once"
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Enforcer Review (retry)
+        id: review-retry
+        if: steps.first-attempt.outputs.retry == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: enforcer
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
+
       - name: Check for agent commits
         id: check-commit
         if: always() && steps.sha-skip.outputs.skip != 'true'
@@ -257,11 +313,23 @@ jobs:
                 -f context="${AGENT_NAME}-status" \
                 -f description="Violations found — see review" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            elif [ "${{ steps.review.outcome }}" != "success" ]; then
+            # Distinguish action-infra failure from agent-completed-but-no-verdict.
+            # review-retry.outcome == '' iff the retry step was skipped (first
+            # attempt succeeded). If BOTH attempts' steps failed → action
+            # infrastructure problem. The retry handles transient causes
+            # (app-token-exchange 401, rate_limit_event at run start, runner
+            # hiccups) but does NOT clear deterministic failures such as the
+            # workflow-validation 401 the action raises when the calling
+            # workflow file differs from the default-branch version (the
+            # observed cause on PR #1673 SHA 6e4d0f1d). For that case the
+            # second attempt confirms the failure deterministically and we
+            # surface a clearer diagnostic than the old opaque "Agent run
+            # failed without a verdict review" line. (aops-221211fa)
+            elif [ "${{ steps.review.outcome }}" != "success" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=failure \
                 -f context="${AGENT_NAME}-status" \
-                -f description="Agent run failed without a verdict review" \
+                -f description="Enforcer action step failed in both attempts (see run logs)" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             else
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
@@ -286,8 +354,11 @@ jobs:
               echo "::error::Enforcer failed: Head SHA already reviewed with violations."
               FAILED=true
             fi
-          elif [ "${{ steps.review.outcome }}" = "failure" ]; then
-            echo "::error::Enforcer failed: Agent step failed or timed out."
+          elif [ "${{ steps.review.outcome }}" = "failure" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
+            # Both attempts failed. The retry didn't clear it — likely a
+            # deterministic cause (workflow-validation against default branch,
+            # exhausted quota, or a real action bug) not a transient hiccup.
+            echo "::error::Enforcer failed: action step failed in both attempts. Check run logs for cause (workflow-validation 401 against default branch, rate_limit_event, app token exchange, etc.)."
             FAILED=true
           else
             # Get latest review state

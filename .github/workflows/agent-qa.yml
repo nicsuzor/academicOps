@@ -85,8 +85,8 @@ jobs:
       # for this exact SHA:
       #   (a) an actual QA PR review (CHANGES_REQUESTED or APPROVED) whose body carries
       #       the "QA Verification" marker (qa.agent.md §Identity), or
-      #   (b) a genuine terminal success status (NOT a "Skipped: …" echo, failure, or
-      #       pending — those must not poison the SHA).
+      #   (b) the LATEST qa-status entry is a genuine terminal success (NOT a
+      #       "Skipped: …" echo, failure, or pending — those must not poison the SHA).
       - name: SHA-skip check
         id: sha-skip
         run: |
@@ -96,11 +96,15 @@ jobs:
           APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
             --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"QA Verification\")) | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
 
-          # (b) Genuine success status anywhere in this SHA's status history.
-          #     "Skipped: …" echoes and failures/pendings are excluded, so a clean
-          #     approve (which may post no further status) is still durably detected.
+          # (b) Read the LATEST qa-status entry, NOT a count of "any non-Skipped
+          #     success ever in history". Statuses are append-only; counting any
+          #     historical success means a transient/erroneous success permanently
+          #     greens a SHA — a later maintainer revert (or genuine failure) does
+          #     not erase the historical entry, so a re-run resurrects the stale
+          #     success. Reading the latest state preserves the maintainer's
+          #     authority to revoke via a later post (aops-221211fa).
           GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | if . == null then 0 elif (.state == \"success\" and ((.description // \"\") | startswith(\"Skipped:\") | not)) then 1 else 0 end" 2>/dev/null || echo "0")
 
           if [ "${CHANGES:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already verified (CHANGES_REQUESTED) — re-posting failure"
