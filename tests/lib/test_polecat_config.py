@@ -177,6 +177,58 @@ def test_overrides_rejects_invalid_gate_mode(cfg_path: Path) -> None:
         cfg.with_overrides("crew", {"gates.handover": "scream"})
 
 
+# ---------------------------------------------------------------------------
+# Register-scaling writer (WS6/WS7, note-36c15a69) — config-side.
+# The `register` key is the OPTIONAL stakes declaration the launcher forwards as
+# AOPS_SESSION_REGISTER. Absent ⇒ None ⇒ reader fail-closes to 'working'.
+# ---------------------------------------------------------------------------
+
+
+def test_register_absent_defaults_to_none(cfg_path: Path) -> None:
+    """The canonical YAML omits `register`, so it resolves to None (unset).
+
+    None is load-bearing: the launcher then does NOT stamp AOPS_SESSION_REGISTER,
+    and the in-container reader fail-closes to 'working'. No schema migration is
+    forced on existing polecat.yaml files.
+    """
+    cfg = load_polecat_config(cfg_path)
+    assert cfg.session_defaults.register is None
+
+
+def test_register_loaded_from_yaml(tmp_path: Path) -> None:
+    p = tmp_path / "polecat.yaml"
+    p.write_text(
+        CANONICAL_YAML.replace("  debug: false\n", "  debug: false\n  register: capture\n")
+        + f"\npolecat_home: {tmp_path}\n"
+    )
+    cfg = load_polecat_config(p)
+    assert cfg.session_defaults.register == "capture"
+
+
+def test_register_invalid_value_hard_fails(tmp_path: Path) -> None:
+    """A typo'd register hard-fails at load — never silently degrades."""
+    p = tmp_path / "polecat.yaml"
+    p.write_text(
+        CANONICAL_YAML.replace("  debug: false\n", "  debug: false\n  register: capure\n")
+        + f"\npolecat_home: {tmp_path}\n"
+    )
+    with pytest.raises(ValueError, match="invalid register"):
+        load_polecat_config(p)
+
+
+def test_register_override_via_with_overrides(cfg_path: Path) -> None:
+    """`--set register=personal` flows through the override path and validates."""
+    cfg = load_polecat_config(cfg_path)
+    overridden = cfg.with_overrides("run", {"register": "personal"})
+    assert overridden.register == "personal"
+
+
+def test_register_override_rejects_typo(cfg_path: Path) -> None:
+    cfg = load_polecat_config(cfg_path)
+    with pytest.raises(ValueError, match="invalid register"):
+        cfg.with_overrides("run", {"register": "captrue"})
+
+
 def test_missing_file_hard_fails(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="file not found"):
         load_polecat_config(tmp_path / "no-such.yaml")

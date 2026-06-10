@@ -65,6 +65,21 @@ session_defaults:
     ida: warn
     enforcer_threshold: 50
 
+  # Session register (WS6/WS7 register-scaling). OPTIONAL — omit it and the
+  # launcher leaves AOPS_SESSION_REGISTER unset, so the in-container hooks
+  # fail-closed to 'working' (full ceremony). Set it ONLY to deliberately drop
+  # review-grade ceremony for low-stakes work:
+  #   capture | personal  → suppress the review-grade gates (qa/enforcer/ida);
+  #                         sentinel + handover still fire. For "vacuum the
+  #                         garage"-class capture/personal sessions that should
+  #                         not draw an evidence-ceremony audit (retro MF4).
+  #   working             → the default; full working-grade ceremony.
+  #   review              → review-grade.
+  # The register is an EXPLICIT stakes declaration — never inferred — so an
+  # absent/unknown value can only ever buy MORE ceremony, never less. Override
+  # per-invocation with `--set register=capture`.
+  # register: working
+
 # ---------------------------------------------------------------------------
 # POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).
 #

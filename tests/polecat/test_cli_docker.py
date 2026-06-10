@@ -405,6 +405,16 @@ class TestBuildDockerCmd:
         assert "HYDRATION_GATE_MODE=off" in env_args
         assert "ENFORCER_GATE_MODE=warn" in env_args
 
+    def test_session_register_forwarded_into_container(self):
+        """The register writer stamps AOPS_SESSION_REGISTER; _build_docker_cmd
+        forwards it into the container via the AOPS_ prefix rule so the
+        in-container hooks read the session's stakes (WS6/WS7, aops-75a0f4da).
+        """
+        env = {"AOPS_SESSION_REGISTER": "capture"}
+        cmd = self._build(env=env)
+        env_args = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-e"]
+        assert "AOPS_SESSION_REGISTER=capture" in env_args
+
     @pytest.mark.parametrize("cli_tool", ["claude", "gemini"])
     def test_hook_log_and_gate_file_env_stamped_when_host_unset(self, cli_tool):
         """Issue #1196: polecat-run dispatched from cron has no host

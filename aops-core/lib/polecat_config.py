@@ -65,6 +65,14 @@ CONFIG_PATH_ENV = "AOPS_POLECAT_CONFIG"
 # Permitted gate verdict modes. Anything else ⇒ ValueError at load time.
 _GATE_MODES = frozenset({"warn", "block", "off"})
 
+# Permitted session registers (WS6/WS7 register-scaling). Mirrors the reader's
+# accepted set in hooks/gate_config.py::get_session_register(). A session's
+# register is its *stakes* declaration: 'capture'/'personal' drop review-grade
+# ceremony (qa/enforcer/ida gates), 'working' is the default, 'review' is
+# review-grade. Validated at the config/CLI boundary so a typo fails fast rather
+# than silently falling back to 'working' inside the container.
+_REGISTERS = frozenset({"capture", "personal", "working", "review"})
+
 
 @dataclass(frozen=True)
 class GatesConfig:
@@ -84,6 +92,14 @@ class SessionDefaults:
     antigravity_model: str
     debug: bool
     gates: GatesConfig
+    # Session register (stakes declaration) forwarded to the in-container hooks
+    # as AOPS_SESSION_REGISTER. ``None`` means "unset" — the launcher then does
+    # NOT stamp the var, and the in-container reader fail-closes to 'working'
+    # (full ceremony). A lighter register ('capture'/'personal') is only ever
+    # set on an explicit operator/config signal, never inferred — this preserves
+    # the reader's fail-closed contract (an absent/unknown value never buys
+    # *less* ceremony). See WS6/WS7 register-scaling (note-36c15a69).
+    register: str | None = None
 
     def model_for(self, client: str) -> str:
         """Return the model id for the given client.
@@ -182,6 +198,9 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
                 raise ValueError(f"unsupported nested override: {key!r}")
             gates_patch[tail] = value
             continue
+        if key == "register":
+            patch["register"] = _validate_register(value)
+            continue
         if key not in {
             "hooks_enabled",
             "claude_model",
@@ -195,6 +214,20 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
         new_gates = replace(base.gates, **_validate_gates(gates_patch, allow_partial=True))
         patch["gates"] = new_gates
     return replace(base, **patch)
+
+
+def _validate_register(value: Any) -> str:
+    """Coerce + validate a ``register`` value against the permitted set.
+
+    Accepts a string (case-insensitive); rejects anything outside ``_REGISTERS``
+    so a typo (e.g. ``capure``) hard-fails at the config/CLI boundary instead of
+    silently degrading to 'working' inside the container. Returns the normalised
+    lowercase register.
+    """
+    normalised = str(value).strip().lower()
+    if normalised not in _REGISTERS:
+        raise ValueError(f"invalid register: {value!r}; expected one of {sorted(_REGISTERS)}")
+    return normalised
 
 
 def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[str, Any]:
@@ -353,6 +386,10 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
         antigravity_model=_require_str(sd_raw, "antigravity_model", cfg_path),
         debug=_require_bool(sd_raw, "debug", cfg_path),
         gates=gates,
+        # Optional — absent ⇒ None ⇒ launcher does not stamp AOPS_SESSION_REGISTER
+        # ⇒ in-container reader fail-closes to 'working'. No schema migration is
+        # forced on existing polecat.yaml files (unlike the required gates block).
+        register=(_validate_register(sd_raw["register"]) if "register" in sd_raw else None),
     )
 
     crew_defaults = _coerce_overlay(raw.get("crew_defaults"), "crew_defaults", cfg_path)

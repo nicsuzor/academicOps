@@ -470,6 +470,22 @@ def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-
     env["IDA_GATE_MODE"] = gates.ida
     env["ENFORCER_TOOL_CALL_THRESHOLD"] = str(gates.enforcer_threshold)
 
+    # WS6/WS7 register-scaling writer (note-36c15a69). The session's register is
+    # the launch-time *stakes* declaration that scales the review-grade gates
+    # (qa/enforcer/ida) — the activation half the reader (hooks/gate_config.py)
+    # has waited on. It is forwarded into the container via the AOPS_ prefix
+    # rule in _build_docker_cmd. Determinism matters here:
+    #   - register SET   → stamp AOPS_SESSION_REGISTER so the container's hooks
+    #                      drop ceremony for a capture/personal session.
+    #   - register UNSET → POP the var so a polecat run NEVER inherits the
+    #                      launching session's register. An absent var makes the
+    #                      reader fail-closed to 'working' (full ceremony), so a
+    #                      missing/unknown value can never buy *less* ceremony.
+    if session_cfg.register:
+        env["AOPS_SESSION_REGISTER"] = session_cfg.register
+    else:
+        env.pop("AOPS_SESSION_REGISTER", None)
+
 
 def _coerce_set_value(raw: str) -> object:
     """Coerce a ``--set`` value to bool / int / str."""
