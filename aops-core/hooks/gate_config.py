@@ -802,14 +802,20 @@ GATE_PRECEDENCE: tuple[str, ...] = (
 # escalating to harder enforcement. If instruction tiering proves insufficient,
 # we can remove ida from the suppressed set to hard-enforce later.
 #
-# NOT YET WIRED (reader-side only): this is the *reader* half. Nothing in the
-# repo *sets* AOPS_SESSION_REGISTER yet — no launcher, slash-command, or
-# SessionStart hook writes it — so get_session_register() always resolves to
-# 'working' in the running system and register-scaling is dormant (fail-closed:
-# dormant means full ceremony, never less). Activating it (deciding *when* a
-# session is capture/personal and writing the var) is a separate follow-up, not
-# something this code assumes is live. The reader + engine wiring + tests are
-# correct and safe to ship ahead of the writer.
+# WRITER (where AOPS_SESSION_REGISTER is set): for polecat run/crew sessions the
+# launcher stamps it in polecat/cli.py::_apply_gate_env from the resolved
+# session config's `register` field (SessionDefaults.register — set via
+# `--set register=capture` or polecat.yaml), and _build_docker_cmd forwards it
+# into the container. The register is an explicit launch-time *stakes*
+# declaration, never a mid-session heuristic: hooks read os.environ fixed at
+# process launch (env-as-SSoT), and an absent/unknown value fails closed to
+# 'working' (full ceremony) — a missing register can never buy *less* ceremony.
+# So capture/personal suppression IS reachable, but only when the launcher
+# explicitly declares it. STILL UNWIRED: the host-side interactive
+# `claude --agent junior` chat (the original MF4 "vacuum the garage" surface)
+# whose env lives in the `sessions` repo (WS3) — tracked by follow-up
+# aops-295ba791. Until that lands, an interactive junior session resolves to
+# 'working' and full ceremony.
 REGISTER_ENV_VAR = "AOPS_SESSION_REGISTER"
 CAPTURE_REGISTER_VALUES: frozenset[str] = frozenset({"capture", "personal"})
 
