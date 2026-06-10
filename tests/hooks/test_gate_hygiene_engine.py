@@ -62,7 +62,6 @@ def _verdict(result):
 def test_enforcer_blocks_write_at_threshold(monkeypatch):
     """Control: an overdue enforcer DOES deny an ordinary write tool."""
     monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
     gate = GenericGate(_CONFIGS["enforcer"])
     result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
     assert _verdict(result) == "deny"
@@ -75,59 +74,11 @@ def test_enforcer_does_not_block_askuserquestion(monkeypatch):
     must NOT fire, because AskUserQuestion is on the never-block list.
     """
     monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
     gate = GenericGate(_CONFIGS["enforcer"])
     result = gate.check(_ctx("AskUserQuestion"), _state_with_enforcer_overdue())
     assert _verdict(result) != "deny", (
         "AskUserQuestion must never be denied by a gate (never-block, #1451)"
     )
-
-
-# ---------------------------------------------------------------------------
-# Item 6 — register-scaling enforced by the engine (retro MF4)
-# ---------------------------------------------------------------------------
-
-
-def test_capture_register_suppresses_enforcer_block(monkeypatch):
-    """WS7 item 6: in the capture register the enforcer drops its ceremony.
-
-    Identical overdue state + Write tool as the item-5 control (which denies);
-    only the register changed, so the deny must NOT fire.
-    """
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-    gate = GenericGate(_CONFIGS["enforcer"])
-    result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
-    assert _verdict(result) != "deny", (
-        "capture register must suppress the enforcer review-grade block (MF4)"
-    )
-
-
-def test_capture_register_does_not_suppress_sentinel(monkeypatch):
-    """WS7 item 6: register-scaling drops ceremony, NOT safety.
-
-    The sentinel destructive-op block must still fire in the capture register —
-    losing data to `rm` on a protected path is real harm regardless of stakes.
-    """
-    monkeypatch.setenv("SENTINEL_GATE_MODE", "block")
-    monkeypatch.setenv("AOPS_SESSION_REGISTER", "capture")
-    gate = GenericGate(_CONFIGS["sentinel"])
-    result = gate.check(
-        _ctx("Bash", tool_input={"command": "rm -rf ~/.claude/plugins"}),
-        SessionState.create("ws7-engine-test"),
-    )
-    assert _verdict(result) == "deny", (
-        "sentinel must still block destructive ops even in the capture register"
-    )
-
-
-def test_working_register_does_not_suppress_enforcer(monkeypatch):
-    """Control: outside the capture register the enforcer block fires normally."""
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
-    gate = GenericGate(_CONFIGS["enforcer"])
-    result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
-    assert _verdict(result) == "deny"
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +123,6 @@ def test_never_block_continue_is_load_bearing(monkeypatch):
 
     Removing the `continue` block in engine._evaluate_policies makes this FAIL.
     """
-    monkeypatch.delenv("AOPS_SESSION_REGISTER", raising=False)
     gate = GenericGate(_always_deny_pretooluse_gate())
     state = SessionState.create("ws7-never-block-probe")
 
