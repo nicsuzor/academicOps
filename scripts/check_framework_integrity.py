@@ -161,20 +161,6 @@ def check_workflow_length(plugin_root: Path) -> list[str]:
     return errors
 
 
-def check_context_map_coverage(root: Path) -> list[str]:
-    """Context-map freshness: specs are indexed or knowingly excluded (#1364).
-
-    Delegates to lib.context_map.audit_context_map_coverage so the same logic
-    backs both this pre-commit/CLI surface and the CI regression test.
-    """
-    aops_core = root / "aops-core"
-    if str(aops_core) not in sys.path:
-        sys.path.insert(0, str(aops_core))
-    from lib.context_map import audit_context_map_coverage
-
-    return audit_context_map_coverage(root)
-
-
 def check_full_wikilinks(root: Path) -> list[str]:
     """Full codebase wikilink check. Delegates to audit_framework_health.
 
