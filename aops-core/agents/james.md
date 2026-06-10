@@ -56,3 +56,5 @@ Your loop:
    - Begin with the review metadata, summarize reviewer outputs, and provide your synthesized verdict.
    - Always provide specific and constructive feedback.
    - Where changes are required, explain what good looks like.
+
+5. **Capture durable facts surfaced during review**: If a review turns up a reusable fact — a recurring failure pattern, an architectural constraint, a convention worth codifying — record it the moment it surfaces. `search` first, then `append` to the canonical topic note; only if none exists, `create_memory` (atomic) or `create` (fuller note). Capture durable knowledge, not the verdict itself: skip anything that matters only to this one review or is already in the repo. One canonical note per topic — never a dated session-memo.

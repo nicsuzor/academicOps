@@ -1,6 +1,7 @@
 import pytest
 
 from polecat.prompt_template import (
+    CAPTURE_DURABLE_FACTS,
     FINISH_GITHUB_ISSUE,
     FINISH_LOCAL_TASK,
     build_polecat_prompt,
@@ -77,6 +78,23 @@ def test_build_polecat_prompt_basic():
     assert "- **Project**: proj-1" in prompt
     assert "Fix the thing" in prompt
     assert FINISH_LOCAL_TASK.format(task_id="task-123", base_branch="main") in prompt
+
+
+def test_prompt_carries_as_you_go_capture_instruction():
+    """AC (aops-947c931b): the write-side capture preamble must reach polecat
+    workers at runtime, in both task and issue modes — the write-side mirror
+    of the read-side 'Search the PKB first' preamble (0/42 worker sessions
+    captured any durable fact before it existed).
+
+    Asserts inclusion of the CAPTURE_DURABLE_FACTS constant, not prose
+    tokens: token-level assertions would make this test the de-facto spec of
+    the wording (AXIOMS#judgment-non-delegable). Whether the instruction
+    *works* is owned by review and the runtime verification task
+    aops-7c853031.
+    """
+    for is_issue in (False, True):
+        prompt = build_polecat_prompt(task_id="task-1", task_title="Title", is_issue=is_issue)
+        assert CAPTURE_DURABLE_FACTS in prompt
 
 
 def test_polecat_prompt_does_not_start_with_dot():

@@ -6,6 +6,24 @@ the worktree is ready. Hydration runs normally to provide relevant
 skill context (e.g., testing philosophy for test-writing tasks).
 """
 
+# The write-side mirror of the read-side "Search the PKB first" preamble
+# (task aops-947c931b). A named constant so tests assert *inclusion* (the
+# plumbing fact) without freezing the prose at token level — whether the
+# wording does its job is a judgment owned by review and the runtime
+# verification task aops-7c853031, not by a string-match
+# (AXIOMS#judgment-non-delegable).
+CAPTURE_DURABLE_FACTS = """\
+**Capture durable facts as you go.** When you learn something that will \
+outlive this task — a non-obvious convention, a root cause and its fix, a \
+decision and the reasoning behind it, a path or command that was hard to \
+find — record it the moment you learn it, not at session end. Search first \
+(`search`), then augment the canonical note for that topic (`append`); only \
+if none exists, create one (`create_memory` for an atomic fact, `create` for \
+a fuller note). The bar is durable and reusable, not a session log: if it \
+only matters to this one task, or the repo and git history already record it, \
+do not capture it. One canonical note per topic — never a dated session-memo.\
+"""
+
 POLECAT_WORK_TEMPLATE = """\
 You are a polecat worker. Your task has already been claimed and your \
 worktree is ready; the task context is below and the hydrator will provide \
@@ -17,6 +35,8 @@ down — prior decisions, related tasks, conventions, file locations, your own \
 earlier notes. The PKB is the system of record; your recollection is not. \
 Ground your plan in what you find (`search`, `get_document`, \
 `retrieve_memory`) before touching code.
+
+{capture_durable_facts}
 
 **Your brief is deliberately thin — intent + acceptance criteria, not a \
 script.** You are trusted to plan and execute the whole chunk; depth is \
@@ -328,5 +348,6 @@ def build_polecat_prompt(
         task_body=task_body or "(no body)",
         extras=extras,
         soft_dep_context=soft_dep_context,
+        capture_durable_facts=CAPTURE_DURABLE_FACTS,
         finish_instructions=finish_instructions,
     )
