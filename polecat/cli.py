@@ -1379,6 +1379,7 @@ def _build_docker_cmd(
     manager: PolecatManager | None = None,
     verbose: bool = False,
     with_sessions: bool = False,
+    persist_agy_log: bool = False,
 ) -> DockerCmd:
     """Build a Docker command with appropriate mounts and env for an agent session.
 
@@ -1707,6 +1708,24 @@ def _build_docker_cmd(
                 else:
                     cmd.extend(["-v", f"{session_dir}:{session_container_path}"])
 
+    # Antigravity (agy) writes its harness log to a FIXED path that lives
+    # OUTSIDE the session_dir mount: ~/.gemini/antigravity-cli/cli.log. That
+    # log is the only place the agy harness adjudicates hook results (e.g. the
+    # protojson reject errors), yet it lived only in-container and was lost on
+    # auto-nuke (aops-59e55ed3). Persist it to the host session_dir via a live
+    # bind mount so it survives even a crash mid-run, mirroring how the router
+    # ``polecat-session-hooks.jsonl`` is persisted. The image pre-creates
+    # ~/.gemini/antigravity-cli/ as a+rwX (see Dockerfile), so mounting a single
+    # file into it needs no root-owned parent dir and does not clash with the
+    # auth files the entrypoint stages into the same directory.
+    # Remote daemons can't bind-mount; they copy the file out on teardown via
+    # the extract_paths set computed at the call site.
+    if persist_agy_log and session_dir is not None and not _is_remote_daemon():
+        agy_log_host = (session_dir / "agy-cli.log").resolve()
+        agy_log_host.parent.mkdir(parents=True, exist_ok=True)
+        agy_log_host.touch(exist_ok=True)
+        cmd.extend(["-v", f"{agy_log_host}:{container_home}/.gemini/antigravity-cli/cli.log"])
+
     # The container NEVER reads polecat.yaml. The host is the SSoT: it resolved
     # the config above and injects the few values the container actually needs
     # as plain env vars. Gate modes + model + debug are stamped elsewhere
@@ -1857,7 +1876,7 @@ def _run_docker_container(
     env: dict | None = None,
     capture_output: bool = False,
     text: bool = True,
-    extract_paths: list[tuple[str, Path]] | None = None,
+    extract_paths: list[tuple[str, Path] | tuple[str, Path, str]] | None = None,
     gemini: bool = False,
     task_id: str | None = None,
 ) -> subprocess.CompletedProcess:
@@ -2096,10 +2115,21 @@ def _run_docker_container(
         # Runs even after SIGTERM-induced interrupt so the graceful-shutdown
         # path still produces a transcript on the host.
         if extract_paths:
-            for container_path, host_path in extract_paths:
-                host_path.mkdir(parents=True, exist_ok=True)
+            for entry in extract_paths:
+                # Entries are (container_path, host_path) for a directory copy
+                # (the default — contents are copied into host_path), or
+                # (container_path, host_path, "file") for a single-file copy
+                # (container_path is copied to the host_path file).
+                container_path, host_path = entry[0], entry[1]
+                is_file = len(entry) > 2 and entry[2] == "file"
+                if is_file:
+                    host_path.parent.mkdir(parents=True, exist_ok=True)
+                    cp_src = f"{container_id}:{container_path}"
+                else:
+                    host_path.mkdir(parents=True, exist_ok=True)
+                    cp_src = f"{container_id}:{container_path}/."
                 cp_out = subprocess.run(
-                    ["docker", "cp", f"{container_id}:{container_path}/.", str(host_path)],
+                    ["docker", "cp", cp_src, str(host_path)],
                     capture_output=True,
                     text=True,
                     check=False,
@@ -4231,6 +4261,7 @@ def crew(
             manager=manager,
             verbose=manager.verbose,
             with_sessions=with_sessions,
+            persist_agy_log=is_antigravity,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -4307,6 +4338,19 @@ def crew(
                     gemini_tmp_dir = session_dir / ".gemini-tmp"
                     gemini_tmp_dir.mkdir(exist_ok=True)
                     extract.append(("/home/worker/.gemini/tmp/.", gemini_tmp_dir))
+                    # Remote-only copy-out of the agy harness log (the extract
+                    # loop runs only on the remote/staging path). On local
+                    # daemons the live bind mount handles it. See the parallel
+                    # block in run() (aops-59e55ed3). Single-file copy — must not
+                    # pull the auth files sharing antigravity-cli/.
+                    if is_antigravity:
+                        extract.append(
+                            (
+                                "/home/worker/.gemini/antigravity-cli/cli.log",
+                                session_dir / "agy-cli.log",
+                                "file",
+                            )
+                        )
             else:
                 extract.append(("/home/worker/.claude/projects/-workspace", session_dir))
 
@@ -5023,6 +5067,7 @@ def run(
             manager=manager,
             verbose=manager.verbose,
             with_sessions=with_sessions,
+            persist_agy_log=is_antigravity,
         )
 
         # Copy replicated .gemini/ auth into staging_dir so docker cp injects
@@ -5070,7 +5115,23 @@ def run(
             gemini_tmp_dir = run_session_dir / ".gemini-tmp"
             gemini_tmp_dir.mkdir(exist_ok=True)
             _extract = [("/home/worker/.gemini/tmp/.", gemini_tmp_dir)]
+            # Remote daemons can't bind-mount, and _run_docker_container only
+            # runs the extract loop on the remote/staging path. Copy the agy
+            # harness log out on teardown to the same host filename the local
+            # bind mount uses (aops-59e55ed3). Single-file copy — must NOT pull
+            # the auth files that share ~/.gemini/antigravity-cli/.
+            if is_antigravity:
+                _extract.append(
+                    (
+                        "/home/worker/.gemini/antigravity-cli/cli.log",
+                        run_session_dir / "agy-cli.log",
+                        "file",
+                    )
+                )
         else:
+            # Local daemon: persistence is via bind mounts (the extract loop is
+            # not invoked on this path). The agy harness log is captured by the
+            # live bind mount added in _build_docker_cmd (persist_agy_log).
             _extract = []
     else:
         _extract = [("/home/worker/.claude/projects/-workspace", run_session_dir)]

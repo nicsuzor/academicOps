@@ -531,3 +531,92 @@ class TestClaudeSeedEndState:
         assert any(c.isdigit() for c in version), (
             f"recorded version string should contain digits, got: {version!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Container 5: agy harness cli.log persistence (aops-59e55ed3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+class TestAgyCliLogExtraction:
+    """The agy harness log (~/.gemini/antigravity-cli/cli.log) is the only place
+    agy adjudicates hook results, yet it lives OUTSIDE the session_dir mount and
+    was lost on auto-nuke (aops-59e55ed3). On remote/staging daemons the fix
+    copies it out on teardown via a single-file extract entry; on local daemons
+    a live bind mount handles it (asserted in test_cli_docker.py).
+
+    The extract loop in _run_docker_container only runs on the remote/staging
+    path, so this test forces that path (POLECAT_FORCE_STAGING=cp) to exercise
+    the real 3-tuple "file" extract against the production image. It confirms
+    (a) the log lands under the host session dir, (b) it survives the container
+    being force-removed, and (c) the auth files sharing that directory do NOT
+    leak into the session dir. This path is daemon-filesystem-agnostic (docker
+    cp, not bind mount), so it is deterministic across CI environments.
+    """
+
+    _CLOG = "/home/worker/.gemini/antigravity-cli/cli.log"
+
+    @pytest.fixture(autouse=True)
+    def _require_docker(self):
+        if not _docker_available():
+            pytest.skip("Docker not available or aops-crew image not built")
+
+    def test_agy_cli_log_copied_out_and_survives_teardown(self, tmp_path, monkeypatch):
+        # Force the remote/staging path so the docker-cp extract loop runs (the
+        # local path persists via bind mount and never invokes extract).
+        monkeypatch.setenv("POLECAT_FORCE_STAGING", "cp")
+        session_dir = tmp_path / "polecats" / "task-agy" / "aops"
+        work_dir = tmp_path / "agy-worktree"
+        work_dir.mkdir()
+        (work_dir / "placeholder").write_text("x")
+
+        # In-container: write agy's hook-adjudication lines to the harness log,
+        # and stage a fake auth file into the SAME dir (as the entrypoint does)
+        # to prove the single-file extract does not sweep it up.
+        agent_cmd = [
+            "bash",
+            "-c",
+            "printf 'fake-oauth\\n' > ~/.gemini/antigravity-cli/antigravity-oauth-token; "
+            f"printf 'REJECT protojson: unknown field foo\\n' >> {self._CLOG}; "
+            f"printf 'REJECT protojson: unknown field bar\\n' >> {self._CLOG}",
+        ]
+        docker_cmd = _build_docker_cmd(
+            cli_tool="gemini",
+            work_dir=work_dir,
+            # Dummy token satisfies the entrypoint's hard requirement; no
+            # GitHub ops run here.
+            env={"AOPS_BOT_GH_TOKEN": "ghp_integration_test_token"},
+            agent_cmd=agent_cmd,
+            is_interactive=False,
+            session_dir=session_dir,
+        )
+
+        # Production copy-out entry (the 3-tuple "file" form added for agy).
+        host_log = session_dir / "agy-cli.log"
+        extract = [(self._CLOG, host_log, "file")]
+
+        result = _run_docker_container(
+            docker_cmd,
+            capture_output=True,
+            text=True,
+            extract_paths=extract,
+            gemini=True,
+        )
+        assert result.returncode == 0, (
+            f"Container exited {result.returncode}:\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+        # _run_docker_container force-removes the container after extracting, so
+        # a surviving host file proves the log outlives the auto-nuke.
+        assert host_log.is_file(), f"agy cli.log not extracted to {host_log}"
+        content = host_log.read_text()
+        assert "REJECT protojson: unknown field foo" in content
+        assert "REJECT protojson: unknown field bar" in content
+
+        # The oauth token shares ~/.gemini/antigravity-cli/ but must NOT be
+        # pulled into the host session dir by the single-file copy.
+        leaked = [p.name for p in session_dir.iterdir() if "oauth" in p.name]
+        assert not leaked, f"auth file leaked into session dir: {leaked}"
