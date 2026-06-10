@@ -220,9 +220,12 @@ def build_threads(sessions) -> list[dict]:
                 task_id=summary.task_id,
                 slug=slug,
                 provider=provider,
+                client=getattr(summary, "client", None),
+                surface=getattr(summary, "surface", None),
                 crew=summary.crew,
                 subagent_type=getattr(summary, "subagent_type", None),
                 parent_session=getattr(summary, "parent_session", None),
+                hostname=getattr(summary, "hostname", None),
             )
 
             filename_base = generate_base_name(

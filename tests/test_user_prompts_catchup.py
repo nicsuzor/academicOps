@@ -140,6 +140,91 @@ class TestClassification:
         assert is_auto is False
         assert reason is None
 
+    @pytest.mark.parametrize(
+        "marker",
+        ["single-turn", "single-turn-sdk", "single-turn sdk"],
+    )
+    def test_single_turn_sdk_client_is_automated(self, marker):
+        # Library-emitted marker on client; bare interactive path otherwise.
+        is_auto, reason = is_automated_session(
+            session_path=Path("/home/x/.claude/projects/-junior/abc.jsonl"),
+            client=marker,
+        )
+        assert is_auto is True
+        assert reason == "single-turn"
+
+    def test_single_turn_sdk_surface_is_automated(self):
+        is_auto, reason = is_automated_session(
+            session_path=Path("/home/x/.claude/projects/-junior/abc.jsonl"),
+            surface="single-turn-sdk",
+        )
+        assert is_auto is True
+        assert reason == "single-turn"
+
+    def test_single_turn_substring_in_unrelated_field_does_not_match(self):
+        # A slug or other field that happens to contain "single-turn" must NOT
+        # flip classification — the marker is only meaningful on client/surface.
+        is_auto, reason = is_automated_session(
+            session_path=Path("/home/nic/.claude/projects/-junior/abc.jsonl"),
+            slug="discuss-single-turn-design",
+        )
+        assert is_auto is False
+        assert reason is None
+
+    def test_worker_host_match_is_automated(self, monkeypatch):
+        # Mechanism test: a hostname IN the configured set classifies as automated.
+        # The specific token "demo-worker" is a test fixture, not an assertion of
+        # any real host — patching the module's WORKER_HOSTS proves the set drives
+        # the decision (banned mirror-test pattern would assert a literal handle).
+        import lib.session_naming as sn
+
+        monkeypatch.setattr(sn, "WORKER_HOSTS", frozenset({"demo-worker"}))
+        is_auto, reason = sn.is_automated_session(
+            session_path=Path("/home/x/.claude/projects/-junior/abc.jsonl"),
+            hostname="demo-worker",
+        )
+        assert is_auto is True
+        assert reason == "worker-host"
+
+    def test_worker_host_miss_is_not_automated(self, monkeypatch):
+        # A hostname NOT in the configured set leaves classification untouched.
+        import lib.session_naming as sn
+
+        monkeypatch.setattr(sn, "WORKER_HOSTS", frozenset({"demo-worker"}))
+        is_auto, reason = sn.is_automated_session(
+            session_path=Path("/home/nic/.claude/projects/-junior/abc.jsonl"),
+            hostname="some-other-box",
+        )
+        assert is_auto is False
+        assert reason is None
+
+    def test_worker_host_default_set_is_empty(self, monkeypatch):
+        # With no env var set and the set empty (the default at module load),
+        # hostname alone never triggers automated classification — preserves the
+        # "no specific handle in source" property the dash port violated.
+        import lib.session_naming as sn
+
+        monkeypatch.setattr(sn, "WORKER_HOSTS", frozenset())
+        is_auto, reason = sn.is_automated_session(
+            session_path=Path("/home/nic/.claude/projects/-junior/abc.jsonl"),
+            hostname="anything",
+        )
+        assert is_auto is False
+        assert reason is None
+
+    def test_stronger_signal_wins_over_worker_host(self, monkeypatch):
+        # task_id dominates: even when hostname matches WORKER_HOSTS the reason
+        # should be the stronger task signal, not "worker-host".
+        import lib.session_naming as sn
+
+        monkeypatch.setattr(sn, "WORKER_HOSTS", frozenset({"demo-worker"}))
+        is_auto, reason = sn.is_automated_session(
+            task_id="aops-42",
+            hostname="demo-worker",
+        )
+        assert is_auto is True
+        assert reason == "task"
+
 
 # --------------------------------------------------------------------------
 # Prompt-level noise: dropped even inside interactive sessions.

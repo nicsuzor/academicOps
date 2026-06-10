@@ -411,6 +411,37 @@ AUTOMATED_CLIENTS = frozenset(
     {"polecat", "crew", "github-actions", "gemini-cli", "antigravity-cli"}
 )
 
+# Hosts (raw OS hostnames) known to run automated workers exclusively. Populated
+# from the ``AOPS_WORKER_HOSTS`` env var (comma-separated). Kept off-source so no
+# specific handle is embedded in the function — the dash TS port's hardcoded
+# ``@J5HW6L4KT6`` literal is exactly the anti-pattern this replaces.
+WORKER_HOSTS: frozenset[str] = frozenset(
+    h.strip()
+    for h in os.environ.get("AOPS_WORKER_HOSTS", "").split(
+        ","
+    )  # allow-fallback: unset env var means no worker hosts configured (empty set, signal off)
+    if h.strip()
+)
+
+
+def _is_single_turn_marker(value: str | None) -> bool:
+    """True if ``value`` is a Claude Agent SDK single-turn client/surface marker.
+
+    The SDK in non-interactive (single-prompt) mode self-identifies on the
+    ``client`` / ``surface`` field with a token of the ``single-turn`` family —
+    bare ``single-turn`` or a ``single-turn-…`` / ``single-turn …`` variant.
+    The marker is library-emitted on a typed metadata field (not user content),
+    so an exact prefix check is safe — no need for a substring-anywhere scan of
+    the JSON payload (the brittle pattern this replaces).
+    """
+    if not value:
+        return False
+    return (
+        value == "single-turn"
+        or value.startswith("single-turn-")
+        or value.startswith("single-turn ")
+    )
+
 
 def is_automated_session(
     *,
@@ -423,6 +454,7 @@ def is_automated_session(
     crew: str | None = None,
     subagent_type: str | None = None,
     parent_session: str | None = None,
+    hostname: str | None = None,
 ) -> tuple[bool, str | None]:
     """Classify a session as automated/worker (True) vs Nic-interactive (False).
 
@@ -433,14 +465,22 @@ def is_automated_session(
     transcripts.
 
     A session is automated if ANY of these hold (returned ``reason`` names which):
-      - ``task_id`` is set — a worker/polecat/agy run against a task;
+      - ``task_id`` is set — a worker/polecat/agy run against a task (``task``);
       - it is a subagent session (``subagent_type``/``parent_session`` set, or a
-        ``subagents/``/``subagent-of-*``/``agent-*`` path);
-      - the session path is under ``polecats/``;
-      - ``slug == "stop-hook-feedback"`` — the only "user" input is the hook reminder;
-      - it is a ``crew-*`` session;
-      - the client/surface is a known automated client (polecat, crew,
-        github-actions, gemini-cli, antigravity-cli).
+        ``subagents/``/``subagent-of-*``/``agent-*`` path) (``subagent``);
+      - the session path is under ``polecats/`` (``polecat``);
+      - ``slug == "stop-hook-feedback"`` — the only "user" input is the hook
+        reminder (``stop-hook``);
+      - it is a ``crew-*`` session (``crew``);
+      - the client/surface is a known automated client — polecat, crew,
+        github-actions, gemini-cli, antigravity-cli (reason = the matched value);
+      - the surface contains ``-crew`` / ``-polecat`` (reason = surface);
+      - the client/surface is a single-turn SDK marker (``single-turn``) — the
+        Claude Agent SDK in non-interactive mode self-identifies this way;
+      - the ``hostname`` is in :data:`WORKER_HOSTS` — a worker-only machine
+        configured via the ``AOPS_WORKER_HOSTS`` env var (``worker-host``).
+        This is the configurable backstop for worker boxes whose sessions
+        carry no task / polecat / crew binding.
 
     When ``client``/``surface`` are not supplied they are inferred from
     ``session_path`` via :func:`infer_session_origin_from_path` — the raw session
@@ -450,12 +490,14 @@ def is_automated_session(
     Args:
         session_path: Path to the persisted session file (optional but recommended).
         task_id, slug, provider, client, surface, crew, subagent_type,
-        parent_session: SessionSummary fields, any of which may be ``None``.
+        parent_session, hostname: SessionSummary fields, any of which may be
+        ``None``.
 
     Returns:
         ``(is_automated, reason)``. ``reason`` is a short tag (e.g. ``"task"``,
-        ``"polecat"``, ``"stop-hook"``) for debugging / the collapsed appendix,
-        or ``None`` when the session is Nic-interactive.
+        ``"polecat"``, ``"stop-hook"``, ``"single-turn"``, ``"worker-host"``)
+        for debugging / the collapsed appendix, or ``None`` when the session is
+        Nic-interactive.
     """
     # Strongest signal: an explicit task binding means a worker ran this.
     if task_id:
@@ -493,6 +535,18 @@ def is_automated_session(
         return True, client
     if surface and ("-crew" in surface or "-polecat" in surface):
         return True, surface
+
+    # Single-turn SDK invocations — the Claude Agent SDK in non-interactive
+    # mode self-identifies on client/surface. Library-emitted marker, not user
+    # text — an exact prefix check is safe.
+    if _is_single_turn_marker(client) or _is_single_turn_marker(surface):
+        return True, "single-turn"
+
+    # Worker-host backstop — sessions originating from a machine that only
+    # ever runs automated workers. The host set is configured at module load
+    # from $AOPS_WORKER_HOSTS, so no specific handle lives in source.
+    if hostname and hostname in WORKER_HOSTS:
+        return True, "worker-host"
 
     return False, None
 
