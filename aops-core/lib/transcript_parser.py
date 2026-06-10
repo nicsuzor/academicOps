@@ -1467,6 +1467,85 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
     return events
 
 
+# Control envelopes / system wrappers that carry no user intent. These are
+# injected by the harness (resume notifications, hook reminders, tool plumbing)
+# and must be stripped before a user-prompt string is treated as "what the user
+# was doing". Order-independent; applied repeatedly until stable is unnecessary
+# because these tags do not nest within each other in practice.
+_CONTROL_ENVELOPE_PATTERNS = [
+    re.compile(r"<task-notification>.*?</task-notification>", re.DOTALL),
+    re.compile(r"<system-reminder>.*?</system-reminder>", re.DOTALL),
+    re.compile(r"<local-command-stdout>.*?</local-command-stdout>", re.DOTALL),
+    re.compile(r"<command-message>.*?</command-message>", re.DOTALL),
+    re.compile(r"<tool-use-id>.*?</tool-use-id>", re.DOTALL),
+    # Stray / self-closing control tags left behind after the blocks above.
+    re.compile(
+        r"</?(?:task-notification|system-reminder|tool-use-id|task-id|output-file|"
+        r"status|summary|local-command-stdout|command-message)[^>]*>"
+    ),
+]
+
+# Signatures of the standard polecat worker dispatch preamble. When present, the
+# user's actual intent is the task spec that follows, not the boilerplate
+# scaffolding (search-the-PKB instructions, step-by-step finish flow, etc.).
+_WORKER_PREAMBLE_MARKERS = (
+    "You are a polecat worker",
+    "Your task has already been claimed",
+)
+
+
+def _strip_worker_preamble(text: str) -> str:
+    """If ``text`` is a standard worker dispatch, return the task spec onward.
+
+    The dispatch boilerplate precedes a ``## Your Task`` / ``## Task Body``
+    heading; everything before it is fixed scaffolding shared by every worker
+    session and tells you nothing about *this* session's intent.
+    """
+    if not any(marker in text[:600] for marker in _WORKER_PREAMBLE_MARKERS):
+        return text
+    heading = re.search(r"^#{1,3}\s+(?:Your Task|Task Body|Task)\b.*$", text, re.MULTILINE)
+    if heading:
+        return text[heading.start() :].strip()
+    return text
+
+
+def clean_prompt_text(text: str) -> str:
+    """Strip control envelopes and worker-preamble scaffolding from a prompt.
+
+    Used to derive ``initial_prompt`` — the user's own first substantive
+    message — from a raw user-turn string. Returns ``""`` when nothing
+    substantive remains (e.g. the turn was purely a ``<task-notification>``
+    auto-resume).
+    """
+    if not text:
+        return ""
+    for pattern in _CONTROL_ENVELOPE_PATTERNS:
+        text = pattern.sub("", text)
+    text = _strip_worker_preamble(text)
+    # Collapse the blank-line runs left by removed envelopes.
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text
+
+
+def extract_initial_prompt(timeline_events: list[dict[str, Any]] | None) -> str | None:
+    """Return the user's first substantive prompt from timeline events.
+
+    Scans ``user_prompt`` events in order, cleans each of control envelopes and
+    worker-preamble scaffolding (see :func:`clean_prompt_text`), and returns the
+    first one with real content. Returns ``None`` if no substantive prompt is
+    found — callers should omit the field rather than write an empty string.
+    """
+    for event in timeline_events or []:
+        if event.get("type") != "user_prompt":
+            continue
+        cleaned = clean_prompt_text(
+            event.get("description") or ""
+        )  # allow-fallback: description is optional; "" = no text to clean
+        if cleaned:
+            return cleaned
+    return None
+
+
 def format_reflection_header(reflection: dict[str, Any]) -> str:
     """Format Framework Reflection as markdown header for transcript.
 
