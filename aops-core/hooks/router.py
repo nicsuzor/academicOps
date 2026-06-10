@@ -947,6 +947,104 @@ class HookRouter:
 
         return output
 
+    @staticmethod
+    def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
+        """Build an agy ``HookInjectedStep`` list carrying ``text``.
+
+        ``HookInjectedStep`` is a oneof; we use the ``systemMessage`` member
+        (``{systemMessage, metadata}``) per the ``exa.hooks_pb`` binary-descriptor
+        notes in epic aops-2dc18411. The inner field shape is descriptor-sourced
+        (marked VERIFY upstream), not yet live-verified — but its failure mode is
+        benign: a wrong inner shape makes agy drop the advisory, never bypass an
+        enforcement verdict, so emitting the documented best-effort is safe.
+        """
+        if not text:
+            return []
+        return [{"systemMessage": {"systemMessage": text}}]
+
+    def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
+        """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
+
+        agy/Antigravity parses hook stdout as **protojson** against the per-event
+        ``*Result`` message and rejects on the FIRST unknown field. That is the
+        silent-drop regression in aops-27004ffd: the Claude/Gemini schema's
+        ``decision`` / ``metadata`` / ``systemMessage`` are all *unknown* fields
+        to ``exa.hooks_pb``, so routing agy through ``output_for_gemini`` made the
+        harness discard every verdict (including enforcer DENYs) while the router
+        exited 0. This formatter therefore emits ONLY the fields each ``*Result``
+        defines — and never ``metadata``.
+
+        ``event`` is the ORIGINAL agy event name (``PreToolUse``, ``PostToolUse``,
+        ``PreInvocation``, ``PostInvocation``, ``Stop``) — NOT the router's
+        internal mapped name. agy maps ``PreInvocation``→UserPromptSubmit and
+        ``PostInvocation``→Stop many-to-one, so the original name is required to
+        select the correct ``*Result`` shape.
+
+        Enum-string status (blocked on live-agy discovery, aops-939b6c3a):
+          * The PreToolUse DENY path is expressed STRUCTURALLY via
+            ``permissionOverrides.allowTool=false`` — it needs NO enum string and
+            is fully implemented here (the safety-critical "deny actually blocks"
+            path).
+          * The Stop ``decision`` and PostInvocation ``terminationBehavior`` enum
+            STRINGS (the hard stop-block) are not yet live-verified. We do NOT
+            guess them — a wrong enum is silently discarded by agy, which is worse
+            than a clean miss — so the hard stop-block field is intentionally not
+            emitted. The advisory is still delivered via ``injectSteps`` on the
+            result types that support it.
+        """
+        verdict = result.verdict
+        # "ask" cannot prompt in a headless agy run, so the safe, enforcing
+        # interpretation of a gate that wanted to stop-and-confirm is to block.
+        is_block = verdict in ("deny", "ask")
+        advisory = _strip_hook_markers(result.context_injection)
+        short_reason = _strip_hook_markers(result.system_message)
+
+        if event == "PreToolUse":
+            # PreToolHookResult: allow is the empty object; a deny is expressed
+            # via permissionOverrides (allowTool=false) — no enum string needed.
+            if is_block:
+                return {
+                    "permissionOverrides": {
+                        "allowTool": False,
+                        "denyReason": short_reason or advisory or "Blocked by hook gate.",
+                    }
+                }
+            # allow / warn: PreToolHookResult has no advisory channel, so a warn's
+            # context cannot be surfaced here (agy platform limitation, not a
+            # regression). Emit the empty allow object.
+            return {}
+
+        if event == "PostToolUse":
+            # PostToolHookResult is the empty object — it carries no verdict or
+            # advisory channel, so the verdict is intentionally not encoded here.
+            return {}
+
+        if event == "PreInvocation":
+            # PreInvocationHookResult: deliver injected context as steps.
+            steps = self._agy_inject_steps(advisory)
+            return {"injectSteps": steps} if steps else {}
+
+        if event == "PostInvocation":
+            # PostInvocationHookResult {injectSteps, terminationBehavior}. Deliver
+            # the advisory via injectSteps; the hard stop-block
+            # (terminationBehavior enum) is deferred pending live verification
+            # (aops-939b6c3a) and is deliberately NOT emitted as a guess.
+            text = advisory or (short_reason if is_block else None)
+            steps = self._agy_inject_steps(text)
+            return {"injectSteps": steps} if steps else {}
+
+        if event == "Stop":
+            # StopHookResult {decision, reason}. There is no injectSteps channel
+            # here; ``reason`` is the only agent-facing field and the blocking
+            # ``decision`` enum is deferred (aops-939b6c3a). Surface the advisory
+            # via reason; do NOT emit a guessed decision.
+            reason = advisory or (short_reason if is_block else None)
+            return {"reason": reason} if reason else {}
+
+        # Unknown / unmapped event: the empty object validates against any
+        # *Result and never triggers an unknown-field rejection.
+        return {}
+
 
 # --- Main Entry Point ---
 
@@ -977,6 +1075,12 @@ def main():
     except Exception as e:
         print(f"WARNING: Failed to read stdin: {e}", file=sys.stderr)
 
+    # Capture the ORIGINAL event name before normalize_input() maps + pops it.
+    # agy keys its protojson *Result on the native event (PreInvocation /
+    # PostInvocation / Stop map many-to-one onto the internal name), so the
+    # agy formatter needs the pre-mapping name.
+    raw_event_name = raw_input.get("hook_event_name")
+
     # Debug log all input (enable with DEBUG_HOOKS=1)
     _debug_log_input(raw_input, args)
 
@@ -992,7 +1096,14 @@ def main():
     result = router.execute_hooks(ctx)
 
     # Output (JSON conversion happens only here)
-    if client_type in ("gemini", "agy"):
+    if client_type == "agy":
+        # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
+        # first unknown field — it does NOT speak Gemini's hook dialect (the
+        # silent-drop bug 4c73f02a introduced; aops-27004ffd). Format against the
+        # ORIGINAL agy event name, not the internal mapped ctx.hook_event.
+        agy_event = gemini_event or raw_event_name or ctx.hook_event
+        print(json.dumps(router.output_for_agy(result, agy_event)))
+    elif client_type == "gemini":
         output = router.output_for_gemini(result, ctx.hook_event)
         print(output.model_dump_json(exclude_none=True))
     else:
