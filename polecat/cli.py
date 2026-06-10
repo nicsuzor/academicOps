@@ -5110,6 +5110,9 @@ def run(
     # Compute extract_paths for session transcript persistence.
     # Claude writes to /home/worker/.claude/projects/-workspace/
     # Gemini writes to /home/worker/.gemini/tmp/workspace/chats/ (bind mounted locally)
+    # Annotated to match _run_docker_container(extract_paths=...): 2-tuples are
+    # (src, dst); the 3-tuple adds an explicit "file" kind for single-file copies.
+    _extract: list[tuple[str, Path] | tuple[str, Path, str]]
     if uses_gemini_runtime:
         if _is_remote_daemon():
             gemini_tmp_dir = run_session_dir / ".gemini-tmp"
