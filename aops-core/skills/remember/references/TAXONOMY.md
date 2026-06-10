@@ -85,7 +85,7 @@ Every node carries three core computed properties that drive both label assignme
 
 **What it tells you**: Which nodes to work on first when time is scarce. High criticality = unblocks many downstream nodes. Low criticality = isolated or terminal work.
 
-> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite (additive integer composition) that embeds severity, priority, deadline pressure, age/staleness, `downstream_weight`, stakeholder waiting, and an `urgency` term. See [[multi-parent]] for the full, current model. Component fields (`urgency`, `downstream_weight`, `criticality`, `uncertainty`) remain visible in metadata for filtering, classification, and debugging, but are **not** themselves focus_score terms and should never be the headline ranking signal — ranking always goes through `focus_score`. (Cross-repo TAXONOMY SSoT reconciliation is tracked separately under [[mem-3820aa50]].)
+> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite (additive integer composition) that embeds severity, priority, deadline pressure, age/staleness, `downstream_weight`, stakeholder waiting, an `urgency` term, and a live value-of-information term (`voi_value`, live since 2026-06-01, capped at 5000). See [[multi-parent]] §2.2 for the full, current model. Component fields (`downstream_weight`, `criticality`, `uncertainty`, and the surfaced `voi_value` / `urgency` debug values) remain visible in metadata for filtering, classification, and debugging, but ranking always goes through `focus_score` and should never be driven off a single component. (Cross-repo TAXONOMY SSoT reconciliation is tracked separately under [[mem-3820aa50]].)
 
 ### depth and leaf
 
@@ -140,7 +140,7 @@ The actionable types in the PKB:
 | **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                                                                |
 | **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks                                                                                                    |
 
-The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types.
+The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types. It is **descriptive only — it does not enter `focus_score`**: the live `voi_value` term is computed from graph structure (leaf status, dependency resolution, `contributes_to` target uncertainty × edge weight × downstream weight — see [[multi-parent]] §VoI), not from `classification`. A recorded `spike` / `research` shape is how agents judge whether a node's `voi_value` is trustworthy (genuine probe) versus a deliverable mis-fire ([[mem-830588f3]]). Agents may set it from task shape but **must never override a user-set `classification`**.
 
 ### Retired types
 
