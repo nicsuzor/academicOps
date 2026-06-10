@@ -138,6 +138,7 @@ Incremental PKB and graph hygiene maintenance.
 - **Anti-Inflation Audit**: List targets missing `consequence` prose, edges missing justifications, and flag concurrent committed SEV4 targets if they exceed a cap of 2.
 - **Mismatches**: Identify prefix/type/filename mismatches (e.g. `epic-` prefix with `type: task`).
 - **Data Quality**: De-duplicate nodes, complete stale tasks with email/calendar evidence, reclassify email-dump tasks as memories, and fix reparenting/domain issues.
+- **Knowledge-layer orphans**: The `note`/`knowledge`/`memory` population is invisible to `graph_stats.orphan_count` (actionable-only) — enumerate it with `pkb_orphans(types=["note","knowledge","memory"], include_all=true)`. When sleep selects the "Curate knowledge layer" strategy, execute the per-orphan disposition triage (link/reparent / MOC / merge / archive / SURFACE) defined in [[../remember/references/maintenance-phases.md#knowledge-layer-curation-activity-k]]. A prose `[[wikilink]]` does not clear orphan status — write the structured parentage edge the detector reads. Surface ambiguous homes; never guess a parent.
 
 ## Decision Surfacing Heuristic
 
