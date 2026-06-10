@@ -1,23 +1,32 @@
-# Trigger: QA (academicOps)
+# Trigger: QA (academicOps) — MANUAL entrypoint only.
 #
-# Fires the v2 QA reusable workflow on PR events in academicOps.
-# This is the academicOps-side shim — external consumers define an
-# equivalent file pointing to @qa-v1 (see specs/workflows/pr-pipeline-v2.md §9).
+# Fires the v2 QA reusable workflow on demand: the `/qa` PR comment and manual
+# workflow_dispatch. This is the academicOps-side shim — external consumers
+# define an equivalent file pointing to @qa-v1 (see specs/workflows/pr-pipeline-v2.md §9).
+#
+# DELIBERATELY NO `pull_request` trigger (aops-db83bad5). The automatic per-PR QA
+# path is owned SOLELY by pr-pipeline.yml (job `qa`, on `pull_request`). When this
+# shim ALSO subscribed to `pull_request`, both callers invoked agent-qa.yml on the
+# same SHA; they share the per-PR concurrency group `agent-qa-${pr}`
+# (cancel-in-progress: true), so the second-to-queue cancelled the first mid-agent
+# — burning a full agent invocation and leaving a guaranteed `cancelled` run
+# polluting the checks surface on every PR open (forensic: PR #1700, identical
+# timing signature to the enforcer overlap). The authoritative named status
+# `qa-status` is posted by agent-qa.yml to the head SHA regardless of caller, so
+# dropping this `pull_request` trigger does NOT remove any required check (ruleset
+# pr-review-and-merge.yml) — pr-pipeline still posts it.
 #
 # The reusable workflow (agent-qa.yml) accepts explicit pr_number, ref, and sha
 # inputs — no event-context magic inside the callee.
 #
 # NOTE: in the two-stage convergent model (§3), the triage orchestrator
-# (pr-pipeline.yml, reworked in P3) will call agent-qa.yml via `needs:` + the
-# §3.4 ordered short-circuit. This standalone trigger gives QA parity with the
-# enforcer NOW (its own PR/`/qa` entrypoint) and remains the manual route once
-# the orchestrator owns the automatic path.
+# (pr-pipeline.yml) calls agent-qa.yml via `needs:` + the §3.4 ordered
+# short-circuit — that is the automatic path. This standalone trigger remains the
+# manual route (its own `/qa` / workflow_dispatch entrypoint).
 
 name: "Trigger: QA"
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -50,7 +59,6 @@ jobs:
     name: Resolve PR context
     runs-on: ubuntu-latest
     if: >
-      github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/qa') && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association))
     outputs:
@@ -63,9 +71,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
-          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
-          EVENT_REF: ${{ github.event.pull_request.head.ref }}
-          EVENT_SHA: ${{ github.event.pull_request.head.sha }}
           INPUT_PR_NUMBER: ${{ inputs.pr_number }}
           INPUT_REF: ${{ inputs.ref }}
           INPUT_SHA: ${{ inputs.sha }}
@@ -77,12 +82,10 @@ jobs:
           REF=""
           SHA=""
 
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            PR_NUMBER="$EVENT_PR_NUMBER"
-            REF="$EVENT_REF"
-            SHA="$EVENT_SHA"
-
-          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          # No `pull_request` branch: the automatic per-PR path is owned by
+          # pr-pipeline.yml (aops-db83bad5). This shim handles only the manual
+          # entrypoints — workflow_dispatch and the `/qa` PR comment.
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             PR_NUMBER="$INPUT_PR_NUMBER"
             REF="$INPUT_REF"
             SHA="$INPUT_SHA"
