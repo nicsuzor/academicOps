@@ -80,21 +80,10 @@ These fields are populated by **deterministic regex bucketing** in
 `parse_framework_reflection`, not by an LLM. The agent's `## Framework Reflection`
 block must use the exact bold labels the parser matches, or the structured parse
 matches nothing and the body is dumped wholesale into `accomplishments` (the
-`aops-6a787364` silent-corruption bug). Label → field mapping:
-
-| Bold label (verbatim)   | Field              |
-| ----------------------- | ------------------ |
-| `**Outcome**:`          | `outcome`          |
-| `**Accomplishments**:`  | `accomplishments`  |
-| `**Friction points**:`  | `friction_points`  |
-| `**Proposed changes**:` | `proposed_changes` |
-| `**Next step(s)**:`     | `next_step`        |
-| `**Root cause**:`       | `root_cause`       |
-
-The full grammar, drift tolerances, and the `inferred-reflection` /
-`friction-in-accomplishments` quality warnings are the SSoT in
-`aops-core/skills/end_session/transcript-metadata-schema.md` (and `SKILL.md`'s
-reflection template must stay in lock-step with it).
+`aops-6a787364` silent-corruption bug). The full label → field mapping, drift
+tolerances, and quality warnings (`inferred-reflection`, `friction-in-accomplishments`)
+are the SSoT in `aops-core/skills/end_session/transcript-metadata-schema.md`
+(and `SKILL.md`'s reflection template must stay in lock-step with it).
 
 ## New Fields (CC 2.1+)
 
