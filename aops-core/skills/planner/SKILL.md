@@ -168,3 +168,9 @@ Enforce the following classifications to save user attention:
 ## Status Values
 
 Canonical — see [[../remember/references/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).
+
+### Premise judgment on promotion to `queued`
+
+When you promote a task into the dispatchable set (`→ queued`), record a **one-sentence, principal-voice premise judgment in the task body** — _"as a sharp principal seeing only this task: is this worth doing, and is the shape right — or bounce it?"_ — or bounce it with a one-line reason instead. Canonical definition, the hard rule, and the worked specimen: [[../remember/references/premise-gate.md]].
+
+**HARD RULE — it is one open prose sentence in the body, never a frontmatter field, form, or `- [ ]` checklist** (why a checklist re-commits the very sin the gate stops, plus the worked specimen: [[../remember/references/premise-gate.md]]). This is the dispatch-boundary counterpart of the [Decompose earn-its-keep gate](#3-decompose-planning) — the earn-its-keep gate fires at decomposition (`inbox → ready`); the premise gate fires at promotion (`→ queued`), the last moment before compute is spent. `/pull`, `/supervisor`, and `/program` hard-refuse to dispatch a task whose body shows no genuine premise judgment.
