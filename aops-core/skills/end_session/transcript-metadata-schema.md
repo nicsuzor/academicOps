@@ -12,6 +12,45 @@ retro, and sleep-consolidation pipelines.
 > `parse_tasks_worked_section`, `parse_identifier_precis_pairs`, and
 > `assess_reflection_quality` in `aops-core/lib/transcript_parser.py`.
 
+## Framework Reflection label grammar (the parse contract)
+
+The `## Framework Reflection` block is bucketed **deterministically by regex**,
+not by an LLM. `SKILL.md`'s template and this grammar must stay in lock-step —
+when they drift, the agent writes labels the parser does not recognise, the
+structured parse matches nothing, and the whole body falls through to the
+unstructured fallback (`_parse_unstructured_reflection`), which dumps every
+bullet into `accomplishments` and leaves `friction_points` empty. (This was the
+silent-corruption bug fixed in `aops-6a787364`.)
+
+Emit each field on its own line with its **exact bold label** followed by a
+colon. The buckets the parser reads (`field_patterns` in
+`parse_framework_reflection`):
+
+| Bold label (verbatim)    | Parsed field        | Type          | Notes                                                   |
+| ------------------------ | ------------------- | ------------- | ------------------------------------------------------- |
+| `**Outcome**:`           | `outcome`           | string        | `success` \| `partial` \| `failure`.                    |
+| `**Accomplishments**:`   | `accomplishments`   | array[string] | Comma list, `-` bullets, or single value.               |
+| `**Friction points**:`   | `friction_points`   | array[string] | URLs filed via `/learn`; no prose. `none` → empty list. |
+| `**Proposed changes**:`  | `proposed_changes`  | array[string] | `none` → empty list.                                    |
+| `**Next step(s)**:`      | `next_step`         | string        | Optional.                                               |
+| `**Prompts**:`           | `prompts`           | string        | Optional.                                               |
+| `**Guidance received**:` | `guidance_received` | string        | Optional.                                               |
+| `**Followed**:`          | `followed`          | string        | Optional.                                               |
+| `**Root cause**:`        | `root_cause`        | string        | Optional; an inline `(…)` qualifier is tolerated.       |
+
+Tolerances the parser allows (do **not** rely on these instead of the canonical
+label — they exist to catch in-the-wild drift, and off-template reflections are
+flagged via `quality_warnings`):
+
+- **Friction** is matched on any `**Friction…**` span — `**Friction.**`,
+  `**Friction (real bug):**`, `**Friction**:` all bucket to `friction_points`.
+- A reflection that uses **no** bold labels (plain `-` bullets or prose) is
+  parsed by the unstructured fallback: bullets whose leading label is
+  `Friction…`/`Proposed…` route to `friction_points`/`proposed_changes`; all
+  other bullets become `accomplishments`. Such a reflection is marked
+  `inferred: true` and earns an `inferred-reflection` quality warning (see
+  [Quality warnings](#quality-warnings)).
+
 ## File location
 
 Per-session insights JSON lives under
@@ -85,14 +124,16 @@ appears in `quality_warnings` as `bare-identifier: …`.
 
 Warnings are strings of the form `<code>: <message>`. The set:
 
-| Code                     | Triggered by                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------- |
-| `missing-output-section` | No `## Output` block (and no `Output: none — …` line) found.                        |
-| `empty-output-section`   | `## Output` block had no URLs and did not declare an explicit none.                 |
-| `missing-tasks-worked`   | No `## Tasks worked` block found.                                                   |
-| `empty-tasks-worked`     | `## Tasks worked` block was empty.                                                  |
-| `bare-identifier`        | Reflection mentioned `task-…` / `PR #…` / `commit …` without a `(precis)`.          |
-| `feature-suggestion`     | Reflection appears to propose a new tool/feature/skill rather than report friction. |
+| Code                          | Triggered by                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `missing-output-section`      | No `## Output` block (and no `Output: none — …` line) found.                                                                  |
+| `empty-output-section`        | `## Output` block had no URLs and did not declare an explicit none.                                                           |
+| `missing-tasks-worked`        | No `## Tasks worked` block found.                                                                                             |
+| `empty-tasks-worked`          | `## Tasks worked` block was empty.                                                                                            |
+| `bare-identifier`             | Reflection mentioned `task-…` / `PR #…` / `commit …` without a `(precis)`.                                                    |
+| `feature-suggestion`          | Reflection appears to propose a new tool/feature/skill rather than report friction.                                           |
+| `inferred-reflection`         | Reflection had no structured `**Field**:` labels; categorisation was inferred from bullets/keywords (off the parse contract). |
+| `friction-in-accomplishments` | An `accomplishments` item mentions "friction" while `friction_points` is empty — likely miscategorised friction.              |
 
 `feature-suggestion` is a heuristic — it matches phrases like `new tool`,
 `we should build`, `propose a new`, etc. False positives are acceptable;

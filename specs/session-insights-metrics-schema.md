@@ -76,6 +76,15 @@ Each entry in the array represents one reflection block:
 | `next_step`         | string or null | Immediate next action                      |
 | `quick_exit`        | bool           | (optional) Whether session was cut short   |
 
+These fields are populated by **deterministic regex bucketing** in
+`parse_framework_reflection`, not by an LLM. The agent's `## Framework Reflection`
+block must use the exact bold labels the parser matches, or the structured parse
+matches nothing and the body is dumped wholesale into `accomplishments` (the
+`aops-6a787364` silent-corruption bug). The full label → field mapping, drift
+tolerances, and quality warnings (`inferred-reflection`, `friction-in-accomplishments`)
+are the SSoT in `aops-core/skills/end_session/transcript-metadata-schema.md`
+(and `SKILL.md`'s reflection template must stay in lock-step with it).
+
 ## New Fields (CC 2.1+)
 
 These fields are populated when the transcript contains CC 2.1+ metadata entries. All are omitted when absent (see backward compatibility note).
