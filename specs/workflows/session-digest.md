@@ -128,6 +128,8 @@ The digest consumes **interactive sessions only**. Excluded entirely from narrat
 
 Automation sessions may still be _referenced_ by the narrative when an interactive thread dispatched them (e.g. "Nic dispatched a /learn retro [ref]") — the exclusion is about what the digest reads, not what it may mention.
 
+Implementation note: the session classifier defaults to fail-open ("everything else → interactive"), so the digest's cron runner and its /learn dispatches MUST explicitly mark their own sessions (filename prefix or surface metadata) — they will not be excluded automatically. T3's third cycle catches a violation behaviorally.
+
 ### Digest file contract
 
 `$AOPS_SESSIONS/digests/YYYYMMDD-digest.md`:
@@ -219,7 +221,7 @@ Tests implement the acceptance criteria above. All run against a fixture day ass
 | T5 incremental + idle          | AC5       | Second run with no new prompts — including a fixture session that is still open but has no prompts past the watermark — exits 0 without invoking the agent CLI (assert via mock). Then append a new prompt to the still-open session and assert the next cycle DOES process it.                                                         |
 | T6 redaction                   | FM2       | Fixture prompt containing a planted fake API key; assert digest contains `[REDACTED]` and not the key.                                                                                                                                                                                                                                  |
 | T7 staleness flag              | FM4       | progress-sync fixture run with digest `updated` >3h old; assert daily note flags it.                                                                                                                                                                                                                                                    |
-| T8 thread monotonicity         | FM6       | Two-cycle run over fixtures; assert every thread present in cycle N's Threads section appears in SOME Threads subsection (Ongoing / Completed / Started-but-dropped) at cycle N+1.                                                                                                                                                      |
+| T8 thread monotonicity         | FM6       | Two-cycle run over fixtures; assert every thread present in cycle N's Threads section appears in SOME Threads subsection (Ongoing / Completed / Started-but-dropped) at cycle N+1. Abort path: a cycle forced to drop a thread must produce `status: error` and no save, not a silently thinner digest.                                 |
 
 Each test must fail before implementation (fixtures + assertions land first).
 
