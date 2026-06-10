@@ -11,6 +11,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum, auto
@@ -1225,6 +1226,10 @@ def reflection_to_insights(
         **session_naming.get_session_metadata(provider=provider, **origin),
         "repo": stable_project,
         "task_id": task_id,
+        # Resolved task title (aops-62abcf9d): carried alongside task_id so
+        # downstream consumers (catch-up timeline) need no PKB lookup. Best-effort:
+        # None when unresolvable or PKB endpoint unconfigured.
+        "task_title": resolve_task_title(task_id),
         # Framework reflections as array (schema-compliant)
         "framework_reflections": [framework_reflection_entry],
         # Token usage metrics (optional)
@@ -1315,6 +1320,50 @@ def reflection_to_insights(
                 result[_attr] = _val
 
     return result
+
+
+_TASK_TITLE_CACHE: dict[str, str | None] = {}
+
+
+def resolve_task_title(task_id: str | None) -> str | None:
+    """Best-effort resolve a task title from the PKB for a given task_id.
+
+    Used so newly-generated transcript frontmatter can carry ``task_title``
+    alongside ``task_id``/``pr_url`` (aops-62abcf9d), sparing downstream
+    consumers (e.g. the catch-up timeline) a PKB lookup at read time.
+
+    Best-effort by contract: returns ``None`` if ``task_id`` is falsy, if the
+    PKB MCP endpoint is not configured (``PKB_MCP_URL`` unset — e.g. offline
+    conversion or tests), or if the lookup fails for any reason. Never raises.
+    Results are cached per-process (including ``None``) to avoid repeat
+    round-trips for the same id.
+    """
+    if not task_id:
+        return None
+    if task_id in _TASK_TITLE_CACHE:
+        return _TASK_TITLE_CACHE[task_id]
+
+    title: str | None = None
+    try:
+        if os.environ.get("PKB_MCP_URL"):
+            try:
+                from polecat import pkb_bridge
+            except ImportError:
+                # aops-core/lib/transcript_parser.py -> aops-core -> framework root
+                framework_root = Path(__file__).resolve().parent.parent.parent
+                if str(framework_root) not in sys.path:
+                    sys.path.insert(0, str(framework_root))
+                from polecat import pkb_bridge
+
+            task = pkb_bridge.get_task(task_id)
+            if task and task.title:
+                title = task.title
+    except Exception as e:
+        print(f"[resolve_task_title] PKB lookup failed for {task_id!r}: {e}", file=sys.stderr)
+        title = None
+
+    _TASK_TITLE_CACHE[task_id] = title
+    return title
 
 
 def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str, Any]]:
@@ -2035,6 +2084,7 @@ class SessionSummary:
     crew: str | None = None
     repo: str | None = None
     task_id: str | None = None
+    task_title: str | None = None
     slug: str | None = None
     # Launch surface/client. surface = provider × launcher (e.g. claude-code-cli,
     # claude-code-desktop, claude-crew); client = which CLI/tool invoked it
@@ -5127,6 +5177,13 @@ class SessionProcessor:
             metadata_yaml += f"repo: {session.repo}\n"
         if session.task_id:
             metadata_yaml += f"task_id: {session.task_id}\n"
+        # task_title (aops-62abcf9d): resolved best-effort from task_id so future
+        # readers (catch-up timeline) do not need to round-trip to the PKB. Falls
+        # back to whatever is on the summary, then a fresh PKB lookup if absent.
+        task_title = session.task_title or resolve_task_title(session.task_id)
+        if task_title:
+            safe_title = task_title.replace('"', "'").replace("\n", " ").strip()
+            metadata_yaml += f'task_title: "{safe_title}"\n'
         if session.slug:
             metadata_yaml += f"slug: {session.slug}\n"
         if session.session_kind:
