@@ -202,16 +202,16 @@ final cross-model truth-check is reasonable but optional, not the primary safety
 
 ## Cross-cutting guards (F1–F8)
 
-| Guard | Rule                                                                                                                                                                 |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F1    | Any regeneration re-enters verification; "verified" stamps a committed artifact.                                                                                     |
-| F2    | VERIFY is always a full independent cold re-read + re-derivation — never a citation-checker. Includes the verbatim-quote-existence sweep and tool-backed arithmetic. |
-| F3    | PREP self-reviews before writing (integrity material, un-recomputed numbers, paraphrase-as-paraphrase).                                                              |
-| F4    | Any integration/fix step re-reads the edited artifact and re-derives every number/quote it lands; uses the narrowest possible edit target.                           |
-| F5    | Silo per-application for fact-checking; one whole-set pass for anything cross-document (fingerprints, conflicts, consistency).                                       |
-| F6    | Severity ladder with explicit BLOCKER / FIX / NIT definitions ([[review-verification]]).                                                                             |
-| F7    | Verification techniques live in a pre-"ready" gate, not only at the end.                                                                                             |
-| F8    | On-disk drafts are mutable and get rewritten post-hoc — never treat a live draft as proof of a stage's output; the committed/verified artifact is the record.        |
+| Guard | Rule                                                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1    | Any regeneration re-enters verification; "verified" stamps a committed artifact. — [[review-verification]]                                                                                     |
+| F2    | VERIFY is always a full independent cold re-read + re-derivation — never a citation-checker. Includes the verbatim-quote-existence sweep and tool-backed arithmetic. — [[review-verification]] |
+| F3    | PREP self-reviews before writing (integrity material, un-recomputed numbers, paraphrase-as-paraphrase).                                                                                        |
+| F4    | Any integration/fix step re-reads the edited artifact and re-derives every number/quote it lands; uses the narrowest possible edit target. — [[review-verification]]                           |
+| F5    | Silo per-application for fact-checking; one whole-set pass for anything cross-document (fingerprints, conflicts, consistency).                                                                 |
+| F6    | Severity ladder with explicit BLOCKER / FIX / NIT definitions ([[review-verification]]).                                                                                                       |
+| F7    | Verification techniques live in a pre-"ready" gate, not only at the end. — [[review-verification]]                                                                                             |
+| F8    | On-disk drafts are mutable and get rewritten post-hoc — never treat a live draft as proof of a stage's output; the committed/verified artifact is the record. — [[review-verification]]        |
 
 ## Scribe Mode (collegial drafts)
 

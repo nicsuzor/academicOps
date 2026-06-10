@@ -119,7 +119,7 @@ What the workflow says to do next, instantiated for this case.
 
 ## Tone rules for reading notes
 
-- **Keep the two layers separate.** The factual layer stays evidentiary ("the application proposes 20 participants over 2 weeks"); the evaluative read ("the sample looks small for the claim") goes in the raw judgement block — *not* mixed into the factual map. This is a separation of layers, **not** a ban on judgement: the old "factual-only, no evaluative" rule was wrong, because the raw block is where the assessment actually forms.
+- **Keep the two layers separate.** The factual layer stays evidentiary ("the application proposes 20 participants over 2 weeks"); the evaluative read ("the sample looks small for the claim") goes in the raw judgement block — _not_ mixed into the factual map. This is a separation of layers, **not** a ban on judgement: the old "factual-only, no evaluative" rule was wrong, because the raw block is where the assessment actually forms.
 - **Cite line numbers.** Every factual claim should be checkable in 5 seconds.
 - **Tag uncertainty as `[?]`** — and never use `[?]` to dress a guess as a fact. A flag is "verify this", not licence to assert.
 - **Use paraphrase over long quotes in the factual layer, and mark it as paraphrase.** Quotes pull the eye out of the source; paraphrase + line ref keeps it in. Never write a paraphrase a downstream reader could mistake for a verbatim string.
