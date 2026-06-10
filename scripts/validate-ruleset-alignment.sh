@@ -28,6 +28,7 @@ API_DRIVEN_STATUSES=(
   "enforcer-status"     # set by agent-enforcer.yml via GitHub Statuses API (Phase 1 v2 enforcer)
   "qa-status"           # set by agent-qa.yml via GitHub Statuses API (Phase 2 v2 QA / marsha)
   "admit-status"        # set by the in-pipeline `admit` job in pr-pipeline.yml on Environment approval (Phase 4 human gate)
+  "review-attestation"   # set by pr-pipeline.yml `review-attestation` job (fail-closed liveness; #1450, §3.7)
   "merge-prep-status"   # legacy v1 gate (set by agent-merge-prep.yml + Initialize); no longer required
 )
 
@@ -111,6 +112,14 @@ while IFS= read -r required; do
     elif [[ "$required" == "qa-status" ]]; then
       if ! grep -q "agent-qa.yml" "$WORKFLOWS_DIR"/*.yml 2>/dev/null; then
         echo "  ✗ '$required' — API-driven status is required, but no workflow in $WORKFLOWS_DIR calls agent-qa.yml!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    elif [[ "$required" == "review-attestation" ]]; then
+      # Set by the pr-pipeline.yml `review-attestation` job (fail-closed liveness;
+      # #1450, pr-pipeline.md §3.7). The decision logic is scripts/ci/review-attestation.sh.
+      if ! grep -q "review-attestation" "$WORKFLOWS_DIR"/pr-pipeline.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/pr-pipeline.yml does not set review-attestation!"
         ERRORS=$((ERRORS + 1))
         continue
       fi

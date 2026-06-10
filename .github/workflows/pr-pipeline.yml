@@ -316,9 +316,17 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
   # ─── Step 3: QA (Marsha) ─────────────────────────────────────────
+  # Inverted review gradient (#1450, §3.4): a red ENFORCER VERDICT must not gate
+  # qa off — a failing PR should get MORE review, not less. So qa runs whenever
+  # the enforcer actually RAN and produced a verdict (success OR failure) and did
+  # NOT commit. The `committed != 'true'` guard is what preserves convergence (an
+  # enforcer fix changes the SHA → that pass short-circuits and the new SHA's run
+  # re-reviews); the enforcer's red/green VERDICT no longer suppresses qa.
+  # qa is still skipped when enforcer was `skipped` (lint committed → stale SHA)
+  # or `cancelled`, neither of which is a verdict on this SHA.
   qa:
     needs: [enforcer, lint]
-    if: always() && needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true'
+    if: always() && needs.lint.result == 'success' && (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true'
     name: QA Verification
     uses: ./.github/workflows/agent-qa.yml
     with:
@@ -381,6 +389,62 @@ jobs:
     secrets:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # ─── Liveness + named-reviewer attestation (§3.7) — REQUIRED, FAIL-CLOSED ──
+  # Proves a NAMED reviewer actually ran on THIS exact PR SHA, and makes a
+  # dead/skipped pipeline read RED rather than as a silent pass (#1450).
+  #
+  # The named reviewer statuses (enforcer-status, qa-status) post to the head SHA,
+  # but a startup_failure / skipped run posts NOTHING — and absence was silently
+  # treated as a pass. This job independently re-reads each named reviewer's
+  # status on the head SHA and posts ONE required `review-attestation` status that
+  # is `success` only when EVERY named reviewer posted a genuine terminal success
+  # whose §10 `target_sha` equals this HEAD (a provable live pass on this diff);
+  # it fails closed on absent / pending / red / stale.
+  #
+  # It runs `if: always()` after enforcer+qa, so whenever the workflow runs at all
+  # the signal is posted explicitly. And because `review-attestation` is a REQUIRED
+  # check (ruleset 13762049), a workflow that startup-fails (posts nothing) leaves
+  # the required check unsatisfied → the PR is unmergeable. Absence can no longer
+  # read as pass. The decision logic lives in scripts/ci/review-attestation.sh
+  # (unit-tested in tests/test_review_attestation.py).
+  review-attestation:
+    name: Review Attestation
+    needs: [enforcer, qa]
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute attestation decision
+        id: attest
+        run: ./scripts/ci/review-attestation.sh
+      - name: Post review-attestation status
+        env:
+          STATE: ${{ steps.attest.outputs.state }}
+          DESC: ${{ steps.attest.outputs.description }}
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="review-attestation" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+      - name: Fail closed when not attested
+        env:
+          STATE: ${{ steps.attest.outputs.state }}
+          DESC: ${{ steps.attest.outputs.description }}
+        run: |
+          if [ "$STATE" != "success" ]; then
+            echo "::error::$DESC"
+            exit 1
+          fi
+          echo "::notice::$DESC"
 
   # ─── Read-only checks (typecheck, pytest) ────────────────────────
   # These contribute statuses but never end a pass. They only run if

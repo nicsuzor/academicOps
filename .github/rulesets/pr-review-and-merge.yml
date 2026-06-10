@@ -109,6 +109,14 @@ rules:
         - context: "enforcer-status"
         # qa-status: marsha — runtime QA (agent-qa.yml)
         - context: "qa-status"
+        # review-attestation: fail-closed liveness + named-reviewer-on-this-SHA
+        # proof (pr-pipeline.yml `review-attestation` job; #1450, pr-pipeline.md
+        # §3.7). Posted `success` only when every named reviewer (enforcer, qa)
+        # genuinely ran on THIS head SHA; fails closed on absent/pending/red/stale.
+        # Required so a dead/skipped/startup-failed pipeline (which posts nothing)
+        # leaves this check unsatisfied → unmergeable, instead of absence silently
+        # reading as a pass.
+        - context: "review-attestation"
         # Human gate (Environment approval, §5) — NOT an agent. Set to success only by
         # the in-pipeline Stage-2 Admission Gate (the `admit` job in pr-pipeline.yml)
         # when the maintainer approves the `pr-fix-loop` Environment. Replaces v1's
