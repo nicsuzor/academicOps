@@ -38,23 +38,25 @@ tags:
 
 Read this table first; the sections below carry the detail and repeat the flags inline.
 
-| Capability                                                                                                                                                                                | State                                                                           | Evidence (2026-06-09)                                                                                                                                                                               |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, `dispatch-admission` on convergence | **LIVE**                                                                        | `.github/workflows/pr-pipeline.yml`                                                                                                                                                                 |
-| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                               | **LIVE**                                                                        | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                                                                                       |
-| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                       | **LIVE**                                                                        | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                                                                                    |
-| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; `stage2-admission.yml` parks, sets `admit-status`, arms auto-merge                         | **LIVE**                                                                        | `gh api .../environments/pr-fix-loop` + `stage2-admission.yml`                                                                                                                                      |
-| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`       | **LIVE**                                                                        | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                                                                                 |
-| `admit-status` carry-forward across agent commits / reset on human push                                                                                                                   | **LIVE**                                                                        | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                                                                                 |
-| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                 | **LIVE**                                                                        | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5)                                                              |
-| `mechanic-status` informational status                                                                                                                                                    | **LIVE**                                                                        | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                                                                                   |
+| Capability                                                                                                                                                                                | State         | Evidence (2026-06-09)                                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, in-pipeline `admit` job parks on convergence | **LIVE**      | `.github/workflows/pr-pipeline.yml`                                                                                                    |
+| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                               | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                          |
+| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                       | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                       |
+| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; the in-pipeline `admit` job parks on the PR's own run, sets `admit-status`, arms auto-merge | **LIVE**      | `gh api .../environments/pr-fix-loop` + `pr-pipeline.yml` `admit` job                                                                  |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`       | **LIVE**      | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                    |
+| `admit-status` carry-forward across agent commits / reset on human push                                                                                                                   | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                    |
+| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                 | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5) |
+| `mechanic-status` informational status                                                                                                                                                    | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                      |
+| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                              | **LIVE**      | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                 |
+| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                   | **LIVE**      | `MAX_MECHANIC_RUNS=5` (counts `Mechanic-By:`); `timeout-minutes: 55`; exhaustion handler resets `admit-status` + escalation review     |
+| Alignment (pauli) queue surface — orchestrator posts `alignment-status: pending` and files an `alignment:queued` issue per PR                                                             | **LIVE**      | `pr-pipeline.yml` `alignment-queue` job                                                                                                |
+| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                             | **SPEC-ONLY** | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                             |
 | **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                              | **LIVE**                                                                        | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                                                                              |
-| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                   | **LIVE**                                                                        | `MAX_MECHANIC_RUNS=5` (counts `Mechanic-By:`); `timeout-minutes: 55`; exhaustion handler resets `admit-status` + escalation review                                                                  |
-| **Fail-closed liveness + named-reviewer-on-this-SHA attestation** (`review-attestation` job + status; a dead/skipped pipeline reads RED, not as a silent pass; §3.7)                      | **LIVE** (in-repo); ruleset entry **LIVE in file**, live-apply is a deploy step | `pr-pipeline.yml` `review-attestation` job + `scripts/ci/review-attestation.sh` + `tests/test_review_attestation.py`; ruleset file lists `review-attestation` (apply via `scripts/sync-ruleset.sh`) |
-| **Inverted review gradient** — a red enforcer VERDICT no longer gates `qa` off (a failing PR gets MORE review, not less; §3.4, #1450)                                                     | **LIVE**                                                                        | `pr-pipeline.yml` `qa` job `if:` tolerates `needs.enforcer.result == 'failure'`                                                                                                                     |
-| Alignment (pauli) queue surface — orchestrator posts `alignment-status: pending` and files an `alignment:queued` issue per PR                                                             | **LIVE**                                                                        | `pr-pipeline.yml` `alignment-queue` job                                                                                                                                                             |
-| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                             | **SPEC-ONLY**                                                                   | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                                                                                          |
-| **v1 fixer** = `agent-merge-prep.yml` + `merge-prep-cron.yml` + `merge-prep.agent.md`                                                                                                     | **RETIRED**                                                                     | all three files deleted at Phase 5; vestigial `merge-prep-status` carry-forward removed from `pr-pipeline.yml` `initialize`                                                                         |
+| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                       | **SPEC-ONLY**                                                                   | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                                                                                          |
+| **v1 fixer** = `agent-merge-prep.yml` + `merge-prep-cron.yml` + `merge-prep.agent.md`                                                                                                     | **RETIRED**   | all three files deleted at Phase 5; vestigial `merge-prep-status` carry-forward removed from `pr-pipeline.yml` `initialize`            |
+| **v2 separate-dispatch admission** = `stage2-admission.yml` + `dispatch-admission` job                                                                                                    | **RETIRED**   | folded into the in-pipeline `admit` job; `stage2-admission.yml` deleted (admission is no longer a separate `workflow_dispatch` run)    |
+
 
 As of Phase 5 (this consolidation+P5 PR), the Stage-2 fix loop is now wired end-to-end:
 the orchestrator appends `mechanic` after `qa` gated on `admit-status=success`; the
@@ -178,8 +180,8 @@ polecat-pauli dispatcher that drains the queue is **SPEC-ONLY**, so until it shi
 stand-in is the manual `/strategic-review --critic` skill the maintainer runs by hand before
 admitting (§6).
 
-Stage 1 ends when the pass converges (§3.4). The orchestrator's `dispatch-admission` job
-then dispatches a Stage-2 admission run that parks at the gate (§3.2).
+Stage 1 ends when the pass converges (§3.4). The orchestrator's in-pipeline `admit` job
+then parks at the gate (§3.2) on the same workflow run.
 
 ### 3.2 The gate — `pr-fix-loop` GitHub Environment — **LIVE**
 
@@ -188,23 +190,46 @@ Admission to the development loop is a **GitHub Environment with a required revi
 the `production`-style environment pattern already used for release-please gating
 (`pr-pipeline.yml` `gate` job).
 
-On Stage-1 convergence, `dispatch-admission` dispatches `stage2-admission.yml` as a
-**separate run** whose only job targets the `pr-fix-loop` environment and **pauses**. The
-maintainer reads the triage statuses, the agents' reviews, and pauli's alignment verdict
-(if they ran `/strategic-review` by hand), then **Approves (admit) or Rejects**.
-"If it's all green or I click the button" — approving the pending deployment _is_ the
-button. This is the single human decision in the pipeline: _this is a good idea; make it
-mergeable._
+On Stage-1 convergence, the orchestrator's **in-pipeline `admit` job** (declared in
+`pr-pipeline.yml`, `environment: pr-fix-loop`, `needs: [initialize, lint, enforcer, qa]`)
+parks here. Because the gate lives on the PR's own run, the maintainer's "Review
+deployments → Approve" button surfaces **directly on the PR** — one click from the PR
+page, not buried in an unlabeled run in the Actions tab. The maintainer reads the triage
+statuses, the agents' reviews, and pauli's alignment verdict (if they ran
+`/strategic-review` by hand), then **Approves (admit) or Rejects**. "If it's all green or
+I click the button" — approving the pending deployment _is_ the button. This is the
+single human decision in the pipeline: _this is a good idea; make it mergeable._
 
-On approval, `stage2-admission.yml` (with the bot PAT) does two things: (a) sets the
-required `admit-status` to `success` on HEAD, and (b) arms
+On approval, the `admit` job (with the bot PAT) does two things: (a) sets the required
+`admit-status` to `success` on HEAD, and (b) arms
 `gh pr merge --auto --squash --delete-branch`.
 
-> An Environment-gated job pauses the whole run awaiting approval. Admission is therefore a
-> **separately dispatched run** that parks at the gate — never a job inside the Stage-1 run
-> (which would leave Stage 1 hanging). `pr-pipeline.yml`'s `dispatch-admission` is
-> idempotent: it dispatches only when `admit-status` is not already `success`, so
-> carry-forward (§5) keeps the gate from re-parking on every later convergence.
+> **Why in-pipeline and not a separate dispatch (correcting the v2 rationale).** An earlier
+> design dispatched a separate `stage2-admission.yml` run to park at the gate, citing "an
+> Environment-gated job pauses the entire run / leaves Stage 1 hanging." That premise was
+> **factually wrong about GitHub Actions**: a gate pauses ONLY the gated job and its
+> `needs:`-dependents, never the whole run. The `admit` job has zero downstream `needs:`,
+> so already-completed Stage-1 jobs (lint, enforcer, qa, typecheck, pytest) are unaffected
+> by the park. The separate-dispatch design's only practical effect was to detach the
+> approval prompt from the PR. The in-pipeline form is also **strictly safer on the trust
+> axis**: for `pull_request` events GitHub executes the workflow file from the base branch
+> (`dev`), so the gated job runs trusted dev gate code unconditionally — strictly safer
+> than `gh workflow run … --ref base_ref`, which had to pin the ref correctly by hand.
+>
+> **Idempotence (the one real wrinkle).** A gated job pauses on the Environment binding
+> BEFORE any step runs, so idempotence cannot be expressed as a "skip the park" first
+> step. It is expressed instead as a **job-level `if`** gated on
+> `needs.initialize.outputs.already_admitted`. The `initialize` job's admit-status
+> carry-forward step (§5) emits `already_admitted=true` exactly when it carried a previous
+> `admit-status: success` forward to the new HEAD; the `admit` job's `if` excludes that
+> case, so a PR whose admission has carried forward across agent fix commits does not
+> re-park at the gate (§12-Q1).
+>
+> **Per-PR concurrency handles re-pushes.** The workflow-level
+> `concurrency: pr-pipeline-${{ pr.number }}` with `cancel-in-progress: true` cancels a
+> superseded parked deployment when a new push arrives, and the new run re-parks on the
+> new SHA. No waiting-run pileup. (Cancelled parked deployments leave "cancelled" runs in
+> history — cosmetic.)
 >
 > **Enforcement caveat (verified):** the `pr-fix-loop` Environment exists _with_ a required
 > reviewer, so the run genuinely parks. If that Environment were ever deleted or stripped of
@@ -559,9 +584,9 @@ exactly this reason (PRs #735/#754).
 
 Graduation is deliberately cheap: no bot approval, no agent, no checkout.
 
-- The Environment-gated admission job (`stage2-admission.yml`, §3.2) does two things on
-  approval: (1) sets the required **`admit-status`** to `success` on HEAD, and (2) arms
-  `gh pr merge --auto --squash --delete-branch`.
+- The in-pipeline Environment-gated `admit` job (in `pr-pipeline.yml`, §3.2) does two
+  things on approval: (1) sets the required **`admit-status`** to `success` on HEAD, and
+  (2) arms `gh pr merge --auto --squash --delete-branch`.
 - The merge fires the moment **all required checks are green and the PR is mergeable** —
   immediately for an already-green PR, or after the Stage-2 loop converges green.
 - **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
@@ -854,10 +879,13 @@ Each phase is independently shippable and leaves the pipeline working.
   into the triage orchestrator: `lint → enforcer → qa` via `needs:` + `committed`-output
   short-circuit (§3.4), keeping the `gate`/`guard-no-dist`/`initialize` jobs.
 - **Phase 4 — Environment gate + `admit-status` + graduation. DONE / LIVE.** `pr-fix-loop`
-  Environment created with required reviewer; `stage2-admission.yml` parks and (on approval)
-  sets `admit-status` + arms auto-merge; `dispatch-admission` job in `pr-pipeline.yml`.
-  Ruleset: `merge-prep-status → admit-status`, added `qa-status`, approvals `2 → 0`, in one
-  atomic change (verified live on ruleset `13762049`).
+  Environment created with required reviewer; the in-pipeline `admit` job in
+  `pr-pipeline.yml` parks at the Environment and (on approval) sets `admit-status` + arms
+  auto-merge. Originally shipped as a separate dispatched `stage2-admission.yml`; that
+  detached the approval prompt from the PR for a falsified safety reason (see §3.2
+  callout) and was retired in favour of the in-pipeline form. Ruleset:
+  `merge-prep-status → admit-status`, added `qa-status`, approvals `2 → 0`, in one atomic
+  change (verified live on ruleset `13762049`).
 - **Phase 5 — Stage-2 dev/mechanic. DONE / LIVE.** `agent-mechanic.yml` +
   `.github/agents/mechanic.agent.md` are the admitted-loop dev agent (development to clear
   red + conflict resolution only when `CONFLICTING`); §8's F1–F10 are inherited; §3.5
@@ -897,8 +925,10 @@ Each phase is independently shippable and leaves the pipeline working.
   uv.lock discipline; it cross-references **this** spec for all merge-gate detail and must
   not duplicate it.
 - `.github/rulesets/pr-review-and-merge.yml` — the live ruleset (ID `13762049`).
-- `.github/workflows/{pr-pipeline,stage2-admission,agent-enforcer,trigger-enforcer,agent-qa,trigger-qa,agent-mechanic}.yml`
-  - `.github/agents/{enforcer,qa,mechanic}.agent.md` — the LIVE two-stage scaffolding.
+- `.github/workflows/{pr-pipeline,agent-enforcer,trigger-enforcer,agent-qa,trigger-qa,agent-mechanic}.yml`
+  + `.github/agents/{enforcer,qa,mechanic}.agent.md` — the LIVE two-stage scaffolding.
+  (`pr-pipeline.yml` carries the in-pipeline `admit` job; the standalone
+  `stage2-admission.yml` was retired — see §3.2.)
 - `.github/workflows/{agent-merge-prep,merge-prep-cron}.yml` + `.github/agents/merge-prep.agent.md`
   — the v1 transitional fixer (RETIRED at Phase 5; behaviour inherited per §8).
 - `specs/ENFORCEMENT-MAP.md` — "PR-pipeline agents" rows (§4.3).

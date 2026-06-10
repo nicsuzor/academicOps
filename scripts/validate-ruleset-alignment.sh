@@ -25,11 +25,11 @@ RULESET_FILE=".github/rulesets/pr-review-and-merge.yml"
 # (not by a workflow job). They have no corresponding job name in workflow files
 # and must be explicitly listed here to pass validation.
 API_DRIVEN_STATUSES=(
-  "enforcer-status"      # set by agent-enforcer.yml via GitHub Statuses API (Phase 1 v2 enforcer)
-  "qa-status"            # set by agent-qa.yml via GitHub Statuses API (Phase 2 v2 QA / marsha)
+  "enforcer-status"     # set by agent-enforcer.yml via GitHub Statuses API (Phase 1 v2 enforcer)
+  "qa-status"           # set by agent-qa.yml via GitHub Statuses API (Phase 2 v2 QA / marsha)
+  "admit-status"        # set by the in-pipeline `admit` job in pr-pipeline.yml on Environment approval (Phase 4 human gate)
   "review-attestation"   # set by pr-pipeline.yml `review-attestation` job (fail-closed liveness; #1450, §3.7)
-  "admit-status"         # set by stage2-admission.yml on Environment approval (Phase 4 human gate)
-  "merge-prep-status"    # legacy v1 gate (set by agent-merge-prep.yml + Initialize); no longer required
+  "merge-prep-status"   # legacy v1 gate (set by agent-merge-prep.yml + Initialize); no longer required
 )
 
 # ── Extract required check names ────────────────────────────────────────────
@@ -124,9 +124,10 @@ while IFS= read -r required; do
         continue
       fi
     elif [[ "$required" == "admit-status" ]]; then
-      # Set by the Stage-2 Admission Gate on `pr-fix-loop` Environment approval.
-      if ! grep -q "admit-status" "$WORKFLOWS_DIR"/stage2-admission.yml 2>/dev/null; then
-        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/stage2-admission.yml does not set admit-status!"
+      # Set by the in-pipeline `admit` job (Stage-2 Admission Gate) on `pr-fix-loop`
+      # Environment approval. (Retired the separate-dispatch stage2-admission.yml form.)
+      if ! grep -q "admit-status" "$WORKFLOWS_DIR"/pr-pipeline.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/pr-pipeline.yml does not set admit-status!"
         ERRORS=$((ERRORS + 1))
         continue
       fi

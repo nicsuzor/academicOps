@@ -21,7 +21,8 @@ updates only — don't rewrite the table to record a single change.
   For small/low-activity repos.
 - **Full** — review pipeline (`pr-pipeline`) + Stage-1 reviewers (`agent-enforcer`,
   `agent-qa`) + Stage-2 fixer (`agent-mechanic`, post-admission) + Environment-gated
-  admission (`stage2-admission`). For active repos with regular PRs.
+  admission (the in-pipeline `admit` job inside `pr-pipeline.yml`). For active repos
+  with regular PRs.
 
 See [deploy-bot-to-repo](../aops-core/skills/project/workflows/deploy-bot-to-repo.md)
 for what each tier installs and how.
@@ -30,7 +31,7 @@ for what each tier installs and how.
 
 | Repo                  | Tier  | Workflows                                                                                       | Agents                                      |
 | --------------------- | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| nicsuzor/academicOps  | Full  | pr-pipeline, agent-enforcer, agent-qa, agent-mechanic, stage2-admission, claude                 | enforcer, qa, mechanic                      |
+| nicsuzor/academicOps  | Full  | pr-pipeline (incl. in-pipeline `admit` gate), agent-enforcer, agent-qa, agent-mechanic, claude  | enforcer, qa, mechanic                      |
 | qut-dmrc/buttermilk   | Full  | pr-review-pipeline, agent-merge-prep, agent-qa, agent-strategic-review, claude, merge-prep-cron | custodiet, gatekeeper, qa, strategic-review |
 | nicsuzor/mem          | Full  | pr-pipeline, agent-enforcer, agent-merge-prep, merge-prep-cron                                  | pr-reviewer, enforcer, custodiet, qa        |
 | nicsuzor/brain        | Light | pr-review, claude                                                                               | —                                           |
