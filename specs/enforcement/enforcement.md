@@ -119,18 +119,50 @@ The legislative layer has its own form discipline. These principles govern how [
 
 Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
+**Coercion and cost are orthogonal.** Tier placement reads off _invasiveness_
+(how hard a mechanism forces) — but invasiveness is not cost, and the two must not be
+conflated. Some of the most coercive mechanisms are the most expensive to keep running,
+and some of the least coercive are the most expensive per fire. Two rungs make this
+concrete and must never sit at the cheap default bottom on a coercion reading alone:
+
+- **The auto-mode classifier (pyramid L5)** is _low coercion_ (advisory-capable) yet
+  _high cost_: a Sonnet inference + latency on every fire, with **theatre** as its
+  dominant failure mode if used broadly. It is a **narrow reserved, measurement-gated**
+  rung — seed a rule only where the judgment is genuinely qualitative (a deterministic
+  gate would be _wrong_) AND the caught failure justifies paying LLM judgment per call.
+  It is **PreToolUse / per-action**; end-of-turn reflection nudges belong at the Stop-hook
+  (**ida**, L2), not here — routing an end-of-turn check through the per-action classifier
+  pays per-action cost for an end-of-turn question.
+- **The least-privilege chokepoint / funnel (pyramid L4)** is _high coercion_
+  (architecturally unforgeable — deny `pkb_add` to all agents, grant only to the agent
+  that must invoke `/planner`) yet carries a _high recurring cost_: a coordination tax on
+  every gated call, a throughput bottleneck, and relocation of assurance onto the
+  chokepoint agent. It is a **last-resort** rung — deploy only after instruction →
+  deterministic gate → post-hoc ultra-vires enforcer have demonstrably failed.
+
+The CBA (§4.1 item 4) therefore costs _both_ axes: per-invocation cost **and**
+failure-mode cost (theatre, bottleneck, relocated assurance). Escalation is never free.
+
 | Tier       | Definition                                                             | Mechanisms (with pipeline layer cross-reference)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Base**   | High-volume, low-invasiveness, non-blocking, runs constantly           | lightweight hydrator (L1), skills routing table (L1), CLAUDE.md / AGENTS.md load (L1), gate status strip (L1), session_env_setup (L1), unified logger (L6), task-file append (L6), session logs (L6), task template conventions (L2)                                                                                                                                                                                                                                                                                                                                          |
 | **Middle** | Moderate volume, triggered by threshold or event, warns or opens gates | hydration gate (L4), enforcer gate (L4), enforcer subagent invocation (L7), QA gate — planned (L4), /planner decomposition checks (L2), proof-of-compliance tool fields (L2), rbg subagent invocation (L7), qa / marsha subagent invocation (L7), james orchestration (L9), pr-reviewer GHA (L9), agent-enforcer GHA (L9), linter workflows (L9), commit gate (L8), CC auto-mode classifier `soft_deny` (judgment per-action gate, pipeline L4 / pyramid L5 — context-overridable deny, reason returned to the agent; see [auto-mode-classifier.md](auto-mode-classifier.md)) |
-| **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), in-pipeline `admit` job `pr-fix-loop` Environment gate (L10), branch protection (L10), mechanic loop-ceiling (L10), project-owner / admin approval (L10), CC auto-mode classifier `hard_deny` (pipeline L4 / pyramid L5 — absolute pre-execution block)                                                                                                                                                                                                           |
+| **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), in-pipeline `admit` job `pr-fix-loop` Environment gate (L10), branch protection (L10), mechanic loop-ceiling (L10), project-owner / admin approval (L10), CC auto-mode classifier `hard_deny` (pipeline L4 / pyramid L5 — absolute pre-execution block)                                                                                                                                                                                                    |
 
 **Default to instructions.** Agents are intelligent and instructions work in the large majority of cases; the burden of proof is on adding a mechanism, not on keeping behaviour in prose. Every new hook or gate is permanent complexity and a new place for the framework to fail. Prefer the lightest sufficient instruction; prefer making an existing instruction land (relocate, propagate, strengthen) over creating a new mechanism. The base prompt tiers (L1 SessionStart reads, L2 lifecycle injection, L3 voluntary skills) are **delivery channels**, and within each the instruction can be tuned across a wide insistence / urgency / visibility / salience / placement spectrum — see [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) ("Within-class Insistence & Placement Spectrum"). "Escalating a failure" at a base tier means **first walking that spectrum within the current mechanism class**; crossing into a heavier mechanism class is the move of last resort, not the default.
 
 **Escalation rules.**
 
 - **Escalate up** when the evidence loop (§5) shows a base-tier mechanism is being bypassed or ignored with reproducible consequences. A finding that "a base-tier mechanism is insufficient" REQUIRES showing the instruction was clear, salient, **correctly placed** (at the surface and lifecycle point where the failure occurred), and **propagated** to every surface that hit the failure — and was still ignored. A quiet, mislocated, or unpropagated instruction is **not** evidence the instruction tier is exhausted; it is evidence the within-tier spectrum (see [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum") was never walked. Escalating to a heavier mechanism class on the basis of an unpropagated or mislocated instruction creates a permanent gate against a failure the prompt tier never actually attempted to catch — and bakes in maintenance cost for a problem still solvable in prose.
-- **Bias hard against new hard gates.** Each hard gate (L5+ / tip) is permanent maintenance, a new failure surface, and an instrument the framework cannot easily retire. The burden on add/escalate proposals into the tip is correspondingly heavier than for instruction-tier changes: not just §4.1 CBA evidence, but explicit demonstration that rungs 5 (relocation), 6 (propagation), and 7 (structured) of the within-class spectrum were tried.
+- **Bias hard against new hard gates.** Each hard gate (L5+ / tip) is permanent
+  maintenance, a new failure surface, and an instrument the framework cannot easily
+  retire. The burden on add/escalate proposals into the tip is correspondingly heavier
+  than for instruction-tier changes: not just §4.1 CBA evidence, but explicit
+  demonstration that rungs 5 (relocation), 6 (propagation), and 7 (structured) of the
+  within-class spectrum were tried. **The least-privilege chokepoint / funnel (pyramid L4)
+  is a last-resort rung specifically** — its coercion is unforgeable but its recurring
+  coordination cost is permanent, so it is reached only after instruction → deterministic
+  gate → post-hoc enforcer have demonstrably failed (see ENFORCEMENT-MAP "Cost axis").
 - **De-escalate down** when evidence shows a tip-tier measure has been unnecessary for a full feedback cycle — a middle-tier warn or base-tier reminder may be sufficient.
 - **Never guess.** If there is no evidence one way or the other, the current placement holds. Changes are made from §5 evidence, not from authorial intuition.
 
@@ -143,7 +175,10 @@ Any PR that adds, escalates, or removes enforcement MUST include a **Cost-Benefi
 1. **Friction evidence**: ≥3 concrete recurrences with links (transcript, PR, issue, /retro report) for add/escalate proposals. Fewer than 3 → close as premature unless explicitly directed by the user.
 2. **Cheapest plausible position**: which row of the pyramid could reasonably address this?
 3. **Why escalate above that position (if escalating)?**: what was tried at the cheaper position; specifically why it failed, with evidence.
-4. **Ongoing cost**: token cost per fire × fire frequency, or latency estimate. Use the Cost/Impact column format from the operative register.
+4. **Ongoing cost**: token cost per fire × fire frequency, or latency estimate — **and**
+   the **failure-mode cost** (e.g. classifier theatre / death-by-denial; funnel
+   coordination-tax + relocated assurance). A mechanism cheap per fire but corrosive when
+   it misfires is not cheap. Use the Cost/Impact column format from the operative register.
 5. **Reversibility**: if this doesn't reduce recurrences in the next 5 /retro reviews, how do we retire it?
 
 Reviewers should WARN on missing CBA, BLOCK on missing items 1, 4, or 5.

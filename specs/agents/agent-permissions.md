@@ -153,6 +153,22 @@ The enforcement layers, from softest to hardest:
 | L4    | Ultra-vires enforcer          | Post-session review | Flag, surface, escalate |
 | L5    | Policy hooks, polecat sandbox | Pre-execution       | Hard block              |
 
+> **Funnel / chokepoint pattern.** Least-privilege can be applied not only _negatively_
+> (deny what an agent must not touch) but _positively as procedure routing_: deny a
+> capability (e.g. `pkb_add`) to **all** agents and grant it to exactly one that must
+> invoke a specific skill (e.g. pauli-via-`/planner`). This **chokepoint / funnel** is
+> architecturally unforgeable, but it is a **last-resort** enforcement move — it imposes a
+> coordination tax on every gated call and relocates assurance onto the chokepoint agent.
+> In the [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) pyramid it sits at **L4** (mechanical
+> deny), classified under the **Cost axis** as high-coercion / high-recurring-cost. Deploy
+> only after cheaper rungs (instruction → deterministic gate → post-hoc ultra-vires
+> enforcer) demonstrably fail.
+>
+> **L-number caution.** The L3/L4/L5 in the table above is a _local_ softest→hardest
+> enforcement-layer scheme for this spec. It is **not** the ENFORCEMENT-MAP pyramid L0–L7
+> — its "L3" is the frontmatter lint, whereas the pyramid's L3 is voluntary skills. Do not
+> cross-reference the two by number.
+
 L5 is the hard edge. A declaration cannot re-open a path that an L5 hook blocks. Conversely, an agent that operates outside its declaration is flagged even if no hook caught it — the declaration is a binding commitment, not a configuration hint.
 
 ## Non-Goals
