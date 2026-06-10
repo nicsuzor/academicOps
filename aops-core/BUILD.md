@@ -28,16 +28,16 @@ There is no separate dist repo. `nicsuzor/academicOps` is both the source of tru
 
 `scripts/build.py` reads from the source layout and writes to `dist/`. Mapping:
 
-| Source                                              | Claude artifact                                | Cowork artifact                                                                   | Gemini artifact                                |
-| --------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `aops-core/skills/`, `agents/`, `commands/`, `lib/` | `dist/aops-claude/<same>/`                     | `dist/aops-cowork/<same>/` (cowork-only blocks kept; `cowork-sync` skill present) | `dist/aops-gemini/<same>/` (skills mostly)     |
-| `aops-core/hooks/hooks.json`                        | `dist/aops-claude/hooks/hooks.json` (verbatim) | `dist/aops-cowork/hooks/hooks.json` (verbatim; Cowork ignores at runtime)         | transformed via `_generate_gemini_hooks_json`  |
-| `aops-core/mcp.json.template`                       | `dist/aops-claude/.mcp.json`                   | `dist/aops-cowork/.mcp.json`                                                      | merged into `gemini-extension.json.mcpServers` |
-| `templates/aops-core.plugin.json`                   | `dist/aops-claude/.claude-plugin/plugin.json`  | (not used)                                                                        | (not used)                                     |
-| `templates/aops-core.cowork-plugin.json`            | (not used)                                     | `dist/aops-cowork/.claude-plugin/plugin.json`                                     | (not used)                                     |
-| `templates/aops-core.gemini-extension.json`         | (not used)                                     | (not used)                                                                        | `dist/aops-gemini/gemini-extension.json`       |
-| `templates/marketplace.json`                        | `dist/.claude-plugin/marketplace.json`         | (not advertised; Cowork is upload-only)                                           | (not used)                                     |
-| `GEMINI.md` + imports                               | (not used)                                     | (not used)                                                                        | `dist/aops-gemini/GEMINI.md` + resolved files  |
+| Source                                              | Claude artifact                               | Cowork artifact                                                                     | Gemini artifact                                |
+| --------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `aops-core/skills/`, `agents/`, `commands/`, `lib/` | `dist/aops-claude/<same>/`                    | `dist/aops-cowork/<same>/` (cowork-only blocks kept; `cowork-sync` skill present)   | `dist/aops-gemini/<same>/` (skills mostly)     |
+| `aops-core/hooks/`                                  | `dist/aops-claude/hooks/` (verbatim)          | **omitted** — the cowork build ships NO hooks (aops-core supplies the shared stack) | transformed via `_generate_gemini_hooks_json`  |
+| `aops-core/mcp.json.template`                       | `dist/aops-claude/.mcp.json`                  | `dist/aops-cowork/.mcp.json`                                                        | merged into `gemini-extension.json.mcpServers` |
+| `templates/aops-core.plugin.json`                   | `dist/aops-claude/.claude-plugin/plugin.json` | (not used)                                                                          | (not used)                                     |
+| `templates/aops-core.cowork-plugin.json`            | (not used)                                    | `dist/aops-cowork/.claude-plugin/plugin.json`                                       | (not used)                                     |
+| `templates/aops-core.gemini-extension.json`         | (not used)                                    | (not used)                                                                          | `dist/aops-gemini/gemini-extension.json`       |
+| `templates/marketplace.json`                        | `dist/.claude-plugin/marketplace.json`        | (not advertised; Cowork is upload-only)                                             | (not used)                                     |
+| `GEMINI.md` + imports                               | (not used)                                    | (not used)                                                                          | `dist/aops-gemini/GEMINI.md` + resolved files  |
 
 `build.py` also injects the version into every manifest, strips marketplace-only fields (`source`, `category`) from the plugin manifest (CC bug [#26555](https://github.com/anthropics/claude-code/issues/26555) — leak causes "Unrecognized keys" validation error), and packages `aops-cowork-v{version}.zip` (plus a legacy `aops-core-v{version}.zip` symlink) for Cowork manual upload.
 
@@ -45,11 +45,12 @@ There is no separate dist repo. `nicsuzor/academicOps` is both the source of tru
 
 ## The cowork build variant
 
-`aops-cowork` is a separate plugin built from the same `aops-core/` source tree. It is Claude-shaped (same `.claude-plugin/plugin.json` + `.mcp.json` layout) but ships **three** cowork-specific differences:
+`aops-cowork` is a separate plugin built from the same `aops-core/` source tree. It is Claude-shaped (same `.claude-plugin/plugin.json` + `.mcp.json` layout) but ships **four** cowork-specific differences:
 
 1. **Distinct plugin manifest.** Built from `templates/aops-core.cowork-plugin.json` rather than `templates/aops-core.plugin.json` — the manifest names the plugin `aops-cowork` and tunes the description/keywords. This lets Cowork installs coexist with Claude Code CLI installs without colliding.
 2. **`cowork-sync` skill included.** The skill at `aops-core/skills/cowork-sync/SKILL.md` describes the PKB → native task list mirror that the Cowork harness depends on. The build strips it from every other platform's output: the helper has no analogue outside Cowork.
 3. **Cowork-only blocks kept.** Source files (currently `aops-core/commands/pull.md` and `aops-core/skills/end_session/SKILL.md`) wrap Cowork-specific instructions in `<!-- cowork:only --> ... <!-- /cowork:only -->`. The cowork build strips only the marker lines (keeping the wrapped content); every other build strips both the markers and the content. The marker handling lives in `_process_cowork_markers` in `scripts/build.py`.
+4. **No hooks bundled.** The cowork build ships **no `hooks/` directory and no `hooks.json`** — the `if platform != "cowork"` guard in section 2 of `build_aops_core` skips the hook copy, and `generate_aops_core_pyproject(version, "cowork")` drops `hooks` from the hatch wheel packages (so `uv sync --frozen` doesn't reference a missing dir). Installing `aops-core` into Cowork from the `nicsuzor/aops` main `dist` marketplace makes Cowork fire the standard aops-core hook stack (empirically confirmed — see `mem-fe29111a` / task `aops-04075740`), so one shared hook stack serves both surfaces. Bundling hooks here too would register the router a second time and double-fire every lifecycle hook. aops-cowork is therefore an **additive, skills-only** layer on top of aops-core.
 
 The cowork build is invoked from `main()` as `build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)` alongside `claude`/`gemini`/`antigravity`. Output goes to `dist/aops-cowork/`; `package_artifacts` then zips that directory into `dist/aops-cowork-v{version}.zip` for manual upload. The legacy `aops-core-v{version}.zip` filename is kept as a symlink for backward compatibility with existing download URLs.
 

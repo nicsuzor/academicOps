@@ -68,3 +68,30 @@ def test_trailing_whitespace_on_markers_handled() -> None:
     assert "cowork-only paragraph" not in result, (
         "trailing whitespace on markers caused content leak"
     )
+
+
+# --- aops-cowork ships no hooks (task-04075740) -----------------------------
+# The cowork build drops the bundled hook stack: aops-core, installed into Cowork
+# from the nicsuzor/aops main `dist` marketplace, supplies the one shared hook
+# stack for both surfaces. Bundling hooks here too would register the router a
+# second time and double-fire every lifecycle hook. With no `hooks/` package on
+# disk, the cowork pyproject must NOT list `hooks` under hatch's wheel packages or
+# `uv sync --frozen` would fail at runtime.
+
+
+def test_cowork_pyproject_excludes_hooks_package() -> None:
+    """Cowork's generated pyproject lists only `lib` — no `hooks` package."""
+    pyproject = _build.generate_aops_core_pyproject("9.9.9", "cowork")
+    assert 'packages = ["lib"]' in pyproject
+    assert '"hooks"' not in pyproject, "cowork pyproject must not declare the dropped hooks package"
+
+
+def test_claude_pyproject_retains_hooks_package() -> None:
+    """The Claude build still ships hooks, so its pyproject keeps the hooks package."""
+    pyproject = _build.generate_aops_core_pyproject("9.9.9", "claude")
+    assert 'packages = ["lib", "hooks"]' in pyproject
+
+
+def test_pyproject_defaults_to_claude_with_hooks() -> None:
+    """Omitting the platform argument keeps the historical claude+hooks behaviour."""
+    assert 'packages = ["lib", "hooks"]' in _build.generate_aops_core_pyproject("9.9.9")

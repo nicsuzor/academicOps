@@ -323,7 +323,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "hooks"]
+packages = [{packages}]
 
 [build-system]
 requires = ["hatchling"]
@@ -331,9 +331,17 @@ build-backend = "hatchling.build"
 """
 
 
-def generate_aops_core_pyproject(version: str) -> str:
-    """Generate the aops-core pyproject.toml content with the given version."""
-    return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version)
+def generate_aops_core_pyproject(version: str, platform: str = "claude") -> str:
+    """Generate the aops-core pyproject.toml content with the given version.
+
+    The cowork build ships NO hooks (the shared aops-core hook stack serves the
+    Cowork surface when aops-core is installed from the dist marketplace — see
+    task aops-04075740 / mem-fe29111a). With no `hooks/` package on disk, listing
+    it under hatch's wheel packages would break `uv sync --frozen` at runtime, so
+    the cowork pyproject declares only `lib`.
+    """
+    packages = '"lib"' if platform == "cowork" else '"lib", "hooks"'
+    return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version, packages=packages)
 
 
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
@@ -784,7 +792,10 @@ def build_aops_core(
     The "cowork" platform is a sibling of "claude" — same plugin layout
     (`.claude-plugin/plugin.json` + `.mcp.json`) but with cowork-only skill
     content kept (markers stripped), the cowork-sync skill included, and a
-    distinct plugin manifest naming the artifact `aops-cowork`.
+    distinct plugin manifest naming the artifact `aops-cowork`. Unlike "claude",
+    the cowork build ships NO hooks: aops-core (installed into Cowork from the
+    dist marketplace) supplies the one shared hook stack for both surfaces, so
+    bundling hooks here would double-fire every lifecycle hook (task-04075740).
     """
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
@@ -911,7 +922,7 @@ def build_aops_core(
     # against the freshly-written pyproject so the two ship in lockstep.
     # `uv sync --frozen` at runtime then installs exactly what the template
     # declared, no drift possible.
-    pyproject_content = generate_aops_core_pyproject(version)
+    pyproject_content = generate_aops_core_pyproject(version, platform)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
     print(f"  ✓ Generated pyproject.toml (v{version})")
@@ -934,24 +945,35 @@ def build_aops_core(
                 safe_copy(src, scripts_dst / script_name)
 
     # 2. Hooks
-    hooks_src = src_dir / "hooks"
-    hooks_dst = dist_dir / "hooks"
-    hooks_dst.mkdir(parents=True)
-    if hooks_src.exists():
-        for item in hooks_src.iterdir():
-            if item.name in BUILD_DETRITUS_NAMES:
-                # safe_copy's ignore filters children, not a top-level cache dir
-                # passed as src — skip detritus dirs here so they never enter the build.
-                continue
-            if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
-                # Handle hooks.json separately for Gemini/Antigravity
-                continue
-            if item.name == "gemini":
-                # Don't copy gemini/ subdirectory
-                continue
-            # Hooks also go into content_dir for execution, but Gemini discovery
-            # might need them in dist_dir/hooks/hooks.json
-            safe_copy(item, content_dir / "hooks" / item.name)
+    #
+    # The cowork build ships NO hooks. Installing aops-core into Cowork from the
+    # `nicsuzor/aops` main `dist` marketplace makes Cowork fire the standard
+    # aops-core hook stack (empirically confirmed by Nic — mem-fe29111a /
+    # task-04075740). Shipping hooks here too would register the Stop /
+    # PreToolUse / etc. router a SECOND time and fire every lifecycle hook
+    # twice. aops-cowork is therefore an additive, hooks-free layer: one shared
+    # hook stack (aops-core) serves both Claude Code and Cowork.
+    if platform != "cowork":
+        hooks_src = src_dir / "hooks"
+        hooks_dst = dist_dir / "hooks"
+        hooks_dst.mkdir(parents=True)
+        if hooks_src.exists():
+            for item in hooks_src.iterdir():
+                if item.name in BUILD_DETRITUS_NAMES:
+                    # safe_copy's ignore filters children, not a top-level cache dir
+                    # passed as src — skip detritus dirs here so they never enter the build.
+                    continue
+                if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
+                    # Handle hooks.json separately for Gemini/Antigravity
+                    continue
+                if item.name == "gemini":
+                    # Don't copy gemini/ subdirectory
+                    continue
+                # Hooks also go into content_dir for execution, but Gemini discovery
+                # might need them in dist_dir/hooks/hooks.json
+                safe_copy(item, content_dir / "hooks" / item.name)
+    else:
+        print("  - Skipped hooks for cowork (aops-core supplies the shared hook stack)")
 
     # Generate platform-compatible hooks.json
     if platform == "gemini":
@@ -1466,6 +1488,8 @@ def main():
 
     # Build components (Cowork) — Claude-shaped plugin layout, manifest pinned
     # to `aops-cowork`, cowork-only blocks kept, cowork-sync skill included.
+    # Ships NO hooks: aops-core (installed into Cowork from the dist marketplace)
+    # provides the shared hook stack; bundling hooks here would double-fire them.
     build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)
 
     # Build aops-tools (domain skills package)
