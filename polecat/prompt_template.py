@@ -18,6 +18,16 @@ earlier notes. The PKB is the system of record; your recollection is not. \
 Ground your plan in what you find (`search`, `get_document`, \
 `retrieve_memory`) before touching code.
 
+**Capture durable facts as you go.** When you learn something that will \
+outlive this task — a non-obvious convention, a root cause and its fix, a \
+decision and the reasoning behind it, a path or command that was hard to \
+find — record it the moment you learn it, not at session end. Search first \
+(`search`), then augment the canonical note for that topic (`append`); only \
+if none exists, create one (`create_memory` for an atomic fact, `create` for \
+a fuller note). The bar is durable and reusable, not a session log: if it \
+only matters to this one task, or the repo and git history already record it, \
+do not capture it. One canonical note per topic — never a dated session-memo.
+
 **Your brief is deliberately thin — intent + acceptance criteria, not a \
 script.** You are trusted to plan and execute the whole chunk; depth is \
 yours to own. If the chunk turns out to be too big for one focused session, \

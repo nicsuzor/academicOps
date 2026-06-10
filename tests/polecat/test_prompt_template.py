@@ -79,6 +79,24 @@ def test_build_polecat_prompt_basic():
     assert FINISH_LOCAL_TASK.format(task_id="task-123", base_branch="main") in prompt
 
 
+def test_prompt_carries_as_you_go_capture_instruction():
+    """AC: a write-side capture instruction must reach polecat workers at
+    runtime — tool name + the moment + a noise-preventing quality bar,
+    mirroring the read-side 'Search the PKB first' preamble's concreteness
+    (task aops-947c931b: 0/42 worker sessions captured any durable fact)."""
+    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
+    # The instruction exists and is framed as as-you-go, not session-end.
+    assert "Capture durable facts as you go" in prompt
+    assert "not at session end" in prompt
+    # Concrete write tools are named (mirrors the read-side's search/get/retrieve).
+    for tool in ("create_memory", "append", "create"):
+        assert tool in prompt
+    # Quality bar / anti-noise discipline: search-before-create + canonical-topic.
+    assert "Search first" in prompt
+    assert "canonical note" in prompt
+    assert "never a dated session-memo" in prompt
+
+
 def test_polecat_prompt_does_not_start_with_dot():
     """Polecat prompts must NOT start with '.' prefix.
 
