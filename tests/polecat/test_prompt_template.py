@@ -1,6 +1,7 @@
 import pytest
 
 from polecat.prompt_template import (
+    CAPTURE_DURABLE_FACTS,
     FINISH_GITHUB_ISSUE,
     FINISH_LOCAL_TASK,
     build_polecat_prompt,
@@ -80,21 +81,20 @@ def test_build_polecat_prompt_basic():
 
 
 def test_prompt_carries_as_you_go_capture_instruction():
-    """AC: a write-side capture instruction must reach polecat workers at
-    runtime — tool name + the moment + a noise-preventing quality bar,
-    mirroring the read-side 'Search the PKB first' preamble's concreteness
-    (task aops-947c931b: 0/42 worker sessions captured any durable fact)."""
-    prompt = build_polecat_prompt(task_id="task-1", task_title="Title")
-    # The instruction exists and is framed as as-you-go, not session-end.
-    assert "Capture durable facts as you go" in prompt
-    assert "not at session end" in prompt
-    # Concrete write tools are named (mirrors the read-side's search/get/retrieve).
-    for tool in ("create_memory", "append", "create"):
-        assert tool in prompt
-    # Quality bar / anti-noise discipline: search-before-create + canonical-topic.
-    assert "Search first" in prompt
-    assert "canonical note" in prompt
-    assert "never a dated session-memo" in prompt
+    """AC (aops-947c931b): the write-side capture preamble must reach polecat
+    workers at runtime, in both task and issue modes — the write-side mirror
+    of the read-side 'Search the PKB first' preamble (0/42 worker sessions
+    captured any durable fact before it existed).
+
+    Asserts inclusion of the CAPTURE_DURABLE_FACTS constant, not prose
+    tokens: token-level assertions would make this test the de-facto spec of
+    the wording (AXIOMS#judgment-non-delegable). Whether the instruction
+    *works* is owned by review and the runtime verification task
+    aops-7c853031.
+    """
+    for is_issue in (False, True):
+        prompt = build_polecat_prompt(task_id="task-1", task_title="Title", is_issue=is_issue)
+        assert CAPTURE_DURABLE_FACTS in prompt
 
 
 def test_polecat_prompt_does_not_start_with_dot():
