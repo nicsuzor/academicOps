@@ -17,36 +17,49 @@ This module runs canonical router outputs through the real ``--client agy``
 subprocess path (``run_router_agy``) and checks them against the strict
 protojson accept-contract in ``agy_accept_contract.py``.
 
-LIFECYCLE (read before editing)
--------------------------------
-The behavioural fix — ``output_for_agy()`` emitting ``*Result`` protojson — is
-tracked by ``aops-d27d55a0`` and is blocked on live-agy enum discovery
-(``aops-939b6c3a``). Until it lands:
+LIFECYCLE (post-fix — output_for_agy landed, aops-d27d55a0)
+-----------------------------------------------------------
+``output_for_agy()`` now emits ``*Result`` protojson, so the guards below are
+asserts (flipped from ``xfail(strict=True)`` per the aops-d27d55a0 brief):
 
-  * ``test_current_agy_deny_output_is_rejected_by_harness_contract`` passes — it
-    is the deterministic in-CI reproduction of the silent-drop bug (the proof
-    that previously lived only in an auto-nuked in-container ``cli.log``).
-  * the ``*_survives_protojson_strict_roundtrip`` guards are ``xfail(strict=True)``
-    — they encode the contract the fix must satisfy and FAIL today exactly as
-    the bug predicts.
+  * ``test_agy_deny_is_expressed_via_permission_overrides`` — the INVERSION of
+    the original silent-drop reproduction: the enforcer DENY is now expressed
+    structurally via ``permissionOverrides.allowTool=false`` and carries none of
+    the Claude/Gemini-schema fields that protojson rejected.
+  * the ``*_survives_protojson_strict_roundtrip`` guards assert the PreToolUse
+    deny/allow and PostToolUse outputs are accepted by the agy protojson
+    accept-contract.
 
-When ``output_for_agy()`` lands, the roundtrip guards will XPASS (tripping
-strict-xfail) and the reproduction test will fail — both deliberately, to force
-whoever lands the fix to update this file and convert the guards into live
-regression tests. Do not delete the guards to make them green; flip them.
+SCOPE OF THE GREEN — READ THIS BEFORE TRUSTING IT
+-------------------------------------------------
+These asserts verify conformance to the **offline** accept-contract in
+``agy_accept_contract.py`` — a strict Pydantic model transcribed from the
+``exa.hooks_pb`` binary descriptor (epic aops-2dc18411). They faithfully cover
+the UNKNOWN-FIELD axis (the exact failure mode 4c73f02a tripped: the field NAMES
+agy's ``*Result`` defines), because field names come from the descriptor. They
+do **NOT** prove the live agy harness accepts the output: the descriptor could
+be wrong, and protojson is additionally strict about types/oneofs/enum-values
+this model does not pin. Live-harness acceptance ("deny actually blocks, Stop
+respected on real agy") is UNVERIFIED here and is the downstream build+verify
+task **aops-7fa86b45** — green here is necessary, not sufficient. (Live agy could
+not be exercised in this session: the binary is present but not logged into
+Antigravity, so it hangs on an interactive OAuth flow.)
+
+STILL DEFERRED (blocked on live-agy enum discovery, aops-939b6c3a): the hard
+stop-block enum STRINGS — Stop ``decision`` and PostInvocation
+``terminationBehavior`` — are not yet emitted (a guessed enum is silently
+discarded by agy). ``output_for_agy()`` delivers the Stop/PostInvocation
+*advisory* via ``injectSteps`` / ``reason`` but does NOT force-continue. The
+unit-level deferral guard lives in ``test_output_for_agy.py``.
 """
 
 from __future__ import annotations
 
-import pytest
 from lib.gate_types import GateStatus
 from lib.session_state import SessionState
 
 from tests.hooks.agy_accept_contract import is_accepted_by_agy
 from tests.hooks.gate_helpers import run_router_agy
-
-# Tie every xfail to the implementation task so the reason is greppable.
-_FIX_TASK = "aops-d27d55a0: output_for_agy() not implemented — agy folded into the Claude-schema gemini path by 4c73f02a"
 
 
 def _seed_enforcer_deny(monkeypatch, state_dir, session_id: str) -> None:
@@ -74,59 +87,65 @@ def _deny_input(session_id: str) -> dict:
     }
 
 
-def test_current_agy_deny_output_is_rejected_by_harness_contract(monkeypatch, tmp_path):
-    """Deterministic in-CI reproduction of the silent-drop regression.
+def test_agy_deny_is_expressed_via_permission_overrides(monkeypatch, tmp_path):
+    """Post-fix regression: a canonical enforcer DENY is now agy-shaped.
 
-    A canonical enforcer DENY routed through ``--client agy`` today emits
-    Claude-schema JSON; the agy protojson harness rejects it on the first
-    unknown field (``systemMessage``), so the deny never blocks. This test
-    encodes that failure so it cannot regress un-noticed again.
-
-    NOTE: this assertion inverts once ``output_for_agy()`` lands — see the module
-    lifecycle docstring.
+    This test is the INVERSION of the original silent-drop reproduction (pre-fix
+    it asserted ``--client agy`` emitted Claude-schema JSON the protojson harness
+    rejected on ``systemMessage``). With ``output_for_agy()`` landed, the same
+    enforcer DENY is now expressed STRUCTURALLY via
+    ``permissionOverrides.allowTool=false`` — which needs no enum string — and
+    carries NONE of the Claude/Gemini-schema fields that triggered the rejection.
     """
     sid = "agy-contract-deny-repro"
     _seed_enforcer_deny(monkeypatch, tmp_path, sid)
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
 
-    assert output.get("decision") == "deny", (
-        f"Expected a canonical enforcer DENY to exercise the contract; "
+    # The deny is structural: allowTool=false blocks the tool with no enum string.
+    assert output.get("permissionOverrides", {}).get("allowTool") is False, (
+        f"Expected a structural DENY via permissionOverrides.allowTool=false; "
         f"got {output!r}. stderr: {stderr}"
     )
+    # None of the Claude/Gemini-schema fields that protojson rejects may leak.
+    for forbidden in ("decision", "metadata", "systemMessage", "hookSpecificOutput"):
+        assert forbidden not in output, (
+            f"Claude/Gemini-schema field {forbidden!r} leaked into agy output "
+            f"(protojson would reject on it): {output!r}"
+        )
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
-    assert not accepted, (
-        "Regression alert: --client agy now emits output the agy protojson "
-        "harness accepts. output_for_agy() may have landed — convert the "
-        "xfail roundtrip guards in this module into live regression tests and "
-        "update this reproduction test."
-    )
-    assert "systemMessage" in offending, (
-        f"Expected the Claude-schema 'systemMessage' field to be the protojson "
-        f"rejection point (matching the live cli.log error); offending={offending!r}"
+    assert accepted, (
+        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the DENY "
+        f"output on unknown field(s): {offending}"
     )
 
 
-@pytest.mark.xfail(strict=True, reason=_FIX_TASK)
 def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
     """A canonical enforcer DENY must survive the agy protojson accept-contract.
 
     This is the consumer-side acceptance test that would have failed the instant
     4c73f02a landed. A DENY is expressed protojson-side via
     ``permissionOverrides.allowTool=false`` (no enum string required), so this is
-    satisfiable ahead of the ``decision`` enum discovery.
+    satisfiable ahead of the ``decision`` enum discovery. Flipped from
+    xfail(strict) to a live assert when ``output_for_agy()`` landed (aops-d27d55a0).
     """
     sid = "agy-contract-deny-guard"
     _seed_enforcer_deny(monkeypatch, tmp_path, sid)
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
-    assert output.get("decision") == "deny", f"setup: expected DENY, got {output!r}"
+    # Post-fix the deny is structural (permissionOverrides), not a top-level
+    # ``decision`` field — assert the blocking shape the agy harness honours.
+    assert output.get("permissionOverrides", {}).get("allowTool") is False, (
+        f"setup: expected a structural DENY (allowTool=false), got {output!r}"
+    )
 
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
-    assert accepted, f"agy harness would reject the DENY output on unknown field(s): {offending}"
+    assert accepted, (
+        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the DENY "
+        f"output on unknown field(s): {offending}"
+    )
 
 
-@pytest.mark.xfail(strict=True, reason=_FIX_TASK)
 def test_agy_allow_survives_protojson_strict_roundtrip():
     """A PreToolUse ALLOW must survive the agy protojson accept-contract.
 
@@ -143,10 +162,12 @@ def test_agy_allow_survives_protojson_strict_roundtrip():
         "PreToolUse",
     )
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
-    assert accepted, f"agy harness would reject the ALLOW output on unknown field(s): {offending}"
+    assert accepted, (
+        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the ALLOW "
+        f"output on unknown field(s): {offending}"
+    )
 
 
-@pytest.mark.xfail(strict=True, reason=_FIX_TASK)
 def test_agy_posttool_survives_protojson_strict_roundtrip():
     """A PostToolUse result must survive the agy protojson accept-contract.
 
@@ -165,5 +186,6 @@ def test_agy_posttool_survives_protojson_strict_roundtrip():
     )
     accepted, offending = is_accepted_by_agy(output, "PostToolUse")
     assert accepted, (
-        f"agy harness would reject the PostToolUse output on unknown field(s): {offending}"
+        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the "
+        f"PostToolUse output on unknown field(s): {offending}"
     )
