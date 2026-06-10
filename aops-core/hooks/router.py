@@ -473,36 +473,55 @@ class HookRouter:
     def _run_lightweight_hydrator(
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
-        """Inject lightweight hydrator skills-routing hint.
+        """Inject non-blocking UserPromptSubmit context: routing hint + PKB nudge.
 
-        Delivery: via the UserPromptSubmit hook hint (non-blocking).
-        Template: hydration.warn (repurposed for routing table).
+        Coverage matrix (deliberate — see D2 [[aops-1e16725d]]):
+
+        | Surface                         | Routing hint | PKB nudge |
+        | ------------------------------- | :----------: | :-------: |
+        | Main session                    |      ✓       |     ✓     |
+        | Task() subagent / sidechain     |      ✗       |     ✓     |
+        | Background task-notification    |      ✗       |     ✗     |
+
+        - Routing hint (`hydration.warn`) is a MAIN-SESSION concern only:
+          subagents are spawned with an explicit toolset by their parent and
+          do not route skills, so the routing table is noise for them.
+        - PKB nudge (`pkb.nudge`, T0) fires for EVERY real user prompt — main
+          session AND subagents. It is one static line (no NLP, no MCP call),
+          so the D2 over-injection failure mode does not apply and broad
+          coverage IS the goal: a Task() subagent that confabulates instead of
+          searching the PKB is exactly the retrieval gap T0 exists to close.
+          Subagent coverage is intentional, not an accident of the routing
+          hint's subagent skip (the prior early-return suppressed it).
+        - Task-notification prompts are internal plumbing, not real user input
+          — inject nothing for either surface.
         """
-        if ctx.is_subagent:
-            return
-
-        # Skip for background notifications
+        # Background notifications are not real user input — inject nothing.
         if self._is_task_notification(ctx):
             return
 
-        # Render routing table hint
-        try:
-            from lib.template_registry import TemplateRegistry
+        from lib.template_registry import TemplateRegistry
 
-            variables = {
-                "session_id": ctx.session_id,
-            }
-            hint = TemplateRegistry.instance().render("hydration.warn", variables)
-            if hint:
-                if merged_result.context_injection:
-                    merged_result.context_injection = f"{merged_result.context_injection}\n\n{hint}"
-                else:
-                    merged_result.context_injection = hint
-        except Exception as e:
-            print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
+        # Routing table hint — main session only.
+        if not ctx.is_subagent:
+            try:
+                variables = {
+                    "session_id": ctx.session_id,
+                }
+                hint = TemplateRegistry.instance().render("hydration.warn", variables)
+                if hint:
+                    if merged_result.context_injection:
+                        merged_result.context_injection = (
+                            f"{merged_result.context_injection}\n\n{hint}"
+                        )
+                    else:
+                        merged_result.context_injection = hint
+            except Exception as e:
+                print(f"WARNING: lightweight_hydrator error: {e}", file=sys.stderr)
 
-        # T0: static PKB-search nudge — injected on every real user prompt.
-        # No logic, no heuristics; the line nudges, the agent decides relevance.
+        # T0: static PKB-search nudge — injected on every real user prompt,
+        # including subagents. No logic, no heuristics; the line nudges, the
+        # agent decides relevance.
         try:
             nudge = TemplateRegistry.instance().render("pkb.nudge")
             if nudge:

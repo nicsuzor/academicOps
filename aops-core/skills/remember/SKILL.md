@@ -82,7 +82,7 @@ Maintain exactly **one canonical note per first-class topic** (tools, projects, 
 
 ### Reconciliation
 
-During updates, search for duplicate or peer notes. Merge unique content, retire weaker versions (delete or set `superseded_by: [[canonical-id]]`), and update wikilinks.
+During updates, search for duplicate or peer notes. Merge unique content, retire weaker versions, and update wikilinks. For how to retire — **delete** the superseded file and trust git history; do not leave `superseded_by:` pointers — follow the single canonical rule in [[consolidation-procedure]] Step 3.
 
 ## Workflow
 

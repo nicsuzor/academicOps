@@ -19,20 +19,20 @@ Session mining and note creation. Silently extracts information and maintains kn
 
 ### From Conversations
 
-| Signal            | Action                              |
-| ----------------- | ----------------------------------- |
-| "I'll need to..." | Create task (invoke task skill)     |
-| Project updates   | Update `data/projects/<project>.md` |
-| Decisions made    | Add observation to relevant file    |
-| Completed work    | Invoke task skill to archive        |
-| Ruled-out ideas   | Document why not                    |
+| Signal            | Action                                                                |
+| ----------------- | --------------------------------------------------------------------- |
+| "I'll need to..." | Create a task via `mcp__pkb__create_task`                             |
+| Project updates   | Augment the project hub (`projects/<name>.md`) via `mcp__pkb__append` |
+| Decisions made    | Add observation to relevant file via `mcp__pkb__append`               |
+| Completed work    | Advance/close the task via `mcp__pkb__complete_task`                  |
+| Ruled-out ideas   | Document why not                                                      |
 
 ### From Emails
 
-1. Action items → task skill
+1. Action items → create a task via `mcp__pkb__create_task`
 2. Project mentions → update project files
 3. Contacts/people → update project files
-4. Deadlines → task skill
+4. Deadlines → create a task via `mcp__pkb__create_task`
 5. Strategic context → context files
 
 ## How to Capture
@@ -92,7 +92,7 @@ Content with [[wikilinks]] to related concepts.
 - Interrupt user flow to ask clarification
 - Wait until conversation end to capture
 - Announce that you're capturing
-- Create task files directly (use task skill)
+- Create task files directly (use `mcp__pkb__create_task`)
 - Create timestamped session log files (use daily notes or meeting-note type instead)
 - Append date-headers to existing files
 - Skip the search step
