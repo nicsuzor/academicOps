@@ -140,7 +140,7 @@ The actionable types in the PKB:
 | **task**        | A discrete deliverable, completable in a single focused session. May have a task parent.                                                                                                                                                |
 | **learn**       | Observational tracking — a spike, discovery, or noted finding. Not directly actionable; resolves by decomposing into follow-up tasks                                                                                                    |
 
-The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types. It is **load-bearing for the live `voi_value` focus_score term**: a `spike` / `research` / probe classification marks a leaf as uncertainty-resolving, which is what earns the VoI term (see [[multi-parent]] §2.2 / VoI section). Agents may set it from task shape but **must never override a user-set `classification`**.
+The `classification` field carries additional semantic subtypes (bug, feature, spike, chore, etc.) without multiplying top-level types. It is **descriptive only — it does not enter `focus_score`**: the live `voi_value` term is computed from graph structure (leaf status, dependency resolution, `contributes_to` target uncertainty × edge weight × downstream weight — see [[multi-parent]] §VoI), not from `classification`. A recorded `spike` / `research` shape is how agents judge whether a node's `voi_value` is trustworthy (genuine probe) versus a deliverable mis-fire ([[mem-830588f3]]). Agents may set it from task shape but **must never override a user-set `classification`**.
 
 ### Retired types
 
