@@ -118,10 +118,30 @@ jobs:
       - name: SHA-skip check
         id: sha-skip
         run: |
-          GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
-          GENUINE_FAILURE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"failure\")] | length" 2>/dev/null || echo "0")
+          # Read the LATEST mechanic-status entry, NOT a count of "any
+          # non-Skipped success/failure ever in history". Statuses are
+          # append-only; counting any historical terminal state means a
+          # transient success can permanently re-green a SHA, or a stale
+          # failure can permanently fail it, even after a later legitimate
+          # state is posted. The latest state always wins so a maintainer
+          # (or a later workflow re-run) can revoke an erroneous post by
+          # writing a new state (aops-221211fa).
+          # The LATEST state (Skipped echo or genuine) is canonical — that way
+          # subsequent runs idempotently re-echo, and a maintainer can revoke
+          # any prior terminal post by writing a new state. We do NOT exclude
+          # "Skipped:" echoes here: the asymmetric original logic (exclude
+          # Skipped on success but not on failure) was an inconsistency, and
+          # under LATEST semantics excluding them would re-run the mechanic
+          # forever after the first Skipped echo of a genuine success.
+          LATEST_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | .state // \"\"" 2>/dev/null || echo "")
+          GENUINE_SUCCESS=0
+          GENUINE_FAILURE=0
+          if [ "$LATEST_STATE" = "success" ]; then
+            GENUINE_SUCCESS=1
+          elif [ "$LATEST_STATE" = "failure" ]; then
+            GENUINE_FAILURE=1
+          fi
 
           if [ "${GENUINE_FAILURE:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already has mechanic-status=failure (prior exhaustion) — re-posting failure"
