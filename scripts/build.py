@@ -510,6 +510,59 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
     print(f"  ✓ Generated Antigravity hooks.json with {len(agy_hooks)} events")
 
 
+def _generate_cowork_hooks_json(src_path: Path, dst_path: Path) -> None:
+    """Transform hooks.json for the Cowork plugin build.
+
+    Cowork ships the same Claude plugin contract as the regular Claude build —
+    same event names, same ${CLAUDE_PLUGIN_ROOT} substitution, same router.
+    The only divergence is the ``--client`` flag: cowork hooks must invoke the
+    router with ``--client claude-cowork`` so router + session_paths can
+    recognise the cowork surface (and route it as Claude-family) instead of
+    falling through the NO-FALLBACKS guard for an unknown client.
+
+    All other event entries are preserved verbatim.
+    """
+    try:
+        with open(src_path) as f:
+            config = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Warning: Could not read hooks.json: {e}")
+        return
+
+    if "hooks" not in config:
+        print("Warning: hooks.json has no 'hooks' key")
+        return
+
+    src_hooks = config["hooks"]
+    cowork_hooks: dict = {}
+
+    for event, hook_list in src_hooks.items():
+        transformed_hooks = []
+        for hook_entry in hook_list:
+            new_entry = {}
+            for key, value in hook_entry.items():
+                if key == "hooks":
+                    new_hooks = []
+                    for hook in value:
+                        new_hook = dict(hook)
+                        if "command" in new_hook:
+                            new_hook["command"] = new_hook["command"].replace(
+                                "--client claude", "--client claude-cowork"
+                            )
+                        new_hooks.append(new_hook)
+                    new_entry[key] = new_hooks
+                else:
+                    new_entry[key] = value
+            transformed_hooks.append(new_entry)
+        cowork_hooks[event] = transformed_hooks
+
+    dst_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(dst_path, "w") as f:
+        json.dump({"hooks": cowork_hooks}, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated Cowork hooks.json with {len(cowork_hooks)} events")
+
+
 def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
@@ -943,8 +996,8 @@ def build_aops_core(
                 # safe_copy's ignore filters children, not a top-level cache dir
                 # passed as src — skip detritus dirs here so they never enter the build.
                 continue
-            if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
-                # Handle hooks.json separately for Gemini/Antigravity
+            if item.name == "hooks.json" and platform in ("gemini", "antigravity", "cowork"):
+                # Handle hooks.json separately for Gemini/Antigravity/Cowork
                 continue
             if item.name == "gemini":
                 # Don't copy gemini/ subdirectory
@@ -964,6 +1017,13 @@ def build_aops_core(
         hooks_json_src = hooks_src / "hooks.json"
         if hooks_json_src.exists():
             _generate_antigravity_hooks_json(hooks_json_src, dist_dir / "hooks.json")
+    elif platform == "cowork":
+        # Cowork uses the same Claude plugin contract and hook events; only the
+        # --client flag changes so the router (and downstream session_paths)
+        # can recognise the cowork surface while still routing as Claude-family.
+        hooks_json_src = hooks_src / "hooks.json"
+        if hooks_json_src.exists():
+            _generate_cowork_hooks_json(hooks_json_src, content_dir / "hooks" / "hooks.json")
 
     # 2b. Copy Gemini context file (referenced by gemini-extension.json as
     # contextFileName). It lives at the repo root, not inside aops-core/.

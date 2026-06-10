@@ -137,6 +137,25 @@ def get_session_short_hash(session_id: str) -> str:
     return session_naming.get_session_short_hash(session_id)
 
 
+# Hook ``--client`` values that all share the Claude harness contract (same
+# session-state layout under ``~/.claude/projects``, same router output format,
+# same UUID-shaped session_id). ``claude-cowork`` is the Claude Cowork plugin
+# build — its only divergence from a bare Claude build is the surface label.
+# Keeping these as a single set means callers can ask "is this Claude-family?"
+# instead of remembering which literals belong on the Claude path.
+_CLAUDE_FAMILY_CLIENTS: frozenset[str] = frozenset({"claude", "claude-cowork"})
+
+
+def _is_claude_family(client_type: str | None) -> bool:
+    """True if ``client_type`` should resolve to the Claude session layout.
+
+    Returns False for ``None`` — None means "no explicit hook client", which
+    is handled separately (a non-hook caller with a Claude-shaped UUID still
+    routes to the Claude branch via the UUID check downstream).
+    """
+    return client_type in _CLAUDE_FAMILY_CLIENTS
+
+
 def _is_gemini_session(session_id: str | None, transcript_path: str | None = None) -> bool:
     """Detect if this is a Gemini CLI session.
 
@@ -364,15 +383,18 @@ def get_session_status_dir(
        ``~/.claude/projects`` (aops-bc8e18c5).
     3. Claude Code: ``~/.claude/projects/<encoded-cwd>/``. The cwd-derivation is
        Claude's real on-disk convention, not a guess — reached only for an
-       explicit ``claude`` client, or a non-hook caller (``client_type is None``)
-       whose ``session_id`` is a Claude UUID.
+       explicit Claude-family client (``claude`` or ``claude-cowork``), or a
+       non-hook caller (``client_type is None``) whose ``session_id`` is a
+       Claude UUID.
 
     Args:
         session_id: Optional session ID for client detection.
         transcript_path: Optional transcript path for Gemini detection.
         client_type: Explicit hook-caller identity from ``--client``
-            ("claude" | "gemini" | "agy"). When provided it is authoritative —
-            session-id shape is NOT used to infer the harness.
+            ("claude" | "claude-cowork" | "gemini" | "agy"). When provided it
+            is authoritative — session-id shape is NOT used to infer the
+            harness. ``"claude-cowork"`` routes the same as ``"claude"``;
+            see ``_CLAUDE_FAMILY_CLIENTS``.
 
     Returns:
         Path to session status directory (created if doesn't exist)
@@ -401,15 +423,15 @@ def get_session_status_dir(
             "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
         )
 
-    # 3. Claude Code session — explicit claude client, or a non-hook caller
-    #    (client_type is None) whose session_id is a Claude UUID.
+    # 3. Claude-family session — explicit claude/claude-cowork client, or a
+    #    non-hook caller (client_type is None) whose session_id is a Claude UUID.
     import re
 
     is_claude_uuid = bool(
         session_id
         and re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", session_id)
     )
-    if client_type == "claude" or (client_type is None and is_claude_uuid):
+    if _is_claude_family(client_type) or (client_type is None and is_claude_uuid):
         project_folder = get_claude_project_folder()
         if _is_polecat_sandbox():
             return _polecat_claude_state_dir(project_folder, "state")
@@ -422,7 +444,7 @@ def get_session_status_dir(
         f"Could not definitively determine session status directory for session_id "
         f"'{session_id}' (client={client_type!r}). Session did not match Gemini/agy "
         "(no --client gemini/agy, transcript_path, or GEMINI_SESSION_ID) and did not "
-        "match Claude (no --client claude and no valid UUID). "
+        "match Claude-family (no --client claude/claude-cowork and no valid UUID). "
         "Failing fast per NO-FALLBACKS axiom."
     )
 

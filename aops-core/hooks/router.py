@@ -276,10 +276,13 @@ class HookRouter:
             raw_input: The raw stdin payload from the hook caller.
             gemini_event: Event name when invoked by Gemini CLI (which passes
                 the event as a positional arg rather than in stdin).
-            client_type: Hook caller identity ("claude" or "gemini"), normally
-                taken from the ``--client`` flag. Stored on the resulting
-                HookContext so JSONL log entries can distinguish callers
-                instead of showing ``model=unknown``.
+            client_type: Hook caller identity — one of ``"claude"``,
+                ``"claude-cowork"``, ``"gemini"``, or ``"agy"`` — taken from
+                the ``--client`` flag. ``"claude-cowork"`` is treated as
+                Claude-family throughout the pipeline; only the surface label
+                differs. Stored on the resulting HookContext so JSONL log
+                entries can distinguish callers instead of showing
+                ``model=unknown``.
         """
 
         # 1. Determine Event Name
@@ -937,7 +940,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Universal Hook Router")
     parser.add_argument(
-        "--client", choices=["gemini", "claude", "agy"], help="Client type (gemini, claude, or agy)"
+        "--client",
+        choices=["gemini", "claude", "claude-cowork", "agy"],
+        help="Client type (gemini, claude, claude-cowork, or agy)",
     )
     parser.add_argument(
         "event", nargs="?", help="Event name (required for Gemini if not in payload)"

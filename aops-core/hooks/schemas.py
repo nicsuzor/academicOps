@@ -25,7 +25,9 @@ class HookContext(BaseModel):
     )
     agent_id: str | None = None
     slug: str | None = None
-    client_type: str | None = None  # "claude" or "gemini" (set from --client flag)
+    client_type: str | None = (
+        None  # "claude" | "claude-cowork" | "gemini" | "agy" (set from --client flag)
+    )
 
     # Metadata (aops-d9ba7159)
     machine: str | None = None

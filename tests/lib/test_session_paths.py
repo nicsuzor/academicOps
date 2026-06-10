@@ -368,3 +368,124 @@ class TestAntigravityStatusDir:
         saved = list((transcript.parent.parent).glob("*.json"))
         assert saved, "state file was not written under the agy .system_generated dir"
         assert all(".claude" not in str(p) for p in saved)
+
+
+class TestClaudeCoworkClient:
+    """``--client claude-cowork`` (the Cowork plugin build) must be treated as
+    Claude-family by session_paths — same project-folder layout under
+    ``~/.claude/projects/`` as a bare Claude session, never falling through to
+    the NO-FALLBACKS guard for an unknown client.
+
+    These tests pin the *behaviour* (Claude project dir is returned, no
+    ValueError raised, the agy/gemini path is not taken) rather than the
+    underlying string literal, so we don't churn if the helper's name or
+    membership set is restructured later.
+    """
+
+    @patch("lib.session_paths.Path.home")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_claude_cowork_routes_to_claude_project_dir(
+        self, mock_project_folder, mock_home, tmp_path
+    ):
+        """client=claude-cowork → status dir under ~/.claude/projects/<folder>/."""
+        mock_home.return_value = tmp_path
+        mock_project_folder.return_value = "-home-user-project"
+
+        result = get_session_status_dir(
+            session_id="550e8400-e29b-41d4-a716-446655440000",
+            client_type="claude-cowork",
+        )
+
+        expected = tmp_path / ".claude" / "projects" / "-home-user-project"
+        assert result == expected
+        assert expected.exists()
+
+    @patch("lib.session_paths.Path.home")
+    @patch("lib.session_paths.get_claude_project_folder")
+    def test_claude_cowork_does_not_raise_fallback_error(
+        self, mock_project_folder, mock_home, tmp_path
+    ):
+        """claude-cowork must NOT hit the 'no match for Claude/Gemini/agy' raise."""
+        mock_home.return_value = tmp_path
+        mock_project_folder.return_value = "-home-user-project"
+
+        # Must not raise — the prior bug was a ValueError fallthrough.
+        get_session_status_dir(
+            session_id="non-uuid-session-abc",
+            client_type="claude-cowork",
+        )
+
+    def test_claude_cowork_is_not_routed_as_gemini_or_agy(self, tmp_path, monkeypatch):
+        """A claude-cowork session must not be coerced onto the Gemini/agy path
+        (which would force the ~/.gemini status dir or raise the
+        'Refusing to fall back to the Claude project dir' error)."""
+        monkeypatch.delenv("GEMINI_SESSION_ID", raising=False)
+        monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+        monkeypatch.setattr("lib.session_paths.Path.home", lambda: tmp_path)
+        monkeypatch.setattr(
+            "lib.session_paths.get_claude_project_folder", lambda: "-home-user-project"
+        )
+
+        result = get_session_status_dir(
+            session_id="550e8400-e29b-41d4-a716-446655440000",
+            transcript_path=None,
+            client_type="claude-cowork",
+        )
+
+        assert ".gemini" not in str(result)
+        assert ".claude/projects" in str(result)
+
+    def test_claude_cowork_respects_polecat_sandbox(self, monkeypatch, tmp_path):
+        """Polecat sandbox routing applies to claude-cowork just like claude —
+        the polecat state dir wins over Path.home() when the container env is set."""
+        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
+        with (
+            patch("lib.session_paths.get_claude_project_folder") as mock_folder,
+            patch("lib.session_paths._polecat_claude_state_dir") as mock_polecat,
+        ):
+            mock_folder.return_value = "-home-worker-project"
+            mock_polecat.return_value = tmp_path
+
+            result = get_session_status_dir(client_type="claude-cowork")
+
+            mock_polecat.assert_called_once_with("-home-worker-project", "state")
+            assert result == tmp_path
+
+
+def test_router_argparse_accepts_claude_cowork_subprocess():
+    """The cowork build's hooks.json invokes ``router.py --client claude-cowork``
+    on every event, so a regression in the argparse choices list would break
+    every cowork session at SessionStart with an "invalid choice" exit.
+
+    Behavioural pin: invoke the real router.py via ``uv run`` (mirrors how
+    the shipped router.sh / hook entries execute it) with ``--help``. argparse
+    validates ``--client``'s value before help short-circuits — an invalid
+    choice would exit 2 with "invalid choice" on stderr. We assert returncode
+    0 and no "invalid choice" message, deliberately NOT mirror-testing the
+    literal choices list so a future refactor doesn't churn this test.
+    """
+    import subprocess
+    from pathlib import Path
+
+    aops_core = Path(__file__).resolve().parents[2] / "aops-core"
+    router_py = aops_core / "hooks" / "router.py"
+    result = subprocess.run(
+        [
+            "uv",
+            "--directory",
+            str(aops_core),
+            "run",
+            "python",
+            str(router_py),
+            "--client",
+            "claude-cowork",
+            "--help",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, (
+        f"router.py rejected --client claude-cowork: stderr={result.stderr!r}"
+    )
+    assert "invalid choice" not in result.stderr
