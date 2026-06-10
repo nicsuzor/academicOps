@@ -453,7 +453,13 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
         (r"\*\*Followed\*\*:\s*(.+?)(?=\n\*\*|\Z)", "followed"),
         (r"\*\*Outcome\*\*:\s*(.+?)(?=\n\*\*|\Z)", "outcome"),
         (r"\*\*Accomplishments?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "accomplishments"),
-        (r"\*\*Friction points?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "friction_points"),
+        # Broadened (aops-6a787364): catch in-the-wild bold friction labels —
+        # **Friction.**, **Friction (real bug):**, **Friction**:, as well as the
+        # canonical **Friction points**:. The label text between the bold markers
+        # may carry punctuation/parentheticals, and the colon may sit inside or
+        # after the bold span. Without this, off-template friction fell through to
+        # _parse_unstructured_reflection and was blanket-dumped into accomplishments.
+        (r"\*\*Friction[^*]*\*\*\s*:?\s*(.+?)(?=\n\*\*|\Z)", "friction_points"),
         (
             r"\*\*Root cause\*\*(?:\s*\([^)]*\))?\s*:\s*(.+?)(?=\n\*\*|\Z)",
             "root_cause",
@@ -525,6 +531,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     references = parse_identifier_precis_pairs(reflection_text)
     thread_pickup = parse_thread_pickup_section(text)
     quality_warnings = assess_reflection_quality(reflection_text, outputs, tasks_worked, references)
+    quality_warnings = quality_warnings + _assess_friction_misroute(result)
 
     if outputs is not None:
         result["outputs"] = outputs.get("outputs", [])
@@ -825,6 +832,38 @@ def assess_reflection_quality(
     return warnings
 
 
+def _assess_friction_misroute(result: dict[str, Any]) -> list[str]:
+    """Quality warnings for friction that likely landed in the wrong bucket.
+
+    Two signatures of the parser/SKILL drift fixed in aops-6a787364:
+    - ``inferred=True``: the structured parse matched nothing and the reflection
+      fell through to the unstructured fallback (labels didn't match the parse
+      contract) — the categorisation is a guess, not authored.
+    - friction-marked text sitting in ``accomplishments`` while ``friction_points``
+      is empty — friction was bucketed as an accomplishment.
+    """
+    warnings: list[str] = []
+    if result.get("inferred"):
+        warnings.append(
+            "inferred-reflection: reflection had no structured **Field**: labels; "
+            "categorisation was inferred from bullets/keywords. Emit the bold labels "
+            "from SKILL.md (**Outcome**/**Accomplishments**/**Friction points**/"
+            "**Proposed changes**)."
+        )
+    accomplishments = (
+        result.get("accomplishments") or []
+    )  # allow-fallback: reflection field is optional
+    friction = result.get("friction_points") or []  # allow-fallback: reflection field is optional
+    if not friction and any(
+        re.search(r"\bfriction\b", str(a), re.IGNORECASE) for a in accomplishments
+    ):
+        warnings.append(
+            "friction-in-accomplishments: an accomplishment mentions 'friction' "
+            "while friction_points is empty — friction may be miscategorised."
+        )
+    return warnings
+
+
 def _infer_outcome(text: str) -> str:
     """Infer outcome from content keywords in unstructured reflection text."""
     lower = text.lower()
@@ -838,11 +877,24 @@ def _infer_outcome(text: str) -> str:
     return "partial"
 
 
+# Detect bullets whose leading label marks them as friction or proposed-change.
+# These must NOT be blanket-dumped into accomplishments (aops-6a787364): an
+# unstructured reflection still routes its friction to friction_points.
+_FRICTION_BULLET_RE = re.compile(r"^\**\s*friction\b", re.IGNORECASE)
+_PROPOSED_BULLET_RE = re.compile(r"^\**\s*proposed\b", re.IGNORECASE)
+# Strip a leading "Friction …:" / "Proposed …:" label (only the colon form) so
+# the routed item reads as the substantive content, not the label.
+_FRICTION_LABEL_RE = re.compile(r"^\**\s*friction\b[^:\n]*:\s*", re.IGNORECASE)
+_PROPOSED_LABEL_RE = re.compile(r"^\**\s*proposed\b[^:\n]*:\s*", re.IGNORECASE)
+
+
 def _parse_unstructured_reflection(text: str) -> dict[str, Any] | None:
     """Fallback parser for reflections without structured **Field**: value lines.
 
-    Treats bullet points as accomplishments and infers outcome from keywords.
-    Returns None if the text is empty/whitespace.
+    Treats bullet points as accomplishments and infers outcome from keywords,
+    but routes friction-/proposed-labelled bullets to their own buckets so
+    off-template friction does not get miscategorised as an accomplishment
+    (aops-6a787364). Returns None if the text is empty/whitespace.
     """
     stripped = text.strip()
     if not stripped:
@@ -850,10 +902,27 @@ def _parse_unstructured_reflection(text: str) -> dict[str, Any] | None:
 
     result: dict[str, Any] = {"inferred": True}
 
-    # Extract bullet points as accomplishments
+    # Extract bullet points, routing each by its leading label.
     bullets = re.findall(r"^[\s]*[-*]\s+(.+)$", stripped, re.MULTILINE)
     if bullets:
-        result["accomplishments"] = [b.strip() for b in bullets if b.strip()]
+        accomplishments: list[str] = []
+        friction: list[str] = []
+        proposed: list[str] = []
+        for raw in bullets:
+            b = raw.strip()
+            if not b:
+                continue
+            if _FRICTION_BULLET_RE.match(b):
+                friction.append(_FRICTION_LABEL_RE.sub("", b).strip() or b)
+            elif _PROPOSED_BULLET_RE.match(b):
+                proposed.append(_PROPOSED_LABEL_RE.sub("", b).strip() or b)
+            else:
+                accomplishments.append(b)
+        result["accomplishments"] = accomplishments
+        if friction:
+            result["friction_points"] = friction
+        if proposed:
+            result["proposed_changes"] = proposed
     else:
         # No bullets — use the full text as a single accomplishment
         result["accomplishments"] = [stripped]

@@ -111,11 +111,13 @@ Include these three markdown headers in your response before the handover block:
 
 ## Framework Reflection
 
-- Friction points: <issue/task URLs filed via /learn; no description prose>
-- Proposed improvement: <one concrete instruction or tool improvement>
-- Attributable win (optional): <what worked well>
+**Outcome**: success | partial | failure
+**Accomplishments**: <what you completed — comma list, or `-` bullets, or `none`>
+**Friction points**: <issue/task URLs filed via /learn; no description prose — or `none`>
+**Proposed changes**: <one concrete instruction or tool improvement — or `none`>
 ```
 
+- **Emit each field with its exact bold label (`**Field**:`).** These four labels are the parse contract: the deterministic parser in `transcript_parser.py` buckets the reflection by matching them verbatim. Plain-bullet labels (`- Friction points:`), renamed labels (`Proposed improvement:`), or free-form prose match nothing — the whole body then falls through to the unstructured fallback and gets dumped into `accomplishments`, leaving `friction_points` empty. `**Outcome**`, `**Accomplishments**`, `**Friction points**`, and `**Proposed changes**` are the only labels the pipeline reads. The exact grammar is the SSoT in `transcript-metadata-schema.md`.
 - All linked entities must include their stable identifiers and parenthesized precis (e.g., `task-acba1234 ( precis )`).
 - These blocks are parsed into structured session metadata — see `transcript-metadata-schema.md` for the field/warning contract. `## Output` must carry a real artefact link (PR/commit URL); if there genuinely is none, write `Output: none — <reason>`. No link and no explicit "none" → end-session does not pass.
 

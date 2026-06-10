@@ -401,6 +401,122 @@ Handover complete.
         assert "single-feature session" in result["summary"]
 
 
+class TestFrictionLabelDrift:
+    """aops-6a787364: friction must bucket to friction_points, not accomplishments.
+
+    The parser broadened the bold friction label and the unstructured fallback
+    now routes friction-/proposed-labelled bullets instead of blanket-dumping
+    every bullet into accomplishments.
+    """
+
+    def test_friction_period_variant_buckets(self):
+        text = """\
+## Framework Reflection
+
+**Outcome**: success
+**Accomplishments**: Fixed the parser
+**Friction.** The hydrator ran twice — filed nicsuzor/academicOps#999
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["friction_points"] == [
+            "The hydrator ran twice — filed nicsuzor/academicOps#999"
+        ]
+        # friction must NOT leak into accomplishments
+        assert result["accomplishments"] == ["Fixed the parser"]
+
+    def test_friction_parenthetical_variant_buckets(self):
+        text = """\
+## Framework Reflection
+
+**Outcome**: partial
+**Accomplishments**: Diagnosed root cause
+**Friction (real bug):** parser regex never matched — nicsuzor/academicOps#1000
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["friction_points"] == [
+            "parser regex never matched — nicsuzor/academicOps#1000"
+        ]
+        assert "real bug" not in str(result["accomplishments"])
+
+    def test_friction_bare_bold_variant_buckets(self):
+        text = """\
+## Framework Reflection
+
+**Outcome**: success
+**Accomplishments**: Shipped fix
+**Friction**: tooling was slow
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["friction_points"] == ["tooling was slow"]
+
+    def test_canonical_friction_points_still_works(self):
+        text = """\
+## Framework Reflection
+
+**Outcome**: success
+**Accomplishments**: Did the thing
+**Friction points**: None
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["friction_points"] == []
+
+    def test_unstructured_plain_friction_bullet_routes(self):
+        """SKILL-template drift: plain `- Friction points:` bullets (no bold).
+
+        Previously every bullet was dumped into accomplishments; now the
+        friction bullet routes to friction_points and the proposed bullet to
+        proposed_changes.
+        """
+        text = """\
+## Framework Reflection
+
+- Accomplished the migration
+- Friction points: gh api rate-limited mid-run — nicsuzor/academicOps#1001
+- Proposed improvement: cache the gh token
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result.get("inferred") is True
+        assert result["accomplishments"] == ["Accomplished the migration"]
+        assert result["friction_points"] == [
+            "gh api rate-limited mid-run — nicsuzor/academicOps#1001"
+        ]
+        assert result["proposed_changes"] == ["cache the gh token"]
+
+    def test_inferred_reflection_emits_quality_warning(self):
+        text = """\
+## Framework Reflection
+
+- Fixed the cron timing
+- Added error handling
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result.get("inferred") is True
+        warnings = result.get("quality_warnings", [])
+        assert any(w.startswith("inferred-reflection") for w in warnings)
+
+    def test_friction_in_accomplishments_warning(self):
+        """Structured parse where friction prose landed in accomplishments and
+        friction_points is empty — the guardrail flags the miscategorisation."""
+        text = """\
+## Framework Reflection
+
+**Outcome**: partial
+**Accomplishments**: Hit friction with the gh api all session
+**Friction points**: None
+"""
+        result = parse_framework_reflection(text)
+        assert result is not None
+        assert result["friction_points"] == []
+        warnings = result.get("quality_warnings", [])
+        assert any(w.startswith("friction-in-accomplishments") for w in warnings)
+
+
 class TestSessionHandoverHeadingLevels:
     """Regression tests: parser must accept Session Handover at any heading
     level H2-H6. Trend review 2026-05-08 found 100% of emitted handovers
