@@ -221,6 +221,15 @@ jobs:
       # (b) no Enforcer PR review exists yet for this SHA — re-running after a
       # posted verdict would create a duplicate review. (aops-221211fa)
       #
+      # `if: always()` is REQUIRED on both retry steps. `continue-on-error: true`
+      # masks a step `failure` so the job continues, but it does NOT mask a step
+      # `cancelled`. Empirically (run 27250174568) `rate_limit_event` from
+      # claude-code-action surfaces as `cancelled`, not `failure` — without
+      # `always()` GitHub skips every subsequent step on cancellation, the
+      # retry never fires, and enforcer-status flakes red anyway. The whole
+      # point of this retry block is to survive transient infra cancellations,
+      # so `always()` is structural, not defensive.
+      #
       # NOTE: the action's own workflow-validation 401 ("workflow file must have
       # identical content to the default branch") is DETERMINISTIC — a retry
       # cannot clear it on a PR that modifies the calling workflow. For that
@@ -228,7 +237,7 @@ jobs:
       # diagnostic via the terminal-status step below.
       - name: Check first-attempt verdict
         id: first-attempt
-        if: steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
         run: |
           POSTED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
             --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
@@ -236,13 +245,13 @@ jobs:
             echo "Verdict already posted by first attempt — not retrying"
             echo "retry=false" >> "$GITHUB_OUTPUT"
           else
-            echo "First attempt failed and posted no verdict — will retry once"
+            echo "First attempt did not succeed (${{ steps.review.outcome }}) and posted no verdict — will retry once"
             echo "retry=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Run Enforcer Review (retry)
         id: review-retry
-        if: steps.first-attempt.outputs.retry == 'true'
+        if: always() && steps.first-attempt.outputs.retry == 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
@@ -313,22 +322,39 @@ jobs:
                 -f description="Violations found — see review" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             # Distinguish action-infra failure from agent-completed-but-no-verdict.
-            # review-retry.outcome == '' iff the retry step was skipped (first
-            # attempt succeeded). If BOTH attempts' steps failed → action
-            # infrastructure problem. The retry handles transient causes
-            # (app-token-exchange 401, rate_limit_event at run start, runner
-            # hiccups) but does NOT clear deterministic failures such as the
-            # workflow-validation 401 the action raises when the calling
-            # workflow file differs from the default-branch version (the
-            # observed cause on PR #1673 SHA 6e4d0f1d). For that case the
-            # second attempt confirms the failure deterministically and we
-            # surface a clearer diagnostic than the old opaque "Agent run
-            # failed without a verdict review" line. (aops-221211fa)
-            elif [ "${{ steps.review.outcome }}" != "success" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
+            # The retry handles transient causes (app-token-exchange 401,
+            # rate_limit_event at run start, runner hiccups) but does NOT clear
+            # deterministic failures such as the workflow-validation 401 the
+            # action raises when the calling workflow file differs from the
+            # default-branch version (the observed cause on PR #1673 SHA
+            # 6e4d0f1d). For that case the second attempt confirms the failure
+            # deterministically and we surface a clearer diagnostic than the
+            # old opaque "Agent run failed without a verdict review" line.
+            #
+            # Branch on what actually ran, not on `outcome != 'success'`:
+            #   - review-retry.outcome in {failure, cancelled}  → retry RAN and failed → "failed in both attempts"
+            #   - review-retry.outcome in {success}             → retry RAN and succeeded but posted no verdict → agent issue
+            #   - review-retry.outcome in {'', skipped}          → retry did NOT run (first-attempt or retry guard skipped)
+            # The old `outcome != 'success'` check conflated cancelled+skipped
+            # with failed and lied "failed in both attempts" when only one
+            # attempt actually ran. (aops-221211fa REVISE 2026-06-10 03:06 UTC)
+            elif [ "${{ steps.review.outcome }}" != "success" ]; then
+              RETRY_OUTCOME="${{ steps.review-retry.outcome }}"
+              case "$RETRY_OUTCOME" in
+                failure|cancelled)
+                  DESC="Enforcer action step failed in both attempts (see run logs)"
+                  ;;
+                success)
+                  DESC="Enforcer retry succeeded but posted no verdict review (see run logs)"
+                  ;;
+                *)
+                  DESC="Enforcer first attempt did not succeed (${{ steps.review.outcome }}); retry did not execute — see run logs"
+                  ;;
+              esac
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=failure \
                 -f context="${AGENT_NAME}-status" \
-                -f description="Enforcer action step failed in both attempts (see run logs)" \
+                -f description="$DESC" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             else
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
@@ -353,11 +379,19 @@ jobs:
               echo "::error::Enforcer failed: Head SHA already reviewed with violations."
               FAILED=true
             fi
-          elif [ "${{ steps.review.outcome }}" = "failure" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
-            # Both attempts failed. The retry didn't clear it — likely a
-            # deterministic cause (workflow-validation against default branch,
-            # exhausted quota, or a real action bug) not a transient hiccup.
-            echo "::error::Enforcer failed: action step failed in both attempts. Check run logs for cause (workflow-validation 401 against default branch, rate_limit_event, app token exchange, etc.)."
+          elif [ "${{ steps.review.outcome }}" != "success" ] && [ "${{ steps.review.outcome }}" != "" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
+            # First attempt did not succeed. Distinguish whether the retry
+            # actually ran (so the diagnostic is honest about what happened).
+            # Cancellation (e.g. rate_limit_event) surfaces as 'cancelled', not
+            # 'failure', and the old check missed it. (aops-221211fa REVISE)
+            case "${{ steps.review-retry.outcome }}" in
+              failure|cancelled)
+                echo "::error::Enforcer failed: action step failed in both attempts. Check run logs for cause (workflow-validation 401 against default branch, rate_limit_event, app token exchange, etc.)."
+                ;;
+              *)
+                echo "::error::Enforcer failed: first attempt did not succeed (${{ steps.review.outcome }}); retry did not run. Check run logs for cause."
+                ;;
+            esac
             FAILED=true
           else
             # Get latest review state
