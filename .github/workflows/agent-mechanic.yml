@@ -1,0 +1,445 @@
+# Agent: Mechanic
+#
+# The post-admission DEV agent of the v2 PR pipeline. Runs only inside the
+# admitted Stage-2 fix loop — `admit-status` must be `success` on HEAD before
+# the orchestrator (`pr-pipeline.yml`) calls this workflow. Its responsibility:
+# real development to clear the red the autofixers (lint, enforcer) couldn't,
+# plus conflict resolution when the PR is `CONFLICTING`. It does NOT approve,
+# does NOT set merge-blocking statuses, and does NOT arm auto-merge — those
+# are the human Environment gate's job (`stage2-admission.yml`).
+#
+# Status check: `mechanic-status` (posted to PR head SHA via statuses API).
+# This status is INFORMATIONAL and is NOT a required gate — the mechanic does
+# work, not a verdict. The merge gate is `enforcer-status` + `qa-status` +
+# `admit-status` + the mechanical checks (see specs/workflows/pr-pipeline.md §7).
+#
+# Prompt: .github/agents/shared-error-handling.md + .github/agents/mechanic.agent.md
+#
+# This is a reusable workflow_call workflow. academicOps invokes it from
+# `pr-pipeline.yml` as the Stage-2 step appended to lint → enforcer → qa.
+# External consumers pin to a release tag:
+#   uses: nicsuzor/academicOps/.github/workflows/agent-mechanic.yml@mechanic-v1
+#
+# v2 contract (specs/workflows/pr-pipeline.md):
+#   §4.1 workflow_call only — no pull_request, workflow_run, schedule, push,
+#        workflow_dispatch. Declares the `committed` output for §3.4.
+#   §4.2 one named status: mechanic-status (informational, NEVER required).
+#   §3.5 enforcer + qa re-verify the mechanic's commit on the next pass; the
+#        mechanic does not self-verify, does not approve, does not gate merge.
+#   §3.6 bounded loop:
+#        - axis A (primary): `MAX_MECHANIC_RUNS = 5` commits with the trailer
+#          `Mechanic-By:` on the branch since it diverged from the base. v1's
+#          `MAX_MERGE_PREP_RUNS = 5` precedent carried forward unchanged.
+#        - axis B (backstop): GHA `timeout-minutes: 55` per invocation.
+#        On exhaustion: mechanic posts an escalation PR review, workflow sets
+#        mechanic-status=failure, RESETS admit-status to pending (surfaces back
+#        to the human gate), requests the maintainer, leaves the PR un-merged,
+#        and stops the auto-dispatch loop.
+#   §4.6 / §10 per-SHA loop-skip: keyed on "has the mechanic already produced a
+#        terminal mechanic-status for THIS SHA?" — never on commit author.
+
+name: "Agent: Mechanic"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "PR number to develop on"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to checkout (PR head branch)"
+        type: string
+        required: true
+      sha:
+        description: "PR head SHA — explicit, not derived (§4.1)"
+        type: string
+        required: true
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: "PAT for GitHub API operations (statuses, reviews, admit-status reset)"
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: "OAuth token for Claude agent"
+        required: true
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (§3.4 short-circuit)"
+        value: ${{ jobs.mechanic.outputs.committed }}
+
+jobs:
+  mechanic:
+    name: Mechanic
+    runs-on: ubuntu-latest
+    # §3.6 axis B — per-invocation wall-clock backstop. Carries v1's proven cap.
+    # Bounds the worst-case duration of a single pass; aggregate-loop bound is
+    # §3.6 axis A's job (MAX_MECHANIC_RUNS counted from Mechanic-By: trailers).
+    timeout-minutes: 55
+    concurrency:
+      # Per-PR: a second pass for the same PR queues rather than racing a
+      # running mechanic. cancel-in-progress: false — let an in-flight fix
+      # finish rather than killing it and re-paying the loop budget.
+      group: agent-mechanic-${{ inputs.pr_number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      issues: write
+      id-token: write
+    outputs:
+      committed: ${{ steps.check-commit.outputs.committed || 'false' }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.sha }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      AGENT_NAME: mechanic
+      MAX_MECHANIC_RUNS: 5
+
+    steps:
+      # ──────────────────────────────────────────────────────────────────────
+      # §4.6 / §10 per-SHA loop-skip
+      #
+      # The mechanic ran on this exact SHA already when a non-"Skipped:"
+      # mechanic-status exists for it:
+      #   - success → re-post and exit clean (the prior pass either fixed
+      #     nothing because there was nothing to fix, or completed cleanly;
+      #     either way nothing further is owed on this SHA);
+      #   - failure → re-post and exit (exhaustion was already declared on
+      #     this SHA; admit-status was reset; do not re-run).
+      # Pending statuses, Skipped: echoes, and the absence of any mechanic-status
+      # all mean "not yet done" — proceed.
+      #
+      # This is the §10 protocol: key on "has THIS SHA been judged?" not on
+      # the author of the HEAD commit (the v1 anti-pattern that caused P2).
+      # ──────────────────────────────────────────────────────────────────────
+      - name: SHA-skip check
+        id: sha-skip
+        run: |
+          GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"success\") | select(((.description // \"\") | startswith(\"Skipped:\")) | not)] | length" 2>/dev/null || echo "0")
+          GENUINE_FAILURE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\") | select(.state == \"failure\")] | length" 2>/dev/null || echo "0")
+
+          if [ "${GENUINE_FAILURE:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already has mechanic-status=failure (prior exhaustion) — re-posting failure"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already escalated — see prior review" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already processed (mechanic-status=success) — re-posting idempotent success"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already processed" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # §3.6 axis A — loop-ceiling check (BEFORE we run the agent)
+      #
+      # Count the mechanic's own fix-commits on this branch since it diverged
+      # from the base. Counting from immutable git history (`git log --grep`)
+      # is label-free, comment-parsing-free, and transparent (the same
+      # robustness argument that retired v1's comment-counted cascade limit —
+      # PR 582 post-mortem). The trailer the mechanic stamps on every commit
+      # is `Mechanic-By:` (mechanic.agent.md §6).
+      #
+      # Uses the PR's actual base branch via the GitHub API, NOT a hardcoded
+      # 'main' — v1's bug was `origin/main`, and consumers (and dev) use
+      # `dev` as the default branch.
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Compute base branch
+        if: steps.sha-skip.outputs.skip != 'true'
+        id: base
+        run: |
+          BASE_BRANCH=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.base.ref' 2>/dev/null \
+            || gh api "repos/$REPO" --jq '.default_branch')
+          echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Base branch resolved to: $BASE_BRANCH"
+
+      - uses: actions/checkout@v4
+        if: steps.sha-skip.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Loop-ceiling check
+        if: steps.sha-skip.outputs.skip != 'true'
+        id: ceiling
+        env:
+          BASE_BRANCH: ${{ steps.base.outputs.base_branch }}
+        run: |
+          git fetch origin "$BASE_BRANCH" --quiet
+          MECH_COUNT=$(git log "origin/$BASE_BRANCH..HEAD" --grep="^Mechanic-By:" --oneline 2>/dev/null | wc -l | tr -d ' ')
+          echo "Mechanic-By: commits in branch: $MECH_COUNT (ceiling: $MAX_MECHANIC_RUNS)"
+          if [ "$MECH_COUNT" -ge "$MAX_MECHANIC_RUNS" ]; then
+            echo "CEILING REACHED: $MECH_COUNT >= $MAX_MECHANIC_RUNS"
+            echo "exceeded=true" >> "$GITHUB_OUTPUT"
+            echo "mech_count=$MECH_COUNT" >> "$GITHUB_OUTPUT"
+          else
+            echo "exceeded=false" >> "$GITHUB_OUTPUT"
+            echo "mech_count=$MECH_COUNT" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # §3.6 exhaustion handler — runs ONLY when the ceiling is exceeded
+      #
+      # End state on exhaustion (verbatim per §3.6):
+      #   1. The mechanic agent does not commit, does not approve, does not
+      #      merge. It posts a single escalation PR review (REQUEST_CHANGES)
+      #      naming each still-red signal individually.
+      #   2. mechanic-status set to `failure` with the loop-ceiling message.
+      #   3. admit-status reset to `pending` — surfaces the PR back to the
+      #      human admit gate (the §3.6 third reset trigger, alongside §5's
+      #      carry-across-bot-commits / reset-on-human-push).
+      #   4. PR left un-merged: required reviewer status(es) are red AND
+      #      admit-status is now pending → armed auto-merge cannot fire.
+      #   5. Maintainer requested as reviewer so the escalation is visible.
+      #   6. Auto-dispatch loop stops — the next mechanic pass requires either
+      #      a human push (which resets admit-status to pending) or a manual
+      #      re-admission at the gate.
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Exhaustion handler — escalate and halt
+        if: steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded == 'true'
+        env:
+          MECH_COUNT: ${{ steps.ceiling.outputs.mech_count }}
+        run: |
+          # Collect each still-red required signal individually so the review
+          # body names them, not just "something is red".
+          FAILING_CHECKS=$(gh pr checks "$PR_NUMBER" --repo "$REPO" --required 2>/dev/null \
+            | awk '$2 == "fail" || $2 == "failure" || $2 == "error" {print "  - " $1}' || true)
+          MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+          CONFLICT_LINE=""
+          if [ "$MERGEABLE" = "CONFLICTING" ]; then
+            CONFLICT_LINE="  - PR is CONFLICTING with the base branch"
+          fi
+
+          REVIEW_BODY=$(cat <<EOF
+          # Mechanic — Loop Ceiling Reached
+
+          The Stage-2 fix loop ran $MECH_COUNT mechanic commits without converging green.
+          The ceiling is $MAX_MECHANIC_RUNS (\`MAX_MECHANIC_RUNS\`, spec §3.6 axis A).
+          Halting and surfacing back to the human admit gate.
+
+          ## Still-red signals on this HEAD
+          $FAILING_CHECKS
+          $CONFLICT_LINE
+
+          ## What a human needs to do
+
+          Reaching the ceiling without converging is evidence of a structural problem
+          (a fix the mechanic keeps re-attempting, an approach the reviewers keep
+          rejecting, or a genuinely human-judgement issue). One of:
+
+          1. **Trim PR scope** so the unresolvable signal no longer applies.
+          2. **Push a human fix** for the specific signal, which independently resets
+             \`admit-status\` to pending and re-enters the gate.
+          3. **Re-admit deliberately** at the \`pr-fix-loop\` Environment once the
+             underlying issue is understood.
+
+          \`admit-status\` has been reset to \`pending\`; auto-merge cannot fire on
+          the stale "good idea" decision. The PR will not merge until you re-judge
+          at the gate.
+          EOF
+          )
+
+          # (1) Escalation review — REQUEST_CHANGES so the failing-state is visible
+          # at PR level, not just as a status. continue-on-error if posting the
+          # review fails for any reason (don't block status writes below).
+          echo "Posting escalation review (REQUEST_CHANGES)…"
+          gh pr review "$PR_NUMBER" --repo "$REPO" --request-changes \
+            --body "$REVIEW_BODY" \
+            || echo "WARNING: could not post escalation review (continuing to status writes)"
+
+          # (2) mechanic-status = failure with the loop-ceiling description
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=failure \
+            -f context="${AGENT_NAME}-status" \
+            -f description="Halted: Stage-2 loop ceiling reached ($MECH_COUNT mechanic commits)" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+          # (3) Reset admit-status to pending — surfaces PR back to the human gate
+          # (§3.6's third reset trigger, alongside §5's carry / human-push reset).
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="admit-status" \
+            -f description="Reset: Stage-2 loop ceiling reached — re-judge at pr-fix-loop" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+          # (5) Request the maintainer so the escalation is visible, not buried
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer nicsuzor \
+            || echo "WARNING: could not add reviewer (continuing)"
+
+          echo "::error::Mechanic halted: Stage-2 loop ceiling reached ($MECH_COUNT >= $MAX_MECHANIC_RUNS)."
+          # Fall through to "Final check" which exits non-zero based on ceiling state.
+
+      # ──────────────────────────────────────────────────────────────────────
+      # Normal pass — post pending, run the agent
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Post pending status
+        if: steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded != 'true'
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="${AGENT_NAME}-status" \
+            -f description="Mechanic in progress" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+      # Fetch the mechanic prompt. Same sparse-checkout pattern as the enforcer
+      # and qa workflows (no canonical persona file — mechanic.agent.md is the
+      # full prompt, paired with shared-error-handling.md).
+      - name: Fetch mechanic prompt
+        id: prompt
+        if: steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded != 'true'
+        run: |
+          if [ "$REPO" = "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
+            git clone -b "${{ inputs.ref }}" --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          else
+            git clone --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          fi
+          cd .aops && git sparse-checkout set --no-cone \
+            /.github/agents/shared-error-handling.md \
+            /.github/agents/mechanic.agent.md && cd ..
+          if [ ! -f .aops/.github/agents/mechanic.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
+            echo "::error::Mechanic prompt files were not materialised by sparse-checkout" >&2
+            ls -la .aops/.github/agents/ 2>&1 || true
+            exit 1
+          fi
+          PROMPT=$(cat .aops/.github/agents/shared-error-handling.md .aops/.github/agents/mechanic.agent.md)
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Mechanic
+        id: claude
+        if: steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          BASE_BRANCH: ${{ steps.base.outputs.base_branch }}
+          AGENT_NAME: mechanic
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Edit,Read,Write"'
+          show_full_output: true
+
+      # ──────────────────────────────────────────────────────────────────────
+      # §3.4 short-circuit: did the agent push a commit this pass?
+      # The orchestrator reads `outputs.committed` to decide whether to end
+      # this pass (the agent's push will start the next pass).
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Check for agent commits
+        id: check-commit
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded != 'true'
+        run: |
+          git fetch origin ${{ inputs.ref }} --quiet
+          REMOTE_SHA=$(git rev-parse origin/${{ inputs.ref }})
+          if [ "$REMOTE_SHA" != "$HEAD_SHA" ]; then
+            echo "Mechanic pushed a commit ($REMOTE_SHA != $HEAD_SHA)"
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # ──────────────────────────────────────────────────────────────────────
+      # Post terminal mechanic-status
+      #
+      # mechanic-status is informational (§4.2): success on a clean pass
+      # (agent completed without crash, regardless of whether it committed),
+      # failure on agent crash, failure on ceiling exhaustion (handled above).
+      #
+      # If the agent committed, that commit triggers a new synchronize event,
+      # which restarts pr-pipeline.yml on the new SHA: enforcer + qa re-verify
+      # the new SHA (§3.5). The status posted here applies to the SHA we ran
+      # against — not the new HEAD — so it remains an honest record of what
+      # the mechanic saw and did this pass.
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Post terminal status
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded != 'true'
+        run: |
+          CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "mechanic-status")] | sort_by(.created_at) | last.state' \
+            2>/dev/null || echo "")
+
+          # Replace pending; never clobber an already-posted terminal state.
+          if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
+            if [ "${{ steps.claude.outcome }}" = "success" ]; then
+              if [ "${{ steps.check-commit.outputs.committed }}" = "true" ]; then
+                DESC="Mechanic committed fixes — enforcer + qa will re-verify the new SHA"
+              else
+                DESC="Mechanic completed — no fixes needed on this SHA"
+              fi
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=success \
+                -f context="${AGENT_NAME}-status" \
+                -f description="$DESC" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            else
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state=failure \
+                -f context="${AGENT_NAME}-status" \
+                -f description="Mechanic agent run failed or timed out" \
+                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            fi
+          fi
+
+      - name: Final check and hard-fail
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.sha-skip.outputs.skip }}" = "true" ]; then
+            echo "::notice::Mechanic: SHA already processed — skipped."
+          elif [ "${{ steps.ceiling.outputs.exceeded }}" = "true" ]; then
+            echo "::error::Mechanic halted: Stage-2 loop ceiling reached."
+            FAILED=true
+          elif [ "${{ steps.claude.outcome }}" = "failure" ]; then
+            echo "::error::Mechanic failed: Agent step failed or timed out."
+            FAILED=true
+          elif [ "${{ steps.claude.outcome }}" = "success" ]; then
+            if [ "${{ steps.check-commit.outputs.committed }}" = "true" ]; then
+              echo "::notice::Mechanic committed fixes — next pass will re-verify."
+            else
+              echo "::notice::Mechanic completed cleanly — no fixes needed."
+            fi
+          else
+            echo "::error::Mechanic failed: Unknown failure state or early pipeline failure."
+            FAILED=true
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi

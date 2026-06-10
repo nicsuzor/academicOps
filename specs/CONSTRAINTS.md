@@ -28,6 +28,6 @@ Hard rules for aops framework internals. Enforced by pre-commit hooks where poss
 
 ## GitHub actions
 
-**`.github/agents/*.agent.md`** (`merge-prep`, `pr-reviewer`, `qa`) are GitHub Actions runners. Their authority is governed by the workflow YAML's `permissions:` block and the runner's bot PAT scopes:
+**`.github/agents/*.agent.md`** (`enforcer`, `qa`, `mechanic`, `pr-reviewer`) are GitHub Actions runners. Their authority is governed by the workflow YAML's `permissions:` block and the runner's bot PAT scopes:
 
 TODO: finish this table.

@@ -131,7 +131,7 @@ mergeable._ Approval (a) sets the required `admit-status` to `success` on HEAD a
 arms `gh pr merge --auto --squash --delete-branch`. **Alignment/pauli is advisory input
 to this decision, never a required check** (§8.2).
 
-### 3.4 Stage-2 fix loop + merge — armed auto-merge LIVE; dev/mechanic loop SPEC-ONLY
+### 3.4 Stage-2 fix loop + merge — armed auto-merge LIVE; dev/mechanic loop LIVE (Phase 5)
 
 The **armed auto-merge** half is **LIVE**: once admitted, `gh pr merge --auto --squash
 --delete-branch` is armed, and the moment all required checks are green and the PR is
@@ -139,13 +139,15 @@ mergeable it **squash-merges to `dev`**. Required-green to merge = cheap checks 
 `enforcer` + `qa` + no conflicts (**not** alignment).
 
 The **dev/mechanic agent appended to the cost order** (real development to clear red the
-autofixers couldn't, + conflict resolution when `CONFLICTING`) is **SPEC-ONLY** —
-`agent-mechanic.yml` does not exist yet (Phase 5). Today the post-admission fixing is still
-performed by the LIVE v1 `merge-prep` agent on cron (`agent-merge-prep.yml` +
-`merge-prep-cron.yml`); see [[pr-pipeline]] §8 for the folded live behaviour and §3.5/§3.6
-for the re-verify and bounded-loop contracts the mechanic must implement. Converged +
-all-green → the armed auto-merge fires. Loop exhausted + still-red → escalation review,
-reset admission, stop (no silent merge — [[pr-pipeline]] §3.6).
+autofixers couldn't, + conflict resolution only when `CONFLICTING`) is **LIVE** as of
+Phase 5: `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` exist; the orchestrator
+appends `mechanic` after `qa` gated on `admit-status=success`; the v1 `merge-prep` agent +
+its cron dispatcher are deleted. The §3.5 re-verify contract and §3.6 bound (`MAX_MECHANIC_RUNS=5`)
+
+- exhaustion handler (reset admit-status + escalation review + maintainer request) are
+  implemented in the workflow. See [[pr-pipeline]] §3.3, §3.5, §3.6, §8 (retrospective).
+  Converged + all-green → the armed auto-merge fires. Loop exhausted + still-red →
+  escalation review, reset admission, stop (no silent merge — [[pr-pipeline]] §3.6).
 
 ## 4. Release (dev → tag) — LIVE
 
@@ -293,15 +295,17 @@ Alignment is **PARTIALLY LIVE (Phase 6 of [[pr-pipeline]])** and is **intentiona
 real, currently-open gap.
 
 - **Fatal (tracked, LIVE).** A `CHANGES_REQUESTED` review turns a required status red; a
-  new SHA auto-re-reviews; and `agent-merge-prep.yml`'s success path **refuses to approve
-  while any `CHANGES_REQUESTED` review stands undismissed** (it counts the latest review
-  per author, sets `merge-prep-status: failure`, and `exit 1` — see the success-path
-  guard, `agent-merge-prep.yml` ≈ lines 293–311). So a fatal finding cannot merge
-  silently.
-- **Non-fatal (NOT tracked).** `COMMENT`-level reviews, "Deferred" rows in merge-prep's
-  triage table, and alignment notes have **no machine mechanism** ensuring they are
-  addressed. They can merge silently. The **only** safety net is the human reading
-  merge-prep's triage table at the admit gate.
+  new SHA auto-re-reviews under §3.5's per-SHA discipline (enforcer + qa re-judge each
+  mechanic SHA); the merge gate is `enforcer-status` + `qa-status` + `admit-status` +
+  mechanical checks, so a required status stuck at `failure` cannot merge. Stage-2
+  reaching `MAX_MECHANIC_RUNS` without converging green fires the exhaustion handler
+  (mechanic-status=failure, admit-status reset to pending, escalation review,
+  maintainer requested — [[pr-pipeline]] §3.6). So a fatal finding cannot merge silently.
+- **Non-fatal (NOT tracked).** `COMMENT`-level reviews, "Deferred" rows in the mechanic's
+  optional triage summary, and alignment notes have **no machine mechanism** ensuring
+  they are addressed. They can merge silently. The **only** safety net is the human
+  reading the Stage-1 reviewer outputs (enforcer + qa) and any mechanic summary at the
+  admit gate.
 
 **Status: OPEN — the maintainer has NOT decided whether to close this.** One candidate
 middle-path is to **require every non-"Fixed" triage row to carry a PKB task id** (so a
@@ -346,12 +350,15 @@ Status legend: **LIVE** (on `origin/dev`) · **PENDING** · **DONE-by-owner**.
   session (§3.1).
 - **C2 — DONE-by-owner (part of C1).** `admit-status` is required and is set only by the
   Environment-gated admission job on maintainer approval.
-- **C3 — PENDING.** Repurpose `agent-merge-prep.yml` into the Stage-2 dev agent; retire
-  the v1 retire-mechanic / per-PR no-op dispatch (`merge-prep-cron.yml`).
+- **C3 — DONE (Phase 5).** `agent-mechanic.yml` + `.github/agents/mechanic.agent.md`
+  replace the v1 `agent-merge-prep.yml`; `merge-prep-cron.yml` (per-PR no-op dispatch) +
+  `merge-prep.agent.md` are deleted. The vestigial `merge-prep-status` carry-forward in
+  `pr-pipeline.yml`'s `initialize` job is removed.
 - **C4 — PENDING.** Remove the duplicate enforcer/qa invocation (orchestrator +
   `trigger-*.yml` both fire on `pull_request`).
-- **C5 — PENDING.** `merge-prep.agent.md` hardcodes `origin/main` as the PR base
-  (confirmed: `git merge origin/main`, lines 35/55/60); change to `dev`.
+- **C5 — DONE (Phase 5).** The hardcoded `origin/main` base reference is gone: the
+  mechanic resolves the PR's actual `base.ref` via the GitHub API in `agent-mechanic.yml`
+  (and the agent prompt reads `$BASE_BRANCH` from the env, never hardcodes a branch name).
 
 **D · gh state / branches / stale files**
 
@@ -373,6 +380,6 @@ Status legend: **LIVE** (on `origin/dev`) · **PENDING** · **DONE-by-owner**.
   migration dissolves (and D2's rationale).
 - [[project_no_dist_build]] — pkb-is-a-remote-MCP (B1).
 - `.github/workflows/{release-please,build-extension,typecheck}.yml`,
-  `.github/rulesets/pr-review-and-merge.yml`, `.github/agents/merge-prep.agent.md`,
-  `.github/workflows/agent-merge-prep.yml`, `Dockerfile`, `.pre-commit-config.yaml`,
+  `.github/rulesets/pr-review-and-merge.yml`, `.github/agents/mechanic.agent.md`,
+  `.github/workflows/agent-mechanic.yml`, `Dockerfile`, `.pre-commit-config.yaml`,
   `scripts/build.py`.
