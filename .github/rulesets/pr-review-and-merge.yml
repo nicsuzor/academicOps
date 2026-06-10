@@ -36,11 +36,17 @@ conditions:
 
 enforcement: active
 
-# Who can bypass these rules (admin role)
+# Who can bypass these rules: NO ONE.
+# The live ruleset has bypass_actors: null — the hardened "never merge without
+# Nic" state the trust-gate invariant relies on (james PR #1682 review; 2026-05-29
+# supervision session). The admin (actor_id 5, always-bypass) entry below was
+# initial-commit boilerplate that drifted from the live state; left in place it
+# would have re-granted repository admins a standing bypass on the next
+# sync-ruleset.sh apply — a guardrail weakening (aops-d62201ca).
+# Kept as null (not []) so the payload serialises identically to the live API
+# value and the sync diff stays clean. Do NOT add bypass_actors without an
+# explicit, recorded decision.
 bypass_actors:
-  - actor_id: 5          # Repository admin role
-    actor_type: RepositoryRole
-    bypass_mode: always
 
 rules:
   # ─────────────────────────────────────────
