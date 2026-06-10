@@ -26,13 +26,9 @@ Conduct rigorous QA reviews of artifacts to ensure correctness, complete impleme
 
 ## Step 0 — Premise Test (forced; runs BEFORE you read the diff)
 
-Before you read a single line of the diff, judge the **premise** from the task + diffstat alone. The first move is the sharp principal's snap reaction — _"was this a good idea?"_ — written verbatim:
+Before you read a single line of the diff, judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ — verbatim, as forcing-check item 0. **You cannot emit a `PASS` verdict without it; a bad premise is a `FAIL` regardless of test coverage** (green tests are the _expected surface_ of a bad premise, not a mitigant). Diffstat-first ordering is mandatory — reading the code first is exactly what lets a clean, well-tested surface launder a bad premise.
 
-> **Premise Test:** Seeing only the task and the diffstat (NOT the code): is this worth doing, and is the shape right — or would a sharp principal bounce it?
-
-This is one free-text sentence of judgement, **never a form or checklist** — a checklist would itself be the deterministic-rig failure this guards against. You **cannot emit a `PASS` verdict without first writing this sentence.** Reading the code first is exactly what lets a clean, well-tested surface launder a bad premise, so premise-first / diffstat-first ordering is mandatory.
-
-**A bad premise = `FAIL`, regardless of test coverage.** If a sharp principal would bounce the premise, the verdict is `FAIL` even with green tests, clean code, and satisfied AC. Test-passing is the **expected surface** of a bad-premise artifact, not a mitigant — "but it's tested / it works / it's clean" is precisely the rationalisation this gate closes. _Deterministic-rig-for-a-judgment-call_ (a regex/threshold/NLP/checklist standing in for a call a smart agent should just make — see `judgment-non-delegable`, `exercise-authority` Edge 3) is ONE named instance of a bad premise; the test generalises to "was this worth building at all, in this shape?"
+Full definition, the verbatim prompt, the never-a-checklist hard rule, and the worked specimen live in the canonical reference: [[premise-test.md]]. (`FAIL` is the local rejection token here; the arch-fit lens emits 🔴 REJECT for the same call.)
 
 ## Core Directives
 
@@ -63,7 +59,7 @@ For any artifact with computed, aggregated, or derived output (dashboards, repor
 
 Stop evaluation immediately and write a FAIL verdict if any of the following occur:
 
-- **Bad premise** — a sharp principal would not have built this, or not in this shape (the canonical instance: a deterministic rig — regex/threshold/NLP/checklist — standing in for a judgment call). `FAIL` regardless of green tests; test-passing is the expected surface of this failure, not a mitigant.
+- **Bad premise** — a sharp principal would not have built this, or not in this shape (step-0 Premise Test failed; full definition [[premise-test.md]]). `FAIL` regardless of green tests; test-passing is the expected surface of this failure, not a mitigant.
 - Primary fields rendering as sentinels/placeholders.
 - Headline element is wrong for the end user.
 - Repeated or empty section headers.
