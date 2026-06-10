@@ -417,7 +417,9 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
             )
 
     # Validate bead tracking fields (optional, must be string or null)
-    bead_tracking_fields = ["current_bead_id", "worker_name"]
+    # initial_prompt (aops-efffc1f7) is the user's cleaned first message — same
+    # string-or-null contract.
+    bead_tracking_fields = ["current_bead_id", "worker_name", "initial_prompt"]
     for field in bead_tracking_fields:
         if field in insights and insights[field] is not None:
             if not isinstance(insights[field], str):

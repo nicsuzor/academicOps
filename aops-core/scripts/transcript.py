@@ -45,6 +45,7 @@ from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     SessionSummary,
     UsageStats,
+    extract_initial_prompt,
     extract_reflection_from_entries,
     extract_session_context,
     extract_timeline_events,
@@ -217,6 +218,11 @@ _REFLECTION_FIELDS = (
     "framework_reflections",
     "next_step",
     "root_cause",
+    # Timeline-derived but still preserve-on-empty: if a later pass somehow
+    # fails to re-extract the initial prompt (e.g. truncated read), keep the
+    # value an earlier pass already captured rather than downgrading to empty
+    # (aops-efffc1f7).
+    "initial_prompt",
 )
 
 
@@ -254,6 +260,28 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     old_events = existing.get("timeline_events") or []
     if len(new_events) > len(old_events):
         return "jsonl grew"
+
+    # Backfill the user's initial intent onto older summaries that predate the
+    # field (aops-efffc1f7). The event count may be unchanged, so this is not
+    # caught by the length check above.
+    if new.get("initial_prompt") and not existing.get("initial_prompt"):
+        return "initial_prompt appeared"
+
+    # Backfill empty user_prompt descriptions: an older run (or an older code
+    # version) may have written user_prompt events with empty descriptions. If
+    # this run populated more of them — even at the same event count — refresh.
+    def _populated_descriptions(events: list) -> int:
+        count = 0
+        for e in events:
+            if e.get("type") != "user_prompt":
+                continue
+            desc = e.get("description") or ""  # allow-fallback: description optional; "" = no text
+            if desc.strip():
+                count += 1
+        return count
+
+    if _populated_descriptions(new_events) > _populated_descriptions(old_events):
+        return "timeline descriptions populated"
 
     # If the new run picked up token_metrics that weren't there before, refresh.
     if new.get("token_metrics") and not existing.get("token_metrics"):
@@ -440,6 +468,11 @@ def _save_minimal_token_summary(
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
+        # Capture the user's initial intent so the dashboard can orient even on
+        # no-reflection / still-running sessions (aops-efffc1f7).
+        initial_prompt = extract_initial_prompt(timeline_events)
+        if initial_prompt:
+            insights["initial_prompt"] = initial_prompt
         # Elevate PR URL to root if found
         for event in timeline_events:
             if event.get("type") == "pr_create" and event.get("pr_url"):
@@ -589,6 +622,12 @@ def _process_reflection(
     insights = per_reflection_insights[0]
     for nxt in per_reflection_insights[1:]:
         insights = merge_insights(insights, nxt)
+
+    # Capture the user's initial intent (aops-efffc1f7). timeline_events is
+    # attached to the last per-reflection dict, so it survives the merge above.
+    initial_prompt = extract_initial_prompt(insights.get("timeline_events"))
+    if initial_prompt:
+        insights["initial_prompt"] = initial_prompt
 
     try:
         validate_insights_schema(insights)
