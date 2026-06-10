@@ -84,6 +84,78 @@ class TestUniversalRouter:
         assert out.hookSpecificOutput.additionalContext == "Context"
 
 
+class TestLightweightHydratorCoverage:
+    """Coverage matrix for `_run_lightweight_hydrator` (UserPromptSubmit inject).
+
+    Regression for aops-f181088c item 3: the T0 PKB-search nudge must reach
+    Task() subagents, not just main sessions. The routing hint stays
+    main-session-only; task-notifications get nothing.
+
+    | Surface             | Routing hint | PKB nudge |
+    | ------------------- | :----------: | :-------: |
+    | Main session        |      ✓       |     ✓     |
+    | Subagent/sidechain  |      ✗       |     ✓     |
+    | Task-notification   |      ✗       |     ✗     |
+    """
+
+    HINT = "ROUTING_HINT_SENTINEL"
+    NUDGE = "PKB_NUDGE_SENTINEL"
+
+    @pytest.fixture
+    def router_instance(self, monkeypatch):
+        monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
+        return HookRouter()
+
+    @pytest.fixture
+    def fake_templates(self, monkeypatch):
+        sentinels = {"hydration.warn": self.HINT, "pkb.nudge": self.NUDGE}
+
+        class _FakeRegistry:
+            def render(self, name, variables=None):
+                return sentinels.get(name, "")
+
+        monkeypatch.setattr(
+            "lib.template_registry.TemplateRegistry.instance",
+            classmethod(lambda cls: _FakeRegistry()),
+        )
+
+    def _ctx(self, router_instance, *, subagent=False, prompt="do the thing"):
+        raw = {
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": "test-cov",
+            "prompt": prompt,
+        }
+        if subagent:
+            raw["is_subagent"] = True
+        return router_instance.normalize_input(raw)
+
+    def test_main_session_gets_hint_and_nudge(self, router_instance, fake_templates):
+        ctx = self._ctx(router_instance, subagent=False)
+        assert ctx.is_subagent is False
+        out = CanonicalHookOutput()
+        router_instance._run_lightweight_hydrator(ctx, None, out)
+        assert self.HINT in (out.context_injection or "")
+        assert self.NUDGE in (out.context_injection or "")
+
+    def test_subagent_gets_nudge_but_not_hint(self, router_instance, fake_templates):
+        ctx = self._ctx(router_instance, subagent=True)
+        assert ctx.is_subagent is True
+        out = CanonicalHookOutput()
+        router_instance._run_lightweight_hydrator(ctx, None, out)
+        # The whole point of item 3: subagents DO receive the nudge.
+        assert self.NUDGE in (out.context_injection or "")
+        # Routing hint remains main-session-only.
+        assert self.HINT not in (out.context_injection or "")
+
+    def test_task_notification_gets_nothing(self, router_instance, fake_templates):
+        ctx = self._ctx(
+            router_instance, subagent=False, prompt="<task-notification>ping</task-notification>"
+        )
+        out = CanonicalHookOutput()
+        router_instance._run_lightweight_hydrator(ctx, None, out)
+        assert not out.context_injection
+
+
 class TestToolInputNormalization:
     """Tests for JSON string normalization in router.py."""
 
