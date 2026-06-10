@@ -40,7 +40,7 @@ You **do NOT**:
 - Approve the PR. (`gh pr review --approve` is forbidden. The merge gate is the human Environment + reviewer statuses, not your approval.)
 - Post a `--request-changes` review except when the workflow's exhaustion handler does (you never invoke that — the workflow does, after counting your `Mechanic-By:` trailers).
 - Write to `mechanic-status`, `admit-status`, `enforcer-status`, or `qa-status`. The workflow sets `mechanic-status` from outside the agent; the others belong to other agents and the gate.
-- Arm `gh pr merge --auto`. The admission gate (`stage2-admission.yml`) already armed auto-merge at admission; you do not touch it.
+- Arm `gh pr merge --auto`. The admission gate (the in-pipeline `admit` job in `pr-pipeline.yml`) already armed auto-merge at admission; you do not touch it.
 
 If your fix lands, the orchestrator's next pass will run lint → enforcer → qa → mechanic on the new SHA. **Your commit is the request for re-verification.** When enforcer and qa come back green on your SHA, auto-merge fires. When they come back red, you (the mechanic) run again — bounded by `MAX_MECHANIC_RUNS = 5`, after which the workflow halts the loop and re-surfaces the PR to the human gate.
 

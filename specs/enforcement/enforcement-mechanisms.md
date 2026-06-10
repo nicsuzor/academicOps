@@ -450,13 +450,13 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 
 ### L10 Merge gates
 
-#### stage2-admission auto-merge arm
+#### admit (in-pipeline) auto-merge arm
 
 - **Pipeline layer**: L10 Merge gates
 - **Pyramid tier**: tip
-- **Trigger**: Stage-1 convergence dispatches `stage2-admission.yml`, which parks at the `pr-fix-loop` Environment; the maintainer approves the pending deployment
+- **Trigger**: Stage-1 convergence reaches the in-pipeline `admit` job (`pr-pipeline.yml`), which parks at the `pr-fix-loop` Environment on the PR's own run; the maintainer approves the pending deployment. (Retired the separate-dispatch `stage2-admission.yml` form — the approval prompt is now PR-attached; see `specs/workflows/pr-pipeline.md` §3.2.)
 - **Purpose**: Single human "good idea, make it mergeable" decision — sets the required `admit-status` to success and arms `gh pr merge --auto --squash --delete-branch`. Replaces v1's bot-approval / cron / auto-merge mechanism (the no-op runner on every green PR is gone).
-- **Location**: `.github/workflows/stage2-admission.yml`
+- **Location**: `.github/workflows/pr-pipeline.yml` (`admit` job)
 - **Scope**: GHA + GitHub Environment
 - **Status**: active
 
