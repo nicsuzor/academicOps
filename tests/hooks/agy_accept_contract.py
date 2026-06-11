@@ -115,11 +115,28 @@ class PostToolHookResult(_Strict):
 
 
 class HookInjectedStep(_Strict):
-    """``exa.hooks_pb.HookInjectedStep`` — oneof step body."""
+    """``exa.hooks_pb.HookInjectedStep`` — oneof step body.
+
+    Field types decoded directly from the ``exa.hooks_pb`` FileDescriptorProto
+    embedded in the agy 1.0.7 binary (``~/.local/bin/agy``, FieldDescriptorProto
+    ``type`` field per member, aops-2dc18411 follow-up):
+
+        oneof step:
+          tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
+          user_message       (2)  TYPE_STRING   (scalar — NOT a nested message)
+          ephemeral_message  (3)  TYPE_STRING   (scalar — NOT a nested message)
+          system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
+
+    ``HookSystemMessage`` is ``{system_message:string, metadata}``, so the
+    ``systemMessage`` member is the nested ``{"systemMessage": "..."}`` object;
+    ``userMessage`` / ``ephemeralMessage`` are PLAIN STRINGS in protojson
+    (``{"ephemeralMessage": "..."}``), not objects. Modelling them as ``dict``
+    was wrong and would have masked a malformed string-vs-message emission.
+    """
 
     toolCall: dict[str, Any] | None = None
-    userMessage: dict[str, Any] | None = None
-    ephemeralMessage: dict[str, Any] | None = None
+    userMessage: str | None = None
+    ephemeralMessage: str | None = None
     systemMessage: dict[str, Any] | None = None
 
 

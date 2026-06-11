@@ -130,6 +130,37 @@ def test_preinvocation_without_context_is_empty():
     assert _agy("allow", event="PreInvocation") == {}
 
 
+def test_injected_step_oneof_variant_shapes_match_binary_descriptor():
+    """Pin the agy 1.0.7 ``HookInjectedStep`` oneof field types we emit against.
+
+    Decoded from the ``exa.hooks_pb`` FileDescriptorProto in the agy binary:
+    ``system_message``/``tool_call`` are TYPE_MESSAGE (nested object),
+    ``user_message``/``ephemeral_message`` are TYPE_STRING (scalar). The router
+    emits the ``systemMessage`` (message) member, so its protojson is a nested
+    object. This test guards both the emitted shape and the accept-contract's
+    scalar-vs-message typing so a regression to ``{"ephemeralMessage": {...}}``
+    (object where a string is required) is caught offline.
+    """
+    from tests.hooks.agy_accept_contract import HookInjectedStep, is_accepted_by_agy
+
+    # The router's emitted variant: systemMessage is a nested message.
+    payload = _agy("allow", event="PreInvocation", context="x")
+    assert payload["injectSteps"] == [{"systemMessage": {"systemMessage": "x"}}]
+    accepted, offending = is_accepted_by_agy(payload, "PreInvocation")
+    assert accepted, offending
+
+    # Descriptor-typed scalar members accept a bare string and reject an object.
+    HookInjectedStep.model_validate({"ephemeralMessage": "scalar ok"})
+    HookInjectedStep.model_validate({"userMessage": "scalar ok"})
+    import pytest as _pytest
+    from pydantic import ValidationError
+
+    with _pytest.raises(ValidationError):
+        HookInjectedStep.model_validate({"ephemeralMessage": {"text": "wrong-object"}})
+    # And the message members accept an object.
+    HookInjectedStep.model_validate({"systemMessage": {"systemMessage": "ok"}})
+
+
 # --- PostInvocation (Stop) -------------------------------------------------
 
 

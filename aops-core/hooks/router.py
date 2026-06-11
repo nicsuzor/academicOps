@@ -960,12 +960,36 @@ class HookRouter:
     def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
         """Build an agy ``HookInjectedStep`` list carrying ``text``.
 
-        ``HookInjectedStep`` is a oneof; we use the ``systemMessage`` member
-        (``{systemMessage, metadata}``) per the ``exa.hooks_pb`` binary-descriptor
-        notes in epic aops-2dc18411. The inner field shape is descriptor-sourced
-        (marked VERIFY upstream), not yet live-verified — but its failure mode is
-        benign: a wrong inner shape makes agy drop the advisory, never bypass an
-        enforcement verdict, so emitting the documented best-effort is safe.
+        ``HookInjectedStep`` is a oneof. Field types decoded directly from the
+        ``exa.hooks_pb`` FileDescriptorProto embedded in the agy 1.0.7 binary
+        (FieldDescriptorProto ``type`` per member):
+
+            tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
+            user_message       (2)  TYPE_STRING   scalar string
+            ephemeral_message  (3)  TYPE_STRING   scalar string
+            system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
+
+        We use the ``systemMessage`` member, whose protojson is the nested
+        ``{"systemMessage": text}`` object (``HookSystemMessage`` = ``{system_message,
+        metadata}``). That shape is now descriptor-VERIFIED correct for field 4
+        (it is NOT a guess: the scalar ``userMessage`` / ``ephemeralMessage``
+        members would each be a bare string, ``{"ephemeralMessage": text}``).
+
+        HARD LIVE FINDING — agy 1.0.7 (2026-06-11, this authenticated host):
+        the agy harness logs ``json_hook_caller.go:144 ... PreInvocation_0_0:
+        executing command`` but **never spawns the configured command** for
+        PreInvocation/PostInvocation hooks. strace (``trace=execve``) over fresh
+        PTY sessions shows ONLY ``PostToolUse`` ever exec's ``router.sh``; an
+        isolated sentinel hook bound to PreInvocation fired ZERO times while its
+        PostToolUse twin fired on every step. A prompt-type PreInvocation hook
+        likewise produced no model-visible effect. So NO injectSteps payload —
+        of any oneof variant (systemMessage/ephemeralMessage/userMessage all
+        live-tested: the model reported the content ABSENT and the transcript
+        grep was zero) — can reach the model on agy 1.0.7. The emitted-but-
+        unrendered symptom is a platform no-op upstream of this formatter, not a
+        wrong-variant bug. This emission is kept descriptor-correct so it works
+        the moment agy starts honouring the hook; the live channel is the
+        blocker, tracked for re-test on the next agy release.
         """
         if not text:
             return []
