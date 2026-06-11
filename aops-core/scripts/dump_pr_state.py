@@ -242,7 +242,7 @@ def main():
     seen_paths = set()
 
     for slug, proj in manager.projects.items():
-        if not proj.get("is_repo", True):
+        if proj.get("is_repo") is False:
             continue
         repo_path = proj.get("path")
         if not repo_path or not repo_path.exists():
