@@ -157,9 +157,31 @@ PR opened → lint + typecheck + tests → agent review → merge prep → human
 
 #### Claude Code Cowork
 
+Cowork runs **two plugins**: `aops-core` supplies the shared hook stack, agents,
+and core skills; `aops-cowork` is a thin **additive, skills-only** layer on top
+(the `cowork-sync` PKB↔native-task-list mirror and the Cowork variants of shared
+skills). `aops-cowork` ships **no hooks of its own** — installing aops-core into
+Cowork from the `nicsuzor/aops` main `dist` marketplace makes Cowork fire the
+standard aops-core hooks, so a single shared hook stack serves both Claude Code
+and Cowork (empirically confirmed; see `mem-fe29111a` / task `aops-04075740`).
+
 ```bash
-# Placeholder for T4
+# 1. aops-core — the shared hook stack + core skills/agents, from the main dist channel.
+claude plugin marketplace add nicsuzor/academicOps#dist
+claude plugin install aops-core@academicOps
+
+# 2. aops-cowork — the additive, hooks-free Cowork layer. For LOCAL dev it ships
+#    in its own isolated marketplace as `aops-coworklocal` so it never clobbers a
+#    published install (see `make install-cowork`); the published plugin is
+#    `aops-cowork`. Cowork nukes github-source marketplaces on restart, so the
+#    local path uses a local-directory marketplace / manual zip upload.
+make install-cowork        # local dev: builds + installs aops-coworklocal
+# or upload dist/aops-coworklocal-latest.zip through the Cowork UI.
 ```
+
+> Install aops-core **first** so Cowork picks up the hook stack; aops-cowork then
+> only adds Cowork-specific skills. Because aops-cowork bundles no hooks, the
+> lifecycle hooks fire exactly once (from aops-core) — no duplication.
 
 #### Gemini CLI
 
