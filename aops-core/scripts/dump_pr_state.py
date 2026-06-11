@@ -242,6 +242,8 @@ def main():
     seen_paths = set()
 
     for slug, proj in manager.projects.items():
+        if proj.get("is_repo") is False:
+            continue
         repo_path = proj.get("path")
         if not repo_path or not repo_path.exists():
             print(f"Skipping {slug}: path not found or doesn't exist", file=sys.stderr)
