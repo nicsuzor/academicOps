@@ -2217,9 +2217,8 @@ class PolecatManager:
             )
             if rebase_res.returncode != 0:
                 subprocess.run(["git", "rebase", "--abort"], cwd=worktree_path, check=False)
-                print(
-                    f"⚠ Failed to auto-rebase onto origin/{branch_name}: {rebase_res.stderr.strip()}",
-                    file=sys.stderr,
+                raise RuntimeError(
+                    f"Failed to auto-rebase onto origin/{branch_name}: {rebase_res.stderr.strip()}"
                 )
             return
 
