@@ -22,7 +22,7 @@ A research deliverable would have its own subworkflow file with different vocabu
 
 Three gates MUST pass before any `polecat run` invocation. **Pauli runs them during preflight** — the main agent never invokes them inline. Canonical specs in [[worker-dispatch#mandatory-pre-dispatch-gates]]:
 
-1. **Host check (issue #598)** — `hostname -s` matches a registered polecat host. Mismatch → SSH+tmux remote dispatch; no silent local fallback.
+1. **Host check (issue #598)** — `hostname -s` matches a registered polecat host. Mismatch → refuse to dispatch (Docker is LOCAL on this host; no remote SSH hop exists).
 2. **PKB readiness probe (issue #600)** — `polecat ping-pkb` succeeds on the intended worker host. Failure → refuse to dispatch.
 3. **Pre-flight Confirmation Summary** — 4-row table (Task ID / Source repo / `project=` / Next link). Halt if any row is unknown or rows 2/3 disagree.
 
@@ -30,10 +30,10 @@ Three gates MUST pass before any `polecat run` invocation. **Pauli runs them dur
 
 ```bash
 # Claude worker
-polecat run -t <task-id> -p <project>
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model claude
 
 # Gemini worker
-polecat run -t <task-id> -p <project> -g
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model gemini-3.1-pro-preview
 
 # Jules (async, Google infrastructure)
 pkb task <task-id> | jules new --repo <owner>/<repo>

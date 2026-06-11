@@ -131,25 +131,19 @@ This pattern is executable today via the live shared-branch mechanism:
 
 ### Draft PR Lifecycle Contract
 
-1. **Draft PR**: The first worker dispatched on the shared branch is responsible for creating the single **draft PR** using `gh pr create --draft --branch polecat/epic-<epic-id>`. If the worker exits without creating the PR, the supervisor must create it on the next tick.
-2. **Strict Draft Status**: The PR must remain as a **draft PR** throughout the lifecycle of all intermediate subtasks. No worker or supervisor is permitted to open a live/ready PR, promote the PR, or merge it during active development.
-3. **Only Final Stage Promotes**:
-   - Only the worker executing the **final stage** of the epic is authorized to promote the PR (mark it ready-for-review) and close the PR + epic.
-   - **Promotion is not a merge**. In gated repositories (such as `aops`), the PR must stay draft or ready-for-review until it receives Nic's manual per-SHA `APPROVED` review. No agent or automated tool may simulate or bypass this approval signal.
-   - If the final worker exits successfully but fails to promote the PR, the supervisor must promote it using `gh pr ready <pr-number>` before running the final `marsha` verification.
+1. **Contract (target)**: One DRAFT PR until explicit final-stage promotion — no intermediate worker produces a ready PR. **This behaviour is DELIVERED BY [[aops-9f07c557]] (in progress), not by the merged shared-branch base (PR #1749).**
+2. **Current mechanism until that lands**: Polecat auto-creates the single PR on the first `finish` via `gh pr create --head polecat/epic-<epic-id>` (NOT a worker `gh pr create`). `--draft` is appended only `if is_partial` (per `polecat/finalize.py:642-645`). On a FULL completion (such as the auto-finish path in `cli.py:5366-5372` which does not set `is_partial`), the PR is created **READY**, not draft. Until [[aops-9f07c557]] adds the `is_shared` draft carve-out + final-stage promotion, the PR's safety gate is **branch protection** — it cannot merge without Nic's per-SHA `APPROVED` review regardless of draft/ready status. No agent ever simulates that signal.
+3. **No Worker-Created PR**: Workers do not manually create PRs. The PR materialises automatically when the first worker on the shared branch finishes; the supervisor does not hand-create it and no worker is told to. (The supervisor's only PR-state action remains the final-stage promotion `gh pr ready`, once [[aops-9f07c557]] makes draft-until-final real.)
 4. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
 
 ## Canonical Dispatch Commands
 
 ```bash
 # Local dispatch
-zsh -i -c "polecat run -t <task-id> -p <project> [--gemini] [--model <name>]"
-
-# Remote dispatch (SSH + tmux)
-ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--gemini] [--model <name>]\"'"
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model <name>
 ```
 
-- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-2.5-pro` (paired with `--gemini`). `--opus` is not a valid flag and will error — use `--model opus`.
+- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-3.1-pro-preview` for Gemini. `--opus` is not a valid flag and will error — use `--model opus`.
 
 ## Emergency Brake
 
@@ -249,16 +243,6 @@ Monitor(
   description: "polecat exits",
   persistent: true,
   command: "while true; do docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
-)
-```
-
-### Remote Monitor Command
-
-```
-Monitor(
-  description: "polecat exits",
-  persistent: true,
-  command: "while true; do ssh wsl docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
 )
 ```
 
