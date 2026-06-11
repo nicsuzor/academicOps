@@ -71,4 +71,4 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ## Output
 
-Commit the note (don't leave it for the sync): `cd "$ACA_DATA" && git add "daily/$(date +%Y%m%d)-daily.md" daily.md && { git diff --cached --quiet || git commit -m "daily: note for $(date +%Y-%m-%d)" --no-verify; }` — the guard makes no-op re-runs exit 0. Then end with a one-line confirmation: "Daily note updated. Use `/pull` to start work." and halt.
+Commit the note (don't leave it for the sync): `cd "$ACA_DATA" && git add "daily/$(date +%Y%m%d)-daily.md" daily.md && { git diff --cached --quiet || git commit -m "daily: note for $(date +%Y-%m-%d)"; }` — the guard makes no-op re-runs exit 0. If a pre-commit hook fails, let it surface; don't bypass it. Then end with a one-line confirmation: "Daily note updated. Use `/pull` to start work." and halt.
