@@ -115,10 +115,7 @@ Pauli has already verified pre-dispatch gates (host check, ping-pkb, 4-row pre-f
 Verification depends on the task context:
 
 - **Standalone Tasks / Cumulative Final PR**: Trigger Marsha's job. Triggered when a work item is `in_progress` and the worker has exited (background task notification, PR appeared, polecat finish output). Pass marsha the work item ID, the review surface (PR URL or "none"), and the AC. Consume her structured verdict per [[../SKILL.md#marsha--verify]]. Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
-- **Intermediate Tasks on Shared Branch**: Perform local outcome-based verification without invoking Marsha. Run `git log origin/polecat/epic-<epic-id> --grep=<task-id>` to verify remote commit presence, and inspect the git diff to ensure changes are correct, complete, and do not contain debug scripts, placeholders, or credentials.
-  - If verification passes, transition status directly to `merge_ready`.
-  - If verification fails (e.g. no commits, empty diff, or unexpected placeholders), transition to `React` with context `verification-failed`.
-  - If the worker exited non-zero, transition directly to `React` with context `worker-failed`.
+- **Intermediate Tasks on Shared Branch**: Perform local outcome-based verification without invoking Marsha — see [[code-deliverable#monitor-wait-for-the-pr-then-halt]] for the exact steps and outcome transitions.
 
 For code deliverables, the concrete monitoring mechanisms (background worker exit notifications, one-shot `gh pr list`) are in [[code-deliverable#monitor-wait-for-the-pr-then-halt]].
 
