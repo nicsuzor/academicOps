@@ -2,25 +2,98 @@
 id: supervisor-c41c35d6
 name: supervisor
 description: >
-  Epic-level task supervisor — owns an epic from decomposition through
-  the review surface. Stateless tick driven by `/loop`; all cross-tick
-  state lives in the epic body.
+  The single authoritative supervision process for any delegate-and-verify
+  work — epic-level task supervision (stateless tick driven by `/loop`, state
+  in the epic body) AND conversational orchestration of background workers
+  (`/goal` "don't get involved yourself, make sure it gets done", `/dogfood`).
+  Junior MUST invoke this skill for supervision; never hand-roll it inline.
 triggers:
   - "supervise"
   - "supervisor"
   - "shepherd"
   - "coordinate epic"
   - "get these done"
+  - "make sure it gets done"
+  - "don't get involved yourself"
+  - "delegate this and verify"
+  - "supervise these agents"
+  - "dogfood"
 modifies_files: true
-needs_task: true
+needs_task: false
 mode: iterative
 domain:
   - operations
 ---
 
-# Supervisor — Stateless Tick
+# Supervisor — The Supervision Process
 
-Advance one epic by one decision per tick, then exit. Cross-tick state lives entirely in the epic body.
+This skill **is** the framework's supervision process. There are two modes; the discipline below
+is identical across both.
+
+- **Epic-tick mode** — own a PKB epic across `/loop` ticks; cross-tick state lives in the epic body.
+- **Conversational orchestration mode** — run as the main conversation agent delegating to
+  background workers (`/goal` "don't get involved yourself, make sure it gets done", `/dogfood`),
+  with no epic/polecat; state lives in the conversation thread.
+
+## When to Invoke (mandatory)
+
+Junior (and any orchestrator) **MUST run supervision through this skill** — never hand-rolled in
+the main conversation — whenever delegating work and verifying it gets done. This includes the
+conversational orchestrator case: a `/goal` that says "delegate this, don't get involved
+yourself, make sure it actually gets done", a `/dogfood` run, or any delegate-and-verify loop
+over background `Agent()` workers. "I'm just the conversational orchestrator" is **not** an
+exemption — that is exactly when this skill is required. Hand-rolling supervision inline is how
+confident-but-unproofed verdicts and single-part PRs reach the user.
+
+## Holding Delegated Work to Proof (read first)
+
+Whatever the mode — an epic tick here, a program tick, or running as the main conversation
+agent who delegates everything and verifies it — the supervisor's value is **not trusting any
+single agent**: proof claims, isolate confounds, and never relay a conclusion you have not made
+falsifiable. The full discipline is canonical in
+[[instructions/holding-work-to-proof.md]]. The non-negotiables:
+
+- **Proof, not claims.** A change is not a fix until a runtime observation confirms the
+  user-facing behaviour against an acceptance gate you stated _before_ dispatch. "Tests pass"
+  is never the gate for a behaviour bug.
+- **The confound rule.** A verdict that blames anything you don't own ("platform bug",
+  "upstream", "external blocker") is not believable — and you must not relay it — until a
+  clean-room differential control (vanilla setup + positive control) has ruled out our own
+  code/config. Convergent confidence from several agents is **not** that control. This applies
+  to your _own_ relayed conclusions most of all.
+- **Don't trust convergence.** Cross-check each worker's strongest evidence (not its summary);
+  when agents contradict, adjudicate with methodology-independent evidence instead of picking a
+  side.
+- **Structured handback.** Every brief requires a capped verdict (`VERDICT / CLAIM / GATE /
+  EVIDENCE-pointers / CONFIDENCE / CONFOUND CHECK`); read that, not the narrative dump — your
+  context is the bottleneck.
+
+## Conversational Orchestration Mode
+
+When you reach this skill from a `/goal` / `/dogfood` "delegate this, don't get involved
+yourself, make sure it gets done" — there is no epic task or polecat. The mechanics differ from
+the epic tick; the discipline above does not.
+
+- **Workers**: background `Agent(subagent_type=…, run_in_background=True)` calls (general-purpose
+  for build/investigate, `marsha` for runtime QA). Results arrive as `<task-notification>`.
+- **State lives in the conversation thread**, not an epic body. Keep a running ledger in your
+  messages: each work item, its acceptance gate, and its current verdict. `needs_task` is off for
+  this mode — do not invent an epic just to satisfy a precondition.
+- **You cannot steer a running background worker** (no live message channel). So **front-load
+  every brief**: the falsifiable acceptance gate (§1), the known PKB/prior intelligence so it
+  doesn't re-derive (§4), the explicit "escalate, don't fake-pass" instruction (§5), and the
+  structured handback contract (§6). A good brief is your only steering wheel; if a worker is
+  mis-briefed mid-flight, **stop it and relaunch** rather than letting it burn its context.
+- **Read each deliverable through its output file** (Read/grep the parts you need); never absorb
+  a multi-thousand-token narrative into your turn just to lift a one-line verdict.
+- **Preload predictable tool schemas once** (task get/update, memory create, `TaskStop`,
+  `Monitor`) — repeated `ToolSearch` and parameter-shape retries are pure context waste.
+- **When the work produces code/PRs**, the [Draft PR Lifecycle Contract](#draft-pr-lifecycle-contract-firm-policy)
+  still applies: one shared-branch draft PR, promoted to ready only when all the delegated work
+  has landed.
+- **Reporting**: every status to the user is sourced and confidence-rated; correct your own prior
+  conclusions out loud; escalate genuine frontiers (auth-gated checks, human judgment) instead of
+  manufacturing a pass.
 
 ## Reporting Posture
 
@@ -129,12 +202,15 @@ This pattern is executable today via the live shared-branch mechanism:
    - The epic must be decomposed into **parallel-able units** (which have no inter-dependency and can execute concurrently on the shared branch) and **sequential-dependency units** (which carry explicit `depends_on: [<id>]` edges).
    - The supervisor dispatches parallel units concurrently, while sequential units are blocked until their predecessor tasks are marked complete.
 
-### Draft PR Lifecycle Contract
+### Draft PR Lifecycle Contract (firm policy)
 
-1. **Contract (target)**: One DRAFT PR until explicit final-stage promotion — no intermediate worker produces a ready PR. **This behaviour is DELIVERED BY [[aops-9f07c557]] (in progress), not by the merged shared-branch base (PR #1749).**
-2. **Current mechanism until that lands**: Polecat auto-creates the single PR on the first `finish` via `gh pr create --head polecat/epic-<epic-id>` (NOT a worker `gh pr create`). `--draft` is appended only `if is_partial` (per `polecat/finalize.py:642-645`). On a FULL completion (such as the auto-finish path in `cli.py:5366-5372` which does not set `is_partial`), the PR is created **READY**, not draft. Until [[aops-9f07c557]] adds the `is_shared` draft carve-out + final-stage promotion, the PR's safety gate is **branch protection** — it cannot merge without Nic's per-SHA `APPROVED` review regardless of draft/ready status. No agent ever simulates that signal.
-3. **No Worker-Created PR**: Workers do not manually create PRs. The PR materialises automatically when the first worker on the shared branch finishes; the supervisor does not hand-create it and no worker is told to. (The supervisor's only PR-state action remains the final-stage promotion `gh pr ready`, once [[aops-9f07c557]] makes draft-until-final real.)
-4. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
+**One epic ships as ONE pull request, and it stays a DRAFT until every task on the shared branch has landed its commits. Only then does the supervisor flip it to ready (live).** No per-task / single-part PRs reach the merge pipeline or the user's attention — they consume review attention and CI resources for a fraction of an epic. This is policy now, not an aspiration.
+
+1. **Draft until all commits are up**: The single shared-branch PR remains a draft for the entire life of the epic. Every work item must be `done` (its commits present on `polecat/epic-<epic-id>`) before the supervisor promotes. A draft PR with outstanding work items is the **normal, expected** mid-epic state — do not promote early to "show progress".
+2. **Final-stage promotion is the only flip**: The supervisor's sole PR-state action is `gh pr ready` at the final-stage promotion, gated on: all work items `done`, the cumulative diff verified by exactly one `marsha` pass (see [marsha — Verify](#marsha--verify-review-surface)), and no open blockers. Promotion is a supervisor decision, never a worker action.
+3. **No Worker-Created PR**: Workers never create PRs. The single PR materialises automatically when the first worker on the shared branch finishes (`gh pr create --head polecat/epic-<epic-id>`, NOT a worker call); the supervisor neither hand-creates it nor instructs a worker to. The merge gate throughout is **branch protection** — the PR cannot merge without Nic's per-SHA `APPROVED` review regardless of draft/ready status, and no agent ever simulates that signal.
+4. **Enforce draft on creation (known mechanism gap)**: Polecat appends `--draft` only `if is_partial` (`polecat/finalize.py:642-645`), so the auto-finish FULL-completion path (`cli.py:5366-5372`) can create the PR **READY**. Until [[aops-9f07c557]] lands the `is_shared` draft carve-out, the supervisor MUST compensate: immediately after the PR first materialises, assert it is a draft (`gh pr ready --undo` / re-create as draft if it came up ready), and keep it draft until the final-stage promotion. A shared-epic PR that is live before all work items are `done` is a policy violation to be corrected, not left.
+5. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
 
 ## Canonical Dispatch Commands
 
@@ -180,6 +256,7 @@ Valid Classes: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `re
 - **Intent Authority**: When filing or decomposing tasks, leave `priority` at the uncurated default band — never originate a non-default band from importance or urgency. Only Nic sets intent, by express per-request instruction. Canonical rule: [[framework-conventions-summary#intent-authority]].
 - **PR Body Hygiene**: PR bodies describe the change for the reviewer — never carry do-not-merge / merge-gate / "awaiting Nic" banners. Branch protection is the enforced gate. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
 - **Engineering Integrity**: Failing tests/validations must be resolved, not bypassed.
+- **Confound Rule**: Never relay an "external blocker / not our code" verdict until a clean-room differential control has ruled out our own code as the confound. Canonical: [[instructions/holding-work-to-proof.md]].
 - **Critic Gate**: High-risk tasks must undergo preflight validation by Pauli before dispatch.
 - **Academic Integrity**: surfaced decisions published under the user's name require human confirmation.
 
