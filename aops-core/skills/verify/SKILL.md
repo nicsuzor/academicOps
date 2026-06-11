@@ -24,6 +24,12 @@ permalink: skills-verify
 
 Conduct rigorous QA reviews of artifacts to ensure correctness, complete implementation, and fitness for purpose.
 
+## Step 0 — Premise Test (forced; runs BEFORE you read the diff)
+
+Before you read a single line of the diff, judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ — verbatim, as forcing-check item 0. **You cannot emit a `PASS` verdict without it; a bad premise is a `FAIL` regardless of test coverage** (green tests are the _expected surface_ of a bad premise, not a mitigant). Diffstat-first ordering is mandatory — reading the code first is exactly what lets a clean, well-tested surface launder a bad premise.
+
+Full definition, the verbatim prompt, the never-a-checklist hard rule, and the worked specimen live in the canonical reference: [[premise-test.md]]. (`FAIL` is the local rejection token here; the arch-fit lens emits 🔴 REJECT for the same call.)
+
 ## Core Directives
 
 Default posture: **assume it's broken.** The burden is on the artifact to prove it works — not on you to prove it doesn't.
@@ -37,6 +43,7 @@ Default posture: **assume it's broken.** The burden is on the artifact to prove 
    - Verify changes are complete across all callsites.
    - Acknowledge known limitations or constraints.
 4. **Forcing Checks**: Write explicit answers for each in the report before a PASS verdict:
+   - **Premise Test (step 0, before reading the diff)**: State verbatim the sharp-principal reaction from task + diffstat alone (see Step 0). A bad premise is a `FAIL` regardless of test coverage; you cannot reach `PASS` without writing it.
    - **Sentinel / Empty-State Audit**: Count and list empty/sentinel fields (e.g. `DERIVER_MISSING`, `N/A`, `TODO`). Fail if primary value-signals are missing.
    - **Principal's-Eye Top-Line Read**: State verbatim the most prominent headline element and verify correctness for the end-user.
    - **Floor vs Ceiling**: State verbatim: "exceptional, or merely working?". Merely working is not a PASS on fitness tasks.
@@ -52,6 +59,7 @@ For any artifact with computed, aggregated, or derived output (dashboards, repor
 
 Stop evaluation immediately and write a FAIL verdict if any of the following occur:
 
+- **Bad premise** — a sharp principal would not have built this, or not in this shape (step-0 Premise Test failed; full definition [[premise-test.md]]). `FAIL` regardless of green tests; test-passing is the expected surface of this failure, not a mitigant.
 - Primary fields rendering as sentinels/placeholders.
 - Headline element is wrong for the end user.
 - Repeated or empty section headers.
@@ -78,6 +86,7 @@ Output reports exactly in this format:
 
 ### Forcing checks
 
+0. **Premise test (before reading the diff):** [verbatim sharp-principal reaction from task + diffstat alone — "was this a good idea, in this shape?" A bad premise -> FAIL regardless of tests; cannot reach PASS without this line]
 1. **Sentinel/empty-state audit:** [count + list of sentinels/placeholders. If primary signals absent -> FAIL]
 2. **Principal's-eye top-line read:** [headline element quoted, and whether correct]
 3. **Floor vs ceiling:** [verbatim "exceptional, or merely working?"]

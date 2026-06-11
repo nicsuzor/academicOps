@@ -83,6 +83,16 @@ Perform a critical, forensic review of a single session transcript, apply immedi
   - **The "Fix AND File" Invariant**: An immediate fix NEVER replaces the GitHub issue. You must STILL file the issue carrying the root-cause analysis. Do both: **Fix AND File**. The systemic lesson must survive even if the local symptom is already patched.
 - **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on the agent actually modifying the codebase to fix the live problem.
 
+### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
+
+When the transcript shows an artifact whose **premise** a sharp principal would have bounced — _"was this a good idea?"_ answered no; good, working, well-tested work done for a bad idea (canonical instance: a deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make, `judgment-non-delegable`) — that nonetheless passed review, classify it as a **bad-premise approval** and score the miss **against the reviewer who approved it**, not only the author:
+
+- Identify the review surface that emitted PASS / MERGE / APPROVE on the bad premise (arch-fit / `/verify` / rbg / pauli). Each of those carries a forced step-0 **Premise Test** (canonical definition: [[premise-test.md]]); an approval means that forcing function was skipped or rationalised past — a reviewer failure, with test-passing as its expected surface, never an excuse.
+- The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
+- Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
+
+This makes the reviewer's miss visible and attributed — the compounding fix for floor-optimisation (#1585): a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it.
+
 ### 3. Output Requirements
 
 Produce a review in this exact format. Keep text concise:
