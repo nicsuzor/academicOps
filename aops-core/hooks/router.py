@@ -334,6 +334,16 @@ class HookRouter:
         # 5. Tool Data
         tool_name = raw_input.get("tool_name")
         raw_ti = raw_input.get("tool_input", {})  # allow-fallback: type-coerced below
+
+        # Antigravity (agy) hook compatibility: tool details can be nested in raw_input.toolCall
+        if not tool_name:
+            nested_raw = raw_input.get("raw_input")
+            if isinstance(nested_raw, dict):
+                tool_call = nested_raw.get("toolCall")
+                if isinstance(tool_call, dict):
+                    tool_name = tool_call.get("name") or tool_name
+                    raw_ti = tool_call.get("args") or raw_ti
+
         tool_input = self._normalize_json_field(raw_ti)
         if not isinstance(tool_input, dict):
             tool_input = {}
@@ -346,6 +356,18 @@ class HookRouter:
             or raw_input.get("tool_response")
             or raw_input.get("subagent_result")
         )
+
+        # Antigravity (agy) hook compatibility: tool output can be nested in raw_input
+        if not raw_tool_output:
+            nested_raw = raw_input.get("raw_input")
+            if isinstance(nested_raw, dict):
+                raw_tool_output = (
+                    nested_raw.get("tool_result")
+                    or nested_raw.get("toolResult")
+                    or nested_raw.get("tool_response")
+                    or nested_raw.get("subagent_result")
+                )
+
         if raw_tool_output:
             tool_output = self._normalize_json_field(raw_tool_output)
 

@@ -18188,5 +18188,71 @@
         "extracted_at": "2026-03-10T02:24:38.538047+00:00"
       }
     }
+  ],
+  "agy_write_tools": [
+    {
+      "id": "agy-pretooluse-ask_permission-L10",
+      "hook_event": "PreToolUse",
+      "tool_name": "ask_permission",
+      "tool_input": {
+        "Action": "read_url",
+        "Reason": "I need to read the pull request on github.com to understand what problem needs to be fixed.",
+        "Target": "github.com"
+      },
+      "subagent_type": null,
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "raw_input": {
+        "hook_event_name": "PreToolUse",
+        "session_id": "9baf44bb-974f-484a-905f-ef29b94d2266",
+        "raw_input": {
+          "stepIdx": 10,
+          "toolCall": {
+            "name": "ask_permission",
+            "args": {
+              "Action": "read_url",
+              "Reason": "I need to read the pull request on github.com to understand what problem needs to be fixed.",
+              "Target": "github.com"
+            }
+          }
+        }
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.gemini/antigravity-cli/brain/9baf44bb-974f-484a-905f-ef29b94d2266/.system_generated/logs/transcript_full.jsonl",
+        "line_index": 10,
+        "session_id": "9baf44bb-974f-484a-905f-ef29b94d2266",
+        "logged_at": "2026-06-11T05:38:33+00:00",
+        "event_hash": "agy12345",
+        "extracted_at": "2026-06-11T05:40:00.000000+00:00"
+      }
+    }
+  ],
+  "agy_subagent_events": [
+    {
+      "id": "agy-subagentstart-L1",
+      "hook_event": "SubagentStart",
+      "tool_name": null,
+      "tool_input": {},
+      "subagent_type": "handover",
+      "is_subagent": false,
+      "expected": {
+        "verdict": "allow"
+      },
+      "raw_input": {
+        "hook_event_name": "SubagentStart",
+        "session_id": "9baf44bb-974f-484a-905f-ef29b94d2266",
+        "subagent_type": "handover"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.gemini/antigravity-cli/brain/9baf44bb-974f-484a-905f-ef29b94d2266/.system_generated/logs/transcript_full.jsonl",
+        "line_index": 1,
+        "session_id": "9baf44bb-974f-484a-905f-ef29b94d2266",
+        "logged_at": "2026-06-11T05:38:33+00:00",
+        "event_hash": "agy23456",
+        "extracted_at": "2026-06-11T05:40:00.000000+00:00"
+      }
+    }
   ]
 }

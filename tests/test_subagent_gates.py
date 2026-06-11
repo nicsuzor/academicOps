@@ -128,10 +128,16 @@ def test_router_normalize_activate_skill_extracts_skill_name(router):
 # =============================================================================
 
 _SUBAGENT_INTERNAL = _scenarios("gemini_subagent_internal_tools")
-_SPAWN_IN_MAIN = _scenarios("claude_spawn_in_main_session") + _scenarios(
-    "gemini_spawn_in_main_session"
+_SPAWN_IN_MAIN = (
+    _scenarios("agy_write_tools")
+    + _scenarios("claude_spawn_in_main_session")
+    + _scenarios("gemini_spawn_in_main_session")
 )
-_SUBAGENT_EVENTS = _scenarios("claude_subagent_events") + _scenarios("gemini_subagent_events")
+_SUBAGENT_EVENTS = (
+    _scenarios("agy_subagent_events")
+    + _scenarios("claude_subagent_events")
+    + _scenarios("gemini_subagent_events")
+)
 
 
 class TestSubagentInternalToolsSkipGates:
