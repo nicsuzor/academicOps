@@ -3212,10 +3212,14 @@ def sync(ctx, check, quiet, mirrors_only):
 @main.command()
 @click.option("--project", "-p", help="Project to claim tasks from")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.option("--branch", "-b", default=None, help="Custom/shared branch name")
 @click.pass_context
-def start(ctx, project, caller):
+def start(ctx, project, caller, branch):
     """Claim next ready task and spawn a worktree."""
     from polecat.claim import claim_next_ready
+
+    if branch:
+        os.environ["AOPS_POLECAT_BRANCH"] = branch
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
@@ -3245,8 +3249,9 @@ def start(ctx, project, caller):
 @main.command()
 @click.argument("task_id")
 @click.option("--caller", "-c", default="polecat", help="Identity claiming the task")
+@click.option("--branch", "-b", default=None, help="Custom/shared branch name")
 @click.pass_context
-def checkout(ctx, task_id, caller):
+def checkout(ctx, task_id, caller, branch):
     """Checkout a specific task by ID and create its worktree.
 
     Use with shell integration for automatic cd:
@@ -3261,6 +3266,9 @@ def checkout(ctx, task_id, caller):
     except TaskIDValidationError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
+    if branch:
+        os.environ["AOPS_POLECAT_BRANCH"] = branch
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
 
@@ -4594,6 +4602,7 @@ class _IssueTask:
     is_flag=True,
     help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
 )
+@click.option("--branch", "-b", default=None, help="Custom/shared branch name")
 @click.pass_context
 def run(
     ctx,
@@ -4610,6 +4619,7 @@ def run(
     debug_flag,
     set_overrides,
     with_sessions=False,
+    branch=None,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -4623,8 +4633,12 @@ def run(
         polecat run --issue 42 -p writing  # Run issue #42 from writing project repo
         polecat run -p aops --no-auto-finish  # Skip auto-finish on success
     """
+    import os
     import signal as _signal
     import subprocess
+
+    if branch:
+        os.environ["AOPS_POLECAT_BRANCH"] = branch
 
     # Install a SIGTERM handler so transcript-extraction `finally` blocks fire
     # on container stop (task-11de7b21). Python's default SIGTERM action
@@ -5354,6 +5368,7 @@ def run(
                     do_nuke=True,
                     force_done=auto_force_done,
                     project=project,
+                    branch=branch,
                 )
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
@@ -5533,7 +5548,7 @@ def resume(ctx, task_id):
                 except ImportError:
                     from finalize import finish_cmd as _finish_cmd  # type: ignore[no-redef]
                 ctx.invoke(
-                    _finish_cmd, no_push=False, do_nuke=True, force_done=False, project=task.project
+                    _finish_cmd, no_push=False, do_nuke=True, force_done=False, project=task.project, branch=branch
                 )
             finally:
                 os.chdir(original_cwd)
