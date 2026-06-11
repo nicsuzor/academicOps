@@ -433,8 +433,17 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                     check=True,
                 )
                 branch_exists = bool(ls_remote.stdout.strip())
-            except Exception:
-                pass
+            except subprocess.CalledProcessError as e:
+                # Don't silently swallow: surface the probe failure so an
+                # unreachable / unauthenticated origin is visible. Continue
+                # (treating the branch as absent) rather than hard-aborting —
+                # if origin is genuinely unreachable the downstream push will
+                # fail loudly with a clear error.
+                print(
+                    f"  ⚠️  Could not probe remote for shared branch {branch_name} "
+                    f"(git ls-remote failed): {e.stderr or e}",
+                    file=sys.stderr,
+                )
 
             if branch_exists:
                 print(f"🔄 Syncing with remote shared branch {branch_name}...")
