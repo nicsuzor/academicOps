@@ -81,15 +81,7 @@ Ensure all shippable changes pass through a fully-green PR meeting these conditi
 
 This gate is enforced by **branch protection**, not by PR prose. Do not add do-not-merge / merge-gate banners to PR bodies — they warn nobody who can act on the merge. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
 
-| Repo           | Policy                                        | Gate status / action                                      |
-| -------------- | --------------------------------------------- | --------------------------------------------------------- |
-| **aops**       | Nic-review required (never merge without Nic) | Branch protection present + current ✓                     |
-| **buttermilk** | Nic-review required                           | Gated, but not on current gate code → action: update gate |
-| **mem**        | Nic-review required                           | Gate NOT installed → action: install gates                |
-| **brain**      | Agent-managed (history only)                  | No merge gate; agents may merge                           |
-| **sessions**   | Agent-managed (history only)                  | No merge gate; agents may merge                           |
-| **overwhelm**  | **Auto-merge enabled**                        | No gate; auto-merge → action: enable                      |
-| _others_       | TBD                                           | Decide as encountered; default to gated                   |
+For the per-repo merge policies, see [CORE.md](file:///workspace/.agents/CORE.md) §2.
 
 ## Program Log Format
 

@@ -29,65 +29,20 @@ Support academic research data analysis by working collaboratively with dbt (dat
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
-## 🚨 CRITICAL: Research Data is Immutable
+## Core Invariants
 
-Source datasets, ground truth labels, experimental records, and research configurations are SACRED. NEVER modify, reformat, or "fix" them. If infrastructure doesn't support a format: HALT and report. Violations are scholarly misconduct.
+### 1. Data Immutability
 
-**Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
+Research data (sources, labels, records, configurations) is immutable. Do not modify or reformat source files.
 
-## 🚨 CRITICAL: Transformation Boundary Rule
+- **Directory isolation**: Keep local datasets (`data/`) separate from build/output directories (`output/`, `_book/`, etc.) to prevent accidental deletion during clean cycles. See [research-documentation.md](file:///workspace/aops-tools/skills/analyst/instructions/research-documentation.md) for details.
 
-**ALL data transformation happens in dbt. Period.**
+### 2. Transformation Boundary
 
-This is non-negotiable for academic integrity, reproducibility, and auditability.
+All data transformation happens in dbt; Streamlit is display-only.
 
-| Layer         | Allowed                                                                 | Prohibited                                                        |
-| ------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **dbt**       | ALL SQL transformations, joins, aggregations, filtering, business logic | -                                                                 |
-| **Streamlit** | Display, formatting, interactive filtering of PRE-COMPUTED data         | SQL that transforms, joins, aggregates, or applies business logic |
-
-### Why This Matters (Academic Integrity)
-
-1. **Reproducibility**: Anyone can re-run `dbt build` and get identical results
-2. **Auditability**: Transformation logic is version-controlled and testable
-3. **Transparency**: Reviewers see exactly how data was processed
-4. **Testing**: dbt tests PROVE transformations work correctly
-
-### The Rule in Practice
-
-**Need a new metric?** → Create a dbt mart with tests
-**Need to filter data?** → Pre-compute filtered views in dbt OR use Streamlit widgets on EXISTING columns (no new calculations)
-**Need to join tables?** → Create a dbt model that joins them
-**Need aggregations?** → Create a dbt mart with the aggregations
-
-### Streamlit: Display Layer ONLY
-
-Streamlit scripts may:
-
-- ✅ `SELECT * FROM mart_name` (read pre-computed data)
-- ✅ `WHERE column = :user_selection` (filter on existing columns)
-- ✅ Format numbers, dates for display
-- ✅ Create interactive widgets that filter existing data
-- ✅ Render charts from pre-computed metrics
-
-Streamlit scripts must NEVER:
-
-- ❌ `SELECT SUM(...) GROUP BY ...` (aggregation = transformation)
-- ❌ `SELECT a.*, b.* FROM a JOIN b` (joins = transformation)
-- ❌ `SELECT CASE WHEN ... END` (business logic = transformation)
-- ❌ Calculate derived metrics inline
-- ❌ Apply any formula that changes the meaning of data
-
-### If You're Tempted to Transform in Streamlit
-
-**STOP.** Create a dbt mart instead:
-
-1. Create `marts/mart_name.sql` with the transformation
-2. Add tests in `schema.yml` proving it works
-3. Run `dbt build --select mart_name`
-4. THEN query the mart from Streamlit
-
-This takes more time. That's the point. Transformations deserve scrutiny.
+- **dbt**: Handles all transformations (joins, aggregations, business logic, derived metrics).
+- **Streamlit**: Queries pre-computed dbt marts (`SELECT * FROM fct_*`) and applies display formatting or interactive sidebar filters. No inline joins, aggregations, or business logic.
 
 ## Documentation Index
 
@@ -99,7 +54,7 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 ### References
 
-[[references/dbt-workflow.md]], [[references/streamlit-patterns.md]], [[references/context-discovery.md]]
+[[references/dbt-workflow.md]], [[references/streamlit.md]], [[references/context-discovery.md]]
 
 ### Statistical Analysis (references/)
 
@@ -170,7 +125,7 @@ Task Execution
 
 ## Context Discovery
 
-**CRITICAL FIRST STEP:** Before any analysis work, automatically discover and read project context.
+Before any analysis work, automatically discover and read project context.
 
 ### Required Context Files
 
@@ -218,9 +173,9 @@ After context discovery, summarize findings to user:
 
 ## Follow Data Access Workflow
 
-**🚨 CRITICAL RULE: ALL data access MUST go through dbt models. NEVER query upstream sources directly.**
+All data access must go through dbt models. Do not query upstream sources directly.
 
-**🚨 REMINDER: If you need to transform data, that transformation MUST be a dbt model with tests. See "Transformation Boundary Rule" above.**
+If you need to transform data, that transformation must be implemented as a dbt model with tests (see "Transformation Boundary" above).
 
 ### Decision Tree
 
@@ -244,16 +199,16 @@ Need data for analysis?
 
 ### Prohibited Actions
 
-❌ **NEVER** do this:
+Do not query upstream databases or APIs directly in analysis code:
 
 ```python
-# Direct BigQuery query - PROHIBITED
+# Direct BigQuery query - Incorrect
 df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
 
-# Direct database query - PROHIBITED
+# Direct database query - Incorrect
 df = pd.read_sql("SELECT * FROM raw_schema.table", engine)
 
-# Direct API call for analysis data - PROHIBITED
+# Direct API call for analysis data - Incorrect
 response = requests.get("https://api.example.com/data")
 ```
 
@@ -308,11 +263,9 @@ Create or modify dbt models following academicOps layered architecture.
 
 ## Follow Visualization Workflow
 
-Create Streamlit visualizations following single-step collaborative pattern.
+Streamlit is display-only. No data transformations.
 
-**🚨 REMINDER: Streamlit is DISPLAY ONLY. No transformations. See "Transformation Boundary Rule" above.**
-
-**For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md]]**
+For detailed Streamlit workflow including structure, single-step patterns, and examples, see [streamlit-workflow.md](file:///workspace/aops-tools/skills/analyst/instructions/streamlit-workflow.md)
 
 ### Quick Reference: Streamlit Pattern
 
@@ -434,7 +387,7 @@ When exploring data patterns and relationships, follow collaborative discovery p
 
 **Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
 
-**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See `@reference _CHUNKS/research-documentation.md]] for complete requirements.**
+Research projects must follow the standard documentation structure. See [research-documentation.md](file:///workspace/aops-tools/skills/analyst/instructions/research-documentation.md) for requirements.
 
 ### Required Documentation Structure
 

@@ -109,7 +109,7 @@ if status_filter:
 
 ## Additional Resources
 
-See [[streamlit-patterns]] for comprehensive visualization best practices, including:
+See [[streamlit]] for comprehensive visualization best practices, including:
 
 - Interactive components (filters, selections)
 - Visualization libraries (Plotly, Altair)
