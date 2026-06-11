@@ -49,8 +49,15 @@ from polecat.manager import PolecatManager
     ),
 )
 @click.option("--branch", "-b", default=None, help="Override/specify the custom/shared branch name")
+@click.option(
+    "--promote",
+    is_flag=True,
+    help="Explicit final-stage promotion to mark the PR ready for review.",
+)
 @click.pass_context
-def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, branch):
+def finish_cmd(
+    ctx, no_push, do_nuke, force, force_done, project, is_partial, branch, promote=False
+):
     """Mark current task as ready for merge — or as a partial (draft) stop.
 
     Must be run from within a polecat worktree. Pushes the branch and, by
@@ -622,6 +629,13 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                         capture_output=True,
                     )
                     print(f"  ✅ Updated PR #{pr_number}")
+                    if promote:
+                        subprocess.run(
+                            ["gh", "pr", "ready", str(pr_number)],
+                            check=True,
+                            capture_output=True,
+                        )
+                        print(f"  ✅ Marked PR #{pr_number} as ready")
                 else:
                     # Create new PR. A partial stop files a DRAFT PR — GitHub
                     # enforces not-mergeable on drafts, so a `partial` task can
@@ -639,10 +653,11 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                         "--base",
                         base_branch,
                     ]
-                    if is_partial:
+                    is_draft = is_partial or (is_shared and not promote)
+                    if is_draft:
                         create_args.append("--draft")
                     subprocess.run(create_args, check=True, capture_output=True)
-                    print("  ✅ Created new draft PR" if is_partial else "  ✅ Created new PR")
+                    print("  ✅ Created new draft PR" if is_draft else "  ✅ Created new PR")
 
             except subprocess.CalledProcessError as e:
                 # Don't fail the whole finish command if PR creation fails

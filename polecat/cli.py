@@ -4608,6 +4608,11 @@ class _IssueTask:
     help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
 )
 @click.option("--branch", "-b", default=None, help="Custom/shared branch name")
+@click.option(
+    "--promote",
+    is_flag=True,
+    help="Explicit final-stage promotion to mark the PR ready for review.",
+)
 @click.pass_context
 def run(
     ctx,
@@ -4625,6 +4630,7 @@ def run(
     set_overrides,
     with_sessions=False,
     branch=None,
+    promote=False,
 ):
     """Run a polecat cycle: claim → setup → work → finish.
 
@@ -5374,6 +5380,7 @@ def run(
                     force_done=auto_force_done,
                     project=project,
                     branch=branch,
+                    promote=promote,
                 )
                 print("✅ Auto-finish completed.")
             except SystemExit as e:
@@ -5560,6 +5567,7 @@ def resume(ctx, task_id):
                     force_done=False,
                     project=task.project,
                     branch=branch_name,
+                    promote=False,
                 )
             finally:
                 os.chdir(original_cwd)
@@ -5580,6 +5588,7 @@ def resume(ctx, task_id):
         debug_flag=None,
         set_overrides=(),
         max_turns=None,
+        promote=False,
     )
 
 
