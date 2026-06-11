@@ -202,9 +202,10 @@ def load_projects(
             "aliases": aliases,
             "mounts": mounts,
         }
-        for key in ("auto_commit", "merge_strategy", "sessions_access"):
+        for key in ("auto_commit", "merge_strategy", "sessions_access", "is_repo"):
             if key in proj:
                 entry[key] = proj[key]
+        entry.setdefault("is_repo", True)
         projects[slug] = entry
     return projects
 
@@ -1535,6 +1536,8 @@ class PolecatManager:
         """
         results = {}
         for project in self.projects:
+            if not self.projects[project].get("is_repo", True):
+                continue
             try:
                 results[project] = self.ensure_repo_mirror(project)
                 print(f"✓ {project}")
@@ -1551,6 +1554,8 @@ class PolecatManager:
         """
         results = {}
         for project in self.projects:
+            if not self.projects[project].get("is_repo", True):
+                continue
             mirror_path = self.repos_dir / f"{project}.git"
             if not mirror_path.exists():
                 print(f"⊘ {project}: no mirror (run 'polecat init' first)")

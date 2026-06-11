@@ -207,6 +207,8 @@ external_agents:
 #   sessions_access: true   # (Optional) Mount read-only sessions transcripts
 #                           # directory and set $AOPS_SESSIONS.
 #   mounts:                 # List of additional bind mounts
+#   is_repo: false          # (Optional) Set to false for non-repository projects
+#                           # to skip git sync and PR state checks.
 # ---------------------------------------------------------------------------
 projects:
   aops:

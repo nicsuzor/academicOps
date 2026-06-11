@@ -3176,6 +3176,8 @@ def sync(ctx, check, quiet, mirrors_only):
 
         needs_attention = []
         for project_name, project_cfg in manager.projects.items():
+            if not project_cfg.get("is_repo", True):
+                continue
             repo_path = project_cfg["path"]
             if repo_path is None or not repo_path.is_dir():
                 if not quiet:
@@ -3439,7 +3441,10 @@ def nuke(ctx, target, force, allow_unpushed):
                 any_repo_checked = False
                 all_stale = True
                 for project in projects:
-                    repo_path = manager.projects.get(project, {}).get("path")
+                    proj_cfg = manager.projects.get(project, {})
+                    if not proj_cfg.get("is_repo", True):
+                        continue
+                    repo_path = proj_cfg.get("path")
                     if not repo_path:
                         repo_path = manager.repos_dir / f"{project}.git"
 
