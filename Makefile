@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell prebake-hook-venvs
 
 # --- Configuration ---
 
@@ -191,6 +191,7 @@ install-claude:
 	echo "✓ Claude Code aops-core installed"
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
 		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
+	@$(MAKE) prebake-hook-venvs
 
 # Cowork on personal accounts has no marketplace mechanism. The Cowork plugin
 # is a SEPARATE build (`aops-coworklocal`) from the Claude Code CLI build (`aops-core`):
@@ -274,6 +275,7 @@ install-gemini:
 	echo "✓ Gemini CLI aops-core extension installed"
 	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
 		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
+	@$(MAKE) prebake-hook-venvs
 
 # Install into Antigravity CLI (agy). Unlike gemini/claude which have their own
 # plugin install commands, agy reads plugins from a flat directory.
@@ -282,29 +284,11 @@ install-gemini:
 AGY_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-antigravity-latest.tar.gz
 AGY_TOOLS_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-tools-antigravity-latest.tar.gz
 
-# Prebuild the hook venv so router.sh's fast-path (exec $DIR/.venv/bin/python)
-# exists on the FIRST hook invocation. Without it, the first PreToolUse pays a
-# cold `uv run` venv build (>5s) and blows the 5000ms PreToolUse timeout, which
-# agy surfaces as a spurious "Tool call denied by jsonhook__..." (aops-7697a478).
-# router.py adds the plugin dir to sys.path itself, so only third-party deps are
-# needed — no package build. $(1) = plugin dir.
-define agy_prebuild_venv
-	echo "  Prebuilding hook venv at $(1)/.venv ..."; \
-	rm -rf "$(1)/.venv"; \
-	if ! command -v uv >/dev/null 2>&1 || [ ! -f "$(1)/pyproject.toml" ]; then \
-		echo "  ❌ uv or pyproject.toml missing — cannot prebuild hook venv; aborting install (cold-start would spurious-deny — aops-7697a478)"; \
-		exit 1; \
-	fi; \
-	if uv venv "$(1)/.venv" >/dev/null 2>&1 && \
-	   uv pip install --python "$(1)/.venv/bin/python" -r "$(1)/pyproject.toml" >/dev/null 2>&1 && \
-	   [ -x "$(1)/.venv/bin/python" ]; then \
-		echo "  ✓ Hook venv ready: $(1)/.venv/bin/python"; \
-	else \
-		echo "  ❌ Hook venv prebuild FAILED — aborting install (first hook call would pay cold-start cost and spurious-deny — aops-7697a478)"; \
-		exit 1; \
-	fi
-endef
-
+# The hook-venv prebuild that prevents the agy cold-start spurious-deny
+# (aops-7697a478) is the general `prebake-hook-venvs` target, invoked as a
+# post-install step below — it pre-bakes every client's installed hook dir
+# (claude/gemini/agy) and ABORTS the install if uv is missing or any prebuild
+# fails, so a cold first PreToolUse never pays the venv build and spurious-denies.
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
 		echo "  (agy not found on PATH — skipping Antigravity install)"; \
@@ -318,7 +302,6 @@ install-agy:
 		rm -rf "$(AGY_PLUGIN_DIR)"; \
 		mkdir -p "$(AGY_PLUGIN_DIR)"; \
 		cp -r "$(DIST_DIR)/aops-antigravity/"* "$(AGY_PLUGIN_DIR)/"; \
-		$(call agy_prebuild_venv,$(AGY_PLUGIN_DIR)); \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		if [ -d "$(DIST_DIR)/aops-tools-antigravity" ]; then \
 			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
@@ -333,7 +316,6 @@ install-agy:
 		rm -rf "$(AGY_PLUGIN_DIR)"; \
 		mkdir -p "$(AGY_PLUGIN_DIR)"; \
 		cp -r "$$TMP_DIR/"* "$(AGY_PLUGIN_DIR)/"; \
-		$(call agy_prebuild_venv,$(AGY_PLUGIN_DIR)); \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		rm -rf "$$TMP_DIR"; \
 		TMP_DIR=$$(mktemp -d); \
@@ -348,6 +330,7 @@ install-agy:
 	fi
 	@echo "  Target: $(AGY_PLUGIN_DIR) and $(AGY_TOOLS_PLUGIN_DIR)"
 	@echo "✓ Antigravity CLI plugin installed"
+	@$(MAKE) prebake-hook-venvs
 
 # Optional: install into Windows-side Claude/Gemini when invoked from WSL.
 # Silently no-ops outside WSL or when no Windows binaries are found.
@@ -475,6 +458,47 @@ prerelease:
 	fi; \
 	git tag "$$tag" && git push origin "$$tag" \
 	  && echo "Pushed $$tag → build-extension.yml cuts a --prerelease Release + publishes to dist (semver prerelease; clients opt in to dev builds)."
+
+# --- Hook venv pre-bake ---
+#
+# router.sh fast-paths to $HOOK_DIR/.venv/bin/python when present; otherwise it
+# falls back to `uv --directory $HOOK_DIR run` which builds the venv inline on
+# the first call. Inline build on a cold PreToolUse hook blows the 5000ms
+# timeout (hooks.json) → agy renders `Tool call denied by jsonhook__hooks_*`,
+# Claude similarly stalls. Symmetric pre-bake at install time eliminates the
+# cold-start failure for every client (claude/gemini/agy). Matches the
+# Dockerfile pre-bake loop so host installs and container builds behave the
+# same way.
+#
+# Only paths with their own pyproject.toml get pre-baked — aops-tools ships no
+# hooks, so its install dirs are silently skipped. UV_PROJECT_ENVIRONMENT is
+# unset per-directory so each venv lives inside its own plugin/extension dir
+# (independent of any root project venv).
+prebake-hook-venvs:
+	@if ! command -v uv >/dev/null 2>&1; then \
+		echo "  ❌ uv not on PATH — cannot pre-bake hook venv; aborting install. A cold first PreToolUse would build the venv inline, blow the timeout, and spurious-deny (aops-7697a478). Install uv and re-run."; \
+		exit 1; \
+	fi; \
+	echo "Pre-baking hook venv(s) (router.sh fast-path)..."; \
+	set -e; \
+	any=0; \
+	for d in $(HOME)/.claude/plugins/cache/academicOps/*/*/ \
+	         $(HOME)/.gemini/extensions/*/ \
+	         $(HOME)/.gemini/antigravity-cli/plugins/*/ ; do \
+		[ -d "$$d" ] || continue; \
+		[ -f "$${d}pyproject.toml" ] || continue; \
+		any=1; \
+		echo "  pre-baking $$d"; \
+		(cd "$$d" \
+			&& env -u UV_PROJECT_ENVIRONMENT uv sync --frozen \
+			&& ./.venv/bin/python -c "import psutil, pydantic, yaml") \
+			|| { echo "  ✗ pre-bake failed for $$d" >&2; exit 1; }; \
+	done; \
+	if [ "$$any" -eq 0 ]; then \
+		echo "  (no hook dirs found — nothing to pre-bake)"; \
+	else \
+		echo "✓ Hook venv pre-bake complete"; \
+	fi
 
 # --- Docker ---
 
