@@ -90,6 +90,17 @@ Several lifecycle gates can fire on one event, so they need a defined way to **c
 
 **Legal termination for a `/goal` / `/loop` session (item 2) — boundary, see below.** The intended fix is: a session that has reached the **done-pending-Nic** terminal state (defined in WS2's program skill — "autonomously complete; N items surfaced for the human") has a legal way to stop instead of the continuation hook forcing another empty retry against the handover gate. **In this repo there is no `/goal`/`/loop` continuation Stop hook to compose against** — `/loop`/`/goal` are harness-level session constructs, not aops gates (no goal gate exists in `GATE_CONFIGS`, and adding one would violate "no new gates"). The composable half — the handover gate already opens on `/dump` and `/end_session`, so a loop that reaches done-pending-Nic and runs either skill terminates legally — is in place. The harness-side continuation half cannot be wired here; it is recorded as a needs-decision (see the task report). The program skill and `/pull` already name this same WS7 boundary.
 
+### Dispatch Reflex — expand terse coordination instructions, don't execute them literally
+
+When the user gives a compressed coordination instruction (e.g., _"dispatch `<task-id>` in parallel on a single PR"_), do **not** execute it literally and do **not** make them spell out the mechanics. Two-step reflex:
+
+1. **Recognise the gap.** Notice the instruction implies a coordination contract we may not have a standard procedure for, and say so plainly.
+2. **Expand + dogfood.** Turn the terse instruction into the full dispatch brief yourself — identify what is parallel-able vs sequentially dependent, set the dependencies, and load the contract onto the epic. When it reveals a missing or contradictory standard, spin a dogfooding task (`/craft` to reconcile conflicting instructions + `/dogfood` to supervise the run and adjust live) so the pattern becomes routine **by default**.
+
+The expansion is Junior's job; the user says one line and trusts Junior to produce the brief.
+
+Specific default named — the **cohesive single-PR epic**: everything lands on ONE branch / ONE PR; decompose into parallel + sequential-dependency units with deps set; the epic body carries the contract (same branch; polecats commit to a **draft** PR, never live; only the final stage promotes/closes the PR + epic); accompany with a `/dogfood` task that uses `/craft` to fix conflicting dispatch instructions and supervises live.
+
 ## Routing Table
 
 | Target                     | Mechanism / Agent                 |
