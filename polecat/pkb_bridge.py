@@ -41,6 +41,7 @@ class PkbTask:
         self.assignee: str | None = fm.get("assignee")
         self.pr_url: str | None = fm.get("pr_url")
         self.pr: str | None = fm.get("pr")
+        self.branch: str | None = fm.get("branch") or data.get("branch")
         self.due: str | None = data.get("due")  # ISO date string like "2026-05-13"
         self.effort: str | None = data.get("effort")  # XS/S/M/L tier — used for turn-budget
         self.consequence: str | None = data.get(

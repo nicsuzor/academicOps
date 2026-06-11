@@ -429,6 +429,67 @@ class PolecatManager:
         self.storage: Any = _TaskStorage() if _TaskStorage is not None else None
         self.task_status: Any = _TaskStatus
 
+    def resolve_branch_name(self, task: Any = None) -> str:
+        """Resolve the branch name for the current task run based on priorities.
+
+        Priority order:
+        1. CLI / Environment override (via AOPS_POLECAT_BRANCH or POLECAT_BRANCH)
+        2. Task object's `branch` frontmatter field
+        3. A `branch` setting in polecat.yaml (self.config)
+        4. Default branch-per-task (polecat/{task_id})
+        """
+        # 1. Environment override
+        env_branch = os.environ.get("AOPS_POLECAT_BRANCH") or os.environ.get("POLECAT_BRANCH")
+        if env_branch:
+            return env_branch
+
+        # 2. Task frontmatter/field
+        if task is not None:
+            # task could be a PkbTask, a dict, or a string ID
+            if hasattr(task, "branch") and task.branch:
+                return task.branch
+            elif isinstance(task, dict) and task.get("branch"):
+                return task["branch"]
+            elif isinstance(task, dict) and task.get("frontmatter", {}).get(
+                "branch"
+            ):  # allow-fallback: task dict may not contain frontmatter
+                return task["frontmatter"]["branch"]
+
+        # 3. Config setting
+        if self.config and self.config.get("branch"):
+            return self.config["branch"]
+
+        # 4. Default branch-per-task
+        task_id = None
+        if task is not None:
+            if hasattr(task, "id") and task.id:
+                task_id = task.id
+            elif isinstance(task, dict) and task.get("id"):
+                task_id = task["id"]
+            elif isinstance(task, str):
+                task_id = task
+
+        if task_id:
+            return f"polecat/{task_id}"
+
+        return "polecat/unknown-task"
+
+    def is_shared_branch(self, branch_name: str, task_id: str | None = None) -> bool:
+        """Check if the resolved branch is a custom/shared branch.
+
+        If the branch name does not match the default 'polecat/{task_id}' pattern,
+        then it is a custom/shared branch.
+        """
+        if branch_name.startswith("crew/"):
+            return False
+        if task_id:
+            return branch_name != f"polecat/{task_id}"
+        import re
+
+        if re.match(r"^polecat/(?!epic-)[a-zA-Z0-9]+-[a-fA-F0-9]+$", branch_name):
+            return False
+        return True
+
     def get_task(self, task_id: str) -> Any:
         """Retrieve a task by ID, routing to storage or PKB bridge."""
         if self.storage is not None:
@@ -1778,7 +1839,7 @@ class PolecatManager:
             raise FileNotFoundError(f"Project repository not found at {repo_path}")
 
         worktree_path = self.polecats_dir / task.id
-        branch_name = f"polecat/{task.id}"
+        branch_name = self.resolve_branch_name(task)
         proj_cfg = self.projects.get(project, {})  # allow-fallback: bare-mirror = no config
         default_branch = proj_cfg.get("default_branch", "main")
 
@@ -1864,94 +1925,97 @@ class PolecatManager:
         )
 
         create_fresh = not branch_exists_result.stdout.strip()
+        is_shared = self.is_shared_branch(branch_name, task.id)
 
         if not create_fresh:
-            # Fetch both refs so is-ancestor and rev-list have accurate data.
+            # Fetch the branch from origin
             subprocess.run(
                 ["git", "fetch", "origin", branch_name],
                 cwd=worktree_path,
                 capture_output=True,
                 check=True,
             )
-            subprocess.run(
-                ["git", "fetch", "origin", default_branch],
-                cwd=worktree_path,
-                capture_output=True,
-                check=True,
-            )
 
-            stale_reason: str | None = None
-
-            # (a) Merge-commit merged — branch is an ancestor of default.
-            is_ancestor = (
+            if not is_shared:
                 subprocess.run(
-                    [
-                        "git",
-                        "merge-base",
-                        "--is-ancestor",
-                        f"origin/{branch_name}",
-                        f"origin/{default_branch}",
-                    ],
-                    cwd=worktree_path,
-                ).returncode
-                == 0
-            )
-            if is_ancestor:
-                stale_reason = f"already merged into {default_branch}"
-
-            # (b) Squash/rebase merged — gh reports a merged PR on this branch.
-            if stale_reason is None:
-                merged_pr_url = self._branch_has_merged_pr(worktree_path, branch_name)
-                if merged_pr_url:
-                    stale_reason = f"merged PR exists ({merged_pr_url})"
-
-            # (c) Far behind with no open PR — likely abandoned.
-            if stale_reason is None:
-                rev_list = subprocess.run(
-                    [
-                        "git",
-                        "rev-list",
-                        "--count",
-                        f"origin/{branch_name}..origin/{default_branch}",
-                    ],
+                    ["git", "fetch", "origin", default_branch],
                     cwd=worktree_path,
                     capture_output=True,
-                    text=True,
                     check=True,
                 )
-                commits_behind = int(rev_list.stdout.strip())
-                if commits_behind > 100:
-                    open_pr_url = self._crew_branch_open_pr(worktree_path, branch_name)
-                    if open_pr_url:
-                        # Open PR exists — don't destroy the work. Fail loudly so
-                        # whoever revived the task can decide how to handle it.
-                        raise RuntimeError(
-                            f"Target branch {branch_name} is {commits_behind} commits "
-                            f"behind {default_branch} and has an open PR ({open_pr_url}). "
-                            "Refusing to discard in-flight work — rebase or close the PR "
-                            "before re-dispatching."
-                        )
-                    stale_reason = (
-                        f"{commits_behind} commits behind {default_branch} with no open PR"
-                    )
 
-            if stale_reason is not None:
-                print(f"  🗑 Branch {branch_name} is stale: {stale_reason}.")
-                print(f"  Deleting remote branch and starting fresh from {default_branch}...")
-                delete_result = subprocess.run(
-                    ["git", "push", "origin", "--delete", branch_name],
-                    cwd=worktree_path,
-                    capture_output=True,
-                    text=True,
+                stale_reason: str | None = None
+
+                # (a) Merge-commit merged — branch is an ancestor of default.
+                is_ancestor = (
+                    subprocess.run(
+                        [
+                            "git",
+                            "merge-base",
+                            "--is-ancestor",
+                            f"origin/{branch_name}",
+                            f"origin/{default_branch}",
+                        ],
+                        cwd=worktree_path,
+                    ).returncode
+                    == 0
                 )
-                if delete_result.returncode != 0:
-                    # Already-deleted is fine; a real push failure is not.
-                    stderr = delete_result.stderr.strip()
-                    if "remote ref does not exist" not in stderr:
-                        print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
-                else:
-                    print(f"  ✅ Deleted stale remote branch {branch_name}")
-                create_fresh = True
+                if is_ancestor:
+                    stale_reason = f"already merged into {default_branch}"
+
+                # (b) Squash/rebase merged — gh reports a merged PR on this branch.
+                if stale_reason is None:
+                    merged_pr_url = self._branch_has_merged_pr(worktree_path, branch_name)
+                    if merged_pr_url:
+                        stale_reason = f"merged PR exists ({merged_pr_url})"
+
+                # (c) Far behind with no open PR — likely abandoned.
+                if stale_reason is None:
+                    rev_list = subprocess.run(
+                        [
+                            "git",
+                            "rev-list",
+                            "--count",
+                            f"origin/{branch_name}..origin/{default_branch}",
+                        ],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    commits_behind = int(rev_list.stdout.strip())
+                    if commits_behind > 100:
+                        open_pr_url = self._crew_branch_open_pr(worktree_path, branch_name)
+                        if open_pr_url:
+                            # Open PR exists — don't destroy the work. Fail loudly so
+                            # whoever revived the task can decide how to handle it.
+                            raise RuntimeError(
+                                f"Target branch {branch_name} is {commits_behind} commits "
+                                f"behind {default_branch} and has an open PR ({open_pr_url}). "
+                                "Refusing to discard in-flight work — rebase or close the PR "
+                                "before re-dispatching."
+                            )
+                        stale_reason = (
+                            f"{commits_behind} commits behind {default_branch} with no open PR"
+                        )
+
+                if stale_reason is not None:
+                    print(f"  🗑 Branch {branch_name} is stale: {stale_reason}.")
+                    print(f"  Deleting remote branch and starting fresh from {default_branch}...")
+                    delete_result = subprocess.run(
+                        ["git", "push", "origin", "--delete", branch_name],
+                        cwd=worktree_path,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if delete_result.returncode != 0:
+                        # Already-deleted is fine; a real push failure is not.
+                        stderr = delete_result.stderr.strip()
+                        if "remote ref does not exist" not in stderr:
+                            print(f"  ⚠ Could not delete remote branch {branch_name}: {stderr}")
+                    else:
+                        print(f"  ✅ Deleted stale remote branch {branch_name}")
+                    create_fresh = True
 
         if create_fresh:
             # Create fresh from default branch. Clone usually already has it checked out.
@@ -2140,6 +2204,33 @@ class PolecatManager:
                 f"got {result.stdout.strip() if result.returncode == 0 else 'error'}",
                 file=sys.stderr,
             )
+
+        if self.is_shared_branch(branch_name, worktree_path.name):
+            # For shared branch, verify we are up-to-date with remote shared branch instead of default_branch
+            print(f"🔄 Syncing existing worktree with remote shared branch {branch_name}...")
+            fetch_res = subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if fetch_res.returncode != 0:
+                raise RuntimeError(
+                    f"Failed to fetch origin/{branch_name} in {worktree_path}: "
+                    f"{fetch_res.stderr.strip()}"
+                )
+            rebase_res = subprocess.run(
+                ["git", "rebase", f"origin/{branch_name}"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if rebase_res.returncode != 0:
+                subprocess.run(["git", "rebase", "--abort"], cwd=worktree_path, check=False)
+                raise RuntimeError(
+                    f"Failed to auto-rebase onto origin/{branch_name}: {rebase_res.stderr.strip()}"
+                )
+            return
 
         # 2. Verify branch is based on recent main
         # Ensure we have the latest origin/main for comparison
@@ -2460,10 +2551,11 @@ class PolecatManager:
                     f"fall back to REPO_ROOT (would risk operating on the "
                     f"wrong repository)."
                 )
-        branch_name = f"polecat/{task_id}"
+        branch_name = self.resolve_branch_name(task or task_id)
+        is_shared = self.is_shared_branch(branch_name, task_id)
 
         # Safety check: verify branch is merged before deletion
-        if not force and self._branch_exists(repo_path, branch_name):
+        if not force and self._branch_exists(repo_path, branch_name) and not is_shared:
             if not self._is_branch_merged(repo_path, branch_name):
                 raise RuntimeError(
                     f"Branch {branch_name} has unmerged commits. "
@@ -2509,6 +2601,6 @@ class PolecatManager:
             print(f"Removing clone {worktree_path}...")
             shutil.rmtree(worktree_path, ignore_errors=True)
 
-        if self._branch_exists(repo_path, branch_name):
+        if self._branch_exists(repo_path, branch_name) and not is_shared:
             print(f"Deleting branch {branch_name}...")
             subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_path, check=False)

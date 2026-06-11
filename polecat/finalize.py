@@ -48,8 +48,9 @@ from polecat.manager import PolecatManager
         "partial-work doctrine — ship the finished part, declare the rest deferred."
     ),
 )
+@click.option("--branch", "-b", default=None, help="Override/specify the custom/shared branch name")
 @click.pass_context
-def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
+def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, branch):
     """Mark current task as ready for merge — or as a partial (draft) stop.
 
     Must be run from within a polecat worktree. Pushes the branch and, by
@@ -74,6 +75,9 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
         _generate_pr_body,
         _read_latest_real_transcript_path,
     )
+
+    if branch:
+        os.environ["AOPS_POLECAT_BRANCH"] = branch
 
     manager = PolecatManager(home_dir=ctx.obj.get("home"), verbose=ctx.obj.get("verbose", False))
     cwd = Path.cwd()
@@ -388,73 +392,151 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
 
     # Push to origin
     if not no_push:
-        branch_name = f"polecat/{task_id}"
+        # Determine the current git branch checked out in the worktree
+        git_branch = None
+        try:
+            git_branch_res = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if git_branch_res.returncode == 0 and git_branch_res.stdout.strip():
+                git_branch = git_branch_res.stdout.strip()
+        except Exception as e:
+            print(f"Warning: Could not determine current git branch: {e}")
+
+        # Resolve branch name. Delegate the canonical priority ladder
+        # (env override -> task frontmatter -> config -> default) to the single
+        # source of truth on the manager, then apply the finalize-only fallback:
+        # the branch currently checked out in this worktree, used only when the
+        # canonical resolver fell through to its default branch-per-task sentinel.
+        branch_name = manager.resolve_branch_name(task)
+        if branch_name == f"polecat/{task_id}" and git_branch:
+            branch_name = git_branch
+
+        is_shared = manager.is_shared_branch(branch_name, task_id)
 
         # --- SAFEGUARD 3: Main-Push Blockade ---
         if branch_name == "main" or branch_name == "master":
             print("🚨 SAFEGUARD: Refusing to push 'main' branch via polecat.")
             sys.exit(1)
 
-        # --- REBASE BEFORE PUSH ---
-        # Fetch and rebase onto the latest base branch to prevent orphan commits
-        # and merge conflicts
-        print(f"🔄 Syncing with latest {base_branch} before push...")
-        try:
-            # Fetch latest from origin
-            subprocess.run(
-                ["git", "fetch", "origin", base_branch],
-                check=True,
-                capture_output=True,
-            )
+        if is_shared:
+            # Check if remote shared branch exists
+            branch_exists = False
+            try:
+                ls_remote = subprocess.run(
+                    ["git", "ls-remote", "--heads", "origin", branch_name],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                branch_exists = bool(ls_remote.stdout.strip())
+            except subprocess.CalledProcessError as e:
+                # Don't silently swallow: surface the probe failure so an
+                # unreachable / unauthenticated origin is visible. Continue
+                # (treating the branch as absent) rather than hard-aborting —
+                # if origin is genuinely unreachable the downstream push will
+                # fail loudly with a clear error.
+                print(
+                    f"  ⚠️  Could not probe remote for shared branch {branch_name} "
+                    f"(git ls-remote failed): {e.stderr or e}",
+                    file=sys.stderr,
+                )
 
-            # Check if we need to rebase (are we behind the base branch?)
-            merge_base = subprocess.run(
-                ["git", "merge-base", "HEAD", origin_ref],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            origin_base = subprocess.run(
-                ["git", "rev-parse", origin_ref],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            if merge_base.stdout.strip() != origin_base.stdout.strip():
-                # We're behind, need to rebase
-                print(f"  📥 Branch is behind {origin_ref}, rebasing...")
+            if branch_exists:
+                print(f"🔄 Syncing with remote shared branch {branch_name}...")
+                subprocess.run(
+                    ["git", "fetch", "origin", branch_name],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"  📥 Rebasing local commits onto origin/{branch_name}...")
                 rebase_result = subprocess.run(
-                    ["git", "rebase", origin_ref],
+                    ["git", "rebase", f"origin/{branch_name}"],
                     capture_output=True,
                     text=True,
                 )
                 if rebase_result.returncode != 0:
-                    # Rebase failed - abort and report
                     subprocess.run(["git", "rebase", "--abort"], check=False)
-                    print("  ❌ Rebase failed due to conflicts.", file=sys.stderr)
+                    print(
+                        f"  ❌ Rebase onto origin/{branch_name} failed due to conflicts.",
+                        file=sys.stderr,
+                    )
                     print(f"  {rebase_result.stderr}", file=sys.stderr)
                     print("  Task will be marked for review.", file=sys.stderr)
-                    # Don't exit - let it fall through to mark as review
-                    task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto {base_branch}.\n"
+                    task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto shared branch {branch_name}.\n"
                     try:
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW.value
-                        manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
                     except ImportError:
-                        from polecat.pkb_bridge import save_task as pkb_save
-
                         task.status = "review"
-                        pkb_save(task)
+                    # manager.save_task is the None-safe SSOT wrapper: it routes
+                    # to storage when present and falls back to the pkb bridge
+                    # otherwise (manager.py:save_task).
+                    manager.save_task(task)
                     sys.exit(1)
-                print("  ✅ Rebase successful")
-            else:
-                print(f"  ✅ Already up-to-date with {base_branch}")
+                print("  ✅ Rebase onto remote shared branch successful")
+        else:
+            # --- REBASE BEFORE PUSH (default branch-per-task) ---
+            # Fetch and rebase onto the latest base branch to prevent orphan commits
+            # and merge conflicts
+            print(f"🔄 Syncing with latest {base_branch} before push...")
+            try:
+                # Fetch latest from origin
+                subprocess.run(
+                    ["git", "fetch", "origin", base_branch],
+                    check=True,
+                    capture_output=True,
+                )
 
-        except subprocess.CalledProcessError as e:
-            print(f"  ⚠️ Sync failed: {e}", file=sys.stderr)
-            # Continue anyway - the push might still work
+                # Check if we need to rebase (are we behind the base branch?)
+                merge_base = subprocess.run(
+                    ["git", "merge-base", "HEAD", origin_ref],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                origin_base = subprocess.run(
+                    ["git", "rev-parse", origin_ref],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                if merge_base.stdout.strip() != origin_base.stdout.strip():
+                    # We're behind, need to rebase
+                    print(f"  📥 Branch is behind {origin_ref}, rebasing...")
+                    rebase_result = subprocess.run(
+                        ["git", "rebase", origin_ref],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if rebase_result.returncode != 0:
+                        # Rebase failed - abort and report
+                        subprocess.run(["git", "rebase", "--abort"], check=False)
+                        print("  ❌ Rebase failed due to conflicts.", file=sys.stderr)
+                        print(f"  {rebase_result.stderr}", file=sys.stderr)
+                        print("  Task will be marked for review.", file=sys.stderr)
+                        # Don't exit - let it fall through to mark as review
+                        task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto {base_branch}.\n"
+                        try:
+                            from lib.task_model import TaskStatus
+
+                            task.status = TaskStatus.REVIEW.value
+                        except ImportError:
+                            task.status = "review"
+                        manager.save_task(task)
+                        sys.exit(1)
+                    print("  ✅ Rebase successful")
+                else:
+                    print(f"  ✅ Already up-to-date with {base_branch}")
+
+            except subprocess.CalledProcessError as e:
+                print(f"  ⚠️ Sync failed: {e}", file=sys.stderr)
+                # Continue anyway - the push might still work
 
         print(f"Pushing {branch_name} to origin...")
         try:
@@ -466,20 +548,14 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
                 check=False,
                 capture_output=True,
             )
-            # Use --force for polecat branches (they're ephemeral worker branches)
-            # After rebase, --force-with-lease would reject push due to stale tracking ref
-            # Force is safe here: polecat branches are single-worker, disposable feature branches
-            subprocess.run(
-                [
-                    "git",
-                    "push",
-                    "--force",
-                    "-u",
-                    "origin",
-                    f"{branch_name}:{branch_name}",
-                ],
-                check=True,
-            )
+            # Use --force-with-lease for shared branches, --force for non-shared branches
+            push_args = ["git", "push"]
+            if is_shared:
+                push_args.append("--force-with-lease")
+            else:
+                push_args.append("--force")
+            push_args.extend(["-u", "origin", f"{branch_name}:{branch_name}"])
+            subprocess.run(push_args, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error pushing to origin: {e}", file=sys.stderr)
             sys.exit(1)
@@ -493,12 +569,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial):
         if TRANSCRIPT_TASK_BODY_HEADER not in (task.body or ""):
             task.body = (task.body or "") + _format_transcript_task_body_section(transcript_path)
             try:
-                if manager.storage is not None:
-                    manager.storage.save_task(task)
-                else:
-                    from polecat.pkb_bridge import save_task as pkb_save
-
-                    pkb_save(task)
+                manager.save_task(task)
             except Exception as e:
                 print(f"  ⚠️  Could not persist transcript path to task body: {e}")
 
