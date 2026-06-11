@@ -374,6 +374,65 @@ class TestSessionEnvSetup:
         assert f"Daily note: {today_compact}-daily.md" in result.system_message
         assert "Created" not in result.system_message
 
+    def test_restores_committed_note_instead_of_writing_stub(self, monkeypatch, tmp_path):
+        """If the working-tree note is missing but a POPULATED version exists in
+        git HEAD (transient mid-sync absence / fresh checkout), restore it rather
+        than scaffolding a stub — the stub would diverge and can clobber the
+        populated note on the next merge (#1739)."""
+        import os
+        import subprocess
+
+        aca_data = tmp_path / "data"
+        (aca_data / "daily").mkdir(parents=True)
+        monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+        today_compact = datetime.now().strftime("%Y%m%d")
+        rel = f"daily/{today_compact}-daily.md"
+        note = aca_data / rel
+        populated = (
+            f"# Daily Summary - {datetime.now().strftime('%Y-%m-%d')}\n\n"
+            "Real populated content — must not be lost.\n"
+        )
+        note.write_text(populated)
+
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+        }
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "add", rel],
+            ["git", "commit", "-q", "-m", "populated note"],
+        ):
+            subprocess.run(cmd, cwd=aca_data, env=env, check=True, capture_output=True)
+
+        # Transient-absence window: working tree file gone, HEAD still has it.
+        note.unlink()
+        assert not note.exists()
+
+        ctx = HookContext(
+            session_id="test-session-restore",
+            client_type="claude",
+            session_short_hash="rest1234",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id, client_type="claude")
+
+        with patch(
+            "hooks.session_env_setup.get_session_status_dir",
+            return_value=str(tmp_path),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        assert note.exists(), "note should be restored from HEAD, not left missing"
+        assert note.read_text() == populated, "must restore populated content, not a stub"
+        assert "has not been populated yet" not in note.read_text()
+        assert "restored" in result.system_message
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

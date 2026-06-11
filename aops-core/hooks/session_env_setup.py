@@ -323,8 +323,52 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
 
         if not daily_note_path.exists():
             daily_dir.mkdir(parents=True, exist_ok=True)
-            # Minimal valid daily note template per SSoT
-            content = f"""---
+
+            # Before scaffolding a stub, check whether a committed version of
+            # today's note already exists in git HEAD. The working-tree file can
+            # be transiently absent (mid-sync checkout) or unmaterialised on a
+            # fresh checkout while a POPULATED note already exists upstream.
+            # Writing the stub in that window creates a divergent artifact that
+            # can clobber the populated note on the next merge — the daily-note
+            # data-loss path (#1739). Restoring the committed version is never
+            # worse than a stub; the stub is reserved for a genuinely new day
+            # (note absent from HEAD too). This only narrows the hook's own
+            # contribution — the cross-machine merge resolution is the complete
+            # fix and lives in the sync resolver (#1739).
+            import subprocess
+
+            rel = f"daily/{today_compact}-daily.md"
+            data_root = daily_dir.parent
+            restored = False
+            try:
+                in_head = (
+                    subprocess.run(
+                        ["git", "cat-file", "-e", f"HEAD:{rel}"],
+                        cwd=data_root,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+                if in_head:
+                    subprocess.run(
+                        ["git", "checkout", "HEAD", "--", rel],
+                        cwd=data_root,
+                        capture_output=True,
+                        check=False,
+                    )
+                    restored = daily_note_path.exists()
+            except Exception:
+                # Any git failure → fall through to the stub (no worse than before).
+                restored = False
+
+            if restored:
+                daily_note_row = _ok(
+                    f"Daily note: restored {today_compact}-daily.md from HEAD "
+                    "(avoided stub clobber)"
+                )
+            else:
+                # Minimal valid daily note template per SSoT — genuinely new day.
+                content = f"""---
 title: "Daily Summary - {today_iso}"
 type: daily
 date: {today_iso}
@@ -334,10 +378,10 @@ date: {today_iso}
 
 Today's note has not been populated yet. Run `/daily` to update.
 """
-            daily_note_path.write_text(content)
-            daily_note_row = _ok(
-                f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
-            )
+                daily_note_path.write_text(content)
+                daily_note_row = _ok(
+                    f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
+                )
         else:
             daily_note_row = _ok(f"Daily note: {today_compact}-daily.md")
 
