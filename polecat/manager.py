@@ -2208,7 +2208,17 @@ class PolecatManager:
         if self.is_shared_branch(branch_name, worktree_path.name):
             # For shared branch, verify we are up-to-date with remote shared branch instead of default_branch
             print(f"🔄 Syncing existing worktree with remote shared branch {branch_name}...")
-            subprocess.run(["git", "fetch", "origin", branch_name], cwd=worktree_path, check=False)
+            fetch_res = subprocess.run(
+                ["git", "fetch", "origin", branch_name],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
+            if fetch_res.returncode != 0:
+                raise RuntimeError(
+                    f"Failed to fetch origin/{branch_name} in {worktree_path}: "
+                    f"{fetch_res.stderr.strip()}"
+                )
             rebase_res = subprocess.run(
                 ["git", "rebase", f"origin/{branch_name}"],
                 cwd=worktree_path,

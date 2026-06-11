@@ -449,7 +449,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                 print(f"🔄 Syncing with remote shared branch {branch_name}...")
                 subprocess.run(
                     ["git", "fetch", "origin", branch_name],
-                    check=False,
+                    check=True,
                     capture_output=True,
                 )
                 print(f"  📥 Rebasing local commits onto origin/{branch_name}...")
