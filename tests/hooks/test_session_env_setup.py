@@ -433,6 +433,65 @@ class TestSessionEnvSetup:
         assert "has not been populated yet" not in note.read_text()
         assert "restored" in result.system_message
 
+    def test_restores_note_in_nested_brain_daily_layout(self, monkeypatch, tmp_path):
+        """Regression for the brain/daily/ layout (Gemini review on #1790): the
+        daily dir is nested under the git root, so the repo-relative path is
+        brain/daily/<file>, not daily/<file>. The restore must resolve the real
+        git root (rev-parse) and use the correct relative path — otherwise it
+        silently falls back to writing a clobbering stub."""
+        import os
+        import subprocess
+
+        aca_data = tmp_path / "data"
+        # git root = aca_data; daily dir nested at aca_data/brain/daily
+        (aca_data / "brain" / "daily").mkdir(parents=True)
+        monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+        today_compact = datetime.now().strftime("%Y%m%d")
+        rel = f"brain/daily/{today_compact}-daily.md"
+        note = aca_data / rel
+        populated = (
+            f"# Daily Summary - {datetime.now().strftime('%Y-%m-%d')}\n\n"
+            "Nested-layout populated content — must not be lost.\n"
+        )
+        note.write_text(populated)
+
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+        }
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "add", rel],
+            ["git", "commit", "-q", "-m", "populated nested note"],
+        ):
+            subprocess.run(cmd, cwd=aca_data, env=env, check=True, capture_output=True)
+
+        note.unlink()
+        assert not note.exists()
+
+        ctx = HookContext(
+            session_id="test-session-restore-nested",
+            client_type="claude",
+            session_short_hash="rstn1234",
+            hook_event="SessionStart",
+            raw_input={},
+        )
+        state = SessionState.create(ctx.session_id, client_type="claude")
+
+        with patch(
+            "hooks.session_env_setup.get_session_status_dir",
+            return_value=str(tmp_path),
+        ):
+            result = run_session_env_setup(ctx, state)
+
+        assert note.exists(), "nested note should be restored from HEAD"
+        assert note.read_text() == populated, "must restore populated content, not a stub"
+        assert "restored" in result.system_message
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

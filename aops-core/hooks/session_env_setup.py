@@ -337,31 +337,47 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
             # fix and lives in the sync resolver (#1739).
             import subprocess
 
-            rel = f"daily/{today_compact}-daily.md"
-            data_root = daily_dir.parent
             restored = False
             restore_error = None
             try:
-                in_head = (
-                    subprocess.run(
-                        ["git", "cat-file", "-e", f"HEAD:{rel}"],
-                        cwd=data_root,
-                        capture_output=True,
-                        timeout=10,
-                    ).returncode
-                    == 0
+                # Resolve the REAL git root from the note's own directory rather
+                # than assuming daily_dir.parent. The daily dir may be nested
+                # (e.g. brain/daily/), so the repo root is not necessarily the
+                # parent; rev-parse gives the ground truth and the correct
+                # repo-relative path for both layouts (and any nested repo).
+                top = subprocess.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    cwd=daily_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
-                if in_head:
-                    r = subprocess.run(
-                        ["git", "checkout", "HEAD", "--", rel],
-                        cwd=data_root,
-                        capture_output=True,
-                        check=False,
-                        timeout=10,
+                # rev-parse failing = not a git repo / no HEAD: a legitimate new
+                # day in a non-repo context, not a restore failure — leave
+                # restore_error None so it falls through to a quiet stub.
+                if top.returncode == 0:
+                    git_root = Path(top.stdout.strip())
+                    rel = str(daily_note_path.relative_to(git_root))
+                    in_head = (
+                        subprocess.run(
+                            ["git", "cat-file", "-e", f"HEAD:{rel}"],
+                            cwd=git_root,
+                            capture_output=True,
+                            timeout=10,
+                        ).returncode
+                        == 0
                     )
-                    restored = daily_note_path.exists()
-                    if not restored:
-                        restore_error = f"git checkout failed (rc={r.returncode})"
+                    if in_head:
+                        r = subprocess.run(
+                            ["git", "checkout", "HEAD", "--", rel],
+                            cwd=git_root,
+                            capture_output=True,
+                            check=False,
+                            timeout=10,
+                        )
+                        restored = daily_note_path.exists()
+                        if not restored:
+                            restore_error = f"git checkout failed (rc={r.returncode})"
             except Exception as exc:
                 restore_error = str(exc)
                 restored = False
