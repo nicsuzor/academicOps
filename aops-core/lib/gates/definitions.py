@@ -14,6 +14,7 @@ from lib.gate_types import (
     GateStatus,
     GateTransition,
     GateTrigger,
+    normalize_verdict,
 )
 
 # Note: SubagentStart is included in trigger patterns alongside SubagentStop so
@@ -74,7 +75,7 @@ GATE_CONFIGS = [
                     ),
                     custom_check="is_destructive_env_op",
                 ),
-                verdict=SENTINEL_GATE_MODE,
+                verdict=normalize_verdict(SENTINEL_GATE_MODE),
                 message_key="sentinel.policy_message",
                 context_key="sentinel.policy_context",
             ),
@@ -128,7 +129,7 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                     custom_check="not_mid_edit",
                 ),
-                verdict=ENFORCER_GATE_MODE,
+                verdict=normalize_verdict(ENFORCER_GATE_MODE),
                 message_key="enforcer.policy_message",
                 context_key="enforcer.policy_context",
                 custom_action="prepare_compliance_report",
