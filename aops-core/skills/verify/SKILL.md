@@ -38,7 +38,7 @@ Default posture: **assume it's broken.** The burden is on the artifact to prove 
    - Acknowledge known limitations or constraints.
 4. **Forcing Checks**: Write explicit answers for each in the report before a PASS verdict:
    - **Sentinel / Empty-State Audit**: Count and list empty/sentinel fields (e.g. `DERIVER_MISSING`, `N/A`, `TODO`). Fail if primary value-signals are missing.
-   - **Principal's-Eye Top-Line Read**: State verbatim the most prominent headline element and verify correctness for the end-user.
+   - **Principal's-Eye Top-Line Read**: State verbatim the most prominent headline element and verify correctness for the end-user. For "show me my X" surfaces, this means reproducing the principal's literal view (his account, host, launch-context) and confirming HIS OWN instance is present — a generic instance is FAIL (see `/design-rubric` self-instance requirement).
    - **Floor vs Ceiling**: State verbatim: "exceptional, or merely working?". Merely working is not a PASS on fitness tasks.
 5. **No Anchoring/Bias**:
    - If you participated in designing or iterating on this artifact, you are disqualified from reviewing it for fitness.

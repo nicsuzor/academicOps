@@ -60,6 +60,10 @@ If these apply and a rubric is missing at verify time, halt with: `REVISE — fi
 3. **Dimensions**: 3 to 5 qualitative judgment questions. Focus on comprehension, cognitive load, task fitness, and degradation.
 4. **Quality Spectrum**: Narrative description (not numeric) of _excellent_ vs. _poor_ execution for each dimension. Mark one critical dimension as `**load-bearing**` if applicable (marsha cannot PASS if this dimension is poor).
 
+## Self-Instance Requirement
+
+When the feature surfaces the user's OWN data or view ("show me my sessions", "my tasks", "where I was"), a generic instance of the thing appearing is not proof. The rubric must name the principal's concrete identifying signal — the exact fields, account, host, or launch-context that mark the artifact as HIS instance — so verification can later reproduce the principal's literal view and confirm his own data is present. Treat this as load-bearing on any "show MY X" feature: a generic-instance pass is a FAIL.
+
 ## Output Schema
 
 Save directly to the spec or epic task body:
