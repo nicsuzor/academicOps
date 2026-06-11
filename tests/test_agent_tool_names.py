@@ -126,6 +126,13 @@ def test_translate_plugin_root_claude_unchanged():
     assert "${extensionPath}" not in translated
 
 
+def test_translate_tool_calls_claude_leaves_abstract_tools_unchanged():
+    """Test that translate_tool_calls does not translate abstract tools (Read, Grep, etc.) for Claude."""
+    body = "Please use Read(file) and Grep(pattern) or Edit(file) tools."
+    translated = translate_tool_calls(body, "claude")
+    assert translated == body
+
+
 def test_gemini_agent_schema_tool_validation():
     """Test that validate_gemini_agent_schema raises ValueError for invalid tools."""
     from scripts.transforms.agent_schema import validate_gemini_agent_schema

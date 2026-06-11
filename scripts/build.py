@@ -739,27 +739,12 @@ def translate_tool_calls(text: str, platform: str) -> str:
             "`Grep`": "`grep_search`",
             "Read or Grep": "read_file or grep_search",
         },
-        "claude": {
-            "Read(": "read_file(",
-            "Write(": "write_file(",
-            "Edit(": "replace(",
-            "ls(": "list_directory(",
-            "Glob(": "glob(",
-            "Grep(": "grep(",
-            "Read tool": "read_file tool",
-            "Write tool": "write_file tool",
-            "Edit tool": "replace tool",
-            "`Read`": "`read_file`",
-            "`Write`": "`write_file`",
-            "`Edit`": "`replace`",
-            "`ls`": "`list_directory`",
-            "`Glob`": "`glob`",
-            "`Grep`": "`grep`",
-            "Read or Grep": "read_file or grep",
-        },
+        "claude": {},
     }
 
-    platform_map = mappings.get(platform, mappings["gemini"])
+    platform_map = mappings.get(
+        platform, {}
+    )  # allow-fallback: default to no-op for unrecognized platforms
     for abstract, concrete in platform_map.items():
         text = text.replace(abstract, concrete)
 

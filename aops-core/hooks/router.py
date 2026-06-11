@@ -672,25 +672,6 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
 
-    def _run_generate_transcript(self, transcript_path: str) -> None:
-        """Run transcript generation on stop."""
-        try:
-            import subprocess
-            from pathlib import Path
-
-            root_dir = Path(__file__).parent.parent
-            script_path = root_dir / "scripts" / "transcript.py"
-
-            if script_path.exists():
-                subprocess.run(
-                    [sys.executable, str(script_path), transcript_path],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-        except Exception as e:
-            print(f"WARNING: generate_transcript error: {e}", file=sys.stderr)
-
     def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
         """Dispatch to GenericGate methods based on event type.
 
