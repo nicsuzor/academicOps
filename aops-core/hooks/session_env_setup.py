@@ -309,43 +309,12 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         except Exception as e:
             print(f"WARNING: Failed to read CORE.md: {e}", file=sys.stderr)
 
-    # 9. Ensure daily note exists for today to avoid stale landing (P2)
-    try:
-        from datetime import datetime
-
-        from lib.paths import get_daily_dir
-
-        # Use simple date format to match SKILL.md naming convention
-        today_compact = datetime.now().strftime("%Y%m%d")
-        today_iso = datetime.now().strftime("%Y-%m-%d")
-        daily_dir = get_daily_dir()
-        daily_note_path = daily_dir / f"{today_compact}-daily.md"
-
-        if not daily_note_path.exists():
-            daily_dir.mkdir(parents=True, exist_ok=True)
-            # Minimal valid daily note template per SSoT
-            content = f"""---
-title: "Daily Summary - {today_iso}"
-type: daily
-date: {today_iso}
----
-
-# Daily Summary - {today_iso}
-
-Today's note has not been populated yet. Run `/daily` to update.
-"""
-            daily_note_path.write_text(content)
-            daily_note_row = _ok(
-                f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
-            )
-        else:
-            daily_note_row = _ok(f"Daily note: {today_compact}-daily.md")
-
-    except Exception as e:
-        # Graceful degradation for daily note bootstrap.
-        daily_note_row = _warn(f"Daily note: bootstrap failed ({e})")
-
-    messages.extend(["", section_header("Daily note"), daily_note_row])
+    # NOTE: SessionStart deliberately does NOT scaffold a daily-note stub.
+    # A local-only `exists()` check minted a placeholder on any machine that
+    # opened a session before today's populated note had synced down; auto_commit
+    # then committed that stub, and the sync's `git checkout --ours` conflict
+    # resolver silently overwrote the populated note with it (academicOps #1739).
+    # The daily note is created/populated solely by the `/daily` skill.
 
     # Persist all resolved environment variables (literals and any env-to-env
     # mappings that resolved at hook time).
