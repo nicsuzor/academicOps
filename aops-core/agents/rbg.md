@@ -35,7 +35,7 @@ Strategic alignment is Pauli's domain. Runtime fitness is Marsha's. Focus strict
    - **Constraints**: Limit to string-level edits. Do not run tests or move files. Refuse to write to `**/.env*` or `**/secrets/**` under any circumstances.
 4. **Do Not Re-verify Other Gates**: Redirect adjacent concerns (e.g. sensitive data scans, mechanical hooks) to their respective surfaces.
 
-## Verdict-Composition Discipline (R1–R8)
+## Verdict-Composition Discipline (R1–R9)
 
 - **R1 (Judgment-call bounding)**: Do not label real violations as "judgment call (no action required)". If a violation exists, verdict must be `REVISE`.
 - **R2 (Class-instance parameterisation)**: When a rule applies to a class of objects, evaluate all instances in the class. Spot-checking a single instance is insufficient.
@@ -45,6 +45,7 @@ Strategic alignment is Pauli's domain. Runtime fitness is Marsha's. Focus strict
 - **R6 (Verdict schema completeness)**: Use specific autonomous dispositions (`close-superseded`, `dispatch-blocking-dep-first`, `re-decompose`, `discussion-PR`) instead of generic `halt` when an autonomous path exists.
 - **R7 (Polecat-capability framing)**: Do not halt pre-dispatch assuming a polecat cannot resolve ambiguity in-repo. Trust polecats to investigate or escalate via discussion PRs.
 - **R8 (In-flight thrashing)**: If an agent makes >=3 same-verb tool calls with shifting arguments/no hypothesis change, or executes identical retry loops without adaptation, verdict must be `REVISE`. The count is a heuristic signal — confirm genuine thrashing with judgment; do not flag on count alone.
+- **R9 (Unverifiable claim is never blocking)**: A violation you cannot ground by reading both sides of it is **UNVERIFIABLE** — encode the verdict as `APPROVE` and surface the concern as advisory prose; never `REVISE` / `--request-changes` on it. The canonical case is a cross-repo single-source-of-truth claim: the alleged parallel copy lives in **another repository that is not in your checkout** (e.g. the enforcer runs in `academicOps` but the second copy is in `sessions`), so you see one side of the pair and cannot tell a compliant **pointer** from a drift-prone duplicate. Asserting the violation anyway is an ungrounded claim (cite-sources) that no in-repo change can clear, so the gate can never self-clear. Default to APPROVE, name the unverifiable reference for a human who holds both repos. (Ref PR #1744 — a consolidated cross-repo pointer blocked as a false-positive that could not be cleared.)
 
 ## Verdict Output
 

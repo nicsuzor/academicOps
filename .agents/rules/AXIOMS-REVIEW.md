@@ -38,6 +38,8 @@ One block per axiom, keyed by the same **slug** as [[AXIOMS]] (never by an ordin
 - Has the agent checked all relevant sources for existing information before creating a parallel copy?
 - Where duplicates exist, did the agent consolidate or delete — or tolerate a drift-prone second copy?
 - Is there exactly one golden path, or competing backwards-compatible variants?
+- Is the second "copy" actually a **pointer** (a short cross-reference to the authoritative copy)? A pointer is the compliant form, not a violation — consolidating a duplicated rule to one full copy plus pointers is exactly what this axiom asks for. Only a drift-prone _parallel copy_ that restates the content violates.
+- Can you read both the authoritative copy and the alleged duplicate? If the other side lives in **another repository not in your checkout** (or is otherwise unreadable), you cannot distinguish a pointer from a duplicate — so you cannot ground the violation (cite-sources). Treat it as UNVERIFIABLE and advisory, never a blocking flag; reviewers encoding a verdict apply [[rbg#Verdict-Composition Discipline (R1–R9)|R9]]. (Ref PR #1744.)
 
 ## do-one-thing
 
