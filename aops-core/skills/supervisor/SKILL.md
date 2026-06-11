@@ -80,9 +80,12 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
   - Do not include history, reviewer notes, dimensions, or manual check steps.
   - Halt if `## Fitness Rubric` is missing for user-facing artifacts.
 
-### marsha — Verify
+### marsha — Verify (Review Surface)
 
-- **Role**: Review deliverables for work items in `in_progress`.
+- **Role**: Review deliverables for work items.
+- **Review Surface Shift**:
+  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it.
+  - **Standalone / Independent Tasks**: Keep the legacy branch-per-task behavior and verify each task's PR individually.
 - **Verdict**: PASS, FAIL <reason>, or REVISE <reason>.
 
 | Verdict    | Action                                                     |
@@ -106,17 +109,41 @@ Verify verdicts satisfy:
 - Grounded in epic body states.
   If validation fails, append `verdict_fail` to Pattern Memory and exit.
 
+## Cohesive Single-PR-Epic Pattern (Default)
+
+The framework defaults to the **cohesive single-PR-epic pattern** for all epics whose subtasks are meant to land together. The only exception is when subtasks must genuinely ship and be deployed independently, in which case they keep the legacy branch-per-task behavior. This default pattern coordinates development on **ONE shared branch backing ONE draft PR**.
+
+### Live Mechanism (PR #1749 / aops-613690b5)
+
+This pattern is executable today via the live shared-branch mechanism:
+
+- **`is_shared_branch` Detection**: The manager automatically detects shared branches by looking for custom branch overrides. If the branch name does not match the default `polecat/task-<task-id>` pattern (e.g. `polecat/epic-<epic-id>`), it is treated as a shared branch.
+- **Cooperative Sync**: Workers on a shared branch perform cooperative pulls and rebases (`git fetch` followed by `git rebase origin/<branch-name>`) to integrate other workers' in-flight commits rather than resetting to main.
+- **Force-with-lease**: Push operations use `--force-with-lease` to push changes to the shared branch, accepting a low-concurrency contract.
+- **No Deletion**: Shared branches bypass staleness and nuke-delete cleanup sequences, preserving in-flight contributions.
+
+### Dispatch and Concurrency Rules
+
+1. **Shared Branch Default**: Every worker dispatched for a subtask of a cohesive epic must use the exact same branch name via the override flag: `--branch polecat/epic-<epic-id>`.
+2. **Decomposition Structure**:
+   - The epic must be decomposed into **parallel-able units** (which have no inter-dependency and can execute concurrently on the shared branch) and **sequential-dependency units** (which carry explicit `depends_on: [<id>]` edges).
+   - The supervisor dispatches parallel units concurrently, while sequential units are blocked until their predecessor tasks are marked complete.
+
+### Draft PR Lifecycle Contract
+
+1. **Contract (target)**: One DRAFT PR until explicit final-stage promotion — no intermediate worker produces a ready PR. **This behaviour is DELIVERED BY [[aops-9f07c557]] (in progress), not by the merged shared-branch base (PR #1749).**
+2. **Current mechanism until that lands**: Polecat auto-creates the single PR on the first `finish` via `gh pr create --head polecat/epic-<epic-id>` (NOT a worker `gh pr create`). `--draft` is appended only `if is_partial` (per `polecat/finalize.py:642-645`). On a FULL completion (such as the auto-finish path in `cli.py:5366-5372` which does not set `is_partial`), the PR is created **READY**, not draft. Until [[aops-9f07c557]] adds the `is_shared` draft carve-out + final-stage promotion, the PR's safety gate is **branch protection** — it cannot merge without Nic's per-SHA `APPROVED` review regardless of draft/ready status. No agent ever simulates that signal.
+3. **No Worker-Created PR**: Workers do not manually create PRs. The PR materialises automatically when the first worker on the shared branch finishes; the supervisor does not hand-create it and no worker is told to. (The supervisor's only PR-state action remains the final-stage promotion `gh pr ready`, once [[aops-9f07c557]] makes draft-until-final real.)
+4. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
+
 ## Canonical Dispatch Commands
 
 ```bash
 # Local dispatch
-zsh -i -c "polecat run -t <task-id> -p <project> [--gemini] [--model <name>]"
-
-# Remote dispatch (SSH + tmux)
-ssh "$TARGET_HOST" "tmux new-session -d -s 'polecat-<task-id>' 'zsh -i -c \"polecat run -t <task-id> -p <project> [--gemini] [--model <name>]\"'"
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model <name>
 ```
 
-- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-2.5-pro` (paired with `--gemini`). `--opus` is not a valid flag and will error — use `--model opus`.
+- `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-3.1-pro-preview` for Gemini. `--opus` is not a valid flag and will error — use `--model opus`.
 
 ## Emergency Brake
 
@@ -216,16 +243,6 @@ Monitor(
   description: "polecat exits",
   persistent: true,
   command: "while true; do docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
-)
-```
-
-### Remote Monitor Command
-
-```
-Monitor(
-  description: "polecat exits",
-  persistent: true,
-  command: "while true; do ssh wsl docker events --filter event=die --filter 'name=polecat-' --format '{{.Time}} {{.Actor.Attributes.name}} exit={{.Actor.Attributes.exitCode}}'; sleep 2; done"
 )
 ```
 

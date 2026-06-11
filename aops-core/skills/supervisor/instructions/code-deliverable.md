@@ -10,19 +10,19 @@ A research deliverable would have its own subworkflow file with different vocabu
 
 ## Mapping the Generic Loop to Code Deliverables
 
-| Generic phase  | Code-deliverable specialisation                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| Decompose      | Subtasks are PR-sized (≤ 0.5d, ≤ 10 files, single "why", reviewable in ≤ 15 min).                         |
-| Dispatch       | `polecat run -t <task-id> -p <project>` (with `-g` for Gemini), or Jules via `pkb task ... \| jules new`. |
-| Verify         | Marsha reads the PR diff + worker exit; returns PASS/FAIL/REVISE.                                         |
-| Review surface | GitHub PR; mechanical merge-prep adds the `ready-for-review` label asynchronously.                        |
-| Integrate      | Replaced by **halt at `merge_ready`**. The supervisor never merges.                                       |
+| Generic phase  | Code-deliverable specialisation                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Decompose      | Subtasks are review-sized (≤ 0.5d, ≤ 10 files, single "why", reviewable in ≤ 15 min), grouped for shared-branch default.           |
+| Dispatch       | `polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id>` (default for cohesive epics), or Jules.                    |
+| Verify         | Marsha reads the single cumulative PR diff + worker exit when the final stage promotes it; intermediate tasks are checked locally. |
+| Review surface | GitHub PR (single PR at end for cohesive epics; PR-per-task only for independent tasks).                                           |
+| Integrate      | Replaced by **halt at `merge_ready`** when final PR is promoted/verified. The supervisor never merges.                             |
 
 ## Mandatory Pre-Dispatch Gates
 
 Three gates MUST pass before any `polecat run` invocation. **Pauli runs them during preflight** — the main agent never invokes them inline. Canonical specs in [[worker-dispatch#mandatory-pre-dispatch-gates]]:
 
-1. **Host check (issue #598)** — `hostname -s` matches a registered polecat host. Mismatch → SSH+tmux remote dispatch; no silent local fallback.
+1. **Host check (issue #598)** — `hostname -s` matches a registered polecat host. Mismatch → refuse to dispatch (Docker is LOCAL on this host; no remote SSH hop exists).
 2. **PKB readiness probe (issue #600)** — `polecat ping-pkb` succeeds on the intended worker host. Failure → refuse to dispatch.
 3. **Pre-flight Confirmation Summary** — 4-row table (Task ID / Source repo / `project=` / Next link). Halt if any row is unknown or rows 2/3 disagree.
 
@@ -30,10 +30,10 @@ Three gates MUST pass before any `polecat run` invocation. **Pauli runs them dur
 
 ```bash
 # Claude worker
-polecat run -t <task-id> -p <project>
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model claude
 
 # Gemini worker
-polecat run -t <task-id> -p <project> -g
+uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model gemini-3.1-pro-preview
 
 # Jules (async, Google infrastructure)
 pkb task <task-id> | jules new --repo <owner>/<repo>
@@ -44,9 +44,9 @@ pkb task <task-id> | jules new --repo <owner>/<repo>
 - Exit 0 + "✅ already done" → task was `done`; graceful noop, move on.
 - Exit 2 + "🔒 Task is locked" → task already has an open PR; record the PR in the work-items table and do not retry dispatch.
 
-### Coordinated Branch Dispatch
+### Coordinated Shared-Branch Dispatch (Default)
 
-For tightly coupled subtasks, use a shared feature branch with a draft PR; polecats push sequentially. See [[worker-dispatch#coordinated-branch-dispatch]] for the protocol.
+For cohesive epics whose subtasks are meant to land together (the default case), workers execute on a single shared branch (`polecat/epic-<epic-id>`) backing a single draft PR. The supervisor dispatches workers with the `--branch polecat/epic-<epic-id>` override. This coordinates parallel-able and sequential-dependency units on a single PR. See [[../SKILL.md#cohesive-single-pr-epic-pattern-default]] for the detailed rules.
 
 ### Critic-Gated Dispatch
 
@@ -54,7 +54,16 @@ Tasks tagged `high-risk` or meeting blast-radius criteria require independent cr
 
 ## Monitor: Wait for the PR, Then Halt
 
-The supervisor's only monitoring obligation is "did the worker open a PR?" Once each work item has a PR, the supervisor halts at `merge_ready` and the existing GHA pipeline takes over. The supervisor does NOT poll CI, does NOT chase reviewers, does NOT track merge-prep status.
+For cohesive single-PR-epics, the supervisor's monitoring obligation shifts:
+
+- **Intermediate tasks**: The supervisor checks the worker exit status. If non-zero, trigger Pauli with `role=react`, context `worker-failed`. If zero, run local outcome-based verification:
+  1. Commit existence: Run `git log origin/polecat/epic-<epic-id> --grep=<task-id>` to verify that the worker's commits actually reached the remote shared branch.
+  2. Diff inspection: Inspect the diff of the task's commits to verify that changes are non-empty, syntactically correct, and contain no debug scripts, temporary placeholders, or credential leaks (negative verification).
+  3. If verification fails, trigger Pauli with `role=react`, context `verification-failed`. If it passes, mark the task `merge_ready` directly to unblock dependent tasks.
+- **Final stage**: The supervisor waits for the final worker to complete the final stage and promote the draft PR. Once the single PR is promoted (marked ready-for-review), the supervisor runs the final `marsha` verification on that single PR.
+- **Halt on review/approval**: The supervisor halts at `merge_ready` once the PR is verified, and the GHA pipeline/manual Nic approval gate takes over.
+
+For standalone tasks, the supervisor waits for the task-specific PR to open, verifies it, and halts. The supervisor does NOT poll CI, does NOT chase reviewers, does NOT track merge-prep status.
 
 ```bash
 # Dispatch in background — get notified on exit
@@ -69,14 +78,20 @@ polecat run -t <task-id> -p <project>  # Bash run_in_background: true
 
 The third row is the **in-session notify-watch** — armed once when the user requests a multi-tick batch ("maintain N concurrent workers" / "drain the queue this session"). See [[../SKILL.md#in-session-multi-tick-supervision-notify-watch]] for arming, crew filtering, and stop conditions.
 
-On worker exit, hand the result to **marsha** (see [[../SKILL.md#marsha--verify]]). Marsha reads the PR / diff / transcript on the supervisor's behalf and returns PASS/FAIL/REVISE. The main agent never reads them.
+On worker exit, determine the path:
 
-| Outcome            | Main agent action                                      |
-| ------------------ | ------------------------------------------------------ |
-| Marsha PASS        | Record PR in work items; mark item `merge_ready`       |
-| Marsha FAIL        | Call pauli with `role=react`                           |
-| Marsha REVISE      | File a verification subtask (depends_on PR)            |
-| Worker exit, no PR | Call pauli with `role=react`, context `no-deliverable` |
+- **Standalone Task or Cumulative Final PR**: Hand the result to **marsha** (see [[../SKILL.md#marsha--verify]]). Marsha reads the PR / diff / transcript on the supervisor's behalf and returns PASS/FAIL/REVISE. The main agent never reads them.
+- **Intermediate Task on Shared Branch**: Do NOT invoke Marsha. Perform local outcome-based verification of worker completion and push status on the shared branch.
+
+| Case                      | Outcome                 | Main agent action                                           |
+| ------------------------- | ----------------------- | ----------------------------------------------------------- |
+| **Standalone / Final PR** | Marsha PASS             | Record PR in work items; mark item `merge_ready`            |
+| **Standalone / Final PR** | Marsha FAIL             | Call pauli with `role=react`                                |
+| **Standalone / Final PR** | Marsha REVISE           | File a verification subtask (depends_on PR)                 |
+| **Standalone / Final PR** | Worker exit, no PR      | Call pauli with `role=react`, context `no-deliverable`      |
+| **Intermediate Task**     | Local verification PASS | Mark item `merge_ready`                                     |
+| **Intermediate Task**     | Local verification FAIL | Call pauli with `role=react`, context `verification-failed` |
+| **Intermediate Task**     | Worker exit non-zero    | Call pauli with `role=react`, context `worker-failed`       |
 
 ### Removed Responsibilities (per task-212f1c82)
 
@@ -95,36 +110,39 @@ If a transcript shows the supervisor doing any of these against a PR that has al
 
 ## Handoff Contract (task-212f1c82)
 
-The supervisor's job ends when each work item is **opened as a PR**. That is the completion signal — replacing the old `merge_ready` / "drive PR to mergeable" / poll-CI loop.
+The supervisor's job ends when the single PR (for cohesive epics) or the individual PRs (for standalone tasks) are promoted or opened. That is the completion signal — replacing the old `merge_ready` / "drive PR to mergeable" / poll-CI loop.
 
-| Layer                             | Owns                                                                 | Surface                   |
-| --------------------------------- | -------------------------------------------------------------------- | ------------------------- |
-| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `merge_ready` once each PR is open    | One report per epic       |
-| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep | PR labels + status checks |
+| Layer                             | Owns                                                                                                 | Surface                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `merge_ready` once the single PR is promoted (or individual PRs open) | One report per epic       |
+| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep                                 | PR labels + status checks |
 
-The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does NOT chase reviewers. Once every work item has opened a PR, produce the final summary and halt.
+The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does NOT chase reviewers. Once the single promoted PR is verified, produce the final summary and halt.
 
 ### Halt state: `merge_ready`
 
-Set the epic to `merge_ready` once every child task either:
+Set the epic to `merge_ready` once:
 
-- has an open PR, OR
-- has been escalated/blocked with a clear reason recorded in the task body.
+- **Cohesive Single-PR-Epic (Default)**: The final stage of the epic completes, the shared branch's single draft PR is promoted (marked ready-for-review), and the cumulative PR passes `marsha` verification.
+- **Standalone Tasks**: Every child task has an open individual PR.
+- Any blocked/escalated subtasks are recorded in the task body with clear reasons.
 
 The existing GHA pipeline (pr-pipeline.yml, agent-enforcer.yml, agent-merge-prep.yml, summary-and-merge.yml) handles CI, axiom enforcement, merge prep, and the GitHub Environment approval gate. Review agents (rbg, pauli, marsha) may be invoked on the PR by callers separately.
 
 ### Final-summary template (one report per epic)
 
 ```
-Epic <epic-id> — N PRs in `merge_ready`
+Epic <epic-id> — Shared PR in `merge_ready`
 
 | # | Task ID  | Title              | PR                            | State            |
 | - | -------- | ------------------ | ----------------------------- | ---------------- |
-| 1 | task-aaa | <one-line title>   | https://github.com/.../pull/1 | ready-for-review |
-| 2 | task-bbb | <one-line title>   | https://github.com/.../pull/2 | open (no label)  |
-| 3 | task-ccc | <one-line title>   | —                             | blocked: <why>   |
+| 1 | epic-id  | Cumulative Epic PR | https://github.com/.../pull/1 | ready-for-review |
+| - | -------- | ------------------ | ----------------------------- | ---------------- |
+| 2 | task-aaa | Intermediate task  | shared branch                 | done             |
+| 3 | task-bbb | Intermediate task  | shared branch                 | done             |
+| 4 | task-ccc | <one-line title>   | —                             | blocked: <why>   |
 
-Next surface: the existing GHA pipeline. No further supervisor action.
+Next surface: the existing GHA pipeline and manual human review. No further supervisor action.
 ```
 
 The supervisor MUST NOT include "polling will continue", "I'll check back in N minutes", or any GHA-status loop. **Task completion on merge** is handled by the existing branch-name → `pkb` automation, NOT by the supervisor.

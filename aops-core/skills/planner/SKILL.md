@@ -107,6 +107,9 @@ Break down epics into structured, verifiable single-session tasks.
     If the idea does not survive, record why and halt — do not proceed to decomposition. See [[aops-8d4a2e14]] (the primary-catch intent behind this gate). The arch-fit lens ([[aops-8c7f7b88]]) is the post-hoc backstop for anything that reaches PR; this gate is cheaper.
 
 - **Epistemics**: Establish concrete deliverables and observable verification criteria for all subtasks.
+- **Shared-Branch Cohesive-Epic Decompositions**: When planning an epic whose subtasks must land together in a single PR, partition the epic's tasks into parallel-able and sequential-dependency units to enable concurrent worker dispatch on the shared branch.
+  - **Rules & Structure**: Follow the canonical rules for parallel-able and sequential-dependency units defined in [[../supervisor/SKILL.md#cohesive-single-pr-epic-pattern-default]].
+  - **Dependencies**: Explicitly set `depends_on: [<id>]` referencing immediate predecessors for sequential-dependency units, and leave parallel-able units free of inter-dependencies.
 - **Set `classification` per subtask**: Match each subtask's shape — `spike` for spikes, `research` for research, omit (treated as execution) for execution tasks. Shape does not enter `focus_score`; it is the recorded signal that lets agents apply the `voi_value` calibration caveat correctly (trust genuine spike/probe leaves, discount deliverables — see [[multi-parent]] §VoI and [[mem-830588f3]]). Never override a user-set `classification`.
 - **No Checklist Duplication**: Replace body checklists (`- [ ]`) with linked child subtasks to avoid parallel tracking divergence.
 - **Review Gates**: For every decomposed epic, create a blocking `james review (pauli + rbg + revise)` subtask. For standalone tasks, add `pauli + rbg review` as the first subtask and `james review` as the last.

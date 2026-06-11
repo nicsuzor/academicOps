@@ -36,6 +36,7 @@ isolation").
    - 3-7 subtasks ideal
    - **Prefer Depth over Breadth**: If decomposition produces >5 subtasks, group them under intermediate epics to maintain a deep, manageable hierarchy.
    - Each subtask must pass the WHY test relative to its parent
+   - **Cohesive Single-PR-Epic**: For epics that default to a single PR (see [[../SKILL.md#cohesive-single-pr-epic-pattern-default]]), explicitly split the tasks into parallel-able units (no inter-dependencies, enabling concurrent execution) and sequential-dependency units (carrying explicit `depends_on` edges). Ensure that parallel-able units targeted for the same shared branch do not modify overlapping files or resources, preventing merge conflicts. If overlapping files are touched, enforce sequential dependencies (`depends_on`).
 5. Check for **Star Pattern** (P#101): if parent or proposal has >5 direct children, group under intermediate epics.
 6. Check for **Depth** (P#110): Multi-session projects should target a hierarchy of Project → Epic → Task → Action.
 7. **Completion loop (P#109)**: Create one additional subtask: "Verify: [parent goal] fully resolved" with `depends_on` set to ALL other subtasks and `assignee: null`. This task returns to the original problem after all implementation is done to confirm it's fully solved or iterate again.
