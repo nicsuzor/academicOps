@@ -398,9 +398,12 @@ class TestAntigravityStatusDir:
             assert saved, "state file was not written under the agy .system_generated dir"
             assert len(saved) == 1, f"expected one summary file, got {saved}"
             name = saved[0].name
-            # Provider segment must be antigravity, not claude.
-            assert "-antigravity-" in name, (
-                f"agy summary filename missing -antigravity- provider segment: {name}"
+            # Provider segment must be antigravity, not claude. The provider is
+            # the final filename segment (``...-<crew>-<provider>.json``), so it
+            # presents as a trailing ``-antigravity.json``; accept either a
+            # mid-string or terminal provider segment.
+            assert "-antigravity-" in name or "-antigravity." in name, (
+                f"agy summary filename missing -antigravity provider segment: {name}"
             )
             assert "-claude-" not in name and "-claude." not in name, (
                 f"agy summary filename leaked -claude- provider segment: {name}"
