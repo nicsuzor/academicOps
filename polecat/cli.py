@@ -5547,8 +5547,14 @@ def resume(ctx, task_id):
                     from polecat.finalize import finish_cmd as _finish_cmd
                 except ImportError:
                     from finalize import finish_cmd as _finish_cmd  # type: ignore[no-redef]
+                branch_name = manager.resolve_branch_name(task)
                 ctx.invoke(
-                    _finish_cmd, no_push=False, do_nuke=True, force_done=False, project=task.project, branch=branch
+                    _finish_cmd,
+                    no_push=False,
+                    do_nuke=True,
+                    force_done=False,
+                    project=task.project,
+                    branch=branch_name,
                 )
             finally:
                 os.chdir(original_cwd)

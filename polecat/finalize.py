@@ -461,16 +461,21 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                 )
                 if rebase_result.returncode != 0:
                     subprocess.run(["git", "rebase", "--abort"], check=False)
-                    print(f"  ❌ Rebase onto origin/{branch_name} failed due to conflicts.", file=sys.stderr)
+                    print(
+                        f"  ❌ Rebase onto origin/{branch_name} failed due to conflicts.",
+                        file=sys.stderr,
+                    )
                     print(f"  {rebase_result.stderr}", file=sys.stderr)
                     print("  Task will be marked for review.", file=sys.stderr)
                     task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto shared branch {branch_name}.\n"
                     try:
                         from lib.task_model import TaskStatus
+
                         task.status = TaskStatus.REVIEW.value
                         manager.storage.save_task(task)
                     except ImportError:
                         from polecat.pkb_bridge import save_task as pkb_save
+
                         task.status = "review"
                         pkb_save(task)
                     sys.exit(1)

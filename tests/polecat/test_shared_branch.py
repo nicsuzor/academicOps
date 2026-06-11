@@ -34,16 +34,17 @@ def mock_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PolecatMana
     sessions_dir.mkdir(exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
 
-    write_polecat_test_config(
-        tmp_path,
-        home_dir=polecat_home,
-        project_paths={"test": tmp_path / "test_repo"}
-    )
+    repo_path = tmp_path / "test_repo"
+    repo_path.mkdir(exist_ok=True)
+
+    write_polecat_test_config(tmp_path, home_dir=polecat_home, project_paths={"test": repo_path})
 
     return PolecatManager(home_dir=polecat_home)
 
 
-def test_resolve_branch_name_priorities(mock_manager: PolecatManager, monkeypatch: pytest.MonkeyPatch):
+def test_resolve_branch_name_priorities(
+    mock_manager: PolecatManager, monkeypatch: pytest.MonkeyPatch
+):
     task = DummyTask(id="task-123")
 
     # Priority 4: Default fallback
@@ -81,10 +82,12 @@ def test_is_shared_branch(mock_manager: PolecatManager):
     assert mock_manager.is_shared_branch("my-custom-branch")
 
 
-def test_nuke_worktree_preserves_shared_branch(mock_manager: PolecatManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_nuke_worktree_preserves_shared_branch(
+    mock_manager: PolecatManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     # Setup dummy project repo and mirror
     repo_path = tmp_path / "test_repo"
-    repo_path.mkdir()
+    repo_path.mkdir(exist_ok=True)
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_path, check=True)
     subprocess.run(["git", "config", "user.email", "test@test.example"], cwd=repo_path, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo_path, check=True)
@@ -94,9 +97,11 @@ def test_nuke_worktree_preserves_shared_branch(mock_manager: PolecatManager, tmp
 
     # Mock storage to return our task
     task = DummyTask(id="task-123", branch="polecat/shared-epic-branch")
+
     class MockStorage:
         def get_task(self, tid):
             return task if tid == "task-123" else None
+
     mock_manager.storage = MockStorage()
 
     # Set up worktree

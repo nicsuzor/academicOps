@@ -450,7 +450,9 @@ class PolecatManager:
                 return task.branch
             elif isinstance(task, dict) and task.get("branch"):
                 return task["branch"]
-            elif isinstance(task, dict) and task.get("frontmatter", {}).get("branch"):
+            elif isinstance(task, dict) and task.get("frontmatter", {}).get(
+                "branch"
+            ):  # allow-fallback: task dict may not contain frontmatter
                 return task["frontmatter"]["branch"]
 
         # 3. Config setting
@@ -483,7 +485,8 @@ class PolecatManager:
         if task_id:
             return branch_name != f"polecat/{task_id}"
         import re
-        if re.match(r"^polecat/[a-zA-Z0-9]+-[a-fA-F0-9]+$", branch_name):
+
+        if re.match(r"^polecat/(?!epic-)[a-zA-Z0-9]+-[a-fA-F0-9]+$", branch_name):
             return False
         return True
 
@@ -2206,10 +2209,18 @@ class PolecatManager:
             # For shared branch, verify we are up-to-date with remote shared branch instead of default_branch
             print(f"🔄 Syncing existing worktree with remote shared branch {branch_name}...")
             subprocess.run(["git", "fetch", "origin", branch_name], cwd=worktree_path, check=False)
-            rebase_res = subprocess.run(["git", "rebase", f"origin/{branch_name}"], cwd=worktree_path, capture_output=True, text=True)
+            rebase_res = subprocess.run(
+                ["git", "rebase", f"origin/{branch_name}"],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+            )
             if rebase_res.returncode != 0:
                 subprocess.run(["git", "rebase", "--abort"], cwd=worktree_path, check=False)
-                print(f"⚠ Failed to auto-rebase onto origin/{branch_name}: {rebase_res.stderr.strip()}", file=sys.stderr)
+                print(
+                    f"⚠ Failed to auto-rebase onto origin/{branch_name}: {rebase_res.stderr.strip()}",
+                    file=sys.stderr,
+                )
             return
 
         # 2. Verify branch is based on recent main
