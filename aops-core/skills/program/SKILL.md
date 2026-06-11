@@ -32,6 +32,7 @@ You are the top-level autonomous portfolio supervisor. You manage a release-leve
 - **Surface Only Actionable Outputs**: Write only pending approvals, escalations, or merge-ready PRs to `## Escalations`. Never output worker threads or tool-call play-by-play.
 - **No Micromanagement**: Let sub-agents (`/supervisor` and workers) handle the leaf executions. Focus strictly on coordinating epics, discovery, concurrency, and portfolio state.
 - **One dispatch per tick**: Dispatch at most one leaf per tick and never run two workers on the same task-id — concurrent worktree creation races on the worktree-lock and container-name. Grow concurrency with more ticks, never more dispatches per tick.
+- **Premise gate (hard refuse)**: Before any leaf is dispatched (here or via the `/supervisor` tick this loop drives), the dispatcher reads the task body and judges whether it carries a genuine premise judgment recorded at promotion to `queued` (see [[../remember/references/premise-gate.md]]). No genuine premise judgment → **do not dispatch, do not spend compute**; bounce the leaf back to the promoter. This is an agent judgment by reading, never a string/field check.
 - **State Tracking**: All cross-tick state must reside in the program task body under `## Program Log` and `## Constituent Epics`. Commit and push updates each tick.
 
 ## Per-Tick Checklist
