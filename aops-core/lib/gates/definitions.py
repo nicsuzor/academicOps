@@ -5,6 +5,7 @@ from hooks.gate_config import (
     SLASH_COMMAND_PROMPT_PATTERNS,
 )
 
+from lib.gate_model import GateVerdict
 from lib.gate_types import (
     CountdownConfig,
     GateCondition,
@@ -21,6 +22,26 @@ from lib.gate_types import (
 # intentional, not a workaround — _call_gate_method now routes SubagentStart
 # to gate.on_subagent_start() (fixed in aops-55bcf1a2).
 
+# --- Gate precedence (reviewable composition order) -------------------
+# When two or more gates fire on the same event, the outcome must be reviewable.
+# The composition order is explicit and deterministic:
+#
+#   1. Verdict tier dominates first. The router and the engine merge results
+#      DENY > WARN > ALLOW — a deny from any gate beats a warn from any other,
+#      regardless of position. "First deny wins".
+#   2. Within a tier, iteration order breaks ties — and iteration order is the
+#      registration order in this GATE_CONFIGS list. So the gate earlier in
+#      this list wins a same-tier collision.
+#
+# The order and its rationale (highest precedence first):
+#   sentinel  — PreToolUse destructive-op safety block; protects the user's
+#               environment, never advisory. Highest-stakes forcing function.
+#   enforcer  — periodic compliance self-check (PreToolUse threshold block).
+#   qa        — verification-before-exit (Stop); ahead of handover so a missing
+#               verifier surfaces before the handover reminder.
+#   handover  — structured-handover-before-exit (Stop): prevents work loss.
+#   ida       — honesty reminder (Stop); advisory, lowest precedence.
+# ----------------------------------------------------------------------
 GATE_CONFIGS = [
     # --- Sentinel ---
     # Named for its role as a guardian. Stateless PreToolUse gate that blocks
@@ -191,7 +212,7 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                     custom_check="is_qa_block_mode",
                 ),
-                verdict="block",
+                verdict=GateVerdict.DENY,
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
@@ -206,7 +227,7 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                     custom_check="is_qa_warn_mode",
                 ),
-                verdict="warn",
+                verdict=GateVerdict.WARN,
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
@@ -340,7 +361,7 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                     custom_check="is_handover_block_mode",
                 ),
-                verdict="block",
+                verdict=GateVerdict.DENY,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
@@ -355,7 +376,7 @@ GATE_CONFIGS = [
                     hook_event="Stop",
                     custom_check="is_handover_warn_mode",
                 ),
-                verdict="warn",
+                verdict=GateVerdict.WARN,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
@@ -420,7 +441,7 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                     custom_check="is_ida_block_mode",
                 ),
-                verdict="block",
+                verdict=GateVerdict.DENY,
                 message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
@@ -434,7 +455,7 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                     custom_check="is_ida_warn_mode",
                 ),
-                verdict="warn",
+                verdict=GateVerdict.WARN,
                 message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),

@@ -1,7 +1,9 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from lib.gate_model import GateVerdict
 
 
 class GateStatus(StrEnum):
@@ -111,7 +113,22 @@ class GatePolicy(BaseModel):
     """Rule for blocking/warning based on state."""
 
     condition: GateCondition
-    verdict: str = "allow"  # allow, warn, deny
+    verdict: GateVerdict = GateVerdict.ALLOW
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            v_lower = v.lower()
+            if v_lower == "block":
+                return GateVerdict.DENY
+            if v_lower == "off":
+                return GateVerdict.ALLOW
+            try:
+                return GateVerdict(v_lower)
+            except ValueError:
+                pass
+        return v
 
     # Message to show if policy triggers — prefer _key fields (resolved via
     # TemplateRegistry) over inline _template strings. Keys take priority.
