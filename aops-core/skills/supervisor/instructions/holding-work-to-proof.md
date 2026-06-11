@@ -31,8 +31,9 @@ implementation of the generic step.
   do not fill it with the work itself.
 - You hold the **conclusion**, not the file dumps. Read a worker's deliverable through its
   output file (grep/Read the parts you need); do not absorb a 30k-token narrative into your
-  own context just to extract a one-line verdict. (This is the single biggest context leak —
-  see §6.)
+  own context just to extract a one-line verdict. For anything bulky, hand it to the cheap
+  summarizer agent (defined in §6) rather than reading it inline. (This is the single biggest
+  context leak — see §6.)
 
 ## 0.5 Orient before the first dispatch — mandatory checklist
 
@@ -46,7 +47,14 @@ The four steps:
    "<terms>"`, plus the branch list). A merged fix or an in-flight branch changes the brief.
 3. **Identify the recorded SANCTIONED QA harness** for the artifact and require it in the
    brief. Refuse ad-hoc substitutes — a worker that invents its own test is not exercising a
-   gate you can trust.
+   gate you can trust. **Where it is recorded:** the harness is the artifact of this ORIENT
+   step, written into the epic ledger's ORIENT output (the `## Work Items` / `## Ledger`
+   sections) and populated from, in order, (i) the PKB semantic search results of step 1, (ii)
+   the artifact's own task / spec body, and (iii) recorded memory notes. **Boundary behaviour —
+   none exists:** if that chain yields no designated harness, do **not** let any worker invent
+   one silently and do **not** proceed on an ad-hoc substitute. **HALT and emit an `[ATTN]`
+   block asking Nic to designate the sanctioned harness** for this artifact. A missing harness
+   is an escalation, never a gap a worker fills on its own initiative.
 4. **For any cross-client / cross-vendor integration surface, FETCH THE VENDOR'S AUTHORITATIVE
    DOCS as step zero.** Reverse-engineering binaries, configs, or strace output is a _fallback
    only_, used after the docs are exhausted — never the first move.
@@ -73,7 +81,10 @@ The four steps:
 Final acceptance for the epic is one specific check, and all of these must hold at once:
 
 - It is the **exact previously-failing user-facing runtime check** — the same observable that
-  defined the bug, not a proxy.
+  defined the bug, not a proxy. **The supervisor supplies this**, read out of the epic ledger
+  (`## Work Items` / `## Ledger`, where the original failing observable was recorded at the
+  epic's first ORIENT) and stated in the capstone brief at dispatch time. The capstone agent
+  does not reconstruct "what failing meant" — that is the supervisor's to hand over.
 - Run on a **fresh instance / session** (no warm state that could mask the fault).
 - Run by an agent who is **NOT the implementer** (no marking your own homework).
 - Run with the **sanctioned harness** (§0.5 step 3), not an ad-hoc substitute.
@@ -81,6 +92,15 @@ Final acceptance for the epic is one specific check, and all of these must hold 
   could only have come from the system under test — byte-match it to source — rather than
   content the agent could have echoed from its own prompt. A "pass" that the prompt could have
   produced without the system running is not a pass.
+
+On the cohesive single-PR-epic surface this capstone is the **one cumulative `marsha` pass**
+the supervisor commissions at final-stage promotion. The marsha brief must carry the three
+supervisor-supplied specifics above — sanctioned harness, exact previously-failing check, and
+the byte-match requirement; `marsha`'s own [[../../verify/SKILL.md]] already enforces the
+fresh-instance / non-implementer / source-trace posture, so reference it rather than restating.
+`marsha` then **either executes the check on a fresh instance/session itself, or commissions a
+fresh-instance QA dispatch** (a non-implementer agent) and adjudicates its byte-matched
+evidence. A miss is logged `capstone_fail`.
 
 Only this capstone, satisfied in full, justifies promoting the epic's PR to ready.
 
@@ -171,14 +191,44 @@ mode, including supervisor-as-main-conversation-agent:
 
   The `CONFOUND CHECK` line is mandatory whenever the verdict blames anything we don't own. If
   it says `NOT RUN`, you do not relay the verdict — you commission the control (§2).
-- **Delegate bulk reading.** Large task bodies, transcripts, and log dumps are read by a
-  _cheap summarizer agent_ that hands back pointers and a capped digest — never absorbed
-  inline. Keep each deliverable's full narrative in its output file and pull detail on demand
-  via Read/grep against that file; never let the whole thing into your turn.
+- **Delegate bulk reading to a cheap summarizer agent.** Large task bodies, transcripts, and
+  log dumps are read by a _cheap summarizer agent_ that hands back pointers and a capped digest
+  — never absorbed inline. Canonically, that agent is a **haiku/sonnet general-purpose
+  Agent-tool dispatch** (or its `jr`/polecat equivalent on a surface without the Agent tool),
+  whose entire brief is: _"read `<pointer>`, return the ≤N facts relevant to `<question>`."_ It
+  reads the bulk so your context never has to. Keep each deliverable's full narrative in its
+  output file and pull detail on demand via Read/grep against that file; never let the whole
+  thing into your turn. Every other "cheap summarizer agent" mention in this doc and in SKILL.md
+  refers to exactly this — do not redefine it.
 - **The running ledger lives in the epic task body — always open an epic node.** Even when you
   are supervising from an interactive conversation with no pre-existing epic (the motivating
   session had none; all state lived in chat context, which is exactly how it burned 170k),
   open an epic node and keep the ledger there. Chat context is not durable state.
+
+  **How (the minimal mechanics — do this, don't keep state in chat):** call
+  `mcp__pkb__create_task` with `type=epic` (or `type=task` for a small one-off) under an
+  appropriate parent, then seed the body with the three-section skeleton the ticks read and
+  append to:
+
+  ```markdown
+  ## Work Items
+
+  - [ ] <unit> — status, the sanctioned harness, and the exact previously-failing check
+
+  ## Pattern Memory
+
+  | Tick (ISO) | Decision | Class | Notes |
+  | :--------- | :------- | :---- | :---- |
+
+  ## Ledger
+
+  <ORIENT output: PKB hits, prior-art PRs/branches, sanctioned harness, vendor docs>
+  ```
+
+  Capture the ORIENT findings (§0.5) into `## Ledger` and the original failing observable into
+  `## Work Items` on the first tick — that is where the capstone (§1a) later reads the
+  "exact previously-failing check" from. A junior in a `/goal` session must actually create
+  this node, not narrate the ledger in chat.
 - **Capped chat updates.** Between phases, a chat update to the principal is _one short
   paragraph_ — verdict + next action — not a transcript replay.
 - Reduce avoidable churn: preload the tool schemas a supervisor predictably needs (task
