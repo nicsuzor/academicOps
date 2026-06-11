@@ -467,6 +467,18 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         "PostInvocation",
     )
 
+    # Invocation/Stop events use a DIFFERENT registration shape than tool events.
+    # Per https://antigravity.google/docs/hooks#supported-events, the
+    # PreInvocation/PostInvocation (and Stop) handlers must be a FLAT handler list
+    # directly under the event key:
+    #     "PreInvocation": [{"type": "command", "command": "...", "timeout": N}]
+    # The matcher/hooks[] wrapper is ONLY for PreToolUse/PostToolUse. When the
+    # invocation events were wrapped in the tool-event shape, agy phantom-logged
+    # "executing command" (json_hook_caller.go:144) but never spawned the process
+    # — the PreInvocation context-injection hook silently never fired (the agy
+    # PreInvocation no-op symptom). Emitting the flat list makes the hook fire.
+    FLAT_LIST_AGY_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
+
     # Claude Code events that must be renamed for agy compatibility
     AGY_EVENT_MAP = {
         "UserPromptSubmit": "PreInvocation",
@@ -483,6 +495,25 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         "PreToolUse": 15000,
     }
 
+    def _transform_hook(hook: dict, output_event: str) -> dict:
+        """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
+        new_hook = dict(hook)
+        if "command" in new_hook:
+            cmd = new_hook["command"]
+            cmd = cmd.replace(
+                "${CLAUDE_PLUGIN_ROOT}",
+                "$HOME/.gemini/antigravity-cli/plugins/aops-core",
+            )
+            cmd = cmd.replace("--client claude", "--client agy")
+            cmd = f"{cmd} {output_event}"
+            new_hook["command"] = cmd
+        # Raise the timeout to the agy floor (defence-in-depth for cold-start;
+        # never lower an already-higher source value).
+        floor = AGY_TIMEOUT_FLOOR_MS.get(output_event)
+        if floor is not None and new_hook.get("timeout", 0) < floor:
+            new_hook["timeout"] = floor
+        return new_hook
+
     src_hooks = config["hooks"]
     agy_hooks: dict = {}
 
@@ -496,30 +527,27 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         if output_event not in VALID_AGY_EVENTS:
             continue
 
+        if output_event in FLAT_LIST_AGY_EVENTS:
+            # FLAT handler list directly under the event key — no matcher/hooks[]
+            # wrapper. agy only spawns invocation/Stop hooks in this shape.
+            flat_hooks = []
+            for hook_entry in hook_list:
+                # A source entry without a 'hooks' key simply contributes no handlers.
+                for hook in (
+                    hook_entry.get("hooks") or []
+                ):  # allow-fallback: a source hook entry may carry no nested 'hooks' list
+                    flat_hooks.append(_transform_hook(hook, output_event))
+            if flat_hooks:
+                agy_hooks[output_event] = flat_hooks
+            continue
+
+        # PreToolUse / PostToolUse: keep the matcher/hooks[] wrapper shape.
         transformed_hooks = []
         for hook_entry in hook_list:
             new_entry = {}
             for key, value in hook_entry.items():
                 if key == "hooks":
-                    new_hooks = []
-                    for hook in value:
-                        new_hook = dict(hook)
-                        if "command" in new_hook:
-                            cmd = new_hook["command"]
-                            cmd = cmd.replace(
-                                "${CLAUDE_PLUGIN_ROOT}",
-                                "$HOME/.gemini/antigravity-cli/plugins/aops-core",
-                            )
-                            cmd = cmd.replace("--client claude", "--client agy")
-                            cmd = f"{cmd} {output_event}"
-                            new_hook["command"] = cmd
-                        # Raise the timeout to the agy floor (defence-in-depth for
-                        # cold-start; never lower an already-higher source value).
-                        floor = AGY_TIMEOUT_FLOOR_MS.get(output_event)
-                        if floor is not None and new_hook.get("timeout", 0) < floor:
-                            new_hook["timeout"] = floor
-                        new_hooks.append(new_hook)
-                    new_entry[key] = new_hooks
+                    new_entry[key] = [_transform_hook(hook, output_event) for hook in value]
                 else:
                     new_entry[key] = value
             transformed_hooks.append(new_entry)

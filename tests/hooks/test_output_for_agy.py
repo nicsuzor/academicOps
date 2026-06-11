@@ -123,7 +123,7 @@ def test_posttooluse_is_always_empty(verdict):
 def test_preinvocation_injects_context_as_steps():
     payload = _agy("allow", event="PreInvocation", context="search the PKB first")
     steps = payload["injectSteps"]
-    assert steps == [{"systemMessage": {"systemMessage": "search the PKB first"}}]
+    assert steps == [{"ephemeralMessage": "search the PKB first"}]
 
 
 def test_preinvocation_without_context_is_empty():
@@ -136,16 +136,18 @@ def test_injected_step_oneof_variant_shapes_match_binary_descriptor():
     Decoded from the ``exa.hooks_pb`` FileDescriptorProto in the agy binary:
     ``system_message``/``tool_call`` are TYPE_MESSAGE (nested object),
     ``user_message``/``ephemeral_message`` are TYPE_STRING (scalar). The router
-    emits the ``systemMessage`` (message) member, so its protojson is a nested
-    object. This test guards both the emitted shape and the accept-contract's
-    scalar-vs-message typing so a regression to ``{"ephemeralMessage": {...}}``
-    (object where a string is required) is caught offline.
+    emits the ``ephemeralMessage`` (scalar string) member — the variant agy
+    actually renders into the model turn (the ``systemMessage`` message member
+    is dropped from the rendered turn even once the hook fires). This test guards
+    both the emitted scalar shape and the accept-contract's scalar-vs-message
+    typing so a regression to ``{"ephemeralMessage": {...}}`` (object where a
+    string is required) is caught offline.
     """
     from tests.hooks.agy_accept_contract import HookInjectedStep, is_accepted_by_agy
 
-    # The router's emitted variant: systemMessage is a nested message.
+    # The router's emitted variant: ephemeralMessage is a scalar string.
     payload = _agy("allow", event="PreInvocation", context="x")
-    assert payload["injectSteps"] == [{"systemMessage": {"systemMessage": "x"}}]
+    assert payload["injectSteps"] == [{"ephemeralMessage": "x"}]
     accepted, offending = is_accepted_by_agy(payload, "PreInvocation")
     assert accepted, offending
 
@@ -166,7 +168,7 @@ def test_injected_step_oneof_variant_shapes_match_binary_descriptor():
 
 def test_postinvocation_delivers_advisory_via_injectsteps():
     payload = _agy("deny", event="PostInvocation", context="finish the handover")
-    assert payload["injectSteps"] == [{"systemMessage": {"systemMessage": "finish the handover"}}]
+    assert payload["injectSteps"] == [{"ephemeralMessage": "finish the handover"}]
     # The hard stop-block enum is deferred — not emitted as a guess.
     assert "terminationBehavior" not in payload
 

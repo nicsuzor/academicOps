@@ -969,31 +969,28 @@ class HookRouter:
             ephemeral_message  (3)  TYPE_STRING   scalar string
             system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
 
-        We use the ``systemMessage`` member, whose protojson is the nested
-        ``{"systemMessage": text}`` object (``HookSystemMessage`` = ``{system_message,
-        metadata}``). That shape is now descriptor-VERIFIED correct for field 4
-        (it is NOT a guess: the scalar ``userMessage`` / ``ephemeralMessage``
-        members would each be a bare string, ``{"ephemeralMessage": text}``).
+        We use the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
+        protojson is the bare string ``{"ephemeralMessage": text}``. This is the
+        same channel agy uses to inject its own per-turn reminders into the model
+        turn, and is the variant that actually RENDERS the injected content.
 
-        HARD LIVE FINDING — agy 1.0.7 (2026-06-11, this authenticated host):
-        the agy harness logs ``json_hook_caller.go:144 ... PreInvocation_0_0:
-        executing command`` but **never spawns the configured command** for
-        PreInvocation/PostInvocation hooks. strace (``trace=execve``) over fresh
-        PTY sessions shows ONLY ``PostToolUse`` ever exec's ``router.sh``; an
-        isolated sentinel hook bound to PreInvocation fired ZERO times while its
-        PostToolUse twin fired on every step. A prompt-type PreInvocation hook
-        likewise produced no model-visible effect. So NO injectSteps payload —
-        of any oneof variant (systemMessage/ephemeralMessage/userMessage all
-        live-tested: the model reported the content ABSENT and the transcript
-        grep was zero) — can reach the model on agy 1.0.7. The emitted-but-
-        unrendered symptom is a platform no-op upstream of this formatter, not a
-        wrong-variant bug. This emission is kept descriptor-correct so it works
-        the moment agy starts honouring the hook; the live channel is the
-        blocker, tracked for re-test on the next agy release.
+        ROOT CAUSE CORRECTION — agy 1.0.7 (2026-06-11, this authenticated host):
+        the earlier "agy never spawns PreInvocation hooks" conclusion was a
+        confound. A vanilla, doc-shaped PreInvocation hook FIRES cleanly on agy
+        1.0.7 (sentinel + ``strace -f`` confirmed). The real defect was OUR
+        registration: the generated hooks.json wrapped the invocation events in
+        the PreToolUse-style ``matcher``/``hooks[]`` shape, so agy phantom-logged
+        ``json_hook_caller.go:144 ... executing command`` but never spawned the
+        process. Per https://antigravity.google/docs/hooks#supported-events the
+        invocation/Stop events require a FLAT handler list directly under the
+        event key (fixed in ``_generate_antigravity_hooks_json``). Once the hook
+        fires, the ``systemMessage`` member is dropped from the rendered turn;
+        the scalar ``ephemeralMessage`` member is what agy renders into the model
+        context, so the context-injection advisory is emitted via that member.
         """
         if not text:
             return []
-        return [{"systemMessage": {"systemMessage": text}}]
+        return [{"ephemeralMessage": text}]
 
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
