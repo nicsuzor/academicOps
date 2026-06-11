@@ -1554,7 +1554,7 @@ class PolecatManager:
         """
         results = {}
         for project in self.projects:
-            if not self.projects[project].get("is_repo", True):
+            if self.projects[project].get("is_repo") is False:
                 continue
             mirror_path = self.repos_dir / f"{project}.git"
             if not mirror_path.exists():
