@@ -465,6 +465,16 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         "Stop": "PostInvocation",
     }
 
+    # Defence-in-depth timeout floors for agy (ms). The real cold-start fix is the
+    # venv prebuild in `make install-agy`; this floor is a safety net so that if a
+    # venv prebuild is ever skipped/failed, the first PreToolUse cold `uv run`
+    # build does not blow the timeout and produce a spurious "Tool call denied by
+    # jsonhook__..." (aops-7697a478). With a warm venv the hook returns in <100ms,
+    # so a higher ceiling costs nothing in steady state.
+    AGY_TIMEOUT_FLOOR_MS = {
+        "PreToolUse": 15000,
+    }
+
     src_hooks = config["hooks"]
     agy_hooks: dict = {}
 
@@ -495,6 +505,11 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
                             cmd = cmd.replace("--client claude", "--client agy")
                             cmd = f"{cmd} {output_event}"
                             new_hook["command"] = cmd
+                        # Raise the timeout to the agy floor (defence-in-depth for
+                        # cold-start; never lower an already-higher source value).
+                        floor = AGY_TIMEOUT_FLOOR_MS.get(output_event)
+                        if floor is not None and new_hook.get("timeout", 0) < floor:
+                            new_hook["timeout"] = floor
                         new_hooks.append(new_hook)
                     new_entry[key] = new_hooks
                 else:

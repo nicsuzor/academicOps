@@ -27,9 +27,15 @@ from typing import Any
 HOOK_DIR = Path(__file__).parent  # aops-core/hooks
 AOPS_CORE_DIR = HOOK_DIR.parent  # aops-core
 
-# Add aops-core to path for imports
-if str(AOPS_CORE_DIR) not in sys.path:
-    sys.path.insert(0, str(AOPS_CORE_DIR))
+# Force the plugin's OWN lib/hooks to the FRONT of sys.path so they always win,
+# even when a *stale* aops-core copy is on PYTHONPATH (e.g. another client's
+# plugin cache) or `uv run` already injected the project root at a low-priority
+# position. A plain "insert only if absent" guard is insufficient: on the
+# cold-start fallback path `uv run` adds the project root behind the PYTHONPATH
+# entry, the guard then skips the insert, and the stale copy shadows our `lib` —
+# loading an old session_naming and crashing the first PreToolUse (aops-7697a478).
+_core_path = str(AOPS_CORE_DIR)
+sys.path = [_core_path] + [p for p in sys.path if p != _core_path]
 
 try:
     import lib.session_naming as session_naming
@@ -399,7 +405,7 @@ class HookRouter:
         machine = session_naming.get_machine_name()
         repo = session_naming.get_repo_name()
         crew = session_naming.resolve_crew_name()
-        provider = session_naming.get_provider_name()
+        provider = session_naming.get_provider_name(client_type=client_type)
         task_id = os.environ.get("AOPS_TASK_ID")
 
         # 11. Build Context and POP processed fields from raw_input

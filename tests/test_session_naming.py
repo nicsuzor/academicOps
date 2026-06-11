@@ -10,6 +10,7 @@ from lib.session_naming import (
     generate_session_filename,
     get_artifact_subdir,
     get_machine_name,
+    get_provider_name,
     get_session_short_hash,
     get_session_shortform,
     parse_session_filename,
@@ -31,6 +32,46 @@ def _isolate_env(monkeypatch):
         "CLAUDE_PROJECT_DIR",
     ):
         monkeypatch.delenv(var, raising=False)
+
+
+# --- get_provider_name ---
+
+
+class TestGetProviderName:
+    """Explicit --client signal must be authoritative for provider naming.
+
+    Regression coverage for aops-7697a478: an agy session was mislabelled
+    "claude" in both the hook-log ``provider`` field and the session filename
+    because get_provider_name() ignored the explicit client identity.
+    """
+
+    def test_agy_client_resolves_antigravity(self):
+        assert get_provider_name(client_type="agy") == "antigravity"
+
+    def test_antigravity_client_resolves_antigravity(self):
+        assert get_provider_name(client_type="antigravity") == "antigravity"
+
+    def test_gemini_client_resolves_gemini(self):
+        assert get_provider_name(client_type="gemini") == "gemini"
+
+    def test_claude_client_resolves_claude(self):
+        assert get_provider_name(client_type="claude") == "claude"
+
+    def test_explicit_agy_overrides_ambient_gemini_env(self, monkeypatch):
+        """The explicit signal wins even when ambient env screams 'gemini'."""
+        monkeypatch.setenv("GEMINI_SESSION_ID", "g-123")
+        assert get_provider_name(client_type="agy") == "antigravity"
+
+    def test_default_is_claude_when_nothing_set(self):
+        assert get_provider_name() == "claude"
+
+    def test_ambient_antigravity_state_dir_detected(self, monkeypatch):
+        """Antigravity state dir is detected before the generic gemini branch."""
+        monkeypatch.setenv(
+            "AOPS_SESSION_STATE_DIR",
+            "/home/u/.gemini/antigravity-cli/brain/abc/.system_generated",
+        )
+        assert get_provider_name() == "antigravity"
 
 
 # --- get_session_short_hash ---

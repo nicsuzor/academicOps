@@ -282,6 +282,29 @@ install-gemini:
 AGY_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-antigravity-latest.tar.gz
 AGY_TOOLS_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-tools-antigravity-latest.tar.gz
 
+# Prebuild the hook venv so router.sh's fast-path (exec $DIR/.venv/bin/python)
+# exists on the FIRST hook invocation. Without it, the first PreToolUse pays a
+# cold `uv run` venv build (>5s) and blows the 5000ms PreToolUse timeout, which
+# agy surfaces as a spurious "Tool call denied by jsonhook__..." (aops-7697a478).
+# router.py adds the plugin dir to sys.path itself, so only third-party deps are
+# needed — no package build. $(1) = plugin dir.
+define agy_prebuild_venv
+	echo "  Prebuilding hook venv at $(1)/.venv ..."; \
+	rm -rf "$(1)/.venv"; \
+	if ! command -v uv >/dev/null 2>&1 || [ ! -f "$(1)/pyproject.toml" ]; then \
+		echo "  ❌ uv or pyproject.toml missing — cannot prebuild hook venv; aborting install (cold-start would spurious-deny — aops-7697a478)"; \
+		exit 1; \
+	fi; \
+	if uv venv "$(1)/.venv" >/dev/null 2>&1 && \
+	   uv pip install --python "$(1)/.venv/bin/python" -r "$(1)/pyproject.toml" >/dev/null 2>&1 && \
+	   [ -x "$(1)/.venv/bin/python" ]; then \
+		echo "  ✓ Hook venv ready: $(1)/.venv/bin/python"; \
+	else \
+		echo "  ❌ Hook venv prebuild FAILED — aborting install (first hook call would pay cold-start cost and spurious-deny — aops-7697a478)"; \
+		exit 1; \
+	fi
+endef
+
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
 		echo "  (agy not found on PATH — skipping Antigravity install)"; \
@@ -295,6 +318,7 @@ install-agy:
 		rm -rf "$(AGY_PLUGIN_DIR)"; \
 		mkdir -p "$(AGY_PLUGIN_DIR)"; \
 		cp -r "$(DIST_DIR)/aops-antigravity/"* "$(AGY_PLUGIN_DIR)/"; \
+		$(call agy_prebuild_venv,$(AGY_PLUGIN_DIR)); \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		if [ -d "$(DIST_DIR)/aops-tools-antigravity" ]; then \
 			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
@@ -309,6 +333,7 @@ install-agy:
 		rm -rf "$(AGY_PLUGIN_DIR)"; \
 		mkdir -p "$(AGY_PLUGIN_DIR)"; \
 		cp -r "$$TMP_DIR/"* "$(AGY_PLUGIN_DIR)/"; \
+		$(call agy_prebuild_venv,$(AGY_PLUGIN_DIR)); \
 		agy plugin install "$(AGY_PLUGIN_DIR)"; \
 		rm -rf "$$TMP_DIR"; \
 		TMP_DIR=$$(mktemp -d); \
