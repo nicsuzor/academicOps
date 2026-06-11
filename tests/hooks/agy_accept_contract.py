@@ -48,6 +48,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 __all__ = [
+    "PermissionOverride",
     "PreToolHookResult",
     "PostToolHookResult",
     "PreInvocationHookResult",
@@ -64,24 +65,49 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class PermissionOverrides(_Strict):
-    allowTool: bool | None = None
-    denyReason: str | None = None
+class PermissionOverride(BaseModel):
+    """One entry of the ``PreToolHookResult.permission_overrides`` *repeated* list.
+
+    The inner shape (tool-name / read-only / reason etc.) is not load-bearing for
+    the unknown-field rejection axis this contract guards, so the body is left
+    loose (``extra="allow"``). The CRITICAL fact this contract pins is that
+    ``permissionOverrides`` is a *repeated* (list-valued) field in protojson —
+    NOT a single message — and that ``allowTool`` / ``denyReason`` are TOP-LEVEL
+    fields of ``PreToolHookResult``, not nested here. Nesting them under a
+    message-valued ``permissionOverrides`` produced a protojson syntax error
+    (expected ``[`` for the repeated field, got ``{``) and silently dropped
+    every enforcer DENY in live agy (aops-891c0e36).
+    """
+
+    model_config = ConfigDict(extra="allow")
 
 
 class PreToolHookResult(_Strict):
     """``exa.hooks_pb.PreToolHookResult``.
 
-    Allow is the empty object ``{}``. A deny is expressed structurally via
-    ``permissionOverrides`` (``allowTool=false`` + ``denyReason``) — that path
-    needs NO enum string, which is why it is implementable/verifiable ahead of
-    the ``decision`` enum discovery.
+    Allow is the empty object ``{}``. A deny is expressed structurally via the
+    TOP-LEVEL ``allowTool=false`` + ``denyReason`` fields — that path needs NO
+    enum string, which is why it is implementable/verifiable ahead of the
+    ``decision`` enum discovery.
+
+    Field map sourced from the ``exa.hooks_pb`` FileDescriptorProto embedded in
+    the agy binary (aops-891c0e36):
+
+        PreToolHookResult
+          decision              (string)
+          reason                (string)
+          overwrite             (google.protobuf.Struct)
+          permission_overrides  (REPEATED PermissionOverride — protojson list)
+          allow_tool            (bool, top-level)
+          deny_reason           (string, top-level)
     """
 
     decision: str | None = None
     reason: str | None = None
     overwrite: dict[str, Any] | None = None  # google.protobuf.Struct
-    permissionOverrides: PermissionOverrides | None = None
+    permissionOverrides: list[PermissionOverride] | None = None
+    allowTool: bool | None = None
+    denyReason: str | None = None
 
 
 class PostToolHookResult(_Strict):

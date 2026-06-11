@@ -17,15 +17,19 @@ This module runs canonical router outputs through the real ``--client agy``
 subprocess path (``run_router_agy``) and checks them against the strict
 protojson accept-contract in ``agy_accept_contract.py``.
 
-LIFECYCLE (post-fix — output_for_agy landed, aops-d27d55a0)
------------------------------------------------------------
+LIFECYCLE (post-fix — output_for_agy landed, aops-d27d55a0; deny-shape repaired
+aops-891c0e36)
+------------------------------------------------------------------------------
 ``output_for_agy()`` now emits ``*Result`` protojson, so the guards below are
 asserts (flipped from ``xfail(strict=True)`` per the aops-d27d55a0 brief):
 
-  * ``test_agy_deny_is_expressed_via_permission_overrides`` — the INVERSION of
-    the original silent-drop reproduction: the enforcer DENY is now expressed
-    structurally via ``permissionOverrides.allowTool=false`` and carries none of
-    the Claude/Gemini-schema fields that protojson rejected.
+  * ``test_agy_deny_uses_top_level_allow_tool`` — the INVERSION of the original
+    silent-drop reproduction: the enforcer DENY is now expressed structurally
+    via the TOP-LEVEL ``allowTool=false`` + ``denyReason`` fields of
+    ``PreToolHookResult`` (NOT nested under ``permissionOverrides``, which is a
+    *repeated* per-tool override list — wrong-nesting it there made live agy's
+    protojson parser reject with ``unexpected token {`` and silently drop the
+    DENY: aops-891c0e36).
   * the ``*_survives_protojson_strict_roundtrip`` guards assert the PreToolUse
     deny/allow and PostToolUse outputs are accepted by the agy protojson
     accept-contract.
@@ -87,25 +91,37 @@ def _deny_input(session_id: str) -> dict:
     }
 
 
-def test_agy_deny_is_expressed_via_permission_overrides(monkeypatch, tmp_path):
-    """Post-fix regression: a canonical enforcer DENY is now agy-shaped.
+def test_agy_deny_uses_top_level_allow_tool(monkeypatch, tmp_path):
+    """Post-fix regression: a canonical enforcer DENY uses TOP-LEVEL ``allowTool``.
 
     This test is the INVERSION of the original silent-drop reproduction (pre-fix
     it asserted ``--client agy`` emitted Claude-schema JSON the protojson harness
-    rejected on ``systemMessage``). With ``output_for_agy()`` landed, the same
-    enforcer DENY is now expressed STRUCTURALLY via
-    ``permissionOverrides.allowTool=false`` — which needs no enum string — and
-    carries NONE of the Claude/Gemini-schema fields that triggered the rejection.
+    rejected on ``systemMessage``). With ``output_for_agy()`` landed AND the
+    deny-shape repair from aops-891c0e36 in place, the enforcer DENY is now
+    expressed STRUCTURALLY via the TOP-LEVEL ``allowTool=false`` + ``denyReason``
+    fields of ``PreToolHookResult`` — NOT nested under ``permissionOverrides``,
+    which is a repeated field that protojson rejected with
+    ``unexpected token {`` and which silently dropped every live agy DENY.
     """
     sid = "agy-contract-deny-repro"
     _seed_enforcer_deny(monkeypatch, tmp_path, sid)
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
 
-    # The deny is structural: allowTool=false blocks the tool with no enum string.
-    assert output.get("permissionOverrides", {}).get("allowTool") is False, (
-        f"Expected a structural DENY via permissionOverrides.allowTool=false; "
+    # The deny is structural: top-level allowTool=false blocks the tool with no
+    # enum string and no nesting under permissionOverrides.
+    assert output.get("allowTool") is False, (
+        f"Expected a structural DENY via top-level allowTool=false; "
         f"got {output!r}. stderr: {stderr}"
+    )
+    assert output.get("denyReason"), (
+        f"Expected a denyReason on the structural DENY; got {output!r}. stderr: {stderr}"
+    )
+    # MUST NOT nest under permissionOverrides (the pre-fix shape that live agy
+    # rejected with "syntax error … unexpected token {").
+    assert "permissionOverrides" not in output, (
+        f"Pre-fix wrong-nesting under permissionOverrides leaked back into agy "
+        f"output (protojson rejects this with unexpected-token): {output!r}"
     )
     # None of the Claude/Gemini-schema fields that protojson rejects may leak.
     for forbidden in ("decision", "metadata", "systemMessage", "hookSpecificOutput"):
@@ -124,19 +140,24 @@ def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
     """A canonical enforcer DENY must survive the agy protojson accept-contract.
 
     This is the consumer-side acceptance test that would have failed the instant
-    4c73f02a landed. A DENY is expressed protojson-side via
-    ``permissionOverrides.allowTool=false`` (no enum string required), so this is
-    satisfiable ahead of the ``decision`` enum discovery. Flipped from
-    xfail(strict) to a live assert when ``output_for_agy()`` landed (aops-d27d55a0).
+    4c73f02a landed. A DENY is expressed protojson-side via the TOP-LEVEL
+    ``allowTool=false`` + ``denyReason`` fields (no enum string required), so
+    this is satisfiable ahead of the ``decision`` enum discovery. Flipped from
+    xfail(strict) to a live assert when ``output_for_agy()`` landed
+    (aops-d27d55a0); deny-shape repaired aops-891c0e36.
     """
     sid = "agy-contract-deny-guard"
     _seed_enforcer_deny(monkeypatch, tmp_path, sid)
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
-    # Post-fix the deny is structural (permissionOverrides), not a top-level
-    # ``decision`` field — assert the blocking shape the agy harness honours.
-    assert output.get("permissionOverrides", {}).get("allowTool") is False, (
-        f"setup: expected a structural DENY (allowTool=false), got {output!r}"
+    # Post-fix the deny is structural (top-level allowTool=false), not a
+    # ``decision`` enum and not nested under permissionOverrides.
+    assert output.get("allowTool") is False, (
+        f"setup: expected a structural DENY (top-level allowTool=false), got {output!r}"
+    )
+    assert "permissionOverrides" not in output, (
+        f"setup: deny must not be wrong-nested under permissionOverrides "
+        f"(the protojson-rejected pre-fix shape), got {output!r}"
     )
 
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")

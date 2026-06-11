@@ -85,10 +85,19 @@ def test_pretooluse_allow_is_empty_object():
     assert _agy("allow", event="PreToolUse", context="ignored") == {}
 
 
-def test_pretooluse_deny_uses_permission_overrides_no_enum():
+def test_pretooluse_deny_uses_top_level_allow_tool_no_enum():
+    """``allowTool`` and ``denyReason`` are TOP-LEVEL on ``PreToolHookResult``.
+
+    Nesting them under ``permissionOverrides`` (a *repeated* field for per-tool
+    permission overrides) made protojson reject with ``unexpected token {`` and
+    silently dropped every enforcer DENY in live agy (aops-891c0e36).
+    """
     payload = _agy("deny", event="PreToolUse", system="blocked: compliance overdue")
-    assert payload["permissionOverrides"]["allowTool"] is False
-    assert payload["permissionOverrides"]["denyReason"] == "blocked: compliance overdue"
+    assert payload["allowTool"] is False
+    assert payload["denyReason"] == "blocked: compliance overdue"
+    # The fields must be TOP-LEVEL — they must NOT be nested under a
+    # message-valued permissionOverrides (the protojson-rejected pre-fix shape).
+    assert "permissionOverrides" not in payload
     # Structural deny: no top-level decision enum string.
     assert "decision" not in payload
 
@@ -96,7 +105,8 @@ def test_pretooluse_deny_uses_permission_overrides_no_enum():
 def test_pretooluse_ask_is_blocked_in_headless_agy():
     """`ask` cannot prompt headless, so the enforcing interpretation is block."""
     payload = _agy("ask", event="PreToolUse", system="needs confirmation")
-    assert payload["permissionOverrides"]["allowTool"] is False
+    assert payload["allowTool"] is False
+    assert "permissionOverrides" not in payload
 
 
 # --- PostToolUse -----------------------------------------------------------

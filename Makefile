@@ -474,6 +474,18 @@ prerelease:
 # hooks, so its install dirs are silently skipped. UV_PROJECT_ENVIRONMENT is
 # unset per-directory so each venv lives inside its own plugin/extension dir
 # (independent of any root project venv).
+#
+# Agy plugin install copies the plugin from the staging dir
+# (~/.gemini/antigravity-cli/plugins/<name>/) into its canonical runtime registry
+# (~/.gemini/config/plugins/<name>/). On hosts where the hooks.json command path
+# resolves the router.sh from the canonical runtime dir, the staging-dir venv is
+# never loaded — router.sh's $HOOK_DIR resolves to the config/plugins copy and
+# misses the staging .venv, falling back to an inline `uv --directory run` that
+# blows the PreToolUse timeout on a cold uv cache and silently denies every tool
+# call (aops-891c0e36). We therefore pre-bake BOTH the staging and the runtime
+# locations so router.sh's fast-path hits regardless of which inode agy resolves.
+# `agy plugin install` runs BEFORE this target in install-agy, so the
+# config/plugins copy is on disk and gets prebaked in the same pass.
 prebake-hook-venvs:
 	@if ! command -v uv >/dev/null 2>&1; then \
 		echo "  ❌ uv not on PATH — cannot pre-bake hook venv; aborting install. A cold first PreToolUse would build the venv inline, blow the timeout, and spurious-deny (aops-7697a478). Install uv and re-run."; \
@@ -484,7 +496,8 @@ prebake-hook-venvs:
 	any=0; \
 	for d in $(HOME)/.claude/plugins/cache/academicOps/*/*/ \
 	         $(HOME)/.gemini/extensions/*/ \
-	         $(HOME)/.gemini/antigravity-cli/plugins/*/ ; do \
+	         $(HOME)/.gemini/antigravity-cli/plugins/*/ \
+	         $(HOME)/.gemini/config/plugins/*/ ; do \
 		[ -d "$$d" ] || continue; \
 		[ -f "$${d}pyproject.toml" ] || continue; \
 		any=1; \
