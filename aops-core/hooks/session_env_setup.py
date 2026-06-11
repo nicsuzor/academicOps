@@ -340,25 +340,30 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
             rel = f"daily/{today_compact}-daily.md"
             data_root = daily_dir.parent
             restored = False
+            restore_error = None
             try:
                 in_head = (
                     subprocess.run(
                         ["git", "cat-file", "-e", f"HEAD:{rel}"],
                         cwd=data_root,
                         capture_output=True,
+                        timeout=10,
                     ).returncode
                     == 0
                 )
                 if in_head:
-                    subprocess.run(
+                    r = subprocess.run(
                         ["git", "checkout", "HEAD", "--", rel],
                         cwd=data_root,
                         capture_output=True,
                         check=False,
+                        timeout=10,
                     )
                     restored = daily_note_path.exists()
-            except Exception:
-                # Any git failure → fall through to the stub (no worse than before).
+                    if not restored:
+                        restore_error = f"git checkout failed (rc={r.returncode})"
+            except Exception as exc:
+                restore_error = str(exc)
                 restored = False
 
             if restored:
@@ -379,9 +384,14 @@ date: {today_iso}
 Today's note has not been populated yet. Run `/daily` to update.
 """
                 daily_note_path.write_text(content)
-                daily_note_row = _ok(
-                    f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
-                )
+                if restore_error:
+                    daily_note_row = _warn(
+                        f"Daily note: git restore failed ({restore_error}), created stub"
+                    )
+                else:
+                    daily_note_row = _ok(
+                        f"Daily note: Created {today_compact}-daily.md (Run /daily to populate)"
+                    )
         else:
             daily_note_row = _ok(f"Daily note: {today_compact}-daily.md")
 
