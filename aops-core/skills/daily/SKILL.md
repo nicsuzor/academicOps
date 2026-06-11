@@ -16,7 +16,7 @@ domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
 owner: pauli
-version: 5.0.0
+version: 5.1.0
 permalink: skills-daily
 ---
 
@@ -53,6 +53,7 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 - **Consume `$AOPS_SESSIONS/state/pr-state.json` for PR state; do NOT run `gh pr list`.** `repo-sync-cron` is the single producer. If the artefact is missing or >24h old, render one inline note saying so — never fall back to live `gh`.
 - **Consequence text is printed verbatim, never paraphrased.** Pull it from the task, or from a linked target in the task's `goals` field.
 - **Counts come from `mcp__pkb__task_summary`.** Never count tasks yourself — aggregation is the PKB's job.
+- **Commit the note on write — never leave it for the sync.** Immediately after updating the note, commit it together with the `daily.md` symlink: `cd "$ACA_DATA" && git add "daily/$(date +%Y%m%d)-daily.md" daily.md && { git diff --cached --quiet || git commit -m "daily: note for $(date +%Y-%m-%d)" --no-verify; }`. The `git diff --cached --quiet ||` guard makes no-op re-runs (most of them) exit 0 instead of failing with "nothing to commit". A note left uncommitted in the working tree can be silently discarded by a routine sync pull/checkout (incident 2026-06-11, #1739: a populated note sat uncommitted ~3.5h and was overwritten by the scaffold stub). The background sync pushes the commit onward — committing is what protects it in the meantime.
 
 ## Escalated deadlines (simple rule)
 
@@ -71,4 +72,4 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ## Output
 
-End with a one-line confirmation: "Daily note updated. Use `/pull` to start work." Then halt.
+Commit the note first (see the commit-on-write rule under Safety rules — don't leave it for the sync). Then end with a one-line confirmation: "Daily note updated. Use `/pull` to start work." and halt.
