@@ -968,10 +968,14 @@ class HookRouter:
         select the correct ``*Result`` shape.
 
         Enum-string status (blocked on live-agy discovery, aops-939b6c3a):
-          * The PreToolUse DENY path is expressed STRUCTURALLY via
-            ``permissionOverrides.allowTool=false`` — it needs NO enum string and
-            is fully implemented here (the safety-critical "deny actually blocks"
-            path).
+          * The PreToolUse DENY path is expressed STRUCTURALLY via the top-level
+            ``allowTool=false`` + ``denyReason`` fields of ``PreToolHookResult``
+            (the safety-critical "deny actually blocks" path). It needs NO enum
+            string. The fields are TOP-LEVEL on ``PreToolHookResult`` — NOT
+            nested inside ``permissionOverrides`` (which is a *repeated* per-tool
+            override list, a separate concept; nesting them there made protojson
+            reject with ``syntax error … unexpected token {`` because it expected
+            ``[`` for the repeated field — aops-891c0e36).
           * The Stop ``decision`` and PostInvocation ``terminationBehavior`` enum
             STRINGS (the hard stop-block) are not yet live-verified. We do NOT
             guess them — a wrong enum is silently discarded by agy, which is worse
@@ -988,13 +992,12 @@ class HookRouter:
 
         if event == "PreToolUse":
             # PreToolHookResult: allow is the empty object; a deny is expressed
-            # via permissionOverrides (allowTool=false) — no enum string needed.
+            # structurally via the top-level allowTool=false + denyReason fields
+            # of PreToolHookResult — no enum string needed.
             if is_block:
                 return {
-                    "permissionOverrides": {
-                        "allowTool": False,
-                        "denyReason": short_reason or advisory or "Blocked by hook gate.",
-                    }
+                    "allowTool": False,
+                    "denyReason": short_reason or advisory or "Blocked by hook gate.",
                 }
             # allow / warn: PreToolHookResult has no advisory channel, so a warn's
             # context cannot be surfaced here (agy platform limitation, not a
