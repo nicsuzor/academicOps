@@ -202,10 +202,10 @@ def load_projects(
             "aliases": aliases,
             "mounts": mounts,
         }
-        for key in ("auto_commit", "merge_strategy", "sessions_access", "is_repo"):
+        for key in ("auto_commit", "merge_strategy", "sessions_access"):
             if key in proj:
                 entry[key] = proj[key]
-        entry.setdefault("is_repo", True)
+        entry["is_repo"] = False if proj.get("is_repo") is False else True
         projects[slug] = entry
     return projects
 
