@@ -16,7 +16,7 @@ domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
 owner: pauli
-version: 5.0.0
+version: 5.1.0
 permalink: skills-daily
 ---
 
@@ -71,4 +71,4 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ## Output
 
-End with a one-line confirmation: "Daily note updated. Use `/pull` to start work." Then halt.
+Commit the note (don't leave it for the sync): `cd "$ACA_DATA" && git add "daily/$(date +%Y%m%d)-daily.md" daily.md && { git diff --cached --quiet || git commit -m "daily: note for $(date +%Y-%m-%d)"; }` — the guard makes no-op re-runs exit 0. If a pre-commit hook fails, let it surface; don't bypass it. Then end with a one-line confirmation: "Daily note updated. Use `/pull` to start work." and halt.
