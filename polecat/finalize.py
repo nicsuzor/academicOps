@@ -517,12 +517,9 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                             from lib.task_model import TaskStatus
 
                             task.status = TaskStatus.REVIEW.value
-                            manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
                         except ImportError:
-                            from polecat.pkb_bridge import save_task as pkb_save
-
                             task.status = "review"
-                            pkb_save(task)
+                        manager.save_task(task)
                         sys.exit(1)
                     print("  ✅ Rebase successful")
                 else:
