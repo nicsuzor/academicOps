@@ -1536,7 +1536,7 @@ class PolecatManager:
         """
         results = {}
         for project in self.projects:
-            if not self.projects[project].get("is_repo", True):
+            if self.projects[project].get("is_repo") is False:
                 continue
             try:
                 results[project] = self.ensure_repo_mirror(project)
