@@ -58,7 +58,10 @@ The supervisor uses canonical PKB task statuses — see [[../../../remember/refe
 
 `review` is an enforceable gate — agents cannot claim tasks in this status.
 
-**Coordinated dispatch (shared-artefact lock)**: when a task is `queued` but a sibling holds the shared-artefact lock (e.g. a feature branch), leave it `queued` and skip dispatch. The lock is a sibling-task property, not a separate status. The supervisor dispatches the next waiting `queued` item on the next ORIENT pass once the lock-holder reaches a terminal status or is reset by `polecat reset-stalled`.
+**Coordinated dispatch (shared-artefact lock / shared branch)**:
+
+- **Shared-Branch Cohesive-Epic (Default)**: Sibling tasks on the shared branch do **NOT** lock each other. If they are parallel-able units (no inter-dependencies), they can and should be dispatched concurrently on the same shared branch (`polecat/epic-<epic-id>`). The polecat manager coordinates concurrent updates via cooperative pull-rebases.
+- **Standalone Coordinated Dispatch**: For non-shared branches, when a task is `queued` but a sibling holds the shared-artefact lock (e.g. a feature branch), leave it `queued` and skip dispatch. The lock is a sibling-task property, not a separate status. The supervisor dispatches the next waiting `queued` item on the next ORIENT pass once the lock-holder reaches a terminal status or is reset by `polecat reset-stalled`.
 
 ## Verification, Not Interrogation
 
@@ -109,15 +112,19 @@ Pauli has already verified pre-dispatch gates (host check, ping-pkb, 4-row pre-f
 
 ### VERIFY
 
-Marsha's job. Triggered when a work item is `in_progress` and the worker has exited (background task notification, PR appeared, polecat finish output). Pass marsha the work item ID, the review surface (PR URL or "none"), and the AC. Consume her structured verdict per [[../SKILL.md#marsha--verify]].
+Verification depends on the task context:
 
-Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
+- **Standalone Tasks / Cumulative Final PR**: Trigger Marsha's job. Triggered when a work item is `in_progress` and the worker has exited (background task notification, PR appeared, polecat finish output). Pass marsha the work item ID, the review surface (PR URL or "none"), and the AC. Consume her structured verdict per [[../SKILL.md#marsha--verify]]. Before marking done, run the completeness check in [[verify#completeness-verification-heuristic]]: (a) freshness (b) completeness (c) limitations.
+- **Intermediate Tasks on Shared Branch**: Perform local outcome-based verification without invoking Marsha. Run `git log origin/polecat/epic-<epic-id> --grep=<task-id>` to verify remote commit presence, and inspect the git diff to ensure changes are correct, complete, and do not contain debug scripts, placeholders, or credentials.
+  - If verification passes, transition status directly to `merge_ready`.
+  - If verification fails (e.g. no commits, empty diff, or unexpected placeholders), transition to `React` with context `verification-failed`.
+  - If the worker exited non-zero, transition directly to `React` with context `worker-failed`.
 
 For code deliverables, the concrete monitoring mechanisms (background worker exit notifications, one-shot `gh pr list`) are in [[code-deliverable#monitor-wait-for-the-pr-then-halt]].
 
 ### REACT
 
-Pauli's job. Triggered when marsha returns FAIL or a worker exits with no deliverable. Pass pauli `role=react` plus the failure context.
+Pauli's job. Triggered when marsha returns FAIL, a worker exits non-zero (`worker-failed`), an intermediate task's local verification fails (`verification-failed`), or a worker exits with no deliverable. Pass pauli `role=react` plus the failure context.
 
 Pauli returns one of:
 

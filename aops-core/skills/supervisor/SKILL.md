@@ -80,9 +80,12 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
   - Do not include history, reviewer notes, dimensions, or manual check steps.
   - Halt if `## Fitness Rubric` is missing for user-facing artifacts.
 
-### marsha — Verify
+### marsha — Verify (Review Surface)
 
-- **Role**: Review deliverables for work items in `in_progress`.
+- **Role**: Review deliverables for work items.
+- **Review Surface Shift**:
+  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it.
+  - **Standalone / Independent Tasks**: Keep the legacy branch-per-task behavior and verify each task's PR individually.
 - **Verdict**: PASS, FAIL <reason>, or REVISE <reason>.
 
 | Verdict    | Action                                                     |
@@ -105,6 +108,36 @@ Verify verdicts satisfy:
 - Internally consistent (no conflicting status/action).
 - Grounded in epic body states.
   If validation fails, append `verdict_fail` to Pattern Memory and exit.
+
+## Cohesive Single-PR-Epic Pattern (Default)
+
+The framework defaults to the **cohesive single-PR-epic pattern** for all epics whose subtasks are meant to land together. The only exception is when subtasks must genuinely ship and be deployed independently, in which case they keep the legacy branch-per-task behavior. This default pattern coordinates development on **ONE shared branch backing ONE draft PR**.
+
+### Live Mechanism (PR #1749 / aops-613690b5)
+
+This pattern is executable today via the live shared-branch mechanism:
+
+- **`is_shared_branch` Detection**: The manager automatically detects shared branches by looking for custom branch overrides. If the branch name does not match the default `polecat/task-<task-id>` pattern (e.g. `polecat/epic-<epic-id>`), it is treated as a shared branch.
+- **Cooperative Sync**: Workers on a shared branch perform cooperative pulls and rebases (`git fetch` followed by `git rebase origin/<branch-name>`) to integrate other workers' in-flight commits rather than resetting to main.
+- **Force-with-lease**: Push operations use `--force-with-lease` to push changes to the shared branch, accepting a low-concurrency contract.
+- **No Deletion**: Shared branches bypass staleness and nuke-delete cleanup sequences, preserving in-flight contributions.
+
+### Dispatch and Concurrency Rules
+
+1. **Shared Branch Default**: Every worker dispatched for a subtask of a cohesive epic must use the exact same branch name via the override flag: `--branch polecat/epic-<epic-id>`.
+2. **Decomposition Structure**:
+   - The epic must be decomposed into **parallel-able units** (which have no inter-dependency and can execute concurrently on the shared branch) and **sequential-dependency units** (which carry explicit `depends_on: [<id>]` edges).
+   - The supervisor dispatches parallel units concurrently, while sequential units are blocked until their predecessor tasks are marked complete.
+
+### Draft PR Lifecycle Contract
+
+1. **Draft PR**: The first worker dispatched on the shared branch is responsible for creating the single **draft PR** using `gh pr create --draft --branch polecat/epic-<epic-id>`. If the worker exits without creating the PR, the supervisor must create it on the next tick.
+2. **Strict Draft Status**: The PR must remain as a **draft PR** throughout the lifecycle of all intermediate subtasks. No worker or supervisor is permitted to open a live/ready PR, promote the PR, or merge it during active development.
+3. **Only Final Stage Promotes**:
+   - Only the worker executing the **final stage** of the epic is authorized to promote the PR (mark it ready-for-review) and close the PR + epic.
+   - **Promotion is not a merge**. In gated repositories (such as `aops`), the PR must stay draft or ready-for-review until it receives Nic's manual per-SHA `APPROVED` review. No agent or automated tool may simulate or bypass this approval signal.
+   - If the final worker exits successfully but fails to promote the PR, the supervisor must promote it using `gh pr ready <pr-number>` before running the final `marsha` verification.
+4. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
 
 ## Canonical Dispatch Commands
 
