@@ -406,24 +406,14 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
         except Exception as e:
             print(f"Warning: Could not determine current git branch: {e}")
 
-        # Resolve branch name following priorities
-        # 1. CLI/Env override
-        branch_name = os.environ.get("AOPS_POLECAT_BRANCH") or os.environ.get("POLECAT_BRANCH")
-        # 2. Task frontmatter
-        if not branch_name:
-            if hasattr(task, "branch") and task.branch:
-                branch_name = task.branch
-            elif isinstance(task, dict) and task.get("branch"):
-                branch_name = task["branch"]
-        # 3. Currently checked out branch
-        if not branch_name:
+        # Resolve branch name. Delegate the canonical priority ladder
+        # (env override -> task frontmatter -> config -> default) to the single
+        # source of truth on the manager, then apply the finalize-only fallback:
+        # the branch currently checked out in this worktree, used only when the
+        # canonical resolver fell through to its default branch-per-task sentinel.
+        branch_name = manager.resolve_branch_name(task)
+        if branch_name == f"polecat/{task_id}" and git_branch:
             branch_name = git_branch
-        # 4. Config file setting
-        if not branch_name and manager.config and manager.config.get("branch"):
-            branch_name = manager.config["branch"]
-        # 5. Fallback default
-        if not branch_name:
-            branch_name = f"polecat/{task_id}"
 
         is_shared = manager.is_shared_branch(branch_name, task_id)
 
@@ -472,12 +462,12 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
                         from lib.task_model import TaskStatus
 
                         task.status = TaskStatus.REVIEW.value
-                        manager.storage.save_task(task)
                     except ImportError:
-                        from polecat.pkb_bridge import save_task as pkb_save
-
                         task.status = "review"
-                        pkb_save(task)
+                    # manager.save_task is the None-safe SSOT wrapper: it routes
+                    # to storage when present and falls back to the pkb bridge
+                    # otherwise (manager.py:save_task).
+                    manager.save_task(task)
                     sys.exit(1)
                 print("  ✅ Rebase onto remote shared branch successful")
         else:
@@ -573,12 +563,7 @@ def finish_cmd(ctx, no_push, do_nuke, force, force_done, project, is_partial, br
         if TRANSCRIPT_TASK_BODY_HEADER not in (task.body or ""):
             task.body = (task.body or "") + _format_transcript_task_body_section(transcript_path)
             try:
-                if manager.storage is not None:
-                    manager.storage.save_task(task)
-                else:
-                    from polecat.pkb_bridge import save_task as pkb_save
-
-                    pkb_save(task)
+                manager.save_task(task)
             except Exception as e:
                 print(f"  ⚠️  Could not persist transcript path to task body: {e}")
 
