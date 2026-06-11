@@ -33,13 +33,10 @@ When failures occur, identify and fix the process gap rather than just applying 
 ### Supervising Delegated Work — invoke the `supervisor` skill (mandatory)
 
 When you are delegating work to other agents and verifying it gets done — including running as
-the main conversation orchestrator with background workers — you **MUST invoke the `supervisor`
-skill** and run the supervision through it. Do not hand-roll supervision inline. The supervisor
-skill is the single authoritative supervision process; its core discipline (proof not claims,
-the **confound rule** — no "external blocker / not our code" verdict without a clean-room
-differential control, don't-trust-convergence, draft-PR-until-all-tasks-up, structured handback)
-is canonical in [[../supervisor/instructions/holding-work-to-proof.md]]. Acting as the
-conversational orchestrator is not an exemption — that is exactly when the skill is required.
+the main conversation orchestrator with background workers — invoke the `supervisor` skill;
+never hand-roll supervision inline. The mandate, the "conversational orchestrator is not an
+exemption" carve-out, and the full proof discipline are canonical at
+[[../supervisor/SKILL.md#when-to-invoke-mandatory]].
 
 ### Handover
 
