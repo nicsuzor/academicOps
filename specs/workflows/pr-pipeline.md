@@ -50,7 +50,8 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | `mechanic-status` informational status                                                                                                                                                             | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                      |
 | **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                                       | **LIVE**      | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                 |
 | **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                            | **LIVE**      | `MAX_MECHANIC_RUNS=5` (counts `Mechanic-By:`); `timeout-minutes: 55`; exhaustion handler resets `admit-status` + escalation review     |
-| Alignment (pauli) queue surface — orchestrator posts `alignment-status: pending` and files an `alignment:queued` issue per PR                                                                      | **LIVE**      | `pr-pipeline.yml` `alignment-queue` job                                                                                                |
+| Alignment (pauli) advisory marker — orchestrator posts `alignment-status: pending` on HEAD                                                                                                         | **LIVE**      | `pr-pipeline.yml` `alignment-queue` job (pending-status step only)                                                                     |
+| Alignment `alignment:queued` issue-queue surface — one issue per PR for a host drainer to consume                                                                                                  | **DISABLED**  | removed in aops-956c1842 — write-only spam while the drainer is unbuilt; do NOT restore until §6.2 ships (follow-up aops-8f42f33d)     |
 | Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                                      | **SPEC-ONLY** | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                             |
 | **v1 fixer** = `agent-merge-prep.yml` + `merge-prep-cron.yml` + `merge-prep.agent.md`                                                                                                              | **RETIRED**   | all three files deleted at Phase 5; vestigial `merge-prep-status` carry-forward removed from `pr-pipeline.yml` `initialize`            |
 | **v2 separate-dispatch admission** = `stage2-admission.yml` + `dispatch-admission` job                                                                                                             | **RETIRED**   | folded into the in-pipeline `admit` job; `stage2-admission.yml` deleted (admission is no longer a separate `workflow_dispatch` run)    |
@@ -171,9 +172,10 @@ it verifies only; `committed` is always `false` — so the only Stage-1 committe
 and enforcer.)
 
 `pauli`/`alignment` runs as an out-of-chain advisory surface, not inside the lint→enforcer→qa
-chain. The orchestrator's `alignment-queue` job is **LIVE** (it posts `alignment-status:
-pending` on HEAD and files an `alignment:queued` issue per PR); the host-side cron +
-polecat-pauli dispatcher that drains the queue is **SPEC-ONLY**, so until it ships the live
+chain. The orchestrator's `alignment-queue` job posts `alignment-status: pending` on HEAD
+(**LIVE**); the `alignment:queued` issue-queue surface it used to file is **DISABLED**
+(removed in aops-956c1842 — see §6.1), because the host-side cron + polecat-pauli dispatcher
+that would drain the queue is **SPEC-ONLY** and unbuilt. Until that drainer ships the live
 stand-in is the manual `/strategic-review --critic` skill the maintainer runs by hand before
 admitting (§6).
 
@@ -607,7 +609,7 @@ Graduation is deliberately cheap: no bot approval, no agent, no checkout.
 > that dropped approvals to 0 — otherwise there would be a window where green checks alone
 > permit a manual merge that bypasses the gate. This is **LIVE** in ruleset `13762049`.
 
-## 6. Alignment (pauli) — advisory, host-side, not a gate — **PARTIALLY LIVE** (queue surface LIVE; host dispatch SPEC-ONLY)
+## 6. Alignment (pauli) — advisory, host-side, not a gate — **PARTIALLY LIVE** (pending marker LIVE; issue queue DISABLED; host dispatch SPEC-ONLY)
 
 Pauli's value is PKB context, and GHA cannot reach the Tailnet-internal PKB MCP (P3). The
 **target**: pauli runs **host-side** (where the PKB lives), dispatched by a light host cron,
@@ -615,11 +617,19 @@ and posts a **review verdict** that informs the human gate (§3.2). It is **not*
 status check.
 
 **LIVE today:** the orchestrator's `alignment-queue` job (`pr-pipeline.yml`) posts
-`alignment-status: pending` on HEAD and files (or refreshes) a single `alignment:queued`
-GitHub issue per PR. This is plumbing: the queue surface exists and is being kept current on
-every push. The **host-side cron + polecat-pauli dispatcher that drains the queue is not yet
-wired** — until it ships, the queue surface is the to-do list, not an actual alignment read.
-The live way for the maintainer to get an alignment read remains the **manual
+`alignment-status: pending` on HEAD — a cheap advisory marker that documents intent.
+
+**DISABLED (aops-956c1842):** the same job used to ALSO file (or refresh) a single
+`alignment:queued` GitHub issue per PR as a queue surface for a host drainer to consume.
+That drainer (§6.2) is **SPEC-ONLY** and was never built, so the issue surface was a
+**write-only spam loop** — verified live 2026-06-11 at 48 open / 0 ever closed, growing
+one-per-PR-run with no consumer. The label + issue-filing steps have been removed; only the
+`alignment-status: pending` marker remains. **The issue-queue surface MUST NOT be restored
+until the host-side drainer in §6.2 actually ships** (follow-up task `aops-8f42f33d`); a
+future SSoT/spec-sync pass must not re-derive it from this section on its own.
+
+The **host-side cron + polecat-pauli dispatcher that drains the queue is not yet wired** —
+so the live way for the maintainer to get an alignment read remains the **manual
 `/strategic-review --critic` skill** (`aops-core/skills/strategic-review/SKILL.md`), which
 they invoke by hand before admitting a PR. So alignment is **advisory input to the human
 admit gate, produced manually**, until the host-side dispatch ships.
@@ -631,22 +641,25 @@ it themselves) and decides. Consequences: no host-availability deadlock (if paul
 run, the maintainer admits on their own judgement); no watchdog, no `pending → failure`
 flip, no required-status machinery.
 
-### 6.1 Queue surface — **LIVE** (orchestrator `alignment-queue` job)
+### 6.1 Queue surface — pending marker **LIVE**; issue queue **DISABLED**
 
 The triage orchestrator's `alignment-queue` job runs in parallel with the lint→enforcer→qa
-chain (it never delays the merge-gate agents) and does exactly two things on every same-repo
-push:
+chain (it never delays the merge-gate agents) and, on every same-repo push:
 
-1. **Set `alignment-status: pending`** on the HEAD SHA via the GitHub statuses API. Skipped
-   if `alignment-status` is already terminal (`success`/`failure`/`error`) on this SHA — that
-   means pauli has already reviewed it and we must not overwrite the verdict.
-2. **Upsert one `alignment:queued` issue per PR.** Deterministic title:
-   `alignment:queued PR #<num>` (one PR ↔ one issue). The body is a stable
-   `<!-- aops:alignment-queue -->`-fenced block carrying `PR`, `Repository`, `Head ref`,
-   `Head SHA`, and `Queued` timestamp — everything the host dispatcher needs to dispatch
-   pauli without re-querying the PR API per entry. On a new push the body is refreshed to
-   the new HEAD SHA; if the issue was closed by the dispatcher last time, it is reopened (a
-   new SHA = a new alignment review is needed).
+1. **Sets `alignment-status: pending`** on the HEAD SHA via the GitHub statuses API
+   (**LIVE**). Skipped if `alignment-status` is already terminal
+   (`success`/`failure`/`error`) on this SHA — that means pauli has already reviewed it and
+   we must not overwrite the verdict.
+
+It **no longer** files an `alignment:queued` GitHub issue. The original design upserted one
+issue per PR (deterministic title `alignment:queued PR #<num>`, body in a stable
+`<!-- aops:alignment-queue -->`-fenced block carrying `PR`/`Repository`/`Head ref`/`Head
+SHA`/`Queued`) as a queue for the host dispatcher to drain. **That issue surface was removed
+in aops-956c1842** because its only consumer — the §6.2 host drainer — is SPEC-ONLY and was
+never built, making it a write-only spam loop (48 open / 0 closed at removal). When the §6.2
+drainer ships (follow-up `aops-8f42f33d`), the issue-upsert step may be restored _as part of
+that change_, together with its consumer — never before. Re-adding it without a drainer just
+recreates the spam.
 
 Fork-origin PRs are skipped at the job's `if:` (no bot write token).
 
@@ -892,13 +905,15 @@ Each phase is independently shippable and leaves the pipeline working.
   fixer). `merge-prep-cron.yml` (per-PR no-op dispatch) and the vestigial `merge-prep-status`
   carry-forward in `pr-pipeline.yml`'s `initialize` are **deleted**. The hardcoded `origin/main`
   base is fixed (F1 — the mechanic resolves the PR's actual `base.ref` via the API, never assumes).
-- **Phase 6 — Alignment (pauli) advisory. PARTIALLY LIVE.** In-repo queue surface LIVE
-  (orchestrator `alignment-queue` job: posts `alignment-status: pending`, files
-  `alignment:queued` issue with deterministic title `alignment:queued PR #<num>` — §6.1).
-  Host-side cron + polecat-pauli dispatcher still SPEC-ONLY — drains the queue, reconciles
-  against the commit status, dispatches pauli, closes stale issues (§6.2). `alignment-status`
-  must remain advisory (NOT in the branch-protection ruleset — §6, §7). Cleanup of any
-  remaining dead v1 references lands here.
+- **Phase 6 — Alignment (pauli) advisory. PARTIALLY LIVE.** In-repo `alignment-status:
+  pending` marker LIVE (orchestrator `alignment-queue` job — §6.1). The `alignment:queued`
+  issue-queue surface is **DISABLED** (removed in aops-956c1842): it was write-only spam
+  while its consumer stayed unbuilt. Host-side cron + polecat-pauli dispatcher still
+  SPEC-ONLY — drains the queue, reconciles against the commit status, dispatches pauli,
+  closes stale issues (§6.2). The issue-upsert step is restored only when that drainer
+  ships (follow-up `aops-8f42f33d`), never before. `alignment-status` must remain advisory
+  (NOT in the branch-protection ruleset — §6, §7). Cleanup of any remaining dead v1
+  references lands here.
 
 ## 12. Open questions
 
