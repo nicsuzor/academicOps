@@ -19,7 +19,6 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import (  # noqa: E402
     COMPLIANCE_SUBAGENT_TYPES,
     ENFORCER_CHANNEL_SENTINEL,
-    GATE_PRECEDENCE,
     NEVER_BLOCK_CATEGORIES,
     SPAWN_TOOLS,
     TOOL_CATEGORIES,
@@ -361,25 +360,32 @@ class TestEnforcerChannelSentinel:
 class TestGatePrecedence:
     """WS7 item 1: the precedence model must be explicit and match the runtime."""
 
-    def test_precedence_matches_gate_configs_order(self):
-        """GATE_PRECEDENCE must equal the GATE_CONFIGS registration order.
+    def test_gate_configs_order(self):
+        """GATE_CONFIGS registration order defines precedence.
 
         The router iterates gates in registration order (= GATE_CONFIGS order) and
-        resolves first-deny-wins. If the documented precedence drifts from that
-        order, the model stops describing the runtime — this test pins them.
+        resolves first-deny-wins.
         """
         from lib.gates.definitions import GATE_CONFIGS
 
         configs_order = tuple(c.name for c in GATE_CONFIGS)
-        assert GATE_PRECEDENCE == configs_order, (
-            f"GATE_PRECEDENCE {GATE_PRECEDENCE} must equal GATE_CONFIGS order {configs_order}"
+        expected_order = ("sentinel", "enforcer", "qa", "handover", "ida")
+        assert configs_order == expected_order, (
+            f"GATE_CONFIGS order {configs_order} must equal {expected_order}"
         )
 
     def test_sentinel_has_highest_precedence(self):
-        assert GATE_PRECEDENCE[0] == "sentinel"
+        from lib.gates.definitions import GATE_CONFIGS
+
+        assert GATE_CONFIGS[0].name == "sentinel"
 
     def test_ida_has_lowest_precedence(self):
-        assert GATE_PRECEDENCE[-1] == "ida"
+        from lib.gates.definitions import GATE_CONFIGS
+
+        assert GATE_CONFIGS[-1].name == "ida"
 
     def test_precedence_has_no_duplicates(self):
-        assert len(GATE_PRECEDENCE) == len(set(GATE_PRECEDENCE))
+        from lib.gates.definitions import GATE_CONFIGS
+
+        configs_order = tuple(c.name for c in GATE_CONFIGS)
+        assert len(configs_order) == len(set(configs_order))

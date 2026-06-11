@@ -744,39 +744,3 @@ def is_enforcer_channel(text: str | None) -> bool:
     (untrusted). Only text the framework wrapped with the sentinel passes.
     """
     return bool(text) and ENFORCER_CHANNEL_SENTINEL in text
-
-
-# --- Item 1: gate precedence (reviewable composition order) -------------------
-# When two or more gates fire on the same event, the outcome must be reviewable.
-# This constant makes the EXISTING composition order explicit rather than leaving
-# it an emergent property of list position. It is DESCRIPTIVE of the runtime, not
-# a redesign:
-#
-#   1. Verdict tier dominates first. The router (HookRouter._dispatch_gates) and
-#      the engine merge results DENY > WARN > ALLOW — a deny from any gate beats
-#      a warn from any other, regardless of position. "First deny wins": the
-#      first gate (in iteration order) that denies sets the verdict and the loop
-#      stops; later gates cannot downgrade it.
-#   2. Within a tier, iteration order breaks ties — and iteration order is the
-#      registration order, which is the GATE_CONFIGS list order. So the gate
-#      earlier in this tuple wins a same-tier collision.
-#
-# This tuple MUST equal the order of GATE_CONFIGS in lib/gates/definitions.py (a
-# test asserts it) so the documented precedence cannot silently drift from the
-# runtime. Earlier = higher precedence.
-#
-# The order and its rationale (highest precedence first):
-#   sentinel  — PreToolUse destructive-op safety block; protects the user's
-#               environment, never advisory. Highest-stakes forcing function.
-#   enforcer  — periodic compliance self-check (PreToolUse threshold block).
-#   qa        — verification-before-exit (Stop); ahead of handover so a missing
-#               verifier surfaces before the handover reminder.
-#   handover  — structured-handover-before-exit (Stop): prevents work loss.
-#   ida       — honesty reminder (Stop); advisory, lowest precedence.
-GATE_PRECEDENCE: tuple[str, ...] = (
-    "sentinel",
-    "enforcer",
-    "qa",
-    "handover",
-    "ida",
-)
