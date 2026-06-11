@@ -1060,12 +1060,43 @@ def _sanitize_slug(slug: str, max_words: int = 5, shortform: str | None = None) 
     return "-".join(words) or "session"
 
 
-def get_provider_name() -> str:
-    """Detect whether current session is Claude or Gemini.
+def get_provider_name(client_type: str | None = None) -> str:
+    """Detect the provider/client that produced the current session.
+
+    The explicit ``--client`` signal from the hook invocation is authoritative
+    when provided (matching the NO-FALLBACKS axiom in ``session_paths``): a hook
+    that says ``--client agy`` IS an Antigravity session regardless of what the
+    ambient environment looks like. ``agy``/``antigravity`` both normalise to
+    ``"antigravity"`` (the canonical name used by ``polecat_config``); the agy
+    runtime is Gemini-backed but is a distinct surface, so it is labelled
+    ``antigravity``, never ``claude`` and never bare ``gemini``.
+
+    Args:
+        client_type: Explicit hook-caller identity from ``--client``
+            ("claude" | "gemini" | "agy" | "antigravity"). When provided it is
+            authoritative — ambient env is not consulted.
 
     Returns:
-        "gemini" if Gemini session detected, "claude" otherwise
+        "antigravity" for agy, "gemini" for Gemini, "claude" otherwise.
     """
+    # 1. Explicit --client signal is authoritative (no env fallback).
+    if client_type:
+        ct = client_type.lower()
+        if ct in ("agy", "antigravity"):
+            return "antigravity"
+        if ct == "gemini":
+            return "gemini"
+        if ct == "claude":
+            return "claude"
+
+    # 2. Ambient detection (callers that cannot thread an explicit client).
+    #    Antigravity sessions live under ~/.gemini/antigravity{,-cli}/ — check
+    #    that before the generic gemini branch so agy is never mislabelled
+    #    "gemini" (let alone "claude").
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR", "")
+    if "antigravity" in state_dir:
+        return "antigravity"
+
     if os.environ.get("GEMINI_SESSION_ID"):
         return "gemini"
 
@@ -1075,7 +1106,6 @@ def get_provider_name() -> str:
     if session_id.startswith("gemini-"):
         return "gemini"
 
-    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR", "")
     if "/.gemini/" in state_dir:
         return "gemini"
 

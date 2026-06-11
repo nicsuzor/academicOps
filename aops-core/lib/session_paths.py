@@ -302,6 +302,10 @@ def _canonical_artifact_path(
         timestamp=_parse_date_arg(date),
         artifact_type=artifact_type,
         crew_name=session_naming.resolve_crew_name(),
+        # Thread the explicit --client signal into the provider component so an
+        # agy session's artefacts are named "...-antigravity-..." not
+        # "...-claude-..." (aops-7697a478). Authoritative over ambient env.
+        provider=session_naming.get_provider_name(client_type=client_type),
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
     return status_dir / filename
@@ -452,6 +456,12 @@ def get_session_file_path(
         timestamp=_parse_date_arg(date),
         artifact_type="insights",
         crew_name=session_naming.resolve_crew_name(),
+        # Thread the explicit --client signal into the provider component so an
+        # agy session's summary file is named "...-antigravity-..." not
+        # "...-claude-..." (aops-7f698bdd). Without this, SessionState.save()
+        # wrote the headline ...-aopscore-claude.json artifact even when
+        # client_type=agy correctly resolved the directory below.
+        provider=session_naming.get_provider_name(client_type=client_type),
         task_id=os.environ.get("AOPS_TASK_ID"),
     )
     return get_session_status_dir(session_id, transcript_path, client_type) / filename

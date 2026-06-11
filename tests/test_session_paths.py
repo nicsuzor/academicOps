@@ -268,6 +268,13 @@ class TestSessionPaths(unittest.TestCase):
                         os.environ.pop("AOPS_SESSIONS", None)
                         os.environ.pop("GEMINI_SESSION_ID", None)
                         os.environ.pop("AOPS_SESSION_STATE_DIR", None)
+                        # Pop the container marker too: when set (=1, e.g. the
+                        # suite runs inside a polecat container) get_gate_file_path
+                        # routes to the container state dir, not .claude/projects,
+                        # breaking the assertion below. This env leak was the
+                        # cause of the intermittent test_get_gate_file_path_claude
+                        # failure flagged during the agy-hook consolidation.
+                        os.environ.pop("AOPS_POLECAT_CONTAINER", None)
                         gate_path = session_paths.get_gate_file_path(
                             "enforcer", "07328230-44d4-414b-9fec-191a6eec0948", date="2026-01-24"
                         )

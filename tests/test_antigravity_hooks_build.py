@@ -124,6 +124,35 @@ class TestAntigravityHooksBuildTransform:
                         f"Expected --client agy in {event} hook command: {cmd}"
                     )
 
+    def test_pre_tool_use_timeout_raised_to_floor(self, transform):
+        """PreToolUse timeout must be raised to the agy cold-start floor (>=15000ms).
+
+        Defence-in-depth for the cold-start spurious-deny bug (aops-7697a478): a
+        short 5000ms PreToolUse timeout can be blown by a first-call cold venv
+        build, which agy surfaces as 'Tool call denied by jsonhook__...'.
+        """
+        timeout = transform["hooks"]["PreToolUse"][0]["hooks"][0]["timeout"]
+        assert timeout >= 15000, (
+            f"PreToolUse timeout {timeout}ms is below the 15000ms agy floor; "
+            "cold-start can blow it and produce spurious denials"
+        )
+
+    def test_timeout_floor_never_lowers_existing(self, build_mod, tmp_path):
+        """The floor only raises a timeout; a higher source value is preserved."""
+        src_data = {
+            "hooks": {
+                "PreToolUse": [
+                    {"hooks": [{"type": "command", "command": "echo x", "timeout": 30000}]}
+                ],
+            }
+        }
+        src = tmp_path / "hooks_in.json"
+        dst = tmp_path / "hooks_out.json"
+        src.write_text(json.dumps(src_data))
+        build_mod._generate_antigravity_hooks_json(src, dst)
+        result = json.loads(dst.read_text())
+        assert result["hooks"]["PreToolUse"][0]["hooks"][0]["timeout"] == 30000
+
     def test_disabled_entries_not_included(self, build_mod, tmp_path):
         """Entries under 'hooks-disabled' keys must never appear in output."""
         # Construct a minimal hooks.json with a -disabled entry

@@ -368,3 +368,47 @@ class TestAntigravityStatusDir:
         saved = list((transcript.parent.parent).glob("*.json"))
         assert saved, "state file was not written under the agy .system_generated dir"
         assert all(".claude" not in str(p) for p in saved)
+
+    def test_session_state_save_filename_is_antigravity_not_claude(self, tmp_path):
+        """The headline session-summary artifact filename must carry the
+        ``-antigravity-`` provider segment for an agy session, NOT ``-claude-``.
+
+        Regression for aops-7f698bdd: PR #1774 routed agy artefacts to the
+        correct *directory* (~/.gemini/antigravity-cli/brain/...) but left
+        ``get_session_file_path()`` calling ``generate_session_filename()``
+        without ``provider=``, so the SessionState file landed as
+        ``...-aopscore-claude.json`` even though it sat in the agy dir. This
+        guards against the provider segment falling back to ``claude`` and
+        prevents any new write under ``~/.claude/projects/``.
+        """
+        from lib.session_state import SessionState
+
+        # Pin HOME so a leaked ~/.claude/projects write would be inside tmp_path
+        # and we can scan for it deterministically.
+        with patch.object(Path, "home", return_value=tmp_path):
+            transcript = self._agy_transcript(tmp_path)
+            state = SessionState.create(
+                "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+                transcript_path=str(transcript),
+                client_type="agy",
+            )
+            state.save()
+
+            saved = list((transcript.parent.parent).glob("*.json"))
+            assert saved, "state file was not written under the agy .system_generated dir"
+            assert len(saved) == 1, f"expected one summary file, got {saved}"
+            name = saved[0].name
+            # Provider segment must be antigravity, not claude. The provider is
+            # the final filename segment (``...-<crew>-<provider>.json``), so it
+            # presents as a trailing ``-antigravity.json``; accept either a
+            # mid-string or terminal provider segment.
+            assert "-antigravity-" in name or "-antigravity." in name, (
+                f"agy summary filename missing -antigravity provider segment: {name}"
+            )
+            assert "-claude-" not in name and "-claude." not in name, (
+                f"agy summary filename leaked -claude- provider segment: {name}"
+            )
+            # And nothing must have leaked into ~/.claude/projects/.
+            claude_projects = tmp_path / ".claude" / "projects"
+            leak = list(claude_projects.rglob("*.json")) if claude_projects.exists() else []
+            assert not leak, f"agy session leaked summary into ~/.claude/projects/: {leak}"
