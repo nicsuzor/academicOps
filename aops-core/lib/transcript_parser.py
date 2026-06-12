@@ -2149,8 +2149,8 @@ class Entry:
 class ParsedSession:
     """Summary information about a session.
 
-    Renamed from ``ParsedSession`` (epic-4c990422) to resolve a name collision
-    with the :class:`lib.session_summary.ParsedSession` TypedDict, which is a
+    Renamed from ``SessionSummary`` (epic-4c990422) to resolve a name collision
+    with the :class:`lib.session_summary.SessionSummary` TypedDict, which is a
     distinct, persisted handover-summary schema. This dataclass is the in-memory
     result of parsing a transcript (uuid + aggregated metadata).
     """
