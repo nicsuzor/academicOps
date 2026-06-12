@@ -18,8 +18,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 .aops-version
-# Generated during build from root pyproject.toml
-aops-core/pyproject.toml
+# aops-core/pyproject.toml is now a tracked source file (epic-267fe017): the
+# build stamps its placeholder version and (for cowork) trims the hooks package,
+# but the dependency set is authoritative in-tree. uv.lock is still generated
+# per-platform into dist/ at build time, so it stays ignored.
+aops-core/uv.lock
 
 # C extensions
 *.so

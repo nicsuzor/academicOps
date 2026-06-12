@@ -100,11 +100,22 @@ build-dev:
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
-# Install local build artifacts into clients
-# NOTE: This overrides the release marketplace with a local directory source.
-# Run `make uninstall-dev` to restore the release marketplace when done testing.
+# Install local build artifacts into clients.
+#
+# install-dev is the ONE authoritative local-install orchestrator (epic-267fe017).
+# It prepares the dev-only environment (local marketplace override, cache prune)
+# that scripts/install.py does not own, then delegates the actual installation —
+# Gemini policy/skill/workflow symlinks, extension-enablement rewrites, automode
+# rules, cron, Claude plugin install — to scripts/install.py UNCONDITIONALLY.
+# Previously this target hand-rolled a subset of the Claude/Gemini install and
+# silently skipped everything install.py does (the install split-brain). The
+# only remaining caller of those extra steps was the now-tombstoned setup.sh.
+#
+# NOTE: This overrides the release marketplace with a local directory source and
+# (via install.py) installs the background sync crontab. Run `make uninstall-dev`
+# to restore the release marketplace when done testing.
 install-dev: build-dev
-	@echo "Installing from local build artifacts..."
+	@echo "Installing from local build artifacts (orchestrator: scripts/install.py)..."
 	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
@@ -127,13 +138,8 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	@# sources are ./dist/aops-* (one convention everywhere), resolving to the
 	@# build output in $(DIST_DIR).
 	-command claude plugin marketplace add $(AOPS_ROOT)
-	@echo "Installing local build into Claude Code..."
-	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
-	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools install failed"
-	@echo "Installing local build into Gemini CLI..."
-	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
-	@command gemini extensions install $(DIST_DIR)/aops-tools-gemini --consent || echo "  ⚠️ Gemini aops-tools install failed"
-	@$(MAKE) install-agy
+	@echo "Delegating install to scripts/install.py (single authoritative path)..."
+	@AOPS=$(AOPS_ROOT) ACA_DATA=$${ACA_DATA:-$(AOPS_ROOT)} uv run python scripts/install.py
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
