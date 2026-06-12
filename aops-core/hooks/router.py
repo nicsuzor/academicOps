@@ -990,24 +990,43 @@ class HookRouter:
             ephemeral_message  (3)  TYPE_STRING   scalar string
             system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
 
-        We use the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
+        We emit the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
         protojson is the bare string ``{"ephemeralMessage": text}``. This is the
-        same channel agy uses to inject its own per-turn reminders into the model
-        turn, and is the variant that actually RENDERS the injected content.
+        same channel agy uses to inject its OWN per-turn reminders (the
+        ``bash_command_reminder`` ephemeral that renders at the top of every
+        turn), so it is the schema-correct, most-likely-to-render member.
 
-        ROOT CAUSE CORRECTION — agy 1.0.7 (2026-06-11, this authenticated host):
-        the earlier "agy never spawns PreInvocation hooks" conclusion was a
-        confound. A vanilla, doc-shaped PreInvocation hook FIRES cleanly on agy
-        1.0.7 (sentinel + ``strace -f`` confirmed). The real defect was OUR
-        registration: the generated hooks.json wrapped the invocation events in
-        the PreToolUse-style ``matcher``/``hooks[]`` shape, so agy phantom-logged
-        ``json_hook_caller.go:144 ... executing command`` but never spawned the
-        process. Per https://antigravity.google/docs/hooks#supported-events the
-        invocation/Stop events require a FLAT handler list directly under the
-        event key (fixed in ``_generate_antigravity_hooks_json``). Once the hook
-        fires, the ``systemMessage`` member is dropped from the rendered turn;
-        the scalar ``ephemeralMessage`` member is what agy renders into the model
-        context, so the context-injection advisory is emitted via that member.
+        REGISTRATION (verified, keep): a vanilla, doc-shaped PreInvocation hook
+        FIRES on agy 1.0.7 — ``strace -f`` shows ``execve`` of
+        ``router.sh --client agy PreInvocation``. The earlier "agy never spawns
+        PreInvocation" conclusion was a confound: our hooks.json had wrapped the
+        invocation events in the PreToolUse ``matcher``/``hooks[]`` shape, so agy
+        phantom-logged ``json_hook_caller.go:144 ... executing command`` but
+        spawned nothing. Per https://antigravity.google/docs/hooks#supported-events
+        the invocation/Stop events require a FLAT handler list directly under the
+        event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
+        spawns.
+
+        DELIVERY GAP — agy 1.0.7 (CORRECTED 2026-06-12, fresh differential,
+        supersedes the #1788 "renders" claim mem-83cedbdd): the injected text
+        does NOT reach the model. Live round-trip on this authenticated host
+        (sessions e5cd118a PTY-interactive + 4c170dbf/f81cf97c ``--print``):
+          * the hook SPAWNS (strace ``execve`` of the PreInvocation router),
+          * the router emits a SCHEMA-CORRECT, size-sane
+            ``{"injectSteps":[{"ephemeralMessage": <text+unique-sentinel>}]}``
+            (binary-decoded ``PreInvocationHookResult.inject_steps`` /
+            ``HookInjectedStep.ephemeral_message`` — protojson names verified),
+          * yet the unique sentinel appears ZERO times in
+            ``transcript_full.jsonl`` — agy renders its OWN ephemeral at the same
+            step but drops the hook-injected one.
+        Confirmed across the ``ephemeralMessage`` AND ``userMessage`` oneof
+        members (``systemMessage`` already known-dropped, #1788). This is an
+        agy-side delivery gap for ``PreInvocationHookResult.injectSteps``, NOT an
+        aops shape defect — no ``output_for_agy`` change fixes it. We keep the
+        schema-correct ``ephemeralMessage`` emission so the advisory delivers the
+        instant agy fixes propagation. Static extension context (GEMINI.md /
+        AXIOMS.md) still reaches the model; only dynamic per-turn injection is
+        dead. Re-probe on each agy upgrade with the sentinel + strace harness.
         """
         if not text:
             return []
