@@ -1008,26 +1008,22 @@ class HookRouter:
         event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
         spawns.
 
-        DELIVERY GAP — agy 1.0.7 (CORRECTED 2026-06-12, fresh differential,
-        supersedes the #1788 "renders" claim mem-83cedbdd): the injected text
-        does NOT reach the model. Live round-trip on this authenticated host
-        (sessions e5cd118a PTY-interactive + 4c170dbf/f81cf97c ``--print``):
-          * the hook SPAWNS (strace ``execve`` of the PreInvocation router),
-          * the router emits a SCHEMA-CORRECT, size-sane
-            ``{"injectSteps":[{"ephemeralMessage": <text+unique-sentinel>}]}``
-            (binary-decoded ``PreInvocationHookResult.inject_steps`` /
-            ``HookInjectedStep.ephemeral_message`` — protojson names verified),
-          * yet the unique sentinel appears ZERO times in
-            ``transcript_full.jsonl`` — agy renders its OWN ephemeral at the same
-            step but drops the hook-injected one.
-        Confirmed across the ``ephemeralMessage`` AND ``userMessage`` oneof
-        members (``systemMessage`` already known-dropped, #1788). This is an
-        agy-side delivery gap for ``PreInvocationHookResult.injectSteps``, NOT an
-        aops shape defect — no ``output_for_agy`` change fixes it. We keep the
-        schema-correct ``ephemeralMessage`` emission so the advisory delivers the
-        instant agy fixes propagation. Static extension context (GEMINI.md /
-        AXIOMS.md) still reaches the model; only dynamic per-turn injection is
-        dead. Re-probe on each agy upgrade with the sentinel + strace harness.
+        DELIVERY VERIFIED — agy 1.0.7 (model-echo control 2026-06-12,
+        session 2be4d40a / conv deaabeef): PreInvocation ``injectSteps`` ARE
+        delivered to model context. The model quoted our injected
+        Skills-Routing-Table + PKB text verbatim, byte-matching the router's
+        PreInvocation stdout. The earlier claim of an "agy-side delivery gap"
+        (commit cd583eff) was based on transcript grep — the WRONG observable.
+        The correct observable is MODEL ECHO, not ``transcript_full.jsonl``.
+
+        TRANSCRIPT OBSERVABILITY NOTE: agy 1.0.7 does NOT log hook-injected
+        ``injectSteps`` as steps in ``transcript_full.jsonl``. A sentinel that
+        appears in hook stdout will appear ZERO times in the transcript even when
+        the model receives it. The user-visible perception that "SessionStart
+        never fires" comes from this transcript-logging gap: hook logs are the
+        only trace of injection, and the injected text is invisible in
+        transcripts. Verify injection delivery via model echo (ask the model to
+        repeat back unique injected content), never via transcript grep.
         """
         if not text:
             return []
