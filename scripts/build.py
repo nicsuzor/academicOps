@@ -788,6 +788,14 @@ def translate_tool_calls(text: str, platform: str) -> str:
     if platform == "gemini":
         # Replace Claude plugin path variable with Gemini equivalent
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+    elif platform == "antigravity":
+        # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
+        # tool names (no frontmatter/body transformation). It uses Claude Code hook
+        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
+        # is not defined in agy; hooks hardcode this same path, so we match it here.
+        text = text.replace(
+            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
+        )
 
         text = re.sub(
             r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
@@ -905,11 +913,12 @@ def build_aops_core(
             shutil.rmtree(cowork_sync_dir)
             print(f"  - Dropped cowork-sync skill (not for {platform})")
 
-    # 1a. Post-copy: translate tool names in all .md files for Gemini
+    # 1a. Post-copy: translate tool names in all .md files for Gemini/Antigravity.
     # Agents get transform_agent_for_platform above (frontmatter + body);
     # this pass catches skills, commands, lib, and top-level .md files
-    # that were copied verbatim by safe_copy.
-    if platform == "gemini":
+    # that were copied verbatim by safe_copy. Antigravity needs the
+    # ${CLAUDE_PLUGIN_ROOT} replacement but no tool-name changes.
+    if platform in ("gemini", "antigravity"):
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
             # Agent files are already translated in the special-cased loop above, skip them here.
