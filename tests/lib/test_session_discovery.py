@@ -88,7 +88,7 @@ def test_identify_unprocessed_missing_transcript(mock_env):
     create_mock_session(session_file, "my-project", "session1")
 
     # Use our (to be implemented) consolidated logic
-    from lib.session_reader import SessionState, get_session_state
+    from lib.session_reader import SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -98,7 +98,7 @@ def test_identify_unprocessed_missing_transcript(mock_env):
     )
 
     state = get_session_state(session_info, mock_env["aca_data"])
-    assert state == SessionState.PENDING_TRANSCRIPT
+    assert state == SessionPipelineState.PENDING_TRANSCRIPT
 
 
 def test_identify_unprocessed_outdated_transcript(mock_env):
@@ -113,7 +113,7 @@ def test_identify_unprocessed_outdated_transcript(mock_env):
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=0)
 
-    from lib.session_reader import SessionState, get_session_state
+    from lib.session_reader import SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -123,7 +123,7 @@ def test_identify_unprocessed_outdated_transcript(mock_env):
     )
 
     state = get_session_state(session_info, mock_env["aca_data"])
-    assert state == SessionState.PENDING_TRANSCRIPT
+    assert state == SessionPipelineState.PENDING_TRANSCRIPT
 
 
 def test_identify_unprocessed_missing_mining(mock_env):
@@ -137,7 +137,7 @@ def test_identify_unprocessed_missing_mining(mock_env):
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=-60)
 
-    from lib.session_reader import SessionState, get_session_state
+    from lib.session_reader import SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -147,7 +147,7 @@ def test_identify_unprocessed_missing_mining(mock_env):
     )
 
     state = get_session_state(session_info, mock_env["aca_data"])
-    assert state == SessionState.PENDING_MINING
+    assert state == SessionPipelineState.PENDING_MINING
 
 
 def test_identify_processed_full_id(mock_env):
@@ -166,7 +166,7 @@ def test_identify_processed_full_id(mock_env):
     session_file = mock_env["projects"] / "my-project" / "session1.jsonl"
     create_mock_session(session_file, "my-project", "session1", mtime_offset=-60)
 
-    from lib.session_reader import SessionState, get_session_state
+    from lib.session_reader import SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -176,7 +176,7 @@ def test_identify_processed_full_id(mock_env):
     )
 
     state = get_session_state(session_info, mock_env["aca_data"])
-    assert state == SessionState.PROCESSED
+    assert state == SessionPipelineState.PROCESSED
 
 
 def test_identify_processed_prefix_id(mock_env):
@@ -195,7 +195,7 @@ def test_identify_processed_prefix_id(mock_env):
     session_file = mock_env["projects"] / "my-project" / f"{full_id}.jsonl"
     create_mock_session(session_file, "my-project", full_id, mtime_offset=-60)
 
-    from lib.session_reader import SessionInfo, SessionState, get_session_state
+    from lib.session_reader import SessionInfo, SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -205,7 +205,7 @@ def test_identify_processed_prefix_id(mock_env):
     )
 
     state = get_session_state(session_info, mock_env["aca_data"])
-    assert state == SessionState.PROCESSED
+    assert state == SessionPipelineState.PROCESSED
 
 
 def test_idempotency_transcript_newer_than_session(mock_env):
@@ -226,7 +226,7 @@ def test_idempotency_transcript_newer_than_session(mock_env):
     # 3. Create Mining JSON (Newest)
     create_mock_mining_json(mock_env["aca_data"], prefix, mtime_offset=0)  # Now
 
-    from lib.session_reader import SessionInfo, SessionState, get_session_state
+    from lib.session_reader import SessionInfo, SessionPipelineState, get_session_state
 
     session_info = SessionInfo(
         path=session_file,
@@ -238,7 +238,7 @@ def test_idempotency_transcript_newer_than_session(mock_env):
     state = get_session_state(session_info, mock_env["aca_data"])
 
     # The proof: even with UUID vs Prefix mismatch, it finds the transcript and sees it is newer
-    assert state == SessionState.PROCESSED
+    assert state == SessionPipelineState.PROCESSED
 
 
 def test_find_sessions_dedupes_cowork(monkeypatch, tmp_path):

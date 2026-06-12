@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from lib.paths import get_summaries_dir
-from lib.session_paths import get_session_short_hash
+from lib.session_naming import get_session_short_hash
 
 
 class SessionSummary(TypedDict, total=False):

@@ -31,9 +31,9 @@ from lib.gate_types import GateState, GateStatus
 from lib.gates.definitions import GATE_CONFIGS
 
 _GATE_CONFIGS_BY_NAME = {config.name: config for config in GATE_CONFIGS}
+from lib.session_naming import get_session_short_hash
 from lib.session_paths import (
     get_session_file_path,
-    get_session_short_hash,
     get_session_status_dir,
 )
 

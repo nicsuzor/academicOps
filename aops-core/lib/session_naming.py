@@ -461,7 +461,7 @@ def is_automated_session(
     Single source of truth for the "is this Nic typing, or a worker?" question
     (aops-62abcf9d). Both ``transcript.py`` and ``user_prompts.py`` share this so
     classification logic lives in one place. It uses metadata already carried on
-    the ``SessionSummary`` / transcript frontmatter — it does NOT re-parse
+    the ``ParsedSession`` / transcript frontmatter — it does NOT re-parse
     transcripts.
 
     A session is automated if ANY of these hold (returned ``reason`` names which):
@@ -490,7 +490,7 @@ def is_automated_session(
     Args:
         session_path: Path to the persisted session file (optional but recommended).
         task_id, slug, provider, client, surface, crew, subagent_type,
-        parent_session, hostname: SessionSummary fields, any of which may be
+        parent_session, hostname: ParsedSession fields, any of which may be
         ``None``.
 
     Returns:

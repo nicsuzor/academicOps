@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from lib.transcript_parser import SessionProcessor, SessionSummary
+from lib.transcript_parser import ParsedSession, SessionProcessor
 
 
 def _write_jsonl(path: Path, records: list[dict]) -> None:
@@ -142,7 +142,7 @@ class TestHookOutputRoundTrip:
         processor = SessionProcessor()
         entries = processor._load_hook_entries(hook_file)
 
-        session = SessionSummary(uuid="sess-render", summary="Test session")
+        session = ParsedSession(uuid="sess-render", summary="Test session")
         markdown = processor.format_session_as_markdown(
             session, entries, agent_entries=None, variant="full"
         )

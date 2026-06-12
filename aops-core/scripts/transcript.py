@@ -42,12 +42,12 @@ from lib.subagent_transcript import (  # noqa: E402
     write_subagent_transcripts,
 )
 from lib.transcript_parser import (  # noqa: E402
+    ParsedSession,
     SessionProcessor,
-    SessionSummary,
     UsageStats,
+    aggregate_session_metadata,
     extract_initial_prompt,
     extract_reflection_from_entries,
-    extract_session_context,
     extract_timeline_events,
     extract_working_dir_from_content,
     extract_working_dir_from_entries,
@@ -345,7 +345,7 @@ def _save_minimal_token_summary(
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
     session_ctx: dict | None = None,
-    session_summary: SessionSummary | None = None,
+    session_summary: ParsedSession | None = None,
 ) -> None:
     """Save minimal summary with just token_metrics when no reflection exists.
 
@@ -537,7 +537,7 @@ def _process_reflection(
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
     session_ctx: dict | None = None,
-    session_summary: SessionSummary | None = None,
+    session_summary: ParsedSession | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -872,7 +872,7 @@ def _infer_agent_from_entries(entries: list) -> str | None:
     return None
 
 
-def _populate_session_linkage(session_summary: "SessionSummary", entries: list) -> None:
+def _populate_session_linkage(session_summary: "ParsedSession", entries: list) -> None:
     """Populate agent identity and parent/spawn linkage fields on session_summary."""
     agent_name = _infer_agent_from_entries(entries)
     if agent_name:
@@ -1522,7 +1522,7 @@ Examples:
                 timeline_events = extract_timeline_events(turns, session_id)
 
                 # Augment summary with explicit session metadata from entries (CC 2.1+)
-                session_ctx = extract_session_context(entries)
+                session_ctx = aggregate_session_metadata(entries)
                 session_summary.session_kind = session_ctx.get("session_kind")
                 session_summary.user_type = session_ctx.get("user_type")
                 session_summary.entrypoint = session_ctx.get("entrypoint")
@@ -1781,7 +1781,7 @@ Examples:
             timeline_events = extract_timeline_events(turns, sid)
 
             # Augment summary with explicit session metadata from entries (CC 2.1+)
-            session_ctx = extract_session_context(entries)
+            session_ctx = aggregate_session_metadata(entries)
             session_summary.session_kind = session_ctx.get("session_kind")
             session_summary.user_type = session_ctx.get("user_type")
             session_summary.entrypoint = session_ctx.get("entrypoint")
@@ -1931,7 +1931,7 @@ Examples:
         timeline_events = extract_timeline_events(turns, session_id)
 
         # Augment summary with explicit session metadata from entries (CC 2.1+)
-        session_ctx = extract_session_context(entries)
+        session_ctx = aggregate_session_metadata(entries)
         session_summary.session_kind = session_ctx.get("session_kind")
         session_summary.user_type = session_ctx.get("user_type")
         session_summary.entrypoint = session_ctx.get("entrypoint")

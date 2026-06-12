@@ -7,6 +7,18 @@ Dependency on $AOPS environment variable has been removed.
 
 Required environment variables:
 - $ACA_DATA: User data directory (still required for user data)
+
+Scope (vs :mod:`lib.session_paths`):
+    This module owns the **data-repo layout** — stable, content-addressed
+    locations for the brain/data repo and plugin install (plugin root, data
+    dir, summaries/transcripts dirs, config). These paths are a function of
+    install/data layout, not of any single session.
+
+    :mod:`lib.session_paths` owns **per-session runtime artifacts** — the
+    status-JSON / hook-log / gate-file paths for one live session, derived from
+    the session id + creation time + launch surface, including polecat-sandbox
+    redirection. When in doubt: "where does the framework live?" → here;
+    "where does *this session* write?" → ``session_paths``.
 """
 
 from __future__ import annotations

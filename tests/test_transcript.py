@@ -409,7 +409,7 @@ class TestThoughtsAndContext:
         assert "21,950 cache" in md
 
     def test_claude_thinking_block_rendered(self, processor):
-        from lib.transcript_parser import Entry, SessionSummary
+        from lib.transcript_parser import Entry, ParsedSession
 
         entries = [
             Entry(
@@ -432,7 +432,7 @@ class TestThoughtsAndContext:
                 model="claude-opus-4-7",
             ),
         ]
-        summary = SessionSummary(uuid="test")
+        summary = ParsedSession(uuid="test")
         md = processor.format_session_as_markdown(
             summary, entries, {}, include_tool_results=True, variant="full"
         )

@@ -20,7 +20,7 @@ if _AOPS_CORE not in sys.path:
 
 from lib.insights_generator import write_insights_file
 from lib.secret_redaction import REDACTED, redact_obj, redact_secrets
-from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
+from lib.transcript_parser import Entry, ParsedSession, SessionProcessor
 
 # A realistic `export`/`env` dump like the one that leaked on 2026-06-01.
 ENV_DUMP = (
@@ -124,7 +124,7 @@ class TestWiringIntoArtifacts:
     def test_transcript_markdown_scrubbed_on_render(self):
         """Feed a transcript whose user turn contains an env dump; assert no
         token-shaped string survives into the rendered markdown."""
-        session = SessionSummary(uuid="11111111-2222-3333-4444-555555555555")
+        session = ParsedSession(uuid="11111111-2222-3333-4444-555555555555")
         entries = [
             Entry(
                 type="user",

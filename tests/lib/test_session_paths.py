@@ -3,13 +3,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from lib.session_naming import get_session_short_hash
 from lib.session_paths import (
     _is_gemini_session,
     _is_polecat_sandbox,
     _parse_date_arg,
     get_gate_file_path,
     get_hook_log_path,
-    get_session_short_hash,
     get_session_status_dir,
 )
 

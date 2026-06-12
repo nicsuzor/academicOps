@@ -152,7 +152,7 @@ def _task_id_from_path(session_path) -> str | None:
     """Extract the task_id from a ``.../polecats/<task_id>/...`` worker path.
 
     Polecat worker sessions are stored under ``polecats/<task_id>/`` but the raw
-    session's SessionSummary often carries no ``task_id`` (it isn't in the
+    session's ParsedSession often carries no ``task_id`` (it isn't in the
     transcript body). The path segment is the reliable source for the collapsed
     abstract's id column.
     """
