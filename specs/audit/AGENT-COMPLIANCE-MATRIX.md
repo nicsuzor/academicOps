@@ -28,7 +28,7 @@ Generated on Fri Jun 12 01:39:50 AM UTC 2026 from `scripts/audit_agent_complianc
 | aops-core/skills/dogfood/SKILL.md          | ✅                       |
 | aops-core/skills/dump/SKILL.md             | ❌ Missing allowed-tools |
 | aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools |
-| aops-core/skills/peer-review/SKILL.md      | ✅                       |
+| aops-tools/skills/peer-review/SKILL.md     | ✅                       |
 | aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools |
 | aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools |
 | aops-core/skills/remember/SKILL.md         | ✅                       |
