@@ -17,3 +17,4 @@ description: |
 
 - Gemini: `invoke_agent(agent_name='rbg', prompt='{temp_path}')`
 - Claude: `Agent(subagent_type='aops-core:rbg', prompt='{temp_path}')`
+- agy: `Agent(subagent_type='aops-core:rbg', prompt='{temp_path}')`
