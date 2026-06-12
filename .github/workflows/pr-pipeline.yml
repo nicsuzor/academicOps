@@ -301,10 +301,19 @@ jobs:
   check-admit:
     name: Check admit-status
     needs: [lint, enforcer, qa]
+    # Gate on CONVERGENCE, never on the reviewers' green VERDICT (§3.4 pt 5, §3.7).
+    # Convergence = lint succeeded, enforcer AND qa each RAN and produced a verdict on
+    # this SHA (`success` OR `failure`), and NO agent committed. A red enforcer/qa verdict
+    # must NOT gate the mechanic off — the mechanic is exactly who clears that red (§3.5),
+    # and the enforcer reusable HARD-FAILS its job on a red verdict (so its `result` is
+    # `failure`, not `success`). Keying on `== 'success'` made every converged-red admitted
+    # PR skip the mechanic — the §1450 success-gate inversion, here on the dispatch gate.
     if: >-
       always() &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.qa.result == 'success' &&
+      needs.lint.result == 'success' &&
+      (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') &&
+      (needs.qa.result == 'success' || needs.qa.result == 'failure') &&
       needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -401,6 +410,13 @@ jobs:
   # These contribute statuses but never end a pass. They only run if
   # upstream agents didn't commit, because a commit restarts the orchestrator.
 
+  # typecheck and pytest are independent read-only checks; each depends only on `lint`
+  # (run once lint has not committed) and NEITHER gates the other. pytest must NOT be
+  # `needs: [typecheck]`: typecheck is NON-required (disabled in the ruleset, debt
+  # aops-1c3de214) and can go red on unrelated debt, but `Pytest` IS a required check —
+  # a `needs: [typecheck]` edge let a typecheck failure SKIP the required pytest check
+  # (its job never runs → the required status is never posted → PR wedged). Worked
+  # example: PR #1747, where typecheck failed and Pytest was SKIPPED.
   typecheck:
     name: Type Check
     needs: [lint]
@@ -410,7 +426,8 @@ jobs:
 
   pytest:
     name: Pytest
-    needs: [typecheck]
+    needs: [lint]
+    if: needs.lint.outputs.committed != 'true'
     uses: ./.github/workflows/pytest.yml
     secrets: inherit
 
@@ -447,10 +464,21 @@ jobs:
   admit:
     name: Stage-2 Admission Gate
     needs: [initialize, lint, enforcer, qa]
+    # Park at the human gate on CONVERGENCE, NOT on a green verdict (§3.2, §3.4 pt 5, §3.7).
+    # Convergence = lint succeeded, enforcer AND qa each RAN on this SHA (verdict `success`
+    # OR `failure`), and no agent committed. A converged-RED PR MUST still park: the human
+    # admits a good idea and the Stage-2 mechanic makes it mergeable (§3.3/§3.5). Gating on
+    # `== 'success'` meant a red PR never reached the gate at all (the enforcer reusable
+    # hard-fails its job on a red verdict → `result == 'failure'`), so the mechanic — the
+    # agent that clears red — became unreachable. Parking-on-red is safe because the armed
+    # auto-merge only fires once ALL required checks are green. The `already_admitted` guard
+    # keeps idempotence (no re-park once admission carried forward, §12-Q1).
     if: >-
       always() &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.lint.result == 'success' && needs.enforcer.result == 'success' && needs.qa.result == 'success' &&
+      needs.lint.result == 'success' &&
+      (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') &&
+      (needs.qa.result == 'success' || needs.qa.result == 'failure') &&
       needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true' &&
       needs.initialize.outputs.already_admitted != 'true'
     runs-on: ubuntu-latest

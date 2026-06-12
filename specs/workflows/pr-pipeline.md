@@ -67,6 +67,18 @@ escalation review + request maintainer) are implemented inside `agent-mechanic.y
 and the §12 open questions (loop-driver scratch-PR validation, `MAX_MECHANIC_RUNS`
 calibration over real PRs, `target_sha` channel, advisory-finding tracking).
 
+> **Post-P5 wiring defect (found + fixed, aops-5938db00).** As shipped, the in-pipeline
+> `admit` and `check-admit` jobs gated on `needs.enforcer.result == 'success' &&
+> needs.qa.result == 'success'` — i.e. on a **green verdict**, not on convergence. Because
+> the enforcer reusable hard-fails its job on a red verdict (`result == 'failure'`), any PR
+> that converged RED never parked at `pr-fix-loop` and never dispatched the mechanic — so the
+> Stage-2 loop, despite being wired, was **unreachable for its primary purpose** (clearing
+> red). This is the §3.4(5)/§3.7 success-gate inversion, on the gate jobs. PR #1747 (converged
+> red after a dev-merge, dead-ended) is the worked example. **Fixed** by re-keying both jobs on
+> convergence — `(enforcer.result == 'success' || == 'failure')` and likewise for qa, plus the
+> existing `committed != 'true'` guards — so a converged-red PR parks and the mechanic runs
+> (§3.2, §3.4 pt 5). Until this fix the "wired end-to-end" claim above held only on the green path.
+
 ## 1. Why this shape — and why it can now be simpler
 
 v1 collapsed three concerns into two workflows: mechanical CI, axiom enforcement, and a
@@ -199,6 +211,21 @@ statuses, the agents' reviews, and pauli's alignment verdict (if they ran
 I click the button" — approving the pending deployment _is_ the button. This is the
 single human decision in the pipeline: _this is a good idea; make it mergeable._
 
+> **The gate keys on CONVERGENCE, never on a green verdict (normative; same rule as §3.4 pt
+> 5 / §3.7).** The `admit` job's `if` parks the run whenever the triage chain CONVERGED on
+> this SHA — lint succeeded, enforcer AND qa each **ran and produced a verdict** (`success`
+> _or_ `failure`), and no agent committed — **not** only when the verdicts are green. A
+> converged-**red** PR still parks: that is the whole point of the two-stage model — the human
+> admits a good idea even with red on the board, and the Stage-2 mechanic clears the red
+> (§3.3/§3.5). Gating the gate on `enforcer.result == 'success' && qa.result == 'success'` is
+> the §1450 success-gate inversion applied to admission: because the enforcer reusable
+> hard-fails its job on a red verdict (`result == 'failure'`), a red PR would never reach the
+> gate and the mechanic — the agent that clears red — would be unreachable. The same
+> convergence predicate (not green-verdict) gates the `check-admit` → `mechanic` dispatch in
+> Stage 2. Parking-on-red is safe because the armed auto-merge (below) fires only once **all
+> required checks are green**; an un-cleared red simply never merges. (Defect found+fixed:
+> aops-5938db00; worked example PR #1747.)
+
 On approval, the `admit` job (with the bot PAT) does two things: (a) sets the required
 `admit-status` to `success` on HEAD, and (b) arms
 `gh pr merge --auto --squash --delete-branch`.
@@ -277,6 +304,12 @@ that (§4.1) and runs agents only from the orchestrator:
    HEAD SHA.
 4. Read-only checks (typecheck, pytest) never commit, so they never end a pass; they only
    contribute statuses. (Typecheck is **not** a required gate — §7, debt `aops-1c3de214`.)
+   **They are mutually independent** — each `needs: [lint]` and runs once lint has not
+   committed; **neither gates the other.** `pytest` must NOT be `needs: [typecheck]`: pytest
+   is a _required_ check while typecheck is _not_, so a `needs` edge let a non-required
+   typecheck failure **skip** the required `Pytest` job (status never posted → PR wedged for a
+   reason unrelated to tests). Worked example: PR #1747 (typecheck red on a docs-only PR →
+   `Pytest` SKIPPED). Fixed under aops-5938db00.
 5. **The short-circuit keys on `committed`, never on the VERDICT colour (#1450, §3.7).** A
    guard that conditioned a downstream reviewer on an upstream reviewer's _success_ (e.g.
    `qa` gated on `needs.enforcer.result == 'success'`) inverts the review gradient: an
