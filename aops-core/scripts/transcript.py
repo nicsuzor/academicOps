@@ -1558,6 +1558,17 @@ Examples:
 
                 _populate_session_linkage(session_summary, entries)
 
+                session_summary.session_type = session_naming.classify_session_type(
+                    session_summary.surface,
+                    client=session_summary.client,
+                    task_id=session_summary.task_id,
+                    subagent_type=session_summary.subagent_type,
+                    parent_session=session_summary.parent_session,
+                    crew=session_summary.crew,
+                    session_kind=session_summary.session_kind,
+                    initial_prompt=extract_initial_prompt(timeline_events),
+                )
+
                 # Fetch existing outcome if available (from insights JSON)
                 existing_path = find_existing_insights(date_iso, session_id)
                 if existing_path:
@@ -1793,6 +1804,17 @@ Examples:
 
             _populate_session_linkage(session_summary, entries)
 
+            session_summary.session_type = session_naming.classify_session_type(
+                session_summary.surface,
+                client=session_summary.client,
+                task_id=session_summary.task_id,
+                subagent_type=session_summary.subagent_type,
+                parent_session=session_summary.parent_session,
+                crew=session_summary.crew,
+                session_kind=session_summary.session_kind,
+                initial_prompt=extract_initial_prompt(timeline_events),
+            )
+
             reflection_header, _ = _process_reflection(
                 entries,
                 sid,
@@ -1944,6 +1966,17 @@ Examples:
         )  # allow-fallback: field optional in older transcripts
 
         _populate_session_linkage(session_summary, entries)
+
+        session_summary.session_type = session_naming.classify_session_type(
+            session_summary.surface,
+            client=session_summary.client,
+            task_id=session_summary.task_id,
+            subagent_type=session_summary.subagent_type,
+            parent_session=session_summary.parent_session,
+            crew=session_summary.crew,
+            session_kind=session_summary.session_kind,
+            initial_prompt=extract_initial_prompt(timeline_events),
+        )
 
         reflection_header, _ = _process_reflection(
             entries,

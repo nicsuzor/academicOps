@@ -17,6 +17,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# Polecat/bridge worktree directory basename pattern: <label>_<20+ base62 chars>
+# (e.g. "bridge-cse_01BpGd4zGnUQAfoDCNwHPxjx"). Used to detect SDK sessions
+# running inside a polecat bridge worktree (which are worker sessions, not interactive).
+_POLECAT_WT_PATH_RE = re.compile(r"[/\\][^/\\]+_[A-Za-z0-9]{20,}(?:[/\\]|$)")
+
 # Known artifact variants and their extensions
 ARTIFACT_TYPES = {
     "transcript-full": {"variant": "-full", "ext": ".md", "subdir": "transcripts"},
@@ -632,8 +637,22 @@ def infer_session_origin_from_entries(
     # No desktop-LAM signal in the scan window. Fall back to the SDK-worker
     # upgrade if any scanned entry was SDK-launched.
     if saw_sdk_cli:
-        origin["surface"] = "claude-sdk"
-        origin["client"] = "sdk"
+        # If the cwd is a polecat bridge worktree, this is a dispatched worker
+        # session (not an interactive SDK session). Use a more specific surface.
+        sdk_cwd = None
+        for entry in (entries or [])[
+            :max_scan
+        ]:  # allow-fallback: entries may be None when called without a parsed entry list
+            c = getattr(entry, "cwd", None)
+            if c:
+                sdk_cwd = c
+                break
+        if sdk_cwd and _POLECAT_WT_PATH_RE.search(sdk_cwd):
+            origin["surface"] = "claude-sdk-worker"
+            origin["client"] = "sdk-worker"
+        else:
+            origin["surface"] = "claude-sdk"
+            origin["client"] = "sdk"
 
     return origin
 
@@ -1202,3 +1221,77 @@ def get_gate_filename(
         hour=hour,
         suffix=f"-{gate}.md",
     )
+
+
+def classify_session_type(
+    surface: str | None,
+    *,
+    client: str | None = None,
+    task_id: str | None = None,
+    subagent_type: str | None = None,
+    parent_session: str | None = None,
+    crew: str | None = None,
+    session_kind: str | None = None,
+    initial_prompt: str | None = None,
+) -> str:
+    """Classify a session into a canonical type bucket.
+
+    Mirrors the dashboard's ``determine_session_type`` logic so the bucket is
+    computed once at summary-write time and stored as ``session_type``, making
+    downstream consumers (dashboard, /retro, trend analysis) authoritative
+    against the stored field rather than re-deriving it from heuristics.
+
+    Buckets (in priority order):
+    - ``polecat``  — running inside a polecat container
+    - ``crew``     — running as part of a crew
+    - ``gha``      — GitHub Actions workflow
+    - ``scheduled``— background/scheduled automation
+    - ``autonomous``— SDK-dispatched or otherwise non-interactive worker
+    - ``interactive``— human-driven session (default)
+    """
+    surface = (
+        surface or ""
+    )  # allow-fallback: None surface is valid; treated as empty string for contains-checks
+    client = (
+        client or ""
+    )  # allow-fallback: None client is valid; treated as empty string for contains-checks
+
+    is_scheduled = session_kind in ("bg", "scheduled") or bool(
+        initial_prompt and initial_prompt.startswith("Scheduled: ")
+    )
+
+    is_worker = bool(
+        task_id
+        or subagent_type
+        or parent_session
+        or crew
+        or session_kind == "queued"
+        or client in ("polecat", "crew", "github-actions", "sdk-worker")
+        or "-crew" in surface
+        or "-polecat" in surface
+    )
+
+    # Explicit surface → bucket (highest priority)
+    if surface in ("claude-polecat", "gemini-polecat"):
+        return "polecat"
+    if surface in ("claude-crew", "gemini-crew"):
+        return "crew"
+    if surface == "github-actions":
+        return "gha"
+    if surface == "claude-sdk-worker":
+        return "autonomous"
+
+    # Known interactive surfaces — refine by worker/scheduled signals
+    if surface in ("claude-code-cli", "claude-code-desktop", "gemini-cli", "claude-sdk"):
+        if is_scheduled:
+            return "scheduled"
+        if is_worker:
+            return "autonomous"
+        return "interactive"
+
+    # Fallback for unknown/missing surfaces
+    if is_scheduled:
+        return "scheduled"
+    if is_worker:
+        return "autonomous"
+    return "interactive"

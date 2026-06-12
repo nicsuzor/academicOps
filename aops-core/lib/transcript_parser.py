@@ -27,8 +27,12 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 #   - pure hex run of 6+ chars (e.g. "79257c", "008c345f")
 #   - <one or more lowercase-word segments>-<6+ hex> (e.g.
 #     "gallant-albattani-79257c", "modest-jemison-1202c6", "aops-008c345f")
+#   - <label>_<20+ base62 chars>: CC/polecat worktrees use an underscore
+#     separator before a base62 KSUID-style task ID (e.g.
+#     "bridge-cse_01BpGd4zGnUQAfoDCNwHPxjx")
 _HEX_ONLY_RE = re.compile(r"^[0-9a-f]{6,}$")
 _HEX_SUFFIX_RE = re.compile(r"^[a-z]+(?:-[a-z]+)*-[0-9a-f]{6,}$")
+_POLECAT_WT_RE = re.compile(r"^.+_[A-Za-z0-9]{20,}$")
 
 # Path segments that are NEVER themselves a project — used when walking up
 # from a worktree basename to find the parent repo.
@@ -88,7 +92,9 @@ def _is_worktree_basename(name: str) -> bool:
     """
     if not name:
         return False
-    return bool(_HEX_ONLY_RE.match(name) or _HEX_SUFFIX_RE.match(name))
+    return bool(
+        _HEX_ONLY_RE.match(name) or _HEX_SUFFIX_RE.match(name) or _POLECAT_WT_RE.match(name)
+    )
 
 
 def _resolve_worktree_via_git(path_str: str) -> str | None:
@@ -235,8 +241,9 @@ def extract_working_dir_from_entries(entries: list[Entry]) -> str | None:
     """Extract working directory from session entries.
 
     Looks for working directory information in:
-    1. System messages with <env>Working directory: /path</env> format
-    2. Early user messages that contain environment context
+    1. The structured ``cwd`` field on CC 2.1+ entries (authoritative)
+    2. System messages with <env>Working directory: /path</env> format
+    3. Early user messages that contain environment context
 
     Args:
         entries: List of Entry objects from a parsed session
@@ -244,6 +251,16 @@ def extract_working_dir_from_entries(entries: list[Entry]) -> str | None:
     Returns:
         Working directory path string, or None if not found
     """
+    # CC 2.1+: cwd is a first-class field on every user/tool-result entry.
+    # Check this before falling back to text-scanning so worktree sessions
+    # (where no "Working directory:" line appears in the transcript text) are
+    # resolved correctly. No slice limit — this is a simple field access and
+    # hook file entries (which have no timestamp) sort to the front after the
+    # hook-merge pass, pushing real cwd-bearing entries beyond position 20.
+    for entry in entries:
+        if entry.cwd:
+            return entry.cwd
+
     # Pattern to match <env>Working directory: /path</env>
     env_pattern = re.compile(r"<env>.*?Working directory:\s*([^\n<]+)", re.DOTALL | re.IGNORECASE)
 
@@ -2216,6 +2233,7 @@ def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
     perms = set()
     models = set()
 
+    has_queue_op = False
     for e in entries:
         if not ctx["session_kind"] and e.session_kind:
             ctx["session_kind"] = e.session_kind
@@ -2237,6 +2255,14 @@ def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
             ctx["permission_denials"].extend(e.permission_denials)
         if e.terminal_reason and not ctx["terminal_reason"]:
             ctx["terminal_reason"] = e.terminal_reason
+        if e.type == "queue-operation":
+            has_queue_op = True
+
+    # Sessions dispatched via the SDK task queue are worker/autonomous sessions,
+    # not interactive ones. Mark them so classifiers can detect them without
+    # needing a task_id (which queue-dispatched sessions often lack).
+    if has_queue_op and not ctx["session_kind"]:
+        ctx["session_kind"] = "queued"
 
     ctx["git_branches"] = sorted(list(branches))
     ctx["permission_modes"] = sorted(list(perms))
