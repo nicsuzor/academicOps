@@ -18,7 +18,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 AOPS_CORE_ROOT = PROJECT_ROOT / "aops-core"
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
-from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
+from lib.transcript_parser import Entry, ParsedSession, SessionProcessor
 
 
 class TestUserPromptTruncation:
@@ -29,7 +29,7 @@ class TestUserPromptTruncation:
     @pytest.fixture
     def session_summary(self):
         """Create a minimal session summary for testing."""
-        return SessionSummary(
+        return ParsedSession(
             uuid="test-session-123",
             summary="Test Session",
             artifact_type="test",

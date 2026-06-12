@@ -43,7 +43,8 @@ try:
     from lib.gates.engine import GenericGate
     from lib.gates.registry import GateRegistry
     from lib.hook_utils import is_subagent_session
-    from lib.session_paths import get_pid_session_map_path, get_session_short_hash
+    from lib.session_naming import get_session_short_hash
+    from lib.session_paths import get_pid_session_map_path
     from lib.session_state import SessionState
 
     from hooks.gate_config import extract_subagent_type

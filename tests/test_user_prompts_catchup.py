@@ -49,10 +49,10 @@ class TestFrontmatterTaskTitle:
         # Resolution is best-effort; pre-set task_title to avoid a PKB round-trip.
         from datetime import datetime as _dt
 
-        from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
+        from lib.transcript_parser import Entry, ParsedSession, SessionProcessor
 
         proc = SessionProcessor()
-        summary = SessionSummary(
+        summary = ParsedSession(
             uuid="deadbeef12345678",
             repo="junior",
             task_id="aops-62abcf9d",

@@ -539,7 +539,7 @@ class TestTempPathValidation:
         )
 
         # Path should contain session hash for isolation
-        from lib.session_paths import get_session_short_hash
+        from lib.session_naming import get_session_short_hash
 
         expected_hash = get_session_short_hash("test-session-abc123")
         assert expected_hash in path.name, (

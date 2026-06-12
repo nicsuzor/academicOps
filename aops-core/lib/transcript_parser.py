@@ -1117,7 +1117,7 @@ def reflection_to_insights(
     session_path: Path | None = None,
     origin_override: dict[str, str | None] | None = None,
     session_ctx: dict | None = None,
-    session_summary: SessionSummary | None = None,
+    session_summary: ParsedSession | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -2146,8 +2146,14 @@ class Entry:
 
 
 @dataclass
-class SessionSummary:
-    """Summary information about a session."""
+class ParsedSession:
+    """Summary information about a session.
+
+    Renamed from ``ParsedSession`` (epic-4c990422) to resolve a name collision
+    with the :class:`lib.session_summary.ParsedSession` TypedDict, which is a
+    distinct, persisted handover-summary schema. This dataclass is the in-memory
+    result of parsing a transcript (uuid + aggregated metadata).
+    """
 
     uuid: str
     summary: str = "Claude Code Session"
@@ -2194,11 +2200,16 @@ class SessionSummary:
     subagent_type: str | None = None
 
 
-def extract_session_context(entries: list[Entry]) -> dict[str, Any]:
-    """Extract session-level metadata from entries.
+def aggregate_session_metadata(entries: list[Entry]) -> dict[str, Any]:
+    """Aggregate session-level metadata from parsed transcript entries.
 
     Returns first-seen values for categorical fields, and unique sets
     for fields that can change mid-session (git_branch, permission_mode, model).
+
+    Renamed from ``extract_session_context`` (epic-4c990422) to resolve a name
+    collision with :func:`lib.session_context.extract_session_context`, which
+    operates on a transcript *path* and produces a SessionContext handover
+    object. This function operates on already-parsed ``Entry`` objects.
     """
     ctx: dict[str, Any] = {
         "session_kind": None,
@@ -2278,8 +2289,13 @@ class ConversationTurn:
     model: str | None = None
 
 
-class SessionState(Enum):
-    """Current processing state of a session."""
+class SessionPipelineState(Enum):
+    """Current processing state of a session in the transcript pipeline.
+
+    Renamed from ``SessionState`` (epic-4c990422) to resolve a name collision
+    with the :class:`lib.session_state.SessionState` BaseModel (runtime gate
+    state). This enum tracks the offline transcript→summary mining pipeline.
+    """
 
     PENDING_TRANSCRIPT = auto()  # Needs transcript generation
     PENDING_MINING = auto()  # Has transcript, needs Gemini mining
@@ -2604,7 +2620,7 @@ class SessionProcessor:
         file_path: str | Path,
         load_agents: bool = True,
         load_hooks: bool = True,
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """
         Parse session file (Claude JSONL, Gemini JSON, or Antigravity brain dir).
 
@@ -2711,7 +2727,7 @@ class SessionProcessor:
         file_path: str | Path,
         load_agents: bool = True,
         load_hooks: bool = True,
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Alias for parse_session_file (backward compatibility)."""
         return self.parse_session_file(file_path, load_agents=load_agents, load_hooks=load_hooks)
 
@@ -2846,19 +2862,19 @@ class SessionProcessor:
 
     def _parse_gemini_json(
         self, file_path: Path
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Parse Gemini JSON session file (legacy bundled ``.json`` format)."""
         entries: list[Entry] = []
         try:
             with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
         except (json.JSONDecodeError, OSError):
-            return SessionSummary(uuid=file_path.stem), [], {}
+            return ParsedSession(uuid=file_path.stem), [], {}
 
         session_id = data.get("sessionId", file_path.stem)
         start_time_str = data.get("startTime")
 
-        session_summary = SessionSummary(
+        session_summary = ParsedSession(
             uuid=session_id,
             summary="Gemini CLI Session",
             created_at=start_time_str or "",
@@ -2871,7 +2887,7 @@ class SessionProcessor:
 
     def _parse_gemini_chat_jsonl(
         self, file_path: Path
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Parse Gemini CLI chat-jsonl session files.
 
         Each line is one message in the Gemini API conversation schema:
@@ -2907,7 +2923,7 @@ class SessionProcessor:
             with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
         except OSError:
-            return SessionSummary(uuid=short_id), [], {}
+            return ParsedSession(uuid=short_id), [], {}
 
         idx = 0
         for raw in lines:
@@ -3106,7 +3122,7 @@ class SessionProcessor:
             if project_hash:
                 details["project_hash"] = project_hash
 
-        summary = SessionSummary(
+        summary = ParsedSession(
             uuid=short_id,
             summary="Gemini CLI Session",
             created_at=first_ts.isoformat() if first_ts else "",
@@ -3122,7 +3138,7 @@ class SessionProcessor:
         file_path: Path,
         load_agents: bool = True,
         load_hooks: bool = True,
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Parse Claude Code JSONL session file."""
         entries = []
         session_summary = None
@@ -3168,13 +3184,13 @@ class SessionProcessor:
                     # Extract summary if available
                     if entry.type == "summary":
                         summary_text = entry.content.get("summary", "Claude Code Session")
-                        session_summary = SessionSummary(uuid=session_uuid, summary=summary_text)
+                        session_summary = ParsedSession(uuid=session_uuid, summary=summary_text)
                 except (json.JSONDecodeError, KeyError, AttributeError, TypeError, ValueError):
                     continue
 
         # Create default summary if none found
         if not session_summary:
-            session_summary = SessionSummary(uuid=session_uuid)
+            session_summary = ParsedSession(uuid=session_uuid)
 
         # Load agent entries from agent-*.jsonl files
         agent_entries = {}
@@ -3380,7 +3396,7 @@ class SessionProcessor:
 
     def _parse_antigravity_transcript_jsonl(
         self, brain_dir: Path, transcript_path: Path
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Parse an antigravity-cli structured transcript jsonl into entries.
 
         Each line is one step:
@@ -3412,7 +3428,7 @@ class SessionProcessor:
                     if isinstance(obj, dict):
                         records.append(obj)
         except OSError:
-            return SessionSummary(uuid=session_id), [], {}
+            return ParsedSession(uuid=session_id), [], {}
 
         records.sort(key=lambda o: o.get("step_index", 0))
 
@@ -3636,7 +3652,7 @@ class SessionProcessor:
         summary_text = (
             f"Antigravity Session: {first_user[:50]}" if first_user else "Antigravity Session"
         )
-        session_summary = SessionSummary(
+        session_summary = ParsedSession(
             uuid=session_id,
             summary=summary_text,
             created_at=first_ts.isoformat() if first_ts else "",
@@ -3645,7 +3661,7 @@ class SessionProcessor:
 
     def _parse_antigravity_brain(
         self, brain_dir: Path
-    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    ) -> tuple[ParsedSession, list[Entry], dict[str, list[Entry]]]:
         """Parse Antigravity brain directory into structured data.
 
         Two on-disk layouts exist:
@@ -3680,7 +3696,7 @@ class SessionProcessor:
         md_files = list(brain_dir.glob("*.md"))
         if not md_files:
             return (
-                SessionSummary(uuid=session_id, summary="Empty Antigravity Session"),
+                ParsedSession(uuid=session_id, summary="Empty Antigravity Session"),
                 [],
                 {},
             )
@@ -3724,7 +3740,7 @@ class SessionProcessor:
 
         if not combined_content:
             return (
-                SessionSummary(uuid=session_id, summary="Empty Antigravity Session"),
+                ParsedSession(uuid=session_id, summary="Empty Antigravity Session"),
                 [],
                 {},
             )
@@ -3764,7 +3780,7 @@ class SessionProcessor:
         entries.append(assistant_entry)
 
         # Create session summary
-        session_summary = SessionSummary(
+        session_summary = ParsedSession(
             uuid=session_id,
             summary=f"Antigravity Session: {user_prompt[:50]}",
             created_at=start_time.isoformat() if start_time else "",
@@ -4850,7 +4866,7 @@ class SessionProcessor:
 
     def format_session_as_markdown(
         self,
-        session: SessionSummary,
+        session: ParsedSession,
         entries: list[Entry],
         agent_entries: dict[str, list[Entry]] | None = None,
         include_tool_results: bool = True,
@@ -5891,10 +5907,6 @@ session_id: {session_uuid}
                 stats.by_agent = _remap_by_agent_keys(stats.by_agent, type_index)
 
         return stats
-
-    def _estimate_tokens(self, text: str) -> int:
-        """Estimate token count from text (~1 token per 4 characters)."""
-        return _estimate_tokens(text)
 
     def _format_compact_args(self, tool_input: dict[str, Any], max_length: int = 60) -> str:
         """Format tool arguments as compact Python-like syntax."""

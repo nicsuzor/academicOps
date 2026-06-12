@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 
 import pytest
-from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
+from lib.transcript_parser import Entry, ParsedSession, SessionProcessor
 
 # A realistic hook JSONL line as written by unified_logger.py — fields use
 # snake_case and the gate result lives under ``output`` (CanonicalHookOutput).
@@ -116,7 +116,7 @@ class TestMarkdownRendering:
         entries = parser._load_hook_entries(hook_jsonl_file)
 
         # Render in 'full' mode so all hook content is included
-        session = SessionSummary(uuid="abcd1234-test-session")
+        session = ParsedSession(uuid="abcd1234-test-session")
         md = parser.format_session_as_markdown(
             session=session, entries=entries, agent_entries={}, variant="full"
         )

@@ -1,7 +1,7 @@
 """Tests for CC session metadata capture and Gemini sidecar features.
 
 Covers:
-- extract_session_context: first-seen categorical fields, set aggregation for
+- aggregate_session_metadata: first-seen categorical fields, set aggregation for
   git_branches/permission_modes
 - UsageStats.thinking_turns: counting thinking/redacted_thinking blocks from
   entry.message["content"] lists (not entry.content which is a dict)
@@ -22,7 +22,12 @@ _AOPS_CORE = str(_REPO_ROOT / "aops-core")
 if _AOPS_CORE not in sys.path:
     sys.path.insert(0, _AOPS_CORE)
 
-from lib.transcript_parser import Entry, UsageStats, extract_session_context, reflection_to_insights
+from lib.transcript_parser import (
+    Entry,
+    UsageStats,
+    aggregate_session_metadata,
+    reflection_to_insights,
+)
 
 # ---------------------------------------------------------------------------
 # TestExtractSessionContext
@@ -30,7 +35,7 @@ from lib.transcript_parser import Entry, UsageStats, extract_session_context, re
 
 
 class TestExtractSessionContext:
-    """Tests for extract_session_context(entries) function."""
+    """Tests for aggregate_session_metadata(entries) function."""
 
     def test_extracts_first_seen_values(self):
         """Single entry with all fields — verify values are extracted correctly."""
@@ -44,7 +49,7 @@ class TestExtractSessionContext:
             git_branch="main",
             permission_mode="auto",
         )
-        ctx = extract_session_context([entry])
+        ctx = aggregate_session_metadata([entry])
 
         assert ctx["session_kind"] == "interactive"
         assert ctx["user_type"] == "external"
@@ -58,7 +63,7 @@ class TestExtractSessionContext:
         """Two entries with different git_branch values — both should appear in git_branches."""
         entry1 = Entry(type="assistant", git_branch="main")
         entry2 = Entry(type="assistant", git_branch="dev")
-        ctx = extract_session_context([entry1, entry2])
+        ctx = aggregate_session_metadata([entry1, entry2])
 
         assert "main" in ctx["git_branches"]
         assert "dev" in ctx["git_branches"]
@@ -66,7 +71,7 @@ class TestExtractSessionContext:
 
     def test_empty_entries_returns_empty_ctx(self):
         """Empty list yields all None scalar fields and empty list fields."""
-        ctx = extract_session_context([])
+        ctx = aggregate_session_metadata([])
 
         assert ctx["session_kind"] is None
         assert ctx["user_type"] is None
@@ -79,7 +84,7 @@ class TestExtractSessionContext:
     def test_ignores_none_fields(self):
         """Entries missing session_kind etc. don't break extraction — values stay None."""
         entry = Entry(type="assistant")  # all new metadata fields default to None
-        ctx = extract_session_context([entry])
+        ctx = aggregate_session_metadata([entry])
 
         assert ctx["session_kind"] is None
         assert ctx["user_type"] is None
@@ -90,7 +95,7 @@ class TestExtractSessionContext:
         """session_kind is taken from the first entry that has it; later entries are ignored."""
         entry1 = Entry(type="assistant", session_kind="interactive")
         entry2 = Entry(type="assistant", session_kind="background")
-        ctx = extract_session_context([entry1, entry2])
+        ctx = aggregate_session_metadata([entry1, entry2])
 
         assert ctx["session_kind"] == "interactive"
 
@@ -98,7 +103,7 @@ class TestExtractSessionContext:
         """Multiple entries with the same git_branch produce only one entry in the list."""
         entry1 = Entry(type="assistant", git_branch="main")
         entry2 = Entry(type="assistant", git_branch="main")
-        ctx = extract_session_context([entry1, entry2])
+        ctx = aggregate_session_metadata([entry1, entry2])
 
         assert ctx["git_branches"] == ["main"]
 
@@ -525,19 +530,19 @@ class TestAutoModeDecisions:
 
     def test_extract_session_context_aggregates_denials(self):
         entries = [Entry(type="user"), Entry.from_dict(self._RESULT_ENTRY)]
-        ctx = extract_session_context(entries)
+        ctx = aggregate_session_metadata(entries)
         assert len(ctx["permission_denials"]) == 1
         assert ctx["permission_denials"][0]["tool_name"] == "Write"
 
     def test_extract_session_context_captures_terminal_reason(self):
         """death-by-denial: 3-consecutive / 20-total denials → terminal_reason set."""
         terminated = {**self._RESULT_ENTRY, "terminal_reason": "too_many_permission_denials"}
-        ctx = extract_session_context([Entry.from_dict(terminated)])
+        ctx = aggregate_session_metadata([Entry.from_dict(terminated)])
         assert ctx["terminal_reason"] == "too_many_permission_denials"
 
     def test_all_allow_records_no_denials(self):
         """Auto mode with every call allowed → no denials (allows are silent)."""
-        ctx = extract_session_context([Entry(type="assistant", permission_mode="auto")])
+        ctx = aggregate_session_metadata([Entry(type="assistant", permission_mode="auto")])
         assert ctx["permission_denials"] == []
         assert ctx["terminal_reason"] is None
         assert "auto" in ctx["permission_modes"]

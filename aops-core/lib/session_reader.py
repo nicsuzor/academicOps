@@ -34,8 +34,8 @@ from lib.paths import (
 from lib.session_paths import cowork_source_roots
 from lib.transcript_parser import (
     SessionInfo,
+    SessionPipelineState,
     SessionProcessor,
-    SessionState,
     TodoWriteState,
     _summarize_tool_input,
     normalize_gemini_project,
@@ -1434,7 +1434,7 @@ def find_sessions(
     return sessions
 
 
-def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
+def get_session_state(session: SessionInfo, aca_data: Path) -> SessionPipelineState:
     """Determine the current processing state of a session.
 
     Authoritative logic for idempotency and re-processing requirements.
@@ -1462,10 +1462,10 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
 
     # Missing transcript or session updated since last transcript
     if not transcript_path:
-        return SessionState.PENDING_TRANSCRIPT
+        return SessionPipelineState.PENDING_TRANSCRIPT
 
     if session.path.stat().st_mtime > transcript_path.stat().st_mtime:
-        return SessionState.PENDING_TRANSCRIPT
+        return SessionPipelineState.PENDING_TRANSCRIPT
 
     # 2. Check for Mining JSON (unified session file)
     # Primary: $AOPS_SESSIONS/summaries/, fallback: $ACA_DATA/sessions/summaries/
@@ -1481,6 +1481,6 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
                 break
 
     if not has_mining:
-        return SessionState.PENDING_MINING
+        return SessionPipelineState.PENDING_MINING
 
-    return SessionState.PROCESSED
+    return SessionPipelineState.PROCESSED

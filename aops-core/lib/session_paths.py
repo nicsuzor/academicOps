@@ -5,6 +5,17 @@ circular dependencies and ensure consistent path structure across all components
 
 Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-HH-sessionID.json
 where HH is the 24-hour local time when the session was created.
+
+Scope (vs :mod:`lib.paths`):
+    This module owns **per-session runtime artifacts** — the status-JSON,
+    hook-log and gate-file paths for one live session, derived from the session
+    id + creation time + launch surface (incl. polecat-sandbox redirection).
+    Filenames are generated via :mod:`lib.session_naming`; this module decides
+    *which directory* those artifacts land in.
+
+    :mod:`lib.paths` owns the **data-repo / plugin-install layout** (plugin
+    root, data dir, summaries/transcripts dirs) — locations that are a function
+    of install layout, not of any single session.
 """
 
 import os
@@ -119,22 +130,6 @@ def get_claude_project_folder() -> str:
         project_path = Path.cwd().resolve()
     # Match Claude Code path sanitization: '/' -> '-', '.' -> '_'
     return "-" + str(project_path)[1:].replace("/", "-").replace(".", "_")
-
-
-def get_session_short_hash(session_id: str) -> str:
-    """Get 8-character identifier from session ID.
-
-    Standardizes on the first 8 characters of the session ID (UUID prefix)
-    to match Gemini CLI transcript naming. Falls back to SHA-256 hash for
-    brevity if the session ID is short or non-standard.
-
-    Args:
-        session_id: Full session identifier
-
-    Returns:
-        8-character string
-    """
-    return session_naming.get_session_short_hash(session_id)
 
 
 def _is_gemini_session(session_id: str | None, transcript_path: str | None = None) -> bool:

@@ -634,7 +634,7 @@ class TestCondensedHookHeader:
     def test_stop_with_warn_verdict_and_message_collapses_to_one_line(self, tmp_path):
         import json
 
-        from lib.transcript_parser import SessionSummary
+        from lib.transcript_parser import ParsedSession
 
         hook_file = tmp_path / "stop-hook.jsonl"
         record = {
@@ -654,7 +654,7 @@ class TestCondensedHookHeader:
 
         processor = SessionProcessor()
         entries = processor._load_hook_entries(hook_file)
-        session = SessionSummary(uuid="sess-stop", summary="t")
+        session = ParsedSession(uuid="sess-stop", summary="t")
         markdown = processor.format_session_as_markdown(
             session, entries, agent_entries=None, variant="full"
         )
@@ -673,7 +673,7 @@ class TestCondensedHookHeader:
     def test_stop_with_no_message_only_header_line(self, tmp_path):
         import json
 
-        from lib.transcript_parser import SessionSummary
+        from lib.transcript_parser import ParsedSession
 
         hook_file = tmp_path / "stop-hook.jsonl"
         record = {
@@ -688,7 +688,7 @@ class TestCondensedHookHeader:
 
         processor = SessionProcessor()
         entries = processor._load_hook_entries(hook_file)
-        session = SessionSummary(uuid="sess-stop2", summary="t")
+        session = ParsedSession(uuid="sess-stop2", summary="t")
         markdown = processor.format_session_as_markdown(
             session, entries, agent_entries=None, variant="full"
         )
