@@ -335,14 +335,23 @@ class HookRouter:
         tool_name = raw_input.get("tool_name")
         raw_ti = raw_input.get("tool_input", {})  # allow-fallback: type-coerced below
 
-        # Antigravity (agy) hook compatibility: tool details can be nested in raw_input.toolCall
+        # Antigravity (agy) hook compatibility: tool details ride in a `toolCall`
+        # object. The REAL agy 1.0.7 Pre/PostToolUse payload places it at the
+        # ROOT of the stdin object — `{"stepIdx":N,"toolCall":{"name":...,
+        # "args":{...}},"workspacePaths":[...]}` (#1800; verified against the live
+        # hook log for session 6d3d5783). The earlier double-nested
+        # `raw_input.raw_input.toolCall` lookup never matched, so ctx.tool_name was
+        # None on every agy tool event, defeating sentinel/enforcer/handover
+        # tool-name matching. Prefer the root-level object; keep the nested form as
+        # a defensive fallback for any wrapper that re-nests the payload.
         if not tool_name:
-            nested_raw = raw_input.get("raw_input")
-            if isinstance(nested_raw, dict):
-                tool_call = nested_raw.get("toolCall")
-                if isinstance(tool_call, dict):
-                    tool_name = tool_call.get("name") or tool_name
-                    raw_ti = tool_call.get("args") or raw_ti
+            tool_call = raw_input.get("toolCall")
+            if not isinstance(tool_call, dict):
+                nested_raw = raw_input.get("raw_input")
+                tool_call = nested_raw.get("toolCall") if isinstance(nested_raw, dict) else None
+            if isinstance(tool_call, dict):
+                tool_name = tool_call.get("name") or tool_name
+                raw_ti = tool_call.get("args") or raw_ti
 
         tool_input = self._normalize_json_field(raw_ti)
         if not isinstance(tool_input, dict):
@@ -357,7 +366,19 @@ class HookRouter:
             or raw_input.get("subagent_result")
         )
 
-        # Antigravity (agy) hook compatibility: tool output can be nested in raw_input
+        # Antigravity (agy) hook compatibility: the real agy 1.0.7 PostToolUse
+        # payload conveys the tool result at the ROOT of the stdin object — there
+        # is no separate result envelope; success/failure rides in the root-level
+        # `error` string (empty on success) alongside the root `toolCall` (#1800,
+        # same live-log mechanism as the tool_name fix above). Mirror the
+        # root-first / nested-fallback order used for `toolCall`.
+        if not raw_tool_output:
+            raw_tool_output = (
+                raw_input.get("toolResult")
+                or raw_input.get("tool_response")
+                or raw_input.get("subagent_result")
+                or raw_input.get("error")
+            )
         if not raw_tool_output:
             nested_raw = raw_input.get("raw_input")
             if isinstance(nested_raw, dict):
