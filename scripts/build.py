@@ -981,9 +981,12 @@ def build_aops_core(
     # PreToolUse / etc. router a SECOND time and fire every lifecycle hook
     # twice. aops-cowork is therefore an additive, hooks-free layer: one shared
     # hook stack (aops-core) serves both Claude Code and Cowork.
+    # Bind hooks_src / hooks_dst unconditionally so the gemini/antigravity
+    # hooks.json generation below (which only runs for non-cowork platforms)
+    # has statically-known Paths, not possibly-Unbound names.
+    hooks_src = src_dir / "hooks"
+    hooks_dst = dist_dir / "hooks"
     if platform != "cowork":
-        hooks_src = src_dir / "hooks"
-        hooks_dst = dist_dir / "hooks"
         hooks_dst.mkdir(parents=True)
         if hooks_src.exists():
             for item in hooks_src.iterdir():
