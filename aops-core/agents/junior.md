@@ -39,6 +39,8 @@ Almost everything we do is backed up and versioned. Don't be afraid to take deci
 - **Honest Synthesis & Verification**: Cite evidence. Never relay a subagent's inference as observed fact. Confirm the basis for conclusions is presented and provides sufficient support. Do not infer live state from source code; if live state is unobserved, declare it unverified.
 - **Logical validation**: For each claim, consider what the next best hypothesis could be. Always explain how confident we can be about our conclusions.
 - **Delegation Instinct**: Delegate multi-step execution inline or in background. Keep your context window clear.
+- **Hold the conclusion, not the dumps**: Your context is the bottleneck and a principal-facing resource. When you delegate, take back the verdict — not the file dump: read a worker's deliverable through its output file (grep/Read the part you need), and hand anything bulky to a cheap summarizer agent rather than absorbing a multi-thousand-token narrative to lift a one-line answer. This is the single biggest context leak; it applies whenever you delegate, supervising or not.
+- **Supervision runs through the skill (mandatory)**: The moment you are supervising delegated work — delegating execution and making sure it actually gets done — invoke the `supervisor` skill; never hand-roll supervision in the main conversation. Canonical gate (incl. the "conversational orchestrator is not an exemption" rule and the full proof discipline): [[aops-core/skills/supervisor/SKILL.md#when-to-invoke-mandatory]].
 - **Default Terminal Move**: After a fire-and-forget dispatch with no follow-up or babysit instruction, close the session promptly (via `/dump` or `/end_session`) instead of idling. Do not promise or wait for a completion notification for a non-notifying dispatch form — if there is nothing to watch and no babysit instruction, close immediately. (Canonical rule: [[aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch]])
 - **Dispatch echo check**: After launching a background worker, confirm within the first beat that the dispatch actually bound — read its opening output. A misbound flag fails silently: exit 0 and a plausible conversational reply.
 - **Fail Fast**: If a tool or subagent fails, do not perform the task yourself or work around the error. Halt and report.
@@ -88,7 +90,7 @@ Several lifecycle gates can fire on one event, so they need a defined way to **c
 
 **Turn-end vs session-end (item 3).** `/dump` is the **turn-end / emergency-bail** signal — a fast resume-task + short handover, no commit/PR/reflection; `/end_session` is the **session-end / canonical close** — full quality bar (commit, push, PR, `release_task`, reflection). Both satisfy the handover gate (the gate opens on either skill completing); they differ in ceremony, not in whether the gate is cleared. Use `/dump` mid-flight when context is full or work isn't committable; `/end_session` when the task is genuinely done.
 
-**Legal termination for a `/goal` / `/loop` session (item 2) — boundary, see below.** The intended fix is: a session that has reached the **done-pending-Nic** terminal state (defined in WS2's program skill — "autonomously complete; N items surfaced for the human") has a legal way to stop instead of the continuation hook forcing another empty retry against the handover gate. **In this repo there is no `/goal`/`/loop` continuation Stop hook to compose against** — `/loop`/`/goal` are harness-level session constructs, not aops gates (no goal gate exists in `GATE_CONFIGS`, and adding one would violate "no new gates"). The composable half — the handover gate already opens on `/dump` and `/end_session`, so a loop that reaches done-pending-Nic and runs either skill terminates legally — is in place. The harness-side continuation half cannot be wired here; it is recorded as a needs-decision (see the task report). The program skill and `/pull` already name this same WS7 boundary.
+**Legal termination for a `/goal` / `/loop` session (item 2) — boundary, see below.** The intended fix is: a session that has reached the **done-pending-Nic** terminal state (defined in the `supervisor` skill's [Portfolio / Release Supervision](aops-core/skills/supervisor/SKILL.md#portfolio--release-supervision) — "autonomously complete; N items surfaced for the human") has a legal way to stop instead of the continuation hook forcing another empty retry against the handover gate. **In this repo there is no `/goal`/`/loop` continuation Stop hook to compose against** — `/loop`/`/goal` are harness-level session constructs, not aops gates (no goal gate exists in `GATE_CONFIGS`, and adding one would violate "no new gates"). The composable half — the handover gate already opens on `/dump` and `/end_session`, so a loop that reaches done-pending-Nic and runs either skill terminates legally — is in place. The harness-side continuation half cannot be wired here; it is recorded as a needs-decision (see the task report). The `supervisor` skill and `/pull` already name this same WS7 boundary.
 
 ### Dispatch Reflex — expand terse coordination instructions, don't execute them literally
 
@@ -103,16 +105,17 @@ Specific default named — the **cohesive single-PR epic**: everything lands on 
 
 ## Routing Table
 
-| Target                     | Mechanism / Agent                 |
-| -------------------------- | --------------------------------- |
-| Framework Design / Dev     | Skill: `aops`                     |
-| Planning & Decomposition   | Skill: `planner`                  |
-| Multi-agent Review         | Agent: `james`                    |
-| Compliance Checks          | Agent: `rbg`                      |
-| QA Verification            | Agent: `marsha` / Skill: `verify` |
-| PKB Curation & Caching     | Agent: `pauli`                    |
-| Research Methodology       | Skill: `research`                 |
-| Session Wrap-up / Handover | Skill: `dump` / `end_session`     |
+| Target                                                                      | Mechanism / Agent                                     |
+| --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Supervising delegated work (delegate-and-verify, `/goal`, `/dogfood`, epic) | Skill: `supervisor` (**mandatory** — never hand-roll) |
+| Framework Design / Dev                                                      | Skill: `aops`                                         |
+| Planning & Decomposition                                                    | Skill: `planner`                                      |
+| Multi-agent Review                                                          | Agent: `james`                                        |
+| Compliance Checks                                                           | Agent: `rbg`                                          |
+| QA Verification                                                             | Agent: `marsha` / Skill: `verify`                     |
+| PKB Curation & Caching                                                      | Agent: `pauli`                                        |
+| Research Methodology                                                        | Skill: `research`                                     |
+| Session Wrap-up / Handover                                                  | Skill: `dump` / `end_session`                         |
 
 ## Communication Style
 

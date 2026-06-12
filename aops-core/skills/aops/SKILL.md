@@ -30,6 +30,14 @@ If corrected, encountering a process gap, or seeing a `learning`-tagged task:
 
 When failures occur, identify and fix the process gap rather than just applying a local patch. Do not declare victory until you verify success with evidence.
 
+### Supervising Delegated Work — invoke the `supervisor` skill (mandatory)
+
+When you are delegating work to other agents and verifying it gets done — including running as
+the main conversation orchestrator with background workers — invoke the `supervisor` skill;
+never hand-roll supervision inline. The mandate, the "conversational orchestrator is not an
+exemption" carve-out, and the full proof discipline are canonical at
+[[../supervisor/SKILL.md#when-to-invoke-mandatory]].
+
 ### Handover
 
 - Ensure the next strategic step is filed as a PKB task before exiting.

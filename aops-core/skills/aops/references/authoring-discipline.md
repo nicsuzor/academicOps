@@ -44,7 +44,7 @@ The canonical pattern is **two agent invocations, mediated by PKB**:
 - **No same-agent author-then-dispatch**: if the brief was authored or substantially refined in the current invocation, dispatch is the next agent invocation's job.
 - **Dispatch by task-ID**: invoke the worker with `polecat run -t <task-id>`; the worker reads the brief from PKB. Never inline a freshly-composed brief as prompt text in the same invocation where it was composed.
 - **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
-- **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. A malformed verdict is recorded and the tick exits; do not improvise. See [[../../supervisor/SKILL#verdict-structural-shape-guard-mandatory-before-acting]].
+- **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. If it doesn't hold up, note why and exit; do not improvise. See [[../../supervisor/SKILL#verdict-sanity-check]].
 
 ### Investigation boundary (Pauli's identity-layer projection of `recusal`)
 

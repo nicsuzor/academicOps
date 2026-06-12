@@ -2,7 +2,7 @@
 name: pull
 type: command
 category: instruction
-description: Advance the queue one step — pick the next queued task and DISPATCH it to the right surface. Never executes inline. Thin one-shot alias over the program loop's dispatch trigger.
+description: Advance the queue one step — pick the next queued task and DISPATCH it to the right surface. Never executes inline. Thin one-shot alias over the supervisor's dispatch step.
 triggers:
   - "pull task"
   - "get work"
