@@ -1538,6 +1538,12 @@ def main():
     # developer's `make install-cowork` never clobbers an installed aops-cowork.
     build_coworklocal_plugin(aops_root, dist_root, version)
 
+    # Emit LOCAL-dev variants of core + tools (dist/aops-core-dev,
+    # dist/aops-tools-dev) + an isolated academicOps-dev marketplace so
+    # `make install-dev` installs aops-core-dev@academicOps-dev instead of
+    # overwriting the published aops-core@academicOps.
+    build_devlocal_plugins(aops_root, dist_root, version)
+
     # PKB ships as a remote MCP server (run-mcp.sh resolves PKB_MCP_URL); no
     # per-platform binary is bundled, so packaging is platform-independent.
     package_artifacts(aops_root, dist_root, version)
@@ -1998,6 +2004,98 @@ def build_coworklocal_plugin(aops_root: Path, dist_root: Path, version: str):
         f.write("\n")
     print(
         f"  ✓ Built dist/aops-coworklocal (name aops-coworklocal) + isolated "
+        f"marketplace {data.get('name')!r}"
+    )
+
+
+def build_devlocal_plugins(aops_root: Path, dist_root: Path, version: str):
+    """Emit LOCAL-dev variants of core and tools plugins for `make install-dev`.
+
+    Produces two artifacts that differ from the published plugins only in name:
+      • dist/aops-core-dev  (name aops-core-dev, copied from dist/aops-claude)
+      • dist/aops-tools-dev (name aops-tools-dev, copied from dist/aops-tools-claude)
+
+    dist/aops-core-dev also receives an isolated academicOps-dev marketplace.json
+    so `claude plugin marketplace add dist/aops-core-dev` works; the tools plugin
+    source points to the sibling ../aops-tools-dev.
+
+    The distinct names keep a developer's local build in its own plugin/skill
+    namespace so it never clobbers an installed aops-core or aops-tools.
+
+    Must run AFTER build_aops_core(platform='claude') and
+    build_aops_tools(platform='claude').
+    """
+    published_core_dir = dist_root / "aops-claude"
+    published_core_plugin = published_core_dir / ".claude-plugin" / "plugin.json"
+    if not published_core_plugin.exists():
+        raise FileNotFoundError(
+            "dist/aops-claude/.claude-plugin/plugin.json missing — "
+            "run build_aops_core(platform='claude') first"
+        )
+
+    published_tools_dir = dist_root / "aops-tools-claude"
+    published_tools_plugin = published_tools_dir / ".claude-plugin" / "plugin.json"
+    if not published_tools_plugin.exists():
+        raise FileNotFoundError(
+            "dist/aops-tools-claude/.claude-plugin/plugin.json missing — "
+            "run build_aops_tools(platform='claude') first"
+        )
+
+    template_path = aops_root / "templates" / "marketplace-dev.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace-dev.json not found at {template_path}")
+
+    # --- aops-core-dev ---
+    core_dev_dir = dist_root / "aops-core-dev"
+    if core_dev_dir.exists():
+        shutil.rmtree(core_dev_dir)
+    shutil.copytree(published_core_dir, core_dev_dir)
+
+    core_dev_plugin_json = core_dev_dir / ".claude-plugin" / "plugin.json"
+    with open(core_dev_plugin_json) as f:
+        manifest = json.load(f)
+    manifest["name"] = "aops-core-dev"
+    manifest["description"] = (
+        "academicOps local dev — same as aops-core but installed from the current working tree."
+    )
+    with open(core_dev_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+
+    # Isolated academicOps-dev marketplace (lists both dev plugins, tools source
+    # is sibling ../aops-tools-dev).
+    with open(template_path) as f:
+        data = json.load(f)
+    plugins = data.get("plugins")
+    if not plugins:
+        raise ValueError(f"{template_path} has no 'plugins' — cannot generate dev marketplace")
+    for plugin in plugins:
+        plugin["version"] = version
+
+    marketplace = core_dev_dir / ".claude-plugin" / "marketplace.json"
+    with open(marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+    # --- aops-tools-dev ---
+    tools_dev_dir = dist_root / "aops-tools-dev"
+    if tools_dev_dir.exists():
+        shutil.rmtree(tools_dev_dir)
+    shutil.copytree(published_tools_dir, tools_dev_dir)
+
+    tools_dev_plugin_json = tools_dev_dir / ".claude-plugin" / "plugin.json"
+    with open(tools_dev_plugin_json) as f:
+        manifest = json.load(f)
+    manifest["name"] = "aops-tools-dev"
+    manifest["description"] = (
+        "academicOps tools local dev — same as aops-tools but installed from the current working tree."
+    )
+    with open(tools_dev_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+
+    print(
+        f"  ✓ Built dist/aops-core-dev + dist/aops-tools-dev + isolated "
         f"marketplace {data.get('name')!r}"
     )
 

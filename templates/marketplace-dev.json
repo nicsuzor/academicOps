@@ -1,0 +1,31 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "academicOps-dev",
+  "description": "Isolated marketplace for local-dev AcademicOps plugins — keeps aops-core-dev/aops-tools-dev in their own namespace so a local install never clobbers the published plugins or the genuine academicOps marketplace.",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
+  "plugins": [
+    {
+      "name": "aops-core-dev",
+      "description": "academicOps local dev — same as aops-core but installed from the current working tree.",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./",
+      "category": "productivity"
+    },
+    {
+      "name": "aops-tools-dev",
+      "description": "academicOps tools local dev — same as aops-tools but installed from the current working tree.",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "../aops-tools-dev",
+      "category": "productivity"
+    }
+  ]
+}

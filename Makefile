@@ -21,6 +21,12 @@ CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 
+# Dev (local build) names — distinct from prod so both can't coexist
+CLAUDE_DEV_MARKETPLACE := academicOps-dev
+CLAUDE_DEV_PLUGIN_NAME := aops-core-dev@academicOps-dev
+CLAUDE_TOOLS_DEV_PLUGIN_NAME := aops-tools-dev@academicOps-dev
+CLAUDE_DEV_DIST_DIR := $(DIST_DIR)/aops-core-dev
+
 # The local-dev cowork plugin lives in its OWN isolated marketplace + plugin
 # namespace (`aops-coworklocal`) so a local install never clobbers the published
 # `aops-cowork` plugin or the genuine `academicOps` marketplace. The published
@@ -51,10 +57,10 @@ help:
 	@echo "AcademicOps Build & Install Utility"
 	@echo ""
 	@echo "Local Development (Install from source):"
-	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
+	@echo "  make dev            - Full local dev setup (build + install as aops-core-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools)"
-	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
+	@echo "  make install-dev    - Remove release plugins, install local build as aops-core-dev@academicOps-dev"
+	@echo "  make uninstall-dev  - Remove dev plugins, restore release marketplace + plugins"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "User Installation (Install from remote releases):"
@@ -100,48 +106,44 @@ build-dev:
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
-# Install local build artifacts into clients
-# NOTE: This overrides the release marketplace with a local directory source.
-# Run `make uninstall-dev` to restore the release marketplace when done testing.
+# Install local build artifacts into clients as *-dev-named plugins.
+# Removes the release marketplace + plugins first so the two can't coexist.
+# Run `make uninstall-dev` (or `make install`) to switch back to the release build.
 install-dev: build-dev
 	@echo "Installing from local build artifacts..."
-	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
+	@echo "  Claude source: $(CLAUDE_DEV_DIST_DIR) (local dev marketplace)"
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
-	@echo "Uninstalling existing local plugins/extensions..."
+	@echo "Removing release Claude plugins + marketplace..."
+	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
+	-command claude plugin marketplace remove academicOps
+	@echo "Removing any existing dev Claude plugins..."
+	-command claude plugin uninstall $(CLAUDE_DEV_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_DEV_PLUGIN_NAME)
+	@echo "Removing existing Gemini extensions..."
 	-command gemini extensions uninstall $(GEMINI_EXT_NAME) 2>/dev/null; \
 		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_EXT_NAME)"
 	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME) 2>/dev/null; \
 		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_TOOLS_EXT_NAME)"
-	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	@echo "Pruning old plugin cache versions..."
-	-python3 -c "\
-import json, shutil, pathlib; \
-f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
-active = json.load(open(f))['plugins'].get('$(CLAUDE_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
-cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
-[shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
-"
-	@echo "Configuring local Claude marketplace (overrides release source)..."
-	@# Add the repo ROOT as the marketplace: its .claude-plugin/marketplace.json
-	@# sources are ./dist/aops-* (one convention everywhere), resolving to the
-	@# build output in $(DIST_DIR).
-	-command claude plugin marketplace add $(AOPS_ROOT)
-	@echo "Installing local build into Claude Code..."
-	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
-	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools install failed"
+	@echo "Installing dev build into Claude Code..."
+	@command claude plugin marketplace add $(CLAUDE_DEV_DIST_DIR)
+	@command claude plugin install $(CLAUDE_DEV_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
+	@command claude plugin install $(CLAUDE_TOOLS_DEV_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools-dev install failed"
 	@echo "Installing local build into Gemini CLI..."
 	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
 	@command gemini extensions install $(DIST_DIR)/aops-tools-gemini --consent || echo "  ⚠️ Gemini aops-tools install failed"
 	@$(MAKE) install-agy
 	@$(MAKE) report-versions
-	@echo "✓ Local installation complete"
-	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
-	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
+	@echo "✓ Local dev installation complete"
+	@echo "  Plugins: $(CLAUDE_DEV_PLUGIN_NAME), $(CLAUDE_TOOLS_DEV_PLUGIN_NAME)"
+	@echo "  Run 'make uninstall-dev' or 'make install' to switch back to the release build."
 
-# Restore the release marketplace after local dev testing
+# Remove dev plugins + marketplace, then restore the release build from GitHub
 uninstall-dev:
-	@echo "Restoring release marketplace ($(DIST_REPO))..."
+	@echo "Removing dev plugins and restoring release marketplace ($(DIST_REPO))..."
+	-command claude plugin uninstall $(CLAUDE_DEV_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_DEV_PLUGIN_NAME)
+	-command claude plugin marketplace remove $(CLAUDE_DEV_MARKETPLACE)
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
@@ -183,6 +185,9 @@ ensure-docker:
 install-claude:
 	@echo "Installing aops plugin for Claude Code..."
 	@echo "  Source: $(DIST_REPO_URL)"
+	-command claude plugin uninstall $(CLAUDE_DEV_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_TOOLS_DEV_PLUGIN_NAME)
+	-command claude plugin marketplace remove $(CLAUDE_DEV_MARKETPLACE)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
 	@command claude plugin marketplace add $(DIST_REPO) && \
