@@ -1,0 +1,17 @@
+{
+  "name": "aops-extras",
+  "version": "0.3.38",
+  "description": "Replaceable technology-specific academic skills — dbt, Streamlit, Python plotting/stats — swappable for official/community-consensus skills",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "academic",
+    "extras",
+    "dbt",
+    "streamlit"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "aops-extras",
+  "version": "${VERSION}",
+  "description": "Replaceable technology-specific academic skills package for Antigravity 2.0 — dbt, Streamlit, Python plotting/stats"
+}
