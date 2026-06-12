@@ -1,13 +1,13 @@
 ---
 name: analyst
 type: skill
-description: Support academic research data analysis using dbt and Streamlit. Use this skill when working with computational research projects (identified by dbt/ directory, Streamlit apps, or empirical data pipelines). The skill enforces academicOps best practices for reproducible, transparent, self-documenting research with collaborative single-step workflow.
+description: Support academic research data analysis with technology-agnostic principles — research-data immutability, a versioned/tested/reproducible transformation layer, statistical methodology, and self-documenting research. Use this skill for any computational research project with an empirical data pipeline. The skill enforces academicOps best practices for reproducible, transparent research with a collaborative single-step workflow. Tech-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the aops-extras package.
 category: instruction
 triggers:
   - "data analysis"
-  - "dbt project"
-  - "streamlit app"
   - "research pipeline"
+  - "empirical data"
+  - "research data analysis"
 modifies_files: true
 needs_task: true
 mode: execution
@@ -15,17 +15,17 @@ domain:
   - academic
   - development
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Skill
-version: 2.0.0
+version: 2.1.0
 permalink: skills-analyst-skill
 ---
 
 # Analyst
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for research data analysis using dbt and Streamlit. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides tech-agnostic domain principles (HOW) for research data analysis. Technology-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the **aops-extras** package skills. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Overview
 
-Support academic research data analysis by working collaboratively with dbt (data build tool) and Streamlit dashboards. This skill enforces academicOps methodology: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation.
+Support academic research data analysis through technology-agnostic principles: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation. The principles here hold regardless of which transformation engine or dashboard tool you use. When you have settled on specific tooling, pair this skill with the relevant aops-extras skill (`dbt`, `streamlit`, `python-viz`) for the concrete commands.
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
@@ -35,57 +35,57 @@ Source datasets, ground truth labels, experimental records, and research configu
 
 **Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
 
-## 🚨 CRITICAL: Transformation Boundary Rule
+## 🚨 CRITICAL: Transformation Layer vs Presentation Layer
 
-**ALL data transformation happens in dbt. Period.**
+**ALL data transformation happens in a versioned, tested, reproducible transformation layer. The presentation layer ONLY displays pre-computed data. Period.**
 
-This is non-negotiable for academic integrity, reproducibility, and auditability.
+This is non-negotiable for academic integrity, reproducibility, and auditability. It is a property of the _architecture_, not of any particular tool. (e.g. the transformation layer might be a dbt project, a SQL pipeline, or scripted notebooks under version control; the presentation layer might be a Streamlit dashboard, a static report, or a notebook viewer. See the aops-extras `dbt` and `streamlit` skills for those concrete implementations.)
 
-| Layer         | Allowed                                                                 | Prohibited                                                        |
-| ------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **dbt**       | ALL SQL transformations, joins, aggregations, filtering, business logic | -                                                                 |
-| **Streamlit** | Display, formatting, interactive filtering of PRE-COMPUTED data         | SQL that transforms, joins, aggregates, or applies business logic |
+| Layer              | Allowed                                                             | Prohibited                                                         |
+| ------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Transformation** | ALL transformations, joins, aggregations, filtering, business logic | -                                                                  |
+| **Presentation**   | Display, formatting, interactive filtering of PRE-COMPUTED data     | Any operation that transforms, joins, aggregates, or applies logic |
 
 ### Why This Matters (Academic Integrity)
 
-1. **Reproducibility**: Anyone can re-run `dbt build` and get identical results
+1. **Reproducibility**: Anyone can re-run the transformation layer and get identical results
 2. **Auditability**: Transformation logic is version-controlled and testable
 3. **Transparency**: Reviewers see exactly how data was processed
-4. **Testing**: dbt tests PROVE transformations work correctly
+4. **Testing**: Tests in the transformation layer PROVE transformations work correctly
 
 ### The Rule in Practice
 
-**Need a new metric?** → Create a dbt mart with tests
-**Need to filter data?** → Pre-compute filtered views in dbt OR use Streamlit widgets on EXISTING columns (no new calculations)
-**Need to join tables?** → Create a dbt model that joins them
-**Need aggregations?** → Create a dbt mart with the aggregations
+**Need a new metric?** → Add it to the transformation layer with tests
+**Need to filter data?** → Pre-compute the filtered view in the transformation layer OR filter on EXISTING columns in the presentation layer (no new calculations)
+**Need to join tables?** → Do the join in the transformation layer
+**Need aggregations?** → Compute them in the transformation layer
 
-### Streamlit: Display Layer ONLY
+### Presentation Layer: Display ONLY
 
-Streamlit scripts may:
+The presentation layer may:
 
-- ✅ `SELECT * FROM mart_name` (read pre-computed data)
-- ✅ `WHERE column = :user_selection` (filter on existing columns)
+- ✅ Read pre-computed outputs (`SELECT * FROM precomputed_table`)
+- ✅ Filter on EXISTING columns (`WHERE column = :user_selection`)
 - ✅ Format numbers, dates for display
 - ✅ Create interactive widgets that filter existing data
 - ✅ Render charts from pre-computed metrics
 
-Streamlit scripts must NEVER:
+The presentation layer must NEVER:
 
-- ❌ `SELECT SUM(...) GROUP BY ...` (aggregation = transformation)
-- ❌ `SELECT a.*, b.* FROM a JOIN b` (joins = transformation)
-- ❌ `SELECT CASE WHEN ... END` (business logic = transformation)
+- ❌ Aggregate (`SUM(...) GROUP BY ...` = transformation)
+- ❌ Join (`a.*, b.* FROM a JOIN b` = transformation)
+- ❌ Apply business logic (`CASE WHEN ... END` = transformation)
 - ❌ Calculate derived metrics inline
 - ❌ Apply any formula that changes the meaning of data
 
-### If You're Tempted to Transform in Streamlit
+### If You're Tempted to Transform in the Presentation Layer
 
-**STOP.** Create a dbt mart instead:
+**STOP.** Move the transformation into the transformation layer instead:
 
-1. Create `marts/mart_name.sql` with the transformation
-2. Add tests in `schema.yml` proving it works
-3. Run `dbt build --select mart_name`
-4. THEN query the mart from Streamlit
+1. Add the transformation as a versioned model/script
+2. Add tests proving it works
+3. Build/run the transformation layer
+4. THEN read the pre-computed output from the presentation layer
 
 This takes more time. That's the point. Transformations deserve scrutiny.
 
@@ -95,34 +95,37 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 - **Investigation**: [[instructions/data-investigation.md]], [[instructions/exploratory-analysis.md]]
 - **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
-- **Technical**: [[instructions/dbt-workflow.md]], [[instructions/streamlit-workflow.md]]
 
 ### References
 
-[[references/dbt-workflow.md]], [[references/streamlit-patterns.md]], [[references/context-discovery.md]]
+[[references/context-discovery.md]], [[references/quick-reference-commands.md]]
 
 ### Statistical Analysis (references/)
 
 Start with [[references/statistical-analysis.md]] (complete guide). Also: [[references/test_selection_guide.md]], [[references/assumptions_and_diagnostics.md]], [[references/effect_sizes_and_power.md]], [[references/bayesian_statistics.md]], [[references/reporting_standards.md]].
 
-### Python Libraries
+### Technology-Specific Skills (aops-extras)
 
-Core libraries: [[references/matplotlib.md]], [[references/seaborn.md]], [[references/statsmodels.md]], [[references/streamlit.md]]. Use `python-dev` skill for code standards.
+The concrete how-to for particular tools lives in the **aops-extras** package, so it can be swapped for official/community-consensus skills:
+
+- **`dbt`** — transformation-layer implementation (models, tests, marts).
+- **`streamlit`** — presentation-layer implementation (display-only dashboards).
+- **`python-viz`** — Python plotting & statistical-modelling libraries (matplotlib, seaborn, statsmodels). Use the `python-dev` skill for code standards.
 
 ## When to Use This Skill
 
 Invoke this skill when:
 
-1. **Working in computational research projects** - Directory contains `dbt/`, Streamlit apps, or empirical data pipelines
+1. **Working in computational research projects** - An empirical data pipeline, analytical database, or transformation/presentation layer is present
 2. **User requests data analysis** - "Analyze X", "Create a chart showing Y", "Explore the relationship between Z"
-3. **Building or updating dashboards** - Streamlit visualization work
-4. **Creating or modifying dbt models** - Data transformation pipelines
+3. **Building or updating dashboards** - Presentation-layer visualization work (see the aops-extras `streamlit` skill for that engine)
+4. **Creating or modifying transformations** - Transformation-layer pipeline work (see the aops-extras `dbt` skill for that engine)
 5. **Validating data quality** - Adding tests, checking consistency
 
 **Key indicators in project structure:**
 
-- `dbt/models/` directory (staging, intermediate, marts)
-- `streamlit/` or `.py` files with Streamlit code
+- A version-controlled transformation layer (e.g. a `dbt/models/` directory — staging, intermediate, marts)
+- A presentation layer (e.g. a `streamlit/` directory or dashboard `.py` files)
 - `data/warehouse.db` or similar analytical database
 - Academic research focus (papers, empirical analysis)
 
@@ -147,7 +150,7 @@ Context Discovery (REQUIRED FIRST STEP)
 ├─ Identify project conventions:
 │  ├─ Research questions
 │  ├─ Data sources and access patterns
-│  ├─ Existing dbt models (list them)
+│  ├─ Existing transformation-layer models (list them)
 │  ├─ Testing strategy
 │  └─ Project-specific rules
 │
@@ -158,7 +161,7 @@ Task Execution
 ├─ What type of task?
 │  ├─ Data access → Go to: Data Access Workflow
 │  ├─ Visualization → Go to: Visualization Workflow
-│  ├─ dbt model → Go to: DBT Model Workflow
+│  ├─ Transformation model → Go to: Transformation Model Workflow
 │  ├─ Testing → Go to: Testing Workflow
 │  └─ Exploration → Go to: Exploratory Analysis
 │
@@ -193,18 +196,18 @@ From these files, identify:
 
 - **Research questions** - What is this project investigating?
 - **Data sources** - Where does data come from? (BigQuery, APIs, files?)
-- **Existing dbt models** - What models already exist? (Run `ls -1 dbt/models/**/*.sql`)
+- **Existing transformation models** - What models already exist in the transformation layer?
 - **Conventions** - Naming patterns, coding standards, project-specific rules
 - **Testing strategy** - What tests exist? What quality expectations?
-- **Tools and technologies** - DuckDB? PostgreSQL? Specific Python packages?
+- **Tools and technologies** - Which transformation engine and presentation tool? (e.g. dbt + Streamlit — see the aops-extras skills.) DuckDB? PostgreSQL? Specific Python packages?
 
 **Example context discovery:**
 
 ```bash
-# List existing dbt models
+# List existing transformation-layer models (engine-specific; e.g. dbt)
 ls -1 dbt/models/staging/*.sql dbt/models/marts/*.sql
 
-# Check for Streamlit apps
+# Check for presentation-layer apps (engine-specific; e.g. Streamlit)
 ls -1 streamlit/*.py
 
 # Understand project structure
@@ -212,34 +215,37 @@ cat README.md
 cat data/README.md
 ```
 
+> The example commands above assume a dbt + Streamlit stack. For the concrete
+> per-engine discovery commands, see the aops-extras `dbt` and `streamlit` skills.
+
 After context discovery, summarize findings to user:
 
-`"I've reviewed the project context. This is a <research topic> project investigating <questions>. The DBT pipeline has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"`
+`"I've reviewed the project context. This is a <research topic> project investigating <questions>. The transformation layer has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"`
 
 ## Follow Data Access Workflow
 
-**🚨 CRITICAL RULE: ALL data access MUST go through dbt models. NEVER query upstream sources directly.**
+**🚨 CRITICAL RULE: ALL data access MUST go through the modelled transformation layer. NEVER query raw upstream sources directly.**
 
-**🚨 REMINDER: If you need to transform data, that transformation MUST be a dbt model with tests. See "Transformation Boundary Rule" above.**
+**🚨 REMINDER: If you need to transform data, that transformation MUST live in the transformation layer with tests. See "Transformation Layer vs Presentation Layer" above.**
 
 ### Decision Tree
 
 ```
 Need data for analysis?
 │
-├─ Does required data exist in dbt marts?
-│  ├─ YES → Use `SELECT * FROM {{ ref('mart_name') }}`
+├─ Does required data exist in the modelled (mart) layer?
+│  ├─ YES → Read it (e.g. `SELECT * FROM mart_name`)
 │  │         └─ Done! Use this data in analysis.
 │  │
 │  └─ NO → Does it exist in staging models?
 │     ├─ YES → Should this become a new mart?
-│     │  ├─ YES → Go to: DBT Model Workflow (create mart)
+│     │  ├─ YES → Go to: Transformation Model Workflow (create mart)
 │     │  └─ NO → Use staging model for exploratory work
 │     │
-│     └─ NO → Data doesn't exist in dbt yet
-│        └─ Ask user: "Should I create a dbt model for [data source]?"
-│           ├─ YES → Go to: DBT Model Workflow (create staging model)
-│           └─ NO → Stop. Cannot proceed without dbt model.
+│     └─ NO → Data doesn't exist in the transformation layer yet
+│        └─ Ask user: "Should I create a model for [data source]?"
+│           ├─ YES → Go to: Transformation Model Workflow (create staging model)
+│           └─ NO → Stop. Cannot proceed without a modelled source.
 ```
 
 ### Prohibited Actions
@@ -247,10 +253,10 @@ Need data for analysis?
 ❌ **NEVER** do this:
 
 ```python
-# Direct BigQuery query - PROHIBITED
+# Direct BigQuery query against raw source - PROHIBITED
 df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
 
-# Direct database query - PROHIBITED
+# Direct database query against raw schema - PROHIBITED
 df = pd.read_sql("SELECT * FROM raw_schema.table", engine)
 
 # Direct API call for analysis data - PROHIBITED
@@ -260,34 +266,25 @@ response = requests.get("https://api.example.com/data")
 ✅ **ALWAYS** do this:
 
 ```python
-# Query through dbt mart - CORRECT
+# Query through the modelled layer - CORRECT
 import duckdb
 
 conn = duckdb.connect("data/warehouse.db")
-df = conn.execute("SELECT * FROM fct_case_decisions").df()
-
-
-# Or reference in Streamlit
-@st.cache_data
-def load_data():
-    conn = duckdb.connect("data/warehouse.db")
-    return conn.execute("SELECT * FROM fct_case_decisions").df()
+df = conn.execute("SELECT * FROM fct_case_decisions").df()  # fct_* = a tested mart
 ```
 
 ### Why This Matters
 
-- **Reproducibility**: Queries are version-controlled in dbt
-- **Data governance**: dbt models are single source of truth
-- **Quality**: Data passes through validated transformation pipeline
-- **Consistency**: All analysts use same transformations
+- **Reproducibility**: Queries are version-controlled in the transformation layer
+- **Data governance**: The modelled layer is the single source of truth
+- **Quality**: Data passes through a validated, tested transformation pipeline
+- **Consistency**: All analysts use the same transformations
 
-**See:** [[references/dbt-workflow.md]] for detailed dbt patterns
+**See:** the aops-extras `dbt` skill for the dbt implementation of this policy.
 
-## Follow DBT Model Workflow
+## Follow Transformation Model Workflow
 
-Create or modify dbt models following academicOps layered architecture.
-
-**For detailed dbt workflow including model layers, single-step workflow, and examples, see [[instructions/dbt-workflow.md]]**
+Create or modify transformation-layer models following academicOps layered architecture. The layering below is engine-neutral; the aops-extras `dbt` skill gives the dbt-specific commands and file layout.
 
 ### Quick Reference: Model Layers
 
@@ -304,19 +301,19 @@ Create or modify dbt models following academicOps layered architecture.
 
 **ALWAYS check for duplicate models before creating new ones.**
 
-**See:** [[instructions/dbt-workflow.md]] for complete workflow details and [[references/dbt-workflow.md]] for comprehensive patterns
+**See:** the aops-extras `dbt` skill for complete workflow details and comprehensive patterns.
 
 ## Follow Visualization Workflow
 
-Create Streamlit visualizations following single-step collaborative pattern.
+Create presentation-layer visualizations following the single-step collaborative pattern.
 
-**🚨 REMINDER: Streamlit is DISPLAY ONLY. No transformations. See "Transformation Boundary Rule" above.**
+**🚨 REMINDER: The presentation layer is DISPLAY ONLY. No transformations. See "Transformation Layer vs Presentation Layer" above.**
 
-**For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md]]**
+**For the detailed engine-specific workflow (structure, single-step patterns, examples), see the aops-extras `streamlit` skill.**
 
-### Quick Reference: Streamlit Pattern
+### Quick Reference: Presentation Pattern
 
-Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. **Hot Reloads**: Don't restart Streamlit; it auto-reloads. See [[instructions/streamlit-workflow.md]].
+Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. See the aops-extras `streamlit` skill for engine-specific tips (e.g. Streamlit hot-reload).
 
 ## Follow Testing Workflow
 
@@ -348,8 +345,10 @@ Review the model and ask:
 
 **Step 2: Add schema tests** (after user agrees on test plan)
 
+The examples below use dbt's `schema.yml` syntax to illustrate the _principle_ — column-level tests declared alongside the model. See the aops-extras `dbt` skill for the full engine-specific testing reference; any transformation engine should provide an equivalent declarative test layer.
+
 ```yaml
-# dbt/schema.yml
+# dbt/schema.yml (dbt example)
 models:
   - name: stg_cases
     columns:
@@ -414,19 +413,19 @@ When testing LLM pipelines or templated content, validate **substantive content*
 - ✅ Use position-based length for multiline content (regex `.*?` doesn't cross newlines)
 - ❌ Don't just check for specific error strings - upstream bugs are unpredictable
 
-**See:** [[references/dbt-workflow.md]] for complete testing patterns
+**See:** the aops-extras `dbt` skill for complete engine-specific testing patterns.
 
 ## Follow Data Investigation Workflow
 
 When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation.
 
-**For complete workflow, script templates, and when to create investigation scripts, see `@reference _CHUNKS/data-investigation.md]]**
+**For complete workflow, script templates, and when to create investigation scripts, see [[instructions/data-investigation.md]]**
 
 ## Exploratory Analysis
 
 When exploring data patterns and relationships, follow collaborative discovery process. Take one analytical step at a time, yielding to user after each finding.
 
-**For complete exploration workflow and anti-patterns, see `@reference _CHUNKS/exploratory-analysis.md]]**
+**For complete exploration workflow and anti-patterns, see [[instructions/exploratory-analysis.md]]**
 
 **NOTE:** For data quality issues (missing values, unexpected nulls), use Data Investigation Workflow instead.
 
@@ -434,27 +433,27 @@ When exploring data patterns and relationships, follow collaborative discovery p
 
 **Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
 
-**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See `@reference _CHUNKS/research-documentation.md]] for complete requirements.**
+**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See [[instructions/research-documentation.md]] for complete requirements.**
 
 ### Required Documentation Structure
 
 Research projects MUST maintain:
 
 - **README.md** - Project overview and quick start
-- **METHODOLOGY.md** - Research design and approach (see `@reference _CHUNKS/methodology-files.md]])
-- **methods/*.md** - Technical implementation details (see `@reference _CHUNKS/methods-vs-methodology.md]])
+- **METHODOLOGY.md** - Research design and approach (see [[instructions/methodology-files.md]])
+- **methods/*.md** - Technical implementation details (see [[instructions/methods-vs-methodology.md]])
 - **data/README.md** - Data sources and schema
-- **dbt/schema.yml** - Model and column documentation
-- **experiments/YYYYMMDD-description/** - Experimental work (see `@reference _CHUNKS/experiment-logging.md]])
+- **Transformation-layer schema/docs** - Model and column documentation (e.g. `dbt/schema.yml`)
+- **experiments/YYYYMMDD-description/** - Experimental work (see [[instructions/experiment-logging.md]])
 
 ### Where Analysis Documentation Lives
 
-1. **Streamlit dashboards** - Interactive exploration and validation
+1. **Presentation-layer dashboards** - Interactive exploration and validation (e.g. Streamlit)
 2. **Jupyter notebooks** - Detailed analysis with inline markdown (in experiments/ if exploratory)
 3. **GitHub issues** - Track analysis tasks and decisions
-4. **Code comments** - Explain analytical decisions in dbt models
+4. **Code comments** - Explain analytical decisions in transformation-layer models
 5. **Commit messages** - Document why changes were made
-6. **dbt schema.yml** - Document model purposes and column meanings
+6. **Transformation-layer schema docs** - Document model purposes and column meanings (e.g. `dbt/schema.yml`)
 7. **methods/*.md** - Technical method specifications
 
 ### Prohibited
@@ -487,4 +486,4 @@ Research projects MUST maintain:
 
 ## Quick Reference
 
-See [[references/quick-reference-commands.md]] for common dbt, Streamlit, and DuckDB commands.
+See [[references/quick-reference-commands.md]] for common data-pipeline and DuckDB commands. For engine-specific commands, see the aops-extras `dbt` and `streamlit` skills.

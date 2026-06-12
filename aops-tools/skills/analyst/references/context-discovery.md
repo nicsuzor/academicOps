@@ -16,10 +16,10 @@ Guide to discovering and reading project context before beginning analysis work.
 
 - Research questions and goals
 - Data sources and access patterns
-- Existing dbt models and analysis work
+- Existing transformation-layer models and analysis work
 - Project-specific conventions and rules
 - Testing strategy and quality expectations
-- Tools and technologies in use
+- Tools and technologies in use (which transformation engine? which presentation tool? — see the aops-extras skills)
 
 **Without context discovery, you risk:**
 
@@ -82,7 +82,7 @@ cat README.md
 
 - **Data sources**: Where does data come from? (BigQuery, API, files, manual collection)
 - **Schema**: What tables/files exist? What fields do they contain?
-- **Access patterns**: How to access data? (Through dbt models, direct queries, file reads)
+- **Access patterns**: How to access data? (Through the modelled transformation layer, direct queries, file reads)
 - **Data dictionary**: Field definitions, value meanings, units
 - **Known issues**: Data quality problems, missing data, limitations
 - **Update frequency**: How often is data refreshed?
@@ -130,25 +130,25 @@ ls -1 data/projects/ | grep -i "project-keyword"
 cat data/projects/project-name.md
 ```
 
-### 4. Existing dbt Models
+### 4. Existing Transformation-Layer Models
 
 **What to read:**
 
-- List all existing models in `dbt/models/`
+- List all existing models in the transformation layer
 - Understand staging, intermediate, and mart layers
 
 **What to extract:**
 
-- **Existing models**: What data is already available in dbt?
-- **Model purposes**: What does each model do? (Read `dbt/schema.yml`)
+- **Existing models**: What data is already available in the modelled layer?
+- **Model purposes**: What does each model do? (Read the schema/docs, e.g. `dbt/schema.yml`)
 - **Data lineage**: How do models depend on each other?
 - **Naming patterns**: `stg_*`, `int_*`, `fct_*`, `dim_*` conventions
 - **Reusable components**: Can existing models be extended instead of creating new ones?
 
-**Commands:**
+**Commands (dbt example — see the aops-extras `dbt` skill for the full reference):**
 
 ```bash
-# List all dbt models
+# List all transformation-layer models (dbt example)
 ls -1 dbt/models/staging/*.sql
 ls -1 dbt/models/intermediate/*.sql
 ls -1 dbt/models/marts/*.sql
@@ -166,21 +166,21 @@ dbt docs generate
 dbt docs serve  # Opens documentation in browser
 ```
 
-### 5. Streamlit Apps
+### 5. Presentation-Layer Apps
 
 **What to read:**
 
-- List existing Streamlit apps in `streamlit/` directory
+- List existing dashboards/apps in the presentation layer
 - Understand what visualizations already exist
 
 **What to extract:**
 
 - **Existing visualizations**: What charts/dashboards exist?
-- **Data models used**: Which dbt models do they query?
+- **Data models used**: Which transformation-layer models do they read?
 - **Interaction patterns**: What filters, controls, layouts are used?
 - **Conventions**: Code style, organization patterns
 
-**Commands:**
+**Commands (Streamlit example — see the aops-extras `streamlit` skill for the full reference):**
 
 ```bash
 # List Streamlit apps
@@ -343,7 +343,7 @@ What would you like me to help with?
 - Assume project structure without checking
 - Create new models without checking for duplicates
 - Ignore existing conventions and impose your own
-- Query upstream data sources without checking dbt models first
+- Query raw upstream data sources without checking the modelled transformation layer first
 
 **✅ Do:**
 

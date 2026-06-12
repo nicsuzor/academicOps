@@ -28,6 +28,16 @@
       "category": "productivity"
     },
     {
+      "name": "aops-extras",
+      "description": "Replaceable technology-specific academic skills - dbt, Streamlit, Python plotting/stats - swappable for official/community-consensus skills",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-extras-claude",
+      "category": "productivity"
+    },
+    {
       "name": "aops-cowork",
       "description": "AcademicOps variant for Cowork - includes native task list synchronization",
       "version": "__VERSION__",
