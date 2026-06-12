@@ -59,10 +59,16 @@ def _arm_ida(monkeypatch, state_dir, session_id: str) -> None:
 
 
 def _grep_pretool_payload(session_id: str) -> dict:
-    """The real agy PreToolUse payload shape: nested toolCall + conversationId."""
+    """The REAL agy 1.0.7 PreToolUse payload shape (copied from the live hook log,
+    session 6d3d5783): ``toolCall`` sits at the ROOT of the stdin object, not
+    double-nested under ``raw_input`` (#1800). ``conversationId`` carries the
+    session id for state lookup.
+    """
     return {
         "conversationId": session_id,
-        "raw_input": {"toolCall": {"name": "grep_search", "args": {"query": "foo"}}},
+        "stepIdx": 5,
+        "toolCall": {"name": "grep_search", "args": {"Query": "foo"}},
+        "workspacePaths": ["/home/nic/src/overwhelm-dashboard"],
     }
 
 
