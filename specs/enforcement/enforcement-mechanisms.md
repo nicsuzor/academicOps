@@ -338,8 +338,8 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 
 - **Pipeline layer**: L7 Agent review (also L9 review pipeline)
 - **Pyramid tier**: middle
-- **Trigger**: user invokes review, `/review-pr` skill calls it, or supervisor delegates
-- **Purpose**: Multi-agent review orchestrator — commissions rbg/pauli/marsha, iterates, synthesises APPROVE/REVISE/ESCALATE.
+- **Trigger**: user invokes review, `/strategic-review` skill calls it to reconcile, or supervisor delegates
+- **Purpose**: Multi-agent review reconciler — the caller deploys rbg/pauli/marsha in parallel; james reconciles their outputs and synthesises APPROVE/REVISE/ESCALATE.
 - **Location**: `aops-core/agents/james.md`
 - **Scope**: polecat, crew, interactive
 - **Status**: active
@@ -388,13 +388,13 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 
 ### L9 Review pipeline
 
-#### review-pr skill (James local)
+#### strategic-review skill (unified review)
 
 - **Pipeline layer**: L9 Review pipeline
 - **Pyramid tier**: middle
-- **Trigger**: user invokes `/review-pr`
-- **Purpose**: Local PR review orchestrator — James drives the review-and-revise cycle against a real PR, across repos.
-- **Location**: `aops-core/commands/review-pr.md`
+- **Trigger**: user invokes `/strategic-review` (artifact = document, plan, proposal, or PR)
+- **Purpose**: Single entry point for reviewing any artifact — the caller deploys rbg/pauli/marsha in parallel and james reconciles into one verdict; optional `comment`/`fix` flags write back, default advisory.
+- **Location**: `aops-core/skills/strategic-review/SKILL.md`
 - **Scope**: polecat, crew, interactive
 - **Status**: active
 

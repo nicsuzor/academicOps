@@ -2,119 +2,109 @@
 name: strategic-review
 type: skill
 category: instruction
-description: Multi-agent strategic review of documents, plans, and proposals. Commissions review agents and iterates until the review meets quality standards. Use --critic for a fast pauli-only pre-hoc critique.
+description: Unified multi-agent review of any artifact — a document, plan, proposal, or pull request. The calling agent deploys rbg, pauli, and marsha in parallel, then @james reconciles their findings into one verdict. Pass `comment` and/or `fix` to write the result back to the review surface. Use `--critic` for a fast pauli-only pre-hoc critique.
 triggers:
   - "strategic review"
-  - "pre-hoc plan evaluation"
-  - "adversarial review"
-  - "plan review"
   - "review this document"
   - "review this proposal"
+  - "review this plan"
+  - "review this PR"
+  - "review PR"
+  - "review a pull request"
+  - "adversarial review"
+  - "/strategic-review"
   - "/strategic-review --critic"
   - "critic review"
-  - "critic mode"
-modifies_files: false
+modifies_files: true
 needs_task: false
-mode: conversational
+mode: execution
 domain:
   - framework
   - quality-assurance
-allowed-tools: Task,Read
-version: 2.5.0
+allowed-tools: Agent, Bash, Read, Glob, Grep, AskUserQuestion
+version: 3.0.0
 permalink: skills-strategic-review
 ---
 
-# /strategic-review — Strategic Review
+# /strategic-review — Unified Multi-Agent Review
 
-Perform strategic reviews of documents, plans, and proposals. Use the appropriate mode based on parameters or user intent:
+Review any artifact — a document, plan, proposal, or pull request — from several expert
+perspectives and return **one reconciled verdict**. Owned by **james** (reconciliation), but
+**you, the invoking agent, own the orchestration**: you deploy the reviewers yourself, because a
+subagent cannot spawn its own subagents. James is called only at the end, to reconcile.
 
-## Mode Selection
+## Modes
 
-- **Default (Multi-agent loop)**: Call the orchestrator agent `james` to run the multi-agent review loop (RBG, Pauli, Marsha).
-- **`--critic` (Solo Pauli)**: Invoke `pauli` to run a solo adversarial critique of a plan or proposal using the 10 cognitive moves.
-- **`--arch-fit` (Solo Pauli)**: Invoke `pauli` to assess if a green/merge-ready PR is architecturally in the right place rather than a workaround.
+- **Default** — full review: deploy `rbg` + `pauli` + `marsha` in parallel, then `@james` reconciles.
+- **`--critic`** — solo `pauli`: one fast adversarial critique, no reconciliation. For a pre-hoc
+  sanity check on a plan or proposal before work starts.
 
----
+## Inputs
 
-## Architectural-Fit Lens (`--arch-fit`) Prompt
-
-You are the ARCHITECTURAL-FIT reviewer (Pauli). Correctness, tests, and basic axiom compliance are handled upstream. Your focus is strictly: _Is this change in the right place, or is it a workaround for a problem whose root cause belongs elsewhere or requires redesign?_
-
-### Step 0 — Premise Test (forced; runs BEFORE the Analysis Checklist)
-
-Before you reconstruct the task, read the diff, or trace call sites, judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ — verbatim, as Output Field 0. **You cannot emit a ✅ MERGE verdict without it; a bad premise is 🔴 REJECT regardless of test coverage** (green CI is the _expected surface_ of a bad premise, not a mitigant). Diffstat-first ordering is mandatory — engaging the code first is exactly what lets surface quality launder a bad premise.
-
-Full definition, the verbatim prompt, the never-a-checklist hard rule, and the worked specimen live in the canonical reference: [[references/premise-test.md]]. (🔴 REJECT is the local rejection token here; `/verify` emits `FAIL` for the same call.)
-
-### Analysis Checklist
-
-1. **Reconstruct, Don't Accept**: Investigate the task, diff, call sites, specs (`specs/INDEX.md`), and vision (`[[vision]]` / permanent ID `aops-vision`) to locate the true root cause.
-2. **Spec Grounding**: Verify if the change aligns with the canonical spec in `specs/`. If it is a taxonomy/SSoT change, verify internal coherence and complete propagation.
-3. **Cross-Repo & External Impact**: Search the PKB to identify if this change implies concurrent changes in other repositories (e.g. `nicsuzor/mem`, `nicsuzor/overwhelm-dashboard`). Enumerate them and check if tasks are already scheduled.
-4. **Hunt Failure Patterns**:
-   - _Symptom vs Cause_: Fixing a symptom instead of the upstream cause.
-   - _Wrong Abstraction_: Branching instead of unifying/refactoring abstractions.
-   - _Reimplementing Platform_: Building in-framework what is native to Git, GitHub, OS, etc.
-   - _Coordination/Gate Creep_: Unnecessary new gates, hooks, or control mechanisms.
-   - _Complexity without Demonstrated Benefit_: New fields/enums/code surfaces without an active, deterministic, downstream consumer.
-   - _Unregistered/Under-integrated Mechanism_: Adding a step, gate, or lifecycle hook without documenting it in its canonical spec, `specs/ENFORCEMENT-MAP.md`, `.agents/INDEX.md`, or README.
-   - _Unjustified Removal_: Dropping existing checks/gates without replacing their safety invariants.
-5. **Propagation Completeness**: Enumerate all sites implementing the old pattern/schema across the entire repository (using PR diff, not just local branch status) and confirm they are migrated.
-6. **Persistence Trace**: Trace the full write path to a durable resting place (explicit filename/path) for any new/altered persistence mechanisms.
-7. **Axiom Backstop**: Perform a trust-but-verify scan against `.agents/rules/AXIOMS.md` and `.agents/rules/AXIOMS-REVIEW.md` to catch any missed violations.
-   - _Mechanical Check_: If a mechanism is added/modified, verify `specs/ENFORCEMENT-MAP.md` is updated in the same PR. If missing, flag as `GAP - ENFORCEMENT-MAP row missing`.
-
-### Output Format
-
-Lead with **exactly one** verdict emoji and text, followed by one scannable line per applicable section below (omit inapplicable sections). Keep output extremely concise.
-
-**Verdict Options**:
-
-- ✅ MERGE — Right place and shape.
-- ✅ MERGE (tension noted) — Genuinely separable watchpoint noted but not blocking.
-- ⚠️ HOLD — Sound in principle, but requires specific resolution before merge.
-- 🔁 REDESIGN — Right goal, wrong approach/location; needs redesign.
-- 🔴 REJECT — The change adds complexity without benefit or targets a non-problem; close the PR.
-
-**Output Fields**:
-
-0. **Premise Test**: Verbatim sharp-principal reaction from task + diffstat alone, written before the checklist (see Step 0). A bad premise -> 🔴 REJECT regardless of test coverage; no ✅ MERGE may be emitted without this line.
-1. **Core Action**: One sentence in root-cause terms summarizing the change.
-2. **Strategic Call**: If merging, state why the location is correct. If hold/redesign, state the exact chain: change -> root cause -> correct redesign target -> vision principle. If reject, name the unjustified cost and missing consumer.
-3. **External Impact**: Concomitant changes needed in other repos and if tasks are scheduled.
-4. **Persistence**: The concrete durable destination path (if write path changed).
-5. **Axiom Backstop**: `rbg coverage OK` or the specific gap (e.g. `GAP - axiom <name> missed`).
-6. **Issue-Completeness**: completeness check (e.g. `discharges N of M items from #X; remaining: <list>`).
-7. **Spot-Check**: 1-2 file:line pointers for manual verification.
-8. **Confidence + Counter-Argument**: High/Medium/Low confidence with the strongest counter-argument to your recommendation.
-9. **Out-of-Scope Routing**: Any correctness/test concerns routed to QA.
-
-### Post-Review Actions
-
-1. **Post PR Comment**: Post the output to the PR (`gh pr comment`), scrubbed of all personal info (names, private paths, etc.).
-2. **Set Commit Status**: Set the commit status `strategic-review/arch-fit` on the PR head SHA: success for ✅ MERGE / MERGE (tension noted), failure for others.
-   - Run: `gh api -X POST repos/{owner}/{repo}/statuses/<sha> -f context=strategic-review/arch-fit -f state=<success|failure> -f description=<short>`
-3. **Route Concerns**: If correctness issues were found, route them by filing a task or @-mentioning `marsha`.
+- **The artifact**: a file path, a PKB id, pasted text, or a pull request (an `owner/repo#N` ref or URL).
+- **Action flags (optional)**: `comment`, `fix`, or both. With no flag the review is **advisory** —
+  you return the verdict to the caller and change nothing.
 
 ---
 
-## Orchestrator: James (Default Mode)
+## Procedure (default mode)
 
-When running the default mode, commission James to coordinate the multi-agent review loop:
+### 1. Gather context
+
+Identify and load the artifact. If it is a **PR**, load the diff, description, and any prior
+unresolved review comments (`gh pr view`, `gh pr diff`). Select the matching review-context
+descriptor from `review-contexts/` and pass it to every reviewer:
+
+- `review-contexts/pr-code.md` — code PRs.
+- `review-contexts/pr-framework.md` — framework PRs (skills, agents, hooks, specs).
+
+### 2. Deploy the three reviewers — in parallel
+
+Spawn all three in a **single message** (concurrent `Agent` calls). Give each the artifact, the
+context, and the descriptor. **You spawn them — not james.** Subagents cannot spawn subagents, so
+this fan-out must happen here, at the top level.
+
+- **rbg** — axiom & rule compliance. **Always runs.**
+- **pauli** — strategic critique: the premise test, then the _"is this in the right place, or a
+  workaround for a root cause that belongs elsewhere?"_ architectural-fit lens (the 10 cognitive
+  moves). **Always runs.** Discipline and the worked specimen live in [[references/premise-test.md]].
+- **marsha** — runtime / verification QA. Runs **whenever code or executable behaviour changed**;
+  skip for pure-prose artifacts.
+
+### 3. Reconcile via @james
+
+When all three return, dispatch **@james** with the original artifact plus all three reviewer
+outputs. **James does not re-spawn anyone — it reconciles only.** It carries the contradictions,
+resolves them honestly, and returns **one verdict** with a synthesis table:
+
+| Agent | Issue | Feedback | Severity |
+
+Severity ladder: **REJECT** (fundamental — close/redesign) · **REVISE** (substantial rework, in
+scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) · **ADVISORY**
+(non-blocking follow-up). Overall verdict: **APPROVE / REVISE / REJECT**.
 
 ```
-Agent(subagent_type="aops-core:james", prompt="[artifact + context]")
+Agent(subagent_type="aops-core:james",
+      prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
 
-### Review Context Descriptors
+### 4. Act on the verdict — only if asked
 
-Descriptors in `review-contexts/` guide the review based on target type:
+- **No flag (default)**: return james's verdict and table to the caller. Change nothing.
+- **`comment`**: post james's synthesis to the artifact's natural review surface — a PR comment for
+  a PR, an inline note or PKB entry for a document. Scrub all personal info (names, private paths).
+- **`fix`**: apply every **FIX**- and **TRIVIAL**-grade finding directly, without returning to the
+  author. If a fix is substantial, re-run the affected reviewer(s) and fold any new findings into
+  the table. **REVISE/REJECT** findings are reported, not silently reworked.
+- **Both**: comment _and_ fix.
 
-- `pr-code.md`: Code PRs.
-- `pr-framework.md`: Framework PRs (skills, agents, hooks, etc.).
+Whatever the flags, **never silently exit**: if a write-back action fails, report it and print the
+full verdict to chat.
 
-### Agent Roster
+---
 
-- **rbg**: Axiom compliance and workflow discipline (Always runs).
-- **pauli**: Strategic critique via 10 cognitive moves (As needed).
-- **marsha**: Runtime and verification testing (Runs when code is changed).
+## `--critic` mode
+
+Deploy **pauli alone** for a fast pre-hoc critique (premise test + the 10 cognitive moves). No
+parallel roster, no james reconciliation. Return pauli's verdict directly to the caller. Use this
+to pressure-test a plan or proposal _before_ committing effort to it.

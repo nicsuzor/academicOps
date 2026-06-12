@@ -102,7 +102,7 @@ Keep each rule tight: every rule is permanent surface area, a per-call token cos
 | `policy_enforcer` / settings `deny`  | Deterministic (path/binary/flag) | Every tool call, pre-execution        | Hard block                                                | Claude Code          |
 | `enforcer` subagent                  | Judgment (LLM)                   | Threshold (~25–50 writes) or explicit | Agent's working context + session-state file + icon strip | Claude Code + Gemini |
 | `ida` / `qa` gates                   | Judgment-prompted                | Stop event                            | Agent (inject)                                            | Claude Code + Gemini |
-| `rbg` / `marsha` / `alignment`       | Judgment (LLM)                   | PR / `/review-pr` / threshold         | Reviewer / change-author                                  | all                  |
+| `rbg` / `marsha` / `alignment`       | Judgment (LLM)                   | PR / `/strategic-review` / threshold  | Reviewer / change-author                                  | all                  |
 
 The two failure modes to avoid:
 

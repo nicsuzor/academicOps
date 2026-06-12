@@ -75,7 +75,7 @@ flowchart TD
     HAND["/dump, framework reflection, handover gate, commit gate"]
   end
   subgraph L9[L9 Review pipeline]
-    REV["james, review-pr, GHA pr-review, agent-enforcer, linters"]
+    REV["james, strategic-review, GHA pr-review, agent-enforcer, linters"]
   end
   subgraph L10[L10 Merge gates]
     MERGE["agent-mechanic (Stage-2 dev), branch protection, mechanic loop-ceiling, project-owner"]

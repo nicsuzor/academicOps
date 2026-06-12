@@ -7,7 +7,7 @@ status: ready
 
 > Canonical reference for **where** a multi-perspective review (James + rbg + pauli + marsha)
 > is dispatched from, and **why** dispatching James as a leaf subagent silently collapses a
-> four-perspective review into a one-agent one. Consumed by `aops-core:review-pr` and the
+> four-perspective review into a one-agent one. Consumed by `aops-core:strategic-review` and the
 > `james` persona; the orchestrator (`junior`/`james`) reads this before commissioning a panel.
 
 ## TL;DR
@@ -75,14 +75,16 @@ team). This is the shape the parent task asked for.
 
 ### Tier B — Top-level orchestration (portable default)
 
-The outer agent runs `review-pr` **in its own main session** — the main session _becomes_ James — and
+The outer agent runs `strategic-review` **in its own main session** and
 commissions `rbg`/`pauli`/`marsha` as **one level of subagents** (`Agent(subagent_type=…)` on Claude;
-`delegate_to_agent` on Gemini). The three reviewers run in their own contexts and report back; James
-synthesises. This is the **default** and works on every harness that supports one-level sub-delegation.
+`delegate_to_agent` on Gemini). The three reviewers run in their own contexts and report back; James is
+then invoked **only to reconcile** their outputs into one verdict (James no longer dispatches the
+reviewers). This is the **default** and works on every harness that supports one-level sub-delegation.
 
-The load-bearing rule that makes Tier B work: **invoke `review-pr` at the top level. Never nest James
-one level down as a subagent.** If James is already a subagent, he is a leaf and Tier B is impossible
-for him — see the guard below.
+The load-bearing rule that makes Tier B work: **invoke `strategic-review` at the top level so the caller
+spawns rbg/pauli/marsha there; never nest James one level down as a subagent that fans out.** James is
+called only to reconcile, never to dispatch the panel — a leaf subagent cannot fan out, so the panel
+must be spawned by the top-level caller. See the guard below.
 
 ### Tier C — Single-session multi-pass (floor; any harness, incl. GHA and sub-delegation-less Gemini)
 
@@ -100,7 +102,7 @@ do not produce independent workers) — he must **not** silently proceed as a on
 either:
 
 - **Escalate to the caller**: "I was dispatched as a subagent and cannot fan out to a peer panel.
-  Re-dispatch `review-pr` at the top level (Tier B) or as a team lead (Tier A)." — preferred; or
+  Re-dispatch `strategic-review` at the top level (Tier B) or as a team lead (Tier A)." — preferred; or
 - **Degrade with disclosure** (Tier C): run the four lenses himself and label the verdict as a
   single-session, non-independent review.
 
@@ -129,7 +131,7 @@ defined, non-silent rung.
 
 ## See also
 
-- `aops-core/commands/review-pr.md` — the James orchestrator skill (consumes this doc at dispatch time)
+- `aops-core/skills/strategic-review/SKILL.md` — the unified strategic-review skill (consumes this doc at dispatch time; caller spawns the panel, james reconciles)
 - `aops-core/agents/james.md` — the James persona (carries the leaf-subagent guard)
 - `.github/agents/pr-reviewer.agent.md` — the Tier C floor instance for GHA
 - `specs/SURFACES.md` — which surfaces can dispatch onto what (agent teams need an interactive/`--bg` Claude host)
