@@ -17,6 +17,10 @@ These tests drive the REAL router (``HookRouter.normalize_input``) with the
 exact logged payload shape and assert the extracted ``tool_name`` /
 ``tool_input``. They FAIL the instant the root-level lookup regresses back to
 the dead double-nested form.
+
+These tests are agy-specific by design — they pin the exact agy 1.0.7 payload
+shape; analogous claude/gemini extraction behaviour is covered in gate_helpers
+tests.
 """
 
 from __future__ import annotations
