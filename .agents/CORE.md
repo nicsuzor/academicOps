@@ -83,7 +83,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 
 **Plugins and Skills:**
 
-- **aops-core plugin**: All skills (`/planner`, `/supervisor`, `/qa`, `/review-pr`, `/daily`, `/pull`, `/remember`, `/aops`, `/project`, `/sleep`, etc.) and named subagents (james, pauli, rbg, marsha, enforcer, etc.)
+- **aops-core plugin**: All skills (`/planner`, `/supervisor`, `/qa`, `/strategic-review`, `/daily`, `/pull`, `/remember`, `/aops`, `/project`, `/sleep`, etc.) and named subagents (james, pauli, rbg, marsha, enforcer, etc.)
 - **aops-tools plugin**: domain skills — `analyst`, `extract` (incl. doc-to-md), `diagram`, and others
 - **Standard skills**: `docx`, `xlsx`, `pdf`, `pptx`, `canvas-design`, `mcp-builder`, `skill-creator`
 
