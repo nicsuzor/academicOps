@@ -45,79 +45,145 @@ over background `Agent()` workers. "I'm just the conversational orchestrator" is
 exemption — that is exactly when this skill is required. Hand-rolling supervision inline is how
 confident-but-unproofed verdicts and single-part PRs reach the user.
 
-## Holding Delegated Work to Proof (read first)
+## Holding Delegated Work to Proof
 
-Whatever the mode — an epic tick here, a program tick, or running as the main conversation
-agent who delegates everything and verifies it — the supervisor's value is **not trusting any
-single agent**: proof claims, isolate confounds, and never relay a conclusion you have not made
-falsifiable. The discipline is **dispatch-surface independent** — identical whether workers run
-as polecat containers or Agent-tool background subagents; the polecat mechanics below are one
-surface's implementation of the generic steps. The full discipline is canonical in
-[[instructions/holding-work-to-proof.md]]. The non-negotiables:
+This is the supervisor's core discipline, and it applies **in every mode, on every tick** — epic
+ticks, program ticks, and running as the main conversation agent who delegates everything and
+verifies it. It is not an optional extra and not a separate read. Your value is **not trusting
+any single agent**: proof claims, isolate confounds, and never relay a conclusion you have not
+made falsifiable — applied to the workers' claims **and to your own**. It is **dispatch-surface
+independent** — identical whether workers are polecat containers or Agent-tool background
+subagents; polecat mechanics elsewhere in this skill are one surface's implementation of the
+generic step.
 
-- **Orient before the first dispatch.** Before ANY first dispatch on a problem, run the
-  mandatory checklist (holding-work-to-proof §0.5): PKB semantic search; prior-art sweep of
-  open _and_ merged PRs/branches; identify the recorded SANCTIONED QA harness (refuse ad-hoc
-  substitutes); and for any cross-client/vendor surface, FETCH THE VENDOR'S AUTHORITATIVE DOCS
-  first — reverse-engineering binaries/configs is a fallback only.
-- **Proof, not claims.** A change is not a fix until a runtime observation confirms the
-  user-facing behaviour against an acceptance gate you stated _before_ dispatch. "Tests pass"
-  is never the gate for a behaviour bug.
-- **The confound rule.** A verdict that blames anything you don't own ("platform bug",
-  "upstream", "external blocker") is not believable — and you must not relay it — until a
-  clean-room differential control (vanilla setup + positive control), **derived from the
-  authoritative spec and never by copying the suspect's configuration**, has ruled out our own
-  code/config. Convergent confidence from several agents sharing the same confound is **not**
-  that control — it is worth nothing. This applies to your _own_ relayed conclusions most of
-  all. A worker verdict that blames what we don't own and arrives with `CONFOUND CHECK: NOT
-  RUN` is logged `confound_unproven` and must not be relayed until the control runs.
-- **Don't trust convergence.** Cross-check each worker's strongest evidence (not its summary);
-  when agents contradict, adjudicate with methodology-independent evidence instead of picking a
-  side.
-- **Capstone verification = done.** Final acceptance is the exact previously-failing
-  user-facing runtime check, on a FRESH instance/session, by an agent who is NOT the
-  implementer, using the sanctioned harness, with hallucination explicitly ruled out (observed
-  output byte-matched to source — content that could only come from the system under test, not
-  echoed from the prompt). Only this justifies promoting the PR to ready (holding-work-to-proof
-  §1a).
-- **Context-economy contract.** Every brief requires a capped verdict (`VERDICT / CLAIM / GATE
-  / EVIDENCE-pointers / CONFIDENCE / CONFOUND CHECK`) with evidence as POINTERS, not inline
-  narrative; bulk reading (large bodies, transcripts) is delegated to a cheap summarizer agent
-  (a haiku/sonnet general-purpose Agent-tool dispatch — defined in
-  [holding-work-to-proof §6](instructions/holding-work-to-proof.md)), never read inline; the
-  running ledger lives in the epic body — **open an epic node even when supervising from an
-  interactive conversation** (mechanics: `mcp__pkb__create_task type=epic` + the three-section
-  skeleton, [holding-work-to-proof §6](instructions/holding-work-to-proof.md)); chat updates
-  between phases are one short paragraph. Briefs state assumptions as testable hypotheses
-  ("check whether X; if yes, run the check"), never as permission to skip ("you likely can't
-  test X — escalate").
+**Posture: supervise, don't do.** "Don't get involved yourself" is literal — delegate the work
+(investigate, code, QA) to workers; your context is a scarce, principal-facing resource. Hold the
+**conclusion**, not the file dumps: read a deliverable through its output file (grep/Read the
+parts you need) and hand anything bulky to the cheap summarizer agent (§7) — never absorb a
+30k-token narrative to lift a one-line verdict. This is the single biggest context leak.
+
+**§1 — Orient before the FIRST dispatch (mandatory, no exceptions).** Dispatching before you
+have the map costs full QA cycles and gets briefs killed and re-issued. Four steps:
+
+1. **PKB semantic search** — prior diagnoses, recorded harnesses, related tasks, known confounds.
+2. **Prior-art sweep** — open _and_ merged PRs/branches (`gh pr list --state all --search
+   "<terms>"` + the branch list); a merged fix or in-flight branch rewrites the brief.
+3. **Identify the SANCTIONED QA harness** and require it in the brief — refuse ad-hoc
+   substitutes. It is recorded in the epic ledger's ORIENT output, populated from (i) the PKB
+   search, (ii) the artifact's task/spec body, (iii) memory notes. **If that chain yields no
+   designated harness, HALT and `[ATTN]` Nic to designate one** — a worker never invents the
+   gate it is judged by.
+4. **Cross-vendor surface → FETCH THE VENDOR'S AUTHORITATIVE DOCS first.** Reverse-engineering
+   binaries/configs/strace is a fallback only. (The motivating bug was a deviation from a public
+   docs page nobody had fetched for days.)
+
+**§2 — Proof, not claims; state the acceptance gate up front.** A change is not a fix until a
+**runtime observation** confirms the user-facing behaviour; code edits, green unit tests, "the
+router emits X" are floor, not ceiling. Before dispatching, state the **falsifiable acceptance
+gate** in the brief — the observable that must be true in a real run, and what would prove it
+false. "Tests pass" is never the gate for a behaviour bug. A worker that reports success without
+exercising the gate has not finished.
+
+**§2a — Capstone = done.** Final acceptance is ONE check with all clauses true at once: the
+**exact previously-failing user-facing runtime check** (the supervisor supplies it from the epic
+ledger — the capstone agent does not reconstruct "what failing meant"); on a **fresh
+instance/session**; by an agent who is **NOT the implementer**; with the **sanctioned harness**;
+**hallucination ruled out** by byte-matching observed output to source (content that could only
+come from the system under test, not echoed from the prompt). On the single-PR-epic surface this
+is the one cumulative `marsha` pass at promotion (brief composition: [marsha — Verify](#marsha--verify-review-surface); marsha's own [[../verify/SKILL.md]] enforces the
+fresh-instance / non-implementer / source-trace posture). Only this justifies promoting the PR to
+ready; a miss is logged `capstone_fail`.
+
+**§3 — The confound rule (the headline).** A verdict that blames anything you don't own —
+"platform," "upstream," "external blocker," "agy/library/OS does X" — is **not believable and
+must not be relayed** until a differential control has ruled out our own code/config:
+
+- The control is a **clean-room isolation**: reproduce with _our_ contribution removed (vanilla,
+  plugin-free, stock) plus a **positive control** in the same harness to prove it can detect
+  success. Vanilla works ⇒ the fault is ours.
+- **Derive the control from the AUTHORITATIVE SPEC, never by copying the suspect.** A control
+  that imitates the suspect's config replicates its bug and "confirms" it. (Motivating incident:
+  an adjudicator's sentinel hook copied our plugin's broken registration shape and _falsely
+  confirmed a platform bug_; only the vanilla, docs-derived repro overturned it.)
+- **Convergent confidence is not the control** — N agents sharing one confound is worth nothing.
+  (Two workers + one QA agent agreed "platform no-op" with strace + sentinel proof, all wrong:
+  every one tested _with our plugin installed_; the bug was our `hooks.json` shape. One vanilla
+  control flipped it instantly.)
+- This applies to your **own** relayed conclusions most of all. A worker verdict that blames what
+  we don't own and arrives `CONFOUND CHECK: NOT RUN` is logged `confound_unproven` and not
+  relayed until the control runs.
+
+**§4 — Don't trust convergence.** Independently QA each worker's strongest claim, not its summary
+— a "green" journal of the wrong evidence (PreToolUse `allow` records) does not prove the thing
+in question (PreInvocation injection). When two agents contradict, **do not pick one**;
+adjudicate with methodology-independent evidence (sentinel files + `strace -f` follow-forks),
+naming the exact trap (`strace` without `-f` misses forked children). Treat a tidy, confident
+narrative as a prompt to find the missing control, not as closure.
+
+**§5 — Catch mis-briefed workers early; never pre-seed skip permission.** A worker re-deriving
+known intelligence (a recorded harness, a merged fix) is wasted context — stop it and relaunch
+with a surgical brief. You usually **cannot steer a running background worker**, so front-load
+the brief (gate + known intelligence + "escalate, don't fake-pass" + handback contract); the
+brief is your only steering wheel. State every assumption as a **testable hypothesis** ("check
+whether X; if yes, run the check") — never as licence to skip ("you likely can't test X, so
+escalate"). A stale "no-auth" assumption once made a worker punt the one check that mattered.
+
+**§6 — Report up honestly.** Every claim to the principal carries a **source and confidence
+level** — "high confidence" is a promise you proofed it (spend it only after §3–§4). **Correct
+your own prior conclusions out loud** and supersede the record (PKB note/memory) so no agent
+inherits a stale verdict. **Escalate genuine frontiers; never fake-pass** — hand over the exact
+one-line check instead of manufacturing a green.
+
+**§7 — Context-economy contract (mandatory, every mode).** The orchestrator's context is the
+bottleneck (the motivating interactive session burned ~170k tokens):
+
+- **Capped structured handback, every brief** — the worker ends with this and you read _that_,
+  not the narrative:
+
+  ```
+  VERDICT: <PASS | FAIL | BLOCKED | NEEDS-PRINCIPAL>
+  CLAIM: <one sentence — the conclusion>
+  GATE: <the acceptance gate, and the observed result against it>
+  EVIDENCE: <pointers — session id, log path, line refs — NOT pasted dumps>
+  CONFIDENCE: <high|med|low> + <what single control/test would falsify this>
+  CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT RUN">
+  ```
+
+  `CONFOUND CHECK` is mandatory whenever the verdict blames what we don't own; `NOT RUN` ⇒ do not
+  relay, commission the control (§3).
+- **Cheap summarizer agent** for all bulk reading (large bodies, transcripts, log dumps): a
+  haiku/sonnet general-purpose Agent-tool dispatch (or its `jr`/polecat equivalent), briefed
+  _"read `<pointer>`, return the ≤N facts relevant to `<question>`."_ It reads the bulk so your
+  context never does.
+- **The ledger lives in the epic body — always open an epic node**, even when supervising from an
+  interactive conversation with no pre-existing epic (chat context is not durable state).
+  Mechanics: `mcp__pkb__create_task type=epic` seeded with the `## Work Items` / `## Pattern
+  Memory` / `## Ledger` skeleton (see [Pattern Memory Format](#pattern-memory-format)); capture
+  ORIENT findings into `## Ledger` and the failing observable into `## Work Items` on tick 1 —
+  that is where the capstone (§2a) later reads the "exact previously-failing check."
+- **Capped chat updates** — one short paragraph (verdict + next action) between phases, never a
+  transcript replay. Preload predictable tool schemas once (task get/update, memory create,
+  stop/monitor) to avoid `ToolSearch` / parameter-retry churn.
+
+**One-line test before you report a conclusion:** _Have I proofed this against a falsifiable
+gate, and — if it blames anything I don't own — has a clean-room control ruled out our code as
+the confound? If not, I am relaying a claim, not a finding._
 
 ## Conversational Orchestration Mode
 
 When you reach this skill from a `/goal` / `/dogfood` "delegate this, don't get involved
-yourself, make sure it gets done" — there is no epic task or polecat. The mechanics differ from
-the epic tick; the discipline above does not.
+yourself, make sure it gets done" — there is no epic task or polecat. The **discipline above is
+unchanged**; only these mechanics differ:
 
-- **Workers**: background `Agent(subagent_type=…, run_in_background=True)` calls (general-purpose
-  for build/investigate, `marsha` for runtime QA). Results arrive as `<task-notification>`.
-- **State lives in the conversation thread**, not an epic body. Keep a running ledger in your
-  messages: each work item, its acceptance gate, and its current verdict. `needs_task` is off for
-  this mode — do not invent an epic just to satisfy a precondition.
-- **You cannot steer a running background worker** (no live message channel). So **front-load
-  every brief**: the falsifiable acceptance gate (§1), the known PKB/prior intelligence so it
-  doesn't re-derive (§4), the explicit "escalate, don't fake-pass" instruction (§5), and the
-  structured handback contract (§6). A good brief is your only steering wheel; if a worker is
-  mis-briefed mid-flight, **stop it and relaunch** rather than letting it burn its context.
-- **Read each deliverable through its output file** (Read/grep the parts you need); never absorb
-  a multi-thousand-token narrative into your turn just to lift a one-line verdict.
-- **Preload predictable tool schemas once** (task get/update, memory create, `TaskStop`,
-  `Monitor`) — repeated `ToolSearch` and parameter-shape retries are pure context waste.
-- **When the work produces code/PRs**, the [Draft PR Lifecycle Contract](#draft-pr-lifecycle-contract-firm-policy)
-  still applies: one shared-branch draft PR, promoted to ready only when all the delegated work
-  has landed.
-- **Reporting**: every status to the user is sourced and confidence-rated; correct your own prior
-  conclusions out loud; escalate genuine frontiers (auth-gated checks, human judgment) instead of
-  manufacturing a pass.
+- **Workers** are background `Agent(subagent_type=…, run_in_background=True)` calls
+  (general-purpose for build/investigate, `marsha` for runtime QA); results arrive as
+  `<task-notification>`. The §7 context-economy contract still binds — front-load every brief
+  (§5) because you cannot steer a running worker, and require the capped handback.
+- **Still open an epic node for the ledger** (§7) — `needs_task` being off means you are not
+  _required_ to be handed one, not that state may live in chat. Chat context is not durable
+  state.
+- **When the work produces code/PRs**, the [Draft PR Lifecycle Contract](#draft-pr-lifecycle-contract-firm-policy) applies unchanged: one shared-branch draft
+  PR, promoted to ready only when all delegated work has landed.
 
 ## Reporting Posture
 
@@ -140,7 +206,7 @@ Escalate only if:
 
 Execute the loop exactly once per tick:
 
-1. **ORIENT**: Retrieve epic task body using `mcp__pkb__get_task(<epic-id>)`. Before the epic's _first_ dispatch, also run the orient-before-dispatch checklist (read-first §0.5): PKB search, prior-art PR/branch sweep, sanctioned-harness identification, and vendor-docs fetch for cross-vendor surfaces. If any of these is skipped or cannot complete, log `orient_incomplete` (advisory) rather than dispatching blind.
+1. **ORIENT**: Retrieve epic task body using `mcp__pkb__get_task(<epic-id>)`. Before the epic's _first_ dispatch, also run the orient-before-dispatch checklist ([Holding Delegated Work to Proof §1](#holding-delegated-work-to-proof)): PKB search, prior-art PR/branch sweep, sanctioned-harness identification, and vendor-docs fetch for cross-vendor surfaces. If any of these is skipped or cannot complete, log `orient_incomplete` (advisory) rather than dispatching blind.
 2. **BRAKE**: Apply [Emergency Brake](#emergency-brake) to `## Pattern Memory` and `## Work Items`. If triggered, halt epic and exit.
    - **Draft guard**: if the epic PR exists, is **NOT** draft, and work items remain incomplete → run `gh pr ready --undo` and log `draft_reasserted` (see [Draft PR Lifecycle Contract item 4](#draft-pr-lifecycle-contract-firm-policy)).
 3. **DECIDE**: Invoke subagent(s) to obtain a structured verdict. Chaining is permitted only for compose-then-dispatch (compose-agent followed by fresh dispatch-agent).
@@ -182,7 +248,7 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
 
 - **Role**: Review deliverables for work items.
 - **Review Surface Shift**:
-  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it. That single cumulative pass IS the **capstone verification** ([[instructions/holding-work-to-proof.md]] §1a). The marsha brief the supervisor composes MUST carry the three capstone specifics from §1a — the **sanctioned QA harness** (identified at ORIENT, never invented; if none is recorded, HALT and `[ATTN]`), the **exact previously-failing user-facing check** (supplied by the supervisor from the epic ledger, not reconstructed by marsha), and the **byte-match hallucination rule-out** — while `marsha`'s own [[../verify/SKILL.md]] enforces the fresh-instance / non-implementer / source-trace posture. A capstone the prompt could have produced without the system running is not a pass; record `capstone_fail` (advisory) on any miss.
+  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it. That single cumulative pass IS the **capstone verification** ([Holding Delegated Work to Proof §2a](#holding-delegated-work-to-proof)). The marsha brief the supervisor composes MUST carry the three capstone specifics from §2a — the **sanctioned QA harness** (identified at ORIENT, never invented; if none is recorded, HALT and `[ATTN]`), the **exact previously-failing user-facing check** (supplied by the supervisor from the epic ledger, not reconstructed by marsha), and the **byte-match hallucination rule-out** — while `marsha`'s own [[../verify/SKILL.md]] enforces the fresh-instance / non-implementer / source-trace posture. A capstone the prompt could have produced without the system running is not a pass; record `capstone_fail` (advisory) on any miss.
   - **Standalone / Independent Tasks**: Keep the legacy branch-per-task behavior and verify each task's PR individually.
 - **Verdict**: PASS, FAIL <reason>, or REVISE <reason>.
 
@@ -239,7 +305,7 @@ This pattern is executable today via the live shared-branch mechanism:
 
 ## Canonical Dispatch Commands
 
-The discipline is dispatch-surface independent (see read-first). The commands below are the
+The discipline is dispatch-surface independent (see [Holding Delegated Work to Proof](#holding-delegated-work-to-proof)). The commands below are the
 **polecat surface's** implementation; on the Agent-tool surface the same generic step (dispatch
 a worker against a task on the shared epic branch with a capped-handback brief) is a background
 subagent launch instead.
@@ -288,7 +354,7 @@ The last four are **proof-discipline classes** — they record proof-discipline 
 - **Intent Authority**: When filing or decomposing tasks, leave `priority` at the uncurated default band — never originate a non-default band from importance or urgency. Only Nic sets intent, by express per-request instruction. Canonical rule: [[framework-conventions-summary#intent-authority]].
 - **PR Body Hygiene**: PR bodies describe the change for the reviewer — never carry do-not-merge / merge-gate / "awaiting Nic" banners. Branch protection is the enforced gate. Canonical rule: [[framework-conventions-summary#pr-body-conventions]].
 - **Engineering Integrity**: Failing tests/validations must be resolved, not bypassed.
-- **Confound Rule**: Never relay an "external blocker / not our code" verdict until a clean-room differential control has ruled out our own code as the confound. Canonical: [[instructions/holding-work-to-proof.md]].
+- **Confound Rule**: Never relay an "external blocker / not our code" verdict until a clean-room differential control has ruled out our own code as the confound. Full rule: [Holding Delegated Work to Proof §3](#holding-delegated-work-to-proof).
 - **Critic Gate**: High-risk tasks must undergo preflight validation by Pauli before dispatch.
 - **Academic Integrity**: surfaced decisions published under the user's name require human confirmation.
 

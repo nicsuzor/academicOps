@@ -33,7 +33,7 @@ Review and audit agent-facing instructions (tasks, workflows, self-tests) to eli
 1. **Author Mode**: Review proposed instructions before deployment to catch execution gaps.
 2. **Audit Mode**: Analyze execution transcripts after a failure to trace it back to instruction gaps.
 
-## Quality Criteria: The Seven Defect Classes
+## Quality Criteria: The Defect Classes
 
 Ensure instructions are free of the following defects:
 
@@ -44,21 +44,22 @@ Ensure instructions are free of the following defects:
 5. **Undefined Boundary Behavior**: Explicitly define fallback search spaces or escalation procedures when standard searches return no results.
 6. **Skimped Verification**: Require reading the complete output of files rather than simple grepping, keyword matching, or tail scans.
 7. **No Negative Verification**: Check for the absence of unexpected outputs (corruption, credentials leak, placeholders) in addition to the presence of expected results.
+8. **Deferred-Read Dispersion**: A rule the agent needs _at the moment of action_ lives in a second file it must go read — a "see `X.md`", a `[[link]]` to "canonical" doctrine, a "read first" pointer. An agent that already has the instructions in hand frequently will **not** make the follow-up read, so a load-bearing rule behind a pointer is a rule that often won't run. Keep the operative instruction where it executes and inline it; reserve pointers for genuinely optional depth, never for a step that is required every time. **Shorter, co-located instructions beat longer, more distributed ones in almost all cases** — when content is mandatory, fold it in and tighten rather than forking it into a referenced file (and never duplicate it across both the summary and the linked file, which is the worst of both). Audit-mode tell: the executing instruction was a pointer, and the missed rule lived one read away.
 
-These seven are common patterns, not an exhaustive list. If instructions feel shallow but match no named defect, trust the feeling, say so, and articulate why — and remember depth is verification specificity, not step count.
+These are common patterns, not an exhaustive list. If instructions feel shallow but match no named defect, trust the feeling, say so, and articulate why — and remember depth is verification specificity, not step count.
 
 ## Workflow
 
 ### Author Mode Workflow
 
-1. Assess the target instructions against the 7 defect classes.
+1. Assess the target instructions against the defect classes.
 2. Quote any text exhibiting a defect and write a high-depth rewrite.
 3. Output a verdict: **SHIP** (no defects), **REVISE** (defects found, edit file in-place with fixes), or **REJECT** (fundamental redesign needed).
 
 ### Audit Mode Workflow
 
 1. Identify what the agent missed and locate the executing instruction.
-2. Classify the instruction gap under the 7 defect classes.
+2. Classify the instruction gap under the defect classes.
 3. Edit the instruction in-place with a rewrite to prevent the failure.
 
 ## Output Expectations
