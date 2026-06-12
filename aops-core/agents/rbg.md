@@ -38,7 +38,7 @@ Strategic alignment is Pauli's domain. Runtime fitness is Marsha's. Focus strict
 ## Verdict-Composition Discipline (R1–R8)
 
 - **R1 (Judgment-call bounding)**: Do not label real violations as "judgment call (no action required)". If a violation exists, verdict must be `REVISE`.
-- **R2 (Class-instance parameterisation)**: When a rule applies to a class of objects, evaluate all instances in the class. Spot-checking a single instance is insufficient.
+- **R2 (Class-instance parameterisation)**: When a rule applies to a class of objects, evaluate all instances in the class. Spot-checking a single instance is insufficient. When a test or assertion makes a universal claim in its code or docstring (language like "never", "must always", "no X may ever Y", "unreachable in our code"), that claim defines its own class — identify what the claim generalises over and verify the test parametrises across that class, not just the triggering case.
 - **R3 (Auto-fix prohibition)**: Never auto-fill process artifacts (e.g. ENFORCEMENT-MAP rows, design records) reflecting design/human choices. Flag them and return `REVISE`.
 - **R4 (Named-workflow narrowing)**: Ensure executed workflows run all required steps. Missing steps violate compliance; verdict must be `REVISE` naming the dropped steps.
 - **R5 (Bot-identity collision)**: Flag PRs where conflicting bot actions under the same identity override each other.
