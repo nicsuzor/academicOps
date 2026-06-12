@@ -1,0 +1,39 @@
+# aops-core shipped-plugin manifest (SSoT for the deployed hook dependencies).
+#
+# This is a TRACKED source file (epic-267fe017). It declares the runtime
+# dependencies the shipped aops-core hook stack needs (`uv sync --frozen` at
+# runtime installs exactly these). `uv add`/`uv remove` here now have a real
+# file to edit, so the shipped deps can no longer silently drift from an inline
+# string literal in scripts/build.py.
+#
+# At build time scripts/build.py:
+#   - stamps `version` (this 0.0.0 placeholder is replaced with the real
+#     build version), and
+#   - for the `cowork` platform only, trims `hooks` from the wheel packages
+#     (the cowork build ships no hooks — see build_aops_core docstring),
+# then runs `uv lock` against the stamped copy in dist/ so pyproject.toml and
+# uv.lock ship in lockstep. The version here is intentionally a placeholder and
+# is NOT used by any released artifact.
+[project]
+name = "aops-core"
+version = "0.0.0"
+description = "Core academicOps framework - skills, agents, and hooks for research workflow automation"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "Nicolas Suzor" },
+]
+keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
+dependencies = [
+  "pyyaml>=6.0",
+  "pydantic>=2.0",
+  "filelock>=3.13.0",
+  "psutil>=5.9.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["lib", "hooks"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

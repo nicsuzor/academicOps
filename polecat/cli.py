@@ -2606,15 +2606,18 @@ def setup(ctx):
     Requires uv and should be run from the repository root.
     """
     repo_root = Path(__file__).parent.parent.resolve()
-    setup_script = repo_root / "setup.sh"
+    install_script = repo_root / "scripts" / "install.py"
 
-    if not setup_script.exists():
-        print(f"Error: setup.sh not found at {setup_script}", file=sys.stderr)
+    if not install_script.exists():
+        print(f"Error: install.py not found at {install_script}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Running framework setup from {setup_script}...")
+    # scripts/install.py is the single authoritative install path (epic-267fe017).
+    # It runs the build (Phase 1) before installing, so there is no separate
+    # build step to invoke here. setup.sh (the former wrapper) is tombstoned.
+    print(f"Running framework setup via {install_script}...")
     try:
-        subprocess.run(["bash", str(setup_script)], check=True)
+        subprocess.run(["uv", "run", "python", str(install_script)], cwd=repo_root, check=True)
         print("\n✓ Polecat setup complete")
     except subprocess.CalledProcessError as e:
         print(f"\nError: Setup failed with exit code {e.returncode}", file=sys.stderr)

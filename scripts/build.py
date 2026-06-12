@@ -303,45 +303,58 @@ def get_project_version(aops_root: Path) -> str:
     return "0.1.0"
 
 
-# Template for aops-core pyproject.toml - version is injected at build time
-AOPS_CORE_PYPROJECT_TEMPLATE = """\
-[project]
-name = "aops-core"
-version = "{version}"
-description = "Core academicOps framework - skills, agents, and hooks for research workflow automation"
-requires-python = ">=3.11"
-license = "MIT"
-authors = [
-  {{ name = "Nicolas Suzor" }},
-]
-keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
-dependencies = [
-  "pyyaml>=6.0",
-  "pydantic>=2.0",
-  "filelock>=3.13.0",
-  "psutil>=5.9.0",
-]
+# The shipped aops-core hook deps are declared in the TRACKED source file
+# aops-core/pyproject.toml (epic-267fe017). The build reads that file and stamps
+# the version (+ trims hooks for cowork); there is no longer an inline pyproject
+# string literal here that could drift from the real file.
+AOPS_CORE_PYPROJECT_PLACEHOLDER_VERSION = "0.0.0"
 
-[tool.hatch.build.targets.wheel]
-packages = [{packages}]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-"""
+# Matches the `version = "..."` line under [project] (placeholder in source).
+_PYPROJECT_VERSION_RE = re.compile(r'(?m)^(version\s*=\s*)"[^"]*"')
+# Matches the hatch wheel `packages = [...]` line (single-line list as authored).
+_PYPROJECT_PACKAGES_RE = re.compile(r"(?m)^packages\s*=\s*\[[^\]]*\]")
 
 
-def generate_aops_core_pyproject(version: str, platform: str = "claude") -> str:
-    """Generate the aops-core pyproject.toml content with the given version.
+def generate_aops_core_pyproject(
+    version: str, platform: str = "claude", aops_root: Path | None = None
+) -> str:
+    """Return aops-core/pyproject.toml content with the build version stamped in.
+
+    Reads the tracked source manifest at ``aops-core/pyproject.toml`` (the single
+    source of truth for shipped hook deps) and substitutes the placeholder
+    version with the real build version.
 
     The cowork build ships NO hooks (the shared aops-core hook stack serves the
     Cowork surface when aops-core is installed from the dist marketplace — see
-    task aops-04075740 / mem-fe29111a). With no `hooks/` package on disk, listing
-    it under hatch's wheel packages would break `uv sync --frozen` at runtime, so
-    the cowork pyproject declares only `lib`.
+    task aops-04075740 / mem-fe29111a). With no ``hooks/`` package on disk,
+    listing it under hatch's wheel packages would break ``uv sync --frozen`` at
+    runtime, so for the cowork platform the ``hooks`` package is trimmed from the
+    wheel packages list, leaving only ``lib``.
     """
-    packages = '"lib"' if platform == "cowork" else '"lib", "hooks"'
-    return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version, packages=packages)
+    if aops_root is None:
+        aops_root = SCRIPT_DIR.parent
+    src_pyproject = aops_root / "aops-core" / "pyproject.toml"
+    if not src_pyproject.exists():
+        raise FileNotFoundError(
+            f"Required source manifest {src_pyproject} not found — "
+            "cannot build aops-core without it (epic-267fe017)"
+        )
+    content = src_pyproject.read_text()
+
+    content, n_ver = _PYPROJECT_VERSION_RE.subn(rf'\g<1>"{version}"', content, count=1)
+    if n_ver != 1:
+        raise ValueError(
+            f"Could not stamp version into {src_pyproject} (no [project] version line)"
+        )
+
+    if platform == "cowork":
+        content, n_pkg = _PYPROJECT_PACKAGES_RE.subn('packages = ["lib"]', content, count=1)
+        if n_pkg != 1:
+            raise ValueError(
+                f"Could not trim hooks package for cowork in {src_pyproject} "
+                "(no wheel packages line)"
+            )
+    return content
 
 
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
@@ -943,17 +956,16 @@ def build_aops_core(
         verb = "kept" if platform == "cowork" else "stripped"
         print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
 
-    # 1b. Generate pyproject.toml and uv.lock from the inline template in
-    # this file (AOPS_CORE_PYPROJECT_TEMPLATE) — the single source of truth
-    # for shipped hook deps. The source repo intentionally has no
-    # aops-core/pyproject.toml or aops-core/uv.lock; locking always happens
-    # against the freshly-written pyproject so the two ship in lockstep.
-    # `uv sync --frozen` at runtime then installs exactly what the template
-    # declared, no drift possible.
-    pyproject_content = generate_aops_core_pyproject(version, platform)
+    # 1b. Stamp the tracked aops-core/pyproject.toml (the in-tree SSoT for shipped
+    # hook deps, epic-267fe017) with the build version and write it into the dist
+    # payload, then lock against that stamped copy so pyproject.toml and uv.lock
+    # ship in lockstep. aops-core/uv.lock is NOT tracked — it is generated here
+    # per-platform (the cowork variant trims the hooks package). `uv sync --frozen`
+    # at runtime then installs exactly what the manifest declared, no drift.
+    pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
-    print(f"  ✓ Generated pyproject.toml (v{version})")
+    print(f"  ✓ Stamped pyproject.toml (v{version}) from aops-core/pyproject.toml")
 
     subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
     print("  ✓ Regenerated uv.lock from pyproject.toml")
