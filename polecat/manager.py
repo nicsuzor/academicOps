@@ -184,6 +184,7 @@ def load_projects(
     overlay = load_local_overlay(overlay_path)
 
     projects = {}
+    github_org = config.get("github_org")  # top-level default org for URL derivation
     projects_cfg = config.get("projects") or {}  # allow-fallback: projects block optional
     for slug, proj in projects_cfg.items():
         proj = proj or {}  # allow-fallback: empty project config is valid
@@ -195,12 +196,21 @@ def load_projects(
             aliases_raw = [aliases_raw]
         aliases = [str(a) for a in aliases_raw]
         mounts = proj.get("mounts") or []  # allow-fallback: extra mounts optional
+        # Derive authoritative remote URL: per-project `remote:` wins, then
+        # github_org convention, then None (unknown — fall back to working repo).
+        if "remote" in proj:
+            remote_url: str | None = _to_https_url(proj["remote"])
+        elif github_org:
+            remote_url = f"https://github.com/{github_org}/{repo}.git"
+        else:
+            remote_url = None
         entry = {
             "path": resolve_project_path(slug, repo, overlay=overlay),
             "default_branch": proj.get("default_branch", "main"),
             "repo": repo,
             "aliases": aliases,
             "mounts": mounts,
+            "remote_url": remote_url,
         }
         for key in ("auto_commit", "merge_strategy", "sessions_access"):
             if key in proj:
@@ -1253,9 +1263,11 @@ class PolecatManager:
         if mirror_path.exists():
             # Update existing mirror
             print(f"Fetching latest for {project}...")
-            # Ensure the origin URL is HTTPS for bot compatibility
-            remote_url = self._get_remote_url(source_path)
-            remote_url = _to_https_url(remote_url)
+            # Use authoritative URL from polecat.yaml if available; otherwise
+            # fall back to the working repo's remote (converted to HTTPS).
+            remote_url = config.get("remote_url") or _to_https_url(
+                self._get_remote_url(source_path)
+            )
             subprocess.run(
                 ["git", "remote", "set-url", "origin", remote_url],
                 cwd=mirror_path,
@@ -1267,9 +1279,11 @@ class PolecatManager:
                 check=True,
             )
         else:
-            # Derive remote URL from source repo and force HTTPS
-            remote_url = self._get_remote_url(source_path)
-            remote_url = _to_https_url(remote_url)
+            # Use authoritative URL from polecat.yaml if available; otherwise
+            # fall back to the working repo's remote (converted to HTTPS).
+            remote_url = config.get("remote_url") or _to_https_url(
+                self._get_remote_url(source_path)
+            )
             print(f"Cloning {project} from {remote_url}...")
             subprocess.run(
                 ["git", "clone", "--bare", remote_url, str(mirror_path)],
@@ -1315,6 +1329,17 @@ class PolecatManager:
         try:
             print(f"Syncing {project} mirror from origin...")
             with metrics.time_operation("sync", project=project, mode="safe"):
+                # Enforce authoritative remote URL from polecat.yaml on every
+                # sync, correcting any drift (e.g. SSH → HTTPS) self-healingly.
+                authoritative_url = self.projects[project].get("remote_url")
+                if authoritative_url:
+                    subprocess.run(
+                        ["git", "remote", "set-url", "origin", authoritative_url],
+                        cwd=mirror_path,
+                        check=True,
+                        capture_output=True,
+                    )
+
                 subprocess.run(
                     ["git", "worktree", "prune"],
                     cwd=mirror_path,
