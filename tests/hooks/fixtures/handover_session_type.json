@@ -95,32 +95,6 @@
       }
     },
     {
-      "id": "live-interactive-write-tool-no-close",
-      "description": "Edit in interactive session does NOT close handover gate. Real session 790d28ab from 2026-05-27.",
-      "session_type": "interactive",
-      "hook_event": "PostToolUse",
-      "tool_name": "Edit",
-      "tool_input": {
-        "file_path": "/home/nic/src/academicOps/Dockerfile",
-        "old_string": "    && rm -rf /tmp/aops-dist \\",
-        "new_string": "    && cp /tmp/aops-dist/marketplace.json /home/worker/.claude/plugins/cache/academicOps/marketplace.json \\\n    && rm -r",
-        "replace_all": false
-      },
-      "is_subagent": false,
-      "gate_overrides": {},
-      "expected": {
-        "handover_status_after": "open"
-      },
-      "_provenance": {
-        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
-        "line_index": 129,
-        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
-        "logged_at": "2026-05-27T15:27:25+10:00",
-        "event_hash": "3c89a1684b3a5ef5",
-        "extracted_at": "2026-05-27T08:54:13Z"
-      }
-    },
-    {
       "id": "live-interactive-ups-no-rearm",
       "description": "UserPromptSubmit in interactive session does NOT re-arm handover gate. Real session 3fb9c8fc from 2026-05-27.",
       "session_type": "interactive",
@@ -140,10 +114,38 @@
         "event_hash": "d3046e993479ff7b",
         "extracted_at": "2026-05-27T08:54:13Z"
       }
+    }
+  ],
+  "handover_interactive_closes_on_work": [
+    {
+      "id": "live-interactive-write-tool-closes",
+      "description": "Edit in an interactive session CLOSES the handover gate. Since dd59e3b5 (feat: close handover on pkb claim + edit tools in all sessions) the write-tool close trigger has no session_type_filter, so a coordinator/junior session that edits a file is gated until /end-session or /dump. Real session 790d28ab from 2026-05-27.",
+      "session_type": "interactive",
+      "hook_event": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/home/nic/src/academicOps/Dockerfile",
+        "old_string": "    && rm -rf /tmp/aops-dist \\",
+        "new_string": "    && cp /tmp/aops-dist/marketplace.json /home/worker/.claude/plugins/cache/academicOps/marketplace.json \\\n    && rm -r",
+        "replace_all": false
+      },
+      "is_subagent": false,
+      "gate_overrides": {},
+      "expected": {
+        "handover_status_after": "closed"
+      },
+      "_provenance": {
+        "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
+        "line_index": 129,
+        "session_id": "790d28ab-9433-427c-bb01-ee5e1a9fd98f",
+        "logged_at": "2026-05-27T15:27:25+10:00",
+        "event_hash": "3c89a1684b3a5ef5",
+        "extracted_at": "2026-05-27T08:54:13Z"
+      }
     },
     {
-      "id": "live-interactive-bash-no-close",
-      "description": "Bash in interactive session with bound task does NOT close handover gate. Real session 790d28ab from 2026-05-27.",
+      "id": "live-interactive-bash-with-task-closes",
+      "description": "Bash in an interactive session with a bound task CLOSES the handover gate. Since dd59e3b5 the all-session write-tool trigger fires; is_write_tool only treats shell tools as read-only when the gate is sticky or no task is bound, neither of which holds here (task-123 bound, not sticky). Real session 790d28ab from 2026-05-27.",
       "session_type": "interactive",
       "hook_event": "PostToolUse",
       "tool_name": "Bash",
@@ -157,7 +159,7 @@
       },
       "gate_overrides": {},
       "expected": {
-        "handover_status_after": "open"
+        "handover_status_after": "closed"
       },
       "_provenance": {
         "source_log": "/home/nic/.claude/projects/-home-nic-junior/20260527-1443-790d28ab-junior-claude-session-hooks.jsonl",
