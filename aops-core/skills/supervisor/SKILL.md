@@ -3,10 +3,11 @@ id: supervisor-c41c35d6
 name: supervisor
 description: >
   The single authoritative supervision process for any delegate-and-verify
-  work — epic-level task supervision (stateless tick driven by `/loop`, state
-  in the epic body) AND conversational orchestration of background workers
-  (`/goal` "don't get involved yourself, make sure it gets done", `/dogfood`).
-  Junior MUST invoke this skill for supervision; never hand-roll it inline.
+  work — at every scale: one epic, a release spanning many epics (portfolio),
+  or conversational orchestration of background workers (`/goal` "don't get
+  involved yourself, make sure it gets done", `/dogfood`). Stateless tick driven
+  by `/loop`; cross-tick state lives in the task body. Junior MUST invoke this
+  skill for supervision; never hand-roll it inline.
 triggers:
   - "supervise"
   - "supervisor"
@@ -18,6 +19,9 @@ triggers:
   - "delegate this and verify"
   - "supervise these agents"
   - "dogfood"
+  - "ready the release"
+  - "drive the release"
+  - "portfolio supervision"
 modifies_files: true
 needs_task: false
 mode: iterative
@@ -27,13 +31,21 @@ domain:
 
 # Supervisor — The Supervision Process
 
-This skill **is** the framework's supervision process. There are two modes; the discipline below
-is identical across both.
+This skill **is** the framework's supervision process, at every scale. The discipline below is
+identical across all three contexts; only the unit of state changes:
 
-- **Epic-tick mode** — own a PKB epic across `/loop` ticks; cross-tick state lives in the epic body.
-- **Conversational orchestration mode** — run as the main conversation agent delegating to
-  background workers (`/goal` "don't get involved yourself, make sure it gets done", `/dogfood`),
-  with no epic/polecat; state lives in the conversation thread.
+- **Epic** — own one PKB epic across `/loop` ticks; cross-tick state lives in the epic body.
+- **Portfolio / release** — drive a release-level goal spanning many epics: advance ONE epic per
+  tick, surface escalations, file missing epics. State lives in the release task body
+  (`## Constituent Epics`, `## Escalations`). See [Portfolio / Release Supervision](#portfolio--release-supervision).
+- **Conversational orchestration** — run as the main conversation agent delegating to background
+  workers (`/goal` "don't get involved yourself, make sure it gets done", `/dogfood`); still open
+  a task node for the ledger (chat is not durable state).
+
+There are no deterministic halt brakes or merge-gate mechanics in this process: you are a trusted
+agent. Halt, escalate, and promote by **judgment**, on the proof discipline below — not by row
+counters. Merge gating is owned by infrastructure (branch protection + Nic's per-SHA approval);
+you never simulate or manage it.
 
 ## When to Invoke (mandatory)
 
@@ -47,9 +59,9 @@ confident-but-unproofed verdicts and single-part PRs reach the user.
 
 ## Holding Delegated Work to Proof
 
-This is the supervisor's core discipline, and it applies **in every mode, on every tick** — epic
-ticks, program ticks, and running as the main conversation agent who delegates everything and
-verifies it. It is not an optional extra and not a separate read. Your value is **not trusting
+This is the supervisor's core discipline, and it applies **in every mode, on every tick** — a
+single epic, a release of many epics, or running as the main conversation agent who delegates
+everything and verifies it. It is not an optional extra and not a separate read. Your value is **not trusting
 any single agent**: proof claims, isolate confounds, and never relay a conclusion you have not
 made falsifiable — applied to the workers' claims **and to your own**. It is **dispatch-surface
 independent** — identical whether workers are polecat containers or Agent-tool background
@@ -92,7 +104,7 @@ instance/session**; by an agent who is **NOT the implementer**; with the **sanct
 come from the system under test, not echoed from the prompt). On the single-PR-epic surface this
 is the one cumulative `marsha` pass at promotion (brief composition: [marsha — Verify](#marsha--verify-review-surface); marsha's own [[../verify/SKILL.md]] enforces the
 fresh-instance / non-implementer / source-trace posture). Only this justifies promoting the PR to
-ready; a miss is logged `capstone_fail`.
+ready; a miss means it is not done — record it in the ledger and send it back, never promote.
 
 **§3 — The confound rule (the headline).** A verdict that blames anything you don't own —
 "platform," "upstream," "external blocker," "agy/library/OS does X" — is **not believable and
@@ -110,8 +122,8 @@ must not be relayed** until a differential control has ruled out our own code/co
   every one tested _with our plugin installed_; the bug was our `hooks.json` shape. One vanilla
   control flipped it instantly.)
 - This applies to your **own** relayed conclusions most of all. A worker verdict that blames what
-  we don't own and arrives `CONFOUND CHECK: NOT RUN` is logged `confound_unproven` and not
-  relayed until the control runs.
+  we don't own and arrives `CONFOUND CHECK: NOT RUN` is **not relayed** — note it in the ledger
+  and commission the control first.
 
 **§4 — Don't trust convergence.** Independently QA each worker's strongest claim, not its summary
 — a "green" journal of the wrong evidence (PreToolUse `allow` records) does not prove the thing
@@ -182,8 +194,33 @@ unchanged**; only these mechanics differ:
 - **Still open an epic node for the ledger** (§7) — `needs_task` being off means you are not
   _required_ to be handed one, not that state may live in chat. Chat context is not durable
   state.
-- **When the work produces code/PRs**, the [Draft PR Lifecycle Contract](#draft-pr-lifecycle-contract-firm-policy) applies unchanged: one shared-branch draft
-  PR, promoted to ready only when all delegated work has landed.
+- **When the work produces code/PRs**, the [one-epic-one-PR pattern](#cohesive-single-pr-epic-pattern-default)
+  applies unchanged: one shared-branch PR, promoted only when all delegated work has landed and
+  the capstone passes.
+
+## Portfolio / Release Supervision
+
+When the goal spans **many epics** ("ready the release", "drive `<project>`"), you are the
+top-level coordinator. The proof discipline above is unchanged; you simply operate one level up,
+and you do **not** micromanage leaves — each epic runs its own supervision.
+
+- **One epic per tick.** Each tick, advance the single most-blocking epic by one decision (its own
+  supervision step). Never run two workers on the same task-id — concurrent worktree creation
+  races the worktree-lock and container-name. Grow concurrency with more ticks, not more
+  dispatches per tick.
+- **State lives in the release task body** under `## Constituent Epics` (each epic + its status)
+  and `## Escalations` (pending approvals, blocked epics, merge-ready PRs). Commit and push each
+  tick. Surface only actionable items there — never worker threads or tool-call play-by-play.
+- **File missing epics.** If a release requirement has no epic, create one parented under the
+  release task and add it to `## Constituent Epics`.
+- **Premise gate still binds** at every dispatch (here and in the epic step it drives): read the
+  leaf body and judge whether it carries a genuine premise judgment; if not, bounce it to the
+  promoter and spend no compute. This is an agent judgment by reading, never a field check
+  ([[../remember/references/premise-gate.md]]).
+- **Terminal: done-pending-Nic.** When every epic is at its review surface and the only remaining
+  work is decisions/approvals/merges that are structurally Nic's, you are **autonomously complete
+  — N items surfaced for Nic.** Set the release task to `review`, write the N items to
+  `## Escalations`, and stop. This is not a failure; it is the correct end of an autonomous loop.
 
 ## Reporting Posture
 
@@ -200,18 +237,19 @@ Escalate only if:
 1. Action is irreversible or modifies external systems without authorization.
 2. Involves methodology, citation, or claims published under the user's name.
 3. No defensible default exists.
-4. The Emergency Brake fires.
+4. **Your judgment says stop** — the same failure keeps recurring, workers are stalled, or you
+   cannot proof a verdict. There is no row counter; if it smells stuck, halt and escalate rather
+   than burning more compute.
 
 ## Per-Tick Checklist
 
 Execute the loop exactly once per tick:
 
-1. **ORIENT**: Retrieve epic task body using `mcp__pkb__get_task(<epic-id>)`. Before the epic's _first_ dispatch, also run the orient-before-dispatch checklist ([Holding Delegated Work to Proof §1](#holding-delegated-work-to-proof)): PKB search, prior-art PR/branch sweep, sanctioned-harness identification, and vendor-docs fetch for cross-vendor surfaces. If any of these is skipped or cannot complete, log `orient_incomplete` (advisory) rather than dispatching blind.
-2. **BRAKE**: Apply [Emergency Brake](#emergency-brake) to `## Pattern Memory` and `## Work Items`. If triggered, halt epic and exit.
-   - **Draft guard**: if the epic PR exists, is **NOT** draft, and work items remain incomplete → run `gh pr ready --undo` and log `draft_reasserted` (see [Draft PR Lifecycle Contract item 4](#draft-pr-lifecycle-contract-firm-policy)).
+1. **ORIENT**: Retrieve the task body (`mcp__pkb__get_task(<id>)`) and read the ledger. Before the _first_ dispatch on a problem, run the orient-before-dispatch checklist ([Holding Delegated Work to Proof §1](#holding-delegated-work-to-proof)): PKB search, prior-art PR/branch sweep, sanctioned-harness identification, and vendor-docs fetch for cross-vendor surfaces. Don't dispatch blind; if you can't complete orient, note it and escalate.
+2. **JUDGE**: Read the ledger. If the same failure keeps recurring, workers are stalled, or the premise no longer holds, **halt and escalate** — your call, not a counter.
 3. **DECIDE**: Invoke subagent(s) to obtain a structured verdict. Chaining is permitted only for compose-then-dispatch (compose-agent followed by fresh dispatch-agent).
-4. **ACT**: Validate verdict shape. Execute Bash command, file task via `mcp__pkb__create_task`, or exit. If verdict is malformed, append `verdict_fail` to Pattern Memory and exit.
-5. **CHECKPOINT**: Append new Pattern Memory row(s) to the epic body, commit, and push.
+4. **ACT**: Sanity-check the verdict (one coherent action, consistent with the body); if it doesn't hold up, don't act on it — note why and exit. Otherwise execute the action (Bash, file task via `mcp__pkb__create_task`, promote, or exit).
+5. **CHECKPOINT**: Append a ledger row to the task body, commit, and push.
 
 ## Prohibited Main Agent Actions
 
@@ -248,7 +286,7 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
 
 - **Role**: Review deliverables for work items.
 - **Review Surface Shift**:
-  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it. That single cumulative pass IS the **capstone verification** ([Holding Delegated Work to Proof §2a](#holding-delegated-work-to-proof)). The marsha brief the supervisor composes MUST carry the three capstone specifics from §2a — the **sanctioned QA harness** (identified at ORIENT, never invented; if none is recorded, HALT and `[ATTN]`), the **exact previously-failing user-facing check** (supplied by the supervisor from the epic ledger, not reconstructed by marsha), and the **byte-match hallucination rule-out** — while `marsha`'s own [[../verify/SKILL.md]] enforces the fresh-instance / non-implementer / source-trace posture. A capstone the prompt could have produced without the system running is not a pass; record `capstone_fail` (advisory) on any miss.
+  - **Cohesive Single-PR-Epic (Default)**: The supervisor review surface shifts from PR-per-task to **single-PR-at-end**. The supervisor does **NOT** run `marsha` verification on separate PRs or individual work items as each intermediate worker finishes. Instead, intermediate tasks are verified using local outcome-based verification (checking remote commit existence and inspecting the diff on the shared branch). Once verified, they are transitioned to `merge_ready` to unblock dependent tasks. The supervisor invokes `marsha` to review exactly **ONE** cumulative PR when the final stage promotes it. That single cumulative pass IS the **capstone verification** ([Holding Delegated Work to Proof §2a](#holding-delegated-work-to-proof)). The marsha brief the supervisor composes MUST carry the three capstone specifics from §2a — the **sanctioned QA harness** (identified at ORIENT, never invented; if none is recorded, HALT and `[ATTN]`), the **exact previously-failing user-facing check** (supplied by the supervisor from the epic ledger, not reconstructed by marsha), and the **byte-match hallucination rule-out** — while `marsha`'s own [[../verify/SKILL.md]] enforces the fresh-instance / non-implementer / source-trace posture. A capstone the prompt could have produced without the system running is not a pass; record any miss in the ledger and send it back.
   - **Standalone / Independent Tasks**: Keep the legacy branch-per-task behavior and verify each task's PR individually.
 - **Verdict**: PASS, FAIL <reason>, or REVISE <reason>.
 
@@ -264,14 +302,11 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
 - If the brief was modified during the tick, Pauli must output `brief composed on <task-id>`. The main agent must persist the brief, then invoke a fresh subagent context (dispatch-agent) to validate and emit the `dispatch` verdict.
 - If the brief is stable PKB content, Pauli emits `dispatch` directly.
 
-### Verdict Structural Guard
+### Verdict Sanity Check
 
-Verify verdicts satisfy:
-
-- Contains exactly one action.
-- Internally consistent (no conflicting status/action).
-- Grounded in epic body states.
-  If validation fails, append `verdict_fail` to Pattern Memory and exit.
+Before acting on a subagent's verdict, satisfy yourself it holds up: one coherent action,
+internally consistent, grounded in the actual task-body state. If it doesn't, don't act on it —
+note why in the ledger and exit. This is a read-and-judge, not a shape-validator.
 
 ## Cohesive Single-PR-Epic Pattern (Default)
 
@@ -293,15 +328,22 @@ This pattern is executable today via the live shared-branch mechanism:
    - The epic must be decomposed into **parallel-able units** (which have no inter-dependency and can execute concurrently on the shared branch) and **sequential-dependency units** (which carry explicit `depends_on: [<id>]` edges).
    - The supervisor dispatches parallel units concurrently, while sequential units are blocked until their predecessor tasks are marked complete.
 
-### Draft PR Lifecycle Contract (firm policy)
+### One Epic, One PR — promote at the capstone
 
-**One epic ships as ONE pull request, and it stays a DRAFT until every task on the shared branch has landed its commits. Only then does the supervisor flip it to ready (live).** No per-task / single-part PRs reach the merge pipeline or the user's attention — they consume review attention and CI resources for a fraction of an epic. This is policy now, not an aspiration.
+**One epic ships as ONE pull request.** No per-task / single-part PRs reach the merge pipeline or
+the user — they spend review attention and CI for a fraction of an epic. Your single PR-state
+action is the **promotion at the end**: flip it ready once all work items are `done` and the
+[capstone](#holding-delegated-work-to-proof) (the one cumulative `marsha` pass) is green. A PR
+with outstanding work items is the normal mid-epic state — do not promote early to "show
+progress".
 
-1. **Draft until all commits are up**: The single shared-branch PR remains a draft for the entire life of the epic. Every work item must be `done` (its commits present on `polecat/epic-<epic-id>`) before the supervisor promotes. A draft PR with outstanding work items is the **normal, expected** mid-epic state — do not promote early to "show progress".
-2. **Final-stage promotion is the only flip**: The supervisor's sole PR-state action is `gh pr ready` at the final-stage promotion, gated on: all work items `done`, the cumulative diff verified by exactly one `marsha` pass (see [marsha — Verify](#marsha--verify-review-surface)), and no open blockers. Promotion is a supervisor decision, never a worker action.
-3. **No Worker-Created PR**: Workers never create PRs. The single PR materialises automatically when the first worker on the shared branch finishes (`gh pr create --head polecat/epic-<epic-id>`, NOT a worker call); the supervisor neither hand-creates it nor instructs a worker to. The merge gate throughout is **branch protection** — the PR cannot merge without Nic's per-SHA `APPROVED` review regardless of draft/ready status, and no agent ever simulates that signal.
-4. **Enforce draft on creation (known mechanism gap)**: In `polecat/finalize.py` the draft flag is gated by `is_draft = is_partial or (is_shared and not promote)`, and the auto-finish path in `polecat/cli.py` invokes `_finish_cmd` with `promote=promote` — so a FULL-completion auto-finish that carries `promote=True` clears the carve-out and creates the shared-epic PR **READY**. Until [[aops-9f07c557]] lands a robust `is_shared` draft guarantee, the supervisor MUST compensate: immediately after the PR first materialises, assert it is a draft (`gh pr ready --undo` / re-create as draft if it came up ready), and keep it draft until the final-stage promotion. A shared-epic PR that is live before all work items are `done` is a policy violation to be corrected, not left — log `draft_reasserted` when you correct it.
-5. **Push Conflicts and Failures**: If a worker's push fails (e.g. `--force-with-lease` rejected due to concurrent pushes on the shared branch), the worker must run `git pull --rebase` to integrate cooperative changes and retry. If a rebase or push conflict cannot be resolved automatically, the supervisor must transition the task to `blocked` and escalate to Pauli.
+You do **not** manage merge mechanics. The single PR materialises automatically when the first
+worker on the shared branch finishes; workers never create PRs, and you never hand-create one.
+Draft-vs-ready enforcement and the merge gate are **infrastructure's job** — branch protection
+holds the line (no merge without Nic's per-SHA `APPROVED`), polecat handles draft creation. Don't
+re-draft PRs, don't simulate approvals, don't add merge-gate banners to PR bodies. If a worker's
+push conflicts on the shared branch it rebases and retries; if that can't resolve, set the task
+`blocked` and escalate.
 
 ## Canonical Dispatch Commands
 
@@ -317,33 +359,22 @@ uv run --project ~/src/academicOps polecat run -t <task-id> -p <project> --branc
 
 - `--model <name>` is the canonical flag. Use `--model claude` (config-default), `--model opus` (Claude family alias), or `--model gemini-3.1-pro-preview` for Gemini. `--opus` is not a valid flag and will error — use `--model opus`.
 
-## Emergency Brake
-
-Evaluate `## Pattern Memory` (last 8 rows) and `## Work Items`:
-
-| Rule                  | Trigger Condition                                          | Action                                                  |
-| :-------------------- | :--------------------------------------------------------- | :------------------------------------------------------ |
-| **Recurring failure** | Same `*_fail` or `*_halt` class appears ≥3× in last 8 rows | Halt epic; status `review`; reason `recurring: <class>` |
-| **Stalled workers**   | ≥2 work items `in_progress` with last activity > 4h ago    | Halt epic; status `review`; reason `stalled workers`    |
-
-Halt resets only when epic status is set back to `queued`. `partial` releases do not trigger the stalled worker rule. The four proof-discipline classes (`confound_unproven`, `capstone_fail`, `orient_incomplete`, `draft_reasserted`) are **advisory / logged-only and excluded from the recurring-failure count** — including `capstone_fail` despite its `_fail` suffix (see [Pattern Memory Format](#pattern-memory-format)).
-
 ## Pattern Memory Format
 
-Append one row per tick, capped at last 16 rows.
+The ledger is your cross-tick memory, not a trigger. Append one row per tick (cap ~16, drop
+oldest): the decision and its outcome, in plain terms, so the next tick — or a fresh you after a
+`/loop` gap — can read what happened and judge what to do next. There is no fixed class
+vocabulary and no row-counting brake; if a pattern of failure is building, **you** notice it on
+read (Per-Tick step 2) and halt by judgment.
 
 ```markdown
 ## Pattern Memory
 
-| Tick (ISO)           | Decision                    | Class       | Notes               |
-| :------------------- | :-------------------------- | :---------- | :------------------ |
-| 2026-05-08T02:14:00Z | dispatch task-abc to claude | dispatch_ok | preflight clean     |
-| 2026-05-08T02:43:11Z | marsha FAIL on task-abc     | verify_fail | tests red on docker |
+| Tick (ISO)           | Decision                    | Outcome / Notes                          |
+| :------------------- | :-------------------------- | :--------------------------------------- |
+| 2026-05-08T02:14:00Z | dispatch task-abc to claude | preflight clean                          |
+| 2026-05-08T02:43:11Z | marsha FAIL on task-abc     | tests red on docker — re-dispatching fix |
 ```
-
-Valid Classes: `dispatch_ok`, `dispatch_halt`, `verify_pass`, `verify_fail`, `react_filed_fix`, `react_halt`, `brake_fired`, `verdict_fail`, `confound_unproven`, `capstone_fail`, `orient_incomplete`, `draft_reasserted`.
-
-The last four are **proof-discipline classes** — they record proof-discipline events for visibility (a worker's `CONFOUND CHECK: NOT RUN` relayed verdict; a capstone-verification miss; a skipped first-dispatch ORIENT checklist; a prematurely-ready shared-epic PR that had to be re-drafted). They are **advisory / logged-only**: they are **excluded from the Emergency Brake's recurring-failure count** and never auto-halt an epic on their own — the existing `*_fail` / `*_halt` rule does **not** apply to them (this carve-out is why `capstone_fail` does not trip the brake despite the `_fail` suffix). They port the proof-discipline _lessons_, not net-new auto-halt enforcement; promoting any of them to a brake trigger requires Nic's explicit sanction.
 
 ## Design Principles
 
@@ -362,7 +393,7 @@ The last four are **proof-discipline classes** — they record proof-discipline 
 
 | Phase          | Subagent | Execution                                                                   |
 | :------------- | :------- | :-------------------------------------------------------------------------- |
-| **Orient**     | (none)   | Read epic body, run brake, select phase.                                    |
+| **Orient**     | (none)   | Read task body and ledger; judge whether to advance or halt; select phase.  |
 | **Decompose**  | pauli    | Propose subtasks; run RBG axiomcheck. Set `superseded_by` on retired tasks. |
 | **Review**     | (none)   | Halt; await human promotion to `queued`.                                    |
 | **Dispatch**   | pauli    | Preflight brief, execute dispatch or chain compose/dispatch.                |

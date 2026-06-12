@@ -1,6 +1,6 @@
 # Authoritative Agent × Tool Matrix
 
-Generated on Sun Jun 7 00:29:09 UTC 2026 from `scripts/audit_agent_compliance.py`.
+Generated on Fri Jun 12 01:39:50 AM UTC 2026 from `scripts/audit_agent_compliance.py`.
 
 ## Exclusive Tools
 
