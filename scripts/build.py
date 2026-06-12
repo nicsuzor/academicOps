@@ -801,6 +801,12 @@ def translate_tool_calls(text: str, platform: str) -> str:
     if platform == "gemini":
         # Replace Claude plugin path variable with Gemini equivalent
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+
+        text = re.sub(
+            r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
+            lambda m: claude_mcp_to_gemini(m.group(0)),
+            text,
+        )
     elif platform == "antigravity":
         # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
         # tool names (no frontmatter/body transformation). It uses Claude Code hook
