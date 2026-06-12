@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -149,6 +150,77 @@ def _resolve_project_key(name: str, match_suffix: bool = False) -> str:
         parts = name.strip("-").split("-")
         return parts[-1] if parts else name
     return name
+
+
+_PR_SKIP_BRANCHES: set[str] = {"HEAD", "dev", "main", "master"}
+_PR_SKIP_PREFIXES: tuple[str, ...] = ("polecat/", "crew/", "release-please--", "worktree-")
+
+
+def _slug_to_github_repo(slug: str) -> str | None:
+    """Map a project slug to 'owner/repo' via polecat.yaml."""
+    registry = get_sessions_repo() / "polecat.yaml"
+    if not registry.exists():
+        return None
+    try:
+        import yaml
+
+        with open(registry) as f:
+            config = yaml.safe_load(f) or {}  # allow-fallback: empty polecat.yaml is valid
+        org = config.get("github_org", "nicsuzor")
+        projects = (
+            config.get("projects", {}) or {}
+        )  # allow-fallback: projects section may be absent
+        if slug in projects:
+            proj = projects[slug] or {}
+            repo = proj.get("repo", slug)
+            return f"{org}/{repo}"
+    except Exception:
+        pass
+    return None
+
+
+def _resolve_pr_numbers(branches: list[str], repo_slug: str | None) -> list[int]:
+    """Resolve qualifying branch names to PR numbers via gh CLI.
+
+    Skips base branches (dev, main, HEAD) and internal prefixes (polecat/, crew/).
+    Returns a sorted, deduplicated list of PR numbers.
+    """
+    if not branches or not repo_slug:
+        return []
+    github_repo = _slug_to_github_repo(repo_slug)
+    if not github_repo:
+        return []
+
+    pr_numbers: set[int] = set()
+    for branch in branches:
+        if branch in _PR_SKIP_BRANCHES:
+            continue
+        if any(branch.startswith(p) for p in _PR_SKIP_PREFIXES):
+            continue
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--head",
+                    branch,
+                    "--state",
+                    "all",
+                    "--json",
+                    "number",
+                    "--repo",
+                    github_repo,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                pr_numbers.update(pr["number"] for pr in json.loads(result.stdout))
+        except Exception:
+            pass
+    return sorted(pr_numbers)
 
 
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
@@ -433,6 +505,8 @@ def _save_minimal_token_summary(
     if session_summary:
         if session_summary.session_type:
             insights["session_type"] = session_summary.session_type
+        if session_summary.pull_requests:
+            insights["pull_requests"] = session_summary.pull_requests
         if session_summary.gemini_version:
             insights["gemini_version"] = session_summary.gemini_version
         if session_summary.details:
@@ -831,7 +905,9 @@ def _infer_agent_from_entries(entries: list) -> str | None:
     """
 
     def _entry_text(entry) -> str:
-        msg = getattr(entry, "message", None) or {}
+        msg = (
+            getattr(entry, "message", None) or {}
+        )  # allow-fallback: synthetic entries have no message
         content = msg.get("content") if isinstance(msg, dict) else None
         if isinstance(content, str):
             return content
@@ -853,7 +929,9 @@ def _infer_agent_from_entries(entries: list) -> str | None:
     # empty.
     sample = ""
     for entry in entries[:40]:
-        msg = getattr(entry, "message", None) or {}
+        msg = (
+            getattr(entry, "message", None) or {}
+        )  # allow-fallback: synthetic entries have no message
         if isinstance(msg, dict) and msg.get("role") and msg.get("role") != "user":
             continue
         text = _entry_text(entry)
@@ -1568,6 +1646,9 @@ Examples:
                     session_kind=session_summary.session_kind,
                     initial_prompt=extract_initial_prompt(timeline_events),
                 )
+                session_summary.pull_requests = _resolve_pr_numbers(
+                    session_summary.git_branches, session_summary.repo
+                )
 
                 # Fetch existing outcome if available (from insights JSON)
                 existing_path = find_existing_insights(date_iso, session_id)
@@ -1814,6 +1895,9 @@ Examples:
                 session_kind=session_summary.session_kind,
                 initial_prompt=extract_initial_prompt(timeline_events),
             )
+            session_summary.pull_requests = _resolve_pr_numbers(
+                session_summary.git_branches, session_summary.repo
+            )
 
             reflection_header, _ = _process_reflection(
                 entries,
@@ -1976,6 +2060,9 @@ Examples:
             crew=session_summary.crew,
             session_kind=session_summary.session_kind,
             initial_prompt=extract_initial_prompt(timeline_events),
+        )
+        session_summary.pull_requests = _resolve_pr_numbers(
+            session_summary.git_branches, session_summary.repo
         )
 
         reflection_header, _ = _process_reflection(

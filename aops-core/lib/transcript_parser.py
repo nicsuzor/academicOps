@@ -2201,6 +2201,7 @@ class ParsedSession:
     cwd: str | None = None
     client_version: str | None = None
     git_branches: list[str] = field(default_factory=list)
+    pull_requests: list[int] = field(default_factory=list)
     permission_modes: list[str] = field(default_factory=list)
     permission_denials: list = field(default_factory=list)
     terminal_reason: str | None = None
