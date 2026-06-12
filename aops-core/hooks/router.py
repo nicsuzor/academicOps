@@ -960,16 +960,37 @@ class HookRouter:
     def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
         """Build an agy ``HookInjectedStep`` list carrying ``text``.
 
-        ``HookInjectedStep`` is a oneof; we use the ``systemMessage`` member
-        (``{systemMessage, metadata}``) per the ``exa.hooks_pb`` binary-descriptor
-        notes in epic aops-2dc18411. The inner field shape is descriptor-sourced
-        (marked VERIFY upstream), not yet live-verified — but its failure mode is
-        benign: a wrong inner shape makes agy drop the advisory, never bypass an
-        enforcement verdict, so emitting the documented best-effort is safe.
+        ``HookInjectedStep`` is a oneof. Field types decoded directly from the
+        ``exa.hooks_pb`` FileDescriptorProto embedded in the agy 1.0.7 binary
+        (FieldDescriptorProto ``type`` per member):
+
+            tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
+            user_message       (2)  TYPE_STRING   scalar string
+            ephemeral_message  (3)  TYPE_STRING   scalar string
+            system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
+
+        We use the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
+        protojson is the bare string ``{"ephemeralMessage": text}``. This is the
+        same channel agy uses to inject its own per-turn reminders into the model
+        turn, and is the variant that actually RENDERS the injected content.
+
+        ROOT CAUSE CORRECTION — agy 1.0.7 (2026-06-11, this authenticated host):
+        the earlier "agy never spawns PreInvocation hooks" conclusion was a
+        confound. A vanilla, doc-shaped PreInvocation hook FIRES cleanly on agy
+        1.0.7 (sentinel + ``strace -f`` confirmed). The real defect was OUR
+        registration: the generated hooks.json wrapped the invocation events in
+        the PreToolUse-style ``matcher``/``hooks[]`` shape, so agy phantom-logged
+        ``json_hook_caller.go:144 ... executing command`` but never spawned the
+        process. Per https://antigravity.google/docs/hooks#supported-events the
+        invocation/Stop events require a FLAT handler list directly under the
+        event key (fixed in ``_generate_antigravity_hooks_json``). Once the hook
+        fires, the ``systemMessage`` member is dropped from the rendered turn;
+        the scalar ``ephemeralMessage`` member is what agy renders into the model
+        context, so the context-injection advisory is emitted via that member.
         """
         if not text:
             return []
-        return [{"systemMessage": {"systemMessage": text}}]
+        return [{"ephemeralMessage": text}]
 
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.

@@ -87,6 +87,38 @@ class TestAntigravityHooksBuildTransform:
         )
         assert "Stop" not in hooks
 
+    def test_invocation_events_use_flat_handler_list(self, transform):
+        """PreInvocation/PostInvocation MUST be a FLAT handler list, not matcher/hooks[].
+
+        Per https://antigravity.google/docs/hooks#supported-events the
+        invocation/Stop events require their command handlers DIRECTLY under the
+        event key — no matcher/hooks[] wrapper. The wrapped (tool-event) shape
+        made agy phantom-log 'executing command' but never spawn the process, so
+        the PreInvocation context-injection hook silently never fired.
+        """
+        hooks = transform["hooks"]
+        for event in ("PreInvocation", "PostInvocation"):
+            handlers = hooks[event]
+            assert isinstance(handlers, list) and handlers, f"{event} must be a non-empty list"
+            for handler in handlers:
+                assert "hooks" not in handler, (
+                    f"{event} must NOT use the matcher/hooks[] wrapper — agy never "
+                    f"spawns the process in that shape: {handler}"
+                )
+                assert handler.get("type") == "command", (
+                    f"{event} flat handler must be a command type: {handler}"
+                )
+                assert "command" in handler, f"{event} flat handler missing 'command': {handler}"
+
+    def test_tool_events_keep_matcher_hooks_wrapper(self, transform):
+        """PreToolUse/PostToolUse MUST keep the matcher/hooks[] wrapper shape."""
+        hooks = transform["hooks"]
+        for event in ("PreToolUse", "PostToolUse"):
+            for entry in hooks[event]:
+                assert "hooks" in entry, (
+                    f"{event} must keep the hooks[] wrapper (tool-event shape): {entry}"
+                )
+
     def test_unsupported_events_dropped(self, transform):
         """SessionStart, SubagentStart, SubagentStop, SessionEnd, PreCompact, Notification
         are not supported by agy and must be absent from the output."""
@@ -101,28 +133,38 @@ class TestAntigravityHooksBuildTransform:
         found = unsupported & set(transform["hooks"].keys())
         assert not found, f"Unsupported agy events found in output: {found}"
 
+    @staticmethod
+    def _iter_commands(hook_entries):
+        """Yield every command string across both registration shapes.
+
+        Flat invocation entries carry the command directly; tool entries nest it
+        under hooks[].
+        """
+        for entry in hook_entries:
+            if "hooks" in entry:
+                for hook in entry["hooks"]:
+                    yield hook.get("command", "")
+            elif "command" in entry:
+                yield entry.get("command", "")
+
     def test_plugin_root_var_replaced_with_shell_var(self, transform):
         """All commands must use hardcoded $HOME path not ${CLAUDE_PLUGIN_ROOT}."""
         for event, hook_entries in transform["hooks"].items():
-            for entry in hook_entries:
-                for hook in entry.get("hooks", []):
-                    cmd = hook.get("command", "")
-                    assert "${CLAUDE_PLUGIN_ROOT}" not in cmd, (
-                        f"${'{CLAUDE_PLUGIN_ROOT}'} not replaced in {event} hook: {cmd}"
-                    )
-                    assert "$HOME/.gemini/antigravity-cli/plugins/aops-core" in cmd, (
-                        f"Expected agy install path missing in {event} hook: {cmd}"
-                    )
+            for cmd in self._iter_commands(hook_entries):
+                assert "${CLAUDE_PLUGIN_ROOT}" not in cmd, (
+                    f"${'{CLAUDE_PLUGIN_ROOT}'} not replaced in {event} hook: {cmd}"
+                )
+                assert "$HOME/.gemini/antigravity-cli/plugins/aops-core" in cmd, (
+                    f"Expected agy install path missing in {event} hook: {cmd}"
+                )
 
     def test_client_flag_is_agy(self, transform):
         """agy hooks must use --client agy."""
         for event, hook_entries in transform["hooks"].items():
-            for entry in hook_entries:
-                for hook in entry.get("hooks", []):
-                    cmd = hook.get("command", "")
-                    assert "--client agy" in cmd, (
-                        f"Expected --client agy in {event} hook command: {cmd}"
-                    )
+            for cmd in self._iter_commands(hook_entries):
+                assert "--client agy" in cmd, (
+                    f"Expected --client agy in {event} hook command: {cmd}"
+                )
 
     def test_pre_tool_use_timeout_raised_to_floor(self, transform):
         """PreToolUse timeout must be raised to the agy cold-start floor (>=15000ms).
