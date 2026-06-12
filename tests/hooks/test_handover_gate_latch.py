@@ -182,3 +182,41 @@ def test_bash_with_task_closes_gate(router):
 
     # Gate should CLOSE
     assert state.gates["handover"].status == GateStatus.CLOSED
+
+
+def test_interactive_edit_tool_closes_gate(router):
+    """An interactive session that edits a file closes handover (all-session trigger)."""
+    session_id = "test-interactive-edit"
+    state = SessionState.create(session_id)
+    # Interactive sessions start OPEN.
+    assert state.gates["handover"].status == GateStatus.OPEN
+
+    ctx_edit = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="Edit",
+        tool_input={"file_path": "x.py", "old_string": "a", "new_string": "b"},
+    )
+    router._dispatch_gates(ctx_edit, state)
+
+    # Gate should CLOSE and the session is marked as having done work.
+    assert state.gates["handover"].status == GateStatus.CLOSED
+    assert state.session_did_work is True
+
+
+def test_interactive_claim_task_closes_gate(router):
+    """An interactive session that claims a pkb task closes handover (all-session trigger)."""
+    session_id = "test-interactive-claim"
+    state = SessionState.create(session_id)
+    assert state.gates["handover"].status == GateStatus.OPEN
+
+    ctx_claim = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="mcp__plugin_aops-core_pkb__claim_task",
+        tool_input={"id": "task-123"},
+    )
+    router._dispatch_gates(ctx_claim, state)
+
+    assert state.gates["handover"].status == GateStatus.CLOSED
+    assert state.session_did_work is True

@@ -237,8 +237,12 @@ GATE_CONFIGS = [
     ),
     # --- Handover ---
     # Polecat/crew sessions start CLOSED (autonomous work must always hand over).
-    # Interactive sessions start OPEN (coordinator/junior doesn't need forced handover).
-    # Close triggers only fire in polecat/crew sessions.
+    # Interactive sessions start OPEN; polecat/crew start CLOSED.
+    # Polecat/crew close unconditionally on task-bind / write tool. In ALL
+    # session types (incl. interactive) a pkb claim_task or a write/edit tool
+    # also closes the gate, so an interactive session that does real work is
+    # gated until /end-session or /dump (supersedes the earlier "interactive
+    # coordinator never forces handover" carve-out for work-doing sessions).
     # Opens when /end-session or /dump skill completes.
     # Policy blocks Stop when CLOSED.
     GateConfig(
@@ -276,6 +280,36 @@ GATE_CONFIGS = [
                     hook_event="PostToolUse",
                     custom_check="is_write_tool",
                     session_type_filter=["polecat", "crew"],
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_key=None,
+                    custom_action="set_session_did_work",
+                ),
+            ),
+            # pkb claim_task -> Close (ALL session types, incl. interactive).
+            # A claimed task is real work, so the session is gated until handover.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="claim_task",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    system_message_key=None,
+                    custom_action="set_session_did_work",
+                ),
+            ),
+            # Write / edit tool used -> Close (ALL session types, incl. interactive).
+            # Mirrors the polecat/crew write-tool close above but without the
+            # session_type_filter, so an interactive session that edits a file is
+            # gated until handover. is_write_tool natively treats shell tools as
+            # read-only when the gate is sticky / no task bound, so /end-session
+            # discovery commands do not re-close it.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    custom_check="is_write_tool",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -336,7 +370,8 @@ GATE_CONFIGS = [
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
             # UserPromptSubmit -> re-arm for the next turn cycle (polecat/crew only).
-            # Interactive sessions never close the handover gate.
+            # Interactive sessions never re-close via UserPromptSubmit, but do
+            # close on a pkb claim_task / write tool via the PostToolUse triggers above.
             # Slash-command turns (skill invocations such as /end-session,
             # /dump, /remember) are excluded: a finishing/meta skill owns its
             # own handover format and must not re-close the gate it just
