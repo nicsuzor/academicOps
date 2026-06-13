@@ -223,6 +223,86 @@ def _resolve_pr_numbers(branches: list[str], repo_slug: str | None) -> list[int]
     return sorted(pr_numbers)
 
 
+# A PKB task id is a lowercase project prefix + 8 hex chars (aops-0e8d8079).
+# Dispatched work runs on branches named after the task (polecat/aops-...,
+# crew/aops-..., junior/aops-...); the 8-hex anchor excludes random worktree
+# branch suffixes (silly-cray-59d71c uses 6 hex), so it won't false-match.
+_TASK_ID_IN_BRANCH = re.compile(r"(?:^|[/_-])([a-z][a-z0-9]*-[0-9a-f]{8})(?![0-9a-f])")
+
+
+def _task_id_from_branches(branches: list[str]) -> str | None:
+    """Recover a PKB task id from a working branch named after the task.
+
+    The strongest correlation signal for automated/dispatched sessions, which
+    rarely touch the task tools in-session. Returns the first qualifying match.
+    """
+    if not branches:
+        return None
+    for branch in branches:
+        if branch in _PR_SKIP_BRANCHES:
+            continue
+        m = _TASK_ID_IN_BRANCH.search(branch)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _inherit_correlation_from_parent(
+    parent_session: str | None,
+) -> tuple[str | None, list[int]]:
+    """Best-effort: inherit task_id + pull_requests from a parent session.
+
+    Subagents launched by a main agent rarely bind to their own task; the
+    parent (8-char session id, encoded in its summary filename) carries it.
+    Returns (task_id, pull_requests); empties if no parent summary is found.
+    """
+    if not parent_session:
+        return None, []
+    sessions_repo = get_sessions_repo()
+    for sub in ("summaries", "subagent-summaries"):
+        base = sessions_repo / sub
+        if not base.exists():
+            continue
+        # Summary filenames are <date>-<time>-<sessionid8>-...json; subagent
+        # summaries are nested one month-directory deep.
+        matches = list(base.glob(f"*-{parent_session}-*.json")) + list(
+            base.glob(f"*/*-{parent_session}-*.json")
+        )
+        for path in matches:
+            try:
+                data = json.loads(path.read_text())
+            except Exception:
+                continue
+            return data.get("task_id"), data.get("pull_requests") or []
+    return None, []
+
+
+def _finalize_correlation(session_summary: "ParsedSession") -> None:
+    """Backfill task_id / pull_requests from launch context.
+
+    Preference for task_id: whatever is already set (env / task tools /
+    reflection) > the working branch name > the parent session's task. PRs
+    resolve from branches, falling back to the parent's PRs for subagents that
+    inherit a branch-less context. Runs before session-type classification so
+    branch/parent-derived ids feed that decision too.
+    """
+    if not session_summary.task_id:
+        session_summary.task_id = _task_id_from_branches(session_summary.git_branches)
+
+    prs = _resolve_pr_numbers(session_summary.git_branches, session_summary.repo)
+
+    if not session_summary.task_id or not prs:
+        inherited_task, inherited_prs = _inherit_correlation_from_parent(
+            session_summary.parent_session
+        )
+        if not session_summary.task_id and inherited_task:
+            session_summary.task_id = inherited_task
+        if not prs and inherited_prs:
+            prs = inherited_prs
+
+    session_summary.pull_requests = prs
+
+
 def _is_excluded_project(project: str, config: dict | None = None) -> bool:
     """Check if a project should be excluded from transcript generation.
 
@@ -372,6 +452,14 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     if new.get("client") and not existing.get("client"):
         return "client metadata appeared"
 
+    # Backfill launch-context correlation onto summaries that predate
+    # _finalize_correlation (branch-name task ids, PR numbers, parent-inherited
+    # ids). Event count is unchanged, so this isn't caught by the length check.
+    if new.get("task_id") and not existing.get("task_id"):
+        return "task_id resolved"
+    if new.get("pull_requests") and not existing.get("pull_requests"):
+        return "pull_requests resolved"
+
     return None
 
 
@@ -430,7 +518,12 @@ def _save_minimal_token_summary(
     else:
         date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
 
-    task_id = os.environ.get("AOPS_TASK_ID")
+    # Prefer the already-resolved id on the summary: _finalize_correlation has
+    # run by this point and folded in env / branch-name / parent-inherited
+    # sources, which the env+timeline fallback below does not see.
+    task_id = (session_summary.task_id if session_summary else None) or os.environ.get(
+        "AOPS_TASK_ID"
+    )
     if not task_id and timeline_events:
         for event in timeline_events:
             if event.get("type") in (
@@ -1399,12 +1492,18 @@ Examples:
         "--recent",
         action="store_true",
         default=True,
-        help="Process sessions from last 7 days (default behavior)",
+        help="Process sessions from last N days (default behavior, see --days)",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="Look-back window in days for --recent (default: 7). Use e.g. 31 to backfill the last month.",
     )
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Process ALL sessions (overrides --recent filter)",
+        help="Process ALL sessions (overrides --recent/--days filter)",
     )
     parser.add_argument(
         "--no-sync",
@@ -1456,8 +1555,11 @@ Examples:
         # Apply --recent filter (default) unless --all specified
         if not args.all:
             original_count = len(sessions)
-            sessions = _filter_recent_sessions(sessions, days=7)
-            print(f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions")
+            sessions = _filter_recent_sessions(sessions, days=args.days)
+            print(
+                f"📅 Filtering to last {args.days} days: "
+                f"{len(sessions)} of {original_count} sessions"
+            )
 
         # Process newest sessions first (reverse chronological)
         sessions = sorted(
@@ -1635,6 +1737,7 @@ Examples:
                     )
 
                 _populate_session_linkage(session_summary, entries)
+                _finalize_correlation(session_summary)
 
                 session_summary.session_type = session_naming.classify_session_type(
                     session_summary.surface,
@@ -1645,9 +1748,6 @@ Examples:
                     crew=session_summary.crew,
                     session_kind=session_summary.session_kind,
                     initial_prompt=extract_initial_prompt(timeline_events),
-                )
-                session_summary.pull_requests = _resolve_pr_numbers(
-                    session_summary.git_branches, session_summary.repo
                 )
 
                 # Fetch existing outcome if available (from insights JSON)
@@ -1884,6 +1984,7 @@ Examples:
             session_summary.models = session_ctx.get("models", [])
 
             _populate_session_linkage(session_summary, entries)
+            _finalize_correlation(session_summary)
 
             session_summary.session_type = session_naming.classify_session_type(
                 session_summary.surface,
@@ -1894,9 +1995,6 @@ Examples:
                 crew=session_summary.crew,
                 session_kind=session_summary.session_kind,
                 initial_prompt=extract_initial_prompt(timeline_events),
-            )
-            session_summary.pull_requests = _resolve_pr_numbers(
-                session_summary.git_branches, session_summary.repo
             )
 
             reflection_header, _ = _process_reflection(
@@ -2050,6 +2148,7 @@ Examples:
         )  # allow-fallback: field optional in older transcripts
 
         _populate_session_linkage(session_summary, entries)
+        _finalize_correlation(session_summary)
 
         session_summary.session_type = session_naming.classify_session_type(
             session_summary.surface,
@@ -2060,9 +2159,6 @@ Examples:
             crew=session_summary.crew,
             session_kind=session_summary.session_kind,
             initial_prompt=extract_initial_prompt(timeline_events),
-        )
-        session_summary.pull_requests = _resolve_pr_numbers(
-            session_summary.git_branches, session_summary.repo
         )
 
         reflection_header, _ = _process_reflection(
