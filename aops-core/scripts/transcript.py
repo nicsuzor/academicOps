@@ -153,7 +153,13 @@ def _resolve_project_key(name: str, match_suffix: bool = False) -> str:
 
 
 _PR_SKIP_BRANCHES: set[str] = {"HEAD", "dev", "main", "master"}
-_PR_SKIP_PREFIXES: tuple[str, ...] = ("polecat/", "crew/", "release-please--", "worktree-")
+# Only branches that never have their own feature PR. polecat/ and crew/ were
+# previously skipped on the assumption they were throwaway internal branches,
+# but polecats open PRs directly from their own branch (verified:
+# polecat/aops-2ab6f912 -> #1037, polecat/aops-7697a478 -> #1774), so skipping
+# them discarded real task->PR links. release-please-- (bot release branches)
+# and worktree- (ephemeral checkouts) genuinely carry no feature PR.
+_PR_SKIP_PREFIXES: tuple[str, ...] = ("release-please--", "worktree-")
 
 
 def _slug_to_github_repo(slug: str) -> str | None:
@@ -182,8 +188,9 @@ def _slug_to_github_repo(slug: str) -> str | None:
 def _resolve_pr_numbers(branches: list[str], repo_slug: str | None) -> list[int]:
     """Resolve qualifying branch names to PR numbers via gh CLI.
 
-    Skips base branches (dev, main, HEAD) and internal prefixes (polecat/, crew/).
-    Returns a sorted, deduplicated list of PR numbers.
+    Skips base branches (dev, main, HEAD) and non-feature prefixes
+    (release-please--, worktree-). Returns a sorted, deduplicated list of PR
+    numbers.
     """
     if not branches or not repo_slug:
         return []
