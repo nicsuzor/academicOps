@@ -83,7 +83,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 
 **Plugins and Skills:**
 
-- **aops-core plugin**: All skills (`/planner`, `/supervisor`, `/qa`, `/review-pr`, `/daily`, `/pull`, `/remember`, `/aops`, `/project`, `/sleep`, etc.) and named subagents (james, pauli, rbg, marsha, enforcer, etc.)
+- **aops-core plugin**: All skills (`/planner`, `/supervisor`, `/qa`, `/strategic-review`, `/daily`, `/pull`, `/remember`, `/aops`, `/project`, `/sleep`, etc.) and named subagents (james, pauli, rbg, marsha, enforcer, etc.)
 - **aops-tools plugin**: domain skills — `analyst`, `extract` (incl. doc-to-md), `diagram`, and others
 - **Standard skills**: `docx`, `xlsx`, `pdf`, `pptx`, `canvas-design`, `mcp-builder`, `skill-creator`
 
@@ -118,7 +118,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Pre-commit Hooks**: Run `./scripts/format.sh` before committing to avoid failures.
 - **Testing**: Run tests using `uv run pytest tests/` or `uv run pytest aops-core/`.
 - **Building**: Use `uv run python scripts/build.py` to build the distribution.
-- **Installing**: Use `./setup.sh` or `uv run python scripts/install.py` to install locally.
+- **Installing**: Use `make install-dev` (orchestrator) or `uv run python scripts/install.py` to install locally. (`setup.sh` is a deprecated tombstone that forwards to `scripts/install.py`.)
 
 ## PR Review Management
 

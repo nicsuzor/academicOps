@@ -46,15 +46,30 @@ repos:
         args: ['--maxkb=500']
 
   # Python linting (auto-fix enabled)
-  # Ruff check --fix auto-fixes what it can; ruff-format checks formatting
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.4
+  # Ruff check --fix auto-fixes what it can; ruff-format checks formatting.
+  #
+  # These run the locked `ruff` from the project venv (via `uv run`) rather than
+  # the ruff-pre-commit mirror's pinned `rev`. The mirror previously pinned an
+  # old ruff (v0.9.4) while pyproject requires `ruff>=0.14.10`, so pre-commit and
+  # CI applied DIFFERENT rule sets — a silent quality gap (epic-267fe017). Using
+  # `language: system` + `uv run ruff` means both paths use the single locked
+  # version recorded in uv.lock. To bump ruff, change the constraint in
+  # pyproject.toml and relock; pre-commit and CI then move together.
+  - repo: local
     hooks:
       - id: ruff
-        args: [--fix]
+        name: ruff (uv-locked)
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
         exclude: '^archived/'
       - id: ruff-format
-        args: [--check]
+        name: ruff-format (uv-locked)
+        entry: uv run ruff format --check
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
         exclude: '^archived/'
 
   - repo: local

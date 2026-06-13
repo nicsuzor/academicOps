@@ -15,6 +15,11 @@
 # starts, or in Claude Code versions whose harness doesn't source the
 # session-env file before Bash tool subprocesses).
 
+# --- AOPS directories ---
+[ -n "$AOPS_SESSIONS" ] && launchctl setenv AOPS_SESSIONS "$AOPS_SESSIONS"
+[ -n "$ACA_DATA" ] && launchctl setenv ACA_DATA "$ACA_DATA"
+[ -n "$POLECAT_HOME" ] && launchctl setenv POLECAT_HOME "$POLECAT_HOME"
+
 # --- Bot PAT pass-through ---
 # AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
 # this file). Skip silently if absent.

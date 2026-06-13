@@ -2,7 +2,11 @@
 
 Tests that the handover gate correctly differentiates between:
 - Polecat/crew sessions: gate starts CLOSED, close triggers fire, UPS re-arms
-- Interactive sessions: gate starts OPEN, close triggers suppressed, UPS does not re-arm
+- Interactive sessions: gate starts OPEN; UPS does not re-arm. Since dd59e3b5
+  ("close handover on pkb claim + edit tools in all sessions") an interactive
+  session that does real work (a pkb claim_task or a write/edit tool) CLOSES
+  the gate, so it is gated until /end-session or /dump. Read-only / status
+  events (update_task without claim, bare UserPromptSubmit) keep it OPEN.
 - Subagent sessions: gates skipped entirely (except Stop/SessionEnd/SubagentStop)
 
 Fixture data extracted from real hook logs on 2026-05-27, including:
@@ -158,7 +162,8 @@ class TestHandoverInitialStatus:
 
 
 class TestHandoverInteractiveNoClose:
-    """Interactive sessions: close triggers and UPS re-arm are suppressed."""
+    """Interactive sessions: UPS re-arm is suppressed and non-work events
+    (update_task without claim, bare UserPromptSubmit) keep the gate OPEN."""
 
     SCENARIOS = _flatten("handover_interactive_stays_open")
 
@@ -176,6 +181,36 @@ class TestHandoverInteractiveNoClose:
         assert state.gates["handover"].status == GateStatus.OPEN, (
             f"[{scenario['id']}] Handover gate should stay OPEN in interactive session after "
             f"{scenario['hook_event']} on {scenario.get('tool_name', 'N/A')}, "
+            f"got {state.gates['handover'].status}"
+        )
+
+
+class TestHandoverInteractiveClosesOnWork:
+    """Interactive sessions CLOSE the handover gate on real work.
+
+    Since dd59e3b5 the pkb-claim and write/edit-tool close triggers have no
+    session_type_filter, so an interactive coordinator/junior session that
+    edits a file (or runs a shell tool with a bound task) is gated until
+    /end-session or /dump.
+    """
+
+    SCENARIOS = _flatten("handover_interactive_closes_on_work")
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    def test_interactive_gate_closes(self, router, scenario):
+        state = _make_session_state(scenario)
+        ctx = _make_context(scenario)
+
+        router._dispatch_gates(ctx, state)
+
+        expected_status = GateStatus(scenario["expected"]["handover_status_after"])
+        assert state.gates["handover"].status == expected_status, (
+            f"[{scenario['id']}] Handover gate should be {expected_status.value} in interactive "
+            f"session after {scenario['hook_event']} on {scenario.get('tool_name', 'N/A')}, "
             f"got {state.gates['handover'].status}"
         )
 
@@ -370,7 +405,15 @@ class TestHandoverPolecatLifecycle:
         assert state.gates["handover"].status == GateStatus.CLOSED
 
     def test_interactive_full_lifecycle(self, router, monkeypatch):
-        """Interactive session: OPEN throughout — no close triggers, no re-arm."""
+        """Interactive session: starts OPEN, stays OPEN on non-work events, then
+        CLOSES once the session does real work (write/edit tool).
+
+        Since dd59e3b5 the write/edit-tool and pkb-claim close triggers have no
+        session_type_filter, so an interactive session that edits a file is
+        gated until /end-session or /dump. UPS does not re-arm in interactive,
+        so the gate is not silently re-closed turn-to-turn — it only closes on
+        an actual work event.
+        """
         # Ensure no polecat-container signal (aops-b368109a)
         monkeypatch.delenv("AOPS_POLECAT_CONTAINER", raising=False)
         monkeypatch.delenv("POLECAT_CREW_NAME", raising=False)
@@ -380,27 +423,18 @@ class TestHandoverPolecatLifecycle:
         assert state.session_type == "interactive"
         assert state.gates["handover"].status == GateStatus.OPEN
 
-        # 1. Task claim — gate stays OPEN (trigger suppressed for interactive)
-        ctx_claim = HookContext(
+        # 1. update_task (status change, NOT a claim) — gate stays OPEN.
+        # Only claim_task closes on a pkb op; update_task is not a claim.
+        ctx_update = HookContext(
             session_id="test-interactive-lifecycle",
             hook_event="PostToolUse",
             tool_name="mcp__plugin_aops-core_pkb__update_task",
             tool_input={"id": "task-123", "updates": {"status": "in_progress"}},
         )
-        router._dispatch_gates(ctx_claim, state)
+        router._dispatch_gates(ctx_update, state)
         assert state.gates["handover"].status == GateStatus.OPEN
 
-        # 2. Write tool — gate stays OPEN
-        ctx_edit = HookContext(
-            session_id="test-interactive-lifecycle",
-            hook_event="PostToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "foo.py"},
-        )
-        router._dispatch_gates(ctx_edit, state)
-        assert state.gates["handover"].status == GateStatus.OPEN
-
-        # 3. UPS — gate stays OPEN (no re-arm in interactive)
+        # 2. UPS before any work — gate stays OPEN (no re-arm in interactive).
         ctx_ups = HookContext(
             session_id="test-interactive-lifecycle",
             hook_event="UserPromptSubmit",
@@ -410,22 +444,28 @@ class TestHandoverPolecatLifecycle:
         router._dispatch_gates(ctx_ups, state)
         assert state.gates["handover"].status == GateStatus.OPEN
 
-        # 4. Stop — no handover warning (gate is OPEN)
+        # 3. Write tool (Edit) — gate CLOSES (all-session write-tool trigger).
+        ctx_edit = HookContext(
+            session_id="test-interactive-lifecycle",
+            hook_event="PostToolUse",
+            tool_name="Edit",
+            tool_input={"file_path": "foo.py"},
+        )
+        router._dispatch_gates(ctx_edit, state)
+        assert state.gates["handover"].status == GateStatus.CLOSED
+        assert state.session_did_work is True
+
+        # 4. Stop while CLOSED — handover gate should WARN (session did work).
+        # Open QA gate so its DENY doesn't mask the handover WARN.
+        state.gates["qa"].status = GateStatus.OPEN
         ctx_stop = HookContext(
             session_id="test-interactive-lifecycle",
             hook_event="Stop",
         )
-        router._dispatch_gates(ctx_stop, state)
-        # IDA gate may still fire (warn), but handover should not
-        assert state.gates["handover"].status == GateStatus.OPEN
-
-        # 5. Bash, Agent, etc — gate stays OPEN throughout
-        state.main_agent.current_task = "task-456"
-        ctx_bash = HookContext(
-            session_id="test-interactive-lifecycle",
-            hook_event="PostToolUse",
-            tool_name="Bash",
-            tool_input={"command": "ls"},
-        )
-        router._dispatch_gates(ctx_bash, state)
+        result = router._dispatch_gates(ctx_stop, state)
+        assert result is not None
+        assert result.verdict == GateVerdict.WARN
+        # The fire-once Stop trigger opens the gate after warning (same as the
+        # polecat lifecycle): the warning is delivered, then the gate opens so
+        # the agent can write its handover without being re-blocked.
         assert state.gates["handover"].status == GateStatus.OPEN

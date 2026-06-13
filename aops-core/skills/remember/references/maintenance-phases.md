@@ -123,7 +123,17 @@ Run `graph_stats` at the start of every cycle. Record:
 - `orphan_count` — truly disconnected nodes
 - `stale_count` — tasks not modified in 7+ days while in_progress
 
-This is the baseline. Phase 11 re-runs graph_stats to measure what changed.
+**Then measure the knowledge layer separately.** `graph_stats.orphan_count` is **actionable-only** — it excludes `note`/`knowledge`/`memory` nodes entirely, so a healthy-looking `orphan_count` can still hide a large disconnected knowledge population. The live number is whatever the call below returns, never a figure quoted in prose. Run:
+
+```
+pkb_orphans(types=["note","knowledge","memory"], include_all=true, limit=0)
+```
+
+and record `knowledge_orphan_count` — the total it reports. This is the number Phase 7's sweep and Phase 9's knowledge-layer strategy converge against; `orphan_count` alone is not a convergence signal for the knowledge layer.
+
+> **Detector behaviour.** Orphan detection is **type-aware** (mem#425, merged 2026-06-10; SSoT `mem/specs/pkb-server-spec.md` "Orphan Detection"). Actionable types orphan on a missing/dangling `parent` alone. Knowledge types (`memory`/`note`) and out-of-tree strategic nodes (`goal`/`target`) orphan only when they have **no valid parent AND no deliberate structural edge** in either direction — a body `[[wikilink]]` (auto-extracted into a `link` edge), an inbound link, or a `contributes_to` all clear orphan status; only auto-computed `similar_to` similarity edges are excluded. So `knowledge_orphan_count` is now the genuine residual: nodes with neither a parent nor any deliberate link. "Not an orphan" means graph-reachable — it does **not** certify the `/remember` curation contract (an outbound wikilink on every note), which is what Activity K still enforces. If you see a large one-off drop right after the detector fix reindexed, that drop is detector correction, not curation progress — do not claim it in the cycle delta.
+
+This is the baseline. Phase 11 re-runs `graph_stats` **and** `pkb_orphans(types=["note","knowledge","memory"], include_all=true, limit=0)` to measure what changed in both layers.
 
 ## Phase 2: Transcript Mining
 
@@ -332,7 +342,8 @@ body: |
 
 Detect orphans, stale docs, and under-specified tasks. The agent uses these as **signals**, not deterministic verdicts:
 
-- **PKB orphan detection**: `mcp__pkb__pkb_orphans()`
+- **Actionable orphan detection**: `mcp__pkb__pkb_orphans()` (defaults to actionable-only: task/epic/project/target). Feeds Phase 9's task/epic strategies.
+- **Knowledge-layer orphan detection**: `mcp__pkb__pkb_orphans(types=["note","knowledge","memory"], include_all=true)`. This is a **separate population** the default actionable call never returns. Feed it to Phase 9's knowledge-layer curation strategy. Do not let an all-green actionable `orphan_count` stand in for knowledge-layer health; they are measured by different calls.
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
@@ -387,20 +398,23 @@ Process tasks the user has explicitly flagged for refiling. The `refile` flag me
 
 Before doing any work, compare the current `metrics_hash` from `graph_stats` against the previous cycle's hash.
 
-- **If `metrics_hash` is identical**: the graph has converged. Skip Phase 9 entirely and log "graph converged — no structural changes needed."
-- **If 2 consecutive cycles produce no-ops**: the graph is stable. Cancel the active-loop cron if running via `/loop`.
+- **If `metrics_hash` is identical**: the **actionable** graph has converged. Skip the actionable strategies and log "actionable graph converged — no structural changes needed." **Do not skip Knowledge-Layer Curation on this basis** — `metrics_hash` is derived from actionable-only `graph_stats` and is blind to `knowledge_orphan_count`. Run Activity K whenever its own trigger (`knowledge_orphan_count` > 50) and terminal condition say to.
+- **If 2 consecutive cycles produce no-ops**: the graph is stable. Cancel the active-loop cron if running via `/loop` — but only once **both** the actionable terminal condition **and** the knowledge-layer terminal condition (below) are met.
 
 ### Strategy Selection
 
 Each cycle, pick ONE strategy based on what graph_stats shows needs the most attention:
 
-| Condition                                 | Strategy            | Planner Activity                                       |
-| ----------------------------------------- | ------------------- | ------------------------------------------------------ |
-| `disconnected_epics` > 10                 | Connect epics       | Reparent — find project parents for disconnected epics |
-| `targets_without_contributing_edges` > 10 | Wire edges          | Wire edges via `/planner wire-edges` flow              |
-| `flat_tasks` > 100                        | Reparent flat tasks | Reparent — find epic/project parents for orphans       |
-| `orphan_count` > 20                       | Fix orphans         | Reparent — connect or archive disconnected nodes       |
-| All metrics healthy                       | Densify edges       | Densify — use strategies to add dependency edges       |
+| Condition                                 | Strategy               | Planner Activity                                       |
+| ----------------------------------------- | ---------------------- | ------------------------------------------------------ |
+| `disconnected_epics` > 10                 | Connect epics          | Reparent — find project parents for disconnected epics |
+| `targets_without_contributing_edges` > 10 | Wire edges             | Wire edges via `/planner wire-edges` flow              |
+| `flat_tasks` > 100                        | Reparent flat tasks    | Reparent — find epic/project parents for orphans       |
+| `orphan_count` > 20                       | Fix orphans            | Reparent — connect or archive disconnected nodes       |
+| `knowledge_orphan_count` > 50             | Curate knowledge layer | Knowledge-Layer Curation (below) — one bounded batch   |
+| All metrics healthy                       | Densify edges          | Densify — use strategies to add dependency edges       |
+
+**Two strategies per cycle when both layers need work.** The strategy table is "pick ONE" for the _actionable_ layer. The knowledge layer is a parallel population on a different metric (`knowledge_orphan_count`, Phase 0), so a cycle may run one actionable strategy **and** one Knowledge-Layer Curation batch. Keep each within its own bounded-effort cap; do not let knowledge curation crowd out actionable work or vice versa.
 
 ### Concrete Agent Instructions
 
@@ -408,6 +422,28 @@ Each cycle, pick ONE strategy based on what graph_stats shows needs the most att
 - **Find misparented tasks**: Use `pkb_orphans` to find wrong-type-parent orphans and reparent to an appropriate epic.
 - **Nest loose tasks**: For `flat_tasks`, read the task title and body, search for related epics, and `batch_reparent` (passing `dry_run=false` to execute) to the best match. If no match, check if 3+ loose tasks share a theme — if so, create an epic.
 - **Connect disconnected epics**: The parent for an orphan is an `epic` (or a root-level `epic` if it's a top-level area). The `frontmatter.project` field is a polecat slug — use it only to discover _which repo_ the work belongs to for context, not as a parent ID.
+
+### Knowledge-Layer Curation (Activity K)
+
+Triggered when `knowledge_orphan_count` (Phase 0) > 50. This is the knowledge-layer analogue of the task/epic reparenting above, enforcing the [[remember]] / pauli **Relational Integrity** rule ("never allow orphan nodes or unlinked knowledge to persist"; "every note weaves into the graph with back-references") that previously had no repair loop. It carries the **same surface-don't-decide discipline as Phase 8/9**: mechanical, unambiguous dispositions execute autonomously; anything requiring judgment is flagged for human review, never guessed.
+
+**Input.** The knowledge-orphan list from Phase 7: `pkb_orphans(types=["note","knowledge","memory"], include_all=true)`.
+
+**Per-orphan triage — assign exactly one disposition.** Read the node (title, tags, `created`/`modified`, body). Do not act on title/tag keywords alone (same rule as task reparenting). Classify:
+
+| Disposition       | Signal                                                                                                                                                             | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **link/reparent** | Active knowledge whose parent concept clearly exists in the graph (a canonical topic note, MOC, or epic).                                                          | Add the structured edge to that parent (`batch_reparent`/`batch_update`, `dry_run=false`). For memories (no `parent` param at capture), a body `[[wikilink]]` to a live hub is the preferred, lighter-weight connection — under the type-aware detector (Phase 0 note) a deliberate wikilink in either direction clears orphan status for knowledge types just as a structured parent does. Either way, connect to a node that is itself graph-reachable, not to another orphan. |
+| **MOC**           | A cluster of 5+ orphans on one first-class topic, no hub note exists.                                                                                              | Create/extend a Map of Content per [[remember]] Maps-of-Content guidance and wire the cluster under it. MOCs are earned, not scheduled — only when the cluster is real.                                                                                                                                                                                                                                                                                                          |
+| **merge**         | Duplicate / near-duplicate of an existing canonical note (confirm via `find_duplicates` or `search`).                                                              | `merge_node`/`batch_merge` (`dry_run=false`) into the canonical note, preserving provenance.                                                                                                                                                                                                                                                                                                                                                                                     |
+| **archive**       | Legacy import or superseded episodic record with no live consumer — e.g. `career-planning-*` / OneNote imports from 2016–19, `status: done`, no current relevance. | **Verify by observation first**: confirm zero inbound references (`pkb_context` backlinks / `search`) — "no live consumer" must be observed, never assumed from title or age. Any inbound reference or doubt → SURFACE instead. Then `batch_archive` with reason. Per P#123 **age alone is not the trigger** — archive only when irrelevance is established by content, not date. Reversible (archive ≠ delete).                                                                 |
+| **SURFACE**       | Ambiguous parent, possible-but-unconfirmed duplicate, or anything where the right home needs human judgment.                                                       | Flag in the cycle summary's knowledge-orphan block with the node ID and the specific ambiguity. **Do not guess a parent.**                                                                                                                                                                                                                                                                                                                                                       |
+
+**Bounded effort.** Process up to 100 knowledge orphans per cycle (shares the `batch_limit` cap with the actionable strategy; split the budget — do not let either starve the other). Quality over coverage: a wrong reparent is worse than a surfaced one.
+
+**What NOT to do.** All Phase 9 "What NOT to Do" rules apply, plus: don't reparent a knowledge node to a task; don't create MOCs speculatively (5+ real cluster members, not 2); don't archive on age alone (P#123); don't archive without the inbound-reference check — an unread consumer is exactly what "reversible" does not protect against; don't fabricate a parent to clear the count — an unsurfaced wrong home is the failure this activity exists to prevent.
+
+**Terminal condition (knowledge layer).** Independent of the actionable-layer terminal condition. Knowledge curation is complete for the loop when EITHER `knowledge_orphan_count` is unchanged for 2 consecutive cycles (the residual is the genuinely-SURFACE population awaiting human calls), OR two consecutive cycles process zero non-SURFACE dispositions. Track the per-cycle `knowledge_orphan_count` delta in the summary so the downward trend (or its stall) is visible — a flat count with a growing SURFACE queue means the loop has done its mechanical share and the remainder needs Nic.
 
 ### Known Metric Limitations
 
@@ -494,7 +530,7 @@ Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on
 
 ## Phase 0 — Graph Health
 
-<baseline metrics_hash, key counts>
+<baseline metrics_hash, key actionable counts; knowledge_orphan_count (this cycle) vs. previous cycle — render the delta, e.g. "knowledge_orphan_count: 84 (was 100, −16)">
 
 ## Phase 2 — Transcript Mining
 
@@ -514,11 +550,15 @@ Every cycle emits a summary written to the PR body (or `$GITHUB_STEP_SUMMARY` on
 
 ## Phase 7 — Staleness Sweep
 
-<orphan/stale candidates flagged; gate-1 artifact rot demotions: N>
+<actionable orphan/stale candidates flagged; gate-1 artifact rot demotions: N; knowledge-layer orphans detected: N (from the types=["note","knowledge","memory"] call)>
 
 ## Phase 9 — Graph Maintenance
 
-<strategy chosen, N items processed, metrics_hash delta>
+<actionable strategy chosen, N items processed, metrics_hash delta>
+
+### Knowledge-Layer Curation (Activity K)
+
+<knowledge_orphan_count start → end (delta); dispositions: X linked/reparented, Y MOC'd, Z merged, W archived, S surfaced-for-review. List node IDs (with one-line reason) for every **archived** and **merged** node — a bare count is not reviewable — plus IDs of surfaced + any ambiguous. "skipped — under trigger" or "converged — count stable 2 cycles" when not run.>
 
 ## Phase 10 — Self-check
 

@@ -303,45 +303,58 @@ def get_project_version(aops_root: Path) -> str:
     return "0.1.0"
 
 
-# Template for aops-core pyproject.toml - version is injected at build time
-AOPS_CORE_PYPROJECT_TEMPLATE = """\
-[project]
-name = "aops-core"
-version = "{version}"
-description = "Core academicOps framework - skills, agents, and hooks for research workflow automation"
-requires-python = ">=3.11"
-license = "MIT"
-authors = [
-  {{ name = "Nicolas Suzor" }},
-]
-keywords = ["academicOps", "research", "framework", "workflow", "mcp"]
-dependencies = [
-  "pyyaml>=6.0",
-  "pydantic>=2.0",
-  "filelock>=3.13.0",
-  "psutil>=5.9.0",
-]
+# The shipped aops-core hook deps are declared in the TRACKED source file
+# aops-core/pyproject.toml (epic-267fe017). The build reads that file and stamps
+# the version (+ trims hooks for cowork); there is no longer an inline pyproject
+# string literal here that could drift from the real file.
+AOPS_CORE_PYPROJECT_PLACEHOLDER_VERSION = "0.0.0"
 
-[tool.hatch.build.targets.wheel]
-packages = [{packages}]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-"""
+# Matches the `version = "..."` line under [project] (placeholder in source).
+_PYPROJECT_VERSION_RE = re.compile(r'(?m)^(version\s*=\s*)"[^"]*"')
+# Matches the hatch wheel `packages = [...]` line (single-line list as authored).
+_PYPROJECT_PACKAGES_RE = re.compile(r"(?m)^packages\s*=\s*\[[^\]]*\]")
 
 
-def generate_aops_core_pyproject(version: str, platform: str = "claude") -> str:
-    """Generate the aops-core pyproject.toml content with the given version.
+def generate_aops_core_pyproject(
+    version: str, platform: str = "claude", aops_root: Path | None = None
+) -> str:
+    """Return aops-core/pyproject.toml content with the build version stamped in.
+
+    Reads the tracked source manifest at ``aops-core/pyproject.toml`` (the single
+    source of truth for shipped hook deps) and substitutes the placeholder
+    version with the real build version.
 
     The cowork build ships NO hooks (the shared aops-core hook stack serves the
     Cowork surface when aops-core is installed from the dist marketplace — see
-    task aops-04075740 / mem-fe29111a). With no `hooks/` package on disk, listing
-    it under hatch's wheel packages would break `uv sync --frozen` at runtime, so
-    the cowork pyproject declares only `lib`.
+    task aops-04075740 / mem-fe29111a). With no ``hooks/`` package on disk,
+    listing it under hatch's wheel packages would break ``uv sync --frozen`` at
+    runtime, so for the cowork platform the ``hooks`` package is trimmed from the
+    wheel packages list, leaving only ``lib``.
     """
-    packages = '"lib"' if platform == "cowork" else '"lib", "hooks"'
-    return AOPS_CORE_PYPROJECT_TEMPLATE.format(version=version, packages=packages)
+    if aops_root is None:
+        aops_root = SCRIPT_DIR.parent
+    src_pyproject = aops_root / "aops-core" / "pyproject.toml"
+    if not src_pyproject.exists():
+        raise FileNotFoundError(
+            f"Required source manifest {src_pyproject} not found — "
+            "cannot build aops-core without it (epic-267fe017)"
+        )
+    content = src_pyproject.read_text()
+
+    content, n_ver = _PYPROJECT_VERSION_RE.subn(rf'\g<1>"{version}"', content, count=1)
+    if n_ver != 1:
+        raise ValueError(
+            f"Could not stamp version into {src_pyproject} (no [project] version line)"
+        )
+
+    if platform == "cowork":
+        content, n_pkg = _PYPROJECT_PACKAGES_RE.subn('packages = ["lib"]', content, count=1)
+        if n_pkg != 1:
+            raise ValueError(
+                f"Could not trim hooks package for cowork in {src_pyproject} "
+                "(no wheel packages line)"
+            )
+    return content
 
 
 def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
@@ -788,6 +801,14 @@ def translate_tool_calls(text: str, platform: str) -> str:
     if platform == "gemini":
         # Replace Claude plugin path variable with Gemini equivalent
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+    elif platform == "antigravity":
+        # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
+        # tool names (no frontmatter/body transformation). It uses Claude Code hook
+        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
+        # is not defined in agy; hooks hardcode this same path, so we match it here.
+        text = text.replace(
+            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
+        )
 
         text = re.sub(
             r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
@@ -905,11 +926,12 @@ def build_aops_core(
             shutil.rmtree(cowork_sync_dir)
             print(f"  - Dropped cowork-sync skill (not for {platform})")
 
-    # 1a. Post-copy: translate tool names in all .md files for Gemini
+    # 1a. Post-copy: translate tool names in all .md files for Gemini/Antigravity.
     # Agents get transform_agent_for_platform above (frontmatter + body);
     # this pass catches skills, commands, lib, and top-level .md files
-    # that were copied verbatim by safe_copy.
-    if platform == "gemini":
+    # that were copied verbatim by safe_copy. Antigravity needs the
+    # ${CLAUDE_PLUGIN_ROOT} replacement but no tool-name changes.
+    if platform in ("gemini", "antigravity"):
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
             # Agent files are already translated in the special-cased loop above, skip them here.
@@ -943,17 +965,16 @@ def build_aops_core(
         verb = "kept" if platform == "cowork" else "stripped"
         print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
 
-    # 1b. Generate pyproject.toml and uv.lock from the inline template in
-    # this file (AOPS_CORE_PYPROJECT_TEMPLATE) — the single source of truth
-    # for shipped hook deps. The source repo intentionally has no
-    # aops-core/pyproject.toml or aops-core/uv.lock; locking always happens
-    # against the freshly-written pyproject so the two ship in lockstep.
-    # `uv sync --frozen` at runtime then installs exactly what the template
-    # declared, no drift possible.
-    pyproject_content = generate_aops_core_pyproject(version, platform)
+    # 1b. Stamp the tracked aops-core/pyproject.toml (the in-tree SSoT for shipped
+    # hook deps, epic-267fe017) with the build version and write it into the dist
+    # payload, then lock against that stamped copy so pyproject.toml and uv.lock
+    # ship in lockstep. aops-core/uv.lock is NOT tracked — it is generated here
+    # per-platform (the cowork variant trims the hooks package). `uv sync --frozen`
+    # at runtime then installs exactly what the manifest declared, no drift.
+    pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
-    print(f"  ✓ Generated pyproject.toml (v{version})")
+    print(f"  ✓ Stamped pyproject.toml (v{version}) from aops-core/pyproject.toml")
 
     subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
     print("  ✓ Regenerated uv.lock from pyproject.toml")
@@ -981,9 +1002,12 @@ def build_aops_core(
     # PreToolUse / etc. router a SECOND time and fire every lifecycle hook
     # twice. aops-cowork is therefore an additive, hooks-free layer: one shared
     # hook stack (aops-core) serves both Claude Code and Cowork.
+    # Bind hooks_src / hooks_dst unconditionally so the gemini/antigravity
+    # hooks.json generation below (which only runs for non-cowork platforms)
+    # has statically-known Paths, not possibly-Unbound names.
+    hooks_src = src_dir / "hooks"
+    hooks_dst = dist_dir / "hooks"
     if platform != "cowork":
-        hooks_src = src_dir / "hooks"
-        hooks_dst = dist_dir / "hooks"
         hooks_dst.mkdir(parents=True)
         if hooks_src.exists():
             for item in hooks_src.iterdir():
@@ -1460,6 +1484,108 @@ def build_aops_tools(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_extras(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "gemini",
+    version: str = "0.1.0",
+):
+    """Build the aops-extras extension for a specific platform.
+
+    aops-extras is a lightweight package of replaceable technology-specific skills
+    (dbt, Streamlit, Python plotting/stats). It has no hooks, agents, commands, or
+    MCP servers — just skills and manifests. Mirrors build_aops_tools exactly.
+    """
+    print(f"Building aops-extras for {platform} (v{version})...")
+    plugin_name = "aops-extras"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-extras build")
+        return
+
+    dist_dir = dist_root / f"aops-extras-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Copy skills and index files
+    items_to_copy = ["skills", "SKILLS.md"]
+
+    for item in items_to_copy:
+        src = src_dir / item
+        if src.exists():
+            safe_copy(src, content_dir / item)
+
+    # Gemini: generate extension manifest with version injection
+    if platform == "gemini":
+        src_extension_json = aops_root / "templates" / f"{plugin_name}.gemini-extension.json"
+        dist_extension_json = dist_dir / "gemini-extension.json"
+        if src_extension_json.exists():
+            try:
+                manifest = json.loads(src_extension_json.read_text())
+                manifest["version"] = version
+                with open(dist_extension_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"  ✓ Generated gemini-extension.json (v{version})")
+            except Exception as e:
+                print(f"Error processing extension manifest: {e}", file=sys.stderr)
+                raise
+        else:
+            print(f"  ⚠️  No gemini-extension.json found in {src_dir}")
+
+    # Claude: copy plugin.json with version injection
+    if platform == "claude":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.plugin.json"
+        dist_plugin_dir = dist_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields
+                # Leaked 'source' and 'category' cause issues in local cache
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
+                manifest.pop("userConfig", None)
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    # Antigravity: generate plugin.json with version injection
+    if platform == "antigravity":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.antigravity-plugin.json"
+        dist_plugin_json = dist_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Generated plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1524,9 +1650,14 @@ def main():
     build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
 
+    # Build aops-extras (replaceable technology-specific skills package)
+    build_aops_extras(aops_root, dist_root, "gemini", version)
+    build_aops_extras(aops_root, dist_root, "claude", version)
+
     # Build components (Antigravity)
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
     build_aops_tools(aops_root, dist_root, "antigravity", version)
+    build_aops_extras(aops_root, dist_root, "antigravity", version)
 
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)

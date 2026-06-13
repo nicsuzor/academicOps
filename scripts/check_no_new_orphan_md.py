@@ -4,15 +4,16 @@
 Fails when a commit adds a new `.md` file outside the canonical-location
 allowlist. Modifications and renames of existing files are permitted.
 
-Canonical locations (allowed adds):
-- aops-core/<UPPERCASE>.md           framework top-level files
-- aops-core/skills/**/*.md           skill content
-- aops-core/agents/**/*.md           agent definitions
-- aops-core/workflows/**/*.md        workflows
-- aops-core/commands/**/*.md         commands
-- aops-core/hooks/**/*.md            hook templates
-- aops-core/policies/**/*.md         policy files
-- aops-core/.claude-plugin/**/*.md   plugin metadata
+Canonical locations (allowed adds). `aops-*` covers every first-class
+plugin (aops-core, aops-tools, ...) symmetrically:
+- aops-*/<UPPERCASE>.md              framework top-level files
+- aops-*/skills/**/*.md              skill content
+- aops-*/agents/**/*.md              agent definitions
+- aops-*/workflows/**/*.md           workflows
+- aops-*/commands/**/*.md            commands
+- aops-*/hooks/**/*.md               hook templates
+- aops-*/policies/**/*.md            policy files
+- aops-*/.claude-plugin/**/*.md      plugin metadata
 - tests/**/*.md                      test fixtures + evidentiary data
 - templates/**/*.md                  scaffold templates
 - specs/**/*.md                      specifications and architecture
@@ -33,14 +34,17 @@ import subprocess
 import sys
 
 ALLOWED_PATTERNS = [
-    "aops-core/[A-Z]*.md",
-    "aops-core/skills/**/*.md",
-    "aops-core/agents/**/*.md",
-    "aops-core/workflows/**/*.md",
-    "aops-core/commands/**/*.md",
-    "aops-core/hooks/**/*.md",
-    "aops-core/policies/**/*.md",
-    "aops-core/.claude-plugin/**/*.md",
+    # Plugin-canonical locations. `aops-*` matches one path segment, so it
+    # covers every first-class plugin (aops-core, aops-tools, future ones)
+    # symmetrically without crossing directories.
+    "aops-*/[A-Z]*.md",
+    "aops-*/skills/**/*.md",
+    "aops-*/agents/**/*.md",
+    "aops-*/workflows/**/*.md",
+    "aops-*/commands/**/*.md",
+    "aops-*/hooks/**/*.md",
+    "aops-*/policies/**/*.md",
+    "aops-*/.claude-plugin/**/*.md",
     "tests/**/*.md",
     "templates/**/*.md",
     "specs/**/*.md",
@@ -120,13 +124,13 @@ def main(argv: list[str]) -> int:
         "in: the task body, the parent epic, the PKB (via the remember skill),\n"
         "or a file explicitly named in an approved plan.\n"
         "\n"
-        "Canonical locations for new .md files:\n"
-        "  - aops-core/skills/**/*.md     tests/**/*.md\n"
-        "  - aops-core/agents/**/*.md     templates/**/*.md\n"
-        "  - aops-core/workflows/**/*.md  specs/**/*.md\n"
-        "  - aops-core/commands/**/*.md   .agents/**/*.md\n"
-        "  - aops-core/hooks/**/*.md      .github/**/*.md\n"
-        "  - aops-core/<UPPERCASE>.md     README.md / CHANGELOG.md (root)\n"
+        "Canonical locations for new .md files (aops-* = any plugin):\n"
+        "  - aops-*/skills/**/*.md     tests/**/*.md\n"
+        "  - aops-*/agents/**/*.md     templates/**/*.md\n"
+        "  - aops-*/workflows/**/*.md  specs/**/*.md\n"
+        "  - aops-*/commands/**/*.md   .agents/**/*.md\n"
+        "  - aops-*/hooks/**/*.md      .github/**/*.md\n"
+        "  - aops-*/<UPPERCASE>.md     README.md / CHANGELOG.md (root)\n"
         "\n"
         "If this addition is legitimate, surface it to the user; once\n"
         "authorised in-session, R8.1's in-session-authorisation carve-out\n"

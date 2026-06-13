@@ -18,23 +18,27 @@ Generated on Fri Jun 12 01:39:50 AM UTC 2026 from `scripts/audit_agent_complianc
 
 ## Skills (allowed-tools check)
 
-| Skill                                      | Conformance              |
-| :----------------------------------------- | :----------------------- |
-| aops-core/skills/aops/SKILL.md             | ❌ Missing allowed-tools |
-| aops-core/skills/cowork-sync/SKILL.md      | ❌ Missing allowed-tools |
-| aops-core/skills/craft/SKILL.md            | ✅                       |
-| aops-core/skills/daily/SKILL.md            | ✅                       |
-| aops-core/skills/design-rubric/SKILL.md    | ❌ Missing allowed-tools |
-| aops-core/skills/dogfood/SKILL.md          | ✅                       |
-| aops-core/skills/dump/SKILL.md             | ❌ Missing allowed-tools |
-| aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools |
-| aops-core/skills/peer-review/SKILL.md      | ✅                       |
-| aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools |
-| aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools |
-| aops-core/skills/remember/SKILL.md         | ✅                       |
-| aops-core/skills/research/SKILL.md         | ✅                       |
-| aops-core/skills/sleep/SKILL.md            | ✅                       |
-| aops-core/skills/strategic-review/SKILL.md | ✅                       |
-| aops-core/skills/supervisor/SKILL.md       | ❌ Missing allowed-tools |
-| aops-core/skills/survey/SKILL.md           | ✅                       |
-| aops-core/skills/verify/SKILL.md           | ✅                       |
+| Skill                                      | Conformance                                                            |
+| :----------------------------------------- | :--------------------------------------------------------------------- |
+| aops-core/skills/aops/SKILL.md             | ❌ Missing allowed-tools                                               |
+| aops-core/skills/cowork-sync/SKILL.md      | ❌ Missing allowed-tools                                               |
+| aops-core/skills/craft/SKILL.md            | ✅                                                                     |
+| aops-core/skills/daily/SKILL.md            | ✅                                                                     |
+| aops-core/skills/design-rubric/SKILL.md    | ❌ Missing allowed-tools                                               |
+| aops-core/skills/dogfood/SKILL.md          | ✅                                                                     |
+| aops-core/skills/dump/SKILL.md             | ❌ Missing allowed-tools                                               |
+| aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools                                               |
+| aops-tools/skills/peer-review/SKILL.md     | ✅                                                                     |
+| aops-tools/skills/analyst/SKILL.md         | ✅ (reframed tech-agnostic; tech-specific how-to moved to aops-extras) |
+| aops-extras/skills/dbt/SKILL.md            | ✅                                                                     |
+| aops-extras/skills/streamlit/SKILL.md      | ✅                                                                     |
+| aops-extras/skills/python-viz/SKILL.md     | ✅                                                                     |
+| aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools                                               |
+| aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools                                               |
+| aops-core/skills/remember/SKILL.md         | ✅                                                                     |
+| aops-core/skills/research/SKILL.md         | ✅                                                                     |
+| aops-core/skills/sleep/SKILL.md            | ✅                                                                     |
+| aops-core/skills/strategic-review/SKILL.md | ✅                                                                     |
+| aops-core/skills/supervisor/SKILL.md       | ❌ Missing allowed-tools                                               |
+| aops-core/skills/survey/SKILL.md           | ✅                                                                     |
+| aops-core/skills/verify/SKILL.md           | ✅                                                                     |

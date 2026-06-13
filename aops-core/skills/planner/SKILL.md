@@ -72,7 +72,7 @@ Manage the PKB task and knowledge graph. Enforce strategic prioritization, corre
 Quickly capture and log new tasks into the graph.
 
 - **Project Mapping**: Map tasks to projects using the `.agents/CORE.md` Component Topology table (e.g. `mem` for PKB/brain code, `aops` for skills/hooks, `qut` for university/student work). If ambiguous, inherit from parent; if still unclear, ask the user. Do not default.
-- **Priority (intent authority)**: Default every captured task and subtask to the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that value in this request — never inferred from importance. Canonical rule: [[framework-conventions-summary#intent-authority]].
+- **Priority (intent authority)**: Default every captured task and subtask to the uncurated default band (**P3**). See [Priority Assignment Rules](#priority-assignment-rules) below for the full rule.
 - **Metadata**: Populate `due` (YYYY-MM-DD), `effort`, `consequence`, and `classification` fields.
   - `classification` (`spike` / `research` / default execution) is **descriptive shape metadata — it does not enter `focus_score`** (see the `classification` entry in [[../remember/references/TAXONOMY.md]] for how `voi_value` is computed and why shape still matters). Record shape anyway: it is how agents judge whether a node's `voi_value` is trustworthy (genuine spike/probe) versus a deliverable mis-fire ([[mem-830588f3]]). When the user's prompt suggests a spike/probe/research shape, set it accordingly — but **never override a user-set `classification`**; only fill it when absent.
 - **Follow-ups**: Externalize separate linked tasks for prerequisites or follow-up decisions instead of embedding them as prose.
@@ -138,6 +138,7 @@ Incremental PKB and graph hygiene maintenance.
 - **Anti-Inflation Audit**: List targets missing `consequence` prose, edges missing justifications, and flag concurrent committed SEV4 targets if they exceed a cap of 2.
 - **Mismatches**: Identify prefix/type/filename mismatches (e.g. `epic-` prefix with `type: task`).
 - **Data Quality**: De-duplicate nodes, complete stale tasks with email/calendar evidence, reclassify email-dump tasks as memories, and fix reparenting/domain issues.
+- **Knowledge-layer orphans**: The `note`/`knowledge`/`memory` population is invisible to `graph_stats.orphan_count` (actionable-only) — enumerate it with `pkb_orphans(types=["note","knowledge","memory"], include_all=true)`. When sleep selects the "Curate knowledge layer" strategy, execute the per-orphan disposition triage (link/reparent / MOC / merge / archive / SURFACE) defined in [[../remember/references/maintenance-phases.md#knowledge-layer-curation-activity-k]]. The orphan detector is type-aware: for knowledge types a deliberate `[[wikilink]]` or a structured parent edge both clear orphan status, so connect each orphan to a node that is itself graph-reachable (defer to the linked Phase 0 detector note as canonical). Surface ambiguous homes; never guess a parent.
 
 ## Decision Surfacing Heuristic
 

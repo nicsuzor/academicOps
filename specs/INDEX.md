@@ -54,6 +54,7 @@ The big-W "what to do and in what order" specs. Workflow engine, decomposition, 
 - [[audit-protocol]] — Framework audit standard
 - [[daily-briefing-bundle]] — `/daily` skill bundle
 - [[60-importance-escalation|workflows/daily/60-importance-escalation]] — Importance-to-visibility escalation model
+- [[session-digest]] — Scheduled cheap-model intra-day narrative digest (draft — feeds dashboard US-D3, /daily, /learn)
 - [[feedback-loops]] — Where the framework learns from itself
 - [[reconcile]] — GH ↔ PKB close-the-loop reconciliation (agent-invoked)
 

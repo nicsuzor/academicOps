@@ -11,7 +11,7 @@ Testing the four layers of session infrastructure. For each layer, verify it fir
 - RBG enforcer: invoke periodic compliance enforcer per instructions
 - Skills: invoke /plan, /aops, /remember
 - Subagents: dispatch junior or marsha; verify context passing
-- Polecats: dispatch remote workers (gemini and claude) over SSH
+- Polecats: dispatch local workers (gemini and claude) via uv run
 - Stop Gates: stop prevented before handover; permitted after
 - Handover: /dump provides useful instructions; execute them all
 

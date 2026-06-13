@@ -1,130 +1,238 @@
 ---
-name: academic-grant-review
+name: peer-review
 type: skill
 description: >
-  Conceptual review of scholarly work — grant applications, papers, theses, colleague drafts. A general analytical core for peer review. Produces evidence-mapped and double-checked preparatory materials;
-  **academic owns all judgments and all submitted text**.
+  Peer review of research funding applications and academic submissions.
+  Scheme-agnostic — fetches current criteria from the relevant handbook each
+  round, since weights and language change. Covers Detailed Assessor and
+  College-of-Experts / General Assessor roles, plus collegial draft review.
+category: instruction
 triggers:
   - "review this grant"
   - "review this application"
-  - "review this paper"
-  - "grant assessment"
+  - "future fellowship"
+  - "DECRA"
+  - "ARC assessment"
+  - "ERC review"
+  - "SNSF review"
+  - "fellowship review"
   - "detailed assessor"
-  - "peer review"
+  - "general assessor"
+  - "college of experts"
+  - "process reviewer comments"
+modifies_files: true
+needs_task: true
 mode: workflow
-domain: [academic]
+domain:
+  - academic
+allowed-tools: Read,Write,Edit,Grep,Glob,Bash
+version: 3.0.0
+permalink: skill-peer-review
 ---
 
-# Academic grant review
+# Peer Review Skill
 
-Review the input material and produce:
+Prepare peer reviews of research funding applications or academic submissions, matching
+the current round's scheme criteria and producing evidence-based, signable feedback. The
+agent prepares and verifies; **the academic owns the scores, the net call, and the final
+submitted text.**
 
-- an evidence-mapped table of criteria and evidence
-- a list of key critiques the academic may wish to consider
-- a draft in the user's voice — never a finished review, never a score
-- evidence that every claim you make has been double-checked by an independent agent
+## What this skill is, in one paragraph
 
-## The summary
+A review is not a linear pipeline that ends in a self-check. It is an **adaptive loop of
+five stages** whose quality comes from two moves a naive draft-then-submit flow lacks:
+**adversarial independent verification** of every claim, and a **voice-match + whole-set
+de-template** pass that makes the prose signable and un-formulaic. Its failures happen at
+the **seams between stages** — a polish pass that quietly promotes a paraphrase into a
+fabricated quote; a voice rewrite that drops a verified correction. So the loop **gates
+its regeneration boundaries**: _"verified" attaches to a committed artifact, not an idea,
+and any regeneration re-enters verification._
 
-First, produce a brief summary to help the user orient themsleves when reading the application. The summary should cover all important points relevant to the assessment criteria. Present the summary in brief dot points with references.
+## Core Rules
 
-The summary should explain the entire reserach pipeline from:
+- **Evidence-Based**: Every claim must cite the application (page, section, line, or quote).
+- **Absent Evidence Is Feedback**: A missing required element is a scoreable weakness, not
+  an omission to skip silently — but say where you looked (a documented grep with synonyms),
+  never assert an absence you didn't search for.
+- **Fetch Round Criteria**: Fetch the current scheme guidelines (ARC, ERC, SNSF, NHMRC) for
+  _this_ round. Weights, bands, and character minimums change; do not reuse prior criteria.
+- **Human Owns Judgment**: Scores, top-line read, net call, and submitted text are the
+  academic's. The agent prepares evidence-mapped drafts with **scores left blank**. This is
+  how funding-body GenAI policies (e.g. ARC's ban on AI-generated assessor text) are
+  satisfied _structurally_ — not by refusing to help draft.
+- **No Integrity Allegations in Comments**: Route suspected research-integrity breaches to
+  the scheme's integrity office separately (see [[platform-instructions]]).
+- **One Living Draft in Git**: One draft per review, versioned by **git history** — no
+  `-v2` / `-v3` files, no carried-forward appendix. Cut critique lives in the history, not
+  in a growing reserve block (see [[review-template]]).
+- **Every Worked Example Verbatim-True**: Any example in these skill files that quotes an
+  application must be a real, grep-checked string. A fabricated "illustrative" quote in the
+  doctrine is how the doctrine teaches the bug. Generic placeholders (`"{quoted phrase}"`)
+  are fine; invented specifics are not.
 
-- social benefit need;
-- basic research questions;
-- methods;
-- theories for analysis;
-- expected outcomes;
-- impact and engagement strategies.
+## Execution model — serial core, parallel optional
 
-Also summarise the role of each member of the team and their key research track record relative to opportunity info.
+The loop is written so **one agent can run it alone, in series**, wearing each stage as a
+hat (read the stage's reference file → do the stage → move on). That is the portable
+default; it needs no fleet infrastructure.
 
-## Hard rules
+When you have many reviews in a round **and** the infrastructure to fan out, two stages
+parallelise — in _opposite_ directions:
 
-**Conceptual level only.** Comments engage the work's ideas, design, evidence, and feasibility. Never comment on grammar, spelling, typography, formatting, or copyediting — not in draft prose, not in dot points, not in "private notes". If you notice a typo, keep walking. The one exception is _substantive_ internal inconsistency — a budget that doesn't reconcile, a method that contradicts the timeline, a sample that can't support the claimed inference — which is in scope precisely because it bears on a criterion, not because it is an error.
+- **VERIFY silos**: one independent, contextless verifier **per application** (isolation
+  prevents cross-contamination). Prefer a _fresh_ sub-agent for VERIFY even in serial mode —
+  a single agent verifying its own draft is a weaker adversary than a cold reader.
+- **DE-TEMPLATE is whole-set**: a single pass over the _entire round's_ drafts at once
+  (fingerprints only exist across documents).
 
-**Evidence over opinion.** Every claim points at the source: quote or line ref. Convert the PDF with `pdftotext -layout` and treat line numbers as the citation currency. Absence of evidence is itself a finding, but claims of absence require a documented search. Always eyeball the original PDF pages for tables, GANTT charts, and budget grids — text extraction silently mangles exactly the content that decides feasibility.
+**Dispatch constraint.** Fan-out is a privilege of a top-level / lead session. If this
+skill is itself running inside a leaf sub-agent, it **cannot** fan out a verifier panel —
+fall back to the serial hat-switch, or escalate to the caller that a panel needs a
+top-level session (see `specs/review-dispatch-topology.md`).
 
-- **Evaluate the research team relative to their opportunities for research.**
-- **Always expect strong mentoring**: where relevant, examine researcher development and succession plan, over-reliance on casual or unfunded researchers. External grant funding should build capacity and provide the necessary support for research team development, particularly for early career researchers, and expecially for researchers from diverse, disadvantaged, and under-represented backgrounds.
-- **CoI before reading.** Enumerate every participant and check for collaborators, institutional links, and funding relationships before substantive reading.
+## The five-stage loop
 
-## Method
+The number of passes is **not fixed** (informal iteration): a clean application may need
+one VERIFY cycle; a contested one several. Exit a stage when its checks pass, not after a
+prescribed count.
 
-The sequence:
+### Stage 0 — Intake & setup (once per round)
 
-- generate a summary of the application for the user
-- convert source to markdown and save
-- build a section map (section → line ranges)
-- factual reading notes per criterion with `[?]` flags, no judgment yet
-- draft
-- independent adversarial verification
-- apply fixes
-- hand over with a top-line summary
-- user writes their own top-line read, scores, and final text
+- Capture the assignment: scheme/round, application ID, candidate, institution, title,
+  role (Detailed vs General Assessor / CoE vs collegial — see [[reviewer-roles]]), deadline.
+- **CoI scan, once.** Scan participant lists and references for institutional, personal,
+  collaborator, supervisory, or financial relationships → **declare** → carry the result as
+  a one-line header flag, then drop it. Do not re-litigate CoI every turn. The single
+  residual that _must_ recur: "confirm against your own records" — the scan cannot see
+  private collaboration history (see [[reviewer-roles]]).
+- **Fetch this round's criteria, weights, bands, and character minimums fresh** from the
+  handbook (PKB or the scheme site). Do not reuse last round's.
+- Assemble materials under `${ACA_DATA:-~/brain}/reviews/{scheme}/{appid}/`. Convert:
+  `pdftotext -layout source.pdf source.txt`. **Honest tooling note:** `-layout` gives
+  layout-preserved text, **not** line numbers, and it **mangles tables / GANTT / budget** —
+  read those from the PDF pages directly. Build a section→line map in the reading notes.
 
-Reading notes are factual ("proposes 20 participants over 2 weeks", with line ref) — evaluation belongs in the draft, not the notes. Paraphrase with line refs rather than long quotes.
+### Stage 1 — PREP (probe-driven draft)
 
-**Verification is not optional.** Commission a separate contextless agent to audit the draft against the source: every factual claim classified CONFIRMED (verbatim quote + line), UNSUPPORTED, or WRONG; claims of absence re-searched; arithmetic recomputed; then an independent gap analysis of what the draft missed. Fix everything it finds — and check the verifier's own corrections, which can be wrong in the same ways drafts are.
+Read the application against the **analytical probes** ([[review-probes]]) and produce two
+deliberately separated things ([[reading-notes-format]]):
 
-## The analytical probes
+- a **factual, line-mapped notes file** (where-to-look + the application's claims, line-cited); and
+- a **raw judgement block** — your actual hunches and reservations, kept verbatim and
+  _never tidied_, quarantined from submission text. This is where the real assessment
+  forms; bless it as first-class, do not sanitise it into blandness.
 
-These are the questions that find what matters. Apply them with judgment, not as a checklist — most reviews turn on two or three of them.
+Then draft evidence-cited per-criterion comments applying the probes, following the scheme's
+bands ([[review-guidance]]). **Scores left blank.**
 
-**1. The missing bridge (theory of change).** The most consistent critique. Trace the pipeline from data to promised output. When descriptive methods (surveys, ethnography, content analysis) promise normative outcomes (ethical design principles, "world-first standards", roadmaps for regulation), ask: what specific analytical step converts descriptive findings into regulatory or design options? If the transition rests on "synthesis", "workshops", or "framework development" with no defined methodology — no legal analysis stream, no intervention appraisal — that is a critical theory-of-change vulnerability.
+**PREP self-review before finishing (guard F3 — PREP is the weakest self-checking link):**
 
-**2. Phenomenon vs research project.** Do not reward a project for studying a new or timely topic. If the research questions are entirely descriptive ("How do Australians use X?"), identifying a phenomenon has not resolved a sharply posed conceptual problem. The tell: massive scope (jurisdictions × domains) without a focused question — mapping disinformation empirically instead of working out how to regulate it.
+- No integrity-adjacent or third-party-identifying material in prose (route separately).
+- **Recompute any number before asserting it** — never quote a total you haven't re-derived.
+- **Mark paraphrase as paraphrase.** Never write a phrase a downstream reader could mistake
+  for a quotable string. This is the exact seed of a fabricated quote. Do not dress a guess
+  as a fact with a `[?]`.
 
-**3. Construct validity and method–question fit.** Isolate the central construct ("adaptation", "effectiveness", "attitudes") and hold the measuring instrument against it. You cannot measure adaptation — change over time — with cross-sectional single-window methods. You cannot capture stable attitudes to a hypothetical, low-prevalence technology with a general-population survey. You cannot test a regulation's "effectiveness" without operationalising effective.
+### Stage 2 — VERIFY (adversarial, independent) — the highest-value stage
 
-**4. Real vs aspirational translation.** Be sceptical of generic public-facing resources as benefit evidence. Distinguish invitations (a symposium, a website, a PDF guide) from commitments (named regulator partnerships, advisory boards with specific members, a prior track record of legislative uptake). If the project promises to shape legislation, look for a regulatory or industry body with an actual stake — not the hope that someone reads the white paper.
+Run as a **separate contextless pass** (fan-out) or an explicit, forceful hat-switch: _"You
+are now an adversarial verifier. The draft's authors are not to be trusted. Distrust any
+prior PASS. Demand proof."_ Full method in [[review-verification]]. The core:
 
-**5. Regulatory target clarity.** Where the work touches policy, identify the addressee: platforms, users, domestic law, offshore actors, treaties? Flag domestic regulation proposed for offshore problems without engaging jurisdictional limits, and comparative designs whose jurisdictions yield no legally or politically transferable lessons for Australia.
+- **Claim-by-claim**: classify every claim CONFIRMED (line# + verbatim quote) / UNSUPPORTED
+  (say where you looked) / WRONG (contradicting quote + line). Absence-claims require a
+  **documented grep with synonyms**.
+- **Verbatim-quote-existence sweep** (the single highest-value check): every quoted string
+  in the draft must appear verbatim in source. A null grep on a quoted phrase is a
+  **presumptive BLOCKER**.
+- **Tool-backed arithmetic**: recompute every total from its components (`python3 -c …`,
+  not mental math). Quote no total you haven't re-derived.
+- **Read the PDF pages** for GANTT / budget / timeline; run an **internal-contradiction
+  sweep** across fields (FTE vs "retired"; dates vs funding window; refs vs in-text).
+- **Independent gap analysis**: read the application _cold_ and find strengths and
+  weaknesses the draft missed; check balance across criteria. (The highest-value catches
+  come from here, not from checking the draft's own claim list.)
+- **Verify your own corrections** before asserting them.
+- Classify findings on the severity ladder **BLOCKER / FIX / NIT** ([[review-verification]]).
 
-**6. Feasibility and access audit.** Map the promises against budget, FTE, timeline, and ethics. Scope vs resourcing: a 0.2 FTE RA carrying fieldwork across five countries. Unfunded work: a hundred foreign-language interviews with no transcription or translation line; continuous platform data capture with no software, API, or storage budget. Access risk: senior executives, proprietary data, or vulnerable participants (minors recruited through the very platforms under study) with no demonstrated access, no consent pathway, no acknowledgment of the HREC bottleneck. Reconcile the budget's own tables against each other — internal contradictions here decide the criterion.
+### Stage 3 — VOICE & DE-TEMPLATE
 
-**7. Capability beyond the halo.** Interrogate track records for relevance, not prestige. A CI leading the socio-legal stream with a record in a different field; a large stratified survey with no quantitative methodologist; vital international access carried by a retired or $0-contribution participant. Citation counts and venue prestige are not capability for _this_ design.
+Convert the **verified** draft into clean, signable prose in the academic's voice
+([[voice-and-detemplating]]):
 
-**8. Assumed harms.** When the application claims an urgent crisis, check whether rigorous literature is cited to establish the harm or whether it is asserted from headlines. A project premised on unevidenced harm inherits the weakness in every downstream criterion.
+- **Two registers**: prep is maximally specific; the final prose is **generally-assertable
+  from one careful reading without re-checking any number**. Everything cut is preserved in
+  **git history**, not a carried appendix.
+- **Render the academic's stated position boldly.** Raise register worries in conversation;
+  **never soften silently.** The systematic failure mode here is _under-assertion_, not
+  over-assertion.
+- Cut to roughly one reservation per criterion, framed constructively, anchored to the
+  application's own promises; aim support/resourcing critiques at _institutions_, never the
+  vulnerable researcher.
+- **Voice onboarding**: if the academic's voice file (`{academic}-style.md`) isn't trained
+  yet, run the **reflection-on-diff loop** (agent drafts → human edits → agent diffs and
+  codifies the delta) over the first few reviews. A static style guide alone is insufficient.
+- **Whole-set de-template** (only when >1 review in a round): census recurring pivot
+  formulas across the set → budget ≤1 use per formula → two-tier rewrite (re-mechanise the
+  load-bearing critique sentences; light synonym de-dup is fine only for low-stakes praise)
+  → re-scan for new fingerprints the fix introduced → machine-check pin-cite counts unchanged.
 
-Two quieter probes worth keeping in reserve: citation integration (literature clumped into example-bursts versus genuinely scaffolding the argument) and the self-referential gap claim (the "only contribution" evidenced by citing the team's own work).
+### Stage 4 — FINAL-CHECK & submit
 
-## Voice
+- **Pre-"ready" gate (guard F7):** verbatim-quote grep + spell + dash-normalise +
+  budget-recompute must pass **before** a draft is called ready. The final check confirms;
+  it must not be the first place anyone greps a quote.
+- Run a final contextless confirmation pass (the VERIFY techniques as a safety net).
+- **Boundary gate (guard F1 — the most important structural rule):** _"verified" attaches to
+  a committed artifact, not an idea._ Any regeneration after VERIFY — a voice rewrite, a
+  polish pass, a hand-edit — **re-enters verification**. Stamp the verified commit; re-run
+  the checks on any later diff. On-disk drafts are mutable and get rewritten post-hoc (F8):
+  trust the committed/verified artifact, never a live draft, as the record.
+- The academic owns scores, top-line read, net call, and submission. Submit; save the
+  confirmation to the task file.
 
-First person, warm, and constructive — always nice, never adversarial, calibrated in positivity to the academic's net call on the application. Emphatic praise is permitted and used when the evidence supports it ("an outstanding team", "an eminent authority", "a pre-eminent research centre", "the benefit case is strong"); don't flatten genuine enthusiasm into measured hedging. Strengths first, stated concretely from the evidence. Reservations are phrased as requests or advice, not verdicts: "I would have liked to see…", "I'd like to see more detail on…", "I would include contingency plans for…", "I would expect some statement of additional support from the institution…" — and close with an affirmation of capability where one is genuine ("I think the team are very capable of managing the project"). Short paragraphs, two or three per criterion; reservations woven in or placed at section end, easy to cut as a unit. No bullet lists in draft review prose: evaluative paragraphs only. No LLM tells. Balance depth across criteria roughly in proportion to their weights.
+### Side-stage — Integrate external / cross-model feedback (optional)
 
-Phrases Nic has explicitly struck (growing list — add to it whenever he flags one): "sits squarely", "de-risks", "real substance under the…", "lines up against the design". Don't open alternating paragraphs with "However," — vary the turn ("My reservation here is…", "The budget documentation needs care, though.", or just state the concern directly). Don't reuse a signature evaluative word across reviews in the same round ("eminent" once per round, not once per application). Keep credential detail light in criterion-1 prose — one or two evidence items per investigator carries the judgment; the full inventory belongs in the orientation summary, not the review text.
+When external or cross-model review comments arrive, integrate them with a **distrust
+default** ([[external-feedback]]): per-claim adjudication, a two-axis filter (is it already
+covered, sharper? does its framing reverse a position we reached?), and a one-line
+justification per ADD / MODIFY / REJECT. Cross-model's proven value is **distillation** (of
+the academic's analytical signature) and corroboration of emphasis — not new content. A
+final cross-model truth-check is reasonable but optional, not the primary safety net.
 
-The "X rather than merely Y" appraisal construction ("well grounded rather than merely asserted", "evidenced rather than decorative", "real collaborative history rather than a paper consortium") reads as GPT to Nic when repeated — at most one per review, and prefer stating the positive plainly: "The problem is real and the evidence for it is strong."
+## Cross-cutting guards (F1–F8)
 
-## Critique calibration
+| Guard | Rule                                                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1    | Any regeneration re-enters verification; "verified" stamps a committed artifact. — [[review-verification]]                                                                                     |
+| F2    | VERIFY is always a full independent cold re-read + re-derivation — never a citation-checker. Includes the verbatim-quote-existence sweep and tool-backed arithmetic. — [[review-verification]] |
+| F3    | PREP self-reviews before writing (integrity material, un-recomputed numbers, paraphrase-as-paraphrase).                                                                                        |
+| F4    | Any integration/fix step re-reads the edited artifact and re-derives every number/quote it lands; uses the narrowest possible edit target. — [[review-verification]]                           |
+| F5    | Silo per-application for fact-checking; one whole-set pass for anything cross-document (fingerprints, conflicts, consistency).                                                                 |
+| F6    | Severity ladder with explicit BLOCKER / FIX / NIT definitions ([[review-verification]]).                                                                                                       |
+| F7    | Verification techniques live in a pre-"ready" gate, not only at the end. — [[review-verification]]                                                                                             |
+| F8    | On-disk drafts are mutable and get rewritten post-hoc — never treat a live draft as proof of a stage's output; the committed/verified artifact is the record. — [[review-verification]]        |
 
-The analytical probes generate an inventory of vulnerabilities; the draft review text is not that inventory in prose form. Observed revision pattern across finals: the academic cuts most of the critique, keeps at most one or two reservations per criterion — sometimes none, when the application is strong and the silence is itself a scoring signal — and chooses _which_ reservations survive from the dot points. So:
+## Scribe Mode (collegial drafts)
 
-- **Draft prose carries the academic's likely position, not the full case for the prosecution.** Lead each criterion with what the application does well. Include only the one or two reservations with the strongest claim to survive the academic's judgment, framed constructively. Everything else stays in the dot points and appendix, where the academic can promote it if their read is harsher.
-- **Anchor reservations in the application's own promises.** Quote the application's framing (e.g. "a 'comprehensive digital platform accountability framework'") and ask whether the design delivers _that_ — not whether it meets an external standard the applicants never claimed. **Any phrase you put in quotation marks must be verbatim from the source — grep-confirm it before drafting.** A blended or approximated quote is the one error the applicants can catch by reading their own document, and it discredits the whole assessment; the final pre-submission round caught exactly this (a plausible framework phrase that appeared nowhere in the application). If you can't confirm the exact words, paraphrase without quote marks.
-- **Never frame an early career researcher's record as a deficit.** Assess whether the project's structure supports and develops them; an ECR carrying a major component is a _strength_ when mentoring and support are evidenced. Direct continuity and resourcing critiques at institutions, not at the vulnerable researcher (institutions "are increasingly expected to better support researchers when co-investing in publicly funded research").
-- **Preserve the academic's top-line hunches, including hedged ones.** A speculation marked "not sure" in their notes is often the most distinctive content in the final review, asserted confidently once they own it. Surface these in the draft; never silently filter them as too tentative.
-- **The academic's Notes block is working space.** Raw impressions, questions, and self-corrections ("actually, no, I was too early with that critique") belong there and inform which draft reservations survive. Keep the slot in every draft; never tidy it.
-- **Place each reservation under the criterion it really belongs to — and notice the weight that implies.** Doubts about whether findings will be useful or adopted are Benefit material, not Quality material, even when they originate in a methods observation (Nic moved the "nobody has best practices / effectiveness can't be measured" critique from Quality 45% to Benefit 15%, where it reads as a benefit-realisation risk rather than a design flaw). Ask of every reservation: which criterion does this actually score against?
-- **State the conclusion of the analysis, not the audit trail.** Forensic detail dissolves in final text: a catalogue of D1/D2 budget contradictions became "there is a lot to do in this project and I'm worried that it might actually be a little under-resourced… as submitted it leaves some genuine uncertainty about how risks will be mitigated." The prep notes hold the particulars; the review states the judgment they support. This applies even to substantive internal inconsistencies — they justify the conclusion, they don't appear in it.
-- **Concede before asking.** "The application counts 20+ ARC-funded projects and suggests there is still a gap to be filled, and I'm minded to agree, but I really think the project would benefit from…" — agree with the application's premise first, then make the ask. Understatement carries the critique: "with a bit more precision", "a little under-resourced", "a slight timing challenge".
-- **One fact, one criterion.** Don't deploy the same evidence (a flagship precedent, a commissioned-work record) in two criteria; put it where it does the most work and let the other section generalise.
-- **Answer your own critique when the answer is real.** After noting an absence, say whether fitting it in would even have been desirable: "Having said that, it's already a full program of work, and I don't think it's desirable to try to fit more in." This converts a deficit into a scoping judgment and signals fairness — the critique stands, but so does the applicant's trade-off.
-- **Reserve points get promoted, so keep them sharp.** Nic lifted a private dot-point (lead CI's 0.2 FTE against a 50% teaching load) into final Feasibility text — reframed at the institution and wrapped in praise: "It is unfortunate that the host institution is not able to provide additional teaching relief for such a standout academic researcher." That's the promotion pattern: circumstances criticised, person praised, institution addressed.
-- **Even supporting statistics leave the final prose.** The eSafety figures (48.2%, 432→2,852) backed a _positive_ point and still got cut to "Australian regulator data show sextortion is now the largest and fastest-growing category." The two-register rule applies to praise as much as critique.
-- **When an ethical point is the reason, state it as the reason — and let it land last.** The draft cushioned a critique of field-erasing self-promotion with a procedural rationale ("assessors must be able to rely on track-record statements"); Nic deleted the procedural cushion and moved the ethical point to the paragraph's final sentence: "This matters beyond rhetoric: the claim of global pre-eminence writes over and erases the contributions of the women, including queer and Black women scholars, on whose work the field rests." Don't manufacture a 'safer' justification for a critique whose real ground is a value; and note the affirmation-closer is a default, not a rule — a section may end cold when the application's conduct warrants it.
-- **Never ground a data-access critique in platform terms of service.** Nic rewrote "terms-of-service and audience-privacy questions" to "practical risk and privacy questions": his own scholarship opposes platform gatekeeping of research, so a review that faults researchers for ToS exposure would contradict his position. Critique data plans on practical feasibility and participant/audience privacy, not on deference to platform rules.
-- **Render the academic's voice faithfully, including politically pointed language.** Nic restored "alt-right" and "jawboning" after the draft softened them. Don't pre-soften: write what the academic said, and raise any publication-register worry in conversation, not by silent substitution. Also describe expertise at the accurate level of generality ("regulation of digital technologies" where the broader field is the truth; "judicial bodies" where the citing courts include the CJEU) — and say why a credential matters for this project ("international networks that are fundamentally important here"), not just that it exists.
+For reviewing draft papers / proposals written by colleagues before submission:
 
-## Specificity: two registers
+1. Assemble materials under `${ACA_DATA:-~/brain}/reviews/{author}/`.
+2. Generate reading notes ([[reading-notes-format]]) mapping the author's questions to line
+   numbers, plus a raw judgement block.
+3. Draft feedback in the academic's voice ([[voice-and-detemplating]]). The author is in the
+   room — be direct but constructive; the academic provides the judgment, the agent supports.
 
-The preparatory materials and the draft review text run at deliberately different levels of specificity, and conflating them is a failure mode.
+## References
 
-**Preparatory materials (summary, reading notes, critique dot points, appendices): maximally specific.** Names, numbers, dates, line refs, verbatim quotes. This is where every claim is pinned to the source, where the academic drills down, and where verification has something to bite on.
-
-**Draft review text: the academic's overall position, at a level of generality they can stand behind from their own reading.** The submitted review reflects considered judgment, not a forensic audit, and the academic must be able to sign it without re-verifying a catalogue of particulars. Everything in it must still be supported — but strip dollar amounts, citation counts, sample sizes, contract dates, named outputs, and named Bills out of the draft prose unless the specific fact _is_ the critique (a budget that omits a whole cost category; an empirical base too small for the claimed inference). Prefer "a documented record of commissioned work taken up in regulatory processes" over the list of instances; the instances live in the prep notes as backup.
-
-The test for any draft-review sentence: could the academic assert this confidently from one careful reading of the application, without checking a number? If not, generalise the sentence and move the detail to the appendix. Quote the application's own language sparingly, and only where the critique turns on its exact wording.
-
-Pair the draft with an appendix block that maps each load-bearing general claim in the prose back to its specifics and line refs, so support is one lookup away if the academic is challenged or wants to sharpen a point.
+- [[review-probes]] — the analytical core: the probes PREP reads the application against
+- [[review-verification]] — the adversarial VERIFY stage: techniques, severity ladder, self-verify
+- [[voice-and-detemplating]] — two registers, voice onboarding, whole-set de-templating
+- [[external-feedback]] — integrating external / cross-model comments, distrust-default
+- [[reviewer-roles]] — role distinctions (Detailed vs General Assessor vs collegial vs journal)
+- [[review-guidance]] — taxonomy, scoring bands, score–text alignment, anti-bias drafting discipline
+- [[review-template]] — assessment file template
+- [[reading-notes-format]] — reading-notes layout (factual notes + raw judgement block)
+- [[platform-instructions]] — submission platform tips; integrity / foreign-affiliation routing
+- PKB (optional): search for `{scheme}-Assessor-Handbook` or `{scheme} Grant Guidelines`;
+  if no PKB, fetch the handbook from the scheme's site each round.

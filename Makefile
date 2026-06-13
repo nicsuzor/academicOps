@@ -100,11 +100,22 @@ build-dev:
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
-# Install local build artifacts into clients
-# NOTE: This overrides the release marketplace with a local directory source.
-# Run `make uninstall-dev` to restore the release marketplace when done testing.
+# Install local build artifacts into clients.
+#
+# install-dev is the ONE authoritative local-install orchestrator (epic-267fe017).
+# It prepares the dev-only environment (local marketplace override, cache prune)
+# that scripts/install.py does not own, then delegates the actual installation —
+# Gemini policy/skill/workflow symlinks, extension-enablement rewrites, automode
+# rules, cron, Claude plugin install — to scripts/install.py UNCONDITIONALLY.
+# Previously this target hand-rolled a subset of the Claude/Gemini install and
+# silently skipped everything install.py does (the install split-brain). The
+# only remaining caller of those extra steps was the now-tombstoned setup.sh.
+#
+# NOTE: This overrides the release marketplace with a local directory source and
+# (via install.py) installs the background sync crontab. Run `make uninstall-dev`
+# to restore the release marketplace when done testing.
 install-dev: build-dev
-	@echo "Installing from local build artifacts..."
+	@echo "Installing from local build artifacts (orchestrator: scripts/install.py)..."
 	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
 	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
 	@echo "Uninstalling existing local plugins/extensions..."
@@ -114,6 +125,8 @@ install-dev: build-dev
 		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_TOOLS_EXT_NAME)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
+	-command openclaw plugins uninstall aops-core
+	-command openclaw plugins uninstall aops-tools
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
@@ -127,13 +140,11 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/academicOps/aops-core'; \
 	@# sources are ./dist/aops-* (one convention everywhere), resolving to the
 	@# build output in $(DIST_DIR).
 	-command claude plugin marketplace add $(AOPS_ROOT)
-	@echo "Installing local build into Claude Code..."
-	@command claude plugin install $(CLAUDE_PLUGIN_NAME) || echo "  ⚠️ Claude install failed"
-	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) || echo "  ⚠️ Claude aops-tools install failed"
-	@echo "Installing local build into Gemini CLI..."
-	@command gemini extensions install $(DIST_DIR)/aops-gemini --consent || echo "  ⚠️ Gemini install failed"
-	@command gemini extensions install $(DIST_DIR)/aops-tools-gemini --consent || echo "  ⚠️ Gemini aops-tools install failed"
-	@$(MAKE) install-agy
+	-command openclaw plugins install --marketplace $(AOPS_ROOT) aops-core
+	-command openclaw plugins install --marketplace $(AOPS_ROOT) aops-tools
+	-command openclaw gateway restart || echo "  ⚠️ OpenClaw gateway restart failed"
+	@echo "Delegating install to scripts/install.py (single authoritative path)..."
+	@AOPS=$(AOPS_ROOT) ACA_DATA=$${ACA_DATA:-$(AOPS_ROOT)} uv run python scripts/install.py
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Marketplace 'academicOps' now points to $(DIST_DIR)"
@@ -164,7 +175,7 @@ install-hooks:
 # the UI. (Note: `aops-coworklocal` is a distinct plugin from `aops-core`, with
 # Cowork-specific behaviour for the PKB ↔ native task-list mirror — see
 # `aops-core/skills/cowork-sync/SKILL.md`.)
-install: ensure-docker install-claude install-gemini install-agy install-windows install-crontab
+install: ensure-docker install-claude install-openclaw install-gemini install-agy install-windows install-crontab
 	@$(MAKE) report-versions
 
 ensure-docker:
@@ -192,6 +203,17 @@ install-claude:
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
 		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 	@$(MAKE) prebake-hook-venvs
+
+install-openclaw:
+	@echo "Installing aops plugin for OpenClaw..."
+	@echo "  Source: $(DIST_REPO_URL)"
+	-command openclaw plugins uninstall aops-core
+	-command openclaw plugins uninstall aops-tools
+	@command openclaw plugins install --marketplace $(DIST_REPO) aops-core && \
+	echo "✓ OpenClaw aops-core installed"
+	@command openclaw plugins install --marketplace $(DIST_REPO) aops-tools \
+		|| echo "  ⚠️ OpenClaw aops-tools install failed"
+	@command openclaw gateway restart || echo "  ⚠️ OpenClaw gateway restart failed — is it running as a service?"
 
 # Cowork on personal accounts has no marketplace mechanism. The Cowork plugin
 # is a SEPARATE build (`aops-coworklocal`) from the Claude Code CLI build (`aops-core`):

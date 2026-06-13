@@ -45,7 +45,7 @@ from lib.paths import get_subagent_summaries_dir, get_subagent_transcripts_dir
 from lib.transcript_paths import ensure_rotated_dir
 
 if TYPE_CHECKING:
-    from lib.transcript_parser import Entry, SessionProcessor, SessionSummary
+    from lib.transcript_parser import Entry, ParsedSession, SessionProcessor
 
 
 __all__ = [
@@ -193,12 +193,12 @@ def iter_subagent_invocations(
 
 
 def _build_subagent_session_summary(
-    parent_summary: SessionSummary,
+    parent_summary: ParsedSession,
     invocation_id: str,
     subagent_type: str | None,
     entries: list[Entry],
-) -> SessionSummary:
-    """Synthesize a SessionSummary for a subagent transcript.
+) -> ParsedSession:
+    """Synthesize a ParsedSession for a subagent transcript.
 
     Inherits parent metadata (machine, hostname, provider, crew, repo,
     task_id) and tags ``slug`` / ``summary`` with the subagent type so
@@ -207,10 +207,10 @@ def _build_subagent_session_summary(
     # Lazy import to avoid circular ``transcript_parser`` ↔ this module
     # cycle: transcript.py imports this module, which would otherwise
     # need transcript_parser at module load.
-    from lib.transcript_parser import SessionSummary  # noqa: PLC0415
+    from lib.transcript_parser import ParsedSession  # noqa: PLC0415
 
     type_label = subagent_type or "unknown"
-    return SessionSummary(
+    return ParsedSession(
         uuid=invocation_id,
         summary=f"Subagent: {type_label}",
         artifact_type="subagent",
@@ -313,7 +313,7 @@ def _build_subagent_insights(
         "task_id": parent_task_id,
         "provider": parent_provider,
         # Launch surface/client inherited from the parent session — the .md
-        # frontmatter already carries these (via SessionSummary), but the JSON
+        # frontmatter already carries these (via ParsedSession), but the JSON
         # dropped them, leaving subagent summaries unclassifiable by surface.
         "surface": parent_surface,
         "client": parent_client,
@@ -330,7 +330,7 @@ def _build_subagent_insights(
 def write_subagent_transcripts(
     parent_session_path: Path,
     parent_session_id: str,
-    parent_summary: SessionSummary,
+    parent_summary: ParsedSession,
     main_entries: list[Entry],
     agent_entries: dict[str, list[Entry]] | None,
     processor: SessionProcessor,
@@ -345,7 +345,7 @@ def write_subagent_transcripts(
             ``source_file`` frontmatter on the subagent transcript).
         parent_session_id: 8-char parent session id used to anchor
             ``shortform=subagent-of-<parent>`` in the subagent filename.
-        parent_summary: Parent ``SessionSummary``; metadata is inherited.
+        parent_summary: Parent ``ParsedSession``; metadata is inherited.
         main_entries: Parent's main-thread entries — used to resolve
             subagent_type via tool_use/tool_result pairing.
         agent_entries: Mapping of agent file id → entries (from

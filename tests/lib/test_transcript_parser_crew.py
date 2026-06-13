@@ -29,7 +29,7 @@ def processor() -> SessionProcessor:
 
 def _write_empty_jsonl(path: Path) -> None:
     """Write an empty (but valid) JSONL file. parse_session_file accepts this
-    and returns a default SessionSummary, which is enough to exercise the
+    and returns a default ParsedSession, which is enough to exercise the
     augmentation logic at the top of the method."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("", encoding="utf-8")
