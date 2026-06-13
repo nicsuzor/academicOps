@@ -1506,6 +1506,16 @@ Examples:
         help="Process ALL sessions (overrides --recent/--days filter)",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Reprocess sessions even when their transcript is already current "
+            "(bypasses the mtime short-circuit). Existing summaries are still "
+            "only rewritten when _should_overwrite_existing finds new signal — "
+            "use to backfill correlation (task_id / pull_requests) in place."
+        ),
+    )
+    parser.add_argument(
         "--no-sync",
         action="store_true",
         help="Skip git commit and push after generating transcripts",
@@ -1578,10 +1588,15 @@ Examples:
                 session_path = s.path if hasattr(s, "path") else session_path
                 session_id = _get_session_id(session_path)
 
-                # Early mtime check: skip if transcript already exists and is current
+                # Early mtime check: skip if transcript already exists and is
+                # current. --force bypasses this so a re-run can backfill
+                # correlation in place (the summary write is still gated by
+                # _should_overwrite_existing, so unchanged files aren't churned).
                 existing_transcript = _find_existing_transcript(sessions_claude, session_id)
-                if existing_transcript and _transcript_is_current(
-                    session_path, existing_transcript
+                if (
+                    not args.force
+                    and existing_transcript
+                    and _transcript_is_current(session_path, existing_transcript)
                 ):
                     skipped += 1
                     continue
