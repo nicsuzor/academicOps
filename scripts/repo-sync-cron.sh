@@ -154,6 +154,22 @@ do_pr_state() {
 }
 
 # ============================================================================
+# Single-instance guard
+# ============================================================================
+# Cron fires this every 5 min, but a run can take longer than that (transcript
+# generation now does per-branch `gh pr list` lookups). Without a guard the runs
+# stack and waste CPU + duplicate gh calls. Take a non-blocking exclusive lock on
+# fd 9; if a previous run still holds it, skip this cycle cleanly (exit 0). The
+# lock auto-releases when this process exits (fd closes). flock(1) is part of
+# util-linux and present on the Linux/WSL hosts this cron runs on.
+LOCK_FILE="${TMPDIR:-/tmp}/repo-sync-cron.lock"  # allow-fallback: /tmp is the universal POSIX temp dir; lock location is non-critical
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "${TS} repo-sync-cron: previous run still active (${LOCK_FILE}), skipping this cycle" >&2
+    exit 0
+fi
+
+# ============================================================================
 # Dispatch
 # ============================================================================
 
