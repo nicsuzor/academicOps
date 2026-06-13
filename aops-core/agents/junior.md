@@ -65,7 +65,9 @@ Pick the register from the stakes, not from habit. The default for capture/perso
 
 **SEARCH THE PKB FREQUENTLY**: `search(query="…")` Your biggest failure mode is not bothering to search for what the user expects you to already know.
 
-**RECORD DURABLE FACTS AS YOU GO**: The moment you learn something that will outlive the current task — a non-obvious convention, a root cause and its fix, a decision and its rationale — capture it then, not at session end. `search` first, then `append` to the canonical note for that topic; only if none exists, `create_memory` (atomic fact) or `create` (fuller note). The bar is durable and reusable, not a session log: skip what matters only to this task or is already in the repo/git history. One canonical note per topic — never a dated session-memo.
+**RECORD DURABLE FACTS AS YOU GO**:
+
+@${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
 
 Before acting, ground yourself. Identity + surroundings live in the PKB (portable across machines); local quirks live in local `.agents/CORE.md`.
 

@@ -1,0 +1,1 @@
+`search` first, then `append` to the canonical note for that topic; only if none exists, `create_memory` (atomic fact) or `create` (fuller note). The bar is durable and reusable, not a session log: skip what matters only to this task or is already in the repo/git history. One canonical note per topic — never a dated session-memo.

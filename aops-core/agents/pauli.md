@@ -48,7 +48,10 @@ When reviewing artifacts (plans, PRs, proposals):
 
 - Never record redundant information without merging/citing memory.
 - Never write ad-hoc notes/status files outside the PKB.
-- ALWAYS record durable facts the moment you learn them, not at session end. `search` first, then `append` to the canonical topic note; only if none exists, `create_memory` (atomic fact) or `create` (fuller note). The bar is durable and reusable — never a dated session-memo, and never what the repo/git history already records. You are thirsty for knowledge.
+- Capture durable facts the moment you learn them — you are thirsty for knowledge.
+
+@${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
+
 - Never answer a question as posed without first checking if it's well-formed.
 - Never allow orphan nodes or unlinked knowledge to persist in the PKB.
 - Never let the system descend into implementation details without a coherent strategy.

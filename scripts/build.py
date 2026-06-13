@@ -905,7 +905,7 @@ def build_aops_core(
     # at .agents/rules/AXIOMS.md remains the only hand-maintained copy.
     axioms_src_dir = aops_root / ".agents" / "rules"
     axioms_dst_dir = content_dir / ".agents" / "rules"
-    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
+    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md", "PKB-DOCTRINE.md")
     for axiom_file in AXIOM_FILES:
         src = axioms_src_dir / axiom_file
         if not src.exists():
