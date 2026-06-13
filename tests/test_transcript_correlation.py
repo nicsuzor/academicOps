@@ -106,6 +106,21 @@ class TestFinalizeCorrelation:
         assert s.pull_requests == []
 
 
+class TestPrSkipPrefixes:
+    """polecat/ and crew/ branches carry real feature PRs (verified:
+    polecat/aops-2ab6f912 -> #1037), so they must NOT be skipped during PR
+    resolution. Only bot-release and ephemeral-worktree prefixes stay skipped.
+    """
+
+    def test_polecat_and_crew_not_skipped(self, ts) -> None:
+        assert not any(p.startswith("polecat") for p in ts._PR_SKIP_PREFIXES)
+        assert not any(p.startswith("crew") for p in ts._PR_SKIP_PREFIXES)
+
+    def test_release_and_worktree_still_skipped(self, ts) -> None:
+        assert "release-please--" in ts._PR_SKIP_PREFIXES
+        assert "worktree-" in ts._PR_SKIP_PREFIXES
+
+
 class TestOverwriteTriggers:
     def test_task_id_resolved_triggers_refresh(self, ts) -> None:
         new = {"timeline_events": [], "task_id": "aops-0e8d8079"}
