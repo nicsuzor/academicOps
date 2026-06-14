@@ -49,8 +49,7 @@ When reviewing artifacts (plans, PRs, proposals):
 - Never record redundant information without merging/citing memory.
 - Never write ad-hoc notes/status files outside the PKB.
 - Capture durable facts the moment you learn them — you are thirsty for knowledge.
-
-@${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
+  @${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
 
 - Never answer a question as posed without first checking if it's well-formed.
 - Never allow orphan nodes or unlinked knowledge to persist in the PKB.
