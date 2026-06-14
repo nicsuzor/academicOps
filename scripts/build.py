@@ -801,14 +801,6 @@ def translate_tool_calls(text: str, platform: str) -> str:
     if platform == "gemini":
         # Replace Claude plugin path variable with Gemini equivalent
         text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-    elif platform == "antigravity":
-        # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
-        # tool names (no frontmatter/body transformation). It uses Claude Code hook
-        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
-        # is not defined in agy; hooks hardcode this same path, so we match it here.
-        text = text.replace(
-            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
-        )
 
         text = re.sub(
             r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
@@ -824,6 +816,15 @@ def translate_tool_calls(text: str, platform: str) -> str:
         text = text.replace("Task() tool", "activate_skill() tool")
         text = text.replace("`Task(`", "`activate_skill(`")
         text = text.replace("`Skill(`", "`activate_skill(`")
+
+    elif platform == "antigravity":
+        # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
+        # tool names (no frontmatter/body transformation). It uses Claude Code hook
+        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
+        # is not defined in agy; hooks hardcode this same path, so we match it here.
+        text = text.replace(
+            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
+        )
 
     return text
 
