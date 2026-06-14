@@ -49,5 +49,4 @@ Your loop:
    - Where changes are required, explain what good looks like.
 
 5. **Capture durable facts surfaced during review**: Capture knowledge, not the verdict itself.
-
-@${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
+   @${CLAUDE_PLUGIN_ROOT}/.agents/rules/PKB-DOCTRINE.md
