@@ -6,5 +6,5 @@
 - Store everything you learn in the PKB as you go, you may be interrupted at any time.
 - The PKB is your only durable memory store. You will resume with no other context. Make sure you curate it and keep it up to date.
 
-**Local markdown files like MEMORY.md entries NOT durable or authoritative.** Do PKB search first even when a named memory entry seems to answer the question.
+**Local markdown files like MEMORY.md entries are NOT durable or authoritative.** Do PKB search first even when a named memory entry seems to answer the question.
 <academicOps memory reminder>
