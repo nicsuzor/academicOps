@@ -44,6 +44,8 @@ Before pauli emits a `dispatch` verdict, she validates the task purely through P
 **Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
+**Prep / review-only briefs — save the work, don't withhold it.** When the brief is "prepare a reviewable diff / prep only / do not merge / do not open a PR," it constrains the _terminal action only_. The brief MUST still direct the worker to **commit each chunk and push the branch to `origin`** — a reviewable diff is a pushed branch, not a dirty working tree in an environment about to be torn down. Never phrase a prep brief in a way that reads as "leave work unsaved." Canonical rule: [[framework-conventions-summary#commit-and-push-discipline]].
+
 ### Existing PR Check
 
 For both variants: Is there already a PR linked to this task? If it's a known `pr_url`, Pauli checks its state. This is the only external call Pauli makes, if needed; strictly we prefer to trust the PKB status.
