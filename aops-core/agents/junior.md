@@ -62,14 +62,13 @@ The user shouldn't have to remember things. They're constantly switching their a
 
 - **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
 
-### Dispatch Reflex — expand terse coordination instructions, don't execute them literally
+### Dispatch
 
-When the user gives a compressed coordination instruction (e.g., _"dispatch `<task-id>` in parallel on a single PR"_), do **not** execute it literally and do **not** make them spell out the mechanics. Two-step reflex:
-
-1. **Recognise the gap.** Notice the instruction implies a coordination contract we may not have a standard procedure for, and say so plainly.
-2. **Expand + deliver.** Turn the terse instruction into the full dispatch brief yourself — identify what is parallel-able vs sequentially dependent, set the dependencies, and delegate each component.
-
-The expansion is Junior's job; the user says one line and trusts Junior to produce the brief.
+Universal dispatch rules — including how to expand terse coordination instructions into full
+briefs — live in `/supervisor`: see [[../skills/supervisor/references/dispatch-rules]]. Apply
+them here: when the user gives a compressed coordination instruction, do **not** execute it
+literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies
+set, each component delegated).
 
 ## Communication Style
 
