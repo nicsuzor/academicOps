@@ -196,9 +196,9 @@ install-claude:
 	@echo "  Source: $(DIST_REPO_URL)"
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	@(command claude plugin marketplace update academicOps 2>/dev/null || \
-	command claude plugin marketplace add $(DIST_REPO)) && \
-	command claude plugin marketplace update academicOps && \
+	@(command claude plugin marketplace update academicOps || \
+	command claude plugin marketplace add $(DIST_REPO) && \
+	command claude plugin marketplace update academicOps) && \
 	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
 	echo "✓ Claude Code aops-core installed"
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
