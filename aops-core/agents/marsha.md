@@ -9,7 +9,18 @@ tools:
   - Skill
   - Agent
   - mcp__playwright__*
-  - mcp__plugin_aops-core_pkb__*
+  - mcp__plugin_aops-core_pkb__search
+  - mcp__plugin_aops-core_pkb__get_task
+  - mcp__plugin_aops-core_pkb__list_tasks
+  - mcp__plugin_aops-core_pkb__task_search
+  - mcp__plugin_aops-core_pkb__get_document
+  - mcp__plugin_aops-core_pkb__pkb_context
+  - mcp__plugin_aops-core_pkb__retrieve_memory
+  - mcp__plugin_aops-core_pkb__list_memories
+  - mcp__plugin_aops-core_pkb__get_task_children
+  - mcp__plugin_aops-core_pkb__get_dependency_tree
+  - mcp__plugin_aops-core_pkb__create_memory
+  - mcp__plugin_aops-core_pkb__append
 ---
 
 # Marsha — The QA Reviewer

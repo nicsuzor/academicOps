@@ -336,14 +336,23 @@ class HookRouter:
         tool_name = raw_input.get("tool_name")
         raw_ti = raw_input.get("tool_input", {})  # allow-fallback: type-coerced below
 
-        # Antigravity (agy) hook compatibility: tool details can be nested in raw_input.toolCall
+        # Antigravity (agy) hook compatibility: tool details ride in a `toolCall`
+        # object. The REAL agy 1.0.7 Pre/PostToolUse payload places it at the
+        # ROOT of the stdin object — `{"stepIdx":N,"toolCall":{"name":...,
+        # "args":{...}},"workspacePaths":[...]}` (#1800; verified against the live
+        # hook log for session 6d3d5783). The earlier double-nested
+        # `raw_input.raw_input.toolCall` lookup never matched, so ctx.tool_name was
+        # None on every agy tool event, defeating sentinel/enforcer/handover
+        # tool-name matching. Prefer the root-level object; keep the nested form as
+        # a defensive fallback for any wrapper that re-nests the payload.
         if not tool_name:
-            nested_raw = raw_input.get("raw_input")
-            if isinstance(nested_raw, dict):
-                tool_call = nested_raw.get("toolCall")
-                if isinstance(tool_call, dict):
-                    tool_name = tool_call.get("name") or tool_name
-                    raw_ti = tool_call.get("args") or raw_ti
+            tool_call = raw_input.get("toolCall")
+            if not isinstance(tool_call, dict):
+                nested_raw = raw_input.get("raw_input")
+                tool_call = nested_raw.get("toolCall") if isinstance(nested_raw, dict) else None
+            if isinstance(tool_call, dict):
+                tool_name = tool_call.get("name") or tool_name
+                raw_ti = tool_call.get("args") or raw_ti
 
         tool_input = self._normalize_json_field(raw_ti)
         if not isinstance(tool_input, dict):
@@ -358,7 +367,19 @@ class HookRouter:
             or raw_input.get("subagent_result")
         )
 
-        # Antigravity (agy) hook compatibility: tool output can be nested in raw_input
+        # Antigravity (agy) hook compatibility: the real agy 1.0.7 PostToolUse
+        # payload conveys the tool result at the ROOT of the stdin object — there
+        # is no separate result envelope; success/failure rides in the root-level
+        # `error` string (empty on success) alongside the root `toolCall` (#1800,
+        # same live-log mechanism as the tool_name fix above). Mirror the
+        # root-first / nested-fallback order used for `toolCall`.
+        if not raw_tool_output:
+            raw_tool_output = (
+                raw_input.get("toolResult")
+                or raw_input.get("tool_response")
+                or raw_input.get("subagent_result")
+                or raw_input.get("error")
+            )
         if not raw_tool_output:
             nested_raw = raw_input.get("raw_input")
             if isinstance(nested_raw, dict):
@@ -970,24 +991,39 @@ class HookRouter:
             ephemeral_message  (3)  TYPE_STRING   scalar string
             system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
 
-        We use the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
+        We emit the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
         protojson is the bare string ``{"ephemeralMessage": text}``. This is the
-        same channel agy uses to inject its own per-turn reminders into the model
-        turn, and is the variant that actually RENDERS the injected content.
+        same channel agy uses to inject its OWN per-turn reminders (the
+        ``bash_command_reminder`` ephemeral that renders at the top of every
+        turn), so it is the schema-correct, most-likely-to-render member.
 
-        ROOT CAUSE CORRECTION — agy 1.0.7 (2026-06-11, this authenticated host):
-        the earlier "agy never spawns PreInvocation hooks" conclusion was a
-        confound. A vanilla, doc-shaped PreInvocation hook FIRES cleanly on agy
-        1.0.7 (sentinel + ``strace -f`` confirmed). The real defect was OUR
-        registration: the generated hooks.json wrapped the invocation events in
-        the PreToolUse-style ``matcher``/``hooks[]`` shape, so agy phantom-logged
-        ``json_hook_caller.go:144 ... executing command`` but never spawned the
-        process. Per https://antigravity.google/docs/hooks#supported-events the
-        invocation/Stop events require a FLAT handler list directly under the
-        event key (fixed in ``_generate_antigravity_hooks_json``). Once the hook
-        fires, the ``systemMessage`` member is dropped from the rendered turn;
-        the scalar ``ephemeralMessage`` member is what agy renders into the model
-        context, so the context-injection advisory is emitted via that member.
+        REGISTRATION (verified, keep): a vanilla, doc-shaped PreInvocation hook
+        FIRES on agy 1.0.7 — ``strace -f`` shows ``execve`` of
+        ``router.sh --client agy PreInvocation``. The earlier "agy never spawns
+        PreInvocation" conclusion was a confound: our hooks.json had wrapped the
+        invocation events in the PreToolUse ``matcher``/``hooks[]`` shape, so agy
+        phantom-logged ``json_hook_caller.go:144 ... executing command`` but
+        spawned nothing. Per https://antigravity.google/docs/hooks#supported-events
+        the invocation/Stop events require a FLAT handler list directly under the
+        event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
+        spawns.
+
+        DELIVERY VERIFIED — agy 1.0.7 (model-echo control 2026-06-12,
+        session 2be4d40a / conv deaabeef): PreInvocation ``injectSteps`` ARE
+        delivered to model context. The model quoted our injected
+        Skills-Routing-Table + PKB text verbatim, byte-matching the router's
+        PreInvocation stdout. The earlier claim of an "agy-side delivery gap"
+        (commit cd583eff) was based on transcript grep — the WRONG observable.
+        The correct observable is MODEL ECHO, not ``transcript_full.jsonl``.
+
+        TRANSCRIPT OBSERVABILITY NOTE: agy 1.0.7 does NOT log hook-injected
+        ``injectSteps`` as steps in ``transcript_full.jsonl``. A sentinel that
+        appears in hook stdout will appear ZERO times in the transcript even when
+        the model receives it. The user-visible perception that "SessionStart
+        never fires" comes from this transcript-logging gap: hook logs are the
+        only trace of injection, and the injected text is invisible in
+        transcripts. Verify injection delivery via model echo (ask the model to
+        repeat back unique injected content), never via transcript grep.
         """
         if not text:
             return []
@@ -1035,18 +1071,22 @@ class HookRouter:
         short_reason = _strip_hook_markers(result.system_message)
 
         if event == "PreToolUse":
-            # PreToolHookResult: allow is the empty object; a deny is expressed
-            # structurally via the top-level allowTool=false + denyReason fields
-            # of PreToolHookResult — no enum string needed.
+            # PreToolHookResult: allow/deny are BOTH expressed structurally via the
+            # top-level allowTool bool + denyReason fields — no enum string needed.
             if is_block:
                 return {
                     "allowTool": False,
                     "denyReason": short_reason or advisory or "Blocked by hook gate.",
                 }
-            # allow / warn: PreToolHookResult has no advisory channel, so a warn's
-            # context cannot be surfaced here (agy platform limitation, not a
-            # regression). Emit the empty allow object.
-            return {}
+            # allow / warn: emit allowTool=true EXPLICITLY. The empty object {} is
+            # NOT a valid allow: agy parses stdout as exa.hooks_pb.PreToolHookResult
+            # protojson, where an OMITTED bool defaults to false. So {} → allowTool=
+            # false, denyReason="" → agy treats EVERY allowed tool call as a DENY
+            # with an empty reason, blocking all tool use on the agy client
+            # (aops-1e68682a; reproduced live in session 22b4caa2, 2026-06-15).
+            # PreToolHookResult has no advisory channel, so a warn's context cannot
+            # be surfaced here (agy platform limitation, not a regression).
+            return {"allowTool": True}
 
         if event == "PostToolUse":
             # PostToolHookResult is the empty object — it carries no verdict or

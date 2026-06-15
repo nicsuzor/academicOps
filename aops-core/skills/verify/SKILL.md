@@ -42,12 +42,13 @@ Default posture: **assume it's broken.** The burden is on the artifact to prove 
    - Check freshness of inputs read.
    - Verify changes are complete across all callsites.
    - Acknowledge known limitations or constraints.
-4. **Forcing Checks**: Write explicit answers for each in the report before a PASS verdict:
+4. **Project-rule check**: If `.agents/rules/RULES.md` exists in this repo, read it before judging. Apply its rules with the same class/instance discipline as `AXIOMS.md`. Project-rule violations belong under **Process Compliance** in the report, cited by `{#slug}`.
+5. **Forcing Checks**: Write explicit answers for each in the report before a PASS verdict:
    - **Premise Test (step 0, before reading the diff)**: State verbatim the sharp-principal reaction from task + diffstat alone (see Step 0). A bad premise is a `FAIL` regardless of test coverage; you cannot reach `PASS` without writing it.
    - **Sentinel / Empty-State Audit**: Count and list empty/sentinel fields (e.g. `DERIVER_MISSING`, `N/A`, `TODO`). Fail if primary value-signals are missing.
    - **Principal's-Eye Top-Line Read**: State verbatim the most prominent headline element and verify correctness for the end-user. For "show me my X" surfaces, this means reproducing the principal's literal view (his account, host, launch-context) and confirming HIS OWN instance is present — a generic instance is FAIL (see `/design-rubric` self-instance requirement).
    - **Floor vs Ceiling**: State verbatim: "exceptional, or merely working?". Merely working is not a PASS on fitness tasks.
-5. **No Anchoring/Bias**:
+6. **No Anchoring/Bias**:
    - If you participated in designing or iterating on this artifact, you are disqualified from reviewing it for fitness.
    - Dispatches must be neutral (do not pre-state expected verdicts).
 
@@ -90,6 +91,10 @@ Output reports exactly in this format:
 1. **Sentinel/empty-state audit:** [count + list of sentinels/placeholders. If primary signals absent -> FAIL]
 2. **Principal's-eye top-line read:** [headline element quoted, and whether correct]
 3. **Floor vs ceiling:** [verbatim "exceptional, or merely working?"]
+
+### Process compliance
+
+[Project-rule violations cited by `{#slug}` from `.agents/rules/RULES.md` if present, or "RULES.md absent — skipped"]
 
 ### Judgement
 

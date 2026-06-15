@@ -68,7 +68,7 @@ How an agent session starts, hands over, sleeps, and gets its prompt. Plus the Y
 - [[session-start-injection]] — What gets injected at session start
 - [[session-insights-metrics-schema]] — Metrics extracted per session
 - [[session-insights-prompt]] — Prompt that drives that extraction
-- [[sleep-cycle]] — The periodic consolidation skill
+
 - [[prompt-hydration]] — Just-in-time context loading
 - [[hydrator-quality-escalation]] — Escalation when hydration fails
 
@@ -152,3 +152,4 @@ Future state design — separated to keep the active spec tree from being pollut
 - [[TAXONOMY]] — Canonical taxonomy (lives in academicOps, not brain)
 - [[KNOWLEDGE.md]] — PKB system principles
 - [[densify]] — Workflow that progressively wikilinks the PKB (spec under [[workflows]])
+- [[CONNECTIVITY]] — component↔spec connectivity join + orphan analysis

@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.40](https://github.com/nicsuzor/academicOps/compare/v0.3.39...v0.3.40) (2026-06-14)
+
+
+### Features
+
+* **transcript:** add --force to bypass mtime gate for correlation backfill ([8e8bcd0](https://github.com/nicsuzor/academicOps/commit/8e8bcd07963a741e2ef138920448475afb7ff0b7))
+* **transcript:** capture pull_requests from git branches in session summaries ([a5b7ec2](https://github.com/nicsuzor/academicOps/commit/a5b7ec26d9d2c3abfe959e42b2dac1b3e1c8c0bf))
+* **transcript:** recover task_id/PR correlation from launch context ([cc574be](https://github.com/nicsuzor/academicOps/commit/cc574becadd3817eb6d9e0ac6ea57d211175a63f))
+
+
+### Bug Fixes
+
+* **agy:** correct injection-delivery root cause — delivery works, transcript does not log injectSteps ([fd9f595](https://github.com/nicsuzor/academicOps/commit/fd9f595c59ac9770b7469d799e602fad19d41e44))
+* **agy:** correct PreInvocation injection status — agy-side delivery gap ([#1798](https://github.com/nicsuzor/academicOps/issues/1798)) ([18e85f9](https://github.com/nicsuzor/academicOps/commit/18e85f979f1e4e8a8eccad09f1e9d6359008a5b5))
+* **agy:** extract toolCall from payload ROOT, not double-nested ([#1800](https://github.com/nicsuzor/academicOps/issues/1800)) ([c73984c](https://github.com/nicsuzor/academicOps/commit/c73984c8fd58eecbf73e8684674c04e8c924b3e2))
+* correct Gemini tool translation block grouping logic ([#1817](https://github.com/nicsuzor/academicOps/issues/1817)) ([78b68b4](https://github.com/nicsuzor/academicOps/commit/78b68b4343a5b4f2960db2a9b0d998543b00c7e6))
+* **cron:** single-instance flock guard for repo-sync-cron ([d62b4d1](https://github.com/nicsuzor/academicOps/commit/d62b4d17bfb2dac45083fdf0a5e7de23e38c678c))
+* **transcript:** stop skipping polecat/crew branches in PR resolution ([3c82f73](https://github.com/nicsuzor/academicOps/commit/3c82f7325ca607adf083499377f99fed7c890f74))
+
+
+### Tests
+
+* **1798:** parametrize IDA invariant harness over agy + claude clients ([6ee647e](https://github.com/nicsuzor/academicOps/commit/6ee647e79618553b7368416f70acaea25569151c))
+* **agy:** elimination harness for IDA-as-denyReason [#1798](https://github.com/nicsuzor/academicOps/issues/1798) ([188f218](https://github.com/nicsuzor/academicOps/commit/188f21867f2337b4df3bbb39e84bd6d3061410e2))
+
 ## [0.3.39](https://github.com/nicsuzor/academicOps/compare/v0.3.38...v0.3.39) (2026-06-12)
 
 

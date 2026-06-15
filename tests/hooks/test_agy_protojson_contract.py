@@ -62,7 +62,7 @@ from __future__ import annotations
 from lib.gate_types import GateStatus
 from lib.session_state import SessionState
 
-from tests.hooks.agy_accept_contract import is_accepted_by_agy
+from tests.hooks.agy_accept_contract import PreToolHookResult, is_accepted_by_agy
 from tests.hooks.gate_helpers import run_router_agy
 
 
@@ -168,10 +168,22 @@ def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
 
 
 def test_agy_allow_survives_protojson_strict_roundtrip():
-    """A PreToolUse ALLOW must survive the agy protojson accept-contract.
+    """A PreToolUse ALLOW must be accepted AND parse as an explicit allow.
 
-    Allow is the empty ``PreToolHookResult`` ``{}``; the router currently emits
-    ``{"decision":"allow","metadata":{}}`` which protojson rejects on ``metadata``.
+    Two distinct checks, because acceptance alone is the blindspot that shipped
+    aops-1e68682a:
+
+      1. UNKNOWN-FIELD axis (``is_accepted_by_agy``): no Claude/Gemini-schema
+         field leaks. This is necessary but NOT sufficient — the buggy empty
+         object ``{}`` passes it trivially.
+      2. SEMANTIC axis: the emitted dict, parsed as ``PreToolHookResult`` (the
+         message agy unmarshals stdout into), must yield ``allowTool == True``.
+         agy's protojson defaults an OMITTED bool to ``false``, so a ``{}`` allow
+         is read as ``allowTool=false, denyReason=""`` — a DENY with empty reason
+         that blocked EVERY tool call on the agy client (live: session 22b4caa2).
+
+    The router must emit ``{"allowTool": true}`` end-to-end through the real
+    ``--client agy`` subprocess path, not ``{}``.
     """
     output, stderr = run_router_agy(
         {
@@ -185,7 +197,14 @@ def test_agy_allow_survives_protojson_strict_roundtrip():
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
     assert accepted, (
         f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the ALLOW "
-        f"output on unknown field(s): {offending}"
+        f"output on unknown field(s): {offending}. stderr: {stderr}"
+    )
+    # SEMANTIC roundtrip: the allow must read back as allowTool=True, not the
+    # protojson omitted-bool default. This is the assertion the old test lacked.
+    parsed = PreToolHookResult.model_validate(output)
+    assert parsed.allowTool is True, (
+        f"PreToolUse ALLOW must parse as allowTool=True (agy protojson defaults an "
+        f"omitted bool to false → DENY). Got {output!r}. stderr: {stderr}"
     )
 
 

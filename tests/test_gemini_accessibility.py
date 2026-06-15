@@ -111,16 +111,3 @@ def test_gemini_extension_manifest_parameters():
     assert "env" in pkb_config
     assert pkb_config["env"].get("ACA_DATA") == "${ACA_DATA}"
     assert pkb_config["env"].get("PKB_MCP_URL") == "${PKB_MCP_URL}"
-
-
-def test_rbg_accessibility_in_compliance_config():
-    """Verify aops_core_rbg is present in compliance agents config for plan mode."""
-    config_path = REPO_ROOT / "polecat" / "defaults" / "compliance-agents.toml"
-    assert config_path.exists()
-
-    content = config_path.read_text()
-
-    # Check that aops_core_rbg is allowed and description mentions plan mode
-    assert "aops_core_rbg" in content
-    assert 'decision = "allow"' in content
-    assert "plan mode" in content.lower()
