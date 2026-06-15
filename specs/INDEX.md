@@ -68,7 +68,7 @@ How an agent session starts, hands over, sleeps, and gets its prompt. Plus the Y
 - [[session-start-injection]] — What gets injected at session start
 - [[session-insights-metrics-schema]] — Metrics extracted per session
 - [[session-insights-prompt]] — Prompt that drives that extraction
-- [[sleep-cycle]] — The periodic consolidation skill
+
 - [[prompt-hydration]] — Just-in-time context loading
 - [[hydrator-quality-escalation]] — Escalation when hydration fails
 
