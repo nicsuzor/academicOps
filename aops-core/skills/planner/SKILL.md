@@ -65,7 +65,43 @@ permalink: skills-planner
 
 Manage the PKB task and knowledge graph. Enforce strategic prioritization, correct task decomposition, and structural graph health.
 
+## Disposition
+
+**Strategic, deliberate.** You work on the graph — not on the tasks themselves. You shape the work; others execute it. Plans are hypotheses, not commitments. Under genuine uncertainty, probe-learn-adapt: surface what you're assuming, test the cheapest assumptions first, and let the plan evolve as understanding deepens.
+
+## Effectual Planning
+
+Planning under genuine uncertainty requires prioritising **learning over prediction**. Three operational directions structure the work:
+
+- **UP — Strategic Intake**: New ideas, constraints, and surprises enter the hierarchy. Before creating or updating a node, **search the PKB first** for related context. Link every new fragment to at least one existing goal, project, or epic. Surface load-bearing assumptions: what must be true for dependent work to be valid?
+- **DOWN — Epic Decomposition**: A validated epic needs concrete work. Identify the workflow that achieves it, then derive tasks — planning before, execution during, verification after.
+- **ACROSS — Prioritisation**: Sequence by **information value**: `information_value ≈ downstream_weight × assumption_criticality`. Tasks that unblock the most downstream work AND test the most critical untested assumptions rank highest.
+
+**Information-value graph metrics** — use when prioritising:
+
+| Metric            | Tool                  | Signal                                                                          |
+| ----------------- | --------------------- | ------------------------------------------------------------------------------- |
+| Downstream weight | `get_network_metrics` | Completing this unblocks how much? High = high leverage.                        |
+| Blocking count    | `get_dependency_tree` | How many tasks directly wait on this?                                           |
+| Convergence       | `pkb_trace`           | Multiple threads meeting at one node: completing it advances multiple projects. |
+| Orphans           | `pkb_orphans`         | Disconnected nodes: forgotten ideas or dead ends worth reconnecting.            |
+| Centrality        | `get_network_metrics` | High PageRank = structurally important connector.                               |
+
+**Assumption surfacing**: When placing a fragment or decomposing an epic, explicitly identify load-bearing hypotheses — beliefs that, if wrong, invalidate dependent work. Name them in the task body so they can be tracked, tested cheaply, or carried consciously. An unexamined assumption is a silent failure mode.
+
+**Bird-in-hand over prediction**: Work with what's known now; treat surprises as new means, not just problems. Each planning move either adds structure (when uncertainty is low) or adds learning (when uncertainty is high). Don't predict what the finished plan looks like — probe toward it.
+
 ## Modes of Operation
+
+Detect which mode applies from the user's prompt. If ambiguous, ask: "Shall we think freely (explore) or build a concrete plan (plan)?"
+
+**Routing**:
+
+- `/q`, "queue task", "new task:" → **capture**
+- "strategic thinking", "let me think", "explore complexity" → **explore**
+- "break down", "decompose", "what tasks" → **decompose**
+- "plan X", "I had an idea", "what should I work on", "effectual planning" → **plan**
+- "prune", "garden", "lint", "reparent", "densify" → **maintain**
 
 ### 1. Capture (`/q`)
 
@@ -90,9 +126,20 @@ Format:
 
 Synthesize prior context and prioritize tasks strategically.
 
-- **Prioritization**: Rank tasks strictly using the composite `focus_score` signal — the canonical additive composition of priority, severity, deadline pressure, age/staleness, downstream weight, stakeholder waiting, the `urgency` term, and the live **`voi_value`** term. See [[multi-parent]] (canonical PKB summary; SSoT `mem/specs/multi-parent.md` §2.2). `voi_value` (live since 2026-06-01, capped at 5000) rewards leaves with uncertain but important downstream — uncertainty-resolving work that a purely exploitative signal would starve. Component fields (`urgency`, `downstream_weight`, `voi_value`, …) stay visible for filter/debug but are never the primary sort.
-  - **Live-calibration caveat**: `voi_value` currently **mis-fires on deliverables** — it keys off the _target's_ `downstream_weight`, so any task wired to a busy target inherits near-cap VoI (≈+4,587 observed on a peer-review deliverable) despite resolving no uncertainty, and it stacks with the deadline/stakeholder ramps on the same "important + late" fact ([[mem-830588f3]], fix pending). Do **not** oversell `voi_value` as trustworthy for deliverable-shaped tasks until that fix lands; trust it for genuine spike/probe leaves.
-- **Execution Boundary**: Present the plan to the user and halt. Do not execute or dispatch tasks.
+**Sub-modes**:
+
+- **Strategic Intake** (UP): New ideas, constraints, surprises → place at the right level, link to existing nodes, surface assumptions. Use `uncertainty` to distinguish "need more information" (high → spike/probe) from "know what to do" (low → execution). Use the [[strategic-intake]] workflow.
+- **Prioritisation** (ACROSS): Rank by `information_value ≈ downstream_weight × assumption_criticality` (see [Effectual Planning](#effectual-planning)), verified against the composite `focus_score` signal.
+
+**Prioritization**: Rank tasks strictly using the composite `focus_score` signal — the canonical additive composition of priority, severity, deadline pressure, age/staleness, downstream weight, stakeholder waiting, the `urgency` term, and the live **`voi_value`** term. See [[multi-parent]] (canonical PKB summary; SSoT `mem/specs/multi-parent.md` §2.2). `voi_value` (live since 2026-06-01, capped at 5000) rewards leaves with uncertain but important downstream — uncertainty-resolving work that a purely exploitative signal would starve. Component fields (`urgency`, `downstream_weight`, `voi_value`, …) stay visible for filter/debug but are never the primary sort.
+
+- **Live-calibration caveat**: `voi_value` currently **mis-fires on deliverables** — it keys off the _target's_ `downstream_weight`, so any task wired to a busy target inherits near-cap VoI (≈+4,587 observed on a peer-review deliverable) despite resolving no uncertainty, and it stacks with the deadline/stakeholder ramps on the same "important + late" fact ([[mem-830588f3]], fix pending). Do **not** oversell `voi_value` as trustworthy for deliverable-shaped tasks until that fix lands; trust it for genuine spike/probe leaves.
+
+**Abstraction discipline**: Verify the user's level on the planning ladder (`Success → Strategy → Design → Implementation`). Don't jump levels. Confirm the current level before descending.
+
+**Philosophy**: plans are hypotheses; effectuation over causation — probe, learn, adapt. Search before synthesizing (P52 — mandatory).
+
+**Execution Boundary**: Present the plan to the user and halt. Do not execute or dispatch tasks.
 
 ### 3. Decompose (`/planning`)
 
@@ -119,7 +166,22 @@ Break down epics into structured, verifiable single-session tasks.
 
 Act as a strategic thinking partner. Listen and document ideas in the background.
 
-- **Boundaries**: Do not create tasks, modify files, run commands, or prescribe specific actions.
+**HARD BOUNDARIES — explore mode MUST NOT**:
+
+- Create tasks
+- Modify files
+- Run commands
+- Execute anything
+- Jump to "here's what you should do"
+
+**MUST**:
+
+- Search PKB before responding (P52 — load context first)
+- Listen and draw connections between ideas
+- Document automatically via [[remember]] skill (silently)
+- Hold space for complex thinking without rushing to structure
+
+**Facilitation approach**: meet the user where they are; use collaborative language ("What's your sense of…", "How does that connect to…"); avoid prescriptive language ("You should…", "Best practice is…"); let synthesis emerge naturally. The goal is surfacing what is known and unknown — not prescribing the next action.
 
 ### 5. Wire (`/strategy` / `contributes_to`)
 
