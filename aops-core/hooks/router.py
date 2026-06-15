@@ -1071,18 +1071,22 @@ class HookRouter:
         short_reason = _strip_hook_markers(result.system_message)
 
         if event == "PreToolUse":
-            # PreToolHookResult: allow is the empty object; a deny is expressed
-            # structurally via the top-level allowTool=false + denyReason fields
-            # of PreToolHookResult — no enum string needed.
+            # PreToolHookResult: allow/deny are BOTH expressed structurally via the
+            # top-level allowTool bool + denyReason fields — no enum string needed.
             if is_block:
                 return {
                     "allowTool": False,
                     "denyReason": short_reason or advisory or "Blocked by hook gate.",
                 }
-            # allow / warn: PreToolHookResult has no advisory channel, so a warn's
-            # context cannot be surfaced here (agy platform limitation, not a
-            # regression). Emit the empty allow object.
-            return {}
+            # allow / warn: emit allowTool=true EXPLICITLY. The empty object {} is
+            # NOT a valid allow: agy parses stdout as exa.hooks_pb.PreToolHookResult
+            # protojson, where an OMITTED bool defaults to false. So {} → allowTool=
+            # false, denyReason="" → agy treats EVERY allowed tool call as a DENY
+            # with an empty reason, blocking all tool use on the agy client
+            # (aops-1e68682a; reproduced live in session 22b4caa2, 2026-06-15).
+            # PreToolHookResult has no advisory channel, so a warn's context cannot
+            # be surfaced here (agy platform limitation, not a regression).
+            return {"allowTool": True}
 
         if event == "PostToolUse":
             # PostToolHookResult is the empty object — it carries no verdict or
