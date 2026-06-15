@@ -62,8 +62,8 @@ Before writing instructions or propagating subagent results:
 ### Phase 5: Codify & Land
 
 - Promote tested instructions to canonical skills or commands.
-- Verify deliverables actually reached their target destinations (e.g., reviews posted, commits pushed, PKB tasks updated).
-- **Always leave a loose thread**: File follow-up tasks in the PKB for any remaining friction items, promotion work, or subsequent phases before exiting.
+- Verify deliverables actually reached their target destinations (e.g., reviews posted, commits pushed, task tracker updated).
+- **Always leave a loose thread**: File follow-up tasks for any remaining friction items, promotion work, or subsequent phases before exiting.
 
 ## Output Expectations
 

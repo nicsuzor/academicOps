@@ -140,6 +140,12 @@ The sibling audit task ([[aops-35e31b8c]]) uses this spec as its rubric. For eac
 
 A passage that fails any of these tests is a content violation. Violations are either remediated inline (for clear cases) or filed as follow-up tasks.
 
+## Component-file rule (where specs live)
+
+A component's behaviour spec **is** its `SKILL.md` or `agent.md`. `specs/` holds only cross-component contracts — how components relate, interact, or constrain each other.
+
+A doc describing **one component** must BE that component's file. A doc describing **how components relate** lives in `specs/`. A per-component spec living in `specs/` is an orphan-in-waiting: it will drift from the file it was meant to describe, and the component's file will drift away from the spec (cf. `effectual-planning-agent.md` — the canonical failure mode).
+
 ## Cross-References
 
 - [[agent-authority]] (`specs/agents/agent-authority.md`) — Frontmatter schema, skill delegation, sub-agent spawning, non-transit rule.
