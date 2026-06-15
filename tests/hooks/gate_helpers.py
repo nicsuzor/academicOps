@@ -1,8 +1,6 @@
 """Shared helpers and constants for gate hook tests.
 
-All gate test modules import from here. Adding a new gate to the system
-requires adding one entry to STOP_GATES (for stop-event gates) or the
-relevant data structure.
+All gate test modules import from here.
 """
 
 import copy
@@ -32,8 +30,6 @@ SCENARIOS_FILE = FIXTURES_DIR / "gate_scenarios.json"
 LIVE_SCENARIOS_FILE = FIXTURES_DIR / "gate_scenarios_live.json"
 
 ROUTER_PATH = AOPS_CORE / "hooks" / "router.py"
-
-STOP_GATES = ["handover", "qa", "ida"]
 
 ALL_HOOK_EVENTS = [
     "SessionStart",

@@ -11,8 +11,6 @@ event type) and never leaks to user-visible channels. Covers:
 - Non-HSO events (SessionStart, SubagentStart, etc.): no ``hookSpecificOutput``
   emitted; ``context_injection`` has no delivery channel and must not silently
   accumulate
-
-Adding a new stop-gate: append to STOP_GATES in gate_helpers.py.
 """
 
 import json
@@ -29,13 +27,15 @@ from tests.hooks.gate_helpers import (
     ADVISORY,
     ALL_HOOK_EVENTS,
     CLAUDE_ACCEPTED_HOOK_EVENT_NAMES,
-    STOP_GATES,
     GateVerdict,
     make_gate_trigger_context,
     make_gate_trigger_state,
     reinit_gates_with_defaults,
     set_gate_modes,
 )
+
+# Gates whose Stop-event policy can be deterministically triggered via gate_helpers.
+STOP_GATES = ["handover", "qa", "ida"]
 
 # The Stop `reason` field is user-visible (Claude Code renders a blocking Stop
 # hook's reason to the user). The router therefore strips the
