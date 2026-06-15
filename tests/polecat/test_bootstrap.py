@@ -112,8 +112,9 @@ def test_validate_bootstrap_success(tmp_path, monkeypatch):
     aops_dir.mkdir()
     (aops_dir / ".agents" / "rules").mkdir(parents=True)
     (aops_dir / ".agents" / "rules" / "AXIOMS.md").touch()
-    (aops_dir / "aops-core" / "skills" / "sleep").mkdir(parents=True)
-    (aops_dir / "aops-core" / "skills" / "sleep" / "SKILL.md").touch()
+    # Create a representative skill (the exact name doesn't matter — just non-empty)
+    (aops_dir / "aops-core" / "skills" / "verify").mkdir(parents=True)
+    (aops_dir / "aops-core" / "skills" / "verify" / "SKILL.md").touch()
 
     monkeypatch.setenv("AOPS", str(aops_dir))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
