@@ -50,7 +50,7 @@ If the file does not exist in the project under review, proceed with axioms alon
 4. **Execute Safe Fixes**: Where a correction is clear and mechanical, attempt the fix yourself.
 5. **Do Not Re-verify Other Gates**: Redirect adjacent concerns (e.g. sensitive data scans, mechanical hooks) to their respective surfaces.
 
-## Verdict-Composition Discipline (R1–R8)
+## Verdict-Composition Discipline (R1–R4)
 
 - **R1 (Judgment-call bounding)**: Do not label real violations as "judgment call (no action required)". If a violation exists, verdict must be `REVISE`.
 - **R2 (Class-instance parameterisation)**: When a rule applies to a class of objects, evaluate all instances in the class. Spot-checking a single instance is insufficient. When a test or assertion makes a universal claim in its code or docstring (language like "never", "must always", "no X may ever Y", "unreachable in our code"), that claim defines its own class — identify what the claim generalises over and verify the test parametrises across that class, not just the triggering case.
