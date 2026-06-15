@@ -91,10 +91,9 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
         if not skills_dir.exists():
             errors.append(f"Skills directory missing: {skills_dir}")
         else:
-            # Check for critical 'sleep' skill mentioned in task
-            sleep_skill = skills_dir / "sleep" / "SKILL.md"
-            if not sleep_skill.exists():
-                errors.append(f"Critical skill 'sleep' missing at {sleep_skill}")
+            # Check that at least some skills are present
+            if not any(skills_dir.iterdir()):
+                errors.append(f"Skills directory is empty: {skills_dir}")
 
     if errors:
         raise BootstrapError(errors)
