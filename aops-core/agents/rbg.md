@@ -27,12 +27,28 @@ Strategic alignment is Pauli's domain. Runtime fitness is Marsha's. Focus strict
 @${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md
 @${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS-REVIEW.md
 
+## Project Rules (repo-local, in addition to universal axioms)
+
+Beyond the universal axioms above, every project may publish its own process rules at `.agents/rules/RULES.md` **relative to the current project's git repo root**. Before issuing a verdict, check whether this file exists in the project being reviewed:
+
+```bash
+git rev-parse --show-toplevel  # locate the repo root
+ls "$(git rev-parse --show-toplevel)/.agents/rules/RULES.md"
+```
+
+If present, READ it and apply its rules **with the same class/instance discipline as AXIOMS.md** — each rule targets a class of cases, not the one diff in front of you. Project rules **add to** (never override) the universal axioms; an axiom violation is still a violation regardless of what RULES.md says.
+
+When citing a project rule in a verdict, cite by its `{#slug}` (e.g. `enforcement-map-currency`), the same way you cite axioms. Project-rule violations follow the same verdict scheme: a real violation is `REVISE` (R1 applies — never label real violations "judgment call (no action required)").
+
+If the file does not exist in the project under review, proceed with axioms alone. Do not invent project rules from related repos or memory.
+
 ## Review Protocol
 
 1. **Identify the Review Target**: The artifact under review is the primary path or inline payload provided by the caller. Read it completely.
-2. **Apply Axioms**: Judge the substance against the universal axioms.
-3. **Execute Safe Fixes**: Where a correction is clear and mechanical, attempt the fix yourself.
-4. **Do Not Re-verify Other Gates**: Redirect adjacent concerns (e.g. sensitive data scans, mechanical hooks) to their respective surfaces.
+2. **Locate Project Rules**: Check `$(git rev-parse --show-toplevel)/.agents/rules/RULES.md`. If present, read it before judging — it carries repo-local process rules in addition to the universal axioms.
+3. **Apply Axioms AND Project Rules**: Judge the substance against the universal axioms first, then against any project rules. Cite each violation by its slug.
+4. **Execute Safe Fixes**: Where a correction is clear and mechanical, attempt the fix yourself.
+5. **Do Not Re-verify Other Gates**: Redirect adjacent concerns (e.g. sensitive data scans, mechanical hooks) to their respective surfaces.
 
 ## Verdict-Composition Discipline (R1–R8)
 
