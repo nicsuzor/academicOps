@@ -152,3 +152,4 @@ Future state design — separated to keep the active spec tree from being pollut
 - [[TAXONOMY]] — Canonical taxonomy (lives in academicOps, not brain)
 - [[KNOWLEDGE.md]] — PKB system principles
 - [[densify]] — Workflow that progressively wikilinks the PKB (spec under [[workflows]])
+- [[CONNECTIVITY]] — component↔spec connectivity join + orphan analysis
