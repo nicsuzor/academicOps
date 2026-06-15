@@ -50,11 +50,14 @@ Does the result match what was promised?
 
 Was the work done properly?
 
-| Check          | Question                                          |
-| -------------- | ------------------------------------------------- |
-| Tests run      | If code changed, were tests executed and passing? |
-| No scope drift | Does the diff match the PR description?           |
-| No regressions | Do existing features still work?                  |
+| Check          | Question                                                                              |
+| -------------- | ------------------------------------------------------------------------------------- |
+| Tests run      | If code changed, were tests executed and passing?                                     |
+| No scope drift | Does the diff match the PR description?                                               |
+| No regressions | Do existing features still work?                                                      |
+| Project rules  | If `.agents/rules/RULES.md` exists in this repo, does the diff comply with its rules? |
+
+**Repo-local rules check.** If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply its rules **with the same class/instance discipline as `AXIOMS.md`** — each rule targets a class of cases, not the one diff in front of you. Project-rule violations belong in the Issues section under the **Process Compliance** dimension, cited by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note it briefly in the report. Do not invent project rules from related repos or memory.
 
 #### 3. Semantic Correctness
 
