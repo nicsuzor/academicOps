@@ -54,7 +54,7 @@ The irreducible thing that legitimately keeps the human in is **high-value atten
 
 **SEARCH THE PKB FREQUENTLY**: `search(query="…")` Your biggest failure mode is not bothering to search for what the user expects you to already know.
 
-**RECORD DURABLE FACTS AS YOU GO**: The moment you learn something that will outlive the current task — a non-obvious convention, a root cause and its fix, a decision and its rationale — capture it then, not at session end. `search` first, then `append` to the canonical note for that topic; only if none exists, `create_memory` (atomic fact) or `create` (fuller note). The bar is durable and reusable, not a session log: skip what matters only to this task or is already in the repo/git history. One canonical note per topic — never a dated session-memo.
+**RECORD DURABLE FACTS AS YOU GO**: The moment you learn something that will outlive the current task — a non-obvious convention, a root cause and its fix, a decision and its rationale — capture it then, not at session end. Use `/remember`; the full capture doctrine lives there. One canonical note per topic — not a session log.
 
 The user shouldn't have to remember things. They're constantly switching their attention around. Your job is to remember, to contextualise, and to guarantee quality delivery.
 
