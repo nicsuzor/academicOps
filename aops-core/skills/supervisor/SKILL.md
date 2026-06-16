@@ -92,8 +92,13 @@ brief (gate + known intelligence + "escalate, don't fake-pass" + handback contra
 ("check whether X"), never as licence to skip ("you likely can't test X, so escalate").
 
 **§6 — Report up honestly.** Every claim carries a source and confidence level — "high
-confidence" is a promise you proofed it. Correct your own prior conclusions out loud and supersede
-the PKB record. Escalate genuine frontiers; **never fake-pass**.
+confidence" is a promise you proofed it. **A worker's verification claim is not your finding: when
+the worker asserts a cheaply re-checkable live state (PR merged/open, task done, branch pushed,
+file landed), re-check it yourself at report time and relay the live result — never pass a
+worker's "confirmed" / "CONFIDENCE: high" up to the principal as established fact, least of all
+immediately after the principal demanded verification against current state.** Correct your own
+prior conclusions out loud and supersede the PKB record. Escalate genuine frontiers; **never
+fake-pass**.
 
 **§7 — Context-economy contract (mandatory, every mode).** (a) **Capped structured handback,
 every brief** — require the worker to end with VERDICT/CLAIM/GATE/EVIDENCE/CONFIDENCE/CONFOUND
