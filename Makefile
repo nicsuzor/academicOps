@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install-remote install-claude install-gemini install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell
 
 # --- Configuration ---
 
@@ -9,13 +9,19 @@ AOPS_ROOT := $(shell pwd)
 DIST_DIR := $(AOPS_ROOT)/dist
 INSTALL_BIN := $(if $(USER_OPT),$(USER_OPT)/bin,$(HOME)/.local/bin)
 CRON_SCRIPT := $(AOPS_ROOT)/scripts/repo-sync-cron.sh
-DIST_REPO := nicsuzor/academicOps#dist
-DIST_REPO_URL := https://github.com/$(DIST_REPO)
-GEMINI_REMOTE_URL := https://github.com/nicsuzor/academicOps.git
-AGY_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-core
-AGY_TOOLS_PLUGIN_DIR := $(HOME)/.gemini/antigravity-cli/plugins/aops-tools
+# The published plugins live on the `dist` BRANCH of the repo. The Claude
+# marketplace source takes a `owner/repo@ref` string (DIST_REPO), but the release
+# download URLs (DIST_REPO_URL, used by AGY_*_RELEASE_URL) must be the plain repo
+# URL with NO branch ref. Keep them separate. NOTE: do NOT write the ref as
+# `owner/repo#dist` — `#` starts a comment in both Make and the shell, so the ref
+# is silently dropped and the wrong (default) branch gets used.
+DIST_REPO_SLUG := nicsuzor/academicOps
+DIST_REPO := $(DIST_REPO_SLUG)@dist
+DIST_REPO_URL := https://github.com/$(DIST_REPO_SLUG)
 
-# Extension names
+# Extension names. GEMINI_* are retained only for install-dev's legacy gemini
+# teardown; the live `make install` flow no longer installs the deprecated
+# Gemini CLI extension (see install / install-windows).
 GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
@@ -29,7 +35,6 @@ CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 CLAUDE_COWORK_MARKETPLACE := academicOps-cowork
 CLAUDE_COWORK_PLUGIN_NAME := aops-coworklocal@academicOps-cowork
 COWORK_DIST_DIR := $(DIST_DIR)/aops-coworklocal
-GEMINI_TOOLS_REMOTE_URL := https://github.com/nicsuzor/academicOps/releases/latest/download/aops-tools.tar.gz
 
 # Platform detection for binaries
 UNAME_S := $(shell uname -s)
@@ -58,14 +63,14 @@ help:
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "User Installation (Install from remote releases):"
-	@echo "  make install        - Install all components from GitHub releases (includes aops-tools)"
+	@echo "  make install        - Clean local installs, then install live plugins (Claude + agy) from the dist channel"
+	@echo "  make clean-local    - Remove local/dev installs + marketplace override (run before a live install)"
 	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
 	@echo "  make install-cowork - Install aops-cowork locally from its isolated 'academicOps-cowork' marketplace"
 	@echo "  make uninstall-cowork - Remove aops-cowork + its isolated marketplace"
-	@echo "  make install-gemini - Install Gemini extensions from main repo"
-	@echo "  make install-agy   - Install plugin into Antigravity CLI (agy)"
-	@echo "  make install-windows - (WSL only) Install into Windows-side Claude/Gemini if present"
+	@echo "  make install-agy   - Install plugin into Antigravity CLI (agy) via official 'agy plugin install'"
+	@echo "  make install-windows - (WSL only) Install into Windows-side Claude if present"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
 	@echo "Release Management:"
@@ -175,8 +180,38 @@ install-hooks:
 # the UI. (Note: `aops-coworklocal` is a distinct plugin from `aops-core`, with
 # Cowork-specific behaviour for the PKB ↔ native task-list mirror — see
 # `aops-core/skills/cowork-sync/SKILL.md`.)
-install: ensure-docker install-claude install-openclaw install-gemini install-agy install-windows install-crontab
+# Live install. Clears any local/dev installs FIRST (clean-local) so a prior
+# `make install-dev` can't shadow the release build, then installs the live
+# plugins. The two CORE surfaces — Claude + agy — run first and HALT the chain if
+# their core plugin fails to install (that's the point of `make install`: prove
+# it works). The trailing surfaces (docker image, Windows-side Claude, crontab)
+# are optional and self-tolerant. The deprecated Gemini CLI and OpenClaw are
+# intentionally NOT in this chain.
+install: clean-local install-claude install-agy ensure-docker install-windows install-crontab
 	@$(MAKE) report-versions
+
+# Remove every LOCAL/dev install so a subsequent live `make install` is from a
+# clean slate and cannot be shadowed by a local build:
+#  - Uninstalls the Claude + agy plugins.
+#  - Removes the `academicOps` Claude marketplace. This is REQUIRED, not cosmetic:
+#    `claude plugin marketplace add` no-ops when the name already exists (it will
+#    NOT re-point the source), so a local-dir override left by `make install-dev`
+#    would otherwise survive and `make install` would reinstall the LOCAL build.
+#    install-claude re-adds the live $(DIST_REPO) source from scratch.
+#  - Deletes the local Antigravity build dirs so install-agy falls through to the
+#    live `dist` branch URL instead of preferring dist/aops-antigravity.
+# Leaves the rest of dist/ (e.g. cowork zips) untouched — use `make clean` for that.
+# Teardown is idempotent and quiet: uninstalling/removing something already absent
+# is expected, so those are silenced (|| true) rather than surfaced as scary errors.
+clean-local:
+	@echo "--- 🧹 Clearing local/dev installs ---"
+	@command claude plugin uninstall $(CLAUDE_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
+	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-core >/dev/null 2>&1 || true
+	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-tools >/dev/null 2>&1 || true
+	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
+	@echo "✓ Local installs cleared"
 
 ensure-docker:
 	@if ! command -v docker >/dev/null 2>&1; then \
@@ -194,14 +229,25 @@ ensure-docker:
 install-claude:
 	@echo "Installing aops plugin for Claude Code..."
 	@echo "  Source: $(DIST_REPO_URL)"
-	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	@(command claude plugin marketplace update academicOps || \
-	command claude plugin marketplace add $(DIST_REPO) && \
-	command claude plugin marketplace update academicOps) && \
-	command claude plugin install $(CLAUDE_PLUGIN_NAME) && \
-	echo "✓ Claude Code aops-core installed"
+	@# Idempotent, quiet teardown (uninstalling something absent is expected).
+	@command claude plugin uninstall $(CLAUDE_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@# Force the academicOps marketplace to the LIVE dist repo. `marketplace add`
+	@# no-ops when the name already exists (it will NOT re-point an existing
+	@# source), so remove any prior source first — e.g. a local-dir override left
+	@# by `make install-dev` — then re-add the release source from scratch.
+	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
+	@command claude plugin marketplace add $(DIST_REPO)
+	@command claude plugin marketplace update academicOps
+	@# aops-core is the success criterion of this surface — HALT on failure rather
+	@# than warn-and-continue (mirrors install-agy/install-cowork). aops-tools is a
+	@# softer dependency: its asset can legitimately be absent from a dist build, so
+	@# a tools failure warns and continues.
+	@command claude plugin install $(CLAUDE_PLUGIN_NAME) \
+		&& echo "✓ Claude Code aops-core installed" \
+		|| { echo "  ⚠️ Claude aops-core install failed — could not install from $(DIST_REPO_URL) marketplace" >&2; exit 1; }
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
+		&& echo "✓ Claude Code aops-tools installed" \
 		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
 install-openclaw:
@@ -288,22 +334,20 @@ uninstall-cowork:
 	-command claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)
 	@echo "✓ aops-cowork + '$(CLAUDE_COWORK_MARKETPLACE)' removed"
 
-install-gemini:
-	@echo "Installing aops extension for Gemini CLI..."
-	@echo "  Source: $(GEMINI_REMOTE_URL)"
-	-command gemini extensions uninstall $(GEMINI_EXT_NAME)
-	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME)
-	@command gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release && \
-	echo "✓ Gemini CLI aops-core extension installed"
-	@command gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release \
-		|| echo "  ⚠️ Gemini aops-tools install failed — release asset missing from $(GEMINI_TOOLS_REMOTE_URL) (next dist build should restore it)"
-
-# Install into Antigravity CLI (agy). Unlike gemini/claude which have their own
-# plugin install commands, agy reads plugins from a flat directory.
-# If dist/aops-antigravity exists (local dev build), use it directly.
-# Otherwise, download the latest release tarball from GitHub.
-AGY_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-antigravity-latest.tar.gz
-AGY_TOOLS_RELEASE_URL := $(DIST_REPO_URL)/releases/latest/download/aops-tools-antigravity-latest.tar.gz
+# Install into Antigravity CLI (agy) via agy's OFFICIAL `agy plugin install`
+# command — no hand-copying of plugin source. agy has no user-addable marketplace
+# (its marketplaces are built into the binary), so third-party plugins install
+# from either:
+#   - a local directory:  agy plugin install <dir>
+#   - a GitHub URL:        agy plugin install https://github.com/<o>/<r>/tree/<branch>/<subpath>
+# In the URL form, agy clones the repo, checks out <branch>, locates the plugin in
+# <subpath>, and converts/installs it. We point at the `dist` BRANCH — the SAME
+# live channel the Claude marketplace uses, always current. (The release
+# `/releases/latest/download/` assets are NOT usable: GitHub's "latest" excludes
+# prereleases, and the antigravity assets only attach to prerelease builds.)
+# For LOCAL dev (dist/aops-antigravity present) install straight from that dir.
+AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-antigravity
+AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-tools-antigravity
 
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
@@ -315,41 +359,23 @@ install-agy:
 	-@agy plugin uninstall aops-tools >/dev/null 2>&1 || true
 	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
 		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
-		rm -rf "$(AGY_PLUGIN_DIR)"; \
-		mkdir -p "$(AGY_PLUGIN_DIR)"; \
-		cp -r "$(DIST_DIR)/aops-antigravity/"* "$(AGY_PLUGIN_DIR)/"; \
-		agy plugin install "$(AGY_PLUGIN_DIR)"; \
+		agy plugin install "$(DIST_DIR)/aops-antigravity" && echo "✓ agy aops-core installed" \
+			|| { echo "  ⚠️ agy aops-core install failed" >&2; exit 1; }; \
 		if [ -d "$(DIST_DIR)/aops-tools-antigravity" ]; then \
-			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
-			mkdir -p "$(AGY_TOOLS_PLUGIN_DIR)"; \
-			cp -r "$(DIST_DIR)/aops-tools-antigravity/"* "$(AGY_TOOLS_PLUGIN_DIR)/"; \
-			agy plugin install "$(AGY_TOOLS_PLUGIN_DIR)"; \
-		fi \
-	else \
-		echo "  Source: $(AGY_RELEASE_URL)"; \
-		TMP_DIR=$$(mktemp -d); \
-		curl -fsSL "$(AGY_RELEASE_URL)" | tar -xz -C "$$TMP_DIR"; \
-		rm -rf "$(AGY_PLUGIN_DIR)"; \
-		mkdir -p "$(AGY_PLUGIN_DIR)"; \
-		cp -r "$$TMP_DIR/"* "$(AGY_PLUGIN_DIR)/"; \
-		agy plugin install "$(AGY_PLUGIN_DIR)"; \
-		rm -rf "$$TMP_DIR"; \
-		TMP_DIR=$$(mktemp -d); \
-		curl -fsSL "$(AGY_TOOLS_RELEASE_URL)" | tar -xz -C "$$TMP_DIR" || echo "  ⚠️ aops-tools remote download failed"; \
-		if [ -d "$$TMP_DIR" ] && [ "$$(ls -A $$TMP_DIR)" ]; then \
-			rm -rf "$(AGY_TOOLS_PLUGIN_DIR)"; \
-			mkdir -p "$(AGY_TOOLS_PLUGIN_DIR)"; \
-			cp -r "$$TMP_DIR/"* "$(AGY_TOOLS_PLUGIN_DIR)/"; \
-			agy plugin install "$(AGY_TOOLS_PLUGIN_DIR)"; \
+			agy plugin install "$(DIST_DIR)/aops-tools-antigravity" && echo "✓ agy aops-tools installed" \
+				|| echo "  ⚠️ agy aops-tools install failed"; \
 		fi; \
-		rm -rf "$$TMP_DIR"; \
+	else \
+		echo "  Source: $(AGY_CORE_URL) (live dist branch)"; \
+		agy plugin install "$(AGY_CORE_URL)" && echo "✓ agy aops-core installed" \
+			|| { echo "  ⚠️ agy aops-core install failed" >&2; exit 1; }; \
+		agy plugin install "$(AGY_TOOLS_URL)" && echo "✓ agy aops-tools installed" \
+			|| echo "  ⚠️ agy aops-tools install failed (next dist build should restore it)"; \
 	fi
-	@echo "  Target: $(AGY_PLUGIN_DIR) and $(AGY_TOOLS_PLUGIN_DIR)"
-	@echo "✓ Antigravity CLI plugin installed"
 
-# Optional: install into Windows-side Claude/Gemini when invoked from WSL.
-# Silently no-ops outside WSL or when no Windows binaries are found.
-# Set AOPS_SKIP_WINDOWS=1 to opt out even when WSL + Windows binaries are present.
+# Optional: install into Windows-side Claude when invoked from WSL.
+# Silently no-ops outside WSL or when no Windows Claude is found.
+# Set AOPS_SKIP_WINDOWS=1 to opt out even when WSL + Windows Claude is present.
 install-windows:
 	@if [ -n "$$AOPS_SKIP_WINDOWS" ]; then \
 		echo "Skipping Windows-side install (AOPS_SKIP_WINDOWS set)"; \
@@ -358,7 +384,7 @@ install-windows:
 	if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
 		exit 0; \
 	fi; \
-	echo "--- 🪟  WSL detected — checking for Windows-side Claude/Gemini ---"; \
+	echo "--- 🪟  WSL detected — checking for Windows-side Claude ---"; \
 	if (cd /mnt/c && cmd.exe /c "where claude" >/dev/null 2>&1); then \
 		echo "Installing aops-core plugin into Windows Claude..."; \
 		(cd /mnt/c && cmd.exe /c "claude plugin marketplace add $(DIST_REPO)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)' || true); \
@@ -371,25 +397,14 @@ install-windows:
 			|| echo "  ⚠️ Windows Claude aops-tools install failed"; \
 	else \
 		echo "  (no Windows-side claude found — skipping)"; \
-	fi; \
-	if (cd /mnt/c && cmd.exe /c "where gemini" >/dev/null 2>&1); then \
-		echo "Installing aops extensions into Windows Gemini CLI..."; \
-		(cd /mnt/c && cmd.exe /c "gemini extensions install $(GEMINI_REMOTE_URL) --consent --auto-update --pre-release" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Gemini aops-core installed" \
-			|| echo "  ⚠️ Windows Gemini aops-core install failed"; \
-		(cd /mnt/c && cmd.exe /c "gemini extensions install $(GEMINI_TOOLS_REMOTE_URL) --consent --auto-update --pre-release" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Gemini aops-tools installed" \
-			|| echo "  ⚠️ Windows Gemini aops-tools install failed"; \
-	else \
-		echo "  (no Windows-side gemini found — skipping)"; \
 	fi
 
 report-versions:
 	@echo "--- 📋 Installed Versions ---"
-	@echo "Gemini extensions:"
-	@-gemini extensions list 2>&1 || true
 	@echo "Claude plugins:"
 	@-claude plugin list 2>&1 || true
+	@echo "Antigravity (agy) plugins:"
+	@-command -v agy >/dev/null 2>&1 && agy plugin list 2>&1 || echo "  (agy not on PATH)"
 
 install-crontab:
 	@if crontab -l 2>/dev/null | grep -q "repo-sync-cron"; then \
