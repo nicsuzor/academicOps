@@ -352,9 +352,9 @@ Each entry: name, pyramid position, purpose, authoritative source. Runtime-gate 
 
 #### Scheduled batch automation
 
-| Job                   | L  | Purpose                                         | Source                               |
-| :-------------------- | :- | :---------------------------------------------- | :----------------------------------- |
-| `apply_triage` labels | L0 | Labels open PRs; opens issue for escalate-class | `aops-core/scripts/dump_pr_state.py` |
+| Job                   | L  | Purpose                                                                                                                                                          | Source                               |
+| :-------------------- | :- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------- |
+| `apply_triage` labels | L0 | Labels open PRs (`triage:*`); `triage:escalate` only on a halted pipeline (`mechanic-status` FAILURE/ERROR), red/conflict → `triage:pipeline`. No issues opened. | `aops-core/scripts/dump_pr_state.py` |
 
 #### PR-pipeline agents (v2)
 
