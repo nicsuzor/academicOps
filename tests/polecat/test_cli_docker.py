@@ -66,6 +66,27 @@ class TestNodeVersionKey:
         assert result[1] == Path("v20.0.1")
         assert result[2] == Path("v20.0.0")
 
+
+class TestBuildDockerCmd:
+    """Tests for _build_docker_cmd Docker wrapper construction."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        """Force local-daemon (bind-mount) path so tests don't require Docker on PATH."""
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
+    def _build(self, cli_tool="claude", env=None, agent_cmd=None, work_dir=None, **kwargs):
+        docker_cmd = _build_docker_cmd(
+            cli_tool=cli_tool,
+            work_dir=work_dir or Path("/tmp/worktree"),
+            env=env if env is not None else {},
+            agent_cmd=agent_cmd or ["claude", "--dangerously-skip-permissions"],
+            is_interactive=False,
+            **kwargs,
+        )
+        return docker_cmd.cmd
+
     def test_ssh_isolation(self):
         """SSH fully blocked: agent cleared, command disabled, prompt off."""
         cmd = self._build()
