@@ -208,7 +208,7 @@ Enforce the following classifications to save user attention:
 
 - **DECIDE**: Clear best option exists. Make the choice, record it in the task, and execute immediately (do not defer or surface).
 - **DEFER**: Missing runtime data. Document in the task body and wait.
-- **SURFACE**: True trade-off, naming, or high-blast-radius framework change. Present options, recommendation, and reasoning to the user.
+- **SURFACE**: True trade-off, naming, high-blast-radius framework change — **or a needs-Nic intent/promotion decision you are not authorised to make** (see Priority Assignment Rules). Present options, recommendation, and reasoning to the user **through the input-request tool (`AskUserQuestion`) — the visible channel**. Recording the decision only in the task body or a session/handover block is **NOT surfacing**: those surfaces are not read in time and the decision is dropped ([[aops-54fde025]]). If you are mid-run and cannot raise the tool in this turn, leave the task `inbox`/`needs_triage: true` and emit the `AskUserQuestion` at the next user turn — never let the task settle into `queued`/`ready` with the decision parked in prose.
 
 ## Priority Assignment Rules
 
@@ -217,7 +217,7 @@ Enforce the following classifications to save user attention:
 - **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children.
 - **Priority P0 Calibration**: Setting `priority=0` (P0) is prohibited unless it is deliberately calibrated for active incidents, pipeline-blocking work, or overdue critical deadlines, backed by a documented justification. Refer to [[../remember/references/TAXONOMY.md#p0-calibration-bar]] to avoid boundary violations.
 - **Importance ≠ intent**: route urgency, severity, blocker-status, and your own assessment of value to `consequence`/`severity`/`due`/`status` — never `priority`.
-- **Surface, don't set**: when you think something deserves Nic's attention, raise it via status/escalation so _he_ sets intent — never set it for him as a shortcut.
+- **Surface, don't set**: when you think something deserves Nic's attention, raise it **via the input-request tool (`AskUserQuestion`), the visible channel** so _he_ sets intent — never set it for him as a shortcut, and **never treat a recommendation written into the task body or handover block as the act of surfacing** (that is the invisible-surface escape hatch — the decision is silently dropped, [[aops-54fde025]]). A `contributes_to` edge you wire is NOT a substitute for surfacing intent: if the edge leaves the task's `downstream_weight`/`focus_score` at 0, the task is still illegible and the intent decision still owes Nic a visible `AskUserQuestion`.
 - **Never assign an epic to `nic`**: if a genuine human choice is needed, file a minimal binary-choice subtask that blocks the epic — don't hand the parent back.
 - **Deferrals**: Tasks waiting on other work must use `depends_on: [<id>]`, `status: blocked` (external events), or `status: someday` (parking). Do not leave deferrals in body prose.
 
