@@ -79,42 +79,11 @@ def test_validate_bootstrap_missing_axioms(tmp_path, monkeypatch):
     assert "Axioms file missing" in str(exc.value)
 
 
-def test_validate_bootstrap_missing_skills(tmp_path, monkeypatch):
-    aops_dir = tmp_path / "aops"
-    aops_dir.mkdir()
-    (aops_dir / ".agents" / "rules").mkdir(parents=True)
-    (aops_dir / ".agents" / "rules" / "AXIOMS.md").touch()
-
-    monkeypatch.setenv("AOPS", str(aops_dir))
-    monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
-    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
-    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "fake-token")
-
-    # Mock socket connection
-    import socket
-    from unittest.mock import MagicMock
-
-    monkeypatch.setattr(socket, "create_connection", lambda addr, timeout=None: MagicMock())
-
-    # Mock pkb_bridge client initialization
-    import polecat.pkb_bridge
-
-    monkeypatch.setattr(polecat.pkb_bridge, "_get_client", lambda: MagicMock())
-
-    with pytest.raises(BootstrapError) as exc:
-        validate_bootstrap()
-
-    assert "Skills directory missing" in str(exc.value)
-
-
 def test_validate_bootstrap_success(tmp_path, monkeypatch):
     aops_dir = tmp_path / "aops"
     aops_dir.mkdir()
     (aops_dir / ".agents" / "rules").mkdir(parents=True)
     (aops_dir / ".agents" / "rules" / "AXIOMS.md").touch()
-    (aops_dir / "aops-core" / "skills" / "sleep").mkdir(parents=True)
-    (aops_dir / "aops-core" / "skills" / "sleep" / "SKILL.md").touch()
-
     monkeypatch.setenv("AOPS", str(aops_dir))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")

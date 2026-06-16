@@ -11,7 +11,8 @@ needs_task: false
 mode: conversational
 domain:
   - planning
-owner: pauli
+allowed-tools: Skill
+permalink: commands/q
 ---
 
 # /q — Quick Queue

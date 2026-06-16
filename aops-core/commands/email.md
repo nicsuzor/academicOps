@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - email
-allowed-tools: ~~email, Task, Read, Grep, Skill, AskUserQuestion
+allowed-tools: Task, Read, Grep, Skill, AskUserQuestion
 permalink: commands/email
 ---
 

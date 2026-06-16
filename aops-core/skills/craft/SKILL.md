@@ -26,7 +26,7 @@ permalink: skills-craft
 
 # Instruction Craftsmanship Guidelines
 
-Review and audit agent-facing instructions (tasks, workflows, self-tests) to eliminate shallow-execution vulnerabilities.
+Review and audit any agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols — to eliminate shallow-execution vulnerabilities. Applies to any Claude agent system, not only this repo's framework.
 
 ## Modes of Operation
 

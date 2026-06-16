@@ -81,8 +81,78 @@ def test_no_claude_schema_field_ever_leaks(event, verdict):
 # --- PreToolUse ------------------------------------------------------------
 
 
-def test_pretooluse_allow_is_empty_object():
-    assert _agy("allow", event="PreToolUse", context="ignored") == {}
+@pytest.mark.parametrize("verdict", ["allow", "warn"])
+def test_pretooluse_nonblocking_emits_explicit_allow_tool_true(verdict):
+    """Every non-blocking PreToolUse verdict must emit ``{"allowTool": true}`` — never ``{}``.
+
+    SEMANTIC regression guard for aops-1e68682a. agy parses hook stdout as
+    ``exa.hooks_pb.PreToolHookResult`` protojson, where an OMITTED bool defaults
+    to ``false``. So an empty-object "allow" ``{}`` is parsed by agy as
+    ``allowTool=false, denyReason=""`` — a DENY with an empty reason — and agy
+    blocks EVERY allowed tool call on the agy/Antigravity client (reproduced live
+    in session 22b4caa2, 2026-06-15: 10 PreToolUse events all logged
+    ``verdict:allow`` internally, yet all 10 tools were denied with empty reason).
+
+    Both "allow" and "warn" are non-blocking (``is_block = verdict in ("deny", "ask")``
+    in router.py) and follow the same code path returning ``{"allowTool": True}``.
+    The class is parametrised over both to satisfy the categorical imperative.
+
+    The predecessor of this test (``test_pretooluse_allow_is_empty_object``)
+    asserted ``== {}`` — it encoded the bug as the contract, which is precisely
+    what let the regression ship. The contract is now SEMANTIC: the non-blocking
+    verdict must set ``allowTool`` true, not merely be "accepted" by the
+    unknown-field guard.
+    """
+    payload = _agy(verdict, event="PreToolUse", context="ignored")
+    assert payload == {"allowTool": True}
+    # No deny fields leak onto a non-blocking verdict.
+    assert "denyReason" not in payload
+    assert "decision" not in payload
+
+
+@pytest.mark.parametrize("verdict", ["allow", "warn"])
+def test_pretooluse_nonblocking_parses_as_allow_tool_true_under_protojson_model(verdict):
+    """Non-blocking PreToolUse output, parsed as ``PreToolHookResult``, must yield allowTool==True.
+
+    This is the SEMANTIC roundtrip the old contract test missed: the existing
+    ``is_accepted_by_agy`` guard only checks for UNKNOWN fields, so the buggy
+    ``{}`` passed it trivially (no unknown fields) while meaning DENY on the wire.
+    Here we parse the emitted dict through the same ``PreToolHookResult`` model
+    agy uses (transcribed from the ``exa.hooks_pb`` descriptor; the real binary
+    descriptor is not yet vendored — epic aops-2dc18411) and assert the BOOL the
+    harness reads is explicitly true, NOT the protojson omitted-bool default of
+    false.
+
+    Parametrised over both "allow" and "warn" — both are non-blocking and follow
+    the same router path (``is_block = verdict in ("deny", "ask")``).
+    """
+    from tests.hooks.agy_accept_contract import PreToolHookResult
+
+    payload = _agy(verdict, event="PreToolUse")
+    parsed = PreToolHookResult.model_validate(payload)
+    assert parsed.allowTool is True, (
+        f"agy reads PreToolHookResult.allowTool; a non-blocking {verdict!r} must parse "
+        f"as True, not the protojson omitted-bool default. payload={payload!r}"
+    )
+
+
+def test_pretooluse_empty_object_is_deny_falsification_anchor():
+    """Falsification anchor: ``{}`` passes the unknown-field guard but means DENY on the wire.
+
+    Pins exactly why the empty-object "allow" was wrong even though
+    ``is_accepted_by_agy`` returned True for it — the blindspot that shipped
+    aops-1e68682a.
+    """
+    from tests.hooks.agy_accept_contract import PreToolHookResult
+
+    # Falsification anchor: the BUGGY empty-object allow parses as allowTool=None,
+    # which agy's protojson coerces to the bool default false → DENY.
+    accepted, _ = is_accepted_by_agy({}, "PreToolUse")
+    assert accepted, "the empty object passes the unknown-field guard (the blindspot)"
+    assert PreToolHookResult.model_validate({}).allowTool is None, (
+        "empty-object allow leaves allowTool unset → agy protojson defaults it to "
+        "false → DENY; this is the aops-1e68682a bug the {} allow shipped"
+    )
 
 
 def test_pretooluse_deny_uses_top_level_allow_tool_no_enum():

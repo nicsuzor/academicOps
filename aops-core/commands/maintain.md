@@ -15,7 +15,7 @@ mode: execution
 domain:
   - operations
   - planning
-allowed-tools: Read, Grep, Glob, Skill, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__pkb_context, mcp__pkb__graph_json
+allowed-tools: Read, Grep, Glob, Skill, mcp__plugin_aops-core_pkb__list_tasks, mcp__plugin_aops-core_pkb__get_task, mcp__plugin_aops-core_pkb__pkb_context, mcp__plugin_aops-core_pkb__graph_json
 permalink: commands/maintain
 ---
 
@@ -32,7 +32,7 @@ Runs graph-hygiene and anti-inflation audits on the task graph. Surface findings
 
 1. **Delegate**: Invoke the `planner` skill to run the audit:
    `Skill(skill="planner", args="maintain: anti-inflation")`
-2. **Fallback**: If the planner skill is unavailable, read the task graph via `mcp__pkb__list_tasks` and check frontmatter properties. Do not perform any write operations.
+2. **Fallback**: If the planner skill is unavailable, read the task graph via `mcp__plugin_aops-core_pkb__list_tasks` and check frontmatter properties. Do not perform any write operations.
 
 ## Output Format
 

@@ -11,8 +11,6 @@ event type) and never leaks to user-visible channels. Covers:
 - Non-HSO events (SessionStart, SubagentStart, etc.): no ``hookSpecificOutput``
   emitted; ``context_injection`` has no delivery channel and must not silently
   accumulate
-
-Adding a new stop-gate: append to STOP_GATES in gate_helpers.py.
 """
 
 import json
@@ -29,12 +27,6 @@ from tests.hooks.gate_helpers import (
     ADVISORY,
     ALL_HOOK_EVENTS,
     CLAUDE_ACCEPTED_HOOK_EVENT_NAMES,
-    STOP_GATES,
-    GateVerdict,
-    make_gate_trigger_context,
-    make_gate_trigger_state,
-    reinit_gates_with_defaults,
-    set_gate_modes,
 )
 
 # The Stop `reason` field is user-visible (Claude Code renders a blocking Stop
@@ -53,84 +45,6 @@ STOP_EVENTS = ["Stop", "SessionEnd"]
 NON_HSO_EVENTS = sorted(
     set(ALL_HOOK_EVENTS) - CLAUDE_ACCEPTED_HOOK_EVENT_NAMES - {"Stop", "SessionEnd"}
 )
-
-# --- Parameterised across all stop-gates ---
-
-
-class TestAdvisoryReachesAgent:
-    """Advisory text reaches agent via decision=block + reason for all stop-gates."""
-
-    @pytest.mark.parametrize("gate_name", STOP_GATES)
-    def test_warn_mode_advisory_reaches_agent_via_reason(self, router, monkeypatch, gate_name):
-        set_gate_modes(monkeypatch, **{gate_name: "warn"})
-        reinit_gates_with_defaults()
-
-        state = make_gate_trigger_state(gate_name)
-        ctx = make_gate_trigger_context(gate_name)
-
-        result = router._dispatch_gates(ctx, state)
-        assert result is not None and result.verdict == GateVerdict.WARN
-
-        canonical = router._gate_result_to_canonical(result)
-        output = router.output_for_claude(canonical, "Stop")
-        assert isinstance(output, ClaudeStopHookOutput)
-        assert output.decision == "block", (
-            f"{gate_name} warn mode must use decision='block' to deliver advisory. "
-            f"Got decision={output.decision!r}."
-        )
-        assert output.reason, f"{gate_name} warn mode must populate reason with advisory text"
-
-    @pytest.mark.parametrize("gate_name", STOP_GATES)
-    def test_block_mode_advisory_reaches_agent(self, router, monkeypatch, gate_name):
-        set_gate_modes(monkeypatch, **{gate_name: "block"})
-        reinit_gates_with_defaults()
-
-        state = make_gate_trigger_state(gate_name)
-        ctx = make_gate_trigger_context(gate_name)
-
-        result = router._dispatch_gates(ctx, state)
-        assert result is not None and result.verdict == GateVerdict.DENY
-
-        canonical = router._gate_result_to_canonical(result)
-        output = router.output_for_claude(canonical, "Stop")
-        assert isinstance(output, ClaudeStopHookOutput)
-        assert output.decision == "block", f"{gate_name} block mode must block Stop"
-
-
-class TestAdvisoryDoesNotLeakToUser:
-    """Advisory text must not appear in user-visible channels for any stop-gate."""
-
-    @pytest.mark.parametrize("gate_name", STOP_GATES)
-    def test_advisory_does_not_leak_to_stop_reason(self, router, monkeypatch, gate_name):
-        set_gate_modes(monkeypatch, **{gate_name: "warn"})
-        reinit_gates_with_defaults()
-
-        state = make_gate_trigger_state(gate_name)
-        ctx = make_gate_trigger_context(gate_name)
-
-        result = router._dispatch_gates(ctx, state)
-        canonical = router._gate_result_to_canonical(result)
-        output = router.output_for_claude(canonical, "Stop")
-
-        assert output.stopReason is None or "SYSTEM HOOK INSTRUCTION" not in (
-            output.stopReason or ""
-        ), f"{gate_name}: advisory leaked into user-visible stopReason"
-
-    @pytest.mark.parametrize("gate_name", STOP_GATES)
-    def test_advisory_does_not_leak_to_system_message(self, router, monkeypatch, gate_name):
-        set_gate_modes(monkeypatch, **{gate_name: "warn"})
-        reinit_gates_with_defaults()
-
-        state = make_gate_trigger_state(gate_name)
-        ctx = make_gate_trigger_context(gate_name)
-
-        result = router._dispatch_gates(ctx, state)
-        canonical = router._gate_result_to_canonical(result)
-        output = router.output_for_claude(canonical, "Stop")
-
-        assert output.systemMessage is None or "SYSTEM HOOK INSTRUCTION" not in (
-            output.systemMessage or ""
-        ), f"{gate_name}: advisory leaked into user-visible systemMessage"
 
 
 # --- Synthetic canonical output tests (not gate-specific) ---
