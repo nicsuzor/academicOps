@@ -118,7 +118,7 @@ Produce a review in this exact format. Keep text concise:
 - If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
 - If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
 - Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
-- Stamp the transcript frontmatter with the `reviewed_by` block.
+- Record review provenance in the PKB — **never write to the transcript file**. Call `create_memory` with: title `"Retro review stamp: session <SID> (<project>)"`, tags `[retro, reviewed, survey-retro, <project-tag>]`, and body containing the `reviewed_by` block (fields: agent, date, verdict, issues_filed, session ID, transcript path). This PKB memory is the durable "already reviewed" signal that prevents re-surveying the same transcript.
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
