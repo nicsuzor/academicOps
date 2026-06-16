@@ -4,8 +4,6 @@ import re
 import time
 from typing import Any
 
-from hooks.schemas import HookContext
-
 from lib.gate_model import GateResult, GateVerdict
 from lib.gate_types import (
     GateCondition,
@@ -14,9 +12,11 @@ from lib.gate_types import (
     GateStatus,
     GateTransition,
 )
+from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
+from lib.tool_categories import get_tool_category, is_never_block
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +71,6 @@ class GenericGate:
 
         # 2.5 Excluded Tool Categories
         if condition.excluded_tool_categories:
-            from hooks.gate_config import get_tool_category
-
             if (
                 ctx.tool_name
                 and get_tool_category(
@@ -420,8 +418,6 @@ class GenericGate:
     ) -> GateResult | None:
         """Evaluate policies (Blocking/Warning)."""
         state = self._get_state(session_state)
-
-        from hooks.gate_config import is_never_block
 
         for policy in self.config.policies:
             if self._evaluate_condition(policy.condition, ctx, state, session_state):
