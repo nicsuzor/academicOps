@@ -81,6 +81,40 @@ class TestRedactSecrets:
     def test_non_string_passthrough(self):
         assert redact_secrets(None) is None  # type: ignore[arg-type]
 
+    def test_token_count_metrics_not_redacted(self):
+        # Usage metrics use ``*_tokens`` keys which match the ``TOKEN``
+        # component in ``_SENSITIVE_NAME``. Their values are bare integers /
+        # floats — never credentials — and must survive into the rendered
+        # transcript so cost analysis stays usable.
+        stats = (
+            "stats:\n"
+            "  input_tokens: 12345\n"
+            "  output_tokens: 678\n"
+            "  cache_read_tokens: 90\n"
+            "  cache_created_tokens: 0\n"
+            "  tool_calls: 38\n"
+            "  duration_minutes: 3.4\n"
+        )
+        out = redact_secrets(stats)
+        assert REDACTED not in out
+        for n in ("12345", "678", "90", "0", "38", "3.4"):
+            assert f": {n}" in out, f"metric value {n!r} did not survive"
+
+    def test_numeric_shell_assignment_not_redacted(self):
+        # The same protection applies to shell-style ``FOO_TOKEN=12345``: a
+        # bare integer is never a credential.
+        assert redact_secrets("MAX_TOKENS=4096") == "MAX_TOKENS=4096"
+
+    def test_non_numeric_token_assignment_still_redacted(self):
+        # Guardrail: real credentials (non-numeric) still get scrubbed even
+        # though we now spare numeric ``*TOKEN*`` values.
+        out = redact_secrets("GH_TOKEN=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        assert "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" not in out
+        assert REDACTED in out
+        out2 = redact_secrets('"api_key": "sk-ant-api03-abc123def456"')
+        assert "sk-ant-api03-abc123def456" not in out2
+        assert REDACTED in out2
+
 
 class TestRedactObj:
     def test_recurses_values_not_keys(self):
