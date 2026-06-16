@@ -323,13 +323,13 @@ Severity belongs only on target nodes (`type: target`). Ordinary tasks, epics, a
 
 **`queued` is a human gate**: The user manually promotes tasks from `ready` to `queued` to make them available for agent dispatch. This preserves human control over what agents work on next. Agents pull only from `queued`.
 
-**The premise gate fires at `→ queued`** (see [[premise-gate]]). Crossing into the dispatchable set is the universal chokepoint every piece of work passes through before compute is spent on it, so it is where the _premise_ — is this worth doing, is the shape right? — is judged. The promoter records a **one-sentence, principal-voice premise judgment in the task body** (one open prose sentence — **never** a frontmatter field, form, or `- [ ]` checklist; rationale in [[premise-gate]]). `/pull` and the dispatch step of `/supervisor` then **hard-refuse to dispatch** a task whose body shows no genuine premise judgment — an agent reads the body and decides, never a string/field presence-check. Absent/vacuous → bounce back to the promoter, do not dispatch.
+**The premise gate fires at `→ queued`** (see [[premise-gate]]). Crossing into the dispatchable set is the universal chokepoint every piece of work passes through before compute is spent on it, so it is where the _premise_ — is this worth doing, is the shape right? — is judged. The promoter records a **one-sentence, principal-voice premise judgment in the task body** (one open prose sentence — **never** a frontmatter field, form, or `- [ ]` checklist; rationale in [[premise-gate]]). `/pull`, `/dispatch`, and the dispatch step of `/supervisor` then **hard-refuse to spend compute on** a task whose body shows no genuine premise judgment — an agent reads the body and decides, never a string/field presence-check. Absent/vacuous → bounce back to the promoter, do not act.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 
 ### Supersession and retirement (`superseded_by`)
 
-When a task's work is carved into sibling subtasks, moved under a successor, or otherwise replaced, the original must **leave the dispatchable set** — it must stop being a `queued`/`ready` leaf that `/pull` can select. Recording the replacement only as prose in a parent epic's Log is **not** sufficient: that redirect is invisible on the task itself, so `/pull` selects the original carrying its now-stale (fossil) body. This is the #1584 failure: an original decomposed into siblings (two already done) stayed `queued` and was dispatched against a brief describing work already shipped.
+When a task's work is carved into sibling subtasks, moved under a successor, or otherwise replaced, the original must **leave the dispatchable set** — it must stop being a `queued`/`ready` leaf that `/pull` or `/dispatch` can select. Recording the replacement only as prose in a parent epic's Log is **not** sufficient: that redirect is invisible on the task itself, so the next select (`/pull` or `/dispatch`) picks the original carrying its now-stale (fossil) body. This is the #1584 failure: an original decomposed into siblings (two already done) stayed `queued` and was dispatched against a brief describing work already shipped.
 
 The canonical mechanism is the `superseded_by` task field:
 
@@ -337,12 +337,12 @@ The canonical mechanism is the `superseded_by` task field:
 superseded_by: [<replacement-id>, …]   # ids of the tasks that now carry this work
 ```
 
-- **It retires the task.** Stamping `superseded_by` transitions the task out of the dispatchable set (the PKB closes it — verified at runtime: `status` → `done`), so it no longer appears in `queued` or `ready` and `/pull` will not select it. No separate status edit is required; setting `status: cancelled` is the equivalent when the work was dropped rather than re-homed.
-- **The redirect lives ON the task.** Because the pointer is frontmatter on the retired task, anyone (or any `/pull` descent) reading that task sees where the work went — unlike a redirect buried in an ancestor's Log.
+- **It retires the task.** Stamping `superseded_by` transitions the task out of the dispatchable set (the PKB closes it — verified at runtime: `status` → `done`), so it no longer appears in `queued` or `ready` and neither `/pull` nor `/dispatch` will select it. No separate status edit is required; setting `status: cancelled` is the equivalent when the work was dropped rather than re-homed.
+- **The redirect lives ON the task.** Because the pointer is frontmatter on the retired task, anyone (or any `/pull` / `/dispatch` descent) reading that task sees where the work went — unlike a redirect buried in an ancestor's Log.
 - **It is the on-node inverse of the `supersedes` edge** (see [Edge Semantics](#edge-semantics-and-cycle-policy)). "A `supersedes` B" (edge on the replacement) ⟺ "B `superseded_by` A" (field on the original). Use `superseded_by` when the requirement is _the original must be non-dispatchable with a readable redirect_ — placing only `supersedes` on the replacements scatters the redirect across siblings and leaves the original dispatchable. (This is distinct from the knowledge-note dedup convention in [[../SKILL.md]] §dedup, where superseded source notes are deleted rather than pointer-stamped.)
 - **Do not rewrite the stale body.** Supersession fixes _dispatchability_, not body content. The fossil body is left intact (git preserves it); the field is what makes the task non-dispatchable and the redirect discoverable.
 
-Producers that carve work out of an existing task (planner `decompose`, supervisor, sweep) MUST stamp `superseded_by` on the original in the same operation. `/pull` treats a non-empty `superseded_by` as non-dispatchable and surfaces the redirect (see [[commands/pull]] Step 1).
+Producers that carve work out of an existing task (planner `decompose`, supervisor, sweep) MUST stamp `superseded_by` on the original in the same operation. `/pull` and `/dispatch` treat a non-empty `superseded_by` as non-selectable and surface the redirect (see [[../../task-lifecycle/SKILL.md]] §2b).
 
 ### Actionable vs. Ready
 

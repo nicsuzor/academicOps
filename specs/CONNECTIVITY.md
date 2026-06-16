@@ -97,15 +97,16 @@ means the edge is inferred, not declared.
 
 ### Commands — `aops-core/commands/` (the only 7 command files; each delegates to a skill)
 
-| Component    | Type    | Delegates to skill                                               | Backing spec (via skill)                                                                                 | Spec status   | Connected?                 |
-| ------------ | ------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------- | -------------------------- |
-| /bump        | command | (none — inline one-liner "you seem stuck, continue")             | —                                                                                                        | —             | **no**                     |
-| /email       | command | (workflow, not a skill) → `[[workflows/email-capture]]`          | `specs/workflows/daily/20-email-capture.md`                                                              | none(fm)      | yes (to workflow)          |
-| /issue-sweep | command | `survey` (sweep mode) → dispatches `jr`                          | via survey: `specs/ENFORCEMENT-MAP.md`, session-digest                                                   | mixed         | yes                        |
-| /learn       | command | `survey` (retro mode) → dispatches `pauli`                       | via survey                                                                                               | mixed         | yes                        |
-| /maintain    | command | `planner` (maintain mode)                                        | via planner: `specs/agents/effectual-planning-agent.md`; `specs/workflows/densify.md`                    | ready / inbox | yes                        |
-| /pull        | command | (none — supervisor dispatch step; references `[[premise-gate]]`) | `specs/agents/supervisor.md`; `specs/workflows/spec-64352eac-planner-pre-dispatch-decomposition-gate.md` | ready / ready | yes (to spec, not a skill) |
-| /q           | command | `planner` (capture mode)                                         | via planner                                                                                              | ready         | yes                        |
+| Component    | Type    | Delegates to skill                                      | Backing spec (via skill)                                                              | Spec status   | Connected?        |
+| ------------ | ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------- | ----------------- |
+| /bump        | command | (none — inline one-liner "you seem stuck, continue")    | —                                                                                     | —             | **no**            |
+| /dispatch    | command | `task-lifecycle` (dispatch mode) → background worker    | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]`       | ready         | yes               |
+| /email       | command | (workflow, not a skill) → `[[workflows/email-capture]]` | `specs/workflows/daily/20-email-capture.md`                                           | none(fm)      | yes (to workflow) |
+| /issue-sweep | command | `survey` (sweep mode) → dispatches `jr`                 | via survey: `specs/ENFORCEMENT-MAP.md`, session-digest                                | mixed         | yes               |
+| /learn       | command | `survey` (retro mode) → dispatches `pauli`              | via survey                                                                            | mixed         | yes               |
+| /maintain    | command | `planner` (maintain mode)                               | via planner: `specs/agents/effectual-planning-agent.md`; `specs/workflows/densify.md` | ready / inbox | yes               |
+| /pull        | command | `task-lifecycle` (execute mode) → inline claim+run      | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]`       | ready         | yes               |
+| /q           | command | `planner` (capture mode)                                | via planner                                                                           | ready         | yes               |
 
 ---
 
@@ -123,7 +124,7 @@ Statuses are from frontmatter (`NONE` = no `status:` field).
 | specs/agents/effectual-planning-agent.md                                               | ready            | `planner` skill / `pauli` (spec's own link to `skills/planning/` is **stale**)         | yes (stale link)    |
 | specs/agents/orchestrator-boundary.md                                                  | inbox            | junior / CLI orchestrator boundary                                                     | yes                 |
 | specs/agents/polecat-system.md                                                         | ready            | polecat dispatch (external `polecat/cli.py`; not a skill/agent in this tree)           | yes (ext component) |
-| specs/agents/supervisor.md                                                             | ready            | `supervisor` skill; `/pull`                                                            | yes                 |
+| specs/agents/supervisor.md                                                             | ready            | `supervisor` skill; `task-lifecycle` skill; `/pull` + `/dispatch`                      | yes                 |
 | specs/audit/AGENT-COMPLIANCE-MATRIX.md                                                 | NONE             | audit snapshot (governs agents)                                                        | yes                 |
 | specs/audit/AGENT-REMEDIATION-BACKLOG.md                                               | NONE             | audit backlog (governs agents)                                                         | yes                 |
 | specs/audit/AGENT-TOOLS.md                                                             | NONE             | agent tool inventory                                                                   | yes                 |
@@ -188,7 +189,7 @@ Statuses are from frontmatter (`NONE` = no `status:` field).
 | specs/workflows/reconcile.md                                                           | ready            | reconcile workflow (agent-invoked; no dedicated skill — nearest: remember/end_session) | ambiguous           |
 | specs/workflows/research-decomposition.md                                              | in_progress      | `deep-research` skill (topic-match); planner                                           | ambiguous           |
 | specs/workflows/session-digest.md                                                      | draft            | session digest job; survey/end_session                                                 | yes                 |
-| specs/workflows/spec-64352eac-planner-pre-dispatch-decomposition-gate.md               | ready            | `planner` / `/pull` premise gate                                                       | yes                 |
+| specs/workflows/spec-64352eac-planner-pre-dispatch-decomposition-gate.md               | ready            | `planner` / `/pull` + `/dispatch` premise gate                                         | yes                 |
 | specs/workflows/spec-7715b135-capture-execute-review-pipeline-consolidation-roadmap.md | NONE             | roadmap (consolidation of capture/execute/review; multi-component)                     | partial (roadmap)   |
 | specs/workflows/strategic-triage.md                                                    | inbox            | `planner` skill / triage routing                                                       | yes                 |
 | specs/workflows/workflow-constraints.md                                                | in_progress      | workflow engine constraints                                                            | partial             |
@@ -272,27 +273,25 @@ Only **pauli** (6 skills) and **junior** (1 skill) actually own skills via front
 
 ### 3e. Commands not mapped to any skill
 
-Of the 7 command files:
+Of the 8 command files:
 
 - **/bump** — maps to no skill (inline one-liner).
-- **/pull** — maps to no skill; it is a thin inline alias over the **supervisor skill's dispatch step**
-  and is governed by `specs/agents/supervisor.md` directly, but does not `Skill(...)`-delegate.
 - **/email** — delegates to a **workflow** (`[[workflows/email-capture]]`), not a skill.
-- /issue-sweep → `survey`; /learn → `survey`; /maintain → `planner`; /q → `planner` (these 4 do delegate to a skill).
+- /pull → `task-lifecycle` (execute mode); /dispatch → `task-lifecycle` (dispatch mode); /issue-sweep → `survey`; /learn → `survey`; /maintain → `planner`; /q → `planner` (these 6 do delegate to a skill).
 
 ---
 
 ## Count summary
 
 - **Agents:** 9 total — 5 canonical (`aops-core/agents/`: junior, james, marsha, pauli, rbg) + 4 CI (`.github/agents/`: pr-reviewer, qa, mechanic, enforcer). (`shared-error-handling.md` is a shared include, not an agent.)
-- **Skills:** 26 total — 16 `aops-core` + 7 `aops-tools` + 3 `aops-extras`.
-- **Commands:** 7 total (`aops-core/commands/`: bump, email, issue-sweep, learn, maintain, pull, q).
+- **Skills:** 27 total — 17 `aops-core` + 7 `aops-tools` + 3 `aops-extras`.
+- **Commands:** 8 total (`aops-core/commands/`: bump, dispatch, email, issue-sweep, learn, maintain, pull, q).
 - **Specs:** 75 total under `specs/**`.
 
 **Orphan counts:**
 
 - Components with NO backing spec: **8 skills** (aops, dump, research, diagram, style, dbt, streamlit, python-viz) + **1 command** (/bump). Plus 9 skills in the "ambiguous, inferred-only" bucket.
 - Specs with NO implementing component (ORPHANED): **17** confirmed (15 `future/*` + `observability/evidence-driven-debugging.md`; the stale-link caveat on effectual-planning is NOT counted as orphan). Plus ~7 reference/meta specs that govern no single component.
-- Skills with NO owner agent: **19 of 26**.
+- Skills with NO owner agent: **20 of 27**.
 - Agents owning NO skill: **7 of 9** (all except pauli and junior).
-- Commands not mapped to any skill: **3 of 7** (/bump, /pull, /email).
+- Commands not mapped to any skill: **2 of 8** (/bump, /email).
