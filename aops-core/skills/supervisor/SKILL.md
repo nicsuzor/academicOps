@@ -93,7 +93,7 @@ brief (gate + known intelligence + "escalate, don't fake-pass" + handback contra
 
 **§6 — Report up honestly.** Every claim carries a source and confidence level — "high
 confidence" is a promise you proofed it. **A worker's verification claim is not your finding: when
-the worker asserts a cheaply re-checkable live state (PR merged/open, task done, branch pushed,
+the worker asserts a cheaply re-checkable live state (PR merged/open, a task with status: done, branch pushed,
 file landed), re-check it yourself at report time and relay the live result — never pass a
 worker's "confirmed" / "CONFIDENCE: high" up to the principal as established fact, least of all
 immediately after the principal demanded verification against current state.** Correct your own
