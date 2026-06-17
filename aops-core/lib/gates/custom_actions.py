@@ -1,15 +1,14 @@
 import logging
 from pathlib import Path
 
-from hooks.schemas import HookContext
-
-logger = logging.getLogger(__name__)
-
 from lib.gate_model import GateResult
 from lib.gate_types import GateState
+from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def create_audit_file(session_id: str, gate: str, ctx: HookContext) -> Path:

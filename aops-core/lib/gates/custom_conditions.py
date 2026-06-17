@@ -1,10 +1,10 @@
 import os
 import re
 
-from hooks.schemas import HookContext
-
 from lib.gate_types import GateState
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
+from lib.tool_categories import get_tool_category
 
 # =============================================================================
 # SENTINEL GATE — destructive-env-op detection
@@ -72,8 +72,6 @@ def check_custom_condition(
         return False
 
     if name == "is_write_tool":
-        from hooks.gate_config import get_tool_category
-
         # Treat shell tools as read-only when the handover gate is sticky
         # (post-skill) or no task is bound — prevents gates from re-closing
         # on discovery/status commands (e.g. git status after /end-session).
