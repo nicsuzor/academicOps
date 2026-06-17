@@ -1,0 +1,171 @@
+# Admit on Review — the v2 PR pipeline's human admission gate.
+#
+# Admission to the Stage-2 fix loop is a maintainer's PR **review approval**.
+# Clicking "Approve" on the PR is the single human decision of the pipeline:
+# "this is a good idea; make it mergeable" (specs/workflows/pr-pipeline.md §3.2).
+#
+# This REPLACES the retired `pr-fix-loop` GitHub Environment deployment gate
+# (and the in-pipeline `admit` job that parked on it). Two reasons it is better
+# (see §3.2 "superseded" note + the PR #1858 evidence):
+#   1. DISCOVERABILITY — the GitHub Environment approval surfaced only as
+#      "Review deployments → Approve" buried inside an Actions run. The PR
+#      "Approve" button is the most prominent control on the PR.
+#   2. EVENT-DRIVEN DISPATCH — approving an Environment emits NO event, so the
+#      mechanic that the admission is supposed to unleash never re-entered the
+#      pipeline on the admitted SHA (the parked `admit` job and the mechanic's
+#      `check-admit` dispatch gate raced inside one run; check-admit read
+#      admit-status=pending and skipped the mechanic ~2 min before the human
+#      approval set it to success — admission stranded). A `pull_request_review`
+#      IS a workflow trigger, so this workflow re-enters the pipeline on the
+#      admitted SHA and dispatches the mechanic directly. The race is gone with
+#      the parked job.
+#
+# What stays unchanged: `admit-status` is still the required merge gate;
+# carry-forward / reset-on-human-push live in `pr-pipeline.yml`'s `initialize`
+# job (§5); the mechanic + its §3.6 bounded loop are owned by
+# `agent-mechanic.yml`; passes 2…N of the fix loop are still dispatched by
+# `pr-pipeline.yml`'s `check-admit → mechanic` jobs on the `synchronize` events
+# that the mechanic's own commits fire.
+
+name: Admit on Review
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  id-token: write
+
+concurrency:
+  # Per-PR: a second approval for the same PR queues rather than racing a
+  # running admission. cancel-in-progress: false — never kill an in-flight
+  # admit/mechanic dispatch.
+  group: admit-on-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  # ─── Authorise: is this approval an admission signal? (fail-closed) ────────
+  # Only same-repo PRs (a fork-origin run cannot mint the bot write token) and
+  # only `approved` reviews reach the decision script. The script default-denies
+  # anything that is not a write-class maintainer approval.
+  authorize:
+    name: Authorize admission
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.decide.outputs.state }}
+      head_ref: ${{ github.event.pull_request.head.ref }}
+      pr_number: ${{ github.event.pull_request.number }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      REVIEWER_LOGIN: ${{ github.event.review.user.login }}
+      REVIEW_STATE: ${{ github.event.review.state }}
+      # Belt-and-suspenders: the maintainer admits even if the permission API
+      # read hiccups. Write-class permission is the primary authorisation.
+      ADMIT_ALLOWLIST: "nicsuzor"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve reviewer repository permission
+        id: perm
+        run: |
+          PERM=$(gh api "repos/$REPO/collaborators/$REVIEWER_LOGIN/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+          echo "Reviewer $REVIEWER_LOGIN permission: $PERM"
+          echo "permission=$PERM" >> "$GITHUB_OUTPUT"
+      - name: Decide admission
+        id: decide
+        env:
+          REVIEWER_PERMISSION: ${{ steps.perm.outputs.permission }}
+        run: ./scripts/ci/admit-on-review.sh
+
+  # ─── Admit: set the required admit-status + arm auto-merge ─────────────────
+  admit:
+    name: Admit — set admit-status, arm auto-merge
+    needs: [authorize]
+    if: needs.authorize.outputs.decision == 'admit'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    outputs:
+      # The SHA actually admitted (re-read live — the PR may have advanced since
+      # the review was submitted). The mechanic dispatches against THIS SHA.
+      admitted_sha: ${{ steps.admit.outputs.admitted_sha }}
+      # Whether the mechanic is needed: false when enforcer+qa are already green
+      # on the admitted SHA (auto-merge will fire; no development to do).
+      need_mechanic: ${{ steps.admit.outputs.need_mechanic }}
+    env:
+      # Bot PAT required to write the required `admit-status` and arm auto-merge
+      # (the default token cannot satisfy a required check posted as a status
+      # the ruleset trusts; §4.7). No github.token fallback — fail closed.
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
+    steps:
+      - name: Set admit-status and arm auto-merge
+        id: admit
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot admit PR." >&2
+            exit 1
+          fi
+
+          # Re-read HEAD live: the PR may have advanced while/after the review
+          # was submitted. Admit the CURRENT head, the honest state.
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Admitting PR #$PR_NUMBER at HEAD $HEAD_SHA"
+          echo "admitted_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+          # (a) Required admit-status = success on the admitted SHA.
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="success" \
+            -f context="admit-status" \
+            -f description="Admitted by maintainer review approval — good idea, make it mergeable" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # (b) Arm auto-merge. Fires when all required checks are green + mergeable.
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
+            || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
+
+          # (c) Decide whether the mechanic is needed. The mechanic exists to
+          # CLEAR RED (enforcer/qa). If both are already success on the admitted
+          # SHA, there is nothing to develop — the armed auto-merge handles the
+          # merge and dispatching the mechanic would be a no-op runner (and could
+          # race the branch deletion). Dispatch the mechanic only when red remains.
+          ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
+          QA=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
+          echo "enforcer-status=$ENF qa-status=$QA on $HEAD_SHA"
+          if [ "$ENF" = "success" ] && [ "$QA" = "success" ]; then
+            echo "Both reviewers green — auto-merge handles it; mechanic not needed."
+            echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Red/pending reviewer signal — dispatching mechanic to clear it."
+            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─── First mechanic dispatch (the hop the Environment gate could not make) ──
+  # Subsequent passes (2…N) are dispatched by pr-pipeline.yml's check-admit →
+  # mechanic on the synchronize events the mechanic's commits fire; admit-status
+  # carries forward across those agent commits (§5), so there is no race there.
+  mechanic:
+    name: Mechanic (Stage 2 — first dispatch)
+    needs: [authorize, admit]
+    if: needs.admit.outputs.need_mechanic == 'true'
+    uses: ./.github/workflows/agent-mechanic.yml
+    with:
+      pr_number: ${{ needs.authorize.outputs.pr_number }}
+      ref: ${{ needs.authorize.outputs.head_ref }}
+      sha: ${{ needs.admit.outputs.admitted_sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

@@ -63,6 +63,15 @@ _The concept is **intent**. Today it is stored in the field still named `priorit
 - **Importance ≠ intent.** Urgency, severity, blocker-status, your own assessment of value → `consequence`/`severity`/`due`/`status`, never `intent`. `intent` answers only: _has Nic personally put this on his list, and where._
 - **When you think something deserves his attention,** surface it as status/escalation so _he_ sets intent — never set it for him as a shortcut.
 
+## Commit and push discipline
+
+**Outcome this protects:** work an agent has done is durably saved to origin the moment it exists, because agents run in ephemeral environments and uncommitted work is silently lost when the session ends. This block is the single authoritative statement of that rule; every agent-def, skill, workflow, and dispatch brief that touches code points here instead of restating it.
+
+- **Always commit, always push — on your working branch, immediately.** Commit after every logical chunk of work (a coherent unit a reviewer could read), and push to `origin` on your feature branch right away. Do not batch a session's worth of work into one final commit, and never end a turn with valuable work uncommitted or unpushed. The cost of an extra commit is zero; the cost of a lost session is the whole session.
+- **Branch protection is the safety net — withholding commits is not.** A push to your own feature branch is harmless: it cannot merge anything, it is caught by CI and PR review, and it is trivially revertable. The real gate against bad work reaching `main` is **branch protection** (required checks + human approval), exactly as for PR bodies above — never the absence of a commit. Commit freely and let the gate do its job.
+- **"Don't merge / don't open a PR" NEVER means "don't commit or push."** A prep-only, review-only, or "prepare a reviewable diff" brief is an instruction about the _terminal action_ — do not run `gh pr merge`, do not open the PR — and says nothing about saving the work. Read it as **"commit your work and push it to a branch; just stop short of merging / opening the PR."** Leaving work staged-but-uncommitted, or committed-but-unpushed, is never the cautious default — it is the failure mode. If a brief truly wants work left unsaved, it must say so in those exact words; absent that, save and push.
+- **A "reviewable diff" lives on a pushed branch, not in a dirty working tree.** The thing you hand back for review is a branch the reviewer can fetch — `<branch> @ origin` with the commits on it — not a local stash or staged-only state in an environment that will be torn down. If the brief asked for a diff to review, push the branch and report the branch name and remote.
+
 ## PR body conventions
 
 **Outcome this protects:** a PR body describes the change for its reviewer. It is not the place to warn about merging. This block is the single authoritative statement of that rule; every surface that authors PR bodies points here instead of restating it.
@@ -97,7 +106,7 @@ Information surfaces when relevant. Missing context = framework bug.
 
 - Never create backup files (.bak, _old)
 - Edit directly, git tracks changes
-- Commit AND push after completing work
+- Commit AND push after completing work — commit/push discipline (commit per chunk, push immediately, never conflate "don't merge" with "don't commit") is the canonical [[#commit-and-push-discipline]] block above.
 
 ### Mandatory Critic Review
 
@@ -154,16 +163,17 @@ Common delegations:
 
 ## Common Violations
 
-| Violation                         | Principle | Correction                     |
-| --------------------------------- | --------- | ------------------------------ |
-| Direct user data modification     | Axiom #1  | Delegate to skill              |
-| One-off script without skill      | Axiom #1  | Create generalizable skill     |
-| Guessing when uncertain           | Axiom #2  | HALT, ask user                 |
-| Scope creep beyond request        | Axiom #4  | Do one thing, stop             |
-| Silent failure handling           | Axiom #7  | Fail fast, report error        |
-| Creating backup files             | H15       | Trust version control          |
-| Keyword matching for verification | H37       | Use LLM semantic evaluation    |
-| Skipping skill invocation         | H2        | Invoke appropriate skill first |
+| Violation                         | Principle | Correction                                                           |
+| --------------------------------- | --------- | -------------------------------------------------------------------- |
+| Direct user data modification     | Axiom #1  | Delegate to skill                                                    |
+| One-off script without skill      | Axiom #1  | Create generalizable skill                                           |
+| Guessing when uncertain           | Axiom #2  | HALT, ask user                                                       |
+| Scope creep beyond request        | Axiom #4  | Do one thing, stop                                                   |
+| Silent failure handling           | Axiom #7  | Fail fast, report error                                              |
+| Creating backup files             | H15       | Trust version control                                                |
+| Keyword matching for verification | H37       | Use LLM semantic evaluation                                          |
+| Skipping skill invocation         | H2        | Invoke appropriate skill first                                       |
+| Leaving work uncommitted/unpushed | H15       | Commit per chunk, push immediately ([[#commit-and-push-discipline]]) |
 
 ## Consistency Checks (Before Changes)
 

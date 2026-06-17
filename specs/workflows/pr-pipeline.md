@@ -38,23 +38,24 @@ tags:
 
 Read this table first; the sections below carry the detail and repeat the flags inline.
 
-| Capability                                                                                                                                                                                         | State         | Evidence (2026-06-09)                                                                                                                  |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`, in-pipeline `admit` job parks on convergence | **LIVE**      | `.github/workflows/pr-pipeline.yml`                                                                                                    |
-| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                                        | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                          |
-| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                                | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                       |
-| The human gate: `pr-fix-loop` GitHub Environment **exists** with required reviewer `nicsuzor`; the in-pipeline `admit` job parks on the PR's own run, sets `admit-status`, arms auto-merge         | **LIVE**      | `gh api .../environments/pr-fix-loop` + `pr-pipeline.yml` `admit` job                                                                  |
-| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                | **LIVE**      | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                    |
-| `admit-status` carry-forward across agent commits / reset on human push                                                                                                                            | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                    |
-| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                          | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5) |
-| `mechanic-status` informational status                                                                                                                                                             | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                      |
-| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                                       | **LIVE**      | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                 |
-| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                            | **LIVE**      | `MAX_MECHANIC_RUNS=5` (counts `Mechanic-By:`); `timeout-minutes: 55`; exhaustion handler resets `admit-status` + escalation review     |
-| Alignment (pauli) advisory marker — orchestrator posts `alignment-status: pending` on HEAD                                                                                                         | **LIVE**      | `pr-pipeline.yml` `alignment-queue` job (pending-status step only)                                                                     |
-| Alignment `alignment:queued` issue-queue surface — one issue per PR for a host drainer to consume                                                                                                  | **DISABLED**  | removed in aops-956c1842 — write-only spam while the drainer is unbuilt; do NOT restore until §6.2 ships (follow-up aops-8f42f33d)     |
-| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                                      | **SPEC-ONLY** | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                             |
-| **v1 fixer** = `agent-merge-prep.yml` + `merge-prep-cron.yml` + `merge-prep.agent.md`                                                                                                              | **RETIRED**   | all three files deleted at Phase 5; vestigial `merge-prep-status` carry-forward removed from `pr-pipeline.yml` `initialize`            |
-| **v2 separate-dispatch admission** = `stage2-admission.yml` + `dispatch-admission` job                                                                                                             | **RETIRED**   | folded into the in-pipeline `admit` job; `stage2-admission.yml` deleted (admission is no longer a separate `workflow_dispatch` run)    |
+| Capability                                                                                                                                                                                      | State         | Evidence (2026-06-09)                                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`                                            | **LIVE**      | `.github/workflows/pr-pipeline.yml`                                                                                                    |
+| Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                                     | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                          |
+| QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                             | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                       |
+| The human gate: a maintainer's PR **review approval**; `admit-on-review.yml` (`on: pull_request_review`) authorises, sets `admit-status`, arms auto-merge, dispatches the mechanic's first pass | **LIVE**      | `admit-on-review.yml` + `scripts/ci/admit-on-review.sh` + `tests/test_admit_on_review.py`                                              |
+| **RETIRED human gate:** `pr-fix-loop` GitHub Environment + in-pipeline `admit` job that parked on it                                                                                            | **RETIRED**   | retired 2026-06-16 — undiscoverable approval UI + stranded mechanic dispatch (no re-trigger event), worked example PR #1858 (§3.2)     |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`             | **LIVE**      | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                    |
+| `admit-status` carry-forward across agent commits / reset on human push                                                                                                                         | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                    |
+| **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                       | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5) |
+| `mechanic-status` informational status                                                                                                                                                          | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                      |
+| **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                                    | **LIVE**      | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                 |
+| **Stage-2 bounded loop + exhaustion escalation** (§3.6)                                                                                                                                         | **LIVE**      | `MAX_MECHANIC_RUNS=5` (counts `Mechanic-By:`); `timeout-minutes: 55`; exhaustion handler resets `admit-status` + escalation review     |
+| Alignment (pauli) advisory marker — orchestrator posts `alignment-status: pending` on HEAD                                                                                                      | **LIVE**      | `pr-pipeline.yml` `alignment-queue` job (pending-status step only)                                                                     |
+| Alignment `alignment:queued` issue-queue surface — one issue per PR for a host drainer to consume                                                                                               | **DISABLED**  | removed in aops-956c1842 — write-only spam while the drainer is unbuilt; do NOT restore until §6.2 ships (follow-up aops-8f42f33d)     |
+| Alignment host-side cron + polecat-pauli dispatcher (drains the queue, posts the terminal `alignment-status`)                                                                                   | **SPEC-ONLY** | no host cron / dispatcher wired; live stand-in is manual `/strategic-review --critic` (§6)                                             |
+| **v1 fixer** = `agent-merge-prep.yml` + `merge-prep-cron.yml` + `merge-prep.agent.md`                                                                                                           | **RETIRED**   | all three files deleted at Phase 5; vestigial `merge-prep-status` carry-forward removed from `pr-pipeline.yml` `initialize`            |
+| **v2 separate-dispatch admission** = `stage2-admission.yml` + `dispatch-admission` job                                                                                                          | **RETIRED**   | superseded twice: first folded into the in-pipeline `admit` job, now into `admit-on-review.yml` (review-approval, §3.2)                |
 
 As of Phase 5 (this consolidation+P5 PR), the Stage-2 fix loop is now wired end-to-end:
 the orchestrator appends `mechanic` after `qa` gated on `admit-status=success`; the
@@ -112,8 +113,8 @@ This pipeline reframes around three structural decisions:
   expensive development loop runs _only after a human admits the PR_ as a good idea (§3).
   We never spend development effort on a bad idea.
 - **The merge gate is a cheap human-approval status, not an agent.** The required
-  `admit-status` is set by an Environment-gated job (no checkout, no LLM) — this is what
-  removes P5's no-op merge-prep run.
+  `admit-status` is set by `admit-on-review.yml` on a maintainer's PR review approval (no
+  checkout, no LLM) — this is what removes P5's no-op merge-prep run.
 
 ## 2. Architecture
 
@@ -133,12 +134,12 @@ This pipeline reframes around three structural decisions:
                                  │ on convergence, dispatch a Stage-2 run
                                  ▼
 ┌───────────────────────────────────────────────────────────────────────┐
-│  THE GATE — `pr-fix-loop` GitHub Environment (required reviewer = you) │   LIVE
-│  Stage-2 run PARKS here. You read the statuses + reviews + pauli's     │
-│  verdict and Approve (admit) or Reject. "All green or I click" → click.│
-│  Admission = the single human decision: "good idea — make it mergeable"│
+│  THE GATE — your PR **review approval** (admit-on-review.yml)          │   LIVE
+│  You read the statuses + reviews + pauli's verdict and click Approve   │
+│  on the PR. The approval event sets admit-status, arms auto-merge, and │
+│  dispatches the mechanic. Admission = "good idea — make it mergeable". │
 └───────────────────────────────────────────────────────────────────────┘
-                                 │ approved
+                                 │ approved (pull_request_review)
                                  ▼
 ┌───────────────────────────────────────────────────────────────────────┐
 │  STAGE 2 — FIX LOOP  (post-admission, the "new environment")           │   LIVE*
@@ -194,75 +195,78 @@ admitting (§6).
 Stage 1 ends when the pass converges (§3.4). The orchestrator's in-pipeline `admit` job
 then parks at the gate (§3.2) on the same workflow run.
 
-### 3.2 The gate — `pr-fix-loop` GitHub Environment — **LIVE**
+### 3.2 The gate — a PR **review approval** — **LIVE**
 
-Admission to the development loop is a **GitHub Environment with a required reviewer**
-(`pr-fix-loop`, required reviewer `nicsuzor` — verified to exist on 2026-06-09), reusing
-the `production`-style environment pattern already used for release-please gating
-(`pr-pipeline.yml` `gate` job).
+Admission to the development loop is a maintainer's **PR review approval**. Clicking the
+PR's **"Approve"** button is the single human decision in the pipeline: _this is a good
+idea; make it mergeable._ The maintainer reads the triage statuses, the agents' reviews,
+and pauli's alignment verdict (if they ran `/strategic-review` by hand), then Approves
+(admit) or requests changes / leaves it.
 
-On Stage-1 convergence, the orchestrator's **in-pipeline `admit` job** (declared in
-`pr-pipeline.yml`, `environment: pr-fix-loop`, `needs: [initialize, lint, enforcer, qa]`)
-parks here. Because the gate lives on the PR's own run, the maintainer's "Review
-deployments → Approve" button surfaces **directly on the PR** — one click from the PR
-page, not buried in an unlabeled run in the Actions tab. The maintainer reads the triage
-statuses, the agents' reviews, and pauli's alignment verdict (if they ran
-`/strategic-review` by hand), then **Approves (admit) or Rejects**. "If it's all green or
-I click the button" — approving the pending deployment _is_ the button. This is the
-single human decision in the pipeline: _this is a good idea; make it mergeable._
+This is handled by a small event-driven workflow, **`admit-on-review.yml`**
+(`on: pull_request_review: types: [submitted]`). On an `approved` review it: (1) checks
+the reviewer is authorised (write-class repo permission, or the explicit maintainer
+allowlist — the default-deny policy lives in `scripts/ci/admit-on-review.sh`,
+unit-tested in `tests/test_admit_on_review.py`); (2) sets the required `admit-status` to
+`success` on the admitted SHA (re-read live, since the PR may have advanced since the
+review); (3) arms `gh pr merge --auto --squash --delete-branch`; and (4) dispatches the
+mechanic's **first** pass on the admitted SHA (skipping it when enforcer + qa are already
+green — auto-merge handles that, no development to do).
 
-> **The gate keys on CONVERGENCE, never on a green verdict (normative; same rule as §3.4 pt
-> 5 / §3.7).** The `admit` job's `if` parks the run whenever the triage chain CONVERGED on
-> this SHA — lint succeeded, enforcer AND qa each **ran and produced a verdict** (`success`
-> _or_ `failure`), and no agent committed — **not** only when the verdicts are green. A
-> converged-**red** PR still parks: that is the whole point of the two-stage model — the human
-> admits a good idea even with red on the board, and the Stage-2 mechanic clears the red
-> (§3.3/§3.5). Gating the gate on `enforcer.result == 'success' && qa.result == 'success'` is
-> the §1450 success-gate inversion applied to admission: because the enforcer reusable
-> hard-fails its job on a red verdict (`result == 'failure'`), a red PR would never reach the
-> gate and the mechanic — the agent that clears red — would be unreachable. The same
-> convergence predicate (not green-verdict) gates the `check-admit` → `mechanic` dispatch in
-> Stage 2. Parking-on-red is safe because the armed auto-merge (below) fires only once **all
-> required checks are green**; an un-cleared red simply never merges. (Defect found+fixed:
-> aops-5938db00; worked example PR #1747.)
-
-On approval, the `admit` job (with the bot PAT) does two things: (a) sets the required
-`admit-status` to `success` on HEAD, and (b) arms
-`gh pr merge --auto --squash --delete-branch`.
-
-> **Why in-pipeline and not a separate dispatch (correcting the v2 rationale).** An earlier
-> design dispatched a separate `stage2-admission.yml` run to park at the gate, citing "an
-> Environment-gated job pauses the entire run / leaves Stage 1 hanging." That premise was
-> **factually wrong about GitHub Actions**: a gate pauses ONLY the gated job and its
-> `needs:`-dependents, never the whole run. The `admit` job has zero downstream `needs:`,
-> so already-completed Stage-1 jobs (lint, enforcer, qa, typecheck, pytest) are unaffected
-> by the park. The separate-dispatch design's only practical effect was to detach the
-> approval prompt from the PR. The in-pipeline form is also **strictly safer on the trust
-> axis**: for `pull_request` events GitHub executes the workflow file from the base branch
-> (`dev`), so the gated job runs trusted dev gate code unconditionally — strictly safer
-> than `gh workflow run … --ref base_ref`, which had to pin the ref correctly by hand.
+> **Superseded design — the `pr-fix-loop` GitHub Environment gate (RETIRED 2026-06-16).**
+> Admission used to be a GitHub **Environment with a required reviewer** (`pr-fix-loop`),
+> approved via an in-pipeline `admit` job that parked on it. It was retired for two
+> reasons, both demonstrated on PR #1858 (run 27625186358):
 >
-> **Idempotence (the one real wrinkle).** A gated job pauses on the Environment binding
-> BEFORE any step runs, so idempotence cannot be expressed as a "skip the park" first
-> step. It is expressed instead as a **job-level `if`** gated on
-> `needs.initialize.outputs.already_admitted`. The `initialize` job's admit-status
-> carry-forward step (§5) emits `already_admitted=true` exactly when it carried a previous
-> `admit-status: success` forward to the new HEAD; the `admit` job's `if` excludes that
-> case, so a PR whose admission has carried forward across agent fix commits does not
-> re-park at the gate (§12-Q1).
+> 1. **Discoverability.** The Environment approval surfaced only as "Review deployments →
+>    Approve" buried inside an Actions run — not on the PR. The design _claimed_ it was
+>    "PR-attached, one click from the PR page," but GitHub's UI does not render Environment
+>    approvals on the PR conversation tab, so the maintainer had to hunt through runs.
+> 2. **Stranded dispatch (the load-bearing defect).** Approving an Environment emits **no
+>    event**, so nothing re-triggered the pipeline on the admitted SHA. Worse, the parked
+>    `admit` job and the mechanic's `check-admit` dispatch gate were **siblings** off
+>    `[lint, enforcer, qa]`, running concurrently: `check-admit` read `admit-status=pending`
+>    and skipped the mechanic ~2 min **before** the human approval set it to `success` in
+>    the same run. The admission could never be seen by that run's mechanic gate, and no
+>    later run re-entered on the admitted SHA — so **the mechanic never dispatched** and
+>    admission stranded. (Observed on PR #1858: `check-admit` skipped at 14:44:21;
+>    `admit-status=success` posted at 14:46:26.)
 >
-> **Per-PR concurrency handles re-pushes.** The workflow-level
-> `concurrency: pr-pipeline-${{ pr.number }}` with `cancel-in-progress: true` cancels a
-> superseded parked deployment when a new push arrives, and the new run re-parks on the
-> new SHA. No waiting-run pileup. (Cancelled parked deployments leave "cancelled" runs in
-> history — cosmetic.)
+> A `pull_request_review` **is** a workflow trigger, so the review-approval model fixes
+> both by construction: the prominent Approve button is discoverable, and the approval
+> event re-enters the pipeline on the admitted SHA and dispatches the mechanic directly —
+> with no parked sibling job to race. The retired surfaces — the in-pipeline `admit` job,
+> its `environment: pr-fix-loop` binding, the `initialize` job's `already_admitted` output,
+> and the separate-dispatch `stage2-admission.yml` before it — are all gone. The
+> `pr-fix-loop` Environment object can be deleted in repo Settings; it is no longer
+> referenced by any workflow.
 >
-> **Enforcement caveat (verified):** the `pr-fix-loop` Environment exists _with_ a required
-> reviewer, so the run genuinely parks. If that Environment were ever deleted or stripped of
-> its reviewer, `environment: pr-fix-loop` would resolve to an unprotected environment and
-> the admit job would run **without pausing** — silently setting `admit-status` and arming
-> auto-merge with no human in the loop. The gate's integrity depends on that Environment's
-> protection rule, which lives in repo Settings (out of any worktree).
+> **Admission keys on the maintainer's judgement, never on a green verdict (normative; same
+> rule as §3.4 pt 5 / §3.7).** A maintainer may (and routinely should) approve a
+> converged-**red** PR: that is the whole point of the two-stage model — the human admits a
+> good idea even with red on the board, and the Stage-2 mechanic clears the red (§3.3/§3.5).
+> Approving on red is safe because the armed auto-merge fires only once **all required checks
+> are green**; an un-cleared red simply never merges. The same "convergence, not
+> green-verdict" rule governs the `check-admit → mechanic` dispatch for passes 2…N (§3.3):
+> it keys on lint succeeded + enforcer AND qa each having **run and produced a verdict**
+> (`success` _or_ `failure`) with no agent commit — never on `result == 'success'`, which
+> would make the mechanic (the agent that clears red) unreachable on exactly the PRs that
+> need it. (Earlier success-gate-inversion defect on the gate jobs: aops-5938db00; worked
+> example PR #1747.)
+>
+> **Authorisation (fail-closed).** Only an `approved` review from a write-class
+> collaborator (or an allowlisted maintainer) admits. A comment, a changes-requested
+> review, or an approval from a read-only / non-collaborator account is a `skip` —
+> default-deny. The reviewer's permission is resolved live via
+> `repos/{repo}/collaborators/{login}/permission`; an unresolved permission denies. Fork
+> PRs are skipped at the workflow `if:` (no bot write token).
+>
+> **Persistence across the fix loop.** Admission does not depend on GitHub keeping the
+> review "fresh." `required_approving_review_count` stays `0`, so the approval is not a
+> merge-gate review and "dismiss stale reviews" is irrelevant. Admission persists as the
+> `admit-status` commit status, which carries forward across agent fix commits and resets
+> on a human push (§5). A substantive human change therefore requires a **re-approval** to
+> re-admit — the same "must be re-judged" semantics the Environment gate had.
 
 ### 3.3 Stage 2 — Fix loop (post-admission) — **LIVE** (Phase 5)
 
@@ -424,10 +428,9 @@ abandons).** When `MECH_COUNT >= MAX_MECHANIC_RUNS` and the PR is still not gree
    (`"Halted: Stage-2 loop ceiling reached (N mechanic commits)"`).
 3. **`admit-status` is reset to `pending`** by the same handler. This is the mechanism that
    "surfaces the PR back to the human admit gate": resetting admission means the PR cannot
-   merge on the stale "good idea" decision, and the next Stage-1 convergence re-parks it at
-   `pr-fix-loop` for the maintainer to re-judge (re-admit after intervening, or reject). It
-   is a third admit-status transition alongside §5's "carry across agent commits / reset on
-   human push".
+   merge on the stale "good idea" decision, and the maintainer must **re-approve the PR** to
+   re-admit (after intervening), or decline. It is a third admit-status transition alongside
+   §5's "carry across agent commits / reset on human push".
 4. **The PR is left un-merged.** Because the required reviewer status(es) are red **and**
    `admit-status` is now pending, the armed auto-merge cannot fire. No silent merge.
 5. **The maintainer is pinged** (`gh pr edit --add-reviewer nicsuzor`) so the escalation
@@ -502,9 +505,10 @@ own named reviewer set.
 > deploy step (`scripts/sync-ruleset.sh`, admin token), the same as every prior ruleset change
 > (§7). Two residual integrity dependencies live in repo Settings, **out of any worktree** and
 > therefore out of scope here: the `bypass_actors` admin role (an admin can still force a merge
-> — a deliberate, visible act, not a silent default) and the `pr-fix-loop` Environment
-> protection (§3.2 caveat). §3.7 closes the _silent-absence-reads-as-pass_ hole; it does not,
-> and cannot from a worktree, override a deliberate admin bypass.
+> — a deliberate, visible act, not a silent default). (The `pr-fix-loop` Environment that used
+> to be a third such dependency is retired — admission is now a PR review approval, §3.2.)
+> §3.7 closes the _silent-absence-reads-as-pass_ hole; it does not, and cannot from a worktree,
+> override a deliberate admin bypass.
 
 ## 4. Per-agent contract (locked)
 
@@ -616,9 +620,10 @@ exactly this reason (PRs #735/#754).
 
 Graduation is deliberately cheap: no bot approval, no agent, no checkout.
 
-- The in-pipeline Environment-gated `admit` job (in `pr-pipeline.yml`, §3.2) does two
-  things on approval: (1) sets the required **`admit-status`** to `success` on HEAD, and
-  (2) arms `gh pr merge --auto --squash --delete-branch`.
+- `admit-on-review.yml` (§3.2), on a maintainer's PR **review approval**, does: (1) sets
+  the required **`admit-status`** to `success` on the admitted SHA, (2) arms
+  `gh pr merge --auto --squash --delete-branch`, and (3) dispatches the mechanic's first
+  pass (unless enforcer + qa are already green, in which case auto-merge handles it).
 - The merge fires the moment **all required checks are green and the PR is mergeable** —
   immediately for an already-green PR, or after the Stage-2 loop converges green.
 - **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
@@ -634,9 +639,14 @@ Graduation is deliberately cheap: no bot approval, no agent, no checkout.
   pending.** (The `initialize` job also still manages a `merge-prep-status` pending/
   carry-forward transition; that status is now non-required and is vestigial pending the
   Phase 5 cleanup — see §8/§11.)
-- **`required_approving_review_count: 2 → 0` (LIVE).** v1 needed two approvals because
-  merge-prep counted as approval #1. This pipeline has no bot approval — the Environment
-  gate plus `admit-status` is the human decision point. There is no review-approval to count.
+- **`required_approving_review_count` stays `0` (LIVE).** v1 needed two approvals because
+  merge-prep counted as approval #1. The merge gate is `admit-status` + the named-reviewer
+  statuses, not a counted GitHub review. The review-approval admission model (§3.2)
+  **reuses the Approve button as the admission _trigger_** without making it a counted
+  merge-gate review: keeping the count at `0` means the approval drives `admit-on-review.yml`
+  (which sets `admit-status`) but is not itself a required merge approval, so "dismiss stale
+  reviews" semantics never bear on admission — admission persists as `admit-status` (carry-
+  forward / reset on human push, above).
 
 > Sequencing (already done): `admit-status` was added to required checks in the _same_ change
 > that dropped approvals to 0 — otherwise there would be a window where green checks alone
@@ -708,8 +718,8 @@ A host cron (outside this repo's worktree, where the PKB MCP is reachable) drain
    posted a terminal status, the cron closes the issue and moves on — this is the "close
    stale issues" contract).
 3. **Dispatches `polecat run … pauli`** with the PR context. Pauli reviews the PR diff
-   against PKB design intent and posts a PR review verdict (the maintainer reads this at the
-   Env gate, §3.2) plus a terminal `alignment-status` (informational only — see §6.3).
+   against PKB design intent and posts a PR review verdict (the maintainer reads this before
+   approving the PR, §3.2) plus a terminal `alignment-status` (informational only — see §6.3).
 4. **Closes the issue** when pauli's terminal status is posted on the current HEAD.
 
 The dispatcher script lives outside this repo's worktree by design — PKB MCP reachability is
@@ -717,7 +727,7 @@ its precondition, and that lives host-side.
 
 ### 6.3 What pauli posts — **SPEC-ONLY**
 
-Pauli posts (a) a PR review verdict the maintainer reads at the human Env gate (§3.2), and
+Pauli posts (a) a PR review verdict the maintainer reads before approving the PR (§3.2), and
 (b) a terminal `alignment-status` on HEAD (`success`/`failure`/neutral) — informational
 only. Because the merge gate does not require `alignment-status`, a `failure` verdict does
 not block merge; it informs the maintainer's admission decision. A missing alignment review
@@ -754,7 +764,7 @@ GitHub API on 2026-06-09 (the in-repo file and the live ruleset match):
 
 - type: pull_request
   parameters:
-    required_approving_review_count: 0   # Env gate + admit-status is the human gate
+    required_approving_review_count: 0   # PR review approval drives admit-status (the human gate); not a counted merge review
     dismiss_stale_reviews_on_push: false
 ```
 
@@ -921,14 +931,15 @@ Each phase is independently shippable and leaves the pipeline working.
 - **Phase 3 — Triage orchestrator + convergence. DONE / LIVE.** `pr-pipeline.yml` reworked
   into the triage orchestrator: `lint → enforcer → qa` via `needs:` + `committed`-output
   short-circuit (§3.4), keeping the `gate`/`guard-no-dist`/`initialize` jobs.
-- **Phase 4 — Environment gate + `admit-status` + graduation. DONE / LIVE.** `pr-fix-loop`
-  Environment created with required reviewer; the in-pipeline `admit` job in
-  `pr-pipeline.yml` parks at the Environment and (on approval) sets `admit-status` + arms
-  auto-merge. Originally shipped as a separate dispatched `stage2-admission.yml`; that
-  detached the approval prompt from the PR for a falsified safety reason (see §3.2
-  callout) and was retired in favour of the in-pipeline form. Ruleset:
+- **Phase 4 — Environment gate + `admit-status` + graduation. DONE, then SUPERSEDED by
+  Phase 7.** `pr-fix-loop` Environment created with required reviewer; the in-pipeline
+  `admit` job in `pr-pipeline.yml` parked at the Environment and (on approval) set
+  `admit-status` + armed auto-merge. Originally shipped as a separate dispatched
+  `stage2-admission.yml`; that detached the approval prompt from the PR for a falsified
+  safety reason and was retired in favour of the in-pipeline form. Ruleset:
   `merge-prep-status → admit-status`, added `qa-status`, approvals `2 → 0`, in one atomic
-  change (verified live on ruleset `13762049`).
+  change (verified live on ruleset `13762049`). **The Environment gate itself is now
+  RETIRED (Phase 7) — admission is a PR review approval; see §3.2.**
 - **Phase 5 — Stage-2 dev/mechanic. DONE / LIVE.** `agent-mechanic.yml` +
   `.github/agents/mechanic.agent.md` are the admitted-loop dev agent (development to clear
   red + conflict resolution only when `CONFLICTING`); §8's F1–F10 are inherited; §3.5
@@ -947,6 +958,18 @@ Each phase is independently shippable and leaves the pipeline working.
   ships (follow-up `aops-8f42f33d`), never before. `alignment-status` must remain advisory
   (NOT in the branch-protection ruleset — §6, §7). Cleanup of any remaining dead v1
   references lands here.
+- **Phase 7 — Admission via PR review approval; retire the Environment gate. DONE / LIVE.**
+  The `pr-fix-loop` GitHub Environment gate + the in-pipeline `admit` job are **retired**
+  (the Environment object can be deleted in repo Settings; no workflow references it).
+  Admission is now a maintainer's PR **review approval**, handled by the event-driven
+  `admit-on-review.yml` (`on: pull_request_review`): authorise (write-class /
+  allowlist — `scripts/ci/admit-on-review.sh`, `tests/test_admit_on_review.py`) → set
+  `admit-status` → arm auto-merge → dispatch the mechanic's first pass on the admitted SHA.
+  Motivation (§3.2): the Environment approval UI was undiscoverable, and approving it
+  emitted no event so the mechanic dispatch stranded (worked example PR #1858). The
+  `initialize` carry-forward (§5) and the `check-admit → mechanic` passes 2…N are
+  unchanged; the `already_admitted` output (only the parked `admit` job consumed it) is
+  removed. `required_approving_review_count` stays `0`.
 
 ## 12. Open questions
 

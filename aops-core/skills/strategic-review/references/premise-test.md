@@ -51,7 +51,7 @@ The question is _"was this worth building at all, in this shape?"_ — **not** a
 
 ## 4. Honest scope — the backstop half of a pair
 
-This review-time test and the source-level premise gate (`premise-gate.md`) are a **pair**, and only the pair is surface-agnostic. The source gate binds the coordinated `/pull` / `/supervisor` dispatch path; it cannot see a human who hand-codes and opens a PR directly. This test is the catch for exactly those premises — **every PR hits review regardless of how it was created.** When a bad premise nonetheless passes review, `/learn` retro (`survey/SKILL.md` §2a) scores the miss **against the approving reviewer/surface**, not just the author — making the slipped-through premise a logged, attributed miss. Do not overclaim either half alone.
+This review-time test and the source-level premise gate (`premise-gate.md`) are a **pair**, and only the pair is surface-agnostic. The source gate binds the coordinated spend path (`/pull` / `/dispatch` / `/supervisor`); it cannot see a human who hand-codes and opens a PR directly. This test is the catch for exactly those premises — **every PR hits review regardless of how it was created.** When a bad premise nonetheless passes review, `/learn` retro (`survey/SKILL.md` §2a) scores the miss **against the approving reviewer/surface**, not just the author — making the slipped-through premise a logged, attributed miss. Do not overclaim either half alone.
 
 ## Referenced by
 

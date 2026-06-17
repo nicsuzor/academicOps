@@ -20,9 +20,15 @@ JSON-serialisable object (redacts string *values*, never keys or structure).
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 REDACTED = "[REDACTED]"
+
+# A bare integer or float is never a credential. Used to spare usage-metric
+# keys like ``input_tokens: 12345`` from over-matching ``_SENSITIVE_NAME``
+# components like ``TOKEN`` (matched as the plural ``_tokens`` suffix).
+_NUMERIC_VALUE = re.compile(r"-?\d+(?:\.\d+)?")
 
 # Standalone token shapes — the whole match is replaced with the marker.
 _TOKEN_PATTERNS: list[re.Pattern[str]] = [
@@ -47,14 +53,29 @@ _SENSITIVE_NAME = (
     r"[A-Za-z0-9_]*"
 )
 
-_ASSIGN_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+
+def _redact_shell_assign(m: re.Match[str]) -> str:
+    # Spare numeric values: ``input_tokens=12345`` is a usage metric, not a
+    # credential. Real tokens are never bare integers/floats.
+    if _NUMERIC_VALUE.fullmatch(m.group(4)):
+        return m.group(0)
+    return f"{m.group(1)}{m.group(2)}{m.group(3)}{REDACTED}{m.group(5)}"
+
+
+def _redact_yaml_json_assign(m: re.Match[str]) -> str:
+    if _NUMERIC_VALUE.fullmatch(m.group(3)):
+        return m.group(0)
+    return f"{m.group(1)}{m.group(2)}{REDACTED}{m.group(4)}"
+
+
+_ASSIGN_PATTERNS: list[tuple[re.Pattern[str], Callable[[re.Match[str]], str]]] = [
     # Shell:  export FOO_TOKEN=value   /   FOO_TOKEN='value'
     (
         re.compile(
             rf"((?:export\s+)?{_SENSITIVE_NAME})(\s*=\s*)(['\"]?)([^\s'\"]+)(['\"]?)",
             re.IGNORECASE,
         ),
-        rf"\1\2\3{REDACTED}\5",
+        _redact_shell_assign,
     ),
     # JSON / YAML:  "FOO_TOKEN": "value"   /   FOO_TOKEN: value
     (
@@ -62,7 +83,7 @@ _ASSIGN_PATTERNS: list[tuple[re.Pattern[str], str]] = [
             rf"(\"?{_SENSITIVE_NAME}\"?\s*:\s*)(['\"]?)([^\s'\",}}]+)(['\"]?)",
             re.IGNORECASE,
         ),
-        rf"\1\2{REDACTED}\4",
+        _redact_yaml_json_assign,
     ),
 ]
 
@@ -77,8 +98,8 @@ def redact_secrets(text: str) -> str:
     """
     if not text or not isinstance(text, str):
         return text
-    for pattern, repl in _ASSIGN_PATTERNS:
-        text = pattern.sub(repl, text)
+    for pattern, replacer in _ASSIGN_PATTERNS:
+        text = pattern.sub(replacer, text)
     for pattern in _TOKEN_PATTERNS:
         text = pattern.sub(REDACTED, text)
     return text
