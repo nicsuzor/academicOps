@@ -162,6 +162,18 @@ Escalate only if: (1) action is irreversible or modifies external systems withou
 exists; (4) **your judgment says stop** — same failure keeps recurring, workers are stalled, or
 you cannot proof a verdict. No row counter; if it smells stuck, halt and escalate.
 
+### Residual-triage before reporting
+
+A delegate-and-verify run that ends with a tail of not-yet-closed items must be
+filtered, not relayed. A worker's catch-all "needs-the-user" bucket is an input
+to your judgment, never the output. Triage every residual against one maxim:
+**an item escalates only if it meets the Escalation Criteria above; otherwise you
+own it.** Anything reversible and inside your authority you clear yourself, then
+report as done. Only the genuine user-gates — the irreversible, the
+under-the-user's-name, the no-defensible-default — go back, batched into a digest,
+never handed over as a list of homework. This is the same escalation test applied
+at synthesis time; do not maintain a second copy of the criteria here.
+
 ## Per-Tick Checklist
 
 Execute exactly once per tick:
