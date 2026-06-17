@@ -16,7 +16,7 @@ domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
 owner: pauli
-version: 5.2.0
+version: 5.3.0
 permalink: skills-daily
 ---
 
@@ -50,7 +50,7 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 ## Safety rules (load-bearing)
 
 - **Verify carryover against live PKB before listing.** For each task carried from yesterday, call `mcp__pkb__get_task`; drop it if it's missing, `done`, `cancelled`, or already ticked in today's note. Copying blindly produces phantom-overdue items.
-- **Consume `$AOPS_SESSIONS/state/pr-state.json` for PR state; do NOT run `gh pr list`.** `repo-sync-cron` is the single producer. If the artefact is missing or >24h old, render one inline note saying so — never fall back to live `gh`.
+- **PR display state may read `$AOPS_SESSIONS/state/pr-state.json`** for the "Outstanding Workflows" / open-PR snapshot (it is cheap and good enough for a display list). Do NOT run a bulk `gh pr list` just to populate that display. The reconcile sweep below is the exception: it resolves and checks PRs **one task at a time against live `gh`**, because a pre-baked feed's recent-window misses older merges and silently leaves tasks parked.
 - **Consequence text is printed verbatim, never paraphrased.** Pull it from the task, or from a linked target in the task's `goals` field.
 - **Counts come from `mcp__pkb__task_summary`.** Never count tasks yourself — aggregation is the PKB's job.
 
@@ -68,24 +68,30 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ### Task completion sweep (required every run)
 
-Enumerate the full backlog — do NOT rely on opportunistic keyword searches.
+Enumerate the **whole** parked backlog and resolve each task's PR against **live GitHub** — not a pre-baked feed. (Why live, not the feed: `pr-state.json`'s `recent_merged` is a recent-window snapshot; a task whose PR merged outside that window never matches and stays silently parked. The canonical reconcile contract is `[[workflows-reconcile]]` — structured fields drive the match, live `gh` confirms the state.)
 
-1. **Fetch the parked task list.** Call `mcp__pkb__list_tasks(status="merge_ready")` and `mcp__pkb__list_tasks(status="review")`. Collect all results (both calls).
+1. **Fetch the parked task list.** Call `mcp__pkb__list_tasks(status="merge_ready")` and `mcp__pkb__list_tasks(status="review")`. Collect every result from both calls. This is the full candidate set — do not spot-check or keyword-search a subset.
 
-2. **Load merge evidence.** Read `$AOPS_SESSIONS/state/pr-state.json`. The artefact is structured as `{repos: {<slug>: {recent_merged: [{number, url, mergedAt, headRefName, title, ...}]}}}`. If the file is missing or stale (>24h), note it inline and skip auto-close — do NOT fall back to live `gh pr list`.
+2. **Resolve each task's PR from its structured fields** (no prose parsing — this is the `[[workflows-reconcile]]` "guaranteed structured" surface). For each task, in order:
+   - `pr_url` frontmatter (e.g. `https://github.com/org/repo/pull/1859`) — the authoritative source; gives both repo (`org/repo`) and PR number.
+   - `branch` frontmatter — resolve via `gh pr list --repo <repo> --head <branch> --state all --json number,state` when no `pr_url`.
+   - A pure-integer tag (e.g. `1858`) — a PR number, but ambiguous without a repo; only usable once you know the task's repo (its `project`/repo field). Treat a bare number with no repo as unresolved.
+   - If none resolve to a concrete `<repo>#<number>`, leave the task unchanged — it is not a reconcile candidate.
 
-3. **Resolve the PR for each parked task.** For each task from Step 1, extract the linked PR by checking in order:
-   - `pr_url` frontmatter (e.g. `https://github.com/org/repo/pull/1859`) — parse PR number from the last path segment; use both number and repo slug to target the right repo's `recent_merged` list.
-   - Numeric tags (any tag that is a pure integer, e.g. `1858`) — treat as a PR number; search all repos' `recent_merged` lists.
-   - `branch` frontmatter — match against `headRefName` across all repos' `recent_merged` entries.
-   - If none of the above resolve, skip the task; leave it unchanged.
+3. **Check live PR state per task.** For each resolved `<repo>#<number>`, run `gh pr view <number> --repo <repo> --json state,mergedAt,url`. Do this per task — the cost is one cheap call each and it is correct regardless of when the PR merged. Batch them in a single Bash loop if you like; do not substitute the feed's `recent_merged` list for this check.
 
-4. **Match and act.** For each resolved PR:
-   - **Clear match** — a single unambiguous entry in `recent_merged` matches the PR number (and repo, when `pr_url` was the source): call `mcp__pkb__complete_task` with a completion note that includes the PR URL and `mergedAt` timestamp. No human confirmation needed.
-   - **Ambiguous** — multiple repos contain a PR with the same number (numeric-tag source only), or the task has multiple PR fields pointing to different PRs: surface under "Needs your call" with both candidates. Never auto-close on doubt.
-   - **No match** — PR not found in any `recent_merged` list: leave task unchanged.
+4. **Act on the live state:**
+   - **MERGED** → the task's own deliverable shipped: call `mcp__pkb__complete_task` with the PR URL and `mergedAt` in the evidence. No human confirmation needed — **except** the guards below.
+   - **OPEN** → genuinely in-flight; leave parked (it is correctly `merge_ready`/`review`).
+   - **CLOSED (not merged)** → the PR was rejected or abandoned; do NOT auto-close the task. Surface under "Needs your call" (refile-or-drop decision).
+   - **No PR / not found** → leave unchanged.
 
-5. **Report.** In the daily note (Work Log or "What Needs Attention"): `N tasks auto-closed from merged PRs; N ambiguous cases flagged for your call.`
+5. **Guards (never violate — apply before any close):**
+   - **Never close on doubt.** If the task body flags an unresolved condition (e.g. "an unauthorised edit must be stripped before merge", a pending live-host verification the worker cannot perform), surface it under "Needs your call" even when the PR shows MERGED.
+   - **Never close a parent/epic that has open children.** Before closing, confirm the task is a leaf (or all its children are already `done`/`cancelled`). A merged parent PR with genuine open follow-up children is surfaced, not closed — do NOT cascade-close real downstream work. (A pure scope-note child the PR delivered may be closed recursively; a real independent follow-up task may not.)
+   - **Never touch academic / peer-review / Nic-decision items.** Tasks that are inherently the user's call (peer reviews, funding assessments, design decisions awaiting his judgment) are surfaced, never auto-closed, regardless of any linked PR.
+
+6. **Report.** In the daily note (Work Log or "What Needs Attention"): `N tasks auto-closed against merged PRs; M surfaced for your call (closed-without-merge / blocked-on-judgment / epic-with-open-children).`
 
 ### Cross-linking (when a session maps to a task)
 
