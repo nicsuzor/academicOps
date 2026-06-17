@@ -278,7 +278,7 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Pyramid tier**: base
 - **Trigger**: supervisor / worker agents append progress notes to the active task record
 - **Purpose**: Keep narrative state on the task itself so interruption is recoverable and review has a single source.
-- **Location**: referenced in `aops-core/skills/supervisor/` (supervision-loop / worker-dispatch) and `aops-core/commands/pull.md`
+- **Location**: referenced in `aops-core/skills/supervisor/` (supervision-loop / worker-dispatch) and `aops-core/skills/task-lifecycle/SKILL.md` (`/pull` execute mode)
 - **Scope**: polecat, crew, interactive
 - **Status**: active
 
@@ -518,7 +518,7 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Pyramid tier**: base
 - **Trigger**: daily / pull flows inspect `depends_on` edges when a task closes
 - **Purpose**: Make newly unblocked tasks visible without requiring users to poll the graph.
-- **Location**: `aops-core/skills/daily/` (`SKILL.md` + `references/note-template.md`) and `aops-core/commands/pull.md`
+- **Location**: `aops-core/skills/daily/` (`SKILL.md` + `references/note-template.md`) and `aops-core/skills/task-lifecycle/SKILL.md` (`/pull` execute mode)
 - **Scope**: polecat, crew, interactive
 - **Status**: active
 

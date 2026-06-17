@@ -66,7 +66,11 @@ BODY_LIMIT = 2048
 
 # Only fields any consumer actually reads. Everything else gh emits is dropped.
 _AUTHOR_KEEP = ("login", "is_bot")
-_CHECK_KEEP = ("name", "conclusion", "status")
+# CheckRun entries carry name/conclusion/status; StatusContext entries (the
+# pipeline agent statuses posted via the statuses API, e.g. mechanic-status)
+# carry context/state. Keep both shapes so apply_triage can tell a transient
+# red check apart from a halted pipeline.
+_CHECK_KEEP = ("name", "conclusion", "status", "context", "state")
 
 TRAILER_RE = re.compile(
     r"^\b(Closes|Refs|Fixes|Resolves|Closes-issue|Closes-pr)\b:\s*.+",
@@ -127,10 +131,27 @@ def apply_triage(pr: dict, repo_path: Path):
         if isinstance(r, dict) and r.get("conclusion") == "FAILURE"
     ]
 
+    # Has the automated fix pipeline halted and handed this PR back to a human?
+    # The mechanic (Stage-2 fix-loop agent) posts mechanic-status=FAILURE only
+    # when it gives up — loop-ceiling exhaustion (it also requests the
+    # maintainer as reviewer) or an agent crash it cannot self-recover. Either
+    # is a genuine "needs a human" event. Transient red CI and merge conflicts
+    # on their own are the pipeline's NORMAL working state — the enforcer/qa/
+    # mechanic churn on them — so they stay pipeline-owned, NOT escalate. The
+    # state lives on a StatusContext rollup entry (context/state), distinct
+    # from CheckRun build/lint failures (name/conclusion).
+    pipeline_halted = any(
+        isinstance(r, dict)
+        and r.get("context") == "mechanic-status"
+        and isinstance(r.get("state"), str)
+        and r["state"].upper() in ("FAILURE", "ERROR")
+        for r in rollups
+    )
+
     branch = pr.get("headRefName", "")
     login = pr.get("author", {}).get("login", "")
 
-    if mergeable == "CONFLICTING" or failed_checks:
+    if pipeline_halted:
         new_label = "triage:escalate"
     elif is_stale and not is_draft:
         new_label = "triage:stale"
@@ -150,6 +171,8 @@ def apply_triage(pr: dict, repo_path: Path):
     ):
         new_label = "triage:auto-mergeable"
     else:
+        # Everything still in flight — including red CI and merge conflicts the
+        # pipeline is expected to resolve. Owned by the merge pipeline, not you.
         new_label = "triage:pipeline"
 
     if new_label and new_label not in existing_triage_labels:
@@ -159,7 +182,9 @@ def apply_triage(pr: dict, repo_path: Path):
         try:
             subprocess.run(cmd, cwd=repo_path, capture_output=True, check=True, text=True)
         except subprocess.CalledProcessError as e:
-            stderr = e.stderr or ""
+            stderr = (
+                e.stderr or ""
+            )  # allow-fallback: CalledProcessError.stderr is None when not captured
             print(
                 f"Warning: label-edit failed for {repo_path.name} PR #{pr['number']}: "
                 f"{' '.join(cmd)} -> exit {e.returncode} {stderr.strip()}",

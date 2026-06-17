@@ -132,6 +132,29 @@ Operate in **decide-and-report** mode. Exit in one of three states:
 - **`[ATTN]` block**: Emit a single YAML block (see [[references/supervision-mechanics#user-attention-notification]]) for decisions requiring explicit user authorisation.
 - **Halt summary**: Terminal state reached. Emit a one-line summary in plain English.
 
+### Self-Arming the Loop
+
+Supervision is a **stateless tick** — one invocation does one tick, by design, so
+context stays small (the cross-tick state lives in the task body, not in a
+long-running context). The recurrence is supplied externally by `/loop`. But a
+user who types `/supervisor <id>` once should not get one tick and silence — so
+**when invoked interactively and the tick did not reach a terminal state, arm the
+next tick yourself**:
+
+- After the CHECKPOINT step, if the exit state is **Silent** or **`[ATTN]`**
+  (i.e. work remains and you are not halting), call `ScheduleWakeup` with the same
+  `/supervisor <id>` invocation as the `prompt` so the loop continues. Use a
+  delay in the idle range (≈1200–1800s) — see
+  [[references/supervision-mechanics#mechanism-selection]], where `ScheduleWakeup`
+  is the sanctioned idle/fallback wait mechanism.
+- **Stop self-arming at the terminal state** (Halt summary): omit the
+  `ScheduleWakeup` call so the loop ends cleanly. This is the correct end of an
+  autonomous run — do not keep scheduling once every epic is at its review
+  surface.
+- **Do not double-arm.** If this invocation was already fired by an external
+  `/loop` or a cron schedule, that mechanism re-fires the next tick — do not also
+  schedule one, or ticks will stack.
+
 ### Escalation Criteria
 
 Escalate only if: (1) action is irreversible or modifies external systems without authorisation;
@@ -152,7 +175,9 @@ Execute exactly once per tick:
    (see [[references/subagent-contracts#compose-then-dispatch-separation]]).
 4. **ACT**: Sanity-check the verdict (one coherent action, consistent with the body). If it
    doesn't hold up — note why in the ledger and exit. Otherwise execute.
-5. **CHECKPOINT**: Append a ledger row to the task body, commit, and push.
+5. **CHECKPOINT**: Append a ledger row to the task body, commit, and push. Then,
+   if invoked interactively and not at a terminal state, self-arm the next tick
+   (see [[#self-arming-the-loop]]).
 
 ## Prohibited Main Agent Actions
 

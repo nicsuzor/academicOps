@@ -26,7 +26,7 @@ TRIAGE_LABELS: tuple[TriageLabel, ...] = (
     TriageLabel(
         name="triage:escalate",
         color="d73a4a",
-        description="PR has failing CI or merge conflicts; needs manual intervention.",
+        description="Automated merge pipeline halted (mechanic gave up); needs manual intervention.",
     ),
     TriageLabel(
         name="triage:stale",
