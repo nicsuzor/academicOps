@@ -11,7 +11,7 @@ description: |
 <academicOps Ida hook reminder>
 ≡ **Before you stop — be honest:**
 
-- If this turn answered a substantive question or did substantive work, restate the user's request in your own words and confirm your headline answer addresses _that_ question — not an easier adjacent one, a proxy, or a restated plan. If you answered the proxy, say so and answer the real one. If something is missing, name it.
+-  Did you deliver what was actually asked? Restate the user's request in your own words and confirm your headline answer addresses _that_ question — not an easier adjacent one, a proxy, or a restated plan. If something is missing, name it.
 - Match your closing register to the stakes: a quick factual reply needs a clean answer; delivered work needs a scannable recap of what changed and what's left.
 - Separate what you observed from what you infer.
 - State your recommendation first, marked as a recommendation, with its basis.
