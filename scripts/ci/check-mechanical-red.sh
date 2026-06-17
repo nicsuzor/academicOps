@@ -141,11 +141,28 @@ if [[ -n "${RESPONDER_COUNT_JSON:-}" ]]; then
   responder_count="$(cat "$RESPONDER_COUNT_JSON")"
 else
   BASE_BRANCH="${BASE_BRANCH:-dev}"  # allow-fallback: optional; pr-pipeline.yml always passes BASE_BRANCH; dev is the safe live fallback
-  git fetch origin "$BASE_BRANCH" --quiet 2>/dev/null || true  # allow-fallback: offline/test environments lack a remote; RESPONDER_COUNT_JSON is used instead in those contexts
-  responder_count=$(git log "origin/$BASE_BRANCH..HEAD" --grep="^Responder-By:" --oneline 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
+  # FAIL-CLOSED: if we cannot fetch the base or count Responder-By: commits, we
+  # must NOT silently treat the count as 0 — that would let the responder run
+  # past MAX_RESPONDER_RUNS and burn runner budget. A failure to measure the
+  # budget is treated as budget-exhausted: no-op and surface to a human.
+  if ! git fetch origin "$BASE_BRANCH" --quiet 2>/dev/null; then
+    emit "false" "Ceiling guard (fail-closed): could not fetch origin/${BASE_BRANCH} to count Responder-By: commits — surfacing to human"
+    exit 0
+  fi
+  if ! responder_count=$(git log "origin/$BASE_BRANCH..HEAD" --grep="^Responder-By:" --oneline 2>/dev/null | wc -l | tr -d '[:space:]'); then
+    emit "false" "Ceiling guard (fail-closed): could not count Responder-By: commits on origin/${BASE_BRANCH}..HEAD — surfacing to human"
+    exit 0
+  fi
 fi
 
-if [[ "${responder_count:-0}" -ge "$MAX_RESPONDER_RUNS" ]]; then  # allow-fallback: RESPONDER_COUNT_JSON (test injection) can produce empty string; 0 is a safe conservative count
+# Guard against a non-numeric/empty count from a malformed RESPONDER_COUNT_JSON:
+# fail closed (treat as at-ceiling) rather than defaulting to 0.
+if ! [[ "$responder_count" =~ ^[0-9]+$ ]]; then
+  emit "false" "Ceiling guard (fail-closed): responder_count '${responder_count}' is not a non-negative integer — surfacing to human"
+  exit 0
+fi
+
+if [[ "$responder_count" -ge "$MAX_RESPONDER_RUNS" ]]; then
   emit "false" "Ceiling guard: Responder-By: count (${responder_count}) >= MAX_RESPONDER_RUNS (${MAX_RESPONDER_RUNS}) — pre-admission budget exhausted; surfacing to human"
   exit 0
 fi

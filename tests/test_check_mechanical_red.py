@@ -42,21 +42,19 @@ def run(
     max_responder_runs: int | None = None,
 ) -> dict[str, str]:
     """Run check-mechanical-red.sh with injected inputs; return parsed outputs."""
-    sf = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    cf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-    try:
-        with sf, cf:
-            json.dump(statuses, sf)
-            sf.flush()
-            cf.write(str(responder_count))
-            cf.flush()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sf_path = Path(tmpdir) / "statuses.json"
+        cf_path = Path(tmpdir) / "responder_count.txt"
+        sf_path.write_text(json.dumps(statuses))
+        cf_path.write_text(str(responder_count))
 
         env: dict[str, str] = {
-            "STATUSES_JSON": sf.name,
-            "RESPONDER_COUNT_JSON": cf.name,
+            "STATUSES_JSON": str(sf_path),
+            "RESPONDER_COUNT_JSON": str(cf_path),
             "HEAD_SHA": "abc1234567890123456789012345678901234567890",
             "REPO": "nicsuzor/academicOps",
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            # Inherit the caller's PATH so bash/jq resolve on Nix, Homebrew, etc.
+            "PATH": os.environ.get("PATH", ""),
         }
         if max_responder_runs is not None:
             env["MAX_RESPONDER_RUNS"] = str(max_responder_runs)
@@ -68,15 +66,6 @@ def run(
             text=True,
             check=True,
         )
-    finally:
-        try:
-            os.unlink(sf.name)
-        except OSError:
-            pass
-        try:
-            os.unlink(cf.name)
-        except OSError:
-            pass
 
     out: dict[str, str] = {}
     for line in proc.stdout.splitlines():
