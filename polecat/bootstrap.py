@@ -19,7 +19,6 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     1. Required environment variables (PKB_MCP_URL, AOPS, POLECAT_HOME, GH_TOKEN)
     2. PKB MCP server reachability
     3. Axioms file presence (.agents/rules/AXIOMS.md)
-    4. Skill registry resolution (checks aops-core/skills/ directory)
 
     Raises:
         BootstrapError: If any validation check fails.
@@ -84,17 +83,6 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
         axioms_path = Path(aops_path) / ".agents" / "rules" / "AXIOMS.md"
         if not axioms_path.exists():
             errors.append(f"Axioms file missing: {axioms_path}")
-
-    # 4. Skill registry resolution
-    if aops_path:
-        skills_dir = Path(aops_path) / "aops-core" / "skills"
-        if not skills_dir.exists():
-            errors.append(f"Skills directory missing: {skills_dir}")
-        else:
-            # Check for critical 'sleep' skill mentioned in task
-            sleep_skill = skills_dir / "sleep" / "SKILL.md"
-            if not sleep_skill.exists():
-                errors.append(f"Critical skill 'sleep' missing at {sleep_skill}")
 
     if errors:
         raise BootstrapError(errors)

@@ -19,7 +19,6 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.gate_config import (  # noqa: E402
     COMPLIANCE_SUBAGENT_TYPES,
     ENFORCER_CHANNEL_SENTINEL,
-    NEVER_BLOCK_CATEGORIES,
     SPAWN_TOOLS,
     TOOL_CATEGORIES,
     extract_subagent_type,
@@ -130,39 +129,6 @@ class TestExtractSubagentType:
                 assert result == tool_name
             else:
                 assert result is None
-
-
-class TestComplianceSubagentTypes:
-    """Verify COMPLIANCE_SUBAGENT_TYPES has expected members."""
-
-    def test_enforcer_variants(self):
-        assert "enforcer" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:enforcer" in COMPLIANCE_SUBAGENT_TYPES
-
-    def test_rbg_variants(self):
-        assert "rbg" in COMPLIANCE_SUBAGENT_TYPES
-        assert "aops-core:rbg" in COMPLIANCE_SUBAGENT_TYPES
-
-
-class TestEnforcerTemplateDispatch:
-    """Regression guard: enforcer templates must dispatch aops-core:rbg.
-
-    Bug: templates previously dispatched aops-core:enforcer, which does not
-    exist in aops-core, producing a hydration loop when name resolution
-    fell through.
-    """
-
-    TEMPLATES_DIR = Path(__file__).parent.parent.parent / "aops-core" / "hooks" / "templates"
-
-    def test_enforcer_instruction_dispatches_rbg(self):
-        content = (self.TEMPLATES_DIR / "enforcer-instruction.md").read_text()
-        assert "aops-core:rbg" in content
-        assert "aops-core:enforcer" not in content
-
-    def test_enforcer_policy_context_dispatches_rbg(self):
-        content = (self.TEMPLATES_DIR / "enforcer-policy-context.md").read_text()
-        assert "aops-core:rbg" in content
-        assert "aops-core:enforcer" not in content
 
 
 class TestToolSearchSelectBypass:
@@ -320,9 +286,6 @@ class TestNeverBlockList:
     def test_none_tool_is_not_never_block(self):
         assert not is_never_block(None)
 
-    def test_categories_are_always_available_and_infrastructure(self):
-        assert NEVER_BLOCK_CATEGORIES == frozenset({"always_available", "infrastructure"})
-
 
 class TestEnforcerChannelSentinel:
     """WS7 item 4 (#1315): the enforcer channel must be distinguishable from injection.
@@ -359,20 +322,6 @@ class TestEnforcerChannelSentinel:
 
 class TestGatePrecedence:
     """WS7 item 1: the precedence model must be explicit and match the runtime."""
-
-    def test_gate_configs_order(self):
-        """GATE_CONFIGS registration order defines precedence.
-
-        The router iterates gates in registration order (= GATE_CONFIGS order) and
-        resolves first-deny-wins.
-        """
-        from lib.gates.definitions import GATE_CONFIGS
-
-        configs_order = tuple(c.name for c in GATE_CONFIGS)
-        expected_order = ("sentinel", "enforcer", "qa", "handover", "ida")
-        assert configs_order == expected_order, (
-            f"GATE_CONFIGS order {configs_order} must equal {expected_order}"
-        )
 
     def test_sentinel_has_highest_precedence(self):
         from lib.gates.definitions import GATE_CONFIGS

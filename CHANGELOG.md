@@ -2,119 +2,109 @@
 
 ## [0.3.40](https://github.com/nicsuzor/academicOps/compare/v0.3.39...v0.3.40) (2026-06-14)
 
-
 ### Features
 
-* **transcript:** add --force to bypass mtime gate for correlation backfill ([8e8bcd0](https://github.com/nicsuzor/academicOps/commit/8e8bcd07963a741e2ef138920448475afb7ff0b7))
-* **transcript:** capture pull_requests from git branches in session summaries ([a5b7ec2](https://github.com/nicsuzor/academicOps/commit/a5b7ec26d9d2c3abfe959e42b2dac1b3e1c8c0bf))
-* **transcript:** recover task_id/PR correlation from launch context ([cc574be](https://github.com/nicsuzor/academicOps/commit/cc574becadd3817eb6d9e0ac6ea57d211175a63f))
-
+- **transcript:** add --force to bypass mtime gate for correlation backfill ([8e8bcd0](https://github.com/nicsuzor/academicOps/commit/8e8bcd07963a741e2ef138920448475afb7ff0b7))
+- **transcript:** capture pull_requests from git branches in session summaries ([a5b7ec2](https://github.com/nicsuzor/academicOps/commit/a5b7ec26d9d2c3abfe959e42b2dac1b3e1c8c0bf))
+- **transcript:** recover task_id/PR correlation from launch context ([cc574be](https://github.com/nicsuzor/academicOps/commit/cc574becadd3817eb6d9e0ac6ea57d211175a63f))
 
 ### Bug Fixes
 
-* **agy:** correct injection-delivery root cause — delivery works, transcript does not log injectSteps ([fd9f595](https://github.com/nicsuzor/academicOps/commit/fd9f595c59ac9770b7469d799e602fad19d41e44))
-* **agy:** correct PreInvocation injection status — agy-side delivery gap ([#1798](https://github.com/nicsuzor/academicOps/issues/1798)) ([18e85f9](https://github.com/nicsuzor/academicOps/commit/18e85f979f1e4e8a8eccad09f1e9d6359008a5b5))
-* **agy:** extract toolCall from payload ROOT, not double-nested ([#1800](https://github.com/nicsuzor/academicOps/issues/1800)) ([c73984c](https://github.com/nicsuzor/academicOps/commit/c73984c8fd58eecbf73e8684674c04e8c924b3e2))
-* correct Gemini tool translation block grouping logic ([#1817](https://github.com/nicsuzor/academicOps/issues/1817)) ([78b68b4](https://github.com/nicsuzor/academicOps/commit/78b68b4343a5b4f2960db2a9b0d998543b00c7e6))
-* **cron:** single-instance flock guard for repo-sync-cron ([d62b4d1](https://github.com/nicsuzor/academicOps/commit/d62b4d17bfb2dac45083fdf0a5e7de23e38c678c))
-* **transcript:** stop skipping polecat/crew branches in PR resolution ([3c82f73](https://github.com/nicsuzor/academicOps/commit/3c82f7325ca607adf083499377f99fed7c890f74))
-
+- **agy:** correct injection-delivery root cause — delivery works, transcript does not log injectSteps ([fd9f595](https://github.com/nicsuzor/academicOps/commit/fd9f595c59ac9770b7469d799e602fad19d41e44))
+- **agy:** correct PreInvocation injection status — agy-side delivery gap ([#1798](https://github.com/nicsuzor/academicOps/issues/1798)) ([18e85f9](https://github.com/nicsuzor/academicOps/commit/18e85f979f1e4e8a8eccad09f1e9d6359008a5b5))
+- **agy:** extract toolCall from payload ROOT, not double-nested ([#1800](https://github.com/nicsuzor/academicOps/issues/1800)) ([c73984c](https://github.com/nicsuzor/academicOps/commit/c73984c8fd58eecbf73e8684674c04e8c924b3e2))
+- correct Gemini tool translation block grouping logic ([#1817](https://github.com/nicsuzor/academicOps/issues/1817)) ([78b68b4](https://github.com/nicsuzor/academicOps/commit/78b68b4343a5b4f2960db2a9b0d998543b00c7e6))
+- **cron:** single-instance flock guard for repo-sync-cron ([d62b4d1](https://github.com/nicsuzor/academicOps/commit/d62b4d17bfb2dac45083fdf0a5e7de23e38c678c))
+- **transcript:** stop skipping polecat/crew branches in PR resolution ([3c82f73](https://github.com/nicsuzor/academicOps/commit/3c82f7325ca607adf083499377f99fed7c890f74))
 
 ### Tests
 
-* **1798:** parametrize IDA invariant harness over agy + claude clients ([6ee647e](https://github.com/nicsuzor/academicOps/commit/6ee647e79618553b7368416f70acaea25569151c))
-* **agy:** elimination harness for IDA-as-denyReason [#1798](https://github.com/nicsuzor/academicOps/issues/1798) ([188f218](https://github.com/nicsuzor/academicOps/commit/188f21867f2337b4df3bbb39e84bd6d3061410e2))
+- **1798:** parametrize IDA invariant harness over agy + claude clients ([6ee647e](https://github.com/nicsuzor/academicOps/commit/6ee647e79618553b7368416f70acaea25569151c))
+- **agy:** elimination harness for IDA-as-denyReason [#1798](https://github.com/nicsuzor/academicOps/issues/1798) ([188f218](https://github.com/nicsuzor/academicOps/commit/188f21867f2337b4df3bbb39e84bd6d3061410e2))
 
 ## [0.3.39](https://github.com/nicsuzor/academicOps/compare/v0.3.38...v0.3.39) (2026-06-12)
 
-
 ### Features
 
-* Add support in polecat to commit to shared branch / existing draft PR ([#1749](https://github.com/nicsuzor/academicOps/issues/1749)) ([db727f8](https://github.com/nicsuzor/academicOps/commit/db727f83c4a3dd99c7a4a5c364a75b03c1dfd8d1))
-* **config:** add is_repo flag to project definitions to support non-repository projects ([ed36ce9](https://github.com/nicsuzor/academicOps/commit/ed36ce9c240c3c2e16b983486c27d824197b7618))
-* **config:** add is_repo flag to project definitions to support non-repository projects ([3aa3bed](https://github.com/nicsuzor/academicOps/commit/3aa3beda78ce1b64f66cb007cc3e98349ad16cb2))
-* **dead-code:** dead-code sweep - delete 5 confirmed-orphaned code units ([74f1ad9](https://github.com/nicsuzor/academicOps/commit/74f1ad93556e0e613cd58e645802ed41e70de691))
-* **gates:** close handover on pkb claim + edit tools in all sessions ([dd59e3b](https://github.com/nicsuzor/academicOps/commit/dd59e3b55481f1c40d4ee819165d31b5468c015b))
-* **junior:** add point-of-contact closure rules — no homework for the user, diagnosis implies remediation (retro c9308eaf) ([ec896e0](https://github.com/nicsuzor/academicOps/commit/ec896e008ff24560027ddd3c65606a7290194115))
-* **junior:** add point-of-contact closure rules (retro c9308eaf) ([1e6a471](https://github.com/nicsuzor/academicOps/commit/1e6a471915c15cbe4692109079c9e3e9b55e8cc5))
-* **review:** unify /review-pr into /strategic-review (caller fans out, james reconciles) ([2164f27](https://github.com/nicsuzor/academicOps/commit/2164f2726fc72500c7287311f8276dc64988006a))
-* **review:** unify review-pr into /strategic-review; caller fans out, james reconciles ([e7991b0](https://github.com/nicsuzor/academicOps/commit/e7991b02147883ac17230a3ce4c323e33430446d))
-* **shared-branch:** add --promote option to run/finish and gate draft PR on is_shared ([876f845](https://github.com/nicsuzor/academicOps/commit/876f845373925b81f3eb5a97865a6f4be4be80c5))
-* **skills:** split analyst into tech-agnostic core + aops-extras package ([cea811f](https://github.com/nicsuzor/academicOps/commit/cea811f9db384f4e2370cccf99d0eeb22c72385a))
-* **skills:** split analyst into tech-agnostic core + aops-extras package ([1aff82b](https://github.com/nicsuzor/academicOps/commit/1aff82b6606e474876ad93b416838a6ee30fe889))
-* **supervisor:** make supervision a required, skill-bound process ([ee63a97](https://github.com/nicsuzor/academicOps/commit/ee63a97b23802be4cad69d88afd32bde926a4e86))
-* **supervisor:** port [#1792](https://github.com/nicsuzor/academicOps/issues/1792) proof superset; fix SSoT + gate-inflation ([8dc55b4](https://github.com/nicsuzor/academicOps/commit/8dc55b4217786a0c1412df83a3589cb755973cb2))
-
+- Add support in polecat to commit to shared branch / existing draft PR ([#1749](https://github.com/nicsuzor/academicOps/issues/1749)) ([db727f8](https://github.com/nicsuzor/academicOps/commit/db727f83c4a3dd99c7a4a5c364a75b03c1dfd8d1))
+- **config:** add is_repo flag to project definitions to support non-repository projects ([ed36ce9](https://github.com/nicsuzor/academicOps/commit/ed36ce9c240c3c2e16b983486c27d824197b7618))
+- **config:** add is_repo flag to project definitions to support non-repository projects ([3aa3bed](https://github.com/nicsuzor/academicOps/commit/3aa3beda78ce1b64f66cb007cc3e98349ad16cb2))
+- **dead-code:** dead-code sweep - delete 5 confirmed-orphaned code units ([74f1ad9](https://github.com/nicsuzor/academicOps/commit/74f1ad93556e0e613cd58e645802ed41e70de691))
+- **gates:** close handover on pkb claim + edit tools in all sessions ([dd59e3b](https://github.com/nicsuzor/academicOps/commit/dd59e3b55481f1c40d4ee819165d31b5468c015b))
+- **junior:** add point-of-contact closure rules — no homework for the user, diagnosis implies remediation (retro c9308eaf) ([ec896e0](https://github.com/nicsuzor/academicOps/commit/ec896e008ff24560027ddd3c65606a7290194115))
+- **junior:** add point-of-contact closure rules (retro c9308eaf) ([1e6a471](https://github.com/nicsuzor/academicOps/commit/1e6a471915c15cbe4692109079c9e3e9b55e8cc5))
+- **review:** unify /review-pr into /strategic-review (caller fans out, james reconciles) ([2164f27](https://github.com/nicsuzor/academicOps/commit/2164f2726fc72500c7287311f8276dc64988006a))
+- **review:** unify review-pr into /strategic-review; caller fans out, james reconciles ([e7991b0](https://github.com/nicsuzor/academicOps/commit/e7991b02147883ac17230a3ce4c323e33430446d))
+- **shared-branch:** add --promote option to run/finish and gate draft PR on is_shared ([876f845](https://github.com/nicsuzor/academicOps/commit/876f845373925b81f3eb5a97865a6f4be4be80c5))
+- **skills:** split analyst into tech-agnostic core + aops-extras package ([cea811f](https://github.com/nicsuzor/academicOps/commit/cea811f9db384f4e2370cccf99d0eeb22c72385a))
+- **skills:** split analyst into tech-agnostic core + aops-extras package ([1aff82b](https://github.com/nicsuzor/academicOps/commit/1aff82b6606e474876ad93b416838a6ee30fe889))
+- **supervisor:** make supervision a required, skill-bound process ([ee63a97](https://github.com/nicsuzor/academicOps/commit/ee63a97b23802be4cad69d88afd32bde926a4e86))
+- **supervisor:** port [#1792](https://github.com/nicsuzor/academicOps/issues/1792) proof superset; fix SSoT + gate-inflation ([8dc55b4](https://github.com/nicsuzor/academicOps/commit/8dc55b4217786a0c1412df83a3589cb755973cb2))
 
 ### Bug Fixes
 
-* **agents:** replace stale /review-pr reference with /strategic-review in CORE.md ([e21e5c6](https://github.com/nicsuzor/academicOps/commit/e21e5c6e9e1e70b7fb7b671980c397909a20c1d0))
-* **agy:** consolidated agy-hook fixes (cold-start + provider threading + summary-writer leak) ([399d9a6](https://github.com/nicsuzor/academicOps/commit/399d9a6f9766505f7ca99b29ae73973268fc20f1))
-* **agy:** expose rbg enforcer gate to agy (antigravity) sessions ([549cfa3](https://github.com/nicsuzor/academicOps/commit/549cfa3421bff93be489d710f1bfb2a80635a1fe))
-* **agy:** make aops-core hooks fully functional on Antigravity CLI ([d58f2e2](https://github.com/nicsuzor/academicOps/commit/d58f2e257c015cfb5051ffeda040ea22d8c70822))
-* **agy:** make PreInvocation context injection fire and render on agy 1.0.7 ([eecc394](https://github.com/nicsuzor/academicOps/commit/eecc394b494ee6cd7fd961373cd6fa8ef5ac29f0))
-* **agy:** PreInvocation context injection now fires + renders on agy 1.0.7 ([de09807](https://github.com/nicsuzor/academicOps/commit/de09807ea784326e89b22730c7923f9dc48ea470))
-* **agy:** protojson DENY top-level shape + prebake config/plugins venv (aops-891c0e36) ([15e4b66](https://github.com/nicsuzor/academicOps/commit/15e4b668121e7e1ccb7f89f229c72bf9b3de69e5))
-* **agy:** protojson DENY uses top-level allowTool/denyReason + prebake config/plugins venv ([fe68873](https://github.com/nicsuzor/academicOps/commit/fe68873e45fc0f76a07e5ca00a8a4781c3d10003))
-* **agy:** thread provider into session-summary filename so agy summaries are -antigravity-, not -claude- ([4c3b523](https://github.com/nicsuzor/academicOps/commit/4c3b523e97a0710c53fea6a891f52efd535faf78))
-* **agy:** verify HookInjectedStep oneof contract; document agy 1.0.7 PreInvocation no-op ([c0ebff3](https://github.com/nicsuzor/academicOps/commit/c0ebff390ff226df0ff26d14dfa230f184f54173))
-* **build:** resolve install split-brain, ruff version skew, inline pyproject (epic-267fe017) ([#1811](https://github.com/nicsuzor/academicOps/issues/1811)) ([22643d7](https://github.com/nicsuzor/academicOps/commit/22643d7a17700d643d49f752307d0740bc5fa0e2))
-* **ci:** repair red dev baseline — handover tests + build.py type errors ([893c376](https://github.com/nicsuzor/academicOps/commit/893c376525302ba2d00d6dc6b87cdd82fc4c7658))
-* **daily:** commit note in Output step (minimal self-correction) ([5dd10c1](https://github.com/nicsuzor/academicOps/commit/5dd10c1327bbf731e90bb4866737897af3ab53f4))
-* **daily:** commit the note on write, don't rely on auto-sync ([362c3e9](https://github.com/nicsuzor/academicOps/commit/362c3e93793ef31fd30a71029196d8555ef41333))
-* **daily:** drop --no-verify from commit step (halt-on-failure) ([860a866](https://github.com/nicsuzor/academicOps/commit/860a86639af2f20a5e3b8f6b79b9ada21100e7d9))
-* deduplicate intermediate-task verification steps in supervision-loop.md ([7cd21f0](https://github.com/nicsuzor/academicOps/commit/7cd21f011031abbabe60a7faca4532af5d21df7d))
-* **hooks:** pre-bake hook venv at install time for all clients ([6a38952](https://github.com/nicsuzor/academicOps/commit/6a38952b8c354d64b15c7deaf007d205e2445cc4))
-* **hooks:** stop SessionStart scaffolding a daily-note stub ([#1739](https://github.com/nicsuzor/academicOps/issues/1739)) ([0bd80d9](https://github.com/nicsuzor/academicOps/commit/0bd80d9c87dd16b9ecc6a10b29646fb77366ff10))
-* **hooks:** stop SessionStart scaffolding a daily-note stub ([#1739](https://github.com/nicsuzor/academicOps/issues/1739)) ([fc1ee27](https://github.com/nicsuzor/academicOps/commit/fc1ee2793656dfa3016b5e776edf3d8166f4f0dd))
-* **lib:** resolve session_* name collisions + dedupe divergent helpers ([f66d0e3](https://github.com/nicsuzor/academicOps/commit/f66d0e3e211e4c73874821d6af3e3aea9db7af36))
-* **marsha:** add back-reference to design-rubric self-instance requirement ([0cc03ad](https://github.com/nicsuzor/academicOps/commit/0cc03add9f663f4ab313e46cbf4c02dcae825a2b))
-* **peer-review:** canonicalise aops-tools peer-review to aops-core version ([9cc24d8](https://github.com/nicsuzor/academicOps/commit/9cc24d81e720ba519ce44685ba5fd062abc67aa1))
-* **peer-review:** delete aops-core copy — aops-tools is now the sole home ([27522e1](https://github.com/nicsuzor/academicOps/commit/27522e14ffdbbb97f3c9901bb048f865bef742df))
-* **peer-review:** make aops-tools peer-review the canonical aops-core version ([c1df288](https://github.com/nicsuzor/academicOps/commit/c1df2886813bb7cac1bd6918638ca3a4aeb135a7))
-* **pkb-nudge:** counter MEMORY.md named-pointer shortcut ([#1807](https://github.com/nicsuzor/academicOps/issues/1807)) ([145d53b](https://github.com/nicsuzor/academicOps/commit/145d53b75368053424d618e47a2967c2d5d1c979))
-* **pr-pipeline:** admit/check-admit gate on convergence, not green verdict ([c118335](https://github.com/nicsuzor/academicOps/commit/c11833515813df261f98507ee95e1ce6155c9a4a))
-* **pr-pipeline:** stop alignment-queue filing alignment:queued issues (no drainer) ([5a72987](https://github.com/nicsuzor/academicOps/commit/5a72987b02df0b4b344423638a4ea071932671d1))
-* **rbg:** add universal-claim inference step to R2 ([320690a](https://github.com/nicsuzor/academicOps/commit/320690a9e3cf12fd32ef12a150541e78a6c5340f))
-* resolve basedpyright GateVerdict type errors in gate definitions ([698335e](https://github.com/nicsuzor/academicOps/commit/698335e494b965ca6b7c932fcb3e8c5d7b3cd127))
-* **router:** unpack nested raw_input fields for antigravity client hooks ([8326a24](https://github.com/nicsuzor/academicOps/commit/8326a240d907fa19004c13160d54252b555bc7b8))
-* **transcript_parser:** correct ParsedSession docstring — old name was SessionSummary, not ParsedSession ([51667a4](https://github.com/nicsuzor/academicOps/commit/51667a45e035556dc1cf933e8fd786cf40d3cad4))
-
+- **agents:** replace stale /review-pr reference with /strategic-review in CORE.md ([e21e5c6](https://github.com/nicsuzor/academicOps/commit/e21e5c6e9e1e70b7fb7b671980c397909a20c1d0))
+- **agy:** consolidated agy-hook fixes (cold-start + provider threading + summary-writer leak) ([399d9a6](https://github.com/nicsuzor/academicOps/commit/399d9a6f9766505f7ca99b29ae73973268fc20f1))
+- **agy:** expose rbg enforcer gate to agy (antigravity) sessions ([549cfa3](https://github.com/nicsuzor/academicOps/commit/549cfa3421bff93be489d710f1bfb2a80635a1fe))
+- **agy:** make aops-core hooks fully functional on Antigravity CLI ([d58f2e2](https://github.com/nicsuzor/academicOps/commit/d58f2e257c015cfb5051ffeda040ea22d8c70822))
+- **agy:** make PreInvocation context injection fire and render on agy 1.0.7 ([eecc394](https://github.com/nicsuzor/academicOps/commit/eecc394b494ee6cd7fd961373cd6fa8ef5ac29f0))
+- **agy:** PreInvocation context injection now fires + renders on agy 1.0.7 ([de09807](https://github.com/nicsuzor/academicOps/commit/de09807ea784326e89b22730c7923f9dc48ea470))
+- **agy:** protojson DENY top-level shape + prebake config/plugins venv (aops-891c0e36) ([15e4b66](https://github.com/nicsuzor/academicOps/commit/15e4b668121e7e1ccb7f89f229c72bf9b3de69e5))
+- **agy:** protojson DENY uses top-level allowTool/denyReason + prebake config/plugins venv ([fe68873](https://github.com/nicsuzor/academicOps/commit/fe68873e45fc0f76a07e5ca00a8a4781c3d10003))
+- **agy:** thread provider into session-summary filename so agy summaries are -antigravity-, not -claude- ([4c3b523](https://github.com/nicsuzor/academicOps/commit/4c3b523e97a0710c53fea6a891f52efd535faf78))
+- **agy:** verify HookInjectedStep oneof contract; document agy 1.0.7 PreInvocation no-op ([c0ebff3](https://github.com/nicsuzor/academicOps/commit/c0ebff390ff226df0ff26d14dfa230f184f54173))
+- **build:** resolve install split-brain, ruff version skew, inline pyproject (epic-267fe017) ([#1811](https://github.com/nicsuzor/academicOps/issues/1811)) ([22643d7](https://github.com/nicsuzor/academicOps/commit/22643d7a17700d643d49f752307d0740bc5fa0e2))
+- **ci:** repair red dev baseline — handover tests + build.py type errors ([893c376](https://github.com/nicsuzor/academicOps/commit/893c376525302ba2d00d6dc6b87cdd82fc4c7658))
+- **daily:** commit note in Output step (minimal self-correction) ([5dd10c1](https://github.com/nicsuzor/academicOps/commit/5dd10c1327bbf731e90bb4866737897af3ab53f4))
+- **daily:** commit the note on write, don't rely on auto-sync ([362c3e9](https://github.com/nicsuzor/academicOps/commit/362c3e93793ef31fd30a71029196d8555ef41333))
+- **daily:** drop --no-verify from commit step (halt-on-failure) ([860a866](https://github.com/nicsuzor/academicOps/commit/860a86639af2f20a5e3b8f6b79b9ada21100e7d9))
+- deduplicate intermediate-task verification steps in supervision-loop.md ([7cd21f0](https://github.com/nicsuzor/academicOps/commit/7cd21f011031abbabe60a7faca4532af5d21df7d))
+- **hooks:** pre-bake hook venv at install time for all clients ([6a38952](https://github.com/nicsuzor/academicOps/commit/6a38952b8c354d64b15c7deaf007d205e2445cc4))
+- **hooks:** stop SessionStart scaffolding a daily-note stub ([#1739](https://github.com/nicsuzor/academicOps/issues/1739)) ([0bd80d9](https://github.com/nicsuzor/academicOps/commit/0bd80d9c87dd16b9ecc6a10b29646fb77366ff10))
+- **hooks:** stop SessionStart scaffolding a daily-note stub ([#1739](https://github.com/nicsuzor/academicOps/issues/1739)) ([fc1ee27](https://github.com/nicsuzor/academicOps/commit/fc1ee2793656dfa3016b5e776edf3d8166f4f0dd))
+- **lib:** resolve session_* name collisions + dedupe divergent helpers ([f66d0e3](https://github.com/nicsuzor/academicOps/commit/f66d0e3e211e4c73874821d6af3e3aea9db7af36))
+- **marsha:** add back-reference to design-rubric self-instance requirement ([0cc03ad](https://github.com/nicsuzor/academicOps/commit/0cc03add9f663f4ab313e46cbf4c02dcae825a2b))
+- **peer-review:** canonicalise aops-tools peer-review to aops-core version ([9cc24d8](https://github.com/nicsuzor/academicOps/commit/9cc24d81e720ba519ce44685ba5fd062abc67aa1))
+- **peer-review:** delete aops-core copy — aops-tools is now the sole home ([27522e1](https://github.com/nicsuzor/academicOps/commit/27522e14ffdbbb97f3c9901bb048f865bef742df))
+- **peer-review:** make aops-tools peer-review the canonical aops-core version ([c1df288](https://github.com/nicsuzor/academicOps/commit/c1df2886813bb7cac1bd6918638ca3a4aeb135a7))
+- **pkb-nudge:** counter MEMORY.md named-pointer shortcut ([#1807](https://github.com/nicsuzor/academicOps/issues/1807)) ([145d53b](https://github.com/nicsuzor/academicOps/commit/145d53b75368053424d618e47a2967c2d5d1c979))
+- **pr-pipeline:** admit/check-admit gate on convergence, not green verdict ([c118335](https://github.com/nicsuzor/academicOps/commit/c11833515813df261f98507ee95e1ce6155c9a4a))
+- **pr-pipeline:** stop alignment-queue filing alignment:queued issues (no drainer) ([5a72987](https://github.com/nicsuzor/academicOps/commit/5a72987b02df0b4b344423638a4ea071932671d1))
+- **rbg:** add universal-claim inference step to R2 ([320690a](https://github.com/nicsuzor/academicOps/commit/320690a9e3cf12fd32ef12a150541e78a6c5340f))
+- resolve basedpyright GateVerdict type errors in gate definitions ([698335e](https://github.com/nicsuzor/academicOps/commit/698335e494b965ca6b7c932fcb3e8c5d7b3cd127))
+- **router:** unpack nested raw_input fields for antigravity client hooks ([8326a24](https://github.com/nicsuzor/academicOps/commit/8326a240d907fa19004c13160d54252b555bc7b8))
+- **transcript_parser:** correct ParsedSession docstring — old name was SessionSummary, not ParsedSession ([51667a4](https://github.com/nicsuzor/academicOps/commit/51667a45e035556dc1cf933e8fd786cf40d3cad4))
 
 ### Code Refactoring
 
-* **junior:** remove duplicate instructions and incident-specific rules ([02e351e](https://github.com/nicsuzor/academicOps/commit/02e351ec48e97db8d03d7bd8027013bc2527bd40))
-* **planner:** dedup intent-authority rule, point to local canonical section ([2dd269b](https://github.com/nicsuzor/academicOps/commit/2dd269bcab970174dd0e8237501b41eba7ebc5c7))
-* **sleep:** drop detector-bug workaround prose now fixed upstream (mem[#425](https://github.com/nicsuzor/academicOps/issues/425)) ([019ead6](https://github.com/nicsuzor/academicOps/commit/019ead6e6fa0d38faf1cbd8dd89ebdead1f85f1a))
-* **supervisor:** fold /program in, cut deterministic brakes + merge-gate mechanics, trust the agent ([b045fcc](https://github.com/nicsuzor/academicOps/commit/b045fcc7b6b71f3270a77f3b965aec8618194d58))
-* **supervisor:** inline holding-work-to-proof into the skill; add craft defect class ([b666939](https://github.com/nicsuzor/academicOps/commit/b66693940cfe66a6dcb71d292970552ef528cb84))
-
+- **junior:** remove duplicate instructions and incident-specific rules ([02e351e](https://github.com/nicsuzor/academicOps/commit/02e351ec48e97db8d03d7bd8027013bc2527bd40))
+- **planner:** dedup intent-authority rule, point to local canonical section ([2dd269b](https://github.com/nicsuzor/academicOps/commit/2dd269bcab970174dd0e8237501b41eba7ebc5c7))
+- **sleep:** drop detector-bug workaround prose now fixed upstream (mem[#425](https://github.com/nicsuzor/academicOps/issues/425)) ([019ead6](https://github.com/nicsuzor/academicOps/commit/019ead6e6fa0d38faf1cbd8dd89ebdead1f85f1a))
+- **supervisor:** fold /program in, cut deterministic brakes + merge-gate mechanics, trust the agent ([b045fcc](https://github.com/nicsuzor/academicOps/commit/b045fcc7b6b71f3270a77f3b965aec8618194d58))
+- **supervisor:** inline holding-work-to-proof into the skill; add craft defect class ([b666939](https://github.com/nicsuzor/academicOps/commit/b66693940cfe66a6dcb71d292970552ef528cb84))
 
 ### Documentation
 
-* **agents,skills:** propagate self-instance rule to design-rubric + marsha (+ verify cross-ref) ([aedc16a](https://github.com/nicsuzor/academicOps/commit/aedc16a7071f1a15ca6eb9b96dd455e6a2c7ce79))
-* encode cohesive single-PR-epic pattern into planner/supervisor skills ([8e1af24](https://github.com/nicsuzor/academicOps/commit/8e1af24ab7eea93d6392828b317b7dd699935c74))
-* resolve draft lifecycle contract, dispatch command formats, and single source of truth duplication ([245742c](https://github.com/nicsuzor/academicOps/commit/245742c3a6b5b84f2886e07978155d1d98285d31))
-
+- **agents,skills:** propagate self-instance rule to design-rubric + marsha (+ verify cross-ref) ([aedc16a](https://github.com/nicsuzor/academicOps/commit/aedc16a7071f1a15ca6eb9b96dd455e6a2c7ce79))
+- encode cohesive single-PR-epic pattern into planner/supervisor skills ([8e1af24](https://github.com/nicsuzor/academicOps/commit/8e1af24ab7eea93d6392828b317b7dd699935c74))
+- resolve draft lifecycle contract, dispatch command formats, and single source of truth duplication ([245742c](https://github.com/nicsuzor/academicOps/commit/245742c3a6b5b84f2886e07978155d1d98285d31))
 
 ### Build System
 
-* **cowork:** ship no hooks — rely on shared aops-core hook stack (aops-04075740) ([469cca8](https://github.com/nicsuzor/academicOps/commit/469cca855a7011ece6c4d4d07f266eb5a305ab98))
-
+- **cowork:** ship no hooks — rely on shared aops-core hook stack (aops-04075740) ([469cca8](https://github.com/nicsuzor/academicOps/commit/469cca855a7011ece6c4d4d07f266eb5a305ab98))
 
 ### Tests
 
-* **agy:** fix two test-isolation bugs surfaced during agy-hook consolidation ([8a1af4d](https://github.com/nicsuzor/academicOps/commit/8a1af4d4c14c00089cfc698a463158b79c5d47b8))
-* replace brittle mirror source tests with behavioral tests for finalize promote flag ([eaea5c9](https://github.com/nicsuzor/academicOps/commit/eaea5c9523fba78592e33d2223bc82353046e71a))
-
+- **agy:** fix two test-isolation bugs surfaced during agy-hook consolidation ([8a1af4d](https://github.com/nicsuzor/academicOps/commit/8a1af4d4c14c00089cfc698a463158b79c5d47b8))
+- replace brittle mirror source tests with behavioral tests for finalize promote flag ([eaea5c9](https://github.com/nicsuzor/academicOps/commit/eaea5c9523fba78592e33d2223bc82353046e71a))
 
 ### Miscellaneous
 
-* **integrity:** drop dead check_context_map_coverage() ([f0c0029](https://github.com/nicsuzor/academicOps/commit/f0c0029553d5d60e2090d09bd06fce42926fe407))
-* **integrity:** drop dead check_context_map_coverage() ([2689127](https://github.com/nicsuzor/academicOps/commit/26891271ec9a673f01bcff87e249405de0f8208c))
-* replace retired polecat/SSH dispatch commands with canonical uv run ([#1747](https://github.com/nicsuzor/academicOps/issues/1747)) ([1683d41](https://github.com/nicsuzor/academicOps/commit/1683d41004cdefe1f71dbcbeb38c2e57d056526f))
-* saving uncommitted agent work ([5927778](https://github.com/nicsuzor/academicOps/commit/5927778dc4b6937b0e24fc2480b268fd8ff6a8f6))
-* scope PR to agent-def reflex only ([961b6eb](https://github.com/nicsuzor/academicOps/commit/961b6eb15d7371517499c1d7309dc7afe445e413))
+- **integrity:** drop dead check_context_map_coverage() ([f0c0029](https://github.com/nicsuzor/academicOps/commit/f0c0029553d5d60e2090d09bd06fce42926fe407))
+- **integrity:** drop dead check_context_map_coverage() ([2689127](https://github.com/nicsuzor/academicOps/commit/26891271ec9a673f01bcff87e249405de0f8208c))
+- replace retired polecat/SSH dispatch commands with canonical uv run ([#1747](https://github.com/nicsuzor/academicOps/issues/1747)) ([1683d41](https://github.com/nicsuzor/academicOps/commit/1683d41004cdefe1f71dbcbeb38c2e57d056526f))
+- saving uncommitted agent work ([5927778](https://github.com/nicsuzor/academicOps/commit/5927778dc4b6937b0e24fc2480b268fd8ff6a8f6))
+- scope PR to agent-def reflex only ([961b6eb](https://github.com/nicsuzor/academicOps/commit/961b6eb15d7371517499c1d7309dc7afe445e413))
 
 ## [0.3.38](https://github.com/nicsuzor/academicOps/compare/v0.3.37...v0.3.38) (2026-06-10)
 

@@ -44,6 +44,8 @@ Before pauli emits a `dispatch` verdict, she validates the task purely through P
 **Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
+**Prep / review-only briefs — save the work, don't withhold it.** When the brief is "prepare a reviewable diff / prep only / do not merge / do not open a PR," it constrains the _terminal action only_. The brief MUST still direct the worker to **commit each chunk and push the branch to `origin`** — a reviewable diff is a pushed branch, not a dirty working tree in an environment about to be torn down. Never phrase a prep brief in a way that reads as "leave work unsaved." Canonical rule: [[framework-conventions-summary#commit-and-push-discipline]].
+
 ### Existing PR Check
 
 For both variants: Is there already a PR linked to this task? If it's a known `pr_url`, Pauli checks its state. This is the only external call Pauli makes, if needed; strictly we prefer to trust the PKB status.
@@ -64,9 +66,9 @@ A task requires critic-gated dispatch when the action is irreversible or has a b
 
 ## Dispatch Execution
 
-The supervisor main agent runs the dispatch. See the **Canonical Dispatch Template** in `SKILL.md` for the exact Bash invocation.
+The supervisor main agent runs the dispatch. See [[../references/cohesive-pr-epic#canonical-dispatch-command-polecat-surface]] for the Bash template, and PKB memory `mem-3014f36b` for the current host path and model alias list.
 
-**Compose-then-Dispatch Separation (mandatory).** The invocation that dispatches MUST NOT be the same invocation that authored or substantively refined the `## Dispatch Brief`. If pauli wrote or reshaped the brief this invocation, the verdict is `brief composed on <task-id>`; the supervisor chains a _separate_ dispatch-agent subagent (fresh subagent context) that reads the persisted brief from PKB and emits its own dispatch verdict. Compose-agent and dispatch-agent MAY co-occur in a single tick. Evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting; do not rubber-stamp. See [[../SKILL#compose-then-dispatch-separation]] and the canonical doctrine at [[../../aops/references/authoring-discipline#3-compose-then-dispatch-separation]].
+**Compose-then-Dispatch Separation (mandatory).** The invocation that dispatches MUST NOT be the same invocation that authored or substantively refined the `## Dispatch Brief`. If pauli wrote or reshaped the brief this invocation, the verdict is `brief composed on <task-id>`; the supervisor chains a _separate_ dispatch-agent subagent (fresh subagent context) that reads the persisted brief from PKB and emits its own dispatch verdict. Compose-agent and dispatch-agent MAY co-occur in a single tick. Evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting; do not rubber-stamp. See [[../references/subagent-contracts#compose-then-dispatch-separation]] and the canonical doctrine at [[../../aops/references/authoring-discipline#3-compose-then-dispatch-separation]].
 
 **Task Body Anti-Pattern (Verify Before Naming):** If you have to look up paths to fill the body, you're doing the worker's job. Apply the Task-Body Authoring Discipline ([[../../aops/references/authoring-discipline]]): **intent + AC, not prescription**. Any cited tool, file, or agent MUST be empirically verifiable; if you are unsure, mark it as "polecat to verify" or omit the specific name entirely.
 

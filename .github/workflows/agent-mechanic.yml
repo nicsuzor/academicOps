@@ -264,8 +264,9 @@ jobs:
           1. **Trim PR scope** so the unresolvable signal no longer applies.
           2. **Push a human fix** for the specific signal, which independently resets
              \`admit-status\` to pending and re-enters the gate.
-          3. **Re-admit deliberately** at the \`pr-fix-loop\` Environment once the
-             underlying issue is understood.
+          3. **Re-admit deliberately** by re-approving the PR (a fresh review approval
+             re-sets \`admit-status\` via \`admit-on-review.yml\`) once the underlying
+             issue is understood.
 
           \`admit-status\` has been reset to \`pending\`; auto-merge cannot fire on
           the stale "good idea" decision. The PR will not merge until you re-judge
@@ -293,7 +294,7 @@ jobs:
           gh api "repos/$REPO/statuses/$HEAD_SHA" \
             -f state=pending \
             -f context="admit-status" \
-            -f description="Reset: Stage-2 loop ceiling reached — re-judge at pr-fix-loop" \
+            -f description="Reset: Stage-2 loop ceiling reached — re-judge by re-approving the PR" \
             -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
 
           # (5) Request the maintainer so the escalation is visible, not buried

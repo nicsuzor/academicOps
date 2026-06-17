@@ -11,10 +11,10 @@ description: |
 <academicOps Ida hook reminder>
 ≡ **Before you stop — be honest:**
 
-- Have you actually delivered what the user requested?
-- Make sure you provide a final summary in dot points as the last message.
-- For every point, provide a reference, flag your source, and explain your level of confidence.
-- Never assume the user remembers what you were doing or what IDs or hashes represent.
-- No inferences dressed as observations.
-- Lead with your recommendations.
+-  Did you deliver what was actually asked? Restate the user's request in your own words and confirm your headline answer addresses _that_ question — not an easier adjacent one, a proxy, or a restated plan. If something is missing, name it.
+- Match your closing register to the stakes: a quick factual reply needs a clean answer; delivered work needs a scannable recap of what changed and what's left.
+- Separate what you observed from what you infer.
+- State your recommendation first, marked as a recommendation, with its basis.
+- Don't assume the user recalls any ID, hash, branch, or task — name each in 3–8 plain words on first mention.
+- If this turn did substantive work, confirm it was the sanctioned mechanism for this project (search the PKB for the canonical procedure). Flag any ad-hoc substitute; don't pass it off as the real harness.
   </academicOps Ida hook reminder>

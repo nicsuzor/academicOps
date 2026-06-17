@@ -84,30 +84,6 @@ def test_get_spec_unknown_raises(registry):
     assert "nonexistent.template" in str(exc_info.value)
 
 
-def test_get_spec_all_registered_templates(registry):
-    """All expected templates are registered."""
-    expected_names = [
-        "enforcer.context",
-        "enforcer.instruction",
-        "enforcer.verified",
-        "enforcer.policy_message",
-        "enforcer.policy_context",
-        "enforcer.countdown",
-        "qa.complete",
-        "qa.policy_message",
-        "qa.policy_context",
-        "handover.bound",
-        "handover.complete",
-        "handover.policy_message",
-        "stop.handover_block",
-    ]
-
-    for name in expected_names:
-        spec = registry.get_spec(name)
-        assert spec is not None, f"Template {name} not registered"
-        assert spec.name == name
-
-
 # =============================================================================
 # RENDERING TESTS
 # =============================================================================

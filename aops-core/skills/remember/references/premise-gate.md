@@ -10,7 +10,7 @@ tags: [framework, enforcement, premise-gate, agent-judgment, judgment-non-delega
 
 # The Premise Gate
 
-> **One line.** Before a task crosses into the dispatchable set (`→ queued`) the promoter records a one-sentence, principal-voice judgment of the **premise**; `/pull` and the dispatch step of `/supervisor` **refuse to dispatch** a task whose body shows no genuine premise judgment. The aim is to kill the whole class of dumb ideas at the universal source — task promotion — before any compute is spent building good code for a bad idea.
+> **One line.** Before a task crosses into the dispatchable set (`→ queued`) the promoter records a one-sentence, principal-voice judgment of the **premise**; `/pull`, `/dispatch`, and the dispatch step of `/supervisor` **refuse to spend compute on** a task whose body shows no genuine premise judgment. The aim is to kill the whole class of dumb ideas at the universal source — task promotion — before any compute is spent building good code for a bad idea.
 
 This gate is the first-ever enforcement surface for the axiom **[[../../../../.agents/rules/AXIOMS.md#judgment-non-delegable]]** (`judgment-non-delegable`). It is itself judgment, not a mechanism: an agent reads a sentence and decides. There is no regex, no field check, no classifier, no threshold, no checklist anywhere in it — building one of those to police "is this a dumb idea?" would itself be the disease (a deterministic rig standing in for a qualitative call), so it is forbidden by construction.
 
@@ -40,9 +40,9 @@ These are examples of what a good premise judgment catches. **Do not enumerate t
 
 **Canonical specimen (illustrative, NOT a checklist).** PR #1723 proposed a **978-line SHA-parsing freshness tool with magic thresholds** (`STALE ≥ 20 commits` / `≥ 30 days`) and brittle prose-fallback parsing — an entire deterministic machine built to answer a one-read staleness call that a smart agent would simply _judge_ by reading the doc and the repo. A sharp principal's one-sentence reaction — _"why 978 lines of machine for a question I'd answer by reading?"_ — bounces it before a line is written. Over-engineering (a deterministic rig for a judgment call) is **one instance** of the broader class of dumb ideas this gate kills; it is the worked example, not the definition.
 
-## 2. What the dispatcher does (at `/pull` and `/supervisor` dispatch)
+## 2. What the dispatcher does (at `/pull`, `/dispatch`, and `/supervisor` dispatch)
 
-The dispatch surfaces — `/pull` and the Dispatch phase of `/supervisor` (at any scale: single epic or portfolio/release) — are the last moment before compute is spent. Before dispatching a queued task:
+The spend surfaces — `/pull` (inline claim), `/dispatch`, and the Dispatch phase of `/supervisor` (at any scale: single epic or portfolio/release) — are the last moment before compute is spent. Before acting on a queued task:
 
 1. **Read the body and judge** whether it contains a genuine premise assessment — a real sentence from someone who looked at this task and decided it is worth doing and rightly shaped. **This is an agent judgment, not a presence check.** Do not grep for a keyword, a heading, or a field; a string/field/regex presence-check would itself be the deterministic rig this gate forbids (`judgment-non-delegable`). You read it, you decide.
 2. **If a genuine premise judgment is present → dispatch** as normal.
@@ -52,12 +52,13 @@ Hard refuse, not soft warn — a soft warning degrades to advisory and gets sail
 
 ## 3. Honest scope
 
-This gate binds **only the coordinated / `/pull` dispatch path** — everything that flows through `/pull` or `/supervisor` (single-epic or portfolio). That is the bulk of agent compute-spend and all polecat dispatch, and it is repo-agnostic (any project, any repo that dispatches through these surfaces). It is **not** universal: a human who opens an editor and hand-codes, or fires a worker by hand, never touches `queued` and this gate cannot see them. The **review backstop** (the generalized premise test in `/strategic-review` arch-fit and `/verify`, plus `/learn` recurrence scoring) is the catch for premises that arrive as direct hand-coded PRs. The pair is surface-agnostic; this source gate alone is not. Do not overclaim it.
+This gate binds **only the coordinated spend path** — everything that flows through `/pull`, `/dispatch`, or `/supervisor` (single-epic or portfolio). That is the bulk of agent compute-spend and all polecat dispatch, and it is repo-agnostic (any project, any repo that dispatches through these surfaces). It is **not** universal: a human who opens an editor and hand-codes, or fires a worker by hand, never touches `queued` and this gate cannot see them. The **review backstop** (the generalized premise test in `/strategic-review` arch-fit and `/verify`, plus `/learn` recurrence scoring) is the catch for premises that arrive as direct hand-coded PRs. The pair is surface-agnostic; this source gate alone is not. Do not overclaim it.
 
 ## Referenced by
 
 - [[TAXONOMY.md#status-values-and-transitions]] — the `queued` promotion gate
-- [[commands/pull]] — dispatch-time refusal
+- [[commands/pull]] — inline claim-time refusal
+- [[commands/dispatch]] — dispatch-time refusal
 - [[../../supervisor/instructions/worker-dispatch.md]] — pre-dispatch gate (epic + portfolio)
 - [[../../planner/SKILL.md]] — promoter-side recording
 - [[../../../../specs/ENFORCEMENT-MAP.md]] — `judgment-non-delegable` enforcement row

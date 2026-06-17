@@ -27,7 +27,7 @@ Where multiple answers apply, the test resolves to whichever side has the strong
 | -------------------------- | -------------- | -------------- | ---------------------------------------------------------------- |
 | `/daily`                   | aops-core      | aops-core ✓    | Owns daily-note structure (SSoT).                                |
 | `/remember`                | aops-core      | aops-core ✓    | Memory primitive — non-fungible.                                 |
-| `/pull`, `/q`              | aops-core      | aops-core ✓    | PKB task interaction primitives.                                 |
+| `/pull`, `/dispatch`, `/q` | aops-core      | aops-core ✓    | PKB task interaction primitives.                                 |
 | `/end-session`, `/dump`    | aops-core      | aops-core ✓    | Session lifecycle primitives.                                    |
 | `/email`                   | aops-core      | **aops-tools** | Outlook-MCP-dependent. Domain workflow on a swappable surface.   |
 | `/news-briefing` (new)     | (drafted core) | **aops-tools** | Outlook-MCP-dependent. Editorial curation is a content workflow. |

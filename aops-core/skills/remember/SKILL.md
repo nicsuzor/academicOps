@@ -17,12 +17,12 @@ domain:
   - operations
 allowed-tools: mcp__pkb__create,mcp__pkb__create_memory,mcp__pkb__append,mcp__pkb__get_document,mcp__pkb__search,mcp__pkb__update_task,Bash,Read,Write,Grep,Glob,Edit,Skill,mcp__pkb__pkb_orphans,mcp__pkb__list_tasks,mcp__pkb__graph_stats,mcp__pkb__get_stats,mcp__pkb__get_network_metrics,mcp__pkb__get_task,mcp__pkb__task_search,mcp__pkb__pkb_context,mcp__pkb__batch_reparent,mcp__pkb__find_duplicates,mcp__pkb__batch_merge,mcp__pkb__merge_node,mcp__pkb__complete_task,mcp__pkb__batch_reclassify,mcp__pkb__batch_archive,mcp__pkb__batch_update,mcp__pkb__create_task,mcp__pkb__update_memory,mcp__omcp__messages_search,mcp__omcp__messages_query,mcp__omcp__calendar_list_events
 owner: pauli
-version: 4.0.0
+version: 4.1.0
 ---
 
 # Memory Skill
 
-Provides domain instructions for knowledge capture, persistence, and maintenance in the Personal Knowledge Base (PKB) (`$ACA_DATA`).
+Provides domain instructions for knowledge capture, persistence, and maintenance in the PKB (`$ACA_DATA`).
 
 ## Immediate Mode (`/remember`)
 
@@ -42,158 +42,72 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 ### Curation
 
 - Capture episodic records accurately in the moment.
-- Curate and synthesize knowledge inline as decisions or patterns emerge; do not defer all synthesis to the `/sleep` loop.
+- Curate and synthesize knowledge inline as decisions or patterns emerge; do not defer all synthesis to the maintenance loop.
 
-### Storage Hierarchy
+### Storage and File Locations
 
-| Content                      | Write Via                                                    | Target Location                  |
-| :--------------------------- | :----------------------------------------------------------- | :------------------------------- |
-| **Epics/projects**           | `mcp__pkb__create(type="epic"\|"project")`                   | `projects/`                      |
-| **Tasks/issues**             | `gh issue create` (GitHub primary)                           | Synced automatically             |
-| **Durable knowledge**        | `mcp__pkb__create` or `mcp__pkb__create_memory`              | `knowledge/`, `context/`         |
-| **Session findings**         | `mcp__pkb__update_task` on parent task                       | Task body                        |
-| **Axioms / framework rules** | Invoke `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow |
+| Content                | Tool                                                  | Target                              |
+| :--------------------- | :---------------------------------------------------- | :---------------------------------- |
+| **Epics/projects**     | `mcp__pkb__create(type="epic"\|"project")`            | `projects/`                         |
+| **Tasks/issues**       | `gh issue create` (GitHub primary)                    | Synced automatically                |
+| **Durable knowledge**  | `mcp__pkb__create` or `mcp__pkb__create_memory`       | `knowledge/`, `context/`            |
+| **Session findings**   | `mcp__pkb__update_task` on parent task                | Task body                           |
+| **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow    |
+| **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                |
+| **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/` |
+| **Sessions/daily**     | `mcp__pkb__create(type="daily-note")`                 | `sessions/`                         |
 
-### File Locations
-
-| Content                | Location                            | Notes                                 |
-| :--------------------- | :---------------------------------- | :------------------------------------ |
-| Project metadata       | `projects/<name>.md`                | Hub files. Hub-doc type is `epic`.    |
-| Project details        | `projects/<name>/`                  | Subdirectory.                         |
-| Goals                  | `goals/`                            | Strategic objectives.                 |
-| Context (about user)   | `context/`                          | User preferences, history.            |
-| Sessions/daily         | `sessions/`                         | Daily notes only, `type: daily-note`. |
-| General knowledge      | `knowledge/<topic>/`                | Durable facts (non-user).             |
-| Meeting/call notes     | `knowledge/<topic>/` or `projects/` | `type: meeting-note`.                 |
-| Maps of Content (MOCs) | `knowledge/` or topic subdirs       | Navigational hubs, `type: moc`.       |
-
-### Episodic Classification
-
-- **Operational episodic** (agent activity, debugging logs, experimental steps) -> Update parent task body using tasks MCP tools. Do not create new documents in `$ACA_DATA/`.
-- **Durable episodic** (meeting notes, user daily notes) -> Save to `$ACA_DATA/` with correct type frontmatter.
+**Episodic classification:** Operational records (agent activity, debug logs) → update parent task body only; do not create `$ACA_DATA/` docs. Durable episodic (meeting notes, user daily notes) → save to `$ACA_DATA/` with correct type frontmatter.
 
 ## Canonical Topic Notes (Enduring Memory)
 
 Maintain exactly **one canonical note per first-class topic** (tools, projects, skills, agents, concepts).
 
-- Update existing topic notes using `mcp__pkb__append` in the relevant section.
-- Create new canonical notes with a standard section scaffold (e.g., `Overview`, `Usage`, `Known Issues`) only if the topic does not exist.
-- Avoid creating one-off observation files.
+- Update existing notes with `mcp__pkb__append`. Create new notes only when the topic does not exist.
+- Avoid one-off observation files.
 
 ### Reconciliation
 
-During updates, search for duplicate or peer notes. Merge unique content, retire weaker versions, and update wikilinks. For how to retire — **delete** the superseded file and trust git history; do not leave `superseded_by:` pointers — follow the single canonical rule in [[consolidation-procedure]] Step 3.
+Search for duplicate or peer notes during updates. Merge unique content, retire weaker versions, update wikilinks. Delete superseded files — do not leave `superseded_by:` pointers; follow [[consolidation-procedure]] Step 3.
 
 ## Workflow
 
-1. **Search**: Search PKB first: `mcp__pkb__search(query="topic")`.
+1. **Search**: `mcp__pkb__search(query="topic")`.
 2. **Evaluate**: If a canonical note exists, append to it. Do not create a separate file.
-3. **Write**: Call the appropriate PKB MCP tool:
-
-```json
-mcp__pkb__create(
-  title="Descriptive Title",
-  body="Content with [[wikilinks]].",
-  type="note" | "project" | "epic" | "knowledge" | "moc" | "meeting-note",
-  tags=["tag1", "tag2"]
-)
-```
-
-Or for lightweight facts:
-
-```json
-mcp__pkb__create_memory(
-  title="descriptive title",
-  body="content",
-  tags=["tag1"]
-)
-```
+3. **Write**: Call `mcp__pkb__create(title, body, type, tags)` or `mcp__pkb__create_memory(title, body, tags)`.
 
 ## Graph Integration
 
-### Links and References
-
-- Every note must contain at least one [[wikilink]] to a parent concept, project, goal, or entity in prose.
-- Link all proper nouns.
-- Provide explicit markdown links for external issues and PRs (e.g., `[org/repo#123](url)`).
-- List semantic relationships in a `## Relationships` section:
-  ```markdown
-  ## Relationships
-
-  - [related] [[task-id]] — description
-  - [upstream-bug] [org/repo#123](url)
+- Every note must contain at least one `[[wikilink]]` to a parent concept, project, goal, or entity in prose.
+- Link all proper nouns; provide markdown links for external issues and PRs (e.g., `[org/repo#123](url)`).
+- List semantic relationships in a `## Relationships` section: `- [related] [[task-id]] — description`.
+- **Wikilinks**: prose only — never inside code blocks, inline code, or technical tables. No standalone "See Also" section.
+- **Abstraction**: Capture generalizable patterns, not local implementation details.
+- **Observation callouts** (required for factual claims in episodic notes):
   ```
-- **Wikilink Conventions**: Add wikilinks only in prose. Never put them inside code blocks, inline code, or technical tables. Do not create a standalone "See Also" section.
-
-### Abstraction Level
-
-For framework tasks, capture generalizable patterns (e.g., "Configuration should be set once at initialization") rather than local implementation details.
-
-### Observation Notation
-
-Factual claims in episodic notes must be formatted as Obsidian callouts:
-
-```markdown
-> [!observation] Factual statement
-> Source: [[source-note]]
-> Confidence: <numeric value 0.0 to 1.0>
-```
-
-- Numeric confidence mappings (include numeric value in frontmatter):
-  - `established` (>= 0.8): verified, multiple sources.
-  - `provisional` (0.4 - 0.79): limited evidence.
-  - `speculative` (< 0.4): inference.
-- If a new observation contradicts an existing one, record both with sources and flag the contradiction for the user. Do not overwrite silently.
-
-### Provenance (Required for `type: knowledge`)
-
-Include these frontmatter fields:
-
-- `sources:` (YAML list)
-- `synthesized:` (ISO date)
-- `last_reviewed:` (ISO date)
-- `confidence:` (numeric 0.0 - 1.0)
-- `maturity:` `seedling` | `budding` | `evergreen`
-
-## Maps of Content (MOCs)
-
-Use MOCs to index and curate links to related notes when a topic area grows to 5+ notes.
-
-### MOC Frontmatter
-
-```yaml
-title: "MOC: Topic Name"
-type: moc
-tags: [moc, topic-area]
-created: YYYY-MM-DD
-last_reviewed: YYYY-MM-DD
-```
+  > [!observation] Factual statement
+  > Source: [[source-note]]
+  > Confidence: <0.0–1.0>  (≥0.8 established · 0.4–0.79 provisional · <0.4 speculative)
+  ```
+  If a new observation contradicts an existing one, record both with sources and flag. Do not overwrite silently.
+- **`type: knowledge` provenance** (required): `sources:`, `synthesized:`, `last_reviewed:`, `confidence:`, `maturity: seedling|budding|evergreen`.
+- **MOCs**: Create when a topic has 5+ notes; use `type: moc`, `tags: [moc, topic-area]`, `created:`, `last_reviewed:`.
 
 ## Background Capture
 
-To capture memories asynchronously:
-
-```json
-Task(
-  subagent_type="general-purpose", model="haiku",
-  run_in_background=true,
-  description="Remember: [summary]",
-  prompt="Invoke Skill(skill='remember') to persist: [content]"
-)
-```
+To capture asynchronously, spawn a `model="haiku"` background agent with `run_in_background=true` and prompt it to invoke `Skill(skill='remember')` with the content.
 
 ## Output Expectations
 
-State the PKB write details directly and concisely:
-
-- Tool used
-- Title of note
-- ID / permalink (returned by PKB)
-  _Do not expose raw local filesystem paths._
+State PKB write details directly: tool used, note title, returned ID. Do not expose raw filesystem paths.
 
 ## Maintenance Mode (`/sleep`)
 
-Runs periodic offline consolidation on a GHA workflow or manual trigger.
+The canonical home of the former `/sleep` skill. Runs periodic offline consolidation on a GHA workflow or manual trigger.
+
+### Triggers
+
+Invoke Maintenance Mode on: explicit `/sleep` call; GHA schedule or `workflow_dispatch`; or `SLEEP_MODE` env var set.
 
 ### Rules
 
@@ -205,14 +119,14 @@ Runs periodic offline consolidation on a GHA workflow or manual trigger.
 
 First match determines mode:
 
-1. Environment variable `SLEEP_MODE` overrides default (`short-loop` | `full-session`).
-2. `LOOP_INTERVAL_MINUTES <= 30` -> `short-loop`.
-3. If prior cycles ran in this session -> `short-loop`.
-4. Default -> `full-session`.
+1. `SLEEP_MODE` env var overrides (`short-loop` | `full-session`).
+2. `LOOP_INTERVAL_MINUTES <= 30` → `short-loop`.
+3. Prior cycles ran in this session → `short-loop`.
+4. Default → `full-session`.
 
 ### Maintenance Phases
 
-See [[references/maintenance-phases]] for detailed sub-agent rules, pacing, and exit protocols.
+See [[references/maintenance-phases]] for sub-agent rules, pacing, and exit protocols.
 
 | Phase | Name                        |
 | :---- | :-------------------------- |
@@ -231,4 +145,4 @@ See [[references/maintenance-phases]] for detailed sub-agent rules, pacing, and 
 
 ### CI Environment Constraints
 
-When running on GitHub Actions, no PKB MCP server is available. Direct file tool operations (`Bash`, `Glob`, `Grep`, `Read`, `Write`, `Edit`) on markdown files are allowed. Do not edit files outside `$AOPS_SESSIONS/` (except git commits/push).
+On GitHub Actions, no PKB MCP is available. Use direct file operations (`Bash`, `Glob`, `Grep`, `Read`, `Write`, `Edit`) on markdown files. Do not edit files outside `$AOPS_SESSIONS/` (except git commits/push).
