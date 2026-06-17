@@ -16,7 +16,7 @@ domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
 owner: pauli
-version: 5.1.0
+version: 5.2.0
 permalink: skills-daily
 ---
 
@@ -66,8 +66,30 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ## Reconcile and cross-link
 
-- When a merged PR or sent email is **clear** evidence that a `merge_ready`/`review` task is done, complete it (`mcp__pkb__complete_task`) with the evidence URL. Surface ambiguous cases under "Needs your call" — never auto-close on doubt.
-- You may append a `## Progress` note or tick checklist items on the task a day's accomplishment maps to. Never mark a parent task done, never delete task content.
+### Task completion sweep (required every run)
+
+Enumerate the full backlog — do NOT rely on opportunistic keyword searches.
+
+1. **Fetch the parked task list.** Call `mcp__pkb__list_tasks(status="merge_ready")` and `mcp__pkb__list_tasks(status="review")`. Collect all results (both calls).
+
+2. **Load merge evidence.** Read `$AOPS_SESSIONS/state/pr-state.json`. The artefact is structured as `{repos: {<slug>: {recent_merged: [{number, url, mergedAt, headRefName, title, ...}]}}}`. If the file is missing or stale (>24h), note it inline and skip auto-close — do NOT fall back to live `gh pr list`.
+
+3. **Resolve the PR for each parked task.** For each task from Step 1, extract the linked PR by checking in order:
+   - `pr_url` frontmatter (e.g. `https://github.com/org/repo/pull/1859`) — parse PR number from the last path segment; use both number and repo slug to target the right repo's `recent_merged` list.
+   - Numeric tags (any tag that is a pure integer, e.g. `1858`) — treat as a PR number; search all repos' `recent_merged` lists.
+   - `branch` frontmatter — match against `headRefName` across all repos' `recent_merged` entries.
+   - If none of the above resolve, skip the task; leave it unchanged.
+
+4. **Match and act.** For each resolved PR:
+   - **Clear match** — a single unambiguous entry in `recent_merged` matches the PR number (and repo, when `pr_url` was the source): call `mcp__pkb__complete_task` with a completion note that includes the PR URL and `mergedAt` timestamp. No human confirmation needed.
+   - **Ambiguous** — multiple repos contain a PR with the same number (numeric-tag source only), or the task has multiple PR fields pointing to different PRs: surface under "Needs your call" with both candidates. Never auto-close on doubt.
+   - **No match** — PR not found in any `recent_merged` list: leave task unchanged.
+
+5. **Report.** In the daily note (Work Log or "What Needs Attention"): `N tasks auto-closed from merged PRs; N ambiguous cases flagged for your call.`
+
+### Cross-linking (when a session maps to a task)
+
+You may append a `## Progress` note or tick checklist items on a task that today's accomplishment maps to. Never mark a parent task done, never delete task content.
 
 ## Output
 
