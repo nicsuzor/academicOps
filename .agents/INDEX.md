@@ -11,7 +11,7 @@
 - **`tests/hooks/test_gate_verdict_logic.py`**: Gate verdict regression tests — parameterised mode overrides and fixture-driven scenarios for all gates
 - **`tests/hooks/`**: All hook tests — gate verdicts, gate config, router formatting, hydration, session env setup, autocommit
 - **`tests/README.md`**: Test suite overview — directory structure, how to run tests, what's tested
-- **`aops-core/skills/project/workflows/context-map-audit.md`**: How to create and audit .agents/context-map.json — the repo's self-description for agent discovery
+- **`.agents/INDEX.md`**: This file — the repo's self-described "Available Documentation" index, authored and audited as the agent-discovery entry point (replaces the retired `context-map.json` system)
 - **`specs/audit/AGENT-COMPLIANCE-MATRIX.md`**: Compliance matrix for agents against the Agent Authority spec — required fields, naming, referential integrity
 - **`specs/CAPABILITIES.md`**: Framework Capabilities & Artifacts — conventions, transcript naming, and finding artifacts
 - **`specs/audit/AGENT-TOOLS.md`**: Authoritative agent × tool access matrix — groups tools by server, highlights exclusivity and drift
