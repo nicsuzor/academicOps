@@ -167,7 +167,7 @@ and Cowork (empirically confirmed; see `mem-fe29111a` / task `aops-04075740`).
 
 ```bash
 # 1. aops-core — the shared hook stack + core skills/agents, from the main dist channel.
-claude plugin marketplace add nicsuzor/academicOps#dist
+claude plugin marketplace add nicsuzor/academicOps@dist
 claude plugin install aops-core@academicOps
 
 # 2. aops-cowork — the additive, hooks-free Cowork layer. For LOCAL dev it ships

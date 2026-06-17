@@ -68,14 +68,15 @@ Done.                               Persist state → next burst
 
 ## When to Use Which
 
-| Situation                                   | Mode           | Entry point                      |
-| ------------------------------------------- | -------------- | -------------------------------- |
-| Queue of independent tasks, drain fast      | Supervisor     | `/supervisor` skill              |
-| Decomposed epic, parallel subtasks          | Supervisor     | `/supervisor` skill              |
-| Process N items iteratively with evaluation | Burst          | `/burst-supervisor` skill        |
-| Long-running workflow across sessions       | Burst          | `/burst-supervisor` + `/loop`    |
-| One-off single task                         | Neither        | `polecat run -t <id>` or `/pull` |
-| Batch file processing (non-task)            | Atomic locking | See "Atomic Locking" appendix    |
+| Situation                                   | Mode           | Entry point                          |
+| ------------------------------------------- | -------------- | ------------------------------------ |
+| Queue of independent tasks, drain fast      | Supervisor     | `/supervisor` skill                  |
+| Decomposed epic, parallel subtasks          | Supervisor     | `/supervisor` skill                  |
+| Process N items iteratively with evaluation | Burst          | `/burst-supervisor` skill            |
+| Long-running workflow across sessions       | Burst          | `/burst-supervisor` + `/loop`        |
+| One-off task, run it yourself inline        | Neither        | `/pull` (claim + run interactively)  |
+| One-off task, hand to a background worker   | Neither        | `/dispatch` or `polecat run -t <id>` |
+| Batch file processing (non-task)            | Atomic locking | See "Atomic Locking" appendix        |
 
 **Rules of thumb:**
 
@@ -83,6 +84,28 @@ Done.                               Persist state → next burst
 - If you need to read and evaluate each result before dispatching more → burst
 - If the work spans days or weeks → supervisor or burst (state recovery across sessions)
 - If you want maximum throughput for independent tasks → supervisor with parallel `polecat run` dispatch
+
+## Three Verbs: Pull, Dispatch, Supervise
+
+The queue-to-execution surface exposes three verbs that share one **Select +
+Gates** spine (premise gate + freshness pre-check), implemented once in the
+`task-lifecycle` skill and consumed by the command layer:
+
+| Verb              | Where work runs                      | Loops?                         | Entry point                      |
+| ----------------- | ------------------------------------ | ------------------------------ | -------------------------------- |
+| **`/pull`**       | **Inline**, this interactive session | No — one task                  | `task-lifecycle` (execute mode)  |
+| **`/dispatch`**   | Background worker (polecat/subagent) | No — one dispatch step         | `task-lifecycle` (dispatch mode) |
+| **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` | `supervisor` skill               |
+
+- `/pull` and `/dispatch` differ only in their tail: `/pull` claims the task and
+  runs it here (with licence to ask the user questions); `/dispatch` routes it to
+  a worker and halts. Both run the same selection and gates first.
+- `/dispatch` is a thin one-shot slice of `/supervisor`'s Dispatch phase.
+- **Self-arming**: a `/supervisor` invoked interactively schedules its own next
+  tick (`ScheduleWakeup`) when work remains and it is not at a terminal state, so
+  one invocation visibly keeps going without the user manually wiring `/loop`. It
+  stops self-arming at the terminal state. See
+  `aops-core/skills/supervisor/SKILL.md` § "Self-Arming the Loop".
 
 ## Shared Infrastructure
 
