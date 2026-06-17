@@ -1,58 +1,5 @@
 # Changelog
 
-## [0.3.41](https://github.com/nicsuzor/academicOps/compare/v0.3.40...v0.3.41) (2026-06-17)
-
-
-### Features
-
-* **commands:** split /pull into /pull (inline execute) + /dispatch (background); shared task-lifecycle skill; supervisor self-arms loop (aops-127c450c) ([#1855](https://github.com/nicsuzor/academicOps/issues/1855)) ([dba99f3](https://github.com/nicsuzor/academicOps/commit/dba99f32c2973a0b53e4e1704534b7adf81ef7ec))
-* **enforcement:** wire rbg+qa to read repo-local RULES.md; populate process rules ([0f00ec0](https://github.com/nicsuzor/academicOps/commit/0f00ec09ba04f7c7449b27ba705caf322f1c63c8))
-* **planner:** restore effectual planning philosophy inline into SKILL.md ([e3a48de](https://github.com/nicsuzor/academicOps/commit/e3a48ded69d778c2aec42e52776c045b5b232849))
-* PR-B simplification — identity/cleanup (pauli/marsha/sleep/craft/dogfood/feature-spec) ([1f30e8f](https://github.com/nicsuzor/academicOps/commit/1f30e8f7fffe57d8e91ea92220a06a58abc1c9e7))
-* **pr-pipeline:** admit PRs via review approval; retire pr-fix-loop Environment gate ([#1859](https://github.com/nicsuzor/academicOps/issues/1859)) ([24fc9e2](https://github.com/nicsuzor/academicOps/commit/24fc9e2124874647f35f10bea585b35b002932cb))
-* **remember:** trim /remember SKILL.md 234→148 lines, add maintenance triggers ([8ee5f2f](https://github.com/nicsuzor/academicOps/commit/8ee5f2fced17907f42e1acc78d1aad6ca5c5477d))
-
-
-### Bug Fixes
-
-* **enforcement-map:** record authorized SKILL.md duplication exception at Verify runtime row ([1eb79af](https://github.com/nicsuzor/academicOps/commit/1eb79af514e3bd37cdd66f9fa554cb2e1b3d8e31))
-* **hooks:** agy PreToolUse ALLOW must emit allowTool=true, not {} (aops-1e68682a) ([ebdb546](https://github.com/nicsuzor/academicOps/commit/ebdb546e14dbff156eac4aa78a681effbc54496f))
-* **ida:** sharpen Stop reminder with restate-the-question / criterion-substitution check ([#1846](https://github.com/nicsuzor/academicOps/issues/1846)) ([f748f5a](https://github.com/nicsuzor/academicOps/commit/f748f5a61f9a97a13458afe6ed119dd6421a5bc6))
-* **install:** handle marketplace name mismatch on reinstall ([64a8821](https://github.com/nicsuzor/academicOps/commit/64a88215a0b045b5d63d07259fd4e5b9617b503e))
-* **install:** handle marketplace name mismatch on reinstall ([49acaff](https://github.com/nicsuzor/academicOps/commit/49acaffd1960f242e16ce1bc252eacc7c0e7931a))
-* **install:** make `make install` clean-then-live for Claude + agy; drop gemini/openclaw ([#1860](https://github.com/nicsuzor/academicOps/issues/1860)) ([c42b3dc](https://github.com/nicsuzor/academicOps/commit/c42b3dc4dada34773d6399ca1446259a19b3caae))
-* **install:** remove silent stderr suppression from marketplace fallback ([ab68cf0](https://github.com/nicsuzor/academicOps/commit/ab68cf00170352eb16f39e2dedf992a837fdffbf))
-* **install:** remove silent stderr suppression from marketplace fallback ([64855e5](https://github.com/nicsuzor/academicOps/commit/64855e5f5405d95e7355a753a161985bcab4aa25))
-* **junior:** operationalize no-homework rule for closing sweeps ([#1851](https://github.com/nicsuzor/academicOps/issues/1851)) ([#1852](https://github.com/nicsuzor/academicOps/issues/1852)) ([fb11a73](https://github.com/nicsuzor/academicOps/commit/fb11a732f0919a4defcb127de3e432f36f2b2814))
-* **polecat:** remove stale sleep-skill bootstrap check ([a7ce057](https://github.com/nicsuzor/academicOps/commit/a7ce05717e33fa23c0fbe3812b4f745fa0c9aa7c))
-* **rbg:** correct stale R1–R8 header to R1–R4 (only four rules defined) ([9efcaa1](https://github.com/nicsuzor/academicOps/commit/9efcaa1574ce80978bf30bc637b9c531fd5585c7)), closes [#1836](https://github.com/nicsuzor/academicOps/issues/1836)
-* **secret-redaction:** spare numeric values from *TOKEN*/*KEY* over-match ([#1845](https://github.com/nicsuzor/academicOps/issues/1845)) ([14cf77b](https://github.com/nicsuzor/academicOps/commit/14cf77bbce414df4e9aa645e17f18538b37dd637))
-* **supervisor:** §6 forbids relaying worker live-state claims as findings ([#943](https://github.com/nicsuzor/academicOps/issues/943)) ([#1854](https://github.com/nicsuzor/academicOps/issues/1854)) ([5792cf4](https://github.com/nicsuzor/academicOps/commit/5792cf4211e2d2869c8feab93051bba9c8086fec))
-* **survey:** redirect retro reviewed_by provenance from transcript to PKB ([#1853](https://github.com/nicsuzor/academicOps/issues/1853)) ([060f48f](https://github.com/nicsuzor/academicOps/commit/060f48f4bfcabf7e70adc8842ed9a4c09635f87e))
-* **tests:** delete orphaned docker-cmd-build tests left under TestNodeVersionKey ([#1857](https://github.com/nicsuzor/academicOps/issues/1857)) ([ad0a8f0](https://github.com/nicsuzor/academicOps/commit/ad0a8f018cdde8cf9679a36daee9331e8d44024b))
-* **tests:** parametrize PreToolUse semantic tests over allow+warn (aops-1e68682a) ([87a6bc9](https://github.com/nicsuzor/academicOps/commit/87a6bc9115031668f62c8d7a51088efbd8e2d8bf))
-* **triage:** stop labeling every red PR triage:escalate ([#1858](https://github.com/nicsuzor/academicOps/issues/1858)) ([f204566](https://github.com/nicsuzor/academicOps/commit/f204566f7e808bd8ba0e4cbe0c13d62c282a1e1f))
-* **verify:** delete .agents/skills/verify/SKILL.md duplicate; update SSoT exception doc ([68f31ce](https://github.com/nicsuzor/academicOps/commit/68f31ce994a7d354cacbf73c7235699cd45d9c9f))
-* **verify:** propagate project-rule check + Process compliance section to canonical SKILL.md ([d1f8f67](https://github.com/nicsuzor/academicOps/commit/d1f8f6705774142172fdb3b9cc4b10fe45ed27fc))
-
-
-### Code Refactoring
-
-* **agents:** factor shared PKB doctrine, fix tool-lists, namespaces, circular invoke ([#1818](https://github.com/nicsuzor/academicOps/issues/1818)) ([51ec7f3](https://github.com/nicsuzor/academicOps/commit/51ec7f34b4ce994a12285a016f9c94671642c032))
-* **gates:** data-drive TOOL_CATEGORIES + lift HookContext/tool_categories to lib/ ([#1847](https://github.com/nicsuzor/academicOps/issues/1847)) ([40187b5](https://github.com/nicsuzor/academicOps/commit/40187b5b5c262daf4a29d7aa07a31a687b4b6080))
-* **supervisor:** reduce SKILL.md 487→174 lines; consolidate dispatch rules ([#1834](https://github.com/nicsuzor/academicOps/issues/1834)) ([3a493dd](https://github.com/nicsuzor/academicOps/commit/3a493ddb9278de6a5cc1458d4f015b40d063399f))
-
-
-### Documentation
-
-* **conventions:** forbid conflating "don't merge/PR" with "don't commit/push" ([#1821](https://github.com/nicsuzor/academicOps/issues/1821)) ([250d36f](https://github.com/nicsuzor/academicOps/commit/250d36f088e391f451652cc9aecd056d73197751))
-* **specs:** add framework connectivity index as specs/CONNECTIVITY.md ([15a8978](https://github.com/nicsuzor/academicOps/commit/15a89782c10c5fa7ad392d1ba6fd542f36b06628))
-
-
-### Miscellaneous
-
-* **axioms:** demote recusal from axiom to light /learn division-of-labor ([#1861](https://github.com/nicsuzor/academicOps/issues/1861)) ([af98dbc](https://github.com/nicsuzor/academicOps/commit/af98dbc63b436bee879d8bb205248ae5579b0684))
-
 ## [0.3.40](https://github.com/nicsuzor/academicOps/compare/v0.3.39...v0.3.40) (2026-06-14)
 
 ### Features

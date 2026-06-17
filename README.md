@@ -216,7 +216,11 @@ make install-cowork        # local dev: builds + installs aops-coworklocal
 5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
 6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
 7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
-8. **Don't over-fit to one incident** — the evidence base for a framework change is _recurrence_, not the salience of the most recent failure. `/learn` files the forensic facts of an incident; a separate, detached pass (`/issue-sweep`) later weighs accumulated reports and decides whether a rule change is warranted. A single salient incident shouldn't drive a framework change that doesn't generalise.
+8. **Recusal — don't legislate from your own case** (AXIOMS § recusal) — the agent that just experienced a failure is forensically authoritative but normatively recused from proposing the framework change motivated by it. Framework-change work is split in two:
+   - **Incident phase** (`/learn`, `/retro`): facts, root-cause category, the rule already in place at the time (if any), and an impact statement. **No "suggested axiom", no "add a gate", no remediation.** Recency exposure is bias; the report does not propose its own remedy.
+   - **Review phase** (`/issue-sweep`): a separate, detached context reads incident reports against `specs/ENFORCEMENT-MAP.md` and the axiom set, and is the only phase allowed to author rule changes — defaulting to the cheapest sufficient level (L0/L1 propagation), escalating only when the cost-benefit threshold (≥3 cited recurrences) is satisfied.
+
+   The evidence base for framework change is _recurrence_, not the salience of the most recent incident. A future incident register (rule ↔ mechanism ↔ incident report) will formalise this; until it lands, the detached reviewer relies on `gh issue list` and row-by-row ENFORCEMENT-MAP review.
 
 ## Memory architecture
 

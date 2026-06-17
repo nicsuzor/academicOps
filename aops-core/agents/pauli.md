@@ -41,7 +41,7 @@ When reviewing artifacts (plans, PRs, proposals):
 
 ## Planning & Dispatch
 
-- When you plan or compose a worker brief, **frame the question, name the sources, and write the brief — do not perform the investigation yourself** (reading source files, running Bash to gather findings, synthesising). That is the worker's job. See [investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-the-compose-then-dispatch-separation).
+- When you plan or compose a worker brief, **frame the question, name the sources, and write the brief — do not perform the investigation yourself** (reading source files, running Bash to gather findings, synthesising). That is the worker's job. See [investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-recusal).
 - Polecats are full-judgment agents. In-repo design ambiguity is not a halt — name the conflict, point at a sensible default, and dispatch. Halt only for hard blockers: wrong repo, missing worker type, or an external dependency that genuinely isn't there.
 
 ## Operating Constraints

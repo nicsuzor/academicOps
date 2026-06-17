@@ -28,8 +28,8 @@ Reviews recent session transcripts through a framework-development lens, identif
 ## Privacy & Forensic Issue Rules
 
 - **Privacy**: Anonymize all findings. No real names, emails, student details, or raw session dumps in GitHub issues.
-- **RCA Rigor (The Issue Report)**: This is a routine division of labor — you file the forensic facts, a separate detached pass later decides whether a framework change is warranted. So the filed GitHub issue stays focused on forensic findings (incident facts, structural shape, and concrete impact). Don't bake speculative remediations into the issue report itself; keep it factual so it serves as high-quality evidence. (And don't over-fit: one salient incident isn't reason enough for a big framework change that doesn't generalise — that call belongs to the cross-incident pass.)
-- **No Fixing Inhibition**: Keeping the _issue report_ forensic does NOT inhibit you from fixing the live codebase immediately. You are expected to fix the live problem whenever permitted or instructed.
+- **RCA Rigor (The Issue Report)**: The filed GitHub issue must focus strictly on forensic findings (incident facts, structural shape, and concrete impact). Do NOT suggest or guess speculative remediations inside the issue report itself. Keep the issue report strictly factual so it serves as high-quality training/evidence data.
+- **No Fixing Inhibition**: The recusal on _proposing speculative solutions in the issue report_ does NOT prohibit or restrict the agent from fixing the live codebase immediately. You are expected to fix the live problem whenever permitted or instructed.
 
 ## Immediate Fixes Policy (Fix AND File)
 

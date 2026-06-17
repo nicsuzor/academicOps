@@ -69,7 +69,7 @@ Context recovery is the dashboard's entire job and currently its weakest input. 
 
 - Replacing `/daily` — the daily note remains the human-facing SSoT artifact; the digest is the machine-facing intermediate. `/daily`'s editorial "Today's Story" voice is unchanged; it just gets a cheaper input.
 - Replacing `/remember`/`/sleep` — inline capture and deep consolidation are unchanged; the digest is a catch-net that _feeds_ them.
-- Classifying or legislating on corrections — a routine division of labor: the digest **flags**; `/learn` retro does forensics; `sweep` does cross-incident judgment.
+- Classifying or legislating on corrections — recusal applies (AXIOMS § recusal): the digest **flags**; `/learn` retro does forensics; `sweep` does cross-incident judgment.
 - Dashboard rendering changes themselves (tracked under epic `task-ebba9ea1`; this spec only defines the file contract).
 - Multi-day retrospectives / trend analysis (`/survey trend` owns that).
 
@@ -190,7 +190,7 @@ The digest agent flags moments where the user redirects, rebukes, or repairs age
 2. Dispatch `/learn` with that transcript path (headless, fire-and-forget; /learn owns classification, GH issue filing, and dedup against existing issues).
 3. Record the ref in `learn_dispatched` so subsequent cycles skip it.
 
-The digest never files issues itself and never proposes framework changes — flag-and-hand-off only.
+The digest never files issues itself and never proposes framework changes — flag-and-hand-off only (recusal).
 
 ### Fact capture (c)
 

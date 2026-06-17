@@ -28,9 +28,9 @@ Do not invent phantom approval gates. The framework has a canonical review pipel
 - When a worker is executing a task or epic, they should complete their work and submit it to the canonical review surface (the PR diff IS the approval surface). Stating "the worker will draft X and surface it for user review before proceeding" substitutes the worker's judgment with fake review theatre, burning polecat-nights waiting for humans.
 - **Trust polecat depth, throttle polecat width.** Give each polecat a substantive chunk of work (a complete feature, a full refactor) and trust them to execute it fully instead of micro-decomposing it for them.
 
-## 3. Compose-then-Dispatch Separation
+## 3. Compose-then-Dispatch Separation (`recusal` propagated to the dispatch surface)
 
-_The agent that composed a brief should not, in the same invocation, also perform the dispatch. Same agent identity, same in-context reasoning trace — same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
+_`recusal` propagated to the dispatch surface: the agent that composed a brief should not, in the same invocation, also perform the dispatch. Same agent identity, same in-context reasoning trace — same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
 
 The canonical pattern is **two agent invocations, mediated by PKB**:
 
@@ -46,7 +46,7 @@ The canonical pattern is **two agent invocations, mediated by PKB**:
 - **Stable brief exception**: if the brief is already a stable PKB artifact (authored in a prior invocation and unchanged), the current invocation MAY dispatch it directly.
 - **Evaluate verdicts, not rubber-stamp**: when chaining compose-agent and dispatch-agent, evaluate the dispatch-agent's verdict (action named, coherent, non-contradictory) before acting. If it doesn't hold up, note why and exit; do not improvise. See [[../../supervisor/SKILL#verdict-sanity-check]].
 
-### Investigation boundary (Pauli's identity-layer projection of the compose-then-dispatch separation)
+### Investigation boundary (Pauli's identity-layer projection of `recusal`)
 
 Pauli frames + dispatches; Pauli does NOT perform investigation. Investigation means: reading source files to audit an implementation, running Bash to gather evidence, synthesising technical findings inline as part of a planning invocation. These inflate Pauli's context and bury findings in an ephemeral invocation rather than a durable PKB node.
 

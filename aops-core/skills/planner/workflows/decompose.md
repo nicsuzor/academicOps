@@ -83,7 +83,7 @@ See [[decomposition-patterns#workflow-step-mapping]] for a worked workflow-step 
 
 ## Task Handoff Quality (P#120)
 
-Tasks will be picked up by a **different agent** with only the task body as context. This is the canonical compose-then-dispatch shape: decompose writes the brief to PKB; a separate invocation (the worker, the next supervisor tick) reads it fresh. See [[../../aops/references/authoring-discipline#3-compose-then-dispatch-separation]].
+Tasks will be picked up by a **different agent** with only the task body as context. This is the canonical compose-then-dispatch shape: decompose writes the brief to PKB; a separate invocation (the worker, the next supervisor tick) reads it fresh. See [[../../aops/references/authoring-discipline#3-compose-then-dispatch-separation-recusal-propagated-to-the-dispatch-surface]].
 
 - **Intent + AC, not prescription**: Apply the Task-Body Authoring Discipline ([[../../aops/references/authoring-discipline]]). Task bodies must state intent and observable Acceptance Criteria without prescribing implementation or adding phantom review gates.
 - **Self-contained context**: Include enough background that someone with no session context understands _why_ this task exists and _what decisions led to it_.
