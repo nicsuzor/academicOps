@@ -118,7 +118,7 @@ Produce a review in this exact format. Keep text concise:
 - If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
 - If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
 - Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
-- Stamp the transcript frontmatter with the `reviewed_by` block.
+- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #survey-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-surveying the same transcript.
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
