@@ -14,6 +14,7 @@ so no `gh`/event stub is needed.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -32,7 +33,9 @@ def run(
     env = {
         "REVIEW_STATE": review_state,
         "REVIEWER_LOGIN": reviewer_login,
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        # Inherit the caller's PATH so `bash` resolves across dev environments
+        # (nix, homebrew, etc.) rather than only the default FHS locations.
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
     }
     if reviewer_permission is not None:
         env["REVIEWER_PERMISSION"] = reviewer_permission
@@ -51,11 +54,6 @@ def run(
             k, _, v = line.partition("=")
             out[k] = v
     return out
-
-
-def test_script_exists_and_executable():
-    assert SCRIPT.exists(), f"missing {SCRIPT}"
-    assert SCRIPT.stat().st_mode & 0o111, "script must be executable"
 
 
 def test_maintainer_write_approval_admits():

@@ -69,7 +69,12 @@ authorized="false"
 case "$REVIEWER_PERMISSION" in
   admin | maintain | write) authorized="true" ;;
 esac
-for login in $ADMIT_ALLOWLIST; do
+# Read into an array rather than `for login in $ADMIT_ALLOWLIST`: `read -r -a`
+# splits on whitespace without pathname expansion, so a stray '*'/'?' in the
+# allowlist can't glob against the working directory, and the quoted iteration
+# below stays glob-safe too.
+read -r -a admit_logins <<<"$ADMIT_ALLOWLIST"
+for login in "${admit_logins[@]}"; do
   if [[ "$login" == "$REVIEWER_LOGIN" ]]; then
     authorized="true"
   fi
