@@ -125,13 +125,6 @@ _Edge 3 (script abdication):_
 - Did "the harness will time out eventually" stand in for an explicit bound?
 - Where the Bash tool reported a command running in background, did the agent reap it before finishing?
 
-## recusal
-
-- Name the context that authored the proposal AND the incident it responds to. If they are the same context, it is recused-out: strike the remediation, keep the forensics.
-- Cite the cross-incident recurrence (≥2 distinct incidents, named) that justifies the rule change. If only one incident is in evidence, the proposal is deferred to detached review, not adopted.
-- Does an incident/forensic output carry a "suggested axiom," "proposed gate," or any remediation that belongs to the detached review phase?
-- Was an ordinary in-task fix or self-correction wrongly slowed under cover of recusal (which governs framework change only)?
-
 ## pull-over-push
 
 - For any instruction or instruction section placed in a push tier (every-turn, gate cue, or always-on), does it pass all three: changes behaviour on most loads; cannot be reactively looked up; compact?

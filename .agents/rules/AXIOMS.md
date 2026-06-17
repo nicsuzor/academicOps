@@ -167,17 +167,6 @@ Every shell command, subprocess, or background task you spawn MUST have a bounde
 
 _Review: [[AXIOMS-REVIEW#bounded-execution]]._
 
-## Recusal — the rule against bias {#recusal}
-
-The agent that just lived through a failure is forensically authoritative on _what happened_ and _what it cost_, but normatively compromised on _what we should do about it_. Recent context is prejudicial exposure: the salient incident dominates the proposal and small problems generate big framework changes that don't fit the rest of the system. The implicated agent must recuse from the rule-making function. Framework-change work splits into two phases across a context boundary:
-
-- **Incident phase — forensic, no speculation.** The agent that observed or diagnosed the failure produces an incident report: what happened, the causal chain, the evidence, the impact, the root-cause category, and which rule (if any) should already have caught it. No remediation proposal, no "add a gate," no suggested axiom.
-- **Review phase — detached, cross-incident.** A separate context, with no prior exposure to this incident, reads the report alongside the enforcement map, the axiom set, and related incidents, and is the only phase that decides whether to add a rule, propagate an existing one, escalate, defer, or do nothing.
-- **Scope:** this governs framework-change proposals (axioms, gates, hooks, skill instructions, enforcement-map placements) only. It does NOT slow ordinary in-task fixes, code review on the current task, or self-correction — an agent that notices it is doing something wrong still fixes it; it just must not, in the same breath, redesign the framework around the slip.
-- _E.g._ a retro output that proposes "an axiom" or "a gate" off the back of the single session it just read is authored under prejudicial recency — the forensic facts stay, the speculative remediation is struck.
-
-_Review: [[AXIOMS-REVIEW#recusal]]._
-
 ## Pull over push — injection-tier discipline {#pull-over-push}
 
 Instruction context costs `size × audience-breadth × load-frequency`. Push tiers (every-turn, gate cue, always-on session context) must be earned: content (a) changes behaviour on most loads, (b) cannot be reactively looked up, and (c) is compact — every line load-bearing at that frequency. Fail any one: **demote**. Default direction is always **pull over push**.
