@@ -282,9 +282,82 @@ jobs:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+  # ─── Step 3.5: Pre-Admission Mechanical Responder (§3.8) ─────────────────
+  # Clears mechanically-fixable red PRE-admission — failing CI, scope-faithful
+  # review feedback the autofixers couldn't, and merge conflicts.
+  #
+  # DISPATCH GUARD: check-mechred reads commit statuses to enforce two guards:
+  #   (a) No-op-on-green: if both enforcer-status AND qa-status are success on
+  #       HEAD, check-mechred outputs has_mechanical_red=false and the responder
+  #       is skipped. This is the P5 pathology guard (PR #1614) applied
+  #       pre-admission — never burn a runner on a green PR.
+  #   (b) Stage-2 guard: if admit-status is already success (admitted), the
+  #       post-admission mechanic (Stage 2) handles any remaining red. The
+  #       pre-admission responder must not run alongside the Stage-2 loop.
+  #   (c) Ceiling guard: if Responder-By: commit count >= MAX_RESPONDER_RUNS (3),
+  #       pre-admission budget is exhausted — surface to human.
+  # Source: check-mechanical-red.sh + pr-pipeline.md §3.8.
+  #
+  # MECHANICAL/JUDGMENT BOUNDARY (load-bearing): the responder fixes ONLY what
+  # the enforcer classifies as mechanical (typos, CI failures, missing files,
+  # merge conflicts). Judgment calls and recusal flags are NEVER auto-applied
+  # — they must surface to the human gate unmodified. Source: enforcer.agent.md §3.
+  #
+  # `responder-status` is informational, never required by the ruleset (§4.2).
+  # Stage-2 mechanic (check-admit → mechanic) is UNAFFECTED — the responder runs
+  # only pre-admission; post-admission Stage-2 remains controlled by check-admit.
+  # Both check-mechred and check-admit depend on [lint, enforcer, qa]; check-admit
+  # additionally depends on [pre-admission-responder] so it waits for the responder
+  # to finish before deciding whether to dispatch the mechanic.
+
+  check-mechred:
+    name: Check for pre-admission mechanical red
+    needs: [lint, enforcer, qa]
+    # Same convergence precondition as check-admit: Stage 1 fully ran with no commits.
+    # Enforcer/qa must have posted terminal verdicts on this SHA.
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.lint.result == 'success' &&
+      (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') &&
+      (needs.qa.result == 'success' || needs.qa.result == 'failure') &&
+      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      has_mechanical_red: ${{ steps.check.outputs.has_mechanical_red }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      - name: Evaluate pre-admission mechanical red gate
+        id: check
+        run: bash scripts/ci/check-mechanical-red.sh
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+
+  pre-admission-responder:
+    name: Pre-Admission Responder
+    needs: [check-mechred]
+    if: needs.check-mechred.outputs.has_mechanical_red == 'true'
+    uses: ./.github/workflows/agent-pre-admission-responder.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      ref: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
   # ─── Step 4: Mechanic (Stage-2 only — admitted runs) ─────────────
   # The post-admission DEV agent. Runs ONLY when:
-  #   - Stage 1 converged this pass (lint/enforcer/qa all ran with no commit), AND
+  #   - Stage 1 converged this pass (lint/enforcer/qa/responder all ran with no
+  #     commit), AND
   #   - admit-status is `success` on HEAD (the maintainer approved the PR, §3.2).
   # Otherwise it is a no-op (`check-admit` outputs admitted=false).
   #
@@ -297,27 +370,41 @@ jobs:
   # here — admission already happened on a prior event; the carry-forward (in
   # `initialize`) completes long before check-admit reads the status.
   #
+  # The pre-admission-responder is also in this needs list: check-admit must
+  # wait for the responder to complete (or be skipped) before reading admit-status.
+  # This prevents a race where check-admit dispatches the mechanic on a SHA the
+  # responder is still fixing. In practice the responder is skipped immediately on
+  # Stage-2 passes (check-mechred returns has_mechanical_red=false for admitted PRs),
+  # so the extra wait is ~0s on the Stage-2 critical path.
+  #
   # mechanic-status is informational, never required by the ruleset (§4.2);
   # enforcer/qa re-verify the mechanic's pushed SHA on the next pass (§3.5);
   # the §3.6 bounded loop is enforced inside agent-mechanic.yml.
 
   check-admit:
     name: Check admit-status
-    needs: [lint, enforcer, qa]
+    needs: [lint, enforcer, qa, pre-admission-responder]
     # Gate on CONVERGENCE, never on the reviewers' green VERDICT (§3.4 pt 5, §3.7).
     # Convergence = lint succeeded, enforcer AND qa each RAN and produced a verdict on
-    # this SHA (`success` OR `failure`), and NO agent committed. A red enforcer/qa verdict
-    # must NOT gate the mechanic off — the mechanic is exactly who clears that red (§3.5),
-    # and the enforcer reusable HARD-FAILS its job on a red verdict (so its `result` is
-    # `failure`, not `success`). Keying on `== 'success'` made every converged-red admitted
+    # this SHA (`success` OR `failure`), and NO agent committed (including the
+    # pre-admission responder). A red enforcer/qa verdict must NOT gate the mechanic
+    # off — the mechanic is exactly who clears that red (§3.5), and the enforcer
+    # reusable HARD-FAILS its job on a red verdict (so its `result` is `failure`,
+    # not `success`). Keying on `== 'success'` made every converged-red admitted
     # PR skip the mechanic — the §1450 success-gate inversion, here on the dispatch gate.
+    #
+    # pre-admission-responder may be 'skipped' (check-mechred returned false) or
+    # 'success'/'failure' (it ran). In all cases `committed` defaults to '' (not 'true')
+    # when skipped — so the `!= 'true'` guard correctly allows check-admit to proceed.
     if: >-
       always() &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.lint.result == 'success' &&
       (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') &&
       (needs.qa.result == 'success' || needs.qa.result == 'failure') &&
-      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true'
+      (needs.pre-admission-responder.result == 'success' || needs.pre-admission-responder.result == 'skipped' || needs.pre-admission-responder.result == 'failure') &&
+      needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && needs.qa.outputs.committed != 'true' &&
+      needs.pre-admission-responder.outputs.committed != 'true'
     runs-on: ubuntu-latest
     outputs:
       admitted: ${{ steps.check.outputs.admitted }}

@@ -1,0 +1,284 @@
+# Agent: Pre-Admission Responder
+#
+# Fixes mechanically-fixable red PRE-admission — failing CI, scope-faithful
+# review feedback the autofixers couldn't clear, and merge conflicts.
+# Runs in Stage 1 (every push on converged red), NOT Stage 2.
+#
+# The mechanical/judgment boundary (load-bearing):
+#   mechanical → fix and commit (Responder-By: trailer)
+#   judgment / recusal → DO NOT TOUCH; surface to the human gate
+# Source: .github/agents/enforcer.agent.md §3 (same split the enforcer uses).
+#
+# NO-OP-ON-GREEN GUARD (specs/workflows/pr-pipeline.md §3.8):
+#   The check-mechred job in pr-pipeline.yml fires this workflow ONLY when at
+#   least one of enforcer-status / qa-status is `failure` on HEAD AND the PR
+#   is pre-admission (admit-status != success). This workflow never runs on a
+#   green PR or on an admitted PR — those guards live in check-mechanical-red.sh.
+#
+# Cost constraints (pre-admission budget, §3.8):
+#   - This agent is lighter than the Stage-2 mechanic (§3.3): NO full development
+#     work; mechanical fixes and conflict resolution only.
+#   - timeout-minutes: 30 (vs mechanic's 55) — pre-admission runs are bounded cheaper.
+#   - MAX_RESPONDER_RUNS = 3 (vs mechanic's 5) — the ceiling is in check-mechanical-red.sh
+#     (counts Responder-By: commits); this workflow honours it but does NOT re-enforce it
+#     (already enforced before dispatch).
+#
+# Status: `responder-status` (informational, NEVER a required gate — §4.2).
+#   The merge gate is enforcer-status + qa-status + admit-status + mechanical checks.
+#   `responder-status` exists only as a diagnostic surface.
+#
+# Prompt: .github/agents/shared-error-handling.md + .github/agents/pre-admission-responder.agent.md
+#
+# v2 contract (specs/workflows/pr-pipeline.md):
+#   §4.1 workflow_call only — no pull_request, workflow_run, schedule, push.
+#         Declares `committed` output for the §3.4 short-circuit.
+#   §4.2 one named status: responder-status (informational, NEVER required).
+#   §4.6 SHA-based loop-skip: skips if this exact SHA was already processed.
+#   §3.8 pre-admission only: check-mechred gate enforces this before dispatch.
+
+name: "Agent: Pre-Admission Responder"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "PR number to fix"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to checkout (PR head branch)"
+        type: string
+        required: true
+      sha:
+        description: "PR head SHA — explicit, not derived (§4.1)"
+        type: string
+        required: true
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: "PAT for GitHub API operations (statuses, reviews)"
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: "OAuth token for Claude agent"
+        required: true
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
+        value: ${{ jobs.responder.outputs.committed }}
+
+jobs:
+  responder:
+    name: Pre-Admission Responder
+    runs-on: ubuntu-latest
+    # Pre-admission budget: cheaper than the Stage-2 mechanic (30 vs 55 minutes).
+    # Source: pr-pipeline.md §3.8 "bounded + cheap pre-admission" constraint.
+    timeout-minutes: 30
+    concurrency:
+      # Per-PR: queue rather than race. cancel-in-progress: false — let an
+      # in-flight fix finish rather than killing it and burning the responder budget.
+      group: agent-pre-admission-responder-${{ inputs.pr_number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      issues: write
+      id-token: write
+    outputs:
+      committed: ${{ steps.check-commit.outputs.committed || 'false' }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.sha }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      AGENT_NAME: pre-admission-responder
+
+    steps:
+      # ──────────────────────────────────────────────────────────────────────
+      # §4.6 SHA-based loop-skip
+      #
+      # Skip if this exact SHA was already processed by the responder:
+      #   - responder-status=success → re-post and exit (already fixed / nothing to fix)
+      #   - responder-status=failure → re-post and exit (blocked on prior pass)
+      # Pending and absent states mean "not yet done" — proceed.
+      # Source: pr-pipeline.md §10 and agent-mechanic.yml SHA-skip pattern.
+      # ──────────────────────────────────────────────────────────────────────
+      - name: SHA-skip check
+        id: sha-skip
+        run: |
+          LATEST_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | .state // \"\"" \
+            2>/dev/null || echo "")
+
+          if [ "$LATEST_STATE" = "success" ]; then
+            echo "SHA $HEAD_SHA already processed (responder-status=success) — re-posting idempotent success"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already processed" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$LATEST_STATE" = "failure" ]; then
+            echo "SHA $HEAD_SHA already failed (responder-status=failure) — re-posting failure"
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already processed (prior failure)" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+
+      - name: Post pending status
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="${AGENT_NAME}-status" \
+            -f description="Pre-admission mechanical responder in progress" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+
+      - uses: actions/checkout@v4
+        if: steps.sha-skip.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Resolve PR base branch
+        id: base
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          BASE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.base.ref')
+          echo "BASE_BRANCH=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble responder prompt
+        id: prompt
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          PROMPT=$(cat .github/agents/shared-error-handling.md .github/agents/pre-admission-responder.agent.md)
+          PROMPT="${PROMPT}"$'\n\n## Your task — start now\n\n'"Fix mechanically-fixable red on PR #${PR_NUMBER} in ${REPO} at HEAD ${HEAD_SHA}. Read the enforcer + qa CHANGES_REQUESTED reviews, classify each finding (mechanical vs judgment), fix ONLY mechanical findings, validate locally, and commit with a Responder-By: trailer if fixes were made. Do NOT touch judgment-call or recusal flags — leave those for the human gate. Environment: REPO=${REPO}, PR_NUMBER=${PR_NUMBER}, HEAD_SHA=${HEAD_SHA}, BASE_BRANCH=${{ steps.base.outputs.BASE_BRANCH }}, AGENT_NAME=${AGENT_NAME}."
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Pre-Admission Responder
+        id: run
+        if: steps.sha-skip.outputs.skip != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          BASE_BRANCH: ${{ steps.base.outputs.BASE_BRANCH }}
+          AGENT_NAME: pre-admission-responder
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
+
+      # One-shot retry for transient infra failures (rate_limit_event, 401, runner hiccups).
+      # Pattern from agent-enforcer.yml — retry only when first attempt failed AND
+      # no commit was already made (so we don't double-apply a fix).
+      - name: Check first-attempt outcome
+        id: first-attempt
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.run.outcome != 'success'
+        run: |
+          # Check if the agent already committed a fix (first attempt may have committed
+          # before the runner error). If so, don't retry — that could double-apply fixes.
+          git fetch origin ${{ inputs.ref }} 2>/dev/null || true
+          REMOTE_SHA=$(git rev-parse origin/${{ inputs.ref }} 2>/dev/null || echo "$HEAD_SHA")
+          if [ "$REMOTE_SHA" != "$HEAD_SHA" ]; then
+            echo "Agent committed before the infra error — not retrying (commit already pushed)"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "First attempt failed without committing — will retry once"
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Pre-Admission Responder (retry)
+        id: run-retry
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          BASE_BRANCH: ${{ steps.base.outputs.BASE_BRANCH }}
+          AGENT_NAME: pre-admission-responder
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
+
+      - name: Check for agent commits
+        id: check-commit
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          git fetch origin ${{ inputs.ref }} 2>/dev/null || true
+          REMOTE_SHA=$(git rev-parse origin/${{ inputs.ref }} 2>/dev/null || echo "$HEAD_SHA")
+          if [ "$REMOTE_SHA" != "$HEAD_SHA" ]; then
+            echo "Agent pushed a commit ($REMOTE_SHA != $HEAD_SHA)"
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-responder-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # Post terminal responder-status. The merge gate does NOT require this status
+      # (§4.2 — informational only); it exists for diagnostics and the SHA-skip check.
+      - name: Post terminal responder-status
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          # Determine outcome: committed → success; infra failure → failure; no-op → success.
+          COMMITTED="${{ steps.check-commit.outputs.committed || 'false' }}"
+          RUN_OUTCOME="${{ steps.run.outcome }}"
+          RETRY_OUTCOME="${{ steps.run-retry.outcome }}"
+
+          if [ "$COMMITTED" = "true" ]; then
+            STATE=success
+            DESC="Mechanical fixes committed — Stage 1 will re-verify on the new SHA"
+          elif [ "$RUN_OUTCOME" != "success" ] && { [ "$RETRY_OUTCOME" = "failure" ] || [ "$RETRY_OUTCOME" = "cancelled" ]; }; then
+            STATE=failure
+            DESC="Responder action step failed in both attempts — see run logs"
+          elif [ "$RUN_OUTCOME" = "success" ] || [ "$RETRY_OUTCOME" = "success" ]; then
+            STATE=success
+            DESC="No mechanical fixes committed (nothing fixable or all findings are judgment calls)"
+          else
+            STATE=failure
+            DESC="Responder did not complete — see run logs"
+          fi
+
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="${AGENT_NAME}-status" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
