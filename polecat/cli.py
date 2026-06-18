@@ -4972,9 +4972,14 @@ def run(
             cmd.extend(["-p", prompt])
     elif is_antigravity:
         # Antigravity CLI (agy) — runs a Gemini model via the agy wrapper.
+        # Do NOT pass --dangerously-skip-permissions here: that flag bypasses
+        # the PreToolUse hook invocation in agy, which would short-circuit the
+        # hook-stack permission grant and make it impossible to verify that the
+        # hooks are actually working. The aops-core hooks.json PreToolUse handler
+        # is the permission authority — it returns {"allowTool": true} for
+        # allowed tool calls (aops-7781ab3c, fixed in aops-1e68682a).
         cmd = [
             "agy",
-            "--dangerously-skip-permissions",
             "--model",
             session_cfg.antigravity_model,
         ]
@@ -5036,6 +5041,12 @@ def run(
     # (aops-b368109a).
     env["AOPS_POLECAT_CONTAINER"] = "1"
     env["AOPS_TASK_ID"] = task.id
+    if is_antigravity:
+        # Signal to the agy hook adapter that this is a polecat-launched agy
+        # worker. The router uses this (alongside --client agy) to apply worker
+        # gate posture: skip PreToolUse compliance gates that a headless session
+        # cannot satisfy interactively (aops-7781ab3c).
+        env["AOPS_AGY_CLIENT"] = "1"
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
     _apply_gate_env(env, session_cfg)
