@@ -502,12 +502,13 @@ Draft PRs are WIP. Running the full agent pipeline on a draft burns expensive in
 | `qa`                                                          | `github.event.pull_request.draft == false` |
 | `pre-admission-responder`                                     | `github.event.pull_request.draft == false` |
 | `mechanic` (both `pr-pipeline.yml` and `admit-on-review.yml`) | `github.event.pull_request.draft == false` |
+| `review-attestation`                                          | `github.event.pull_request.draft == false` |
 
-**Which jobs continue running on drafts (cheap mechanical checks):** `gate`, `guard-no-dist`, `initialize`, `alignment-queue`, `lint`, `typecheck`, `pytest`, `check-mechred`, `check-admit`, `review-attestation`.
+**Which jobs continue running on drafts (cheap mechanical checks):** `gate`, `guard-no-dist`, `initialize`, `alignment-queue`, `lint`, `typecheck`, `pytest`, `check-mechred`, `check-admit`.
 
 **The activation edge is `ready_for_review`.** The `pull_request` trigger already includes `types: [opened, synchronize, ready_for_review, reopened]` — keep it. When the author converts a draft to ready, the `ready_for_review` event fires the pipeline and all expensive jobs run on HEAD SHA.
 
-**Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` runs (via `if: always()`) but fails closed because the reviewer statuses are absent — this is expected and benign: draft PRs cannot merge regardless of required-check state.
+**Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` also carries the draft guard so it does NOT run on a draft — this avoids a permanent red required-check on every WIP PR (it would otherwise fail closed because the reviewer statuses are absent). Draft PRs cannot merge regardless of required-check state; when the PR is marked ready, `ready_for_review` re-runs the pipeline and attestation posts on HEAD SHA.
 
 **`workflow_call` path is unaffected.** The draft guard is conditioned on the event being a `pull_request` event (`github.event_name != 'pull_request' || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side is true, and the expensive jobs run normally.
 
