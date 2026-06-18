@@ -70,8 +70,8 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 This sweep touches two statuses that look adjacent but mean opposite things. Getting this wrong is the live failure this step exists to prevent (#1863): a human-decision task with no PR gets enumerated as "parked PR backlog", reconciled against a PR that does not exist, left unchanged every run, and silently falls off the radar.
 
-- **`merge_ready` = parked on a PR.** Canonically "under review — PR open, awaiting CI, review, or iteration" ([[taxonomy]] Status Values). The PR is the source of truth for whether it can close. This is the **PR-reconcile set**: resolve its PR and act on the live state.
-- **`review` = parked on a human.** Canonically "mid-flight human block — requires judgment/direction before work can proceed" ([[taxonomy]]). It is **actionable work waiting on Nic (or an agent), not on a merge.** Most `review` tasks have **no PR at all** (academic reading notes, design decisions, validation-protocol calls, "needs Nic's direction" items). A `review` task is closed by a _decision_, never by an auto-reconcile.
+- **`status: merge_ready` = parked on a PR.** Canonically "under review — PR open, awaiting CI, review, or iteration" ([[taxonomy#status-values-and-transitions]] is the SSoT for the full protocol). The PR is the source of truth for whether it can close. This is the **PR-reconcile set**: resolve its PR and act on the live state.
+- **`status: review` = parked on a human.** Canonically "mid-flight human block — requires judgment/direction before work can proceed" ([[taxonomy#status-values-and-transitions]]). It is **actionable work waiting on Nic (or an agent), not on a merge.** Most `status: review` tasks have **no PR at all** (academic reading notes, design decisions, validation-protocol calls, "needs Nic's direction" items). A `status: review` task is closed by a _decision_, never by an auto-reconcile.
 
 The rule that follows from this: **never auto-close a `review` task, and never let a no-PR `review` task be treated as parked backlog and disappear.** It is awaiting attention — surface it every run.
 
