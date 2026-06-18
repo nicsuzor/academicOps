@@ -435,6 +435,20 @@ class HookRouter:
         if hook_event in ("SubagentStart", "SubagentStop"):
             is_subagent = False
 
+        # Worker gate posture for polecat-launched agy headless sessions
+        # (aops-7781ab3c). An agy worker dispatched by `polecat run --model
+        # antigravity` is an autonomous task session that cannot respond to
+        # interactive compliance gate prompts (e.g. dispatch rbg mid-run).
+        # Classify it as a subagent so _dispatch_gates skips PreToolUse gate
+        # evaluation — the same worker posture Claude Code polecat task workers
+        # get. Stop/PostInvocation (both mapped to hook_event="Stop") remain
+        # exempt from the subagent skip, so the handover gate can still fire.
+        # AOPS_AGY_CLIENT=1 is set explicitly by polecat/cli.py when launching
+        # an agy worker container — it is NOT present in other polecat workers'
+        # environments, so it never bleeds into test subprocesses.
+        if client_type == "agy" and os.environ.get("AOPS_AGY_CLIENT") == "1":
+            is_subagent = True
+
         # 8. Persist session data on session start only (not subagent start, as multiple
         # subagents may run simultaneously and would clobber each other's entries)
         if hook_event == "SessionStart":
