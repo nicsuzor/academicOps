@@ -873,6 +873,93 @@ class TestBuildAuditSessionContext:
         result = build_audit_session_context(str(tmp_path / "nonexistent.jsonl"))
         assert result == "(No transcript path available)"
 
+    def test_tool_calls_from_historical_turns_included(self, tmp_path):
+        """Regression: tool calls from turns before last 5 must appear in audit output.
+
+        The old _DETAILED_TURNS_LIMIT = 5 split hid tool calls from historical
+        turns, letting violations in those turns pass the enforcer unseen
+        (aops-e4e90f31 truncated-read false-pass bug).
+
+        A session with 8 turns must include Write/Bash tool calls from turn 1
+        in the audit output — not just the user message.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "long-session.jsonl"
+
+        # Build 8 turns; the first has a Write tool call that must appear in audit
+        entries_data = [
+            _create_user_entry("Turn 1 request", 0),
+            _create_tool_use_entry("Write", {"file_path": "/secret/violation.py"}, 1),
+            _create_tool_result_entry("tool-1", "File written", offset=2),
+        ]
+        for i in range(2, 9):
+            entries_data += [
+                _create_user_entry(f"Turn {i} request", i * 100),
+                _create_assistant_entry(i * 100 + 1),
+            ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        # Turn 1's Write tool call must be visible (not suppressed as "historical")
+        assert "Write" in result
+        assert "/secret/violation.py" in result
+        # All 8 user prompts must be present
+        for i in range(1, 9):
+            assert f"Turn {i} request" in result
+
+    def test_audit_complete_sentinel_present(self, tmp_path):
+        """Audit output ends with <!-- audit-complete --> sentinel.
+
+        This sentinel lets RBG verify it read the full file before certifying.
+        A truncated read (e.g. Read tool 2000-line default) would miss the
+        sentinel, triggering a COVERAGE_INCOMPLETE response (aops-e4e90f31).
+        """
+        from lib.session_reader import build_audit_session_context
+
+        jsonl_path = tmp_path / "session.jsonl"
+        entries_data = [
+            _create_user_entry("Do some work", 0),
+            _create_assistant_entry(1),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        result = build_audit_session_context(str(jsonl_path))
+
+        assert "<!-- audit-complete:" in result
+        # Sentinel must be at or near the very end of the output
+        last_200 = result[-200:]
+        assert "<!-- audit-complete:" in last_200
+
+    def test_audit_complete_sentinel_includes_turn_count(self, tmp_path):
+        """Audit sentinel reports turn count so RBG can detect suspicious mismatches."""
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "three-turns.jsonl"
+        entries_data = [
+            _create_user_entry("First", 0),
+            _create_assistant_entry(1),
+            _create_user_entry("Second", 10),
+            _create_assistant_entry(11),
+            _create_user_entry("Third", 20),
+            _create_assistant_entry(21),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        # Sentinel must include the count of turns processed
+        assert "<!-- audit-complete: 3 turns -->" in result
+
 
 class TestExtractGateContextExceptionHandling:
     """Tests for extract_gate_context exception handling."""

@@ -429,36 +429,13 @@ def build_audit_session_context(
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
 
-    # We split history into a historical summary and recent detailed activity
-    _DETAILED_TURNS_LIMIT = 5
+    # All turns included at full detail — auditor must see complete history.
+    # Do NOT restore a historical/recent split here: hiding tool calls from
+    # older turns lets violations in those turns pass the enforcer unseen
+    # (aops-e4e90f31 truncated-read false-pass bug).
+    turn_num = 0
 
-    historical_turns = valid_turns[:-_DETAILED_TURNS_LIMIT]
-    recent_turns = valid_turns[-_DETAILED_TURNS_LIMIT:]
-
-    if historical_turns:
-        lines.append("### Historical User Intent")
-        lines.append("These are the older prompts from the user establishing the overall goals:\n")
-
-        turn_num = 0
-        for turn in historical_turns:
-            turn_num += 1
-            user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
-            is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
-
-            if user_msg and not is_meta:
-                msg = user_msg.strip()
-                msg = _clean_prompt_text(msg)
-                if not _is_system_injected_context(msg):
-                    if len(msg) > 1000:
-                        msg = msg[:1000] + "..."
-                    lines.append(f"**User (Turn {turn_num})**: {msg}\n")
-
-        lines.append("---")
-        lines.append(f"### Recent Activity (Last {len(recent_turns)} Turns)")
-
-    turn_num = len(historical_turns)
-
-    for turn in recent_turns:
+    for turn in valid_turns:
         user_msg = turn.get("user_message") if isinstance(turn, dict) else turn.user_message
         is_meta = turn.get("is_meta") if isinstance(turn, dict) else turn.is_meta
         assistant_sequence = (
@@ -607,6 +584,13 @@ def build_audit_session_context(
 
     if not lines:
         return "(No meaningful session content extracted)"
+
+    # Coverage sentinel: must be the last content in the file so that a
+    # truncated read (e.g. Read tool default 2000-line limit) is detectable.
+    # The enforcer-instruction requires RBG to verify this line before
+    # certifying; if it is absent, the read was incomplete (aops-e4e90f31).
+    lines.append("")
+    lines.append(f"<!-- audit-complete: {turn_num} turns -->")
 
     return "\n".join(lines)
 

@@ -18,4 +18,4 @@ This periodic compliance check is required as part of the academicOps enforcer g
 
 Run the compliance check with this command:
 
-`Agent(subagent_type='aops-core:rbg', prompt='Required audit of the session log. The file at {temp_path} is the session log — read it and return a verdict on the activity recorded there.')`
+Agent(subagent_type='aops-core:rbg', prompt='Required audit of the session log. The file at {temp_path} is the session log. COVERAGE CHECK REQUIRED BEFORE VERDICT: use the Bash tool to run: tail -3 "{temp_path}" — the last line must contain the text audit-complete. If that sentinel is absent, the audit file was truncated — respond COVERAGE_INCOMPLETE and do NOT certify pass. If present, read the full file (ensuring the sentinel is present at the end of the read content, using cat via Bash if the Read tool truncates it) and return a verdict.')
