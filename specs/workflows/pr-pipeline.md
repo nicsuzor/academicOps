@@ -46,7 +46,8 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                                                                                                    | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                                                                                 |
 | The human gate: a maintainer's PR **review approval**; `admit-on-review.yml` (`on: pull_request_review`) authorises, sets `admit-status`, arms auto-merge, dispatches the mechanic's first pass                                                                        | **LIVE**      | `admit-on-review.yml` + `scripts/ci/admit-on-review.sh` + `tests/test_admit_on_review.py`                                                                                                        |
 | **RETIRED human gate:** `pr-fix-loop` GitHub Environment + in-pipeline `admit` job that parked on it                                                                                                                                                                   | **RETIRED**   | retired 2026-06-16 — undiscoverable approval UI + stranded mechanic dispatch (no re-trigger event), worked example PR #1858 (§3.2)                                                               |
-| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                                                    | **LIVE**      | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                                                                              |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `review-attestation`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                              | **LIVE**      | live ruleset ID `13762049` (API-verified 2026-06-19)                                                                                                                                             |
+| **Draft-PR guard**: expensive jobs (`enforcer`, `qa`, `pre-admission-responder`, `mechanic`) skip while a PR is a draft; `ready_for_review` is the activation edge                                                                                                     | **LIVE**      | `pr-pipeline.yml` + `admit-on-review.yml` `if:` guards; §3.9                                                                                                                                     |
 | `admit-status` carry-forward across agent commits / reset on human push                                                                                                                                                                                                | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                                                                              |
 | **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                                                                                              | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5)                                                           |
 | `mechanic-status` informational status                                                                                                                                                                                                                                 | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                                                                                |
@@ -488,6 +489,27 @@ lint → enforcer → qa → [check-mechred] → [pre-admission-responder]
 **Dispatch sequence.** `check-admit` now `needs: [lint, enforcer, qa, pre-admission-responder]`. For Stage-2 passes (admitted PRs), `check-mechred` immediately returns `has_mechanical_red=false` (Stage-2 guard fires), `pre-admission-responder` is skipped, and `check-admit` proceeds with only a ~5s `check-mechred` overhead — negligible on the Stage-2 critical path.
 
 **`responder-status`** is informational and must **never** be added to the branch-protection ruleset (§7). It is a diagnostic surface for the SHA-skip check and for human readers of the Actions log; it does not gate merge.
+
+### 3.9 Draft-PR guard — expensive jobs skip on drafts; fire on `ready_for_review` — **LIVE**
+
+Draft PRs are WIP. Running the full agent pipeline on a draft burns expensive invocations before the author has even marked the work ready for review.
+
+**Which jobs skip on a draft PR:**
+
+| Job                                                           | Guard                                      |
+| ------------------------------------------------------------- | ------------------------------------------ |
+| `enforcer`                                                    | `github.event.pull_request.draft == false` |
+| `qa`                                                          | `github.event.pull_request.draft == false` |
+| `pre-admission-responder`                                     | `github.event.pull_request.draft == false` |
+| `mechanic` (both `pr-pipeline.yml` and `admit-on-review.yml`) | `github.event.pull_request.draft == false` |
+
+**Which jobs continue running on drafts (cheap mechanical checks):** `gate`, `guard-no-dist`, `initialize`, `alignment-queue`, `lint`, `typecheck`, `pytest`, `check-mechred`, `check-admit`, `review-attestation`.
+
+**The activation edge is `ready_for_review`.** The `pull_request` trigger already includes `types: [opened, synchronize, ready_for_review, reopened]` — keep it. When the author converts a draft to ready, the `ready_for_review` event fires the pipeline and all expensive jobs run on HEAD SHA.
+
+**Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` runs (via `if: always()`) but fails closed because the reviewer statuses are absent — this is expected and benign: draft PRs cannot merge regardless of required-check state.
+
+**`workflow_call` path is unaffected.** The draft guard is conditioned on the event being a `pull_request` event (`github.event_name != 'pull_request' || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side is true, and the expensive jobs run normally.
 
 ### 3.7 Fail-closed liveness + named-reviewer-on-this-SHA attestation (#1450) — **LIVE** (in-repo)
 

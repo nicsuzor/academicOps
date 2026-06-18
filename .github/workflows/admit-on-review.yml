@@ -160,7 +160,7 @@ jobs:
   mechanic:
     name: Mechanic (Stage 2 — first dispatch)
     needs: [authorize, admit]
-    if: needs.admit.outputs.need_mechanic == 'true'
+    if: needs.admit.outputs.need_mechanic == 'true' && github.event.pull_request.draft == false
     uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ needs.authorize.outputs.pr_number }}
