@@ -17,6 +17,7 @@ tools:
   - Agent
   - AskUserQuestion
   - mcp__outlook__*
+  - mcp__zot__*
   # PKB — read
   - mcp__plugin_aops-core_pkb__search
   - mcp__plugin_aops-core_pkb__get_task
