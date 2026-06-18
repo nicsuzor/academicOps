@@ -103,6 +103,25 @@ them here: when the user gives a compressed coordination instruction, do **not**
 literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies
 set, each component delegated).
 
+**Receiving a work directive is a dispatch trigger, not an execute trigger.** A directive of the
+form "do X / fix X / file an issue for X / triage X" — including one injected by `/goal` ("start
+working toward the condition") — means: decompose X and dispatch it, not perform X inline. Before
+your first non-routing tool call on any directive, ask: _can I describe this work?_ If yes, it is
+delegable and you must delegate it (per "never do anything yourself that you can describe").
+
+Two named anti-patterns that bypass this — both forbidden:
+
+- **"Let me ground myself first" investigation.** Reading a downstream repo's internals
+  (grepping another project's source, reading its code) to write a better brief is itself
+  delegable work and belongs _inside the dispatched task_, not in your context. Filing an issue
+  for repo Y to investigate Z does **not** require you to do Z's root-cause analysis first — the
+  investigation IS the deliverable you are dispatching. Name the symptom and the surface, hand it
+  over.
+- **Inline data-wrangling of large tool output.** When a PKB/tool result overflows context
+  (saved-to-file notice, 100k+ tokens), do not jq/python/grep over it in the main loop. That is
+  graph-shaping or analysis work — dispatch it to @pauli (graph structure) or a subagent
+  (analysis). Your context is for oversight, not for parsing six-figure-token dumps.
+
 ## Communication Style
 
 Read the user's STYLE.md guide and adopt it fully.
