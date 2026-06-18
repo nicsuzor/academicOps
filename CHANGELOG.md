@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.42](https://github.com/nicsuzor/academicOps/compare/v0.3.41...v0.3.42) (2026-06-18)
+
+
+### Features
+
+* **junior:** replace PKB wildcard with explicit allowlist; enforce pauli as sole graph-shaper ([#1824](https://github.com/nicsuzor/academicOps/issues/1824)) ([5a2f0e5](https://github.com/nicsuzor/academicOps/commit/5a2f0e5f0f87c5f262de5702a8d9acf2b7783578))
+* **pr-pipeline:** pre-admission mechanical responder — Phase 8 (§3.8) ([#1862](https://github.com/nicsuzor/academicOps/issues/1862)) ([c2afaad](https://github.com/nicsuzor/academicOps/commit/c2afaadc7d68d58f34bab33889826c0cb3b82712))
+
+
+### Bug Fixes
+
+* **daily:** reconcile via live gh per task (drop pr-state.json feed dependency) ([#1867](https://github.com/nicsuzor/academicOps/issues/1867)) ([b4b7325](https://github.com/nicsuzor/academicOps/commit/b4b7325b7c17418374e627cf40657eaa048ad853))
+* **enforcer:** remove historical-turn truncation, add audit-complete sentinel ([#1869](https://github.com/nicsuzor/academicOps/issues/1869)) ([42a1551](https://github.com/nicsuzor/academicOps/commit/42a1551c1eae7229126f0c48a8e013ab29f6447e))
+* **pr-pipeline:** address review feedback for pre-admission responder ([#1865](https://github.com/nicsuzor/academicOps/issues/1865)) ([eeed659](https://github.com/nicsuzor/academicOps/commit/eeed659452eb83647995fb541201c8fd678406aa))
+* **taxonomy:** disambiguate review (human-block) from merge_ready (PR-parked) in reconcile ([#1870](https://github.com/nicsuzor/academicOps/issues/1870)) ([5904f96](https://github.com/nicsuzor/academicOps/commit/5904f9686376e0bebe7bf925d209f560c1327bdb))
+
+
+### Documentation
+
+* **enforcement-map:** map junior PKB scope rescope (follow-up to [#1824](https://github.com/nicsuzor/academicOps/issues/1824)) ([#1871](https://github.com/nicsuzor/academicOps/issues/1871)) ([c22338f](https://github.com/nicsuzor/academicOps/commit/c22338f561ce8772f4489032e2c40de49e106a81))
+* **index:** retire context-map.json reference in .agents/INDEX.md ([#1868](https://github.com/nicsuzor/academicOps/issues/1868)) ([63fb17a](https://github.com/nicsuzor/academicOps/commit/63fb17a47b56cd598af7bd1057820dbe090a2b7c))
+
 ## [0.3.41](https://github.com/nicsuzor/academicOps/compare/v0.3.40...v0.3.41) (2026-06-17)
 
 
