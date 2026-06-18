@@ -303,19 +303,25 @@ Severity belongs only on target nodes (`type: target`). Ordinary tasks, epics, a
 
 ## Status Values and Transitions
 
-| Status        | Meaning                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness |
-| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                    |
-| `queued`      | User has manually marked this task available for agent dispatch                 |
-| `in_progress` | Claimed by an agent or human — actively being worked                            |
-| `merge_ready` | Under review — PR open, awaiting CI, review, or iteration. Iterative state.     |
-| `review`      | Mid-flight human block — requires judgment/direction before work can proceed    |
-| `done`        | Complete — no further action required                                           |
-| `blocked`     | Waiting on an external dependency that cannot be resolved internally            |
-| `paused`      | Intentionally stopped with intent to resume — work was in-flight but deferred   |
-| `someday`     | Parked idea — may never be worked; differs from `inbox` by explicit deferral    |
-| `cancelled`   | Will not be done — decision made to drop                                        |
+| Status        | Meaning                                                                                                                                                                                                                                                                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inbox`       | **Default.** Captured but not yet triaged — unknown priority, unknown readiness                                                                                                                                                                                                                                                                |
+| `ready`       | Decomposed to leaf tasks with all hard dependencies resolved                                                                                                                                                                                                                                                                                   |
+| `queued`      | User has manually marked this task available for agent dispatch                                                                                                                                                                                                                                                                                |
+| `in_progress` | Claimed by an agent or human — actively being worked                                                                                                                                                                                                                                                                                           |
+| `merge_ready` | Under review — PR open, awaiting CI, review, or iteration. Iterative state. **Parked on a PR**: the PR is the source of truth; an automated sweep may close it when the PR merges.                                                                                                                                                             |
+| `review`      | **Mid-flight human block** — requires Nic's (or an agent's) judgment/direction before work can proceed. **Parked on a person, not a PR**: actionable work waiting on a _decision_. Often has no PR at all (reading notes, design calls, escalations). An automated sweep **never auto-closes a `review` task** — it surfaces it for attention. |
+| `partial`     | Worker honestly shipped a finished component and stopped, leaving the rest decomposed into follow-ups (draft PR for incomplete code). Distinct from `merge_ready` (not a whole deliverable) and from abandonment. See [[spec-partial-work]].                                                                                                   |
+| `done`        | Complete — no further action required                                                                                                                                                                                                                                                                                                          |
+| `blocked`     | Waiting on an external dependency that cannot be resolved internally                                                                                                                                                                                                                                                                           |
+| `paused`      | Intentionally stopped with intent to resume — work was in-flight but deferred                                                                                                                                                                                                                                                                  |
+| `someday`     | Parked idea — may never be worked; differs from `inbox` by explicit deferral                                                                                                                                                                                                                                                                   |
+| `cancelled`   | Will not be done — decision made to drop                                                                                                                                                                                                                                                                                                       |
+
+**`merge_ready` vs `review` — do not conflate them.** Both look like "parked, awaiting external resolution", but they are parked on different things and carry opposite automation semantics:
+
+- **`merge_ready` is parked on a PR.** A reconcile sweep resolves the task's PR (`pr_url` / `branch` / repo-qualified number) against live GitHub and **may auto-close** it when the PR merges. A `merge_ready` task with no resolvable PR is anomalous (a worker set the status without opening one) — surface it, do not close it.
+- **`review` is parked on a human decision.** It is closed by that decision, **never** by a PR auto-match. A sweep that enumerates `review` tasks as "parked PR backlog" and reconciles them against PRs is the #1863 failure: no-PR human-decision tasks (academic reading notes, design calls, escalations awaiting Nic) get treated as parked, matched against a PR that does not exist, left unchanged every run, and silently fall off the radar. The correct treatment is to **re-surface every `review` task for attention** each sweep. The one legitimate overlap — a task that both has an open PR _and_ needs Nic's judgment (e.g. a doctrine PR awaiting his approval) — is still human-gated: a merged PR is _evidence_ the decision can be made, not authority to auto-close. Contract implemented in [[skills-daily]] (Reconcile and cross-link) and [[workflows-reconcile]].
 
 **Default is `inbox`**: Every new node starts as `inbox` regardless of how it was created.
 
@@ -442,13 +448,15 @@ Workflows define WHAT steps to take and in WHAT order. Skills define HOW to exec
 ### Status lifecycle
 
 ```
-inbox → ready → queued → in_progress → merge_ready → done
-                                     ↘ review
-                                     ↘ blocked
+inbox → ready → queued → in_progress → merge_ready → done   (merge_ready = parked on a PR; may auto-close on merge)
+                                     ↘ review                (parked on a HUMAN decision — actionable, never auto-closed)
+                                     ↘ blocked               (parked on an external dependency)
+                                     ↘ partial               (component shipped, remainder decomposed)
                                      ↘ cancelled
 ```
 
 - `inbox` is the default for all new nodes
+- `review` is **not** a PR-parked state — it is work awaiting Nic's (or an agent's) judgment. See [`merge_ready` vs `review`](#status-values-and-transitions) above; a reconcile sweep surfaces `review` tasks, it never auto-closes them.
 - `ready` is set automatically when decomposition is complete and dependencies are resolved
 - `queued` is set **manually by the user** — the human gate before agent dispatch
 - Agents pull only from `queued`
