@@ -94,6 +94,7 @@ mcp__plugin_aops-core_pkb__release_task(
 )
 ```
 
+- **Choose `status: merge_ready` vs `status: review` deliberately** (they are not interchangeable — see the canonical protocol in [[taxonomy#status-values-and-transitions]]). Use **`status: merge_ready`** when you opened a PR and the task is now parked on that PR's review/merge — set `pr_url`. Use **`status: review`** only when the task is parked on a _human decision_ (it needs Nic's or an agent's judgment/direction before it can proceed) — not merely because a PR is open. A reconcile sweep may auto-close a merged `status: merge_ready` task, but it will **never** auto-close a `status: review` task; mis-tagging a PR-parked task as `status: review` leaves it stuck, and mis-tagging a decision-parked task as `status: merge_ready` invites a wrong auto-close.
 - `release_summary` must be result-oriented, self-contained, and name specific resources/issues (`org/repo#NNN`).
 
 #### 5. Output Reflection Blocks
