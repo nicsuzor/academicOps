@@ -4,7 +4,14 @@ Tests that the gate system produces correct block/warn/allow verdicts.
 Uses fixture data for scenario-driven tests and parameterised mode overrides.
 """
 
+import sys
+from pathlib import Path
+
 import pytest
+
+AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
+if str(AOPS_CORE) not in sys.path:
+    sys.path.insert(0, str(AOPS_CORE))
 
 from tests.hooks.gate_helpers import (
     GateVerdict,
@@ -89,3 +96,52 @@ class TestReadOnlyBypassesEnforcer:
                 f"[{scenario['id']}] Read-only tool '{scenario['tool_name']}' "
                 f"should bypass enforcer gate, got {result.verdict.value}"
             )
+
+
+# --- Re-audit instruction content ---
+
+
+class TestEnforcerReAuditInstructionContent:
+    """Enforcer instruction template must contain re-audit judgment rules (R5).
+
+    These tests guard against the re-audit noise regression: the enforcer fires
+    on whole-session history, so without explicit re-audit rules RBG re-litigates
+    already-noted violations on every pass. The instruction must tell RBG to
+    distinguish RESOLVED / UNRESOLVED PRIOR / NEW ACTIVITY findings.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _registry(self):
+        from lib.template_registry import TemplateRegistry
+
+        self._reg = TemplateRegistry.instance()
+
+    def _render(self) -> str:
+        return self._reg.render("enforcer.instruction", {"temp_path": "/tmp/audit-test.md"})
+
+    def test_instruction_has_resolved_rule(self):
+        """RBG must be told not to re-raise findings already resolved in-session."""
+        content = self._render()
+        assert "RESOLVED" in content, (
+            "enforcer.instruction must contain RESOLVED re-audit rule — "
+            "RBG must know not to re-raise already-remediated findings."
+        )
+        assert "do NOT re-raise" in content, (
+            "enforcer.instruction must explicitly say 'do NOT re-raise' for resolved findings."
+        )
+
+    def test_instruction_has_escalate_rule(self):
+        """RBG must escalate unresolved prior findings, not merely restate them."""
+        content = self._render()
+        assert "ESCALATE" in content, (
+            "enforcer.instruction must contain ESCALATE rule — "
+            "unresolved prior findings must be escalated, not restated."
+        )
+
+    def test_instruction_has_new_activity_rule(self):
+        """RBG must judge genuinely new violations (post-last-enforcer) as REVISE."""
+        content = self._render()
+        assert "NEW ACTIVITY" in content, (
+            "enforcer.instruction must contain NEW ACTIVITY rule — "
+            "violations after the last enforcer pass should be judged fresh."
+        )
