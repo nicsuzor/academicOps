@@ -71,6 +71,8 @@ this fan-out must happen here, at the top level.
 - **marsha** — runtime / verification QA. Runs **whenever code or executable behaviour changed**;
   skip for pure-prose artifacts.
 
+**Every reviewer brief carries the epistemic-humility constraint below** ([§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result)): a reviewer may not issue a "this is false / failed / was a misstep" verdict about a real-world event, intent, or state it cannot directly observe — it downgrades to an ADVISORY primary-source flag instead.
+
 ### 3. Reconcile via @james
 
 When all three return, dispatch **@james** with the original artifact plus all three reviewer
@@ -88,6 +90,12 @@ Agent(subagent_type="aops-core:james",
       prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
 
+**Reconciliation must not harden inference into fact.** When a reviewer flagged a claim as
+_unverifiable from the available evidence_ (an unobservable event/intent/state), james carries that
+uncertainty **through to the verdict** — it does not let the single QA seal launder a guess into a
+confident negative. Such a finding lands as **ADVISORY (needs primary-source confirmation)**, never
+as a REJECT/REVISE "this is false." See [§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result).
+
 ### 4. Act on the verdict — only if asked
 
 - **No flag (default)**: return james's verdict and table to the caller. Change nothing.
@@ -102,6 +110,45 @@ Whatever the flags, **never silently exit**: if a write-back action fails, repor
 full verdict to chat.
 
 ---
+
+## Epistemic humility — absence of evidence is not a negative result
+
+> **One line.** Missing evidence licenses _"not supported by the available evidence"_ — it never
+> licenses _"false / failed / did not happen / was a misstep / was a loss."_ Binds **rbg**, **pauli**,
+> **marsha**, and the **james** reconciliation alike.
+
+When an artifact concerns a **real-world event, intent, or state the reviewer cannot directly
+observe** — what happened in a meeting, what a person was trying to achieve, whether a thing
+succeeded, whether a contribution landed — any reconstruction of it is **inference, and must be
+labelled as inference**, never asserted as fact.
+
+**Testable rules a reviewer can self-check against:**
+
+1. **Distinguish the two claims.** _"Not supported by the available evidence"_ (licensed by a gap) is
+   not _"false / failed / a misstep"_ (licensed only by a falsifying observation you actually hold).
+   Only the first follows from missing information.
+2. **A "this is false" verdict needs a held falsifier.** A **REJECT/REVISE "this is false / failed"**
+   requires the falsifying basis to be **observable in evidence the reviewer actually holds.** If the
+   claim depends on unobservable ground truth (room dynamics, intent, off-record events), **downgrade
+   to an ADVISORY flag requesting primary-source confirmation** — not a negative verdict.
+3. **Silence is not failure.** Do **not** infer failure, defeat, or the absence of a contribution from
+   silence or absence in a record (a transcript, log, or doc) — the record may simply not capture it.
+   A number floated in a room may be a tactic, not a goal; a commitment confirmed in a meeting may have
+   been secured earlier; a contribution may have happened off-record.
+4. **Default to unverifiable, not negative.** Where ground truth is unobservable, the verdict is
+   **"unverifiable from available evidence — flag for primary-source confirmation,"** not a confident
+   negative conclusion.
+5. **Calibrate symmetrically.** Apply the same uncertainty discount to **flattering and unflattering
+   claims alike** — never discount only the claims that happen to read as failures.
+
+**The failure mode this closes.** A confident **over-correction is as damaging as the original
+inflation — worse, because it inherits review authority.** A reviewer who recasts a transcript-derived
+inference as a ground-truth _"FALSE / failed / corrected-misstep"_ verdict has fabricated an
+observation it never made; the QA seal then makes the fabrication authoritative. Source incident:
+**#1891** (a review of an agent-authored synthesis of real-world meeting transcripts issued confident
+negative verdicts about events it could not observe; later reversed by the human primary source). This
+is the over-correction sibling of the inference-as-observation failure family (`mem-ff013263`,
+issue #1540).
 
 ## `--critic` mode
 

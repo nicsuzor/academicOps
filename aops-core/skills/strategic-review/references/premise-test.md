@@ -43,6 +43,28 @@ If a sharp principal would bounce the premise, the verdict is a **rejection even
 
 Test-passing is the **expected surface** of a bad-premise artifact, not a mitigant — _"but it's tested / it works / it's clean"_ is precisely the rationalisation this test closes.
 
+## 2a. A negative verdict needs a held falsifier — absence of evidence is not a failing result
+
+A rejecting verdict (`FAIL` / 🔴 REJECT) carries the same evidentiary burden as the premise test
+itself: it must rest on something the reviewer **actually observed**, not on something it merely
+**failed to find**. The two are not the same call.
+
+- _"Not supported by the available evidence"_ is licensed by a gap. _"False / failed / did not happen
+  / was a misstep / was a loss"_ is licensed *_only by a falsifying observation the reviewer holds._
+- When an artifact asserts a **real-world event, intent, or state the reviewer cannot directly
+  observe** (what happened in a meeting, a person's objective, whether a contribution landed), the
+  reviewer **labels its reconstruction as inference** and, where it cannot hold the falsifier,
+  **downgrades to an ADVISORY flag requesting primary-source confirmation** — it does not issue a
+  negative verdict. Do **not** infer failure or the absence of a contribution from silence in a record.
+- This applies **symmetrically**: discount unverifiable flattering and unflattering claims alike.
+
+A confident **over-correction is as damaging as the bad premise it replaces — worse, because it
+inherits the review's authority.** Recasting a transcript-derived inference as a ground-truth
+_"FALSE / failed"_ verdict fabricates an observation the reviewer never made. Source incident:
+**#1891**; the over-correction sibling of the inference-as-observation family (`mem-ff013263`,
+issue #1540). The full binding (rbg/pauli/marsha + james reconciliation) lives in
+[[../SKILL.md#epistemic-humility--absence-of-evidence-is-not-a-negative-result]].
+
 ## 3. Generalised framing — overengineering is one worked example
 
 The question is _"was this worth building at all, in this shape?"_ — **not** an overengineering-only check. _Deterministic-rig-for-a-judgment-call_ (a regex / threshold / NLP / bespoke parser / checklist substituting for a call a smart agent should just make — see `judgment-non-delegable`, `exercise-authority` Edge 3) is **one named instance** of the broader "dumb idea" class, not the definition.
