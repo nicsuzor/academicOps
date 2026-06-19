@@ -430,7 +430,7 @@ jobs:
   mechanic:
     name: Mechanic (Stage 2)
     needs: [check-admit]
-    if: needs.check-admit.outputs.admitted == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: needs.check-admit.outputs.admitted == 'true'
     uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ github.event.pull_request.number }}
