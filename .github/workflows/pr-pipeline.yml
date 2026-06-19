@@ -249,7 +249,7 @@ jobs:
   # ─── Step 2: Enforcer ────────────────────────────────────────────
   enforcer:
     needs: [lint]
-    if: needs.lint.outputs.committed != 'true'
+    if: needs.lint.outputs.committed != 'true' && (github.event.pull_request == null || github.event.pull_request.draft == false)
     name: Enforcer Review
     uses: ./.github/workflows/agent-enforcer.yml
     with:
@@ -271,7 +271,7 @@ jobs:
   # or `cancelled`, neither of which is a verdict on this SHA.
   qa:
     needs: [enforcer, lint]
-    if: always() && needs.lint.result == 'success' && (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true'
+    if: always() && needs.lint.result == 'success' && (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && (github.event.pull_request == null || github.event.pull_request.draft == false)
     name: QA Verification
     uses: ./.github/workflows/agent-qa.yml
     with:
@@ -344,7 +344,7 @@ jobs:
   pre-admission-responder:
     name: Pre-Admission Responder
     needs: [check-mechred]
-    if: needs.check-mechred.outputs.has_mechanical_red == 'true'
+    if: needs.check-mechred.outputs.has_mechanical_red == 'true' && (github.event.pull_request == null || github.event.pull_request.draft == false)
     uses: ./.github/workflows/agent-pre-admission-responder.yml
     with:
       pr_number: ${{ github.event.pull_request.number }}
@@ -461,7 +461,7 @@ jobs:
   review-attestation:
     name: Review Attestation
     needs: [enforcer, qa]
-    if: always() && github.event.pull_request.head.repo.full_name == github.repository
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request == null || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     permissions:
       statuses: write

@@ -45,8 +45,10 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                                                                                                            | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                                                                                    |
 | QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                                                                                                    | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                                                                                 |
 | The human gate: a maintainer's PR **review approval**; `admit-on-review.yml` (`on: pull_request_review`) authorises, sets `admit-status`, arms auto-merge, dispatches the mechanic's first pass                                                                        | **LIVE**      | `admit-on-review.yml` + `scripts/ci/admit-on-review.sh` + `tests/test_admit_on_review.py`                                                                                                        |
+| **Request-changes response path** (§3.10): a write-class maintainer's CHANGES_REQUESTED review dispatches the mechanic in `review-response` mode — comment-scoped, no admission, no auto-merge, CHANGES_REQUESTED stands until human re-reviews                        | **LIVE**      | `admit-on-review.yml` `authorize-changes` + `mechanic-review-response` jobs; `agent-mechanic.yml` `mode: review-response`; `mechanic.agent.md` review-response section                           |
 | **RETIRED human gate:** `pr-fix-loop` GitHub Environment + in-pipeline `admit` job that parked on it                                                                                                                                                                   | **RETIRED**   | retired 2026-06-16 — undiscoverable approval UI + stranded mechanic dispatch (no re-trigger event), worked example PR #1858 (§3.2)                                                               |
-| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                                                    | **LIVE**      | live ruleset ID `13762049` (API-verified, matches the in-repo file)                                                                                                                              |
+| Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `review-attestation`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                              | **LIVE**      | live ruleset ID `13762049` (API-verified 2026-06-19)                                                                                                                                             |
+| **Draft-PR guard**: expensive jobs (`enforcer`, `qa`, `pre-admission-responder`, `mechanic`) skip while a PR is a draft; `ready_for_review` is the activation edge                                                                                                     | **LIVE**      | `pr-pipeline.yml` + `admit-on-review.yml` `if:` guards; §3.9                                                                                                                                     |
 | `admit-status` carry-forward across agent commits / reset on human push                                                                                                                                                                                                | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                                                                              |
 | **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                                                                                              | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5)                                                           |
 | `mechanic-status` informational status                                                                                                                                                                                                                                 | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                                                                                |
@@ -205,14 +207,27 @@ and pauli's alignment verdict (if they ran `/strategic-review` by hand), then Ap
 (admit) or requests changes / leaves it.
 
 This is handled by a small event-driven workflow, **`admit-on-review.yml`**
-(`on: pull_request_review: types: [submitted]`). On an `approved` review it: (1) checks
-the reviewer is authorised (write-class repo permission, or the explicit maintainer
-allowlist — the default-deny policy lives in `scripts/ci/admit-on-review.sh`,
-unit-tested in `tests/test_admit_on_review.py`); (2) sets the required `admit-status` to
-`success` on the admitted SHA (re-read live, since the PR may have advanced since the
-review); (3) arms `gh pr merge --auto --squash --delete-branch`; and (4) dispatches the
-mechanic's **first** pass on the admitted SHA (skipping it when enforcer + qa are already
-green — auto-merge handles that, no development to do).
+(`on: pull_request_review: types: [submitted]`). It has **two paths** on review submission:
+
+**Approve path (admission):** On an `approved` review it: (1) checks the reviewer is
+authorised (write-class repo permission, or the explicit maintainer allowlist — the
+default-deny policy lives in `scripts/ci/admit-on-review.sh`, unit-tested in
+`tests/test_admit_on_review.py`); (2) sets the required `admit-status` to `success` on
+the admitted SHA (re-read live, since the PR may have advanced since the review); (3)
+arms `gh pr merge --auto --squash --delete-branch`; and (4) dispatches the mechanic's
+**first** pass on the admitted SHA (skipping it when enforcer + qa are already green —
+auto-merge handles that, no development to do).
+
+**Request-changes path (comment-scoped response, §3.10):** On a `changes_requested`
+review from a write-class maintainer on a ready (non-draft) PR, `admit-on-review.yml`
+dispatches the mechanic in `review-response` mode (§3.10). This path does NOT set
+`admit-status`, does NOT arm auto-merge, and does NOT approve the PR. The reviewer's
+CHANGES_REQUESTED review stands until the reviewer re-reviews. Merge happens only via a
+subsequent human Approve (the approve path above).
+
+The two paths are mutually exclusive within a single review event (a review is either
+`approved` or `changes_requested`, never both). Both paths apply the same write-class
+authorization and the same draft guard (§3.9).
 
 > **Superseded design — the `pr-fix-loop` GitHub Environment gate (RETIRED 2026-06-16).**
 > Admission used to be a GitHub **Environment with a required reviewer** (`pr-fix-loop`),
@@ -488,6 +503,66 @@ lint → enforcer → qa → [check-mechred] → [pre-admission-responder]
 **Dispatch sequence.** `check-admit` now `needs: [lint, enforcer, qa, pre-admission-responder]`. For Stage-2 passes (admitted PRs), `check-mechred` immediately returns `has_mechanical_red=false` (Stage-2 guard fires), `pre-admission-responder` is skipped, and `check-admit` proceeds with only a ~5s `check-mechred` overhead — negligible on the Stage-2 critical path.
 
 **`responder-status`** is informational and must **never** be added to the branch-protection ruleset (§7). It is a diagnostic surface for the SHA-skip check and for human readers of the Actions log; it does not gate merge.
+
+### 3.9 Draft-PR guard — expensive jobs skip on drafts; fire on `ready_for_review` — **LIVE**
+
+Draft PRs are WIP. Running the full agent pipeline on a draft burns expensive invocations before the author has even marked the work ready for review.
+
+**Which jobs skip on a draft PR:**
+
+| Job                                                                        | Guard                                      |
+| -------------------------------------------------------------------------- | ------------------------------------------ |
+| `enforcer`                                                                 | `github.event.pull_request.draft == false` |
+| `qa`                                                                       | `github.event.pull_request.draft == false` |
+| `pre-admission-responder`                                                  | `github.event.pull_request.draft == false` |
+| `mechanic` (both `pr-pipeline.yml` and `admit-on-review.yml` approve path) | `github.event.pull_request.draft == false` |
+| `authorize-changes` + `mechanic-review-response` (§3.10)                   | `github.event.pull_request.draft == false` |
+| `review-attestation`                                                       | `github.event.pull_request.draft == false` |
+
+**Which jobs continue running on drafts (cheap mechanical checks):** `gate`, `guard-no-dist`, `initialize`, `alignment-queue`, `lint`, `typecheck`, `pytest`, `check-mechred`, `check-admit`.
+
+**The activation edge is `ready_for_review`.** The `pull_request` trigger already includes `types: [opened, synchronize, ready_for_review, reopened]` — keep it. When the author converts a draft to ready, the `ready_for_review` event fires the pipeline and all expensive jobs run on HEAD SHA.
+
+**Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` also carries the draft guard so it does NOT run on a draft — this avoids a permanent red required-check on every WIP PR (it would otherwise fail closed because the reviewer statuses are absent). Draft PRs cannot merge regardless of required-check state; when the PR is marked ready, `ready_for_review` re-runs the pipeline and attestation posts on HEAD SHA.
+
+**`workflow_call` path is unaffected.** The draft guard is conditioned on the event being a `pull_request` event (`github.event.pull_request == null || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side is true, and the expensive jobs run normally.
+
+### 3.10 Request-changes response path — comment-scoped mechanic — **LIVE**
+
+When a write-class maintainer submits a **`CHANGES_REQUESTED`** review on a ready (non-draft) PR, `admit-on-review.yml` dispatches the mechanic in `mode: review-response` via a second path parallel to the approve path. This is the "address the feedback" complement to the "admit the idea" path.
+
+**What this path does:**
+
+1. `authorize-changes` job verifies the reviewer is write-class (same permission check + ADMIT_ALLOWLIST as the approve path). Skips for non-write-class reviewers, for draft PRs, and if the pre-admission responder is currently in-progress on HEAD SHA (de-conflict guard, see below).
+2. Re-reads live HEAD SHA (the PR may have advanced since the review was submitted).
+3. Dispatches `agent-mechanic.yml` with `mode: review-response` — the mechanic's `AGENT_NAME` becomes `review-response`, its status context becomes `review-response-status` (informational, never required).
+
+**What the `review-response` mechanic does (scope-constrained):**
+
+- Addresses ONLY: (a) the body of all standing CHANGES_REQUESTED reviews, (b) unresolved inline review threads, (c) other reviewers' outstanding comments.
+- Commits fixes with the standard `Mechanic-By:` trailer and replies to each addressed thread.
+- Subject to the same `MAX_MECHANIC_RUNS = 5` ceiling (combined `Mechanic-By:` count across all mechanic passes on the branch).
+
+**What the `review-response` mechanic MUST NOT do (explicit prohibitions):**
+
+- Set `admit-status` — this path never admitted the PR.
+- Arm `gh pr merge --auto` — the PR is not admitted.
+- Approve the PR — `gh pr review --approve` is forbidden.
+- Dismiss the triggering CHANGES_REQUESTED review — dismissal is the reviewer's decision alone.
+- Broaden scope into work not specifically requested by the reviewer.
+
+**After the mechanic commits:** the `synchronize` event re-triggers Stage 1 (lint → enforcer → qa). The reviewer re-reviews. If the reviewer then Approves, the approve path admits and arms auto-merge. The CHANGES_REQUESTED review stands until the reviewer explicitly re-reviews; the mechanic never overrides it.
+
+**De-conflict with the pre-admission responder (§3.8, load-bearing boundary):**
+
+| Agent                    | Triggered by       | Scope                                        | Status context           |
+| ------------------------ | ------------------ | -------------------------------------------- | ------------------------ |
+| pre-admission-responder  | push (synchronize) | mechanical CI/conflicts, pre-admission only  | `responder-status`       |
+| review-response mechanic | review submitted   | human reviewer comments, any admission state | `review-response-status` |
+
+These two agents address orthogonal concerns and are triggered by different events, so they cannot both fire on the same event. The race scenario (review submitted while a responder run is already in-progress on the same SHA) is guarded: `authorize-changes` reads `responder-status` on HEAD before dispatching — if `pending`, the review-response dispatch is skipped for this review event. The mechanic workflow's concurrency group (`agent-mechanic-{PR}`) also queues review-response runs behind any in-flight Stage-2 mechanic run for the same PR.
+
+**`review-response-status`** is informational — posted by `agent-mechanic.yml` using the mode-derived AGENT_NAME — and is NEVER added to the branch-protection ruleset (§7). It is a diagnostic surface for SHA-skip and for human readers.
 
 ### 3.7 Fail-closed liveness + named-reviewer-on-this-SHA attestation (#1450) — **LIVE** (in-repo)
 
