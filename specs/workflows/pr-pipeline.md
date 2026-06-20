@@ -510,14 +510,14 @@ Draft PRs are WIP. Running the full agent pipeline on a draft burns expensive in
 
 **Which jobs skip on a draft PR:**
 
-| Job                                                                        | Guard                                      |
-| -------------------------------------------------------------------------- | ------------------------------------------ |
-| `enforcer`                                                                 | `github.event.pull_request.draft == false` |
-| `qa`                                                                       | `github.event.pull_request.draft == false` |
-| `pre-admission-responder`                                                  | `github.event.pull_request.draft == false` |
-| `mechanic` (both `pr-pipeline.yml` and `admit-on-review.yml` approve path) | `github.event.pull_request.draft == false` |
-| `authorize-changes` + `mechanic-review-response` (§3.10)                   | `github.event.pull_request.draft == false` |
-| `review-attestation`                                                       | `github.event.pull_request.draft == false` |
+| Job                       | Guard (as implemented in `pr-pipeline.yml`)                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| `enforcer`                | `github.event.pull_request == null \|\| github.event.pull_request.draft == false`             |
+| `qa`                      | `github.event.pull_request == null \|\| github.event.pull_request.draft == false`             |
+| `pre-admission-responder` | `github.event.pull_request == null \|\| github.event.pull_request.draft == false`             |
+| `review-attestation`      | `github.event.pull_request == null \|\| github.event.pull_request.draft == false` (see §3.9 note) |
+
+> **Mechanic jobs** (`pr-pipeline.yml` `check-admit → mechanic` and `admit-on-review.yml` first dispatch) do **not** carry an explicit draft guard: the `pr-pipeline.yml` mechanic only runs on admitted PRs (admitted PRs are always non-drafts), and `admit-on-review.yml` only fires on approved reviews (maintainers cannot approve a draft). No draft guard needed on either path.
 
 **Which jobs continue running on drafts (cheap mechanical checks):** `gate`, `guard-no-dist`, `initialize`, `alignment-queue`, `lint`, `typecheck`, `pytest`, `check-mechred`, `check-admit`.
 
@@ -525,7 +525,9 @@ Draft PRs are WIP. Running the full agent pipeline on a draft burns expensive in
 
 **Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` also carries the draft guard so it does NOT run on a draft — this avoids a permanent red required-check on every WIP PR (it would otherwise fail closed because the reviewer statuses are absent). Draft PRs cannot merge regardless of required-check state; when the PR is marked ready, `ready_for_review` re-runs the pipeline and attestation posts on HEAD SHA.
 
-**`workflow_call` path is unaffected.** The draft guard is conditioned on the event being a `pull_request` event (`github.event.pull_request == null || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side is true, and the expensive jobs run normally.
+**`workflow_call` path is unaffected for `enforcer`, `qa`, `pre-admission-responder`.** The draft guard is conditioned on the event being a `pull_request` event (`github.event.pull_request == null || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side (`github.event.pull_request == null`) is true, and those jobs run normally.
+
+> **Known issue (`review-attestation` on `workflow_call`):** The `review-attestation` job carries an additional same-repo fork check (`github.event.pull_request.head.repo.full_name == github.repository`) that precedes the null guard. When `pull_request` is null (e.g. a `workflow_call` invocation), this evaluates to `'' == 'owner/repo'` → `false`, so the job is SKIPPED and never posts the required `review-attestation` status. The correct expression should be `(github.event.pull_request == null || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.draft == false))`. This is a workflow file defect that requires a manual fix in `pr-pipeline.yml`.
 
 ### 3.10 Request-changes response path — comment-scoped mechanic — **LIVE**
 

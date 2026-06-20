@@ -48,7 +48,7 @@ State the reviewer's intent in one sentence. Find ALL surface forms of that conc
 After fixing an issue, reply to the root comment of that thread:
 
 ```bash
-gh api -X POST "repos/$REPO/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies" \
+gh api -X POST "repos/$REPO/pulls/comments/$COMMENT_ID/replies" \
   -f body="# Mechanic
 
 [What was changed and why]"
