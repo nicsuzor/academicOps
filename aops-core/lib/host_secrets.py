@@ -1,30 +1,46 @@
 """Host secret-store loader for polecat launch (env-var standardisation).
 
 The polecat wrapper must resolve forwarded secret VALUES (e.g. the Claude/Gemini
-OAuth tokens) from the host secret store ``~/.env.local`` at launch time —
-*independent* of the launching agent's own session env. This closes the
-OAuth-token leak: a general agent (junior) never persists those tokens into its
-own ``CLAUDE_ENV_FILE``, yet the polecat container still receives them because
-the launcher sources them here directly from ``~/.env.local``.
+OAuth tokens) from the host secret store at launch time — *independent* of the
+launching agent's own session env.
+
+**Two-tier load strategy (sops SSoT + ~/.env.local fallback):**
+
+1. ``aops-secrets.env`` — the sops/age-encrypted SSoT in the dotfiles repo
+   (``~/dotfiles/containers/nicwin/aops-secrets.env``).  Decrypted in-memory by
+   calling ``sops -d``; plaintext never materialises on disk.  This is the
+   authoritative single source for all secret classes once bootstrapped.
+
+2. ``~/.env.local`` — the legacy plaintext store.  Used as a fallback during
+   transition, and on GHA runners where neither sops nor dotfiles are present.
+
+The two sources are merged: sops values take precedence over ``~/.env.local``
+for any key present in both.  Keys present only in ``~/.env.local`` are still
+surfaced (covering any keys not yet migrated to the encrypted SSoT).
 
 ``polecat.yaml``'s ``container_env_forward:`` list is the *name whitelist* — it
 declares WHICH variables cross into the container. This module resolves the
 VALUES for those names from the host secret store. Secret values live ONLY in
-``~/.env.local``; they are never committed to ``polecat.yaml``.
+the sops SSoT or ``~/.env.local``; they are never committed to ``polecat.yaml``.
 
 Parser scope: a deliberately small ``export KEY=VALUE`` / ``KEY=VALUE`` reader.
-No shell-out (sourcing ``~/.env.local`` via a subprocess would execute arbitrary
-code and is forbidden). Handles single/double quotes and inline ``export``.
+No shell-out for ``~/.env.local`` (sourcing it would execute arbitrary code).
+``sops -d`` is invoked via subprocess — it decrypts the file to stdout without
+executing anything from it; the output is then parsed by the same safe parser.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import subprocess
 from pathlib import Path
 
-# Default host secret store. Override via $AOPS_HOST_ENV_FILE for tests.
+# Default host secret store (legacy plaintext). Override via $AOPS_HOST_ENV_FILE.
 _DEFAULT_ENV_LOCAL = Path.home() / ".env.local"
+
+# Default sops/age-encrypted SSoT path. Override via $AOPS_SOPS_SECRETS_FILE.
+_DEFAULT_SOPS_SECRETS = Path.home() / "dotfiles" / "containers" / "nicwin" / "aops-secrets.env"
 
 # Source-name indirection for forwarded secrets (aops-b368109a).
 #
@@ -79,31 +95,9 @@ def _strip_value(raw: str) -> str:
     return raw.strip()
 
 
-def load_host_secrets(env_file: Path | str | None = None) -> dict[str, str]:
-    """Parse ``~/.env.local`` into a dict of {NAME: VALUE}.
-
-    Returns an empty dict if the file does not exist (e.g. on GHA runners,
-    which inject secrets via Actions and have no ``~/.env.local``). Never
-    raises on a missing file — callers fall back to the process env.
-
-    Args:
-        env_file: Override path. Defaults to ``$AOPS_HOST_ENV_FILE`` or
-            ``~/.env.local``.
-
-    Returns:
-        Dict of parsed name→value pairs. Last assignment wins.
-    """
-    if env_file is None:
-        env_file = os.environ.get("AOPS_HOST_ENV_FILE") or _DEFAULT_ENV_LOCAL
-    path = Path(env_file)
-    if not path.exists():
-        return {}
-
+def _parse_env_text(content: str) -> dict[str, str]:
+    """Parse dotenv-format text into {NAME: VALUE}. Last assignment wins."""
     result: dict[str, str] = {}
-    try:
-        content = path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
-        return {}
     for line in content.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
@@ -114,6 +108,90 @@ def load_host_secrets(env_file: Path | str | None = None) -> dict[str, str]:
         key, raw_value = m.group(1), m.group(2)
         result[key] = _strip_value(raw_value)
     return result
+
+
+def _load_sops_secrets(sops_file: Path | str | None = None) -> dict[str, str]:
+    """Decrypt the sops/age-encrypted SSoT in-memory and return its contents.
+
+    Calls ``sops -d <file>`` to decrypt to stdout; the plaintext output is
+    parsed and returned.  No decrypted content is written to disk.
+
+    Returns an empty dict if:
+    - the file does not exist (SSoT not yet bootstrapped)
+    - ``sops`` is not installed
+    - decryption fails (missing key, corrupt file, etc.)
+
+    Never raises — callers fall back to ``~/.env.local``.
+
+    Args:
+        sops_file: Override path. Defaults to ``$AOPS_SOPS_SECRETS_FILE`` or
+            ``~/dotfiles/containers/nicwin/aops-secrets.env``.
+
+    Returns:
+        Dict of decrypted name→value pairs.
+    """
+    if sops_file is None:
+        sops_file = os.environ.get("AOPS_SOPS_SECRETS_FILE") or _DEFAULT_SOPS_SECRETS
+    path = Path(sops_file)
+    if not path.exists():
+        return {}
+    try:
+        proc = subprocess.run(
+            ["sops", "-d", str(path)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return _parse_env_text(proc.stdout)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return {}
+
+
+def load_host_secrets(
+    env_file: Path | str | None = None,
+    sops_file: Path | str | None = None,
+) -> dict[str, str]:
+    """Load host secrets from the sops SSoT and/or ``~/.env.local``.
+
+    Two-tier resolution:
+
+    1. sops/age-encrypted ``aops-secrets.env`` (authoritative when present).
+    2. ``~/.env.local`` (legacy fallback; also used during migration for any
+       keys not yet added to the encrypted SSoT).
+
+    The sources are merged: values from the sops SSoT win over ``~/.env.local``
+    for any key present in both.  Keys present only in ``~/.env.local`` are still
+    returned (transition compatibility).
+
+    Returns an empty dict if neither source is available (e.g. GHA runners).
+    Never raises on a missing file — callers fall back to the process env.
+
+    Args:
+        env_file: Override path for ``~/.env.local``. Defaults to
+            ``$AOPS_HOST_ENV_FILE`` or ``~/.env.local``.
+        sops_file: Override path for the sops SSoT. Defaults to
+            ``$AOPS_SOPS_SECRETS_FILE`` or
+            ``~/dotfiles/containers/nicwin/aops-secrets.env``.
+
+    Returns:
+        Dict of name→value pairs. sops SSoT wins on conflict.
+    """
+    if env_file is None:
+        env_file = os.environ.get("AOPS_HOST_ENV_FILE") or _DEFAULT_ENV_LOCAL
+    path = Path(env_file)
+
+    env_local: dict[str, str] = {}
+    if path.exists():
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+            env_local = _parse_env_text(content)
+        except Exception:
+            pass
+
+    sops_secrets = _load_sops_secrets(sops_file)
+
+    # sops SSoT takes precedence; env_local fills any gaps.
+    return {**env_local, **sops_secrets}
 
 
 def resolve_forward_values(
