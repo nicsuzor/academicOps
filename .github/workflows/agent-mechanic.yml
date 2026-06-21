@@ -56,6 +56,11 @@ on:
         description: "PR head SHA — explicit, not derived (§4.1)"
         type: string
         required: true
+      mode:
+        description: "Mechanic mode: '' = Stage-2 full fix (default); 'review-response' = comment-scoped review address only (no admit-status, no auto-merge)"
+        type: string
+        required: false
+        default: ''
     secrets:
       AOPS_BOT_GH_TOKEN:
         description: "PAT for GitHub API operations (statuses, reviews, admit-status reset)"
@@ -95,7 +100,11 @@ jobs:
       REPO: ${{ github.repository }}
       HEAD_SHA: ${{ inputs.sha }}
       PR_NUMBER: ${{ inputs.pr_number }}
-      AGENT_NAME: mechanic
+      # review-response mode uses a distinct status context so the SHA-skip is
+      # scoped per-purpose (a SHA run by the Stage-2 mechanic must not skip a
+      # review-response pass, and vice versa).
+      AGENT_NAME: ${{ inputs.mode == 'review-response' && 'review-response' || 'mechanic' }}
+      MECHANIC_MODE: ${{ inputs.mode }}
       MAX_MECHANIC_RUNS: 5
 
     steps:
@@ -291,11 +300,15 @@ jobs:
 
           # (3) Reset admit-status to pending — surfaces PR back to the human gate
           # (§3.6's third reset trigger, alongside §5's carry / human-push reset).
-          gh api "repos/$REPO/statuses/$HEAD_SHA" \
-            -f state=pending \
-            -f context="admit-status" \
-            -f description="Reset: Stage-2 loop ceiling reached — re-judge by re-approving the PR" \
-            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+          # Skip in review-response mode: that path never set admit-status, so there
+          # is nothing to reset and doing so would silently revoke an unrelated approval.
+          if [ "${MECHANIC_MODE:-}" != "review-response" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=pending \
+              -f context="admit-status" \
+              -f description="Reset: Stage-2 loop ceiling reached — re-judge by re-approving the PR" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+          fi
 
           # (5) Request the maintainer so the escalation is visible, not buried
           gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer nicsuzor \
@@ -359,7 +372,8 @@ jobs:
           HEAD_SHA: ${{ inputs.sha }}
           PR_NUMBER: ${{ inputs.pr_number }}
           BASE_BRANCH: ${{ steps.base.outputs.base_branch }}
-          AGENT_NAME: mechanic
+          AGENT_NAME: ${{ env.AGENT_NAME }}
+          MECHANIC_MODE: ${{ inputs.mode }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
           allowed_bots: "claude[bot],github-actions[bot]"

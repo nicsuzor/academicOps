@@ -1,0 +1,273 @@
+# Cron dispatcher for merge-prep: runs every 30 minutes on main,
+# plus immediately when any Phase 1 check completes on a PR branch.
+# Finds open PRs that qualify for merge-prep and dispatches the agent.
+#
+# Qualification criteria (label-free):
+#   - Last commit >= 15 min ago (bazaar window for bot reviews to complete)
+#   - No in-progress merge-prep run (checked via gh run list)
+#   - Not permanently halted (checked via merge-prep-status commit status)
+#
+# See specs/pr-pipeline.md for the full process documentation.
+
+name: Merge Prep Dispatcher
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_run:
+    workflows:
+      - "PR Review Pipeline"
+    types: [completed]
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR immediately (skip qualification)'
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'Override: process specific PR immediately (skip qualification)'
+        type: string
+        required: false
+      workflow_ref:
+        description: 'Filename or ID of the agent workflow to dispatch'
+        type: string
+        default: 'agent-merge-prep.yml'
+      bot_identity:
+        description: 'Identity of the bot for state checks'
+        type: string
+        default: 'github-actions[bot]'
+      trigger_workflow_name:
+        description: 'Name of the workflow that triggered this dispatch'
+        type: string
+        required: false
+      trigger_sha:
+        description: 'SHA of the commit that triggered this dispatch'
+        type: string
+        required: false
+      trigger_repo:
+        description: 'Full name of the repository (owner/repo)'
+        type: string
+        required: false
+    # `GITHUB_TOKEN` is reserved and cannot be declared in this block — doing
+    # so makes GitHub silently reject workflow registration (name reverts to
+    # file path, schedule/workflow_run never fire, every push creates a
+    # 0-duration phantom failure run with event=push). Cross-repo callers must
+    # use `secrets: inherit` (see examples/cross-repo-shim/). Same-repo events
+    # get GITHUB_TOKEN auto-injected by GitHub. AOPS_BOT_GH_TOKEN is declared
+    # here so callers passing `secrets: inherit` surface it explicitly and it
+    # takes precedence over GITHUB_TOKEN in the GH_TOKEN env below.
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: 'Bot PAT for cross-repo gh operations. When present, preferred over GITHUB_TOKEN. Cross-repo callers supply via secrets: inherit.'
+        required: false
+
+concurrency:
+  group: merge-prep-dispatcher
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    timeout-minutes: 45
+    name: Find and dispatch qualifying PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || secrets.GITHUB_TOKEN }}
+      BAZAAR_WINDOW_SECONDS: 900  # 15 min — bazaar window for external reviews (Gemini, Copilot) to arrive
+      # Defaults are plain literals; do NOT reference `inputs.x` at job-level
+      # env. For workflow_run / schedule / push triggers the `inputs` context
+      # does not exist, and referencing it here makes the entire workflow
+      # file fail validation (zero jobs spawned, opaque "workflow file
+      # issue" error — broke the dispatcher 2026-04-27 → 2026-04-28). Runtime
+      # overrides for workflow_call / workflow_dispatch happen in the Init
+      # step below where the `inputs` context is available.
+      WORKFLOW_REF: 'agent-merge-prep.yml'
+      BOT_IDENTITY: 'github-actions[bot]'
+    steps:
+      # ── Init: apply workflow_call / workflow_dispatch overrides ──
+      # Only writes overrides when triggered by an event that has an `inputs`
+      # context. Other triggers fall through to the literal defaults above.
+      - name: Apply input overrides (workflow_call / workflow_dispatch only)
+        if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
+        run: |
+          if [ -n "${{ inputs.workflow_ref }}" ]; then
+            echo "WORKFLOW_REF=${{ inputs.workflow_ref }}" >> "$GITHUB_ENV"
+            echo "Override: WORKFLOW_REF=${{ inputs.workflow_ref }}"
+          fi
+          if [ -n "${{ inputs.bot_identity }}" ]; then
+            echo "BOT_IDENTITY=${{ inputs.bot_identity }}" >> "$GITHUB_ENV"
+            echo "Override: BOT_IDENTITY=${{ inputs.bot_identity }}"
+          fi
+
+      # ── Manual override: process a specific PR immediately ──
+      - name: Manual override
+        if: (github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch') && inputs.pr_number != ''
+        run: |
+          PR_NUM="${{ inputs.pr_number }}"
+          echo "Manual override: processing PR #$PR_NUM immediately"
+
+          HEAD_REF=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
+
+          # Dispatch merge-prep
+          gh workflow run "$WORKFLOW_REF" \
+            --repo "${{ github.repository }}" \
+            --ref "refs/heads/$HEAD_REF" \
+            -f pr_number="$PR_NUM" \
+            -f force=true \
+            -f bot_identity="$BOT_IDENTITY"
+
+          echo "Dispatched merge-prep for PR #$PR_NUM"
+
+      # ── Scheduled / workflow_run: find qualifying PRs ──
+      - name: Check for open PRs
+        if: inputs.pr_number == ''
+        id: pr-count
+        run: |
+          REPO="${{ github.repository }}"
+          PR_COUNT=$(gh pr list --repo "$REPO" --state open --json number --jq 'length')
+          echo "Open PRs: $PR_COUNT"
+          if [ "$PR_COUNT" -eq 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No open PRs — skipping"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for in-progress merge-prep runs
+        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true'
+        id: active-check
+        run: |
+          REPO="${{ github.repository }}"
+
+          # Check if any merge-prep runs are currently active
+          ACTIVE=$(gh run list --workflow="$WORKFLOW_REF" --repo "$REPO" \
+            --json status --jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
+
+          echo "Active merge-prep runs: $ACTIVE"
+          if [ "$ACTIVE" -gt 0 ]; then
+            echo "skip_all=true" >> "$GITHUB_OUTPUT"
+            echo "Merge-prep already in progress — skipping this cron tick"
+          else
+            echo "skip_all=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find qualifying PRs
+        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true' && steps.active-check.outputs.skip_all != 'true'
+        id: qualify
+        run: |
+          REPO="${{ github.repository }}"
+          NOW=$(date +%s)
+
+          # Get all open, non-draft PRs
+          PRS=$(gh pr list --repo "$REPO" --state open \
+            --json number,headRefName,headRefOid,isDraft \
+            --jq '[.[] | select(.isDraft | not)]')
+
+          if [ "$(echo "$PRS" | jq 'length')" -eq 0 ]; then
+            echo "No open PRs found"
+            exit 0
+          fi
+
+          echo "$PRS" | jq -c '.[]' | while read -r PR; do
+            PR_NUM=$(echo "$PR" | jq -r '.number')
+            HEAD_SHA=$(echo "$PR" | jq -r '.headRefOid')
+            HEAD_REF=$(echo "$PR" | jq -r '.headRefName')
+
+            echo "--- Checking PR #$PR_NUM ---"
+
+            # Skip release-please PRs (managed manually)
+            if echo "$HEAD_REF" | grep -q '^release-please'; then
+              echo "  SKIP: release-please PR (merge manually)"
+              continue
+            fi
+
+            # Check time gate: last commit must be >= 1 hour ago
+            LAST_COMMIT_DATE=$(gh pr view "$PR_NUM" --repo "$REPO" \
+              --json commits --jq '.commits[-1].committedDate')
+            LAST_COMMIT_TS=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT_DATE" +%s 2>/dev/null)
+            AGE=$((NOW - LAST_COMMIT_TS))
+
+            if [ "$AGE" -lt "$BAZAAR_WINDOW_SECONDS" ]; then
+              echo "  SKIP: last commit ${AGE}s ago (need ${BAZAAR_WINDOW_SECONDS}s)"
+              continue
+            fi
+
+            # Check merge-prep-status commit status — skip if success or failure
+            MP_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+              --jq '[.[] | select(.context == "merge-prep-status")] | sort_by(.created_at) | last | .state' \
+              2>/dev/null || echo "")
+
+            REQUALIFIED=false
+            if [ "$MP_STATUS" = "success" ]; then
+              # Check for CHANGES_REQUESTED reviews that arrived after merge-prep
+              # set success (race condition: Axiom Review triggered by merge-prep's
+              # own commits can finish after merge-prep declares success)
+              MP_CREATED=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+                --jq '[.[] | select(.context == "merge-prep-status" and .state == "success")] | sort_by(.created_at) | last | .created_at' \
+                2>/dev/null || echo "")
+
+              LATE_CR=0
+              if [ -n "$MP_CREATED" ]; then
+                JQ_FILTER="[.[] | select(.state == \"CHANGES_REQUESTED\" and .submitted_at > \"$MP_CREATED\")] | length"
+                LATE_CR=$(gh api "repos/$REPO/pulls/$PR_NUM/reviews" \
+                  --jq "$JQ_FILTER" \
+                  2>/dev/null || echo "0")
+              fi
+
+              if [ "$LATE_CR" -gt 0 ]; then
+                echo "  RE-QUALIFY: $LATE_CR CHANGES_REQUESTED review(s) arrived after merge-prep succeeded"
+                REQUALIFIED=true
+              else
+                echo "  SKIP: merge-prep-status is success (already processed, no late reviews)"
+                continue
+              fi
+            fi
+
+            if [ "$MP_STATUS" = "failure" ]; then
+              echo "  SKIP: merge-prep-status is failure (halted — needs manual retry)"
+              continue
+            fi
+
+            if [ "$REQUALIFIED" = "false" ]; then
+              # Check if last commit was from merge-prep (race condition guard:
+              # workflow_run can fire before the agent workflow sets merge-prep-status)
+              HEAD_MSG=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.message' 2>/dev/null || echo "")
+              if echo "$HEAD_MSG" | grep -q 'Merge-Prep-By:'; then
+                echo "  SKIP: last commit was from merge-prep (trailer detected)"
+                continue
+              fi
+            fi
+
+            echo "  QUALIFIED: PR #$PR_NUM ready for merge-prep"
+            echo "$PR_NUM|$HEAD_REF" >> /tmp/qualifying_prs.txt
+          done
+
+      - name: Dispatch merge-prep for qualifying PRs
+        if: inputs.pr_number == '' && steps.pr-count.outputs.skip != 'true' && steps.active-check.outputs.skip_all != 'true'
+        run: |
+          REPO="${{ github.repository }}"
+
+          if [ ! -f /tmp/qualifying_prs.txt ]; then
+            echo "No qualifying PRs to process"
+            exit 0
+          fi
+
+          while IFS='|' read -r PR_NUM HEAD_REF; do
+            echo "Dispatching merge-prep for PR #$PR_NUM (branch: $HEAD_REF)"
+
+            gh workflow run "$WORKFLOW_REF" \
+              --repo "$REPO" \
+              --ref "refs/heads/$HEAD_REF" \
+              -f pr_number="$PR_NUM" \
+              -f bot_identity="$BOT_IDENTITY"
+
+            echo "  Dispatched successfully"
+          done < /tmp/qualifying_prs.txt
