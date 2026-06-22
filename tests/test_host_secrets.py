@@ -5,15 +5,119 @@ forwarded secret VALUES from ~/.env.local *independent* of the launching
 session's env. Hard assertions only.
 """
 
+import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aops-core"))
 
 from lib.host_secrets import (  # noqa: E402
+    _load_sops_secrets,
     load_host_secrets,
     resolve_forward_values,
 )
+
+
+class TestLoadSopsSecrets:
+    """Tests for _load_sops_secrets — in-memory sops/age decrypt seam."""
+
+    def test_returns_empty_when_file_missing(self, tmp_path):
+        missing = tmp_path / "aops-secrets.env"
+        assert _load_sops_secrets(missing) == {}
+
+    def test_returns_empty_when_sops_not_installed(self, tmp_path):
+        f = tmp_path / "aops-secrets.env"
+        f.write_text("AOPS_BOT_GH_TOKEN=ENC[...]\n")
+        with patch("lib.host_secrets.subprocess.run", side_effect=FileNotFoundError):
+            assert _load_sops_secrets(f) == {}
+
+    def test_returns_empty_when_sops_fails(self, tmp_path):
+        f = tmp_path / "aops-secrets.env"
+        f.write_text("AOPS_BOT_GH_TOKEN=ENC[...]\n")
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "sops", stderr="bad key")
+            assert _load_sops_secrets(f) == {}
+
+    def test_parses_sops_decrypted_output(self, tmp_path):
+        f = tmp_path / "aops-secrets.env"
+        f.write_text("placeholder")
+        decrypted_output = (
+            "AOPS_BOT_GH_TOKEN=ghp_decrypted\n"
+            "AOPS_CC_OAUTH_TOKEN=sk-oauth-decrypted\n"
+            "GEMINI_API_KEY=gem_decrypted\n"
+        )
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout=decrypted_output, returncode=0)
+            result = _load_sops_secrets(f)
+        assert result["AOPS_BOT_GH_TOKEN"] == "ghp_decrypted"
+        assert result["AOPS_CC_OAUTH_TOKEN"] == "sk-oauth-decrypted"
+        assert result["GEMINI_API_KEY"] == "gem_decrypted"
+
+    def test_calls_sops_with_correct_args(self, tmp_path):
+        f = tmp_path / "aops-secrets.env"
+        f.write_text("placeholder")
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="KEY=val\n", returncode=0)
+            _load_sops_secrets(f)
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        cmd = call_args[0][0]
+        assert cmd[0] == "sops"
+        assert cmd[1] == "-d"
+        assert cmd[2] == str(f)
+
+    def test_override_via_aops_sops_secrets_file(self, tmp_path, monkeypatch):
+        f = tmp_path / "custom-secrets.env"
+        f.write_text("placeholder")
+        monkeypatch.setenv("AOPS_SOPS_SECRETS_FILE", str(f))
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="OVERRIDE=yes\n", returncode=0)
+            result = _load_sops_secrets()
+        assert result["OVERRIDE"] == "yes"
+
+
+class TestLoadHostSecretsMerge:
+    """Tests for the two-tier merge: sops SSoT wins over ~/.env.local."""
+
+    def test_sops_wins_on_conflict(self, tmp_path):
+        env_local = tmp_path / ".env.local"
+        env_local.write_text("AOPS_BOT_GH_TOKEN=old-value\n")
+        sops_file = tmp_path / "aops-secrets.env"
+        sops_file.write_text("placeholder")
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                stdout="AOPS_BOT_GH_TOKEN=new-from-sops\n", returncode=0
+            )
+            result = load_host_secrets(env_file=env_local, sops_file=sops_file)
+        assert result["AOPS_BOT_GH_TOKEN"] == "new-from-sops"
+
+    def test_env_local_fills_gaps_when_key_absent_from_sops(self, tmp_path):
+        env_local = tmp_path / ".env.local"
+        env_local.write_text("GEMINI_API_KEY=gem-from-env-local\n")
+        sops_file = tmp_path / "aops-secrets.env"
+        sops_file.write_text("placeholder")
+        with patch("lib.host_secrets.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                stdout="AOPS_BOT_GH_TOKEN=ghp-from-sops\n", returncode=0
+            )
+            result = load_host_secrets(env_file=env_local, sops_file=sops_file)
+        assert result["AOPS_BOT_GH_TOKEN"] == "ghp-from-sops"
+        assert result["GEMINI_API_KEY"] == "gem-from-env-local"
+
+    def test_env_local_fallback_when_sops_unavailable(self, tmp_path):
+        env_local = tmp_path / ".env.local"
+        env_local.write_text("AOPS_BOT_GH_TOKEN=from-env-local\n")
+        missing_sops = tmp_path / "absent.env"
+        result = load_host_secrets(env_file=env_local, sops_file=missing_sops)
+        assert result["AOPS_BOT_GH_TOKEN"] == "from-env-local"
+
+    def test_both_sources_absent_returns_empty(self, tmp_path):
+        result = load_host_secrets(
+            env_file=tmp_path / "absent.env",
+            sops_file=tmp_path / "absent-sops.env",
+        )
+        assert result == {}
 
 
 class TestLoadHostSecrets:

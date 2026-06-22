@@ -146,13 +146,19 @@ jobs:
       #   marsha.md (personality + verification methodology)
       #   + shared-error-handling.md (common agent error contract)
       #   + qa.agent.md (PR-context framing + review format).
-      # Pinned to the PR ref for academicOps's own runs; external consumers calling
-      # @qa-v1 implicitly freeze all three files at the tag's commit (§4.5).
+      # Self-runs (REPO = nicsuzor/academicOps): always clone from the repo's
+      # default branch (the bare `git clone` below takes no -b flag, so it
+      # checks out the GitHub default branch) so that prompt files introduced
+      # to the default branch are always present, regardless of which branch
+      # inputs.ref points at (the PR head branch may diverge from the default
+      # branch and predate a file added in a recent merge — see aops-59a6cba6).
+      # External consumers calling @qa-v1: pin to inputs.ref (release tag)
+      # so their prompt files are consistent with the workflow version they pinned.
       - name: Fetch QA prompt
         id: prompt
         if: steps.sha-skip.outputs.skip != 'true'
         run: |
-          if [ "$REPO" = "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
+          if [ "$REPO" != "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
             git clone -b "${{ inputs.ref }}" --depth 1 --filter=blob:none --sparse \
               "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
               .aops
