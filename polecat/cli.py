@@ -1564,20 +1564,17 @@ def _build_docker_cmd(
         # (argv is world-visible via ps/proc; tmpfile is owner-readable only).
         # The file is consumed by docker before the container process starts;
         # _run_docker_container unlinks it as soon as the container is running.
-        _old_umask = os.umask(0o077)
+        # mkstemp already yields a 0600 fd — no umask dance needed.
+        _fd, _env_path_str = tempfile.mkstemp(prefix="polecat-env-", suffix=".env")
+        _env_file_path = Path(_env_path_str)
         try:
-            _fd, _env_path_str = tempfile.mkstemp(prefix="polecat-env-", suffix=".env")
-            _env_file_path = Path(_env_path_str)
-            try:
-                with os.fdopen(_fd, "w") as _env_fp:
-                    for key, val in conf_forwards.items():
-                        _env_fp.write(f"{key}={val}\n")
-            except Exception:
-                _env_file_path.unlink(missing_ok=True)
-                _env_file_path = None
-                raise
-        finally:
-            os.umask(_old_umask)
+            with os.fdopen(_fd, "w") as _env_fp:
+                for key, val in conf_forwards.items():
+                    _env_fp.write(f"{key}={val}\n")
+        except Exception:
+            _env_file_path.unlink(missing_ok=True)
+            _env_file_path = None
+            raise
         cmd.extend(["--env-file", str(_env_file_path)])
         if tmp_files is not None:
             tmp_files.append(_env_file_path)
