@@ -3,7 +3,7 @@
 #
 # Script the §9 satellite-repo install of the academicOps PR pipeline.
 # Writes trigger-enforcer.yml + trigger-qa.yml (byte-identical across repos,
-# calling agent-enforcer@enforcer-v1 / agent-qa@qa-v1 on pull_request) and a
+# calling agent-enforcer/agent-qa @pipeline-v1 on pull_request) and a
 # LANG-preset ci.yml (posts the required test-status commit status).
 # Removes stale pr-review.yml / merge-prep.yml if present.
 #
@@ -17,8 +17,8 @@
 #   ./install-pr-pipeline.sh ~/src/zotmcp --lang python
 #
 # WHAT GETS INSTALLED
-#   .github/workflows/trigger-enforcer.yml  — fires agent-enforcer@enforcer-v1 on PR
-#   .github/workflows/trigger-qa.yml        — fires agent-qa@qa-v1 on PR
+#   .github/workflows/trigger-enforcer.yml  — fires agent-enforcer @pipeline-v1 on PR
+#   .github/workflows/trigger-qa.yml        — fires agent-qa @pipeline-v1 on PR
 #   .github/workflows/ci.yml               — LANG-preset mechanical CI (posts test-status)
 #
 # WHAT GETS REMOVED (stale v1 files)
@@ -117,7 +117,7 @@ permissions:
 
 jobs:
   enforce:
-    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
+    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@pipeline-v1
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref:       ${{ github.event.pull_request.head.ref }}
@@ -153,7 +153,7 @@ permissions:
 
 jobs:
   qa:
-    uses: nicsuzor/academicOps/.github/workflows/agent-qa.yml@qa-v1
+    uses: nicsuzor/academicOps/.github/workflows/agent-qa.yml@pipeline-v1
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref:       ${{ github.event.pull_request.head.ref }}
