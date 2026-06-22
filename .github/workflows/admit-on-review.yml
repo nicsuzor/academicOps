@@ -38,6 +38,8 @@ permissions:
   pull-requests: write
   statuses: write
   id-token: write
+  issues: write
+  actions: read
 
 concurrency:
   # Per-PR: a second approval for the same PR queues rather than racing a
@@ -55,7 +57,8 @@ jobs:
     name: Authorize admission
     if: >-
       github.event.review.state == 'approved' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       decision: ${{ steps.decide.outputs.state }}
@@ -153,6 +156,105 @@ jobs:
             echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
           fi
 
+  # ─── Review-response path: changes_requested ────────────────────────────────
+  # When a write-class maintainer submits a CHANGES_REQUESTED review on a ready
+  # (non-draft) PR, dispatch the mechanic in comment-scoped mode. This addresses
+  # reviewer feedback only — it does NOT admit, does NOT set admit-status, does
+  # NOT arm auto-merge. The human's CHANGES_REQUESTED stands; merge happens only
+  # after a subsequent human Approve (the approve path above).
+  #
+  # Boundary vs pre-admission-responder (§3.8):
+  #   pre-admission-responder = mechanical CI/conflict red, triggered by push
+  #   review-response         = human reviewer comments, triggered by this review
+  # The de-conflict guard below checks responder-status on HEAD; if the responder
+  # is currently pending (in-progress), we skip to avoid concurrent development
+  # on the same SHA. They use distinct concurrency groups and distinct status
+  # contexts (review-response-status vs responder-status), so they do not
+  # cancel each other — the guard is a best-effort double-develop shield.
+  authorize-changes:
+    name: Authorize review-response dispatch
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.decide.outputs.decision }}
+      head_ref: ${{ github.event.pull_request.head.ref }}
+      pr_number: ${{ github.event.pull_request.number }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      REVIEWER_LOGIN: ${{ github.event.review.user.login }}
+      ADMIT_ALLOWLIST: "nicsuzor"
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve reviewer repository permission
+        id: perm
+        run: |
+          PERM=$(gh api "repos/$REPO/collaborators/$REVIEWER_LOGIN/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+          echo "Reviewer $REVIEWER_LOGIN permission: $PERM"
+          echo "permission=$PERM" >> "$GITHUB_OUTPUT"
+      - name: Resolve live HEAD SHA
+        id: resolve
+        run: |
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Live HEAD SHA for PR #$PR_NUMBER: $HEAD_SHA"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - name: Decide — write-class check + responder de-conflict guard
+        id: decide
+        env:
+          REVIEWER_PERMISSION: ${{ steps.perm.outputs.permission }}
+          HEAD_SHA: ${{ steps.resolve.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          # Write-class authorization — same policy as admit-on-review.sh.
+          authorized=false
+          case "$REVIEWER_PERMISSION" in
+            admin|maintain|write) authorized=true ;;
+          esac
+          read -r -a admit_logins <<<"$ADMIT_ALLOWLIST"
+          for login in "${admit_logins[@]}"; do
+            [[ "$login" == "$REVIEWER_LOGIN" ]] && authorized=true
+          done
+          if [[ "$authorized" != "true" ]]; then
+            echo "Skipped: $REVIEWER_LOGIN (permission: $REVIEWER_PERMISSION) is not write-class — no dispatch"
+            echo "decision=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # De-conflict guard: if the pre-admission responder is currently in-progress
+          # on this SHA, defer to avoid concurrent development on the same branch.
+          RESPONDER_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq '[.[] | select(.context == "responder-status")] | sort_by(.created_at) | last.state // ""' \
+            2>/dev/null || echo "")
+          if [[ "$RESPONDER_STATE" == "pending" ]]; then
+            echo "Pre-admission responder is in-progress on $HEAD_SHA — deferring review-response dispatch to avoid double-develop"
+            echo "decision=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "decision=authorized" >> "$GITHUB_OUTPUT"
+          echo "Authorized: $REVIEWER_LOGIN (permission: $REVIEWER_PERMISSION) on $HEAD_SHA — dispatching review-response mechanic"
+
+  mechanic-review-response:
+    name: Mechanic (review-response — comment-scoped)
+    needs: [authorize-changes]
+    if: needs.authorize-changes.outputs.decision == 'authorized'
+    uses: ./.github/workflows/agent-mechanic.yml
+    with:
+      pr_number: ${{ needs.authorize-changes.outputs.pr_number }}
+      ref: ${{ needs.authorize-changes.outputs.head_ref }}
+      sha: ${{ needs.authorize-changes.outputs.head_sha }}
+      mode: review-response
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
   # ─── First mechanic dispatch (the hop the Environment gate could not make) ──
   # Subsequent passes (2…N) are dispatched by pr-pipeline.yml's check-admit →
   # mechanic on the synchronize events the mechanic's commits fire; admit-status
@@ -160,7 +262,7 @@ jobs:
   mechanic:
     name: Mechanic (Stage 2 — first dispatch)
     needs: [authorize, admit]
-    if: needs.admit.outputs.need_mechanic == 'true'
+    if: needs.admit.outputs.need_mechanic == 'true' && github.event.pull_request.draft == false
     uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ needs.authorize.outputs.pr_number }}

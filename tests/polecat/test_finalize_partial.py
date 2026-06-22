@@ -54,8 +54,8 @@ def test_help_documents_partial_and_draft():
 
 
 def test_default_finish_still_targets_merge_ready():
-    """Regression: the default (no --partial) terminal is unchanged."""
-    assert 'target_status = "partial" if is_partial else "merge_ready"' in FINALIZE_SRC
+    """Regression: the default (no --partial, no CI failures) terminal is merge_ready."""
+    assert '"in_progress" if ci_failed_checks else "merge_ready"' in FINALIZE_SRC
 
 
 def test_partial_is_a_protected_terminal_status_in_safeguard():
