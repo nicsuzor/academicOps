@@ -114,8 +114,10 @@ full verdict to chat.
 ## Epistemic humility — absence of evidence is not a negative result
 
 > **One line.** Missing evidence licenses _"not supported by the available evidence"_ — it never
-> licenses _"false / failed / did not happen / was a misstep / was a loss."_ Binds **rbg**, **pauli**,
-> **marsha**, and the **james** reconciliation alike.
+> licenses _"false / failed / did not happen / was a misstep / was a loss."_ Inherits via review
+> orchestration: **pauli**, **marsha**, and the **james** reconciliation carry it by brief; **rbg**
+> inherits it the same way (not yet via its own axiom load — see follow-up to add the clause to
+> `honest-epistemics` in AXIOMS.md).
 
 When an artifact concerns a **real-world event, intent, or state the reviewer cannot directly
 observe** — what happened in a meeting, what a person was trying to achieve, whether a thing
