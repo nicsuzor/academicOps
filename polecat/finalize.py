@@ -687,12 +687,9 @@ def finish_cmd(
     except Exception as e:
         print(f"  ⚠️  Could not generate git diff summary: {e}", file=sys.stderr)
 
-    # Try to get PR URL and number
+    # Try to get PR URL
     pr_url_str = None
-    pr_number_for_ci_check = None
     try:
-        import json as _json_prlist
-
         pr_res = subprocess.run(
             [
                 "gh",
@@ -703,90 +700,20 @@ def finish_cmd(
                 "--state",
                 "open",
                 "--json",
-                "url,number",
+                "url",
+                "-q",
+                ".[0].url",
             ],
             capture_output=True,
             text=True,
             check=False,
         )
         if pr_res.returncode == 0 and pr_res.stdout.strip():
-            pr_list = _json_prlist.loads(pr_res.stdout)
-            if pr_list:
-                pr_url_str = pr_list[0].get("url")
-                pr_number_for_ci_check = pr_list[0].get("number")
+            pr_url_str = pr_res.stdout.strip()
     except Exception as e:
         print(f"  ⚠️  Could not get PR URL: {e}", file=sys.stderr)
 
-    # --- CI Check Gate ---
-    # Do not set merge_ready if the PR already has failing checks. We check only
-    # completed checks (FAILURE/ERROR/TIMED_OUT) — pending checks are not gated
-    # because CI may not have had time to start yet after the push. Fail-open:
-    # if the check query errors, we proceed to merge_ready rather than block
-    # finish on tooling issues.
-    ci_failed_checks = []
-    if not is_partial and pr_number_for_ci_check is not None:
-        try:
-            import json as _json_ci
-
-            ci_res = subprocess.run(
-                [
-                    "gh",
-                    "pr",
-                    "view",
-                    str(pr_number_for_ci_check),
-                    "--json",
-                    "statusCheckRollup",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if ci_res.returncode == 0 and ci_res.stdout.strip():
-                ci_data = _json_ci.loads(ci_res.stdout)
-                ci_failed_checks = [
-                    c.get("name", "unknown")
-                    for c in ci_data.get(
-                        "statusCheckRollup", []
-                    )  # allow-fallback: absent key means no checks
-                    if c.get("conclusion") in ("FAILURE", "ERROR", "TIMED_OUT")
-                ]
-                if ci_failed_checks:
-                    print(
-                        f"\n⚠️  PR #{pr_number_for_ci_check} has failing CI checks: "
-                        f"{', '.join(ci_failed_checks)}"
-                    )
-                    print(
-                        "  ↪︎ Task will stay 'in_progress' instead of 'merge_ready' so it can "
-                        "be iterated on without --force. Re-dispatch with:\n"
-                        f"  polecat run -t {task_id}"
-                    )
-        except Exception as e:
-            print(f"  ⚠️  Could not check PR CI status: {e}", file=sys.stderr)
-
-    target_status = (
-        "partial" if is_partial else ("in_progress" if ci_failed_checks else "merge_ready")
-    )
-
-    # When CI is failing, use update_task rather than release_task. The
-    # release_task tool is for terminal/handoff statuses; in_progress is a
-    # mid-work state that keeps the task re-dispatchable without --force.
-    if target_status == "in_progress":
-        try:
-            from polecat.pkb_bridge import update_task as pkb_update_status
-
-            pkb_update_status(task_id, status="in_progress", assignee=None, pr_url=pr_url_str)
-        except Exception as _update_exc:
-            print(f"  ⚠️  Could not update task to in_progress: {_update_exc}", file=sys.stderr)
-        print("✅ Task left as 'in_progress' (PR has failing CI — fix and re-dispatch)")
-        if do_nuke:
-            print("Nuking worktree...")
-            os.chdir(Path.home())
-            manager.nuke_worktree(task_id, force=True)
-            print("Worktree removed")
-        else:
-            print(f"\nTo clean up later: polecat nuke {task_id}")
-        return
-
+    target_status = "partial" if is_partial else "merge_ready"
     released_ok = False
     try:
         from polecat.pkb_bridge import release_task as pkb_release
