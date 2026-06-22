@@ -3,7 +3,7 @@
 #
 # Script the §9 satellite-repo install of the academicOps PR pipeline.
 # Writes trigger-enforcer.yml + trigger-qa.yml (byte-identical across repos,
-# calling agent-enforcer/agent-qa @pipeline-v1 on pull_request) and a
+# calling agent-enforcer@enforcer-v1 / agent-qa@qa-v1 on pull_request) and a
 # LANG-preset ci.yml (posts the required test-status commit status).
 # Removes stale pr-review.yml / merge-prep.yml if present.
 #
@@ -17,8 +17,8 @@
 #   ./install-pr-pipeline.sh ~/src/zotmcp --lang python
 #
 # WHAT GETS INSTALLED
-#   .github/workflows/trigger-enforcer.yml  — fires agent-enforcer @pipeline-v1 on PR
-#   .github/workflows/trigger-qa.yml        — fires agent-qa @pipeline-v1 on PR
+#   .github/workflows/trigger-enforcer.yml  — fires agent-enforcer@enforcer-v1 on PR
+#   .github/workflows/trigger-qa.yml        — fires agent-qa@qa-v1 on PR
 #   .github/workflows/ci.yml               — LANG-preset mechanical CI (posts test-status)
 #
 # WHAT GETS REMOVED (stale v1 files)
@@ -43,7 +43,11 @@ LANG_ARG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --lang)
-      LANG_ARG="${2:-}"
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --lang requires an argument" >&2
+        exit 1
+      fi
+      LANG_ARG="$2"
       shift 2
       ;;
     -*)
@@ -113,7 +117,7 @@ permissions:
 
 jobs:
   enforce:
-    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@pipeline-v1
+    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref:       ${{ github.event.pull_request.head.ref }}
@@ -149,7 +153,7 @@ permissions:
 
 jobs:
   qa:
-    uses: nicsuzor/academicOps/.github/workflows/agent-qa.yml@pipeline-v1
+    uses: nicsuzor/academicOps/.github/workflows/agent-qa.yml@qa-v1
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref:       ${{ github.event.pull_request.head.ref }}
@@ -204,7 +208,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions/setup-python@v5
         with:
@@ -267,7 +271,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -323,7 +327,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
