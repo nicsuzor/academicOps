@@ -1,6 +1,8 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
+    RBG_REVIEW_DEGRADE_THRESHOLD,
+    RBG_REVIEW_GATE_MODE,  # noqa: F401  (referenced via custom_check, kept for discoverability)
     SENTINEL_GATE_MODE,
     SLASH_COMMAND_PROMPT_PATTERNS,
 )
@@ -35,13 +37,19 @@ from lib.gate_types import (
 #      this list wins a same-tier collision.
 #
 # The order and its rationale (highest precedence first):
-#   sentinel  — PreToolUse destructive-op safety block; protects the user's
-#               environment, never advisory. Highest-stakes forcing function.
-#   enforcer  — periodic compliance self-check (PreToolUse threshold block).
-#   qa        — verification-before-exit (Stop); ahead of handover so a missing
-#               verifier surfaces before the handover reminder.
-#   handover  — structured-handover-before-exit (Stop): prevents work loss.
-#   ida       — honesty reminder (Stop); advisory, lowest precedence.
+#   sentinel    — PreToolUse destructive-op safety block; protects the user's
+#                 environment, never advisory. Highest-stakes forcing function.
+#   enforcer    — periodic compliance self-check (PreToolUse threshold block).
+#   rbg-review  — per-turn axiom review must RUN before Stop (Stop DENY while
+#                 armed). Placed ahead of qa/handover/ida so its DENY + rbg-
+#                 dispatch instruction is the one delivered first; once rbg has
+#                 run for the turn the gate clears and the later Stop gates take
+#                 over on the next Stop. Serialises rbg-review -> qa/handover ->
+#                 ida cleanly and never masks Ida (Ida re-arms per turn).
+#   qa          — verification-before-exit (Stop); ahead of handover so a missing
+#                 verifier surfaces before the handover reminder.
+#   handover    — structured-handover-before-exit (Stop): prevents work loss.
+#   ida         — honesty reminder (Stop); advisory, lowest precedence.
 # ----------------------------------------------------------------------
 GATE_CONFIGS = [
     # --- Sentinel ---
@@ -133,6 +141,111 @@ GATE_CONFIGS = [
                 message_key="enforcer.policy_message",
                 context_key="enforcer.policy_context",
                 custom_action="prepare_compliance_report",
+            ),
+        ],
+    ),
+    # --- RBG-review (per-turn axiom review must RUN before Stop) -----------
+    # Directive (Nic, sessions Jun13-23, verify-before-assert escalation):
+    # the rbg axiom review must RUN before the Stop event can pass, on EVERY
+    # interactive turn (guaranteed coverage — not sampled / scoped down).
+    #
+    # Lifecycle (arm -> block -> clear):
+    #   * ARM: starts CLOSED (armed from session start, like ida) and re-arms
+    #     CLOSED on every real UserPromptSubmit. (Task-notification UPS events
+    #     never reach gate dispatch — the router suppresses them upstream — so
+    #     only genuine user turns arm the gate.) Slash-command turns are NOT
+    #     excluded: Nic wants coverage on ALL interactive turns.
+    #   * BLOCK: while CLOSED, the Stop policy DENIES (blocks the stop) and
+    #     injects the rbg-dispatch instruction so the agent actually runs rbg.
+    #     The TRIGGER is structural (Stop event + armed flag) — NOT a content
+    #     sniff. The qualitative judgment ("did this turn comply?") is rbg's.
+    #   * CLEAR: when the rbg subagent runs (SubagentStart/Stop/PostToolUse with
+    #     subagent_type ~ rbg), the gate OPENS, resets the escape-hatch deny
+    #     counter, and latches sticky_until UserPromptSubmit so the agent can
+    #     act on rbg's findings (further edits) without re-blocking THIS turn.
+    #
+    # NOTE — deliberately NO fire-once "open on first Stop" trigger (unlike
+    # qa/handover/ida). Those gates open on the first Stop so a retried Stop in
+    # the same turn passes; that is fine for a block-once advisory but WRONG
+    # here, because it would let the second Stop pass WITHOUT rbg having run.
+    # The gate stays CLOSED across repeated Stops until rbg actually runs.
+    #
+    # ESCAPE-HATCH (loud, not silent): the engine degrades DENY -> WARN-and-
+    # allow after RBG_REVIEW_DEGRADE_THRESHOLD (default 5) consecutive Stop
+    # blocks in one turn, emitting the rbg_review.degraded message. This
+    # prevents the known infinite-Stop-loop incident if rbg dispatch is
+    # structurally broken. It is failure-degradation ONLY — the healthy path
+    # still requires rbg to run. The router-level 5-blocks-in-2-min override is
+    # a second, independent net.
+    GateConfig(
+        name="rbg-review",
+        description="Requires the rbg axiom review to RUN before Stop (per turn).",
+        initial_status=GateStatus.CLOSED,  # Armed from session start
+        stop_deny_downgrade_threshold=RBG_REVIEW_DEGRADE_THRESHOLD,
+        stop_deny_degraded_message_key="rbg_review.degraded",
+        triggers=[
+            # rbg subagent ran -> clear (OPEN), reset escape-hatch counter,
+            # latch sticky until UserPromptSubmit so post-review fixes don't
+            # re-block this turn. Matches the dispatched / completed / tool
+            # forms (SubagentStart, SubagentStop, PostToolUse on the Agent/Task
+            # spawn) and the aops-core: prefix.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="rbg_review.complete",
+                    set_metrics={"stop_deny_count": 0},
+                    sticky_until=["UserPromptSubmit"],
+                ),
+            ),
+            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle.
+            # The engine unsticks (sticky_until includes UPS) BEFORE this
+            # trigger evaluates, so the transition to CLOSED proceeds. Resets
+            # the escape-hatch counter so each turn gets a fresh deny budget.
+            # NOT excluding slash-command turns: guaranteed coverage on ALL
+            # interactive turns per the directive.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    set_metrics={"stop_deny_count": 0},
+                ),
+            ),
+        ],
+        policies=[
+            # Block mode (default): DENY Stop while CLOSED + inject the rbg
+            # dispatch instruction via the context channel. prepare_rbg_review
+            # builds the turn-review file so {temp_path} resolves. There is NO
+            # fire-once open here, so this re-fires every Stop until rbg runs
+            # (or the escape-hatch degrades it).
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_rbg_review_block_mode",
+                ),
+                verdict=GateVerdict.DENY,
+                custom_action="prepare_rbg_review",
+                message_key="rbg_review.policy_message",
+                context_key="rbg_review.policy_context",
+            ),
+            # Warn mode (staged-rollout parity): block-once advisory via the
+            # warn+context_injection upgrade path.
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_rbg_review_warn_mode",
+                ),
+                verdict=GateVerdict.WARN,
+                custom_action="prepare_rbg_review",
+                message_key="rbg_review.policy_message",
+                context_key="rbg_review.policy_context",
             ),
         ],
     ),

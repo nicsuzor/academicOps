@@ -21,13 +21,14 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 ## At a glance
 
-| Gate       | What it catches                                | Fires on               | Default | Stateful?   |
-| ---------- | ---------------------------------------------- | ---------------------- | ------- | ----------- |
-| `sentinel` | Destructive ops on protected env paths         | PreToolUse (stateless) | `block` | stateless   |
-| `enforcer` | Periodic compliance / ultra-vires drift        | PreToolUse @ threshold | `warn`  | counter     |
-| `qa`       | "Done" claimed without verification            | Stop while CLOSED      | `warn`  | open/closed |
-| `handover` | Exit without commit / task update / reflection | Stop while CLOSED      | `warn`  | open/closed |
-| `ida`      | Honesty / criterion-substitution at Stop       | Stop (once/turn)       | `warn`  | open/closed |
+| Gate         | What it catches                                | Fires on                  | Default | Stateful?   |
+| ------------ | ---------------------------------------------- | ------------------------- | ------- | ----------- |
+| `sentinel`   | Destructive ops on protected env paths         | PreToolUse (stateless)    | `block` | stateless   |
+| `enforcer`   | Periodic compliance / ultra-vires drift        | PreToolUse @ threshold    | `warn`  | counter     |
+| `rbg-review` | Per-turn axiom review must RUN before Stop     | Stop while CLOSED (armed) | `block` | open/closed |
+| `qa`         | "Done" claimed without verification            | Stop while CLOSED         | `warn`  | open/closed |
+| `handover`   | Exit without commit / task update / reflection | Stop while CLOSED         | `warn`  | open/closed |
+| `ida`        | Honesty / criterion-substitution at Stop       | Stop (once/turn)          | `warn`  | open/closed |
 
 Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 
@@ -275,6 +276,50 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 | Subagent dispatch doesn't reset counter                      | Trigger regex: `^(aops[-_]core[:_])?(enforcer\|rbg)$` on `(PreToolUse\|SubagentStart\|SubagentStop)`. `aops-core:enforcer` and `enforcer` match; `aops_core_enforcer` does not. If dispatch was never emitted, check that the policy reached threshold (`not_mid_edit` may have deferred it). |
 
 See [`forensics-details.md`](../aops-core/skills/aops/references/forensics-details.md#enforcer--rbg-gate) for the JSONL-level forensics procedure that complements these.
+
+---
+
+## `rbg-review` gate
+
+> **TL;DR.** Per-turn axiom-review forcing function. ARMS on every interactive `UserPromptSubmit` (turn-scoped; starts CLOSED from session start), then **DENIES Stop** until the `rbg` subagent has actually run and returned a verdict for the armed turn. The trigger is **structural** (Stop event + armed flag), **not** a content/NLP/keyword sniff — the qualitative judgment ("did this turn comply with the axioms?") is rbg's, never a rig's. Defined in [`lib/gates/definitions.py`](../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`).
+
+### What is it
+
+The per-turn axiom-review gate. Enforces verify-before-assert / `judgment-non-delegable` at the turn boundary: the agent cannot stop a turn until rbg (the axiom judge, intelligence) has reviewed it. Motivated by the verify-before-assert escalation (sessions Jun13-23): a prior attempt mistakenly used a test-rig / keyword sniff as the trigger; the lesson learned is that the TRIGGER must be structural and the JUDGMENT must be rbg's.
+
+**Class of failure caught.** A turn stopping without any axiom review — unverified assertions, criterion substitution, scope drift — slipping past because no review was forced on the turn.
+
+### Lifecycle (arm → block → clear)
+
+- **ARM**: starts `CLOSED` (armed) from session start (like ida) and re-arms `CLOSED` on every real `UserPromptSubmit`. Task-notification UPS events never reach gate dispatch (router suppresses them upstream), so only genuine user turns arm it. Slash-command turns are **not** excluded — guaranteed coverage on ALL interactive turns (Nic's directive).
+- **BLOCK**: while `CLOSED`, the Stop policy returns `DENY` and injects the rbg-dispatch instruction (`prepare_rbg_review` builds the turn-review file so `{temp_path}` resolves). There is deliberately **no** fire-once "open on first Stop" trigger (unlike qa/handover/ida) — that would let a retried Stop pass without rbg having run. The gate stays `CLOSED` across repeated Stops until rbg runs.
+- **CLEAR**: when the `rbg` subagent runs (`SubagentStart`/`SubagentStop`/`PostToolUse` with `subagent_type ~ ^(aops[-_]core[:_])?rbg$`), the gate `OPEN`s, resets the escape-hatch deny counter, and latches `sticky_until=["UserPromptSubmit"]` so post-review edits don't re-block the same turn.
+
+### Escape-hatch (loud, not silent)
+
+After `RBG_REVIEW_DEGRADE_THRESHOLD` (default **5**, matching the router-level 5-block safety override) consecutive Stop blocks from this gate in one turn, the engine degrades `DENY → WARN-and-allow` and emits the `rbg_review.degraded` message (visible). This prevents the known **infinite-Stop-loop** incident if rbg dispatch is structurally broken. It is **failure-degradation only**, never a normal bypass — the healthy path still requires rbg to run. The router-level 5-blocks-in-2-min override (`router.py`) is a second, independent net. The per-gate threshold is wired via `GateConfig.stop_deny_downgrade_threshold` + `stop_deny_degraded_message_key`.
+
+### Precedence / coexistence
+
+Registered ahead of `qa`/`handover`/`ida` in `GATE_CONFIGS` so its `DENY` + rbg-dispatch instruction is delivered first; once rbg has run for the turn and the gate clears, the later Stop gates take over on the next Stop. This **serialises** rbg-review → qa/handover → ida cleanly. Ida is **deferred** (not consumed) while rbg-review denies, and fires its advisory normally on the post-rbg Stop — Ida is not broken.
+
+### Where it lives
+
+| Concern             | Path                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| Gate definition     | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg-review", ...)`)                         |
+| Mode + threshold    | `aops-core/hooks/gate_config.py` (`RBG_REVIEW_GATE_MODE`, `RBG_REVIEW_DEGRADE_THRESHOLD`)           |
+| Custom action       | `aops-core/lib/gates/custom_actions.py` (`prepare_rbg_review`)                                      |
+| Custom conditions   | `aops-core/lib/gates/custom_conditions.py` (`is_rbg_review_block_mode`, `is_rbg_review_warn_mode`)  |
+| Escape-hatch wiring | `aops-core/lib/gates/engine.py` (`_handle_stop_event` per-gate downgrade + loud message)            |
+| Templates           | `aops-core/hooks/templates/rbg-review-{policy-message,policy-context,complete,degraded,context}.md` |
+| Review subagent     | `aops-core/agents/rbg.md`                                                                           |
+| Tests               | `tests/hooks/test_rbg_review_gate.py`                                                               |
+
+### How it's configured
+
+- **Mode key**: `gates.rbg_review` / `RBG_REVIEW_GATE_MODE`. `block` (default) | `warn` | `off`.
+- **Escape-hatch threshold**: `RBG_REVIEW_DEGRADE_THRESHOLD` (default 5).
 
 ---
 

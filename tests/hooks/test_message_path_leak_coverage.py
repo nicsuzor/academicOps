@@ -94,6 +94,7 @@ def _body_leaked_into(user_text: str | None, context_body: str) -> bool:
 _TEMPLATE_VARS: dict[str, dict[str, object]] = {
     "enforcer.policy_context": {"temp_path": "/tmp/enforcer-ctx.md", "ops_since_open": 50},
     "qa.policy_context": {"temp_path": "/tmp/qa-gate.md"},
+    "rbg_review.policy_context": {"temp_path": "/tmp/rbg-review.md"},
     "enforcer.policy_message": {"ops_since_open": 50},
 }
 
