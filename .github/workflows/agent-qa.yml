@@ -243,7 +243,7 @@ jobs:
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=success \
                 -f context="${AGENT_NAME}-status" \
-                -f description="Verified — runtime checks pass" \
+                -f description="3/3 dimensions pass" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \

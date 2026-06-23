@@ -76,7 +76,7 @@ jobs:
       # exists for this exact SHA:
       #   (a) an actual enforcer PR review (CHANGES_REQUESTED or APPROVED), or
       #   (b) the LATEST enforcer-status entry is a genuine terminal success
-      #       ("No violations found", not a "Skipped: …" echo).
+      #       ("Axiom-clean", not a "Skipped: …" echo).
       # Failure, pending, and "Skipped: …" statuses do NOT count. The earlier
       # design keyed off any status carrying ?target_sha=<HEAD_SHA> in its
       # target_url — but the pending status, the crash-fallback failure status,
@@ -361,7 +361,7 @@ jobs:
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=success \
                 -f context="${AGENT_NAME}-status" \
-                -f description="No violations found" \
+                -f description="Axiom-clean" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
