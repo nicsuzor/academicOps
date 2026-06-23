@@ -724,11 +724,20 @@ The prompt file is the agent's behaviour contract. It sources the canonical pers
 `gh pr view`, format the review). Orchestration (the workflow) and behaviour (the prompt)
 version independently.
 
-### 4.5 Versioned ref per agent
+### 4.5 Canonical consumer ref — `@dev` (branch) — **LIVE** (decision Nic, 2026-06-23; mem-94ad94c1)
 
-Each agent ships under its own ref (`enforcer-v1`, `qa-v1`, `mechanic-v1`, `alignment-v1`).
-Consumers pin to refs, never `@main`. Breaking changes ship as a new tag with a migration
-note and a deprecation window.
+Satellite-repo trigger shims call the aops reusable workflows by **branch ref `@dev`**, not
+versioned tags (`@enforcer-v1`, `@qa-v1`, `@pipeline-v1`).
+
+**Rationale (single-owner fix-forward fleet):** versioned tags (`-vN`) earn their cost only
+when you must run two pipeline versions simultaneously — a public-action concern, not ours.
+We own every satellite repo and fix forward; we would never deliberately leave a satellite on
+an old pipeline. A moving tag (`@pipeline`, advanced manually on every green change) was the
+other candidate but requires discipline that is easy to forget. A branch ref (`@dev`)
+auto-updates with zero maintenance. Tradeoff accepted: satellites following `@dev` inherit
+dev's churn (a half-finished pipeline commit can momentarily break satellites). Acceptable
+because the fleet is small, single-owner, and fix-forward; breakage is caught on the first
+satellite and fixed at HEAD.
 
 ### 4.6 Per-pass SHA-based loop-skip — **LIVE** (enforcer, qa)
 
@@ -1001,7 +1010,7 @@ on:
     types: [opened, synchronize, ready_for_review, reopened]
 jobs:
   enforce:
-    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
+    uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@dev
     with:
       pr_number: ${{ github.event.pull_request.number }}
       ref:       ${{ github.event.pull_request.head.ref }}
