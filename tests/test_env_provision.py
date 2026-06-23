@@ -76,8 +76,9 @@ class TestHostFailure:
         assert "AOPS_BOT_GH_TOKEN" in report.missing
         joined = "\n".join(report.lines)
         assert "ENV INCOMPLETE" in joined
-        # Names the fix location.
-        assert "~/.env.local" in joined
+        # Env-only model (#1919): the fix is to export the missing var in the
+        # environment — no ~/.env.local file is read or referenced.
+        assert "~/.env.local" not in joined
         assert "export AOPS_BOT_GH_TOKEN=" in joined
 
     def test_oauth_tokens_not_required_on_host(self):

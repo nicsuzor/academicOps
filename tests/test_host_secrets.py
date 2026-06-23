@@ -2,22 +2,18 @@
 
 The polecat launcher resolves forwarded secret VALUES from the PROCESS
 ENVIRONMENT ONLY. AOPS reads no files (no sops, no ~/.env.local); populating
-the environment is the operator's responsibility. Required secrets fail loud
-when absent. Source-name aliasing is a pure name map within the process env.
+the environment is the operator's responsibility. Resolution is
+forward-if-present: absent/empty names are simply omitted, never raised.
+Source-name aliasing is a pure name map within the process env.
 Hard assertions only.
 """
 
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aops-core"))
 
-from lib.host_secrets import (  # noqa: E402
-    MissingForwardSecretError,
-    resolve_forward_values,
-)
+from lib.host_secrets import resolve_forward_values  # noqa: E402
 
 
 class TestResolveFromProcessEnv:
@@ -55,10 +51,10 @@ class TestResolveFromProcessEnv:
             assert not hasattr(hs, gone), f"{gone} should be removed"
 
 
-class TestOptionalAbsentSkipped:
-    """Names NOT declared required and absent/empty are simply omitted."""
+class TestAbsentSkipped:
+    """Absent/empty names are simply omitted — forward-if-present, never raise."""
 
-    def test_empty_value_skipped_when_not_required(self):
+    def test_empty_value_skipped(self):
         resolved = resolve_forward_values(
             ["EMPTY_TOK", "ABSENT_TOK"],
             source_env={"EMPTY_TOK": ""},
@@ -66,71 +62,14 @@ class TestOptionalAbsentSkipped:
         assert "EMPTY_TOK" not in resolved
         assert "ABSENT_TOK" not in resolved
 
-    def test_absent_optional_returns_empty_dict_no_raise(self):
-        # No required set → no raise even when nothing resolves.
+    def test_all_absent_returns_empty_dict_no_raise(self):
+        # Nothing resolves → empty dict, no raise.
         assert resolve_forward_values(["ABSENT"], source_env={}) == {}
 
-
-class TestRequiredFailsLoud:
-    """A REQUIRED forwarded secret that resolves empty/absent must raise,
-    naming the missing var(s). No silent empty/fallback."""
-
-    def test_missing_required_raises_naming_var(self):
-        with pytest.raises(MissingForwardSecretError) as excinfo:
-            resolve_forward_values(
-                ["GEMINI_API_KEY"],
-                source_env={},
-                required=["GEMINI_API_KEY"],
-            )
-        assert "GEMINI_API_KEY" in str(excinfo.value)
-        assert excinfo.value.missing == ["GEMINI_API_KEY"]
-
-    def test_empty_required_raises(self):
-        with pytest.raises(MissingForwardSecretError) as excinfo:
-            resolve_forward_values(
-                ["GEMINI_API_KEY"],
-                source_env={"GEMINI_API_KEY": ""},
-                required=["GEMINI_API_KEY"],
-            )
-        assert "GEMINI_API_KEY" in str(excinfo.value)
-
-    def test_multiple_missing_required_all_named(self):
-        with pytest.raises(MissingForwardSecretError) as excinfo:
-            resolve_forward_values(
-                ["GEMINI_API_KEY", "AGY_API_KEY"],
-                source_env={},
-                required=["GEMINI_API_KEY", "AGY_API_KEY"],
-            )
-        msg = str(excinfo.value)
-        assert "GEMINI_API_KEY" in msg
-        assert "AGY_API_KEY" in msg
-        assert set(excinfo.value.missing) == {"GEMINI_API_KEY", "AGY_API_KEY"}
-
-    def test_present_required_does_not_raise(self):
-        resolved = resolve_forward_values(
-            ["GEMINI_API_KEY"],
-            source_env={"GEMINI_API_KEY": "present"},
-            required=["GEMINI_API_KEY"],
-        )
-        assert resolved == {"GEMINI_API_KEY": "present"}
-
-    def test_required_satisfied_via_alias_source(self):
-        # A required name satisfied through its alias source must NOT raise.
-        resolved = resolve_forward_values(
-            ["CLAUDE_CODE_OAUTH_TOKEN"],
-            source_env={"AOPS_CC_OAUTH_TOKEN": "tok-aops"},
-            required=["CLAUDE_CODE_OAUTH_TOKEN"],
-        )
-        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
-
-    def test_optional_missing_alongside_required_present(self):
-        # Optional absent name is skipped; required present name resolves.
-        resolved = resolve_forward_values(
-            ["GEMINI_API_KEY", "AGY_API_KEY"],
-            source_env={"GEMINI_API_KEY": "gem"},
-            required=["GEMINI_API_KEY"],
-        )
-        assert resolved == {"GEMINI_API_KEY": "gem"}
+    def test_aliased_name_all_absent_omitted_no_raise(self):
+        # An aliased name whose alias sources AND direct name are all absent
+        # is omitted — the "never raise" claim covers the aliased case too.
+        assert resolve_forward_values(["CLAUDE_CODE_OAUTH_TOKEN"], source_env={}) == {}
 
 
 class TestForwardSourceAliases:

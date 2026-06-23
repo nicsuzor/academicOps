@@ -23,15 +23,15 @@ What this module does:
     is a pure NAME map: candidate source names are tried in order, all WITHIN
     the process env. It is renaming, NOT a file fallback.
 
-  - Fail-loud: when a caller declares a name REQUIRED and it resolves to
-    absent/empty in the process env, ``resolve_forward_values`` raises
-    :class:`MissingForwardSecretError` naming the missing variable(s). Required
-    secrets are never silently skipped.
+  - Forward-if-present: a name that resolves to absent/empty in the process env
+    is simply omitted from the result. This module does not raise on missing
+    secrets — any required-secret pre-flight is the caller's concern.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 
 # Source-name indirection for forwarded secrets (aops-b368109a).
 #
@@ -71,28 +71,9 @@ _FORWARD_SOURCE_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 
-class MissingForwardSecretError(RuntimeError):
-    """Raised when a REQUIRED forwarded secret is absent/empty in the env.
-
-    Carries the list of missing CONTAINER names so callers can surface them.
-    """
-
-    def __init__(self, missing: list[str]) -> None:
-        self.missing = list(missing)
-        joined = ", ".join(self.missing)
-        super().__init__(
-            "Required forwarded secret(s) absent or empty in the process "
-            f"environment: {joined}. AOPS reads secrets from the environment "
-            "only — export the variable(s) (or a configured source alias) "
-            "before launch. Populating the environment is the operator's "
-            "responsibility."
-        )
-
-
 def resolve_forward_values(
     names: list[str],
-    source_env: dict[str, str] | None = None,
-    required: list[str] | set[str] | None = None,
+    source_env: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Resolve VALUES for a whitelist of variable NAMES from the process env.
 
@@ -108,49 +89,30 @@ def resolve_forward_values(
     is the operator's responsibility (sops, ~/.env.local, etc. are out of
     scope).
 
-    Fail-loud: for each name in ``required`` that resolves to absent/empty,
-    collect it and raise :class:`MissingForwardSecretError` naming all of them.
-    Required secrets are NEVER silently skipped. Names NOT in ``required`` that
-    resolve empty are simply omitted from the result (forward-if-present
-    semantics for the bulk whitelist).
+    Forward-if-present: a name that resolves to absent/empty is simply omitted
+    from the result. This module never raises on a missing secret — any
+    required-secret pre-flight is the caller's concern.
 
     Args:
         names: Container variable names declared in ``polecat.yaml``
             ``container_env_forward``.
         source_env: Process env to read from. Defaults to ``os.environ``.
-        required: Container names that MUST resolve to a non-empty value. Any
-            that do not cause a :class:`MissingForwardSecretError`. ``None``
-            (the default) means no name is required.
 
     Returns:
         Dict of {CONTAINER_NAME: VALUE} for names that resolved to a non-empty
         value (keyed by the container name, regardless of which source supplied
         the value).
-
-    Raises:
-        MissingForwardSecretError: if any required name resolves empty/absent.
     """
-    if source_env is None:
-        source_env = os.environ
-    required_set = set(required or ())
+    env: Mapping[str, str] = os.environ if source_env is None else source_env
 
     resolved: dict[str, str] = {}
-    missing: list[str] = []
     for name in names:
         # Alias source(s) first, then the container name itself as a fallback.
         # Every candidate is looked up in the process env only.
         candidates = (*_FORWARD_SOURCE_ALIASES.get(name, ()), name)
-        value = ""
         for src in candidates:
-            candidate_value = source_env.get(src)
+            candidate_value = env.get(src)
             if candidate_value:
-                value = candidate_value
+                resolved[name] = candidate_value
                 break
-        if value:
-            resolved[name] = value
-        elif name in required_set:
-            missing.append(name)
-
-    if missing:
-        raise MissingForwardSecretError(missing)
     return resolved

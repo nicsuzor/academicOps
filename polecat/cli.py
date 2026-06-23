@@ -512,8 +512,8 @@ def _make_worker_env(
     apply_env_mappings(env)
 
     # Resolve the explicit container forwarding whitelist from the process env
-    # ONLY (no file reading). Empty/absent values for non-required names are
-    # skipped by resolve_forward_values (forward-if-present semantics).
+    # ONLY (no file reading). Empty/absent values are skipped by
+    # resolve_forward_values (forward-if-present semantics).
     if container_env_forward:
         from lib.host_secrets import resolve_forward_values
 
