@@ -4,4 +4,4 @@ If any tool or API call you depend on to complete your mandated action fails (e.
 
 ## Escape content in `gh` CLI / API calls
 
-When passing review or comment text to `gh` (e.g. `gh pr review`, `gh pr comment`, `gh api`), always quote/escape the content. Unquoted text containing shell brace patterns (`{...}`) or other shell metacharacters can be mangled by expansion before it reaches GitHub. Prefer `--body-file` or a quoted heredoc over inline `--body "$VAR"` for any non-trivial content.
+When passing review or comment text to `gh` (e.g. `gh pr review`, `gh pr comment`, `gh api`), always quote/escape the content. Unquoted text containing shell brace patterns (`{...}`) or other shell metacharacters can be mangled by expansion before it reaches GitHub. Prefer `--body-file` or a quoted heredoc over inline `--body "$VAR"`.
