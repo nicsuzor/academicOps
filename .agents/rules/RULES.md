@@ -21,3 +21,11 @@ Any PR that **adds, modifies, escalates, or retires** an enforcement mechanism (
 - _E.g._ PR #1824 (`feat(junior): replace PKB wildcard with explicit allowlist`) changed an agent's `tools:` list — a chokepoint/funnel (L4) enforcement-mechanism change per the Pyramid in `ENFORCEMENT-MAP.md`. It shipped without a row update. Under this rule, `rbg` returns `REVISE`: "missing enforcement-map row for chokepoint change to junior PKB scope".
 
 _When applying:_ if the diff touches any agent persona's `tools:` frontmatter, any file under `aops-core/hooks/`, `.github/workflows/agent-*.yml`, `.github/agents/*.agent.md`, `.github/rulesets/`, `templates/*.plugin.json` `autoMode`, or `specs/enforcement/`, check whether `specs/ENFORCEMENT-MAP.md` was updated in the same diff. If not → `REVISE`.
+
+## Bot-facing instructions comply with `/craft` best practices {#bot-instructions-craft}
+
+Any change that adds or modifies **bot-facing instructions** — agent definitions (`aops-core/agents/*.md`), skill bodies and references (`skills/**`), task/workflow prose, hook/gate prompt templates, or any text a framework agent reads as direction — MUST comply with the instruction best practices set out in the `/craft` skill (`aops-core/skills/craft/SKILL.md`): concise, unambiguous, no shallow-execution vulnerabilities, excellence over mere compliance.
+
+- Reviewers hold the **content** of such changes to the `/craft` bar, not only their runtime behaviour. A doctrine/instruction PR with nothing executable to run is still reviewed against this rule — verbose, ambiguous, or shallow-execution-prone instruction text is a `REVISE`.
+- This is a repo-level commitment, not a universal axiom: instructions are this framework's primary product surface, so their quality is a gating concern that a reviewer can name from the diff.
+- _When applying:_ if the diff adds or edits any bot-facing instruction text, check it against `/craft` (run the skill in audit mode where useful). If it falls short of the bar → `REVISE`, citing the specific defect class.
