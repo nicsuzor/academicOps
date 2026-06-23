@@ -1955,21 +1955,23 @@ def _run_docker_container(
             _env_file_to_unlink = docker_cmd.env_file
 
             def _unlink_env_after_spawn() -> None:
-                deadline = time.monotonic() + 30.0
-                while time.monotonic() < deadline:
-                    try:
-                        r = subprocess.run(
-                            ["docker", "ps", "-q", "-f", f"name={container_name}"],
-                            capture_output=True,
-                            text=True,
-                            timeout=5.0,
-                        )
-                    except subprocess.TimeoutExpired:
-                        continue
-                    if r.stdout.strip():
-                        break
-                    time.sleep(0.2)
-                _env_file_to_unlink.unlink(missing_ok=True)
+                try:
+                    deadline = time.monotonic() + 30.0
+                    while time.monotonic() < deadline:
+                        try:
+                            r = subprocess.run(
+                                ["docker", "ps", "-q", "-f", f"name={container_name}"],
+                                capture_output=True,
+                                text=True,
+                                timeout=5.0,
+                            )
+                        except subprocess.TimeoutExpired:
+                            continue
+                        if r.stdout.strip():
+                            break
+                        time.sleep(0.2)
+                finally:
+                    _env_file_to_unlink.unlink(missing_ok=True)
 
             _env_unlink_thread = threading.Thread(
                 target=_unlink_env_after_spawn,
