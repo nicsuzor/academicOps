@@ -1271,17 +1271,7 @@ def reflection_to_insights(
     # Timeline events for path reconstruction (optional)
     if timeline_events:
         result["timeline_events"] = timeline_events
-        # user_prompts: cleaned, ordered set of genuinely human-typed prompts
-        # (system_injected=False).  Structured replacement for the stale
-        # user-prompts-*.txt extracts (aops-519f8e11).
-        result["user_prompts"] = [
-            {
-                "timestamp": e.get("timestamp"),
-                "text": e.get("description") or "",
-            }  # allow-fallback: description optional; "" = no text
-            for e in timeline_events
-            if e.get("type") == "user_prompt" and not e.get("system_injected")
-        ]
+        result["user_prompts"] = build_user_prompts(timeline_events)
         # Count only genuine user turns (system_injected=False)
         result["user_prompt_count"] = len(result["user_prompts"])
         # Elevate PR URL to root if found
@@ -1637,6 +1627,23 @@ def clean_prompt_text(text: str) -> str:
     # Collapse the blank-line runs left by removed envelopes.
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     return text
+
+
+def build_user_prompts(timeline_events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the ordered list of genuine human-typed prompts from timeline events.
+
+    Filters to ``user_prompt`` events where ``system_injected`` is False and
+    returns ``[{timestamp, text}]`` objects.  Single authoritative definition
+    for all code paths that need this view (aops-519f8e11).
+    """
+    return [
+        {
+            "timestamp": e.get("timestamp"),
+            "text": e.get("description") or "",
+        }
+        for e in timeline_events
+        if e.get("type") == "user_prompt" and not e.get("system_injected")
+    ]
 
 
 def extract_initial_prompt(timeline_events: list[dict[str, Any]] | None) -> str | None:

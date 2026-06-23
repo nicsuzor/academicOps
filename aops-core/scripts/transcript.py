@@ -47,6 +47,7 @@ from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     UsageStats,
     aggregate_session_metadata,
+    build_user_prompts,
     extract_initial_prompt,
     extract_reflection_from_entries,
     extract_timeline_events,
@@ -647,17 +648,7 @@ def _save_minimal_token_summary(
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
-        # user_prompts: cleaned, ordered set of genuinely human-typed prompts
-        # (system_injected=False).  Structured replacement for the stale
-        # user-prompts-*.txt extracts (aops-519f8e11).
-        insights["user_prompts"] = [
-            {
-                "timestamp": e.get("timestamp"),
-                "text": e.get("description") or "",
-            }  # allow-fallback: description optional; "" = no text
-            for e in timeline_events
-            if e.get("type") == "user_prompt" and not e.get("system_injected")
-        ]
+        insights["user_prompts"] = build_user_prompts(timeline_events)
         # Capture the user's initial intent so the dashboard can orient even on
         # no-reflection / still-running sessions (aops-efffc1f7).
         initial_prompt = extract_initial_prompt(timeline_events)
