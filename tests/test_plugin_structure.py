@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from polecat.prompt_template import PKB_HALT_SENTINEL
+
 PLUGIN_ROOT = Path(__file__).parent.parent / "aops-core"
 
 
@@ -41,6 +43,34 @@ class TestNoProjectInferenceByPrefix:
                         violations.append(f"{md}:{m.start()}: matched /{pat}/")
         assert not violations, "Prohibited project-inference instructions:\n" + "\n".join(
             violations
+        )
+
+
+class TestJuniorMdPkbHalt:
+    """junior.md must contain the PKB-HALT sentinel so it binds for junior-type
+    sessions (load-bearing constraint from aops-0203b9cb).
+
+    Asserts inclusion of PKB_HALT_SENTINEL (from polecat.prompt_template), not
+    hardcoded prose tokens — the sentinel is the protocol-specified transcript
+    marker that enables post-hoc audit.  Whether the surrounding wording does
+    its job is owned by review and the runtime verification task aops-f00c699f,
+    not by a string-match here (AXIOMS#judgment-non-delegable).
+
+    This test is designed to FAIL if the PKB-HALT instruction is removed or
+    silently dropped from junior.md — that is the property a load-bearing test
+    must have.  Routing around the PKB MCP is a security incident
+    (aops-18572bc0 §5); removing this instruction is a security regression,
+    not a refactor.
+    """
+
+    def test_junior_md_pkb_gap_section_is_load_bearing(self) -> None:
+        junior_md = PLUGIN_ROOT / "agents" / "junior.md"
+        assert junior_md.exists(), f"junior.md not found at {junior_md}"
+        text = junior_md.read_text()
+        assert PKB_HALT_SENTINEL in text, (
+            f"junior.md must contain the PKB-HALT sentinel ({PKB_HALT_SENTINEL!r}). "
+            "Removing this instruction is a security regression — "
+            "routing around the PKB MCP is a security incident (aops-18572bc0 §5)."
         )
 
 
