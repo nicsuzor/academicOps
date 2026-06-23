@@ -1,8 +1,9 @@
 # Cohesive Single-PR-Epic Pattern
 
-The framework defaults to the **cohesive single-PR-epic pattern** for all epics whose subtasks
-are meant to land together. The only exception is when subtasks must genuinely ship and be
-deployed independently — then they keep legacy branch-per-task behavior.
+The framework defaults to the **cohesive single-PR-epic pattern** for all related work meant to
+land together — whether pre-decomposed epics or ad-hoc/emergent tasks that arise mid-session.
+The only exception is when work items must genuinely ship and be deployed independently — then
+they keep legacy branch-per-task behavior.
 
 ## Live Mechanism (PR #1749 / aops-613690b5)
 

@@ -20,6 +20,12 @@ The expansion is the orchestrator's job. The principal says one line and trusts 
 to produce the brief. This is a universal rule — it binds Junior, the supervisor, and any other
 agent acting as coordinator.
 
+**Related work defaults to ONE shared draft PR.** When dispatching multiple related tasks —
+including work that emerges ad-hoc mid-session — put them all on the same shared branch
+(`--branch polecat/epic-<id>`) so they accrete into a single draft PR. Keep dispatching onto
+that branch until the related set is complete, then flip the PR to ready for review. Never spawn
+a separate PR per task for coupled work. See [[cohesive-pr-epic]] for the mechanism.
+
 ## Pre-Dispatch Gates
 
 All dispatches run through the pre-dispatch gates in
