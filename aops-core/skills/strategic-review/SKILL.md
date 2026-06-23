@@ -71,6 +71,8 @@ this fan-out must happen here, at the top level.
 - **marsha** — runtime / verification QA. Runs **whenever code or executable behaviour changed**;
   skip for pure-prose artifacts.
 
+**Every reviewer brief carries the epistemic-humility constraint below** ([§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result)): a reviewer may not issue a "this is false / failed / was a misstep" verdict about a real-world event, intent, or state it cannot directly observe — it downgrades to an ADVISORY primary-source flag instead.
+
 ### 3. Reconcile via @james
 
 When all three return, dispatch **@james** with the original artifact plus all three reviewer
@@ -88,6 +90,8 @@ Agent(subagent_type="aops-core:james",
       prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
 
+**Reconciliation must not harden inference into fact.** Unverifiable claims carry through as **ADVISORY (needs primary-source confirmation)** — the QA seal must not launder a guess into a confident negative. See [§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result).
+
 ### 4. Act on the verdict — only if asked
 
 - **No flag (default)**: return james's verdict and table to the caller. Change nothing.
@@ -102,6 +106,10 @@ Whatever the flags, **never silently exit**: if a write-back action fails, repor
 full verdict to chat.
 
 ---
+
+## Epistemic humility — absence of evidence is not a negative result
+
+Missing evidence licenses _"not supported by the available evidence"_ — never _"false / failed / did not happen."_ A negative verdict requires a held falsifier the reviewer actually holds; where ground truth is unobservable (intent, off-record events, room dynamics), downgrade to **ADVISORY (needs primary-source confirmation)**. Silence in a record is not failure. Apply the same discount symmetrically to flattering and unflattering claims alike. (Source incident: #1891.)
 
 ## `--critic` mode
 

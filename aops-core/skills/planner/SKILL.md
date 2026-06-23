@@ -91,6 +91,8 @@ Planning under genuine uncertainty requires prioritising **learning over predict
 
 **Bird-in-hand over prediction**: Work with what's known now; treat surprises as new means, not just problems. Each planning move either adds structure (when uncertainty is low) or adds learning (when uncertainty is high). Don't predict what the finished plan looks like — probe toward it.
 
+**No pessimistic closure from missing information**: When a plan turns on a real-world event, intent, or outcome you cannot directly observe, treat the unknown as an **unknown-unknown to surface and resolve** — solicit ground truth from the principal/primary source via `AskUserQuestion` — **before** concluding failure. Full principle: [§ Epistemic humility → strategic-review/SKILL.md](../strategic-review/SKILL.md#epistemic-humility--absence-of-evidence-is-not-a-negative-result).
+
 ## Modes of Operation
 
 Detect which mode applies from the user's prompt. If ambiguous, ask: "Shall we think freely (explore) or build a concrete plan (plan)?"

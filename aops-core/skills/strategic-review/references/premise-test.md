@@ -43,6 +43,10 @@ If a sharp principal would bounce the premise, the verdict is a **rejection even
 
 Test-passing is the **expected surface** of a bad-premise artifact, not a mitigant — _"but it's tested / it works / it's clean"_ is precisely the rationalisation this test closes.
 
+## 2a. A negative verdict needs a held falsifier
+
+A rejecting verdict (`FAIL` / 🔴 REJECT) requires a falsifying observation the reviewer actually holds — not merely a gap in the record. Where ground truth is unobservable, downgrade to an ADVISORY flag. Full rules: [§Epistemic humility → SKILL.md](../SKILL.md#epistemic-humility--absence-of-evidence-is-not-a-negative-result).
+
 ## 3. Generalised framing — overengineering is one worked example
 
 The question is _"was this worth building at all, in this shape?"_ — **not** an overengineering-only check. _Deterministic-rig-for-a-judgment-call_ (a regex / threshold / NLP / bespoke parser / checklist substituting for a call a smart agent should just make — see `judgment-non-delegable`, `exercise-authority` Edge 3) is **one named instance** of the broader "dumb idea" class, not the definition.
