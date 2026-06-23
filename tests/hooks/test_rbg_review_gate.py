@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 """Tests for the rbg-review Stop gate.
 
-The rbg-review gate makes the per-turn axiom review RUN before Stop can pass:
+Reworked (epic-f490bb11) from the original block-every-stop #1928. The gate is
+now an END-OF-SESSION rbg axiom audit, scoped to TASK-BOUND (polecat/crew)
+sessions only:
 
-- ARMS on UserPromptSubmit (turn-scoped; starts CLOSED from session start).
-- DENIES Stop while armed (CLOSED) until the rbg subagent has run for the turn,
-  injecting the rbg-dispatch instruction. The trigger is STRUCTURAL (Stop event
-  + armed flag), not a content sniff.
-- CLEARS (OPEN) when the rbg subagent runs, then Stop is allowed.
-- ESCAPE-HATCH: after RBG_REVIEW_DEGRADE_THRESHOLD consecutive Stop blocks in one
-  turn, degrades DENY -> WARN-and-allow with a loud message so a broken rbg
-  dispatch cannot permanently trap the session.
+- POLECAT/CREW: ARMED (CLOSED) from session start; re-arms CLOSED on every
+  UserPromptSubmit, so the autonomous session's exit Stop forces a final rbg
+  audit. DENIES Stop while armed until the rbg subagent runs (structural
+  trigger: Stop + armed + session type — NOT a content sniff). CLEARS (OPEN)
+  when rbg runs, then exit is allowed.
+- AD HOC INTERACTIVE: starts OPEN (inert) and NEVER re-arms — the UPS re-arm is
+  session_type_filtered to polecat/crew. The Stop policy never fires, so
+  interactive users eat no per-turn rbg delay.
+- ESCAPE-HATCH: after RBG_REVIEW_DEGRADE_THRESHOLD consecutive Stop blocks,
+  degrades DENY -> WARN-and-allow with a loud message so a broken rbg dispatch
+  cannot permanently trap the session.
 
-Mirrors the engine-driven gate tests in test_handover_gate_regression.py — drives
-the gate through router._dispatch_gates with a real SessionState + HookContext.
+Drives the gate through router._dispatch_gates with a real SessionState +
+HookContext, mirroring test_handover_gate_regression.py.
 """
 
 import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -66,35 +72,109 @@ def _ups(prompt: str = "do a thing") -> HookContext:
     return _ctx("UserPromptSubmit", raw_input={"prompt": prompt})
 
 
-def _armed_state(router) -> SessionState:
-    """Fresh session, armed by a UserPromptSubmit (gate CLOSED)."""
-    state = SessionState.create("rbg-test", client_type="claude")
+def _polecat_state(session_id: str = "rbg-test") -> SessionState:
+    """Create a polecat (task-bound) SessionState — rbg-review starts CLOSED."""
+    old = os.environ.get("AOPS_POLECAT_CONTAINER")
+    os.environ["AOPS_POLECAT_CONTAINER"] = "1"
+    try:
+        return SessionState.create(session_id, client_type="claude")
+    finally:
+        if old is not None:
+            os.environ["AOPS_POLECAT_CONTAINER"] = old
+        else:
+            os.environ.pop("AOPS_POLECAT_CONTAINER", None)
+
+
+def _interactive_state(session_id: str = "rbg-test") -> SessionState:
+    """Create an ad hoc interactive SessionState — rbg-review starts OPEN."""
+    # Ensure the polecat env is not leaking in from another test.
+    old = os.environ.pop("AOPS_POLECAT_CONTAINER", None)
+    try:
+        return SessionState.create(session_id, client_type="claude")
+    finally:
+        if old is not None:
+            os.environ["AOPS_POLECAT_CONTAINER"] = old
+
+
+def _armed_polecat_state(router) -> SessionState:
+    """Fresh polecat session, armed by a UserPromptSubmit (gate CLOSED)."""
+    state = _polecat_state()
     router._dispatch_gates(_ups(), state)
     assert state.gates["rbg-review"].status == GateStatus.CLOSED
     return state
 
 
-# --- (a) Stop DENIED when armed and rbg has not run --------------------------
+# --- SCOPING: armed only for task-bound (polecat/crew) sessions --------------
 
 
-def test_gate_starts_armed_from_session_start(router):
-    """Gate is CLOSED (armed) from session start, before any UserPromptSubmit."""
-    state = SessionState.create("rbg-test", client_type="claude")
+def test_polecat_gate_starts_armed_from_session_start(router):
+    """Polecat: gate is CLOSED (armed) from session start."""
+    state = _polecat_state()
     assert state.gates["rbg-review"].status == GateStatus.CLOSED
 
 
-def test_ups_arms_the_gate(router):
-    """UserPromptSubmit re-arms the gate (turn-scoped)."""
-    state = SessionState.create("rbg-test", client_type="claude")
-    # Force OPEN, then UPS should re-arm to CLOSED.
+def test_crew_gate_starts_armed_from_session_start(router):
+    """Crew (also task-bound autonomous): gate is CLOSED (armed)."""
+    old = os.environ.get("AOPS_POLECAT_CONTAINER")
+    old_crew = os.environ.get("POLECAT_CREW_NAME")
+    os.environ["AOPS_POLECAT_CONTAINER"] = "1"
+    os.environ["POLECAT_CREW_NAME"] = "alpha"
+    try:
+        state = SessionState.create("rbg-test", client_type="claude")
+    finally:
+        for k, v in (("AOPS_POLECAT_CONTAINER", old), ("POLECAT_CREW_NAME", old_crew)):
+            if v is not None:
+                os.environ[k] = v
+            else:
+                os.environ.pop(k, None)
+    assert state.session_type == "crew"
+    # crew is in initial_status_by_session_type -> CLOSED
+    assert state.gates["rbg-review"].status == GateStatus.CLOSED
+
+
+def test_interactive_gate_starts_open_inert(router):
+    """Ad hoc interactive: gate starts OPEN (inert) — no per-turn rbg delay."""
+    state = _interactive_state()
+    assert state.session_type == "interactive"
+    assert state.gates["rbg-review"].status == GateStatus.OPEN
+
+
+def test_interactive_ups_does_not_arm_the_gate(router):
+    """Interactive: UserPromptSubmit does NOT re-arm — stays OPEN every turn."""
+    state = _interactive_state()
+    router._dispatch_gates(_ups(), state)
+    assert state.gates["rbg-review"].status == GateStatus.OPEN
+
+
+def test_interactive_stop_never_blocks_per_turn(router):
+    """Interactive: Stop is ALLOWED every turn — gate never fires the rbg delay.
+
+    This is the core of the rework: ad hoc interactive discussions must NOT eat
+    the rbg delay on every turn (the bug in the original block-every-stop PR).
+    """
+    state = _interactive_state()
+    for _ in range(3):
+        router._dispatch_gates(_ups(), state)
+        result = router._dispatch_gates(_ctx("Stop"), state)
+        # Other Stop gates are off, so an allowed Stop yields no blocking verdict.
+        assert result is None or result.verdict == GateVerdict.ALLOW
+        assert state.gates["rbg-review"].status == GateStatus.OPEN
+
+
+def test_polecat_ups_arms_the_gate(router):
+    """Polecat: UserPromptSubmit re-arms the gate (so the exit Stop is armed)."""
+    state = _polecat_state()
     state.gates["rbg-review"].status = GateStatus.OPEN
     router._dispatch_gates(_ups(), state)
     assert state.gates["rbg-review"].status == GateStatus.CLOSED
 
 
-def test_stop_denied_when_armed_and_rbg_not_run(router):
-    """Stop is DENIED while armed and rbg has not run; injects rbg dispatch."""
-    state = _armed_state(router)
+# --- (a) Stop DENIED when armed and rbg has not run (polecat) -----------------
+
+
+def test_polecat_stop_denied_when_armed_and_rbg_not_run(router):
+    """Polecat exit: Stop is DENIED while armed and rbg has not run."""
+    state = _armed_polecat_state(router)
     result = router._dispatch_gates(_ctx("Stop"), state)
     assert result is not None
     assert result.verdict == GateVerdict.DENY
@@ -106,9 +186,9 @@ def test_stop_stays_denied_across_retries_no_fire_once_leak(router):
 
     This is the key difference from qa/handover/ida: those open on the first
     Stop so a retried Stop passes. rbg-review must NOT — that would let the
-    second Stop pass without rbg having run.
+    second (exit) Stop pass without rbg having run.
     """
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     r1 = router._dispatch_gates(_ctx("Stop"), state)
     r2 = router._dispatch_gates(_ctx("Stop"), state)
     assert r1.verdict == GateVerdict.DENY
@@ -116,12 +196,12 @@ def test_stop_stays_denied_across_retries_no_fire_once_leak(router):
     assert state.gates["rbg-review"].status == GateStatus.CLOSED
 
 
-# --- (b) Stop ALLOWED after rbg has run --------------------------------------
+# --- (b) Stop ALLOWED after rbg has run (polecat) -----------------------------
 
 
 def test_rbg_run_clears_the_gate(router):
     """When the rbg subagent runs, the gate clears (OPEN) and latches sticky."""
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     router._dispatch_gates(_ctx("Stop"), state)  # deny first
     router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-core:rbg"), state)
     gate = state.gates["rbg-review"]
@@ -132,7 +212,7 @@ def test_rbg_run_clears_the_gate(router):
 
 def test_stop_allowed_after_rbg_run(router):
     """After rbg runs, Stop is ALLOWED (no DENY/WARN from this gate)."""
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     router._dispatch_gates(_ctx("Stop"), state)
     router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-core:rbg"), state)
     result = router._dispatch_gates(_ctx("Stop"), state)
@@ -142,32 +222,39 @@ def test_stop_allowed_after_rbg_run(router):
 
 def test_bare_rbg_subagent_name_clears(router):
     """A bare 'rbg' subagent_type (no aops-core: prefix) also clears the gate."""
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     router._dispatch_gates(_ctx("SubagentStart", subagent_type="rbg"), state)
     assert state.gates["rbg-review"].status == GateStatus.OPEN
 
 
 def test_post_rbg_edits_do_not_reblock_this_turn(router):
-    """Sticky latch: edits after rbg ran do not re-block the same turn."""
-    state = _armed_state(router)
+    """Sticky latch: edits after rbg ran do not re-block / re-arm the same turn.
+
+    This is the gate-discharge re-trigger invariant for THIS gate: the rbg
+    discharge completing, and any follow-up edit, must NOT re-arm the gate.
+    """
+    state = _armed_polecat_state(router)
     router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-core:rbg"), state)
     # An edit (PostToolUse write) must not re-close the gate this turn.
     router._dispatch_gates(
         _ctx("PostToolUse", tool_name="Edit", tool_input={"file_path": "foo.py"}), state
     )
     assert state.gates["rbg-review"].status == GateStatus.OPEN
-    # Next turn re-arms.
+    # A retried Stop after the rbg discharge + edit is still ALLOWED (no loop).
+    result = router._dispatch_gates(_ctx("Stop"), state)
+    assert result is None or result.verdict == GateVerdict.ALLOW
+    # Next turn re-arms (polecat).
     router._dispatch_gates(_ups(), state)
     assert state.gates["rbg-review"].status == GateStatus.CLOSED
     assert state.gates["rbg-review"].sticky is False
 
 
-# --- (c) Escape-hatch degrades after N failures ------------------------------
+# --- (c) Escape-hatch degrades after N failures (polecat) ---------------------
 
 
 def test_escape_hatch_degrades_after_threshold(router):
     """After RBG_REVIEW_DEGRADE_THRESHOLD consecutive Stop blocks, degrade to WARN."""
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     verdicts = []
     for _ in range(5):
         r = router._dispatch_gates(_ctx("Stop"), state)
@@ -179,7 +266,7 @@ def test_escape_hatch_degrades_after_threshold(router):
 
 def test_escape_hatch_message_is_loud(router):
     """The degraded fire emits the loud, user-visible escape-hatch message."""
-    state = _armed_state(router)
+    state = _armed_polecat_state(router)
     result = None
     for _ in range(5):
         result = router._dispatch_gates(_ctx("Stop"), state)
@@ -188,8 +275,8 @@ def test_escape_hatch_message_is_loud(router):
 
 
 def test_deny_count_resets_on_next_turn(router):
-    """The escape-hatch deny budget resets each turn (UPS re-arm)."""
-    state = _armed_state(router)
+    """The escape-hatch deny budget resets each turn (UPS re-arm, polecat)."""
+    state = _armed_polecat_state(router)
     for _ in range(2):
         router._dispatch_gates(_ctx("Stop"), state)
     assert state.gates["rbg-review"].metrics.get("stop_deny_count") == 2
@@ -201,12 +288,17 @@ def test_deny_count_resets_on_next_turn(router):
 
 
 def test_rbg_review_defers_ida_without_breaking_it(router, monkeypatch):
-    """rbg-review DENY defers Ida (advisory) — Ida fires once rbg has cleared."""
+    """rbg-review DENY defers Ida (advisory) — Ida fires once rbg has cleared.
+
+    Ida is armed in ALL session types; rbg-review only fires for polecat/crew,
+    so we run this on a polecat session where both are armed.
+    """
     monkeypatch.setenv("IDA_GATE_MODE", "warn")
     _reinit_gates()
-    state = SessionState.create("rbg-test", client_type="claude")
+    state = _polecat_state()
     router._dispatch_gates(_ups(), state)
     assert state.gates["ida"].status == GateStatus.CLOSED
+    assert state.gates["rbg-review"].status == GateStatus.CLOSED
     # rbg-review denies first; ida is deferred (still CLOSED, not consumed).
     r = router._dispatch_gates(_ctx("Stop"), state)
     assert r.verdict == GateVerdict.DENY
@@ -214,4 +306,19 @@ def test_rbg_review_defers_ida_without_breaking_it(router, monkeypatch):
     # rbg runs -> clears; next Stop, ida fires its advisory and opens.
     router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-core:rbg"), state)
     router._dispatch_gates(_ctx("Stop"), state)
+    assert state.gates["ida"].status == GateStatus.OPEN
+
+
+def test_interactive_ida_still_fires_without_rbg_review(router, monkeypatch):
+    """Ida is NOT suppressed in interactive: rbg-review is inert, ida still fires."""
+    monkeypatch.setenv("IDA_GATE_MODE", "warn")
+    _reinit_gates()
+    state = _interactive_state()
+    router._dispatch_gates(_ups(), state)
+    assert state.gates["ida"].status == GateStatus.CLOSED
+    assert state.gates["rbg-review"].status == GateStatus.OPEN  # inert
+    r = router._dispatch_gates(_ctx("Stop"), state)
+    # rbg-review is OPEN/inert; ida fires its advisory (WARN) and opens.
+    assert r is not None
+    assert r.verdict == GateVerdict.WARN
     assert state.gates["ida"].status == GateStatus.OPEN

@@ -40,12 +40,16 @@ from lib.gate_types import (
 #   sentinel    — PreToolUse destructive-op safety block; protects the user's
 #                 environment, never advisory. Highest-stakes forcing function.
 #   enforcer    — periodic compliance self-check (PreToolUse threshold block).
-#   rbg-review  — per-turn axiom review must RUN before Stop (Stop DENY while
-#                 armed). Placed ahead of qa/handover/ida so its DENY + rbg-
-#                 dispatch instruction is the one delivered first; once rbg has
-#                 run for the turn the gate clears and the later Stop gates take
-#                 over on the next Stop. Serialises rbg-review -> qa/handover ->
-#                 ida cleanly and never masks Ida (Ida re-arms per turn).
+#   rbg-review  — end-of-session rbg axiom audit, scoped to task-bound
+#                 (polecat/crew) sessions only. Armed CLOSED for polecat/crew,
+#                 OPEN (inert) for ad hoc interactive — so interactive users do
+#                 NOT eat a per-turn rbg delay. The enforcer every-N cadence is
+#                 the in-session mechanism; this gate adds only the final
+#                 backstop before a task-bound session exits. Placed ahead of
+#                 qa/handover/ida so its DENY + rbg-dispatch instruction is the
+#                 one delivered first; once rbg has run the gate clears and the
+#                 later Stop gates take over. Serialises rbg-review ->
+#                 qa/handover -> ida cleanly and never masks Ida.
 #   qa          — verification-before-exit (Stop); ahead of handover so a missing
 #                 verifier surfaces before the handover reminder.
 #   handover    — structured-handover-before-exit (Stop): prevents work loss.
@@ -144,30 +148,39 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- RBG-review (per-turn axiom review must RUN before Stop) -----------
-    # Directive (Nic, sessions Jun13-23, verify-before-assert escalation):
-    # the rbg axiom review must RUN before the Stop event can pass, on EVERY
-    # interactive turn (guaranteed coverage — not sampled / scoped down).
+    # --- RBG-review (end-of-session rbg audit, task-bound sessions only) ---
+    # Directive (Nic, 2026-06-24, epic-f490bb11 — rework of the original
+    # block-every-stop #1928): the heavy independent rbg axiom audit is a
+    # Tier-2 backstop that must fire ONCE before a TASK-BOUND (polecat/crew)
+    # session exits — NOT on every armed Stop, and NOT in ad hoc interactive
+    # discussions where the user would notice the per-turn rbg delay. The
+    # enforcer every-N cadence (sentinel/enforcer gate, left untouched) remains
+    # the in-session mechanism; this gate adds only the final exit backstop.
     #
-    # Lifecycle (arm -> block -> clear):
-    #   * ARM: starts CLOSED (armed from session start, like ida) and re-arms
-    #     CLOSED on every real UserPromptSubmit. (Task-notification UPS events
-    #     never reach gate dispatch — the router suppresses them upstream — so
-    #     only genuine user turns arm the gate.) Slash-command turns are NOT
-    #     excluded: Nic wants coverage on ALL interactive turns.
-    #   * BLOCK: while CLOSED, the Stop policy DENIES (blocks the stop) and
+    # SCOPING (per-surface, mirrors the handover gate):
+    #   * polecat / crew  -> armed CLOSED from session start; re-arms CLOSED on
+    #     each UserPromptSubmit, so whenever the autonomous session attempts its
+    #     Stop (its exit) the gate is armed and forces a final rbg audit.
+    #   * ad hoc interactive -> starts OPEN (inert) and NEVER re-arms (the UPS
+    #     re-arm trigger is session_type_filtered to polecat/crew). The Stop
+    #     policy never fires, so interactive users eat no per-turn rbg delay.
+    #
+    # Lifecycle (arm -> block -> clear), polecat/crew only:
+    #   * BLOCK: while CLOSED, the Stop policy DENIES (blocks the exit) and
     #     injects the rbg-dispatch instruction so the agent actually runs rbg.
-    #     The TRIGGER is structural (Stop event + armed flag) — NOT a content
-    #     sniff. The qualitative judgment ("did this turn comply?") is rbg's.
+    #     The TRIGGER is structural (Stop event + armed flag + session type) —
+    #     NOT a content sniff. The qualitative judgment ("did this session
+    #     comply?") is rbg's.
     #   * CLEAR: when the rbg subagent runs (SubagentStart/Stop/PostToolUse with
     #     subagent_type ~ rbg), the gate OPENS, resets the escape-hatch deny
-    #     counter, and latches sticky_until UserPromptSubmit so the agent can
-    #     act on rbg's findings (further edits) without re-blocking THIS turn.
+    #     counter, and latches sticky_until UserPromptSubmit so the rbg
+    #     discharge AND any follow-up edits do not re-block / re-arm THIS turn
+    #     (gate-discharge re-trigger invariant — the rbg run must not loop).
     #
     # NOTE — deliberately NO fire-once "open on first Stop" trigger (unlike
     # qa/handover/ida). Those gates open on the first Stop so a retried Stop in
     # the same turn passes; that is fine for a block-once advisory but WRONG
-    # here, because it would let the second Stop pass WITHOUT rbg having run.
+    # here, because it would let the exit Stop pass WITHOUT rbg having run.
     # The gate stays CLOSED across repeated Stops until rbg actually runs.
     #
     # ESCAPE-HATCH (loud, not silent): the engine degrades DENY -> WARN-and-
@@ -179,8 +192,16 @@ GATE_CONFIGS = [
     # a second, independent net.
     GateConfig(
         name="rbg-review",
-        description="Requires the rbg axiom review to RUN before Stop (per turn).",
-        initial_status=GateStatus.CLOSED,  # Armed from session start
+        description="Final rbg axiom audit before a task-bound session exits.",
+        # Ad hoc interactive sessions start OPEN (inert — no per-turn rbg delay).
+        # Polecat/crew (task-bound, autonomous) start CLOSED (armed) so the final
+        # exit Stop forces an rbg audit. Mirrors the handover gate's per-surface
+        # posture.
+        initial_status=GateStatus.OPEN,
+        initial_status_by_session_type={
+            "polecat": GateStatus.CLOSED,
+            "crew": GateStatus.CLOSED,
+        },
         stop_deny_downgrade_threshold=RBG_REVIEW_DEGRADE_THRESHOLD,
         stop_deny_degraded_message_key="rbg_review.degraded",
         triggers=[
@@ -201,15 +222,17 @@ GATE_CONFIGS = [
                     sticky_until=["UserPromptSubmit"],
                 ),
             ),
-            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle.
-            # The engine unsticks (sticky_until includes UPS) BEFORE this
-            # trigger evaluates, so the transition to CLOSED proceeds. Resets
-            # the escape-hatch counter so each turn gets a fresh deny budget.
-            # NOT excluding slash-command turns: guaranteed coverage on ALL
-            # interactive turns per the directive.
+            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle,
+            # POLECAT/CREW ONLY. The engine unsticks (sticky_until includes UPS)
+            # BEFORE this trigger evaluates, so the transition to CLOSED
+            # proceeds. Resets the escape-hatch counter so each turn gets a
+            # fresh deny budget. Ad hoc interactive sessions are NOT re-armed
+            # here (session_type_filter) — they stay OPEN and never eat a
+            # per-turn rbg delay; only task-bound sessions get the exit backstop.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
+                    session_type_filter=["polecat", "crew"],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,

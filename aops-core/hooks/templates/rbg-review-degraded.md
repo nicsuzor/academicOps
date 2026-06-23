@@ -10,4 +10,4 @@ description: |
   normal bypass. Variables: {threshold} — the consecutive-block count reached.
 ---
 
-⚠ RBG-REVIEW ESCAPE-HATCH: the axiom-review gate blocked Stop {threshold} times this turn without rbg returning a verdict. Degrading to WARN-and-allow so a broken rbg dispatch cannot permanently trap the session. This is a DEGRADED exit — the turn was NOT axiom-reviewed. If you see this repeatedly, rbg dispatch is broken; flag it.
+⚠ RBG-REVIEW ESCAPE-HATCH: the final axiom-audit gate blocked exit {threshold} times without rbg returning a verdict. Degrading to WARN-and-allow so a broken rbg dispatch cannot permanently trap the session. This is a DEGRADED exit — the session was NOT axiom-audited. If you see this repeatedly, rbg dispatch is broken; flag it.

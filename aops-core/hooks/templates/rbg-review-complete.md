@@ -3,8 +3,8 @@ name: rbg-review-complete
 title: RBG Review Complete
 category: template
 description: |
-  Status message when the rbg axiom review has run for the turn and the
-  rbg-review gate has cleared.
+  Status message when the final rbg axiom audit has run and the rbg-review
+  gate has cleared (the task-bound session may now exit).
 ---
 
-⚖ Axiom review complete — rbg ran for this turn.
+⚖ Final axiom audit complete — rbg ran for this session.
