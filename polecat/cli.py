@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import uuid
 from datetime import UTC, datetime
@@ -967,6 +968,7 @@ class DockerCmd(NamedTuple):
     cmd: list[str]
     staging_dir: Path | None
     workspace_dir: Path | None = None
+    env_file: Path | None = None
 
 
 class DockerSock(NamedTuple):
@@ -1556,8 +1558,26 @@ def _build_docker_cmd(
     # GIT_TERMINAL_PROMPT=0 isolation literals.
     # Empty source values are skipped (closes the empty-credential 401 leak).
     conf_forwards = get_container_env_forwards(env)
-    for key, val in conf_forwards.items():
-        cmd.extend(["-e", f"{key}={val}"])
+    _env_file_path: Path | None = None
+    if conf_forwards:
+        # Write secrets to a mode-0600 tmpfile instead of putting values on argv
+        # (argv is world-visible via ps/proc; tmpfile is owner-readable only).
+        # The file is consumed by docker before the container process starts;
+        # _run_docker_container unlinks it as soon as the container is running.
+        # mkstemp already yields a 0600 fd — no umask dance needed.
+        _fd, _env_path_str = tempfile.mkstemp(prefix="polecat-env-", suffix=".env")
+        _env_file_path = Path(_env_path_str)
+        try:
+            with os.fdopen(_fd, "w") as _env_fp:
+                for key, val in conf_forwards.items():
+                    _env_fp.write(f"{key}={val}\n")
+        except Exception:
+            _env_file_path.unlink(missing_ok=True)
+            _env_file_path = None
+            raise
+        cmd.extend(["--env-file", str(_env_file_path)])
+        if tmp_files is not None:
+            tmp_files.append(_env_file_path)
 
     # Project-specific mounts and env (from polecat.yaml mounts: block).
     if project_slug and manager:
@@ -1745,7 +1765,9 @@ def _build_docker_cmd(
 
     cmd.append(image)
     cmd.extend(agent_cmd)
-    return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
+    return DockerCmd(
+        cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir, env_file=_env_file_path
+    )
 
 
 def _pkb_termination_watchdog(
@@ -1925,6 +1947,37 @@ def _run_docker_container(
             )
             _watchdog_thread.start()
 
+        # Unlink the --env-file as soon as the container is running.
+        # Docker reads it during create (before the container process starts),
+        # so removing it once the container appears in docker ps is safe.
+        _env_unlink_thread = None
+        if docker_cmd.env_file is not None:
+            _env_file_to_unlink = docker_cmd.env_file
+
+            def _unlink_env_after_spawn() -> None:
+                deadline = time.monotonic() + 30.0
+                while time.monotonic() < deadline:
+                    try:
+                        r = subprocess.run(
+                            ["docker", "ps", "-q", "-f", f"name={container_name}"],
+                            capture_output=True,
+                            text=True,
+                            timeout=5.0,
+                        )
+                    except subprocess.TimeoutExpired:
+                        continue
+                    if r.stdout.strip():
+                        break
+                    time.sleep(0.2)
+                _env_file_to_unlink.unlink(missing_ok=True)
+
+            _env_unlink_thread = threading.Thread(
+                target=_unlink_env_after_spawn,
+                daemon=True,
+                name="polecat-env-unlink",
+            )
+            _env_unlink_thread.start()
+
         try:
             _result = subprocess.run(
                 cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
@@ -1956,6 +2009,8 @@ def _run_docker_container(
                 _watchdog_cancel.set()
             if _watchdog_thread is not None:
                 _watchdog_thread.join(timeout=5.0)
+            if _env_unlink_thread is not None:
+                _env_unlink_thread.join(timeout=35.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
@@ -1967,6 +2022,10 @@ def _run_docker_container(
         print(f"docker create failed: {result.stderr}", file=sys.stderr)
         return result
     container_id = result.stdout.strip()
+
+    # docker create has consumed the --env-file; unlink it now (remote daemon path).
+    if docker_cmd.env_file is not None:
+        docker_cmd.env_file.unlink(missing_ok=True)
 
     try:
         # Copy workspace into the container and fix ownership.
