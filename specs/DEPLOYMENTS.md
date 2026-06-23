@@ -32,7 +32,7 @@ for what each tier installs and how.
 | Repo                  | Tier  | Workflows                                                                                       | Agents                                      |
 | --------------------- | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | nicsuzor/academicOps  | Full  | pr-pipeline (incl. in-pipeline `admit` gate), agent-enforcer, agent-qa, agent-mechanic, claude  | enforcer, qa, mechanic                      |
-| qut-dmrc/buttermilk   | Full  | pr-review-pipeline, agent-merge-prep, agent-qa, agent-strategic-review, claude, merge-prep-cron | custodiet, gatekeeper, qa, strategic-review |
+| qut-dmrc/buttermilk   | Full  | pr-pipeline, admit-on-review, agent-enforcer, agent-qa, agent-mechanic, agent-pre-admission-responder, lint, claude | enforcer, qa, mechanic, pre-admission-responder |
 | nicsuzor/mem          | Full  | pr-pipeline, agent-enforcer, agent-merge-prep, merge-prep-cron                                  | pr-reviewer, enforcer, custodiet, qa        |
 | nicsuzor/brain        | Light | pr-review, claude                                                                               | —                                           |
 | nicsuzor/explorations | Light | pr-review, claude                                                                               | —                                           |
