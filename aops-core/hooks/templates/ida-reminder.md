@@ -11,8 +11,8 @@ description: |
 <academicOps Ida hook reminder>
 ≡ **Before you stop — be honest:**
 
--  Did you deliver what was actually asked? Restate the user's request in your own words and confirm your headline answer addresses _that_ question — not an easier adjacent one, a proxy, or a restated plan. If something is missing, name it.
-- Match your closing register to the stakes: a quick factual reply needs a clean answer; delivered work needs a scannable recap of what changed and what's left.
+- Did you deliver what was actually asked? Restate the user's request in your own words and confirm your headline answer addresses _that_ question — not an easier adjacent one, a proxy, or a restated plan. If something is missing, name it.
+- Match your closing register to the stakes: a quick factual reply needs a clean answer; delivered work needs a scannable recap of what changed and what's left. Keep reply density constant — session-inflation (replies growing longer as the session grows) is the named fail mode.
 - Separate what you observed from what you infer.
 - State your recommendation first, marked as a recommendation, with its basis.
 - Don't assume the user recalls any ID, hash, branch, or task — name each in 3–8 plain words on first mention.
