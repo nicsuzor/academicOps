@@ -66,6 +66,11 @@ class TestAbsentSkipped:
         # Nothing resolves → empty dict, no raise.
         assert resolve_forward_values(["ABSENT"], source_env={}) == {}
 
+    def test_aliased_name_all_absent_omitted_no_raise(self):
+        # An aliased name whose alias sources AND direct name are all absent
+        # is omitted — the "never raise" claim covers the aliased case too.
+        assert resolve_forward_values(["CLAUDE_CODE_OAUTH_TOKEN"], source_env={}) == {}
+
 
 class TestForwardSourceAliases:
     """Source-name indirection: the Claude OAuth token is sourced from
