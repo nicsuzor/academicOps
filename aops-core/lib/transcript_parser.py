@@ -1271,11 +1271,19 @@ def reflection_to_insights(
     # Timeline events for path reconstruction (optional)
     if timeline_events:
         result["timeline_events"] = timeline_events
-        # Pre-compute user prompt count for downstream consumers
-        # (daily skill engagement classification)
-        result["user_prompt_count"] = sum(
-            1 for e in timeline_events if e.get("type") == "user_prompt"
-        )
+        # user_prompts: cleaned, ordered set of genuinely human-typed prompts
+        # (system_injected=False).  Structured replacement for the stale
+        # user-prompts-*.txt extracts (aops-519f8e11).
+        result["user_prompts"] = [
+            {
+                "timestamp": e.get("timestamp"),
+                "text": e.get("description") or "",
+            }  # allow-fallback: description optional; "" = no text
+            for e in timeline_events
+            if e.get("type") == "user_prompt" and not e.get("system_injected")
+        ]
+        # Count only genuine user turns (system_injected=False)
+        result["user_prompt_count"] = len(result["user_prompts"])
         # Elevate PR URL to root if found
         for event in timeline_events:
             if event.get("type") == "pr_create" and event.get("pr_url"):
@@ -1452,6 +1460,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     "timestamp": ts,
                     "type": "user_prompt",
                     "description": user_msg,
+                    "system_injected": _is_system_injected_prompt(user_msg),
                 }
             )
 
@@ -1559,6 +1568,20 @@ _WORKER_PREAMBLE_MARKERS = (
     "Your task has already been claimed",
 )
 
+# Raw-text prefixes that mark machine-injected user_prompt turns.  These are
+# turns that Claude Code records as "user" role but were authored by the
+# harness/framework, not the human at the keyboard.  Used by
+# _is_system_injected_prompt to set the system_injected flag on timeline events.
+_SYSTEM_INJECTED_PREFIXES: tuple[str, ...] = (
+    "<loaded_context",  # harness-injected context blocks
+    "**Invoked",  # skill-body invocations
+    "**Purpose**",  # skill-body preamble
+    "# /",  # skill-body heading (e.g. "# /learn\n")
+    "### /",  # skill-body heading variant
+    "You are a polecat worker",
+    "You are a pre-dispatch",
+)
+
 
 def _strip_worker_preamble(text: str) -> str:
     """If ``text`` is a standard worker dispatch, return the task spec onward.
@@ -1573,6 +1596,29 @@ def _strip_worker_preamble(text: str) -> str:
     if heading:
         return text[heading.start() :].strip()
     return text
+
+
+def _is_system_injected_prompt(text: str) -> bool:
+    """Return True when a user_prompt turn was machine-injected, not human-typed.
+
+    Checks purely syntactic signals — no NLP.  A turn is system_injected when:
+    - it is empty or collapses to empty after control-envelope stripping, OR
+    - it starts with a known machine-authored prefix (harness envelopes, worker
+      dispatch, skill bodies, loaded-context blocks).
+
+    A human can type ``/learn`` mid-session and that remains user_typed — only
+    the injected *skill body* (large, formatted, starts with ``**Invoked`` or
+    ``**Purpose**``) is flagged.
+    """
+    if not text:
+        return True
+    stripped = text.strip()
+    for prefix in _SYSTEM_INJECTED_PREFIXES:
+        if stripped.startswith(prefix):
+            return True
+    # Falls through to envelope-stripping: if nothing substantive remains the
+    # turn was purely a harness injection (e.g. bare <task-notification> ping).
+    return not bool(clean_prompt_text(stripped))
 
 
 def clean_prompt_text(text: str) -> str:
