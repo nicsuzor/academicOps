@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from lib.transcript_parser import (
     ConversationTurn,
     _is_system_injected_prompt,
+    build_user_prompts,
     extract_timeline_events,
 )
 
@@ -177,13 +178,9 @@ class TestUserPromptsArray:
         )
 
     def _user_prompts_from_turns(self, turns: list) -> list[dict]:
-        """Compute user_prompts the same way reflection_to_insights does."""
+        """Build user_prompts via the canonical build_user_prompts function."""
         events = extract_timeline_events(turns, "abcd1234")
-        return [
-            {"timestamp": e.get("timestamp"), "text": e.get("description", "")}
-            for e in events
-            if e.get("type") == "user_prompt" and not e.get("system_injected")
-        ]
+        return build_user_prompts(events)
 
     def test_only_human_prompts_in_user_prompts(self) -> None:
         notification = (
