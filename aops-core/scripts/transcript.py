@@ -467,6 +467,11 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     if new.get("pull_requests") and not existing.get("pull_requests"):
         return "pull_requests resolved"
 
+    # Backfill the cleaned user_prompts array onto summaries that predate
+    # aops-519f8e11 (system_injected flag + user_prompts field).
+    if new.get("user_prompts") is not None and existing.get("user_prompts") is None:
+        return "user_prompts appeared"
+
     return None
 
 
@@ -642,6 +647,17 @@ def _save_minimal_token_summary(
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
+        # user_prompts: cleaned, ordered set of genuinely human-typed prompts
+        # (system_injected=False).  Structured replacement for the stale
+        # user-prompts-*.txt extracts (aops-519f8e11).
+        insights["user_prompts"] = [
+            {
+                "timestamp": e.get("timestamp"),
+                "text": e.get("description") or "",
+            }  # allow-fallback: description optional; "" = no text
+            for e in timeline_events
+            if e.get("type") == "user_prompt" and not e.get("system_injected")
+        ]
         # Capture the user's initial intent so the dashboard can orient even on
         # no-reflection / still-running sessions (aops-efffc1f7).
         initial_prompt = extract_initial_prompt(timeline_events)
