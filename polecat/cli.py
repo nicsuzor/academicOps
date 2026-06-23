@@ -1957,11 +1957,15 @@ def _run_docker_container(
             def _unlink_env_after_spawn() -> None:
                 deadline = time.monotonic() + 30.0
                 while time.monotonic() < deadline:
-                    r = subprocess.run(
-                        ["docker", "ps", "-q", "-f", f"name={container_name}"],
-                        capture_output=True,
-                        text=True,
-                    )
+                    try:
+                        r = subprocess.run(
+                            ["docker", "ps", "-q", "-f", f"name={container_name}"],
+                            capture_output=True,
+                            text=True,
+                            timeout=5.0,
+                        )
+                    except subprocess.TimeoutExpired:
+                        continue
                     if r.stdout.strip():
                         break
                     time.sleep(0.2)
