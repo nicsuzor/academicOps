@@ -206,6 +206,13 @@ idea; make it mergeable._ The maintainer reads the triage statuses, the agents' 
 and pauli's alignment verdict (if they ran `/strategic-review` by hand), then Approves
 (admit) or requests changes / leaves it.
 
+> **PR timeline readability.** On a PASS verdict, enforcer and qa post a **marker-only**
+> review body (`## Enforcer Review — clean` / `# QA Verification — VERIFIED`) with no
+> reasoning prose — the PR conversation stays uncluttered. The human-readable summary moves
+> into the commit-status `description` (clickable from the PR's status row). On a REVISE
+> verdict, the full reasoning remains in the review body so the mechanic and the maintainer
+> can read what must change. See §4.2 for the full contract.
+
 This is handled by a small event-driven workflow, **`admit-on-review.yml`**
 (`on: pull_request_review: types: [submitted]`). It has **two paths** on review submission:
 
@@ -417,7 +424,9 @@ the mechanic's trailer is `Mechanic-By:`). Justification for the value and the m
 - **Label-free, comment-parsing-free, transparent.** The count is derived from immutable
   git history (`git log --grep`), visible to any reader, with no external state to query —
   the same robustness argument that retired v1's comment-counted cascade limit (PR 582
-  post-mortem).
+  post-mortem). The same principle governs PASS review bodies: no prose is posted in a
+  PASS review body (§4.2 PASS body contract) — the reasoning lives in the commit-status
+  `description`, which is compact, clickable, and carries no prose to parse.
 - **Calibrate after real PRs.** 5 is provisional; review actual `Mechanic-By:` counts over
   the first ~20 admitted PRs and adjust. Too low → false escalations; too high → defeats the
   purpose.
@@ -710,6 +719,22 @@ The status name **equals** the agent name with `-status`:
 Skip is a **success outcome with descriptive text** — never `exit 1`. Examples: `success` /
 "Skipped: HEAD SHA already reviewed" (§10); `failure` / "2 axiom violations — see review"
 (real verdict).
+
+**PASS review body contract (readability).** On a PASS (APPROVED) verdict, the agent posts a
+**marker-only** review body — no reasoning block. On a REVISE (CHANGES_REQUESTED) verdict,
+the full reasoning lives in the review body (the mechanic consumes it). The two formats:
+
+| Path              | Review body                                                                      | Status `description`                                                     |
+| ----------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| APPROVE           | `## Enforcer Review — clean` / `# QA Verification — VERIFIED` (marker line only) | `"Axiom-clean"` / `"3/3 dimensions pass"`                                |
+| CHANGES_REQUESTED | Full reasoning + violation list (mechanic reads this)                            | `"Violations found — see review"` / `"Verification failed — see review"` |
+
+The marker token (`## Enforcer Review` / `# QA Verification`) MUST remain in every body —
+the SHA-skip check and dismiss step grep `.body` for it; an empty/missing body silently
+breaks idempotency. The reasoning surface for a PASS is the commit-status `description`;
+do not duplicate it in the review body. No consumer parses PASS review bodies: gating reads
+review `.state` (APPROVED / CHANGES_REQUESTED) and the mechanic only reads CHANGES_REQUESTED
+bodies.
 
 ### 4.3 One row in `specs/ENFORCEMENT-MAP.md`
 

@@ -73,7 +73,12 @@ File your verdict using `gh pr review`. Use `--approve` when no violations; `--r
 
 - **`gh pr review` prints nothing on success.** Empty output means it WORKED — do not treat silence as failure and re-run it. If you must confirm, re-list reviews (step 4) and look for your verdict; never blind-post a second time.
 - Always post a review to record your verdict, even if no violations are found — use `--approve` for APPROVE, `--request-changes` otherwise. The workflow reads the review **state** (APPROVED / CHANGES_REQUESTED), not any parsed text.
-- Start every review body with `## Enforcer Review` so it can be found for future dismissal.
+- **APPROVE path — marker line only (no reasoning block):**
+  ```
+  gh pr review "$PR_NUMBER" --approve --body "## Enforcer Review — clean"
+  ```
+  The `## Enforcer Review` token MUST appear in every review body (both paths) — the SHA-skip check and the dismiss step grep `.body` for it. NEVER post a blank body. The reasoning surface for a PASS is the `enforcer-status` commit-status `description` (e.g. "Axiom-clean"); do not add a reasoning block here.
+- **CHANGES_REQUESTED path — full reasoning in the body (unchanged):** Start the body with `## Enforcer Review` then include the violation list, axiom IDs, and mechanic-actionable fix instructions. The mechanic reads this prose to know what to fix.
 - The workflow also reconciles to a single standing verdict per SHA as a safety net, but you should still post exactly once — the safety net is not licence to double-post.
 
 If you push fixes, use the commit trailer:

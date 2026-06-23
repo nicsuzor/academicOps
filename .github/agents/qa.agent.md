@@ -119,16 +119,10 @@ The agent that wrote this code may have unconsciously substituted easier-to-veri
 **If everything verifies** → approve:
 
 ```
-gh pr review "$PR_NUMBER" --approve --body "# QA Verification
-
-**Verdict**: VERIFIED
-
-- Output Quality: PASS
-- Process Compliance: PASS
-- Semantic Correctness: PASS
-
-[Brief evidence summary]"
+gh pr review "$PR_NUMBER" --approve --body "# QA Verification — VERIFIED"
 ```
+
+The `# QA Verification` token MUST appear in the body — the SHA-skip check greps `.body` for it. NEVER post a blank body. The reasoning surface for a PASS is the `qa-status` commit-status `description` (e.g. "3/3 dimensions pass"); do not add a verdict block here.
 
 **If issues found** → request changes:
 
