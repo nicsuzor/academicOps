@@ -12,6 +12,17 @@ Python (AST):
   3. os.environ.get(KEY, "non-empty-literal")      — env-var literal default
   4. os.getenv(KEY, "non-empty-literal")           — env-var literal default
   5. os.environ.setdefault(KEY, "literal")         — env-var literal default
+  6. {**a, **b} (2+ ** unpackings)                 — dict-merge backfill: one
+                                                     source silently backfills
+                                                     another (#1918).
+  7. except ...: return {} / "" / [] / None        — swallow-to-empty: a failure
+                                                     is swallowed into an empty
+                                                     value a caller will backfill
+                                                     (#1918).
+  8. a.get(x) or b.get(x) / a.get(x) or b[x]       — get-or-get chain: the right
+                                                     operand is a DIFFERENT source
+                                                     lookup, masking the first
+                                                     source's value (#1918).
 
 Shell (regex on .sh files):
   6. ${VAR:-non-empty-literal}                     — env-var literal default
@@ -166,6 +177,82 @@ class FallbackDetector(ast.NodeVisitor):
         return False
 
     @staticmethod
+    def _is_empty_return_value(node: ast.expr | None) -> str | None:
+        """If `node` is an empty literal eligible for the swallow-to-empty
+        check (``{}``, ``""``, ``[]`` or ``None`` / bare return), return a short
+        rendering of it; else return None.
+
+        Bare `return` (node is None) and `return None` both count: they swallow
+        a failure into a None that a caller will treat as 'absent' and backfill."""
+        if node is None:
+            return "None"
+        if isinstance(node, ast.Constant):
+            if node.value == "":
+                return '""'
+            if node.value is None:
+                return "None"
+            return None
+        if isinstance(node, ast.List) and len(node.elts) == 0:
+            return "[]"
+        if isinstance(node, ast.Dict) and len(node.keys) == 0:
+            return "{}"
+        return None
+
+    @staticmethod
+    def _handler_returns(body: list[ast.stmt]):
+        """Yield `return` statements that belong to an except handler body:
+        descend into plain control-flow blocks (if/for/while/with/try) but stop
+        at nested function/class defs (their returns are unrelated) and at nested
+        except handlers (each reports its own returns — no double-counting)."""
+        stack = list(body)
+        while stack:
+            stmt = stack.pop()
+            if isinstance(stmt, ast.Return):
+                yield stmt
+                continue
+            if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                continue
+            if isinstance(stmt, ast.Try):
+                stack.extend(stmt.body)
+                stack.extend(stmt.orelse)
+                stack.extend(stmt.finalbody)
+                # NB: stmt.handlers are intentionally skipped — each nested
+                # except handler is visited on its own.
+                continue
+            for child in ast.iter_child_nodes(stmt):
+                if isinstance(child, ast.stmt):
+                    stack.append(child)
+        # (order does not matter — violations are sorted/counted downstream)
+
+    @staticmethod
+    def _is_source_lookup(node: ast.expr) -> bool:
+        """True if `node` reads a value out of some source: ``x.get(...)`` or a
+        subscript ``x[...]``. Used by the get-or-get chain check to tell a
+        value-masking cross-source fallback (``a.get(k) or b.get(k)``) apart
+        from an empty-literal fallback (already covered by visit_BoolOp)."""
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "get"
+            and len(node.args) >= 1
+        ):
+            return True
+        if isinstance(node, ast.Subscript):
+            return True
+        return False
+
+    @staticmethod
+    def _lookup_source_name(node: ast.expr) -> str | None:
+        """Best-effort name of the object a source lookup reads FROM, so we can
+        tell whether two lookups hit DIFFERENT sources. ``a.get(k)`` -> 'a';
+        ``a[k]`` -> 'a'; ``self.cfg.get(k)`` -> 'self.cfg'."""
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            return _qualified_name(node.func.value)
+        if isinstance(node, ast.Subscript):
+            return _qualified_name(node.value)
+        return None
+
+    @staticmethod
     def _is_nonempty_literal(node: ast.expr) -> bool:
         """A literal with a non-empty *primitive* value: str, int, float, bool.
         We deliberately do *not* flag None (signals 'unset' explicitly), nor
@@ -216,6 +303,83 @@ class FallbackDetector(ast.NodeVisitor):
                     f"... or {ast.unparse(last)}",
                     "Silent fallback chain. Raise if value required.",
                 )
+            else:
+                # Pattern 8: get-or-get chain — `a.get(x) or b.get(x)` /
+                # `a.get(x) or b[x]`. We flag each adjacent (left `or` right)
+                # pair where BOTH sides are source lookups AND they read from
+                # DIFFERENT sources: that masks the first source's value with a
+                # second source's value (the value-masking cross-source fallback
+                # the empty-literal check above is blind to). Same-source pairs
+                # (`d.get(a) or d.get(b)`) are NOT flagged — that is ordinary
+                # short-circuit selection within one source, not a fallback.
+                for left, right in zip(node.values, node.values[1:], strict=False):
+                    if self._is_source_lookup(left) and self._is_source_lookup(right):
+                        lname = self._lookup_source_name(left)
+                        rname = self._lookup_source_name(right)
+                        if lname is not None and rname is not None and lname != rname:
+                            self._record(
+                                node,
+                                f"{ast.unparse(left)} or {ast.unparse(right)}",
+                                "Cross-source value-masking fallback "
+                                f"(reads {lname!r}, then silently falls back to "
+                                f"{rname!r}). Raise if the value is required, or "
+                                "annotate `# allow-fallback: <reason>`.",
+                            )
+                            break
+        self.generic_visit(node)
+
+    def visit_Dict(self, node: ast.Dict) -> None:
+        # Pattern 6: dict-merge backfill — `{**a, **b}` with 2+ `**` unpackings.
+        # In an ast.Dict, a `**x` unpacking is a key of None. Two or more such
+        # unpackings means one source silently backfills another. We are
+        # judicious (2+ unpackings, not a single `{**a, "k": v}` add) but per A8
+        # surfacing these for explicit `# allow-fallback:` annotation is correct.
+        unpack_count = sum(1 for k in node.keys if k is None)
+        if unpack_count >= 2:
+            self._record(
+                node,
+                "{**a, **b}",
+                "Dict-merge backfill: merging 2+ sources silently lets one "
+                "backfill another. Make the precedence/required source explicit "
+                "and raise if absent, or annotate `# allow-fallback: <reason>`.",
+            )
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        # Pattern 7: swallow-to-empty — an except handler whose body returns an
+        # empty literal (`return {}` / `return ""` / `return []` / `return None`
+        # / bare `return`). The failure is swallowed into an empty value a caller
+        # will treat as 'absent' and backfill. We scan only `return` statements
+        # in the handler body (including nested ones), since that is the shape
+        # that leaks the empty value back to the caller. We collect returns that
+        # belong to THIS handler — descending into plain blocks (if/for/with/try)
+        # but NOT into nested functions/classes (their returns are unrelated) nor
+        # nested except handlers (each handler reports its own returns, so we
+        # avoid double-counting).
+        for stmt in self._handler_returns(node.body):
+            rendered = self._is_empty_return_value(stmt.value)
+            if rendered is None:
+                continue
+            # Record against the return statement so the allow-fallback
+            # annotation can sit on the `return ...` line itself (or, for a
+            # bare `return` / `return None`, anywhere on that statement).
+            span = (stmt.lineno, getattr(stmt, "end_lineno", None) or stmt.lineno)
+            if _line_allowed(self.source_lines, span[0], span[1]):
+                continue
+            self.violations.append(
+                {
+                    "file": str(self.filepath),
+                    "line": stmt.lineno,
+                    "col": stmt.col_offset,
+                    "pattern": f"except: return {rendered}",
+                    "message": (
+                        "Swallow-to-empty: an exception handler returns an empty "
+                        "value, hiding the failure from the caller (which will "
+                        "backfill it). Re-raise, return a loud sentinel, or "
+                        "annotate `# allow-fallback: <reason>`."
+                    ),
+                }
+            )
         self.generic_visit(node)
 
 
