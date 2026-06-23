@@ -7,7 +7,7 @@ launching agent's own session env.
 **Two-tier load strategy (sops SSoT + ~/.env.local fallback):**
 
 1. ``aops-secrets.env`` — the sops/age-encrypted SSoT in the dotfiles repo
-   (``~/dotfiles/containers/nicwin/aops-secrets.env``).  Decrypted in-memory by
+   (``~/dotfiles/secrets/aops-secrets.env``).  Decrypted in-memory by
    calling ``sops -d``; plaintext never materialises on disk.  This is the
    authoritative single source for all secret classes once bootstrapped.
 
@@ -40,7 +40,7 @@ from pathlib import Path
 _DEFAULT_ENV_LOCAL = Path.home() / ".env.local"
 
 # Default sops/age-encrypted SSoT path. Override via $AOPS_SOPS_SECRETS_FILE.
-_DEFAULT_SOPS_SECRETS = Path.home() / "dotfiles" / "containers" / "nicwin" / "aops-secrets.env"
+_DEFAULT_SOPS_SECRETS = Path.home() / "dotfiles" / "secrets" / "aops-secrets.env"
 
 # Source-name indirection for forwarded secrets (aops-b368109a).
 #
@@ -125,7 +125,7 @@ def _load_sops_secrets(sops_file: Path | str | None = None) -> dict[str, str]:
 
     Args:
         sops_file: Override path. Defaults to ``$AOPS_SOPS_SECRETS_FILE`` or
-            ``~/dotfiles/containers/nicwin/aops-secrets.env``.
+            ``~/dotfiles/secrets/aops-secrets.env``.
 
     Returns:
         Dict of decrypted name→value pairs.
@@ -171,7 +171,7 @@ def load_host_secrets(
             ``$AOPS_HOST_ENV_FILE`` or ``~/.env.local``.
         sops_file: Override path for the sops SSoT. Defaults to
             ``$AOPS_SOPS_SECRETS_FILE`` or
-            ``~/dotfiles/containers/nicwin/aops-secrets.env``.
+            ``~/dotfiles/secrets/aops-secrets.env``.
 
     Returns:
         Dict of name→value pairs. sops SSoT wins on conflict.
