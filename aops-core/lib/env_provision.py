@@ -15,8 +15,8 @@ Design decisions (see PKB note-b5347f83):
   - OAuth tokens (CLAUDE_CODE_OAUTH_TOKEN / GEMINI_API_KEY) are HOLD-for-
     delegation on the host general-agent surface: they are NOT required for
     junior's own inference and are NOT persisted to CLAUDE_ENV_FILE. The
-    polecat launcher resolves them from ~/.env.local (lib/host_secrets), so we
-    do not check them here.
+    polecat launcher resolves them from the process env (lib/host_secrets), so
+    we do not check them here.
 """
 
 from __future__ import annotations
@@ -163,7 +163,7 @@ def validate_surface(env: dict[str, str] | None = None) -> ProvisionReport:
         else:
             lines.append(_fail(f"{name} is not set"))
     lines.append("")
-    lines.append(f"  {_BOLD}Fix:{_NC} add the missing export(s) to ~/.env.local, e.g.:")
+    lines.append(f"  {_BOLD}Fix:{_NC} export the missing var(s) in your environment, e.g.:")
     for name in missing:
         lines.append(f"      export {name}=...")
     lines.append("  Then start a new session. (Session continues; auth/PKB ops may fail.)")

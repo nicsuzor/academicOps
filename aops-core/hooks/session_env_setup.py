@@ -199,8 +199,8 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # these tokens. Do NOT persist them into CLAUDE_ENV_FILE — that would make
     # junior's own `claude`/`gemini` tool calls authenticate with the worker
     # tokens and leak them into junior's session env. The polecat launcher
-    # resolves these from the host secret store (~/.env.local via
-    # lib/host_secrets) at spawn, guided by polecat.yaml's container_env_forward
+    # resolves these from the PROCESS ENVIRONMENT (via lib/host_secrets) at
+    # spawn, guided by polecat.yaml's container_env_forward
     # whitelist — independent of this session's env. They remain in
     # agent-env-map.conf for the CONTAINER forwarding path only.
     persist.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
@@ -363,28 +363,16 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     # the session needed to fix a missing var; the block is the loud signal.
     #
     # The check reads the LIVE shell-visible env. The hook itself may inherit a
-    # launchd env that lacks shell-profile vars (e.g. AOPS_BOT_GH_TOKEN from
-    # ~/.zshenv), so we merge in any vars we just resolved/deferred to avoid a
-    # false-negative FAILURE for vars that WILL be present at shell-source time.
+    # launchd env that lacks shell-profile vars, so we merge in any vars we just
+    # resolved/deferred (``persist``) to avoid a false-negative FAILURE for vars
+    # that WILL be present at shell-source time. AOPS reads secrets from the
+    # process env ONLY — it does NOT read ~/.env.local, sops, or any file;
+    # populating the environment is the operator's responsibility (out of scope).
     provision_report = None
     try:
         from lib.env_provision import validate_surface
 
         provision_env = dict(os.environ)
-        # Launchd case: the hook inherits a minimal env (no shell-profile vars),
-        # but ~/.env.local is the authoritative secret store.  Read it here as a
-        # fallback so a token that IS present at tool-call time (sourced by the
-        # user's shell profile, tracked in ~/.env.local) doesn't produce a false
-        # FAILURE block in the provisioning check.
-        if not provision_env.get("AOPS_BOT_GH_TOKEN"):
-            try:
-                from lib.host_secrets import load_host_secrets
-
-                _host = load_host_secrets()
-                if _host.get("AOPS_BOT_GH_TOKEN"):
-                    provision_env["AOPS_BOT_GH_TOKEN"] = _host["AOPS_BOT_GH_TOKEN"]
-            except Exception:
-                pass
         provision_env.update(persist)
         provision_report = validate_surface(provision_env)
         messages.extend(provision_report.lines)
