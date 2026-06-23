@@ -345,3 +345,53 @@ class TestRender:
         assert up.abstract_title(t) == "o/r#7"
         # slug fallback when nothing else.
         assert up.abstract_title(_thread(self._start(), slug="my-slug")) == "my-slug"
+
+
+# --------------------------------------------------------------------------
+# File output: freshness header and secret redaction (aops-ec29df30).
+# --------------------------------------------------------------------------
+
+
+class TestFileOutput:
+    def test_prepare_file_output_has_generated_header(self):
+        lines = ["# User Prompt Timeline", "some content"]
+        result = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        assert result.startswith("<!-- generated: 2026-06-24T10:00:00+00:00 -->")
+
+    def test_prepare_file_output_includes_original_content(self):
+        lines = ["# Header", "body text"]
+        result = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        assert "# Header" in result
+        assert "body text" in result
+
+    def test_prepare_file_output_redacts_github_token(self):
+        lines = ["export GH_TOKEN=ghp_ABCDEFabcdefABCDEFabcdef123456"]
+        result = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        assert "ghp_" not in result
+        assert "[REDACTED]" in result
+
+    def test_prepare_file_output_redacts_anthropic_key(self):
+        lines = ["AOPS_CC_OAUTH_TOKEN=sk-ant-oat01-someverylongtokenvalue1234567"]
+        result = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        assert "sk-ant-" not in result
+        assert "[REDACTED]" in result
+
+    def test_prepare_file_output_does_not_redact_normal_text(self):
+        lines = ["Please fix the login flow", "and also the redaction pipeline"]
+        result = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        assert "Please fix the login flow" in result
+        assert "and also the redaction pipeline" in result
+
+    def test_prepare_file_output_ends_with_newline(self):
+        result = up._prepare_file_output(["line"], "2026-06-24T10:00:00+00:00")
+        assert result.endswith("\n")
+
+    def test_output_file_written_with_freshness_header(self, tmp_path):
+        """--output writes the file to disk with a generated header."""
+        output_file = tmp_path / "user-prompts-2026-06.txt"
+        lines = ["# User Prompt Timeline: Since 2026-06-01", "content"]
+        text = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
+        output_file.write_text(text, encoding="utf-8")
+        content = output_file.read_text()
+        assert content.startswith("<!-- generated: 2026-06-24T10:00:00+00:00 -->")
+        assert "# User Prompt Timeline" in content

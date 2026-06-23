@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
 # repo-sync-cron.sh - Periodic maintenance: transcripts, repo sync.
 #
-# Four functions, composable via CLI:
-#   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
-#   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
-#   do_transcript    - Generate recent session transcripts
-#   do_sync          - Sync all git repositories via polecat sync
-#   do_pr_state      - Dump raw PR state from tracked repos to $AOPS_SESSIONS/state/
+# Five functions, composable via CLI:
+#   do_cowork_ingest         - Normalize and sync Cowork audit logs into sessions repo
+#   do_gha_sync              - Sync claude-session artifacts from configured GHA repos
+#   do_transcript            - Generate recent session transcripts
+#   do_user_prompts_extract  - Regenerate current-month user-prompts-YYYY-MM.txt (hourly, with freshness header + secret redaction)
+#   do_sync                  - Sync all git repositories via polecat sync
+#   do_pr_state              - Dump raw PR state from tracked repos to $AOPS_SESSIONS/state/
 #
 # Note: Automated PR-state dumping for task-auto-close is handled here.
 # Consumers (like /daily) use the resulting artefact to close the loop.
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + sync + pr_state
-#   ./scripts/repo-sync-cron.sh cowork_ingest # Just Cowork audit log ingestion
-#   ./scripts/repo-sync-cron.sh gha_sync     # Just GHA artifact sync
-#   ./scripts/repo-sync-cron.sh transcript   # Just transcript
-#   ./scripts/repo-sync-cron.sh sync         # Just sync
-#   ./scripts/repo-sync-cron.sh pr_state     # Just PR state dump
+#   ./scripts/repo-sync-cron.sh                      # Full: cowork_ingest + gha_sync + transcript + user_prompts_extract + sync + pr_state
+#   ./scripts/repo-sync-cron.sh cowork_ingest         # Just Cowork audit log ingestion
+#   ./scripts/repo-sync-cron.sh gha_sync              # Just GHA artifact sync
+#   ./scripts/repo-sync-cron.sh transcript            # Just transcript
+#   ./scripts/repo-sync-cron.sh user_prompts_extract  # Just current-month user-prompts txt regeneration
+#   ./scripts/repo-sync-cron.sh sync                  # Just sync
+#   ./scripts/repo-sync-cron.sh pr_state              # Just PR state dump
 #   ./scripts/repo-sync-cron.sh gha_sync transcript sync # Specific combination
 #
 # Crontab suggested setup:
@@ -137,6 +139,33 @@ do_transcript() {
     fi
 }
 
+do_user_prompts_extract() {
+    # Regenerate the current month's user-prompts-YYYY-MM.txt extract from
+    # summaries JSON. The file carries a <!-- generated: ISO --> freshness header
+    # so staleness is detectable without stat(1). Skipped if the file was written
+    # within the last hour (cron fires every 5 min; no need to regenerate each run).
+    local month
+    month="$(date +%Y-%m)"
+    local period_start="${month}-01"
+    local out_file="${AOPS_SESSIONS}/summaries/user-prompts-${month}.txt"
+
+    # Skip if output file exists and is less than 60 minutes old.
+    if [[ -f "$out_file" ]] && [[ -z "$(find "$out_file" -mmin +60 2>/dev/null)" ]]; then
+        echo "==> user-prompts extract for ${month} is fresh (<60 min), skipping"
+        return 0
+    fi
+
+    echo "==> Regenerating user-prompts extract for ${month} (since ${period_start})..."
+    if [[ ! -f "${AOPS}/aops-core/scripts/user_prompts.py" ]]; then
+        echo "Warning: user_prompts.py not found, skipping" >&2
+        return 0
+    fi
+    uv run python "${AOPS}/aops-core/scripts/user_prompts.py" \
+        --period "${period_start}" \
+        --output "${out_file}" \
+        || echo "Warning: user-prompts extract failed" >&2
+}
+
 do_sync() {
     # Sync all configured git repos and bare mirrors via polecat sync
     echo "==> Syncing repositories..."
@@ -174,11 +203,12 @@ fi
 # ============================================================================
 
 if [[ $# -eq 0 ]]; then
-    # Full run: cowork_ingest + gha_sync + transcript + sync + pr_state
+    # Full run: cowork_ingest + gha_sync + transcript + user_prompts_extract + sync + pr_state
     echo "${TS} repo-sync-cron starting (full)"
     do_cowork_ingest
     do_gha_sync
     do_transcript
+    do_user_prompts_extract
     do_sync
     do_pr_state
 else
@@ -189,10 +219,11 @@ else
             cowork_ingest) do_cowork_ingest ;;
             gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
+            user_prompts_extract) do_user_prompts_extract ;;
             sync)       do_sync ;;
             pr_state)   do_pr_state ;;
-            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync; do_pr_state ;;
-            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, sync, pr_state, --quick)" >&2; exit 1 ;;
+            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_user_prompts_extract; do_sync; do_pr_state ;;
+            *)          echo "Unknown function: $func (valid: cowork_ingest, gha_sync, transcript, user_prompts_extract, sync, pr_state, --quick)" >&2; exit 1 ;;
         esac
     done
 fi

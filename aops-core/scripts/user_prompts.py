@@ -14,7 +14,7 @@ sessions. See aops-62abcf9d.
 import argparse
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add aops-core to path
@@ -25,6 +25,7 @@ FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
 sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
+from lib.secret_redaction import redact_secrets
 from lib.session_naming import (
     generate_base_name,
     infer_provider_from_path,
@@ -342,10 +343,32 @@ def render(threads: list[dict], period: str) -> list[str]:
     return out
 
 
+def _prepare_file_output(lines: list[str], generated_at: str) -> str:
+    """Join rendered lines into a string with a freshness header and secrets redacted.
+
+    The header makes it possible to detect staleness at a glance:
+    ``grep '^<!-- generated:' user-prompts-YYYY-MM.txt``
+    """
+    header = f"<!-- generated: {generated_at} -->"
+    full_text = "\n".join([header, ""] + lines) + "\n"
+    return redact_secrets(full_text)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Assemble threaded user-prompt timeline")
     parser.add_argument(
         "--period", "-p", default="today", help="Period (e.g. today, 1d, 7d, 2026-05-29)"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        metavar="PATH",
+        help=(
+            "Write output to PATH instead of stdout. "
+            "Prepends a <!-- generated: ISO-timestamp --> freshness header and "
+            "applies secret redaction. Intended for automated (cron) generation of "
+            "summaries/user-prompts-YYYY-MM.txt; use stdout for interactive review."
+        ),
     )
     args = parser.parse_args()
 
@@ -357,8 +380,18 @@ def main():
         return
 
     threads = build_threads(sessions)
-    for line in render(threads, args.period):
-        print(line)
+    lines = render(threads, args.period)
+
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        generated_at = datetime.now(tz=UTC).isoformat(timespec="seconds")
+        text = _prepare_file_output(lines, generated_at)
+        output_path.write_text(text, encoding="utf-8")
+        print(f"Written to {output_path} ({len(text)} bytes)", file=sys.stderr)
+    else:
+        for line in lines:
+            print(line)
 
 
 if __name__ == "__main__":
