@@ -434,7 +434,7 @@ class TestAuditFileMemoisation:
         created_calls = []
 
         # Patch create_audit_file to track calls
-        def fake_create_audit(session_id, gate, ctx_arg):
+        def fake_create_audit(session_id, gate, ctx_arg, **kwargs):
             new_file = tmp_path / "new_audit.md"
             new_file.write_text("New audit")
             created_calls.append(new_file)
@@ -477,3 +477,94 @@ class TestAuditFileMemoisation:
 
         expected_size = transcript.stat().st_size
         assert state.metrics.get("transcript_parse_pos") == expected_size
+
+
+# ===========================================================================
+# aops-5bc65f76 — one windowed builder (n+2) + bound-task directive injection
+# ===========================================================================
+
+
+class TestAuditWindowAndDirective:
+    """The single windowed builder window = n+2, and the bound-task directive
+    is prepended to the rbg review payload."""
+
+    def test_window_is_enforcer_threshold_plus_two(self, monkeypatch):
+        """_audit_window_turns() == ENFORCER_TOOL_CALL_THRESHOLD + 2."""
+        import importlib
+
+        from lib.gates import custom_actions
+
+        monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "30")
+        importlib.reload(sys.modules["hooks.gate_config"])
+        assert custom_actions._audit_window_turns() == 32
+
+    def test_bound_task_directive_empty_when_no_task(self):
+        from lib.gates import custom_actions
+
+        assert custom_actions._bound_task_directive(None) == ""
+        assert custom_actions._bound_task_directive("") == ""
+
+    def test_bound_task_directive_loads_title_and_body(self, monkeypatch):
+        """When a task is bound, the directive carries its id, title, and body."""
+        from lib.gates import custom_actions
+
+        class _FakeTask:
+            title = "Do the thing"
+            body = "## Brief\nStay on target."
+
+        monkeypatch.setattr(
+            "polecat.pkb_bridge.get_task", lambda task_id: _FakeTask(), raising=False
+        )
+        out = custom_actions._bound_task_directive("aops-1234")
+        assert "aops-1234" in out
+        assert "Do the thing" in out
+        assert "Stay on target." in out
+        assert out.startswith("## Bound Task Directive")
+
+    def test_bound_task_directive_graceful_on_lookup_failure(self, monkeypatch):
+        """A PKB lookup failure yields an empty directive, never raises."""
+        from lib.gates import custom_actions
+
+        def _boom(task_id):
+            raise RuntimeError("PKB offline")
+
+        monkeypatch.setattr("polecat.pkb_bridge.get_task", _boom, raising=False)
+        assert custom_actions._bound_task_directive("aops-1234") == ""
+
+    def test_directive_prepended_to_rbg_payload(self, monkeypatch, tmp_path):
+        """create_audit_file prepends the bound-task directive to the payload."""
+        from lib.gates import custom_actions
+
+        transcript = tmp_path / "session.jsonl"
+        entries_data = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": _make_timestamp(0),
+                "message": {"content": [{"type": "text", "text": "Implement the feature"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": _make_timestamp(1),
+                "message": {"content": [{"type": "text", "text": "On it."}]},
+            },
+        ]
+        _write_jsonl(transcript, entries_data)
+
+        class _FakeTask:
+            title = "Implement feature X"
+            body = "Only touch module X."
+
+        monkeypatch.setattr(
+            "polecat.pkb_bridge.get_task", lambda task_id: _FakeTask(), raising=False
+        )
+
+        ctx = _make_ctx(hook_event="Stop", transcript_path=str(transcript), tool_name="Stop")
+        gate_path = custom_actions.create_audit_file(
+            "test-session", "qa", ctx, bound_task_id="aops-9999"
+        )
+        content = gate_path.read_text()
+        assert "Bound Task Directive" in content
+        assert "Implement feature X" in content
+        assert "Only touch module X." in content
