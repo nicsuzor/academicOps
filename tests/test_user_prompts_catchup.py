@@ -387,7 +387,7 @@ class TestFileOutput:
         assert result.endswith("\n")
 
     def test_output_file_written_with_freshness_header(self, tmp_path):
-        """--output writes the file to disk with a generated header."""
+        """_prepare_file_output content retains the freshness header after file write/read roundtrip."""
         output_file = tmp_path / "user-prompts-2026-06.txt"
         lines = ["# User Prompt Timeline: Since 2026-06-01", "content"]
         text = up._prepare_file_output(lines, "2026-06-24T10:00:00+00:00")
