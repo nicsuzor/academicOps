@@ -1633,13 +1633,13 @@ def build_user_prompts(timeline_events: list[dict[str, Any]]) -> list[dict[str, 
     """Return the ordered list of genuine human-typed prompts from timeline events.
 
     Filters to ``user_prompt`` events where ``system_injected`` is False and
-    returns ``[{timestamp, text}]`` objects.  Single authoritative definition
-    for all code paths that need this view (aops-519f8e11).
+    returns ``[{timestamp, text}]`` objects with secrets redacted at write time.
+    Single authoritative definition for all code paths that need this view.
     """
     return [
         {
             "timestamp": e.get("timestamp"),
-            "text": e.get("description") or "",
+            "text": redact_secrets(e.get("description") or ""),
         }
         for e in timeline_events
         if e.get("type") == "user_prompt" and not e.get("system_injected")
@@ -5147,9 +5147,9 @@ class SessionProcessor:
                             else:
                                 # Abridged: subjects only (compact)
                                 subjects = [
-                                    (t.get("subject") or "").strip()
+                                    t["subject"].strip()
                                     for t in thoughts
-                                    if (t.get("subject") or "").strip()
+                                    if t.get("subject") and t["subject"].strip()
                                 ]
                                 if subjects:
                                     joined = "; ".join(subjects)

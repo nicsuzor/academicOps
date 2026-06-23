@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from lib.transcript_parser import (
     ConversationTurn,
     _is_system_injected_prompt,
+    build_user_prompts,
     extract_timeline_events,
 )
 
@@ -179,11 +180,7 @@ class TestUserPromptsArray:
     def _user_prompts_from_turns(self, turns: list) -> list[dict]:
         """Compute user_prompts the same way reflection_to_insights does."""
         events = extract_timeline_events(turns, "abcd1234")
-        return [
-            {"timestamp": e.get("timestamp"), "text": e.get("description", "")}
-            for e in events
-            if e.get("type") == "user_prompt" and not e.get("system_injected")
-        ]
+        return build_user_prompts(events)
 
     def test_only_human_prompts_in_user_prompts(self) -> None:
         notification = (
@@ -236,3 +233,48 @@ class TestUserPromptsArray:
         genuine = [e for e in all_user_prompts if not e.get("system_injected")]
         assert len(all_user_prompts) == 4
         assert len(genuine) == 2
+
+
+class TestUserPromptsRedaction:
+    """user_prompts[].text has secrets redacted at write time (consolidated PR)."""
+
+    def _ts(self, n: int = 0) -> datetime:
+        return datetime(2026, 6, 24, 10, n, 0, tzinfo=UTC)
+
+    def _event(self, text: str, system_injected: bool = False) -> dict:
+        return {
+            "timestamp": self._ts().isoformat(),
+            "type": "user_prompt",
+            "description": text,
+            "system_injected": system_injected,
+        }
+
+    def test_github_pat_in_user_prompt_is_redacted(self) -> None:
+        pat = "ghp_" + "A" * 36
+        events = [self._event(f"set token to {pat} and continue")]
+        result = build_user_prompts(events)
+        assert len(result) == 1
+        assert pat not in result[0]["text"]
+        assert "[REDACTED]" in result[0]["text"]
+
+    def test_anthropic_key_in_user_prompt_is_redacted(self) -> None:
+        key = "sk-ant-" + "B" * 40
+        events = [self._event(f"ANTHROPIC_API_KEY={key}")]
+        result = build_user_prompts(events)
+        assert key not in result[0]["text"]
+        assert "[REDACTED]" in result[0]["text"]
+
+    def test_plain_text_passes_through_unmodified(self) -> None:
+        events = [self._event("fix the login bug")]
+        result = build_user_prompts(events)
+        assert result[0]["text"] == "fix the login bug"
+
+    def test_system_injected_turns_not_in_output(self) -> None:
+        pat = "ghp_" + "C" * 36
+        events = [
+            self._event(f"real question with {pat}", system_injected=False),
+            self._event("You are a polecat worker. ...", system_injected=True),
+        ]
+        result = build_user_prompts(events)
+        assert len(result) == 1
+        assert "[REDACTED]" in result[0]["text"]

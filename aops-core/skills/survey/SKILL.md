@@ -138,7 +138,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json` — field `timeline_events[type="user_prompt"]`. Filter to interactive clients (`client in ("claude-code","claude-desktop")`). This is faster and more reliable than grepping raw transcripts. See `specs/CAPABILITIES.md §Session Summaries` for full field reference and noise-filter recipe. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/CAPABILITIES.md §Session Summaries` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 
