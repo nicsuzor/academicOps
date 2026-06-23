@@ -4,6 +4,8 @@ from polecat.prompt_template import (
     CAPTURE_DURABLE_FACTS,
     FINISH_GITHUB_ISSUE,
     FINISH_LOCAL_TASK,
+    PKB_HALT_FLOOR,
+    PKB_HALT_SENTINEL,
     build_polecat_prompt,
     build_soft_dep_context,
     build_task_extras,
@@ -78,6 +80,37 @@ def test_build_polecat_prompt_basic():
     assert "- **Project**: proj-1" in prompt
     assert "Fix the thing" in prompt
     assert FINISH_LOCAL_TASK.format(task_id="task-123", base_branch="main") in prompt
+
+
+def test_pkb_halt_floor_contains_sentinel():
+    """PKB_HALT_FLOOR must contain PKB_HALT_SENTINEL so both the prompt and
+    junior.md assertions trace to the same protocol string."""
+    assert PKB_HALT_SENTINEL in PKB_HALT_FLOOR, (
+        "PKB_HALT_FLOOR must include PKB_HALT_SENTINEL — "
+        "the sentinel is the auditable transcript marker."
+    )
+
+
+def test_prompt_carries_pkb_halt_floor():
+    """AC (aops-0203b9cb): the PKB-HALT floor must reach polecat workers in
+    both task and issue modes so general-purpose workers halt with
+    '[ATTN] PKB verb missing' rather than inventing shell-outs.
+
+    Asserts inclusion of the PKB_HALT_FLOOR constant, not prose tokens:
+    token-level assertions would make this test the de-facto spec of the
+    wording (AXIOMS#judgment-non-delegable). Whether the wording does its
+    job is owned by the runtime verification task aops-f00c699f.
+
+    This test is designed to FAIL if PKB_HALT_FLOOR is removed from the
+    worker prompt — that is the property a load-bearing test must have.
+    Routing around the PKB MCP is a security incident (aops-18572bc0 §5).
+    """
+    for is_issue in (False, True):
+        prompt = build_polecat_prompt(task_id="task-1", task_title="Title", is_issue=is_issue)
+        assert PKB_HALT_FLOOR in prompt, (
+            f"PKB_HALT_FLOOR missing from worker prompt (is_issue={is_issue}). "
+            "Workers must receive the PKB-HALT instruction regardless of mode."
+        )
 
 
 def test_prompt_carries_as_you_go_capture_instruction():
