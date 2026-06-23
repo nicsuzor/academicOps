@@ -32,3 +32,48 @@ find $AOPS_SESSIONS/transcripts -name "*-${session_id}-*-full.md" -printf '%T@ %
 ```
 
 _(Substitute `${session_id}` with your actual 8-character session ID.)_
+
+## Session Summaries (Structured Corpus)
+
+The framework produces one structured JSON summary per session at:
+
+```
+$AOPS_SESSIONS/summaries/YYYY-MM/<session_id>.json
+```
+
+**This is the canonical first stop for prompt mining and command-usage analysis.** Use it before touching raw transcript files.
+
+### Primary field — `timeline_events`
+
+Each summary contains a `timeline_events` list of `{timestamp, type, description}` objects. Filter to `type == "user_prompt"` to get verbatim user turns. `initial_prompt` captures turn 1 only — most command invocations (e.g. `/learn`) happen mid-session and are only visible via `timeline_events`.
+
+**Required noise filter — apply both before analysis:**
+
+1. Filter sessions to interactive clients: `client in ("claude-code", "claude-desktop")` — excludes `polecat` and `sdk` worker sessions, which dominate by volume.
+2. Drop event descriptions starting with: `<task-notification`, `<loaded_context`, `You are a polecat worker`, `# /learn`, `**Invoked`, `### /learn`, `You are a pre-dispatch`, or skill-body `**Purpose**` preambles.
+
+### Other useful fields
+
+| Field                                                                    | Description                                            |
+| ------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `initial_prompt`                                                         | First user turn only (misses mid-session invocations)  |
+| `user_prompt_count`                                                      | Total user turn count for the session                  |
+| `client`                                                                 | e.g. `claude-code`, `claude-desktop`, `polecat`, `sdk` |
+| `surface`                                                                | e.g. `interactive`, `polecat`, `gha`                   |
+| `session_type`                                                           | Session type classifier                                |
+| `summary`, `accomplishments`, `friction_points`, `framework_reflections` | Session narrative fields                               |
+| `task_id`                                                                | Associated task, if any                                |
+
+### When to use vs raw transcripts
+
+| Task                                                              | Source                                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| Mine what the user typed — prompts, `/command` invocations        | **Summaries JSON** (`timeline_events[type="user_prompt"]`) |
+| Count command usage or extract patterns from user turns           | **Summaries JSON** first                                   |
+| Derive structured insight about sessions (trends, topics)         | **Summaries JSON** first                                   |
+| Extract agent reasoning, tool calls, or full conversation context | Raw transcripts (`$AOPS_SESSIONS/transcripts/YYYY-MM/`)    |
+| Summaries JSON absent or insufficient for the task                | Raw transcripts as **fallback only**                       |
+
+**Derived extracts** — `$AOPS_SESSIONS/summaries/user-prompts-YYYY-MM.txt` may exist as a convenience file but can be stale. Always check `last_modified`/date coverage before trusting it.
+
+**Raw transcripts are the last-resort fallback.** `$AOPS_SESSIONS/transcripts/YYYY-MM/*-{abridged,full}.md` (~5–6k files/month). Naïve `grep -r` hits thousands of files (incidental agent mentions, skill bodies, injected task-notifications) and requires parsing multiple user-turn marker formats — expensive and error-prone.
