@@ -48,6 +48,22 @@ Ensure instructions are free of the following defects:
 
 These are common patterns, not an exhaustive list. If instructions feel shallow but match no named defect, trust the feeling, say so, and articulate why — and remember depth is verification specificity, not step count.
 
+## Construction Rule: Static-Prefix / Variable-Tail (prompt-cache prefix)
+
+This rule binds any **code** that renders a template with dynamic data — a `.md` template with `{placeholder}`s, an f-string/`.format(`/`.render(` that wraps a template body around runtime values, a builder that concatenates a static preamble with session/transcript/variable content, any gate `context_key` or audit-file assembly.
+
+**Rule:** emit ALL static template material strictly FIRST, then append the variable/dynamic content LAST. Never interleave a variable into a static preamble.
+
+**Why:** Anthropic prompt caching keys on the longest identical PREFIX. One variable byte placed early invalidates the entire cacheable suffix that follows it. A stable static prefix with the variable payload at the tail keeps the prefix cache-hot across calls; an interleaved variable throws the cache away on every render.
+
+**How to apply:**
+
+- Move instructional scaffolding, headers, role/framing, and "how to read this" guidance ahead of any `{session_context}`-style payload. The largest/most-variable field belongs at the very end.
+- If a template puts a static section AFTER the variable (e.g. an "## Your Assessment" trailer below the transcript), hoist that static section above the variable so the variable is last.
+- Honor any tail invariant: if a builder appends a terminal sentinel (e.g. an `audit-complete` marker that must be the final line), the variable that carries it must remain the file's tail — which is exactly what this rule produces.
+
+**Judgment clause:** where moving a placeholder to the tail would break meaning or readability and the cache gain is marginal (a tiny single-token variable mid-sentence in a short user-facing message), leave it and say why. Do not mangle a template mechanically to satisfy the rule. The rule earns its keep on large, reused, variable-bearing prompts.
+
 ## Workflow
 
 ### Author Mode Workflow
