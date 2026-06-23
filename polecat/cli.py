@@ -501,19 +501,19 @@ def _make_worker_env(
 
     ``container_env_forward`` is polecat.yaml's explicit forwarding whitelist
     (PKB note-b5347f83, Q2): a list of var NAMES whose VALUES are resolved from
-    the host secret store (~/.env.local) at launch — *independent* of whether
-    the launching session (e.g. junior) carries them. This is how the OAuth
-    tokens reach the container without the general agent ever holding them in
-    its own session env. Resolved values are overlaid onto ``env`` so the
-    downstream ``get_container_env_forwards(env)`` emits them as ``-e`` flags.
+    the PROCESS ENVIRONMENT at launch. The launching session (e.g. junior) need
+    not hold the official-named token itself — source-name indirection means it
+    can carry the AOPS-prefixed source name instead. Populating the environment
+    with these secrets is the operator's responsibility (out of scope for AOPS).
+    Resolved values are overlaid onto ``env`` so the downstream
+    ``get_container_env_forwards(env)`` emits them as ``-e`` flags.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
 
-    # Resolve the explicit container forwarding whitelist from the host secret
-    # store. ~/.env.local is authoritative; process env is the fallback (covers
-    # the GHA surface, which has no ~/.env.local but injects secrets via the
-    # process env). Empty values are skipped by resolve_forward_values.
+    # Resolve the explicit container forwarding whitelist from the process env
+    # ONLY (no file reading). Empty/absent values for non-required names are
+    # skipped by resolve_forward_values (forward-if-present semantics).
     if container_env_forward:
         from lib.host_secrets import resolve_forward_values
 
@@ -2597,7 +2597,7 @@ def _require_claude_oauth_or_exit(cli_tool: str) -> None:
     injected into the container under the official name ``CLAUDE_CODE_OAUTH_TOKEN``
     (aops-b368109a); the official name itself is a transitional fallback source.
     This check uses the exact same resolution path as the launcher
-    (``resolve_forward_values``), so it honours ``~/.env.local`` and the alias
+    (``resolve_forward_values``), reading the PROCESS ENV ONLY plus the alias
     indirection. If nothing resolves we fail here, before spawning a worktree,
     rather than letting the worker hit a generic 401 deep in headless execution.
 

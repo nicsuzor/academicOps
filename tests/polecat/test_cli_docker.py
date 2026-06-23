@@ -260,11 +260,9 @@ class TestRequireClaudeOauth:
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.delenv("AOPS_CC_OAUTH_TOKEN", raising=False)
-        # Isolate the host secret store too: resolve_forward_values reads
-        # ~/.env.local (the authoritative source) before the process env, so a
-        # real token on the dev host would mask the "missing" case. Point
-        # AOPS_HOST_ENV_FILE at a nonexistent file so load_host_secrets is empty.
-        monkeypatch.setenv("AOPS_HOST_ENV_FILE", str(tmp_path / "no-env-local"))
+        # resolve_forward_values reads the PROCESS ENV only (no file reading),
+        # so deleting both candidate source names from the env is sufficient to
+        # reproduce the "missing token" case — nothing on disk can mask it.
         with pytest.raises(SystemExit) as excinfo:
             _require_claude_oauth_or_exit("claude")
         assert excinfo.value.code == 4

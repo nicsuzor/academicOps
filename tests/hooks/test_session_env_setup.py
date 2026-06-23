@@ -176,12 +176,9 @@ class TestSessionEnvSetup:
             "PKB_MCP_URL": "http://services:8026/mcp",
             "AOPS_BOT_GH_TOKEN": "ghp_present",
             "GITHUB_ACTIONS": "",
-            # Isolate the host secret store: the FAILURE path drops
-            # AOPS_BOT_GH_TOKEN, but provisioning falls back to
-            # load_host_secrets() (real ~/.env.local) which would resurrect it
-            # and mask the "missing" case. Point at a nonexistent file so the
-            # fallback resolves to {} regardless of import-order home mocking.
-            "AOPS_HOST_ENV_FILE": str(tmp_path / "no-env-local"),
+            # Provisioning now reads the PROCESS ENV only (no file fallback), so
+            # the FAILURE path that drops AOPS_BOT_GH_TOKEN from os.environ can no
+            # longer be masked by a real ~/.env.local on the dev host.
             # Resolved provider set is injected as env (host/container contract);
             # empty ⇒ no external agents, so session_naming uses builtins only and
             # never reaches for the (absent, sandboxed) polecat.yaml.

@@ -128,8 +128,9 @@ docker:
 # NOT hold in its own session env (the Claude/Gemini OAuth tokens).
 #
 # IMPORTANT: list var NAMES only — NEVER values. The polecat launcher resolves
-# each name's VALUE at launch from the host secret store (~/.env.local),
-# independent of the launching session's env. This is how a general agent
+# each name's VALUE at launch from the PROCESS ENVIRONMENT only — AOPS reads no
+# files (no sops, no ~/.env.local); the operator populates the env. This is how
+# a general agent
 # (junior) can dispatch a worker that authenticates with these tokens WITHOUT
 # the agent's own session ever holding them (the leak is closed at the agent;
 # the container still gets what it needs via this list). A `=` in any entry is

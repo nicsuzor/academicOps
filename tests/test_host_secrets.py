@@ -1,316 +1,211 @@
-"""Tests for lib/host_secrets — host secret-store loader for polecat launch.
+"""Tests for lib/host_secrets — env-only forwarded-secret resolution.
 
-Covers the env-var standardisation Q2 contract: the polecat launcher resolves
-forwarded secret VALUES from ~/.env.local *independent* of the launching
-session's env. Hard assertions only.
+The polecat launcher resolves forwarded secret VALUES from the PROCESS
+ENVIRONMENT ONLY. AOPS reads no files (no sops, no ~/.env.local); populating
+the environment is the operator's responsibility. Required secrets fail loud
+when absent. Source-name aliasing is a pure name map within the process env.
+Hard assertions only.
 """
 
-import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aops-core"))
 
 from lib.host_secrets import (  # noqa: E402
-    _load_sops_secrets,
-    load_host_secrets,
+    MissingForwardSecretError,
     resolve_forward_values,
 )
 
 
-class TestLoadSopsSecrets:
-    """Tests for _load_sops_secrets — in-memory sops/age decrypt seam."""
+class TestResolveFromProcessEnv:
+    """Values resolve from the process env (source_env) only."""
 
-    def test_returns_empty_when_file_missing(self, tmp_path):
-        missing = tmp_path / "aops-secrets.env"
-        assert _load_sops_secrets(missing) == {}
-
-    def test_returns_empty_when_sops_not_installed(self, tmp_path):
-        f = tmp_path / "aops-secrets.env"
-        f.write_text("AOPS_BOT_GH_TOKEN=ENC[...]\n")
-        with patch("lib.host_secrets.subprocess.run", side_effect=FileNotFoundError):
-            assert _load_sops_secrets(f) == {}
-
-    def test_returns_empty_when_sops_fails(self, tmp_path):
-        f = tmp_path / "aops-secrets.env"
-        f.write_text("AOPS_BOT_GH_TOKEN=ENC[...]\n")
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(1, "sops", stderr="bad key")
-            assert _load_sops_secrets(f) == {}
-
-    def test_parses_sops_decrypted_output(self, tmp_path):
-        f = tmp_path / "aops-secrets.env"
-        f.write_text("placeholder")
-        decrypted_output = (
-            "AOPS_BOT_GH_TOKEN=ghp_decrypted\n"
-            "AOPS_CC_OAUTH_TOKEN=sk-oauth-decrypted\n"
-            "GEMINI_API_KEY=gem_decrypted\n"
-        )
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(stdout=decrypted_output, returncode=0)
-            result = _load_sops_secrets(f)
-        assert result["AOPS_BOT_GH_TOKEN"] == "ghp_decrypted"
-        assert result["AOPS_CC_OAUTH_TOKEN"] == "sk-oauth-decrypted"
-        assert result["GEMINI_API_KEY"] == "gem_decrypted"
-
-    def test_calls_sops_with_correct_args(self, tmp_path):
-        f = tmp_path / "aops-secrets.env"
-        f.write_text("placeholder")
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(stdout="KEY=val\n", returncode=0)
-            _load_sops_secrets(f)
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args
-        cmd = call_args[0][0]
-        assert cmd[0] == "sops"
-        assert cmd[1] == "-d"
-        assert cmd[2] == str(f)
-
-    def test_override_via_aops_sops_secrets_file(self, tmp_path, monkeypatch):
-        f = tmp_path / "custom-secrets.env"
-        f.write_text("placeholder")
-        monkeypatch.setenv("AOPS_SOPS_SECRETS_FILE", str(f))
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(stdout="OVERRIDE=yes\n", returncode=0)
-            result = _load_sops_secrets()
-        assert result["OVERRIDE"] == "yes"
-
-
-class TestLoadHostSecretsMerge:
-    """Tests for the two-tier merge: sops SSoT wins over ~/.env.local."""
-
-    def test_sops_wins_on_conflict(self, tmp_path):
-        env_local = tmp_path / ".env.local"
-        env_local.write_text("AOPS_BOT_GH_TOKEN=old-value\n")
-        sops_file = tmp_path / "aops-secrets.env"
-        sops_file.write_text("placeholder")
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                stdout="AOPS_BOT_GH_TOKEN=new-from-sops\n", returncode=0
-            )
-            result = load_host_secrets(env_file=env_local, sops_file=sops_file)
-        assert result["AOPS_BOT_GH_TOKEN"] == "new-from-sops"
-
-    def test_env_local_fills_gaps_when_key_absent_from_sops(self, tmp_path):
-        env_local = tmp_path / ".env.local"
-        env_local.write_text("GEMINI_API_KEY=gem-from-env-local\n")
-        sops_file = tmp_path / "aops-secrets.env"
-        sops_file.write_text("placeholder")
-        with patch("lib.host_secrets.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                stdout="AOPS_BOT_GH_TOKEN=ghp-from-sops\n", returncode=0
-            )
-            result = load_host_secrets(env_file=env_local, sops_file=sops_file)
-        assert result["AOPS_BOT_GH_TOKEN"] == "ghp-from-sops"
-        assert result["GEMINI_API_KEY"] == "gem-from-env-local"
-
-    def test_env_local_fallback_when_sops_unavailable(self, tmp_path):
-        env_local = tmp_path / ".env.local"
-        env_local.write_text("AOPS_BOT_GH_TOKEN=from-env-local\n")
-        missing_sops = tmp_path / "absent.env"
-        result = load_host_secrets(env_file=env_local, sops_file=missing_sops)
-        assert result["AOPS_BOT_GH_TOKEN"] == "from-env-local"
-
-    def test_both_sources_absent_returns_empty(self, tmp_path):
-        result = load_host_secrets(
-            env_file=tmp_path / "absent.env",
-            sops_file=tmp_path / "absent-sops.env",
-        )
-        assert result == {}
-
-
-class TestLoadHostSecrets:
-    def test_parses_export_and_bare_assignments(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text(
-            "export AOPS_BOT_GH_TOKEN=ghp_abc123\n"
-            "GEMINI_API_KEY=gem_xyz\n"
-            "# a comment\n"
-            "\n"
-            'export CLAUDE_CODE_OAUTH_TOKEN="sk-oauth-quoted"\n'
-        )
-        result = load_host_secrets(f)
-        assert result["AOPS_BOT_GH_TOKEN"] == "ghp_abc123"
-        assert result["GEMINI_API_KEY"] == "gem_xyz"
-        assert result["CLAUDE_CODE_OAUTH_TOKEN"] == "sk-oauth-quoted"
-
-    def test_single_quotes_stripped(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("export TOK='value-with-#-hash'\n")
-        result = load_host_secrets(f)
-        # Inside quotes, # is literal (not a comment).
-        assert result["TOK"] == "value-with-#-hash"
-
-    def test_inline_comment_stripped_for_unquoted(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("export TOK=plainvalue  # trailing note\n")
-        result = load_host_secrets(f)
-        assert result["TOK"] == "plainvalue"
-
-    def test_missing_file_returns_empty_dict_no_raise(self, tmp_path):
-        # GHA runners have no ~/.env.local — must no-op gracefully.
-        missing = tmp_path / "does-not-exist.env"
-        assert load_host_secrets(missing) == {}
-
-    def test_last_assignment_wins(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("TOK=first\nTOK=second\n")
-        assert load_host_secrets(f)["TOK"] == "second"
-
-    def test_env_file_override_via_aops_host_env_file(self, tmp_path, monkeypatch):
-        f = tmp_path / "custom.env"
-        f.write_text("OVERRIDE_VAR=present\n")
-        monkeypatch.setenv("AOPS_HOST_ENV_FILE", str(f))
-        result = load_host_secrets()  # no explicit path → uses env override
-        assert result["OVERRIDE_VAR"] == "present"
-
-
-class TestResolveForwardValues:
-    def test_env_local_is_authoritative_over_process_env(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("CLAUDE_CODE_OAUTH_TOKEN=from-env-local\n")
-        # Even if the process env carries a (stale) value, ~/.env.local wins.
-        resolved = resolve_forward_values(
-            ["CLAUDE_CODE_OAUTH_TOKEN"],
-            source_env={"CLAUDE_CODE_OAUTH_TOKEN": "from-process"},
-            env_file=f,
-        )
-        assert resolved["CLAUDE_CODE_OAUTH_TOKEN"] == "from-env-local"
-
-    def test_process_env_fallback_when_absent_from_env_local(self, tmp_path):
-        # GHA surface: no ~/.env.local entry, secret arrives via process env.
-        f = tmp_path / ".env.local"
-        f.write_text("# empty\n")
-        resolved = resolve_forward_values(
-            ["CLAUDE_CODE_OAUTH_TOKEN"],
-            source_env={"CLAUDE_CODE_OAUTH_TOKEN": "from-actions-secret"},
-            env_file=f,
-        )
-        assert resolved["CLAUDE_CODE_OAUTH_TOKEN"] == "from-actions-secret"
-
-    def test_independent_of_session_env_when_not_in_source(self, tmp_path):
-        # The whole point of Q2: the value comes from ~/.env.local even when the
-        # launching session's env does NOT carry it at all.
-        f = tmp_path / ".env.local"
-        f.write_text("GEMINI_API_KEY=gem-from-disk\n")
+    def test_resolves_from_source_env(self):
         resolved = resolve_forward_values(
             ["GEMINI_API_KEY"],
-            source_env={},  # session env carries nothing
-            env_file=f,
+            source_env={"GEMINI_API_KEY": "gem-from-env"},
         )
-        assert resolved["GEMINI_API_KEY"] == "gem-from-disk"
+        assert resolved == {"GEMINI_API_KEY": "gem-from-env"}
 
-    def test_empty_values_skipped(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("EMPTY_TOK=\n")
+    def test_defaults_to_os_environ(self, monkeypatch):
+        monkeypatch.setenv("GEMINI_API_KEY", "gem-from-os-environ")
+        resolved = resolve_forward_values(["GEMINI_API_KEY"])
+        assert resolved["GEMINI_API_KEY"] == "gem-from-os-environ"
+
+    def test_only_whitelisted_names_resolved(self):
+        resolved = resolve_forward_values(
+            ["WANTED"],
+            source_env={"WANTED": "yes", "UNWANTED": "no"},
+        )
+        assert resolved == {"WANTED": "yes"}
+
+    def test_no_file_reading_attribute(self):
+        # The module must not expose any file-reading seam anymore.
+        import lib.host_secrets as hs
+
+        for gone in (
+            "load_host_secrets",
+            "_load_sops_secrets",
+            "_DEFAULT_SOPS_SECRETS",
+            "_DEFAULT_ENV_LOCAL",
+        ):
+            assert not hasattr(hs, gone), f"{gone} should be removed"
+
+
+class TestOptionalAbsentSkipped:
+    """Names NOT declared required and absent/empty are simply omitted."""
+
+    def test_empty_value_skipped_when_not_required(self):
         resolved = resolve_forward_values(
             ["EMPTY_TOK", "ABSENT_TOK"],
             source_env={"EMPTY_TOK": ""},
-            env_file=f,
         )
         assert "EMPTY_TOK" not in resolved
         assert "ABSENT_TOK" not in resolved
 
-    def test_only_whitelisted_names_resolved(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("WANTED=yes\nUNWANTED=no\n")
-        resolved = resolve_forward_values(["WANTED"], source_env={}, env_file=f)
-        assert resolved == {"WANTED": "yes"}
+    def test_absent_optional_returns_empty_dict_no_raise(self):
+        # No required set → no raise even when nothing resolves.
+        assert resolve_forward_values(["ABSENT"], source_env={}) == {}
+
+
+class TestRequiredFailsLoud:
+    """A REQUIRED forwarded secret that resolves empty/absent must raise,
+    naming the missing var(s). No silent empty/fallback."""
+
+    def test_missing_required_raises_naming_var(self):
+        with pytest.raises(MissingForwardSecretError) as excinfo:
+            resolve_forward_values(
+                ["GEMINI_API_KEY"],
+                source_env={},
+                required=["GEMINI_API_KEY"],
+            )
+        assert "GEMINI_API_KEY" in str(excinfo.value)
+        assert excinfo.value.missing == ["GEMINI_API_KEY"]
+
+    def test_empty_required_raises(self):
+        with pytest.raises(MissingForwardSecretError) as excinfo:
+            resolve_forward_values(
+                ["GEMINI_API_KEY"],
+                source_env={"GEMINI_API_KEY": ""},
+                required=["GEMINI_API_KEY"],
+            )
+        assert "GEMINI_API_KEY" in str(excinfo.value)
+
+    def test_multiple_missing_required_all_named(self):
+        with pytest.raises(MissingForwardSecretError) as excinfo:
+            resolve_forward_values(
+                ["GEMINI_API_KEY", "AGY_API_KEY"],
+                source_env={},
+                required=["GEMINI_API_KEY", "AGY_API_KEY"],
+            )
+        msg = str(excinfo.value)
+        assert "GEMINI_API_KEY" in msg
+        assert "AGY_API_KEY" in msg
+        assert set(excinfo.value.missing) == {"GEMINI_API_KEY", "AGY_API_KEY"}
+
+    def test_present_required_does_not_raise(self):
+        resolved = resolve_forward_values(
+            ["GEMINI_API_KEY"],
+            source_env={"GEMINI_API_KEY": "present"},
+            required=["GEMINI_API_KEY"],
+        )
+        assert resolved == {"GEMINI_API_KEY": "present"}
+
+    def test_required_satisfied_via_alias_source(self):
+        # A required name satisfied through its alias source must NOT raise.
+        resolved = resolve_forward_values(
+            ["CLAUDE_CODE_OAUTH_TOKEN"],
+            source_env={"AOPS_CC_OAUTH_TOKEN": "tok-aops"},
+            required=["CLAUDE_CODE_OAUTH_TOKEN"],
+        )
+        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
+
+    def test_optional_missing_alongside_required_present(self):
+        # Optional absent name is skipped; required present name resolves.
+        resolved = resolve_forward_values(
+            ["GEMINI_API_KEY", "AGY_API_KEY"],
+            source_env={"GEMINI_API_KEY": "gem"},
+            required=["GEMINI_API_KEY"],
+        )
+        assert resolved == {"GEMINI_API_KEY": "gem"}
 
 
 class TestForwardSourceAliases:
     """Source-name indirection: the Claude OAuth token is sourced from
-    AOPS_CC_OAUTH_TOKEN on the host but injected under the official container
-    name CLAUDE_CODE_OAUTH_TOKEN (aops-b368109a — leak closed at the agent)."""
+    AOPS_CC_OAUTH_TOKEN in the process env but injected under the official
+    container name CLAUDE_CODE_OAUTH_TOKEN (aops-b368109a — leak closed at the
+    agent). This is a pure NAME map within the process env — no file fallback."""
 
-    def test_claude_token_sourced_from_aops_alias(self, tmp_path):
-        """Official name absent from the source env → value comes from the alias."""
+    def test_claude_token_sourced_from_aops_alias(self):
         resolved = resolve_forward_values(
             ["CLAUDE_CODE_OAUTH_TOKEN"],
             source_env={"AOPS_CC_OAUTH_TOKEN": "tok-aops"},
-            env_file=tmp_path / "absent",
         )
-        # Keyed by the CONTAINER name, valued from the alias source.
         assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
 
-    def test_official_name_is_transitional_fallback(self, tmp_path):
-        """Before the host var is renamed, the official name still resolves."""
+    def test_official_name_is_transitional_fallback(self):
         resolved = resolve_forward_values(
             ["CLAUDE_CODE_OAUTH_TOKEN"],
             source_env={"CLAUDE_CODE_OAUTH_TOKEN": "tok-official"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-official"}
 
-    def test_alias_source_wins_over_official_name(self, tmp_path):
-        """When both are present, the alias source takes precedence."""
+    def test_alias_source_wins_over_official_name(self):
         resolved = resolve_forward_values(
             ["CLAUDE_CODE_OAUTH_TOKEN"],
             source_env={
                 "AOPS_CC_OAUTH_TOKEN": "tok-aops",
                 "CLAUDE_CODE_OAUTH_TOKEN": "tok-official",
             },
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-aops"}
 
-    def test_alias_source_from_env_local(self, tmp_path):
-        """The alias source is resolved from ~/.env.local too, not just process env."""
-        f = tmp_path / ".env.local"
-        f.write_text("AOPS_CC_OAUTH_TOKEN=tok-from-file\n")
-        resolved = resolve_forward_values(["CLAUDE_CODE_OAUTH_TOKEN"], source_env={}, env_file=f)
-        assert resolved == {"CLAUDE_CODE_OAUTH_TOKEN": "tok-from-file"}
-
-    def test_unaliased_name_unaffected(self, tmp_path):
-        """A name with no alias resolves from its own name as before."""
+    def test_unaliased_name_unaffected(self):
         resolved = resolve_forward_values(
             ["GEMINI_API_KEY"],
             source_env={"GEMINI_API_KEY": "gk"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"GEMINI_API_KEY": "gk"}
 
 
 class TestForwardSourceAliasesGHToken:
-    """GH_TOKEN and GITHUB_TOKEN are sourced from AOPS_BOT_GH_TOKEN on the host
-    but injected under their standard names (gh CLI / git) in the container."""
+    """GH_TOKEN and GITHUB_TOKEN are sourced from AOPS_BOT_GH_TOKEN in the
+    process env but injected under their standard names (gh CLI / git)."""
 
-    def test_gh_token_sourced_from_aops_bot(self, tmp_path):
+    def test_gh_token_sourced_from_aops_bot(self):
         resolved = resolve_forward_values(
             ["GH_TOKEN"],
             source_env={"AOPS_BOT_GH_TOKEN": "ghp_bot"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"GH_TOKEN": "ghp_bot"}
 
-    def test_github_token_sourced_from_aops_bot(self, tmp_path):
+    def test_github_token_sourced_from_aops_bot(self):
         resolved = resolve_forward_values(
             ["GITHUB_TOKEN"],
             source_env={"AOPS_BOT_GH_TOKEN": "ghp_bot"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"GITHUB_TOKEN": "ghp_bot"}
 
-    def test_aops_bot_alias_wins_over_direct_name(self, tmp_path):
+    def test_aops_bot_alias_wins_over_direct_name(self):
         resolved = resolve_forward_values(
             ["GH_TOKEN"],
             source_env={"AOPS_BOT_GH_TOKEN": "ghp_aops", "GH_TOKEN": "ghp_direct"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"GH_TOKEN": "ghp_aops"}
 
-    def test_gh_token_fallback_to_direct_name(self, tmp_path):
-        """If only GH_TOKEN is present (no AOPS_BOT_GH_TOKEN), it still resolves."""
+    def test_gh_token_fallback_to_direct_name(self):
         resolved = resolve_forward_values(
             ["GH_TOKEN"],
             source_env={"GH_TOKEN": "ghp_direct"},
-            env_file=tmp_path / "absent",
         )
         assert resolved == {"GH_TOKEN": "ghp_direct"}
 
-    def test_alias_source_from_env_local(self, tmp_path):
-        f = tmp_path / ".env.local"
-        f.write_text("AOPS_BOT_GH_TOKEN=ghp_from_file\n")
-        resolved = resolve_forward_values(["GH_TOKEN", "GITHUB_TOKEN"], source_env={}, env_file=f)
-        assert resolved == {"GH_TOKEN": "ghp_from_file", "GITHUB_TOKEN": "ghp_from_file"}
+    def test_both_gh_names_resolve_from_single_alias(self):
+        resolved = resolve_forward_values(
+            ["GH_TOKEN", "GITHUB_TOKEN"],
+            source_env={"AOPS_BOT_GH_TOKEN": "ghp_one"},
+        )
+        assert resolved == {"GH_TOKEN": "ghp_one", "GITHUB_TOKEN": "ghp_one"}
