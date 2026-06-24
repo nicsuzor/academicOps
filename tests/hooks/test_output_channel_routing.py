@@ -246,7 +246,14 @@ class TestNonHSOEventSafety:
 
 
 class TestCrossEventAdvisoryNeverLeaksToUser:
-    """Advisory text must NEVER appear in user-visible fields, for ANY event."""
+    """Advisory text must NEVER appear in user-visible fields, for ANY event.
+
+    This class covers HSO and Stop events — the events that return output when
+    advisory is present. For NON_HSO_EVENTS, the router raises ValueError when
+    context_injection or a blocking verdict is set (enforcing the invariant by
+    crashing rather than silently filtering). Those paths are covered in
+    TestNonHSOEventSafety.
+    """
 
     @pytest.mark.parametrize("event", HSO_EVENTS + STOP_EVENTS)
     @pytest.mark.parametrize("verdict", ["warn", "deny"])

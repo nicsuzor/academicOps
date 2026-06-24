@@ -100,8 +100,9 @@ def test_hook_output_schema_conformance(run_router, client_type, event, verdict)
 # --- Client-specific Semantic Falsification & Anchor Guards ---
 
 
-def test_agy_pretooluse_nonblocking_emits_allow_tool_true(router):
-    canonical = CanonicalHookOutput(verdict="allow")
+@pytest.mark.parametrize("verdict", ["allow", "warn"])
+def test_agy_pretooluse_nonblocking_emits_allow_tool_true(router, verdict):
+    canonical = CanonicalHookOutput(verdict=verdict)
     payload = router.output_for_agy(canonical, "PreToolUse")
     assert payload == {"allowTool": True}
     assert "denyReason" not in payload
