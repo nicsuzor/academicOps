@@ -1271,11 +1271,9 @@ def reflection_to_insights(
     # Timeline events for path reconstruction (optional)
     if timeline_events:
         result["timeline_events"] = timeline_events
-        # Pre-compute user prompt count for downstream consumers
-        # (daily skill engagement classification)
-        result["user_prompt_count"] = sum(
-            1 for e in timeline_events if e.get("type") == "user_prompt"
-        )
+        result["user_prompts"] = build_user_prompts(timeline_events)
+        # Count only genuine user turns (system_injected=False)
+        result["user_prompt_count"] = len(result["user_prompts"])
         # Elevate PR URL to root if found
         for event in timeline_events:
             if event.get("type") == "pr_create" and event.get("pr_url"):
@@ -1452,6 +1450,7 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                     "timestamp": ts,
                     "type": "user_prompt",
                     "description": user_msg,
+                    "system_injected": _is_system_injected_prompt(user_msg),
                 }
             )
 
@@ -1544,10 +1543,14 @@ _CONTROL_ENVELOPE_PATTERNS = [
     re.compile(r"<local-command-stdout>.*?</local-command-stdout>", re.DOTALL),
     re.compile(r"<command-message>.*?</command-message>", re.DOTALL),
     re.compile(r"<tool-use-id>.*?</tool-use-id>", re.DOTALL),
+    # loaded_context blocks are harness-injected context prepended to a turn.
+    # They must be stripped BEFORE the prefix check so that a human prompt
+    # following the block (e.g. "/learn") is not misflagged system_injected.
+    re.compile(r"<loaded_context[^>]*>.*?</loaded_context>", re.DOTALL),
     # Stray / self-closing control tags left behind after the blocks above.
     re.compile(
         r"</?(?:task-notification|system-reminder|tool-use-id|task-id|output-file|"
-        r"status|summary|local-command-stdout|command-message)[^>]*>"
+        r"status|summary|local-command-stdout|command-message|loaded_context)[^>]*>"
     ),
 ]
 
@@ -1557,6 +1560,22 @@ _CONTROL_ENVELOPE_PATTERNS = [
 _WORKER_PREAMBLE_MARKERS = (
     "You are a polecat worker",
     "Your task has already been claimed",
+)
+
+# Raw-text prefixes that mark machine-injected user_prompt turns.  These are
+# turns that Claude Code records as "user" role but were authored by the
+# harness/framework, not the human at the keyboard.  Used by
+# _is_system_injected_prompt to set the system_injected flag on timeline events.
+_SYSTEM_INJECTED_PREFIXES: tuple[str, ...] = (
+    # Note: <loaded_context> is NOT here — it is stripped by _CONTROL_ENVELOPE_PATTERNS
+    # before this check runs, so the fallthrough empty-after-strip path handles bare
+    # injections, and human text following a block is preserved correctly.
+    "**Invoked",  # skill-body invocations
+    "**Purpose**",  # skill-body preamble
+    "# /",  # skill-body heading (e.g. "# /learn\n")
+    "### /",  # skill-body heading variant
+    "You are a polecat worker",
+    "You are a pre-dispatch",
 )
 
 
@@ -1575,6 +1594,34 @@ def _strip_worker_preamble(text: str) -> str:
     return text
 
 
+def _is_system_injected_prompt(text: str) -> bool:
+    """Return True when a user_prompt turn was machine-injected, not human-typed.
+
+    Checks purely syntactic signals — no NLP.  A turn is system_injected when:
+    - it is empty or collapses to empty after control-envelope stripping (which
+      includes ``<loaded_context>`` blocks — see ``_CONTROL_ENVELOPE_PATTERNS``), OR
+    - it starts with a known machine-authored prefix (worker dispatch, skill bodies).
+
+    Ordering matters: the prefix check runs on the RAW stripped text, but
+    ``<loaded_context>`` is intentionally NOT in ``_SYSTEM_INJECTED_PREFIXES``.
+    It is stripped by ``clean_prompt_text`` in the fallthrough, so a human prompt
+    that follows a prepended ``<loaded_context>`` block is preserved correctly.
+
+    A human can type ``/learn`` mid-session and that remains user_typed — only
+    the injected *skill body* (large, formatted, starts with ``**Invoked`` or
+    ``**Purpose**``) is flagged.
+    """
+    if not text:
+        return True
+    stripped = text.strip()
+    for prefix in _SYSTEM_INJECTED_PREFIXES:
+        if stripped.startswith(prefix):
+            return True
+    # Falls through to envelope-stripping: if nothing substantive remains the
+    # turn was purely a harness injection (e.g. bare <task-notification> ping).
+    return not bool(clean_prompt_text(stripped))
+
+
 def clean_prompt_text(text: str) -> str:
     """Strip control envelopes and worker-preamble scaffolding from a prompt.
 
@@ -1591,6 +1638,23 @@ def clean_prompt_text(text: str) -> str:
     # Collapse the blank-line runs left by removed envelopes.
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     return text
+
+
+def build_user_prompts(timeline_events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the ordered list of genuine human-typed prompts from timeline events.
+
+    Filters to ``user_prompt`` events where ``system_injected`` is False and
+    returns ``[{timestamp, text}]`` objects with secrets redacted at write time.
+    Single authoritative definition for all code paths that need this view.
+    """
+    return [
+        {
+            "timestamp": e.get("timestamp"),
+            "text": redact_secrets(e.get("description") or ""),
+        }
+        for e in timeline_events
+        if e.get("type") == "user_prompt" and not e.get("system_injected")
+    ]
 
 
 def extract_initial_prompt(timeline_events: list[dict[str, Any]] | None) -> str | None:
@@ -5094,9 +5158,9 @@ class SessionProcessor:
                             else:
                                 # Abridged: subjects only (compact)
                                 subjects = [
-                                    (t.get("subject") or "").strip()
+                                    t["subject"].strip()
                                     for t in thoughts
-                                    if (t.get("subject") or "").strip()
+                                    if t.get("subject") and t["subject"].strip()
                                 ]
                                 if subjects:
                                     joined = "; ".join(subjects)
