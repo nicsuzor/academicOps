@@ -998,57 +998,6 @@ class HookRouter:
 
         return output
 
-    @staticmethod
-    def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
-        """Build an agy ``HookInjectedStep`` list carrying ``text``.
-
-        ``HookInjectedStep`` is a oneof. Field types decoded directly from the
-        ``exa.hooks_pb`` FileDescriptorProto embedded in the agy 1.0.7 binary
-        (FieldDescriptorProto ``type`` per member):
-
-            tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
-            user_message       (2)  TYPE_STRING   scalar string
-            ephemeral_message  (3)  TYPE_STRING   scalar string
-            system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
-
-        We emit the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
-        protojson is the bare string ``{"ephemeralMessage": text}``. This is the
-        same channel agy uses to inject its OWN per-turn reminders (the
-        ``bash_command_reminder`` ephemeral that renders at the top of every
-        turn), so it is the schema-correct, most-likely-to-render member.
-
-        REGISTRATION (verified, keep): a vanilla, doc-shaped PreInvocation hook
-        FIRES on agy 1.0.7 — ``strace -f`` shows ``execve`` of
-        ``router.sh --client agy PreInvocation``. The earlier "agy never spawns
-        PreInvocation" conclusion was a confound: our hooks.json had wrapped the
-        invocation events in the PreToolUse ``matcher``/``hooks[]`` shape, so agy
-        phantom-logged ``json_hook_caller.go:144 ... executing command`` but
-        spawned nothing. Per https://antigravity.google/docs/hooks#supported-events
-        the invocation/Stop events require a FLAT handler list directly under the
-        event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
-        spawns.
-
-        DELIVERY VERIFIED — agy 1.0.7 (model-echo control 2026-06-12,
-        session 2be4d40a / conv deaabeef): PreInvocation ``injectSteps`` ARE
-        delivered to model context. The model quoted our injected
-        Skills-Routing-Table + PKB text verbatim, byte-matching the router's
-        PreInvocation stdout. The earlier claim of an "agy-side delivery gap"
-        (commit cd583eff) was based on transcript grep — the WRONG observable.
-        The correct observable is MODEL ECHO, not ``transcript_full.jsonl``.
-
-        TRANSCRIPT OBSERVABILITY NOTE: agy 1.0.7 does NOT log hook-injected
-        ``injectSteps`` as steps in ``transcript_full.jsonl``. A sentinel that
-        appears in hook stdout will appear ZERO times in the transcript even when
-        the model receives it. The user-visible perception that "SessionStart
-        never fires" comes from this transcript-logging gap: hook logs are the
-        only trace of injection, and the injected text is invisible in
-        transcripts. Verify injection delivery via model echo (ask the model to
-        repeat back unique injected content), never via transcript grep.
-        """
-        if not text:
-            return []
-        return [{"ephemeralMessage": text}]
-
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
 
@@ -1119,19 +1068,21 @@ class HookRouter:
             return {}
 
         if event == "PreInvocation":
+            steps = []
             if short_reason:
-                raise ValueError(
-                    f"agy PreInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
-            steps = self._agy_inject_steps(advisory)
+                steps.append({"ephemeralMessage": short_reason})
+            if advisory:
+                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
+                steps.append({"ephemeralMessage": hidden_advisory})
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
+            steps = []
             if short_reason:
-                raise ValueError(
-                    f"agy PostInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
-            steps = self._agy_inject_steps(advisory)
+                steps.append({"ephemeralMessage": short_reason})
+            if advisory:
+                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
+                steps.append({"ephemeralMessage": hidden_advisory})
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":
