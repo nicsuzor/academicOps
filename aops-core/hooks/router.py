@@ -1120,17 +1120,13 @@ class HookRouter:
 
         if event == "PreInvocation":
             if short_reason:
-                raise ValueError(
-                    f"agy PreInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
+                advisory = f"{short_reason}\n\n{advisory}" if advisory else short_reason
             steps = self._agy_inject_steps(advisory)
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
             if short_reason:
-                raise ValueError(
-                    f"agy PostInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
+                advisory = f"{short_reason}\n\n{advisory}" if advisory else short_reason
             steps = self._agy_inject_steps(advisory)
             return {"injectSteps": steps} if steps else {}
 
