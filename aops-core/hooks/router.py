@@ -1085,49 +1085,58 @@ class HookRouter:
         short_reason = _strip_hook_markers(result.system_message)
 
         if event == "PreToolUse":
-            # PreToolHookResult: allow/deny are BOTH expressed structurally via the
-            # top-level allowTool bool + denyReason fields — no enum string needed.
+            # PreToolHookResult only supports allowTool and denyReason.
+            # denyReason corresponds strictly to short_reason (system_message).
+            # It DOES NOT support advisory (context_injection).
             if is_block:
+                if not short_reason:
+                    raise ValueError(
+                        f"agy PreToolUse deny requires short_reason. (Got advisory: {advisory!r})"
+                    )
+                if advisory:
+                    raise ValueError(
+                        f"agy PreToolUse does not support context_injection (advisory: {advisory!r})"
+                    )
                 return {
                     "allowTool": False,
-                    "denyReason": short_reason or advisory or "Blocked by hook gate.",
+                    "denyReason": short_reason,
                 }
-            # allow / warn: emit allowTool=true EXPLICITLY. The empty object {} is
-            # NOT a valid allow: agy parses stdout as exa.hooks_pb.PreToolHookResult
-            # protojson, where an OMITTED bool defaults to false. So {} → allowTool=
-            # false, denyReason="" → agy treats EVERY allowed tool call as a DENY
-            # with an empty reason, blocking all tool use on the agy client
-            # (aops-1e68682a; reproduced live in session 22b4caa2, 2026-06-15).
-            # PreToolHookResult has no advisory channel, so a warn's context cannot
-            # be surfaced here (agy platform limitation, not a regression).
+            if advisory:
+                raise ValueError(
+                    f"agy PreToolUse allow/warn does not support context_injection (advisory: {advisory!r})"
+                )
             return {"allowTool": True}
 
         if event == "PostToolUse":
-            # PostToolHookResult is the empty object — it carries no verdict or
-            # advisory channel, so the verdict is intentionally not encoded here.
+            if short_reason or advisory:
+                raise ValueError("agy PostToolUse does not support any fields.")
             return {}
 
         if event == "PreInvocation":
-            # PreInvocationHookResult: deliver injected context as steps.
+            if short_reason:
+                raise ValueError(
+                    f"agy PreInvocation does not support system_message (short_reason: {short_reason!r})"
+                )
             steps = self._agy_inject_steps(advisory)
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
-            # PostInvocationHookResult {injectSteps, terminationBehavior}. Deliver
-            # the advisory via injectSteps; the hard stop-block
-            # (terminationBehavior enum) is deferred pending live verification
-            # (aops-939b6c3a) and is deliberately NOT emitted as a guess.
-            text = advisory or (short_reason if is_block else None)
-            steps = self._agy_inject_steps(text)
+            if short_reason:
+                raise ValueError(
+                    f"agy PostInvocation does not support system_message (short_reason: {short_reason!r})"
+                )
+            steps = self._agy_inject_steps(advisory)
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":
-            # StopHookResult {decision, reason}. There is no injectSteps channel
-            # here; ``reason`` is the only agent-facing field and the blocking
-            # ``decision`` enum is deferred (aops-939b6c3a). Surface the advisory
-            # via reason; do NOT emit a guessed decision.
-            reason = advisory or (short_reason if is_block else None)
-            return {"reason": reason} if reason else {}
+            # StopHookResult {decision, reason}. reason is strictly the system_message.
+            if advisory:
+                raise ValueError(
+                    f"agy Stop does not support context_injection (advisory: {advisory!r})"
+                )
+            if is_block and not short_reason:
+                raise ValueError("agy Stop block requires a system_message (short_reason).")
+            return {"reason": short_reason} if short_reason else {}
 
         # Unknown / unmapped event: the empty object validates against any
         # *Result and never triggers an unknown-field rejection.
