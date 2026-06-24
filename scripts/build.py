@@ -580,6 +580,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     For Gemini: renames mcp__* tools from frontmatter by stripping prefix,
                 and validates/applies Gemini agent schema with defaults.
     For Claude: converts YAML array tools to comma-separated string with PascalCase names.
+    For Antigravity: translates mcp__* tool names to Gemini form (mcp_server_tool);
+                     Claude built-in names (Read, Write, Bash, etc.) pass through unchanged.
     """
     # Split frontmatter from body
     parts = content.split("---", 2)
@@ -762,6 +764,20 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
+    elif platform == "antigravity":
+        # antigravity exposes MCP tools with Gemini-form names (mcp_server_tool,
+        # single underscores, no plugin_ infix). Claude built-in tool names
+        # (Read, Write, Bash, etc.) pass through unchanged.
+        if isinstance(original_tools, str):
+            tools_list = [t.strip() for t in original_tools.split(",")]
+        else:
+            tools_list = list(original_tools)
+
+        translated = [claude_mcp_to_gemini(t) if t.startswith("mcp__") else t for t in tools_list]
+        frontmatter["tools"] = translated
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        return f"---\n{new_frontmatter}---{parts[2]}"
+
     return content
 
 
@@ -818,10 +834,16 @@ def translate_tool_calls(text: str, platform: str) -> str:
         text = text.replace("`Skill(`", "`activate_skill(`")
 
     elif platform == "antigravity":
-        # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
-        # tool names (no frontmatter/body transformation). It uses Claude Code hook
-        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
-        # is not defined in agy; hooks hardcode this same path, so we match it here.
+        # agy MCP tools use Gemini-form names (mcp_server_tool, single underscores,
+        # no plugin_ infix) — the same translation the gemini branch applies.
+        # Non-MCP built-in tool names (Read, Bash, etc.) are Claude-compatible and
+        # pass through unchanged. ${extensionPath} is not defined in agy; hooks
+        # hardcode the install path instead.
+        text = re.sub(
+            r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
+            lambda m: claude_mcp_to_gemini(m.group(0)),
+            text,
+        )
         text = text.replace(
             "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
         )

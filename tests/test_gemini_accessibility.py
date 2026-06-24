@@ -58,6 +58,85 @@ def test_core_agent_transformation_for_gemini(agent_name):
         assert "/../.agents/rules/" not in final
 
 
+@pytest.mark.parametrize("agent_name", ["junior", "rbg", "james", "pauli", "marsha"])
+def test_core_agent_transformation_for_antigravity(agent_name):
+    """Antigravity build must translate mcp__* tool names to mcp_* form in frontmatter."""
+    agent_src = REPO_ROOT / "aops-core" / "agents" / f"{agent_name}.md"
+    if not agent_src.exists():
+        pytest.skip(f"Agent {agent_name} not found")
+
+    content = agent_src.read_text()
+
+    transformed = transform_agent_for_platform(content, "antigravity", f"{agent_name}.md")
+    final = translate_tool_calls(transformed, "antigravity")
+
+    frontmatter_part = final.split("---")[1]
+
+    # No Claude-form MCP names should survive
+    assert "mcp__plugin_aops-core_pkb__" not in frontmatter_part, (
+        f"{agent_name}: Claude MCP name mcp__plugin_aops-core_pkb__* found in antigravity frontmatter"
+    )
+    assert "mcp__" not in frontmatter_part, (
+        f"{agent_name}: untranslated mcp__* name found in antigravity frontmatter"
+    )
+
+    # If the source had PKB tools, the translated form must be present
+    if "mcp__plugin_aops-core_pkb__" in content:
+        assert "mcp_pkb_" in frontmatter_part, (
+            f"{agent_name}: expected mcp_pkb_* in antigravity frontmatter after translation"
+        )
+
+    # Wildcard form must also be translated
+    if "mcp__plugin_aops-core_pkb__*" in content:
+        assert "mcp_pkb_*" in frontmatter_part, (
+            f"{agent_name}: wildcard mcp_pkb_* missing from antigravity frontmatter"
+        )
+
+
+def test_antigravity_translate_tool_calls_mcp_names():
+    """translate_tool_calls for antigravity rewrites mcp__plugin_*__tool in body text."""
+    body = (
+        "Use `mcp__plugin_aops-core_pkb__search` to look things up. "
+        "Also see `mcp__plugin_aops-core_pkb__*` for all PKB tools. "
+        "Non-MCP tools like Read and Bash stay unchanged."
+    )
+    result = translate_tool_calls(body, "antigravity")
+
+    assert "mcp__plugin_aops-core_pkb__" not in result
+    assert "mcp_pkb_search" in result
+    assert "mcp_pkb_*" in result
+    assert "Read" in result
+    assert "Bash" in result
+
+
+def test_antigravity_transform_preserves_non_mcp_tools():
+    """Antigravity transform must leave Claude built-in tool names intact."""
+    content = """\
+---
+name: test-agent
+description: A test agent
+tools:
+  - Read
+  - Write
+  - Bash
+  - mcp__plugin_aops-core_pkb__search
+  - mcp__plugin_aops-core_pkb__*
+  - mcp__outlook__*
+---
+Body text here.
+"""
+    result = transform_agent_for_platform(content, "antigravity", "test-agent.md")
+
+    frontmatter_part = result.split("---")[1]
+    assert "Read" in frontmatter_part
+    assert "Write" in frontmatter_part
+    assert "Bash" in frontmatter_part
+    assert "mcp_pkb_search" in frontmatter_part
+    assert "mcp_pkb_*" in frontmatter_part
+    assert "mcp_outlook_*" in frontmatter_part
+    assert "mcp__" not in frontmatter_part
+
+
 def test_gemini_hooks_parameter_replacement(tmp_path):
     """Verify hooks.json is correctly transformed for Gemini with required parameters."""
     hooks_src = REPO_ROOT / "aops-core" / "hooks" / "hooks.json"
