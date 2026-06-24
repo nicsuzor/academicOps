@@ -21,12 +21,15 @@ PKB_HALT_SENTINEL = "[ATTN] PKB verb missing"
 # string-match here. The prohibition must NOT be weakened or softened —
 # routing around the PKB MCP is a security incident (aops-18572bc0 §5).
 PKB_HALT_FLOOR = """\
-**PKB-HALT floor**: If a PKB operation is needed and the required MCP verb \
-(`mcp__plugin_aops-core_pkb__*`) is not available in your tool list, \
-**STOP immediately**. Emit `[ATTN] PKB verb missing: <verb> for <operation>` \
-in the transcript, then file a follow-up task via the existing `create_task` \
-verb if available. Do NOT invent a shell-out, an SSH escape, a file write, \
-or any other workaround — routing around the PKB MCP is a security incident \
+**PKB-HALT floor**: If a PKB operation is needed, check your available tool \
+list by *capability* — search the knowledge base, get or create or update \
+tasks, append to documents, store memories, release a task, and so on — not \
+by matching any specific tool-name prefix (tool names vary by client). If no \
+tool with the required capability is in your list, **STOP immediately**. \
+Emit `[ATTN] PKB verb missing: <capability> for <operation>` in the \
+transcript, then file a follow-up task via the existing task-creation tool \
+if available. Do NOT invent a shell-out, an SSH escape, a file write, or any \
+other workaround — routing around the PKB MCP is a security incident \
 (aops-18572bc0 §5).\
 """
 
