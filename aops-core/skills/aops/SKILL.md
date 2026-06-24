@@ -26,6 +26,8 @@ If corrected, encountering a process gap, or seeing a `learning`-tagged task:
 2. Update the file in the same turn.
 3. Validate that agents follow the updated instructions.
 
+> **Enforced-behaviour carve-out**: if the instruction is already enforced via a gate, hook, or ENFORCEMENT-MAP row — or if satisfying it would add, modify, or retire any such mechanism — do NOT update in place. Route to the Workflow Router "Change enforced behaviour" row and follow `specs/enforcement/enforcement.md §4` instead.
+
 ### Dogfooding & Process Verification
 
 When failures occur, identify and fix the process gap rather than just applying a local patch. Do not declare victory until you verify success with evidence.
@@ -56,20 +58,21 @@ Verify capability and constraints of framework mechanisms (plugins, model contex
 
 Route tasks based on scope:
 
-| Target                                 | Workflow                                                                   |
-| :------------------------------------- | :------------------------------------------------------------------------- |
-| **Add hook, skill, command, or agent** | [01-design-new-component](workflows/01-design-new-component.md)            |
-| **Fix broken framework issues**        | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)          |
-| **Test optimizations / experiments**   | [03-experiment-design](workflows/03-experiment-design.md)                  |
-| **Check / trim bloat**                 | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)          |
-| **Build new features**                 | [05-feature-development](workflows/05-feature-development.md)              |
-| **Write/update specifications**        | [06-develop-specification](workflows/06-develop-specification.md)          |
-| **Record lessons / learnings**         | [07-learning-log](workflows/07-learning-log.md)                            |
-| **Unstick blocked decisions**          | [08-decision-briefing](workflows/08-decision-briefing.md)                  |
-| **Diagnose hook/gate failures**        | [09-session-hook-forensics](workflows/09-session-hook-forensics.md)        |
-| **Process-level review (dogfooding)**  | [10-reflective-execution](workflows/10-reflective-execution.md)            |
-| **Verify session infrastructure**      | [11-self-test](workflows/11-self-test.md)                                  |
-| **Verify hook routing**                | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing) |
+| Target                                                         | Workflow                                                                                                                 |
+| :------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **Add hook, skill, command, or agent**                         | [01-design-new-component](workflows/01-design-new-component.md)                                                          |
+| **Fix broken framework issues**                                | [02-debug-framework-issue](workflows/02-debug-framework-issue.md)                                                        |
+| **Test optimizations / experiments**                           | [03-experiment-design](workflows/03-experiment-design.md)                                                                |
+| **Check / trim bloat**                                         | [04-monitor-prevent-bloat](workflows/04-monitor-prevent-bloat.md)                                                        |
+| **Build new features**                                         | [05-feature-development](workflows/05-feature-development.md)                                                            |
+| **Write/update specifications**                                | [06-develop-specification](workflows/06-develop-specification.md)                                                        |
+| **Record lessons / learnings**                                 | [07-learning-log](workflows/07-learning-log.md)                                                                          |
+| **Unstick blocked decisions**                                  | [08-decision-briefing](workflows/08-decision-briefing.md)                                                                |
+| **Diagnose hook/gate failures**                                | [09-session-hook-forensics](workflows/09-session-hook-forensics.md)                                                      |
+| **Process-level review (dogfooding)**                          | [10-reflective-execution](workflows/10-reflective-execution.md)                                                          |
+| **Verify session infrastructure**                              | [11-self-test](workflows/11-self-test.md)                                                                                |
+| **Verify hook routing**                                        | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing)                                               |
+| **Change enforced behaviour / gate / ENFORCEMENT-MAP / axiom** | Follow `specs/enforcement/enforcement.md §4` (CBA + pyramid position required); do NOT edit an instruction file in place |
 
 ## Categorical Conventions
 

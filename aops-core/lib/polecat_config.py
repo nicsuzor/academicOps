@@ -143,8 +143,8 @@ class PolecatConfig:
     machine: str | None
     # Explicit container forwarding whitelist (PKB note-b5347f83, Q2). The
     # legible "limited list" of env-var NAMES that cross into polecat/crew
-    # containers. NAMES only — VALUES are resolved at launch from the host
-    # secret store (~/.env.local) by lib/host_secrets, NEVER committed here.
+    # containers. NAMES only — VALUES are resolved at launch from the PROCESS
+    # ENVIRONMENT by lib/host_secrets (AOPS reads no files), NEVER committed here.
     # This is the canonical source of "what the container gets" for secrets the
     # launching session deliberately does not hold (OAuth tokens).
     container_env_forward: tuple[str, ...] = ()
@@ -266,7 +266,8 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
 # Default container forwarding whitelist (PKB note-b5347f83, Q2). The secrets a
 # polecat/crew worker needs but the launching general agent deliberately does
 # NOT persist into its own session env. NAMES only — values resolved at launch
-# from ~/.env.local by lib/host_secrets. The shipped polecat.yaml.example sets
+# from the process env by lib/host_secrets (no file reading). The shipped
+# polecat.yaml.example sets
 # the same list explicitly so operators can see and edit it.
 _DEFAULT_CONTAINER_ENV_FORWARD: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",

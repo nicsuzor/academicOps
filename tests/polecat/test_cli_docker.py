@@ -25,9 +25,11 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from cli import (
     _build_docker_cmd,
     _clone_has_changes,
+    _ensure_docker_image,
     _find_docker_sock,
     _format_oom_message,
     _is_colima_env,
+    _is_floating_tag,
     _node_version_key,
     _parse_memory_string,
     _replicate_gemini_auth,
@@ -260,11 +262,9 @@ class TestRequireClaudeOauth:
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.delenv("AOPS_CC_OAUTH_TOKEN", raising=False)
-        # Isolate the host secret store too: resolve_forward_values reads
-        # ~/.env.local (the authoritative source) before the process env, so a
-        # real token on the dev host would mask the "missing" case. Point
-        # AOPS_HOST_ENV_FILE at a nonexistent file so load_host_secrets is empty.
-        monkeypatch.setenv("AOPS_HOST_ENV_FILE", str(tmp_path / "no-env-local"))
+        # resolve_forward_values reads the PROCESS ENV only (no file reading),
+        # so deleting both candidate source names from the env is sufficient to
+        # reproduce the "missing token" case — nothing on disk can mask it.
         with pytest.raises(SystemExit) as excinfo:
             _require_claude_oauth_or_exit("claude")
         assert excinfo.value.code == 4
@@ -1158,3 +1158,231 @@ class TestFormatOomMessage:
         with patch("cli._find_docker_sock", return_value=None):
             msg = _format_oom_message({}, daemon_mem_bytes=None)
         assert "GB memory available" not in msg
+
+
+class TestConfForwardsEnvFile:
+    """Regression guard: conf-forwarded secrets must not appear on docker run argv.
+
+    PR #1887 moved conf secrets off argv onto a mode-0600 --env-file (T1 fix).
+    These tests guard that property so a future refactor cannot silently revert it.
+
+    Note: shell-mode GEMINI_API_KEY (cli.py:1534) is a PRE-EXISTING argv forward
+    outside the conf-forwards path and is tracked in a separate follow-up issue.
+    It is NOT covered here and is NOT a regression introduced by PR #1887.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _patch_remote_daemon(self):
+        with patch("cli._is_remote_daemon", return_value=False):
+            yield
+
+    def _build_with_secrets(self, secrets, tmp_path, cli_tool="claude"):
+        tmp_files: list = []
+        with patch("cli.get_container_env_forwards", return_value=secrets):
+            docker_cmd = _build_docker_cmd(
+                cli_tool=cli_tool,
+                work_dir=tmp_path / "worktree",
+                env={"POLECAT_STAGING_BASE": str(tmp_path)},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+                tmp_files=tmp_files,
+            )
+        return docker_cmd, tmp_files
+
+    def test_conf_secret_values_absent_from_argv(self, tmp_path):
+        """Conf-forwarded secret values must not appear anywhere on docker run argv."""
+        secrets = {
+            "ANTHROPIC_API_KEY": "sk-ant-super-secret",
+            "PKB_MCP_TOKEN": "mcp-token-super-secret",
+        }
+        docker_cmd, _ = self._build_with_secrets(secrets, tmp_path)
+        argv_str = " ".join(docker_cmd.cmd)
+        for val in secrets.values():
+            assert val not in argv_str, (
+                f"Conf secret value leaked onto docker run argv (T1 regression): {val!r}"
+            )
+
+    def test_conf_secrets_not_on_dash_e(self, tmp_path):
+        """Conf secret keys must not appear as '-e KEY=VALUE' on argv."""
+        secrets = {"ANTHROPIC_API_KEY": "sk-ant-super-secret"}
+        docker_cmd, _ = self._build_with_secrets(secrets, tmp_path)
+        for i, arg in enumerate(docker_cmd.cmd[:-1]):
+            if arg == "-e":
+                key = docker_cmd.cmd[i + 1].split("=", 1)[0]
+                assert key not in secrets, (
+                    f"Conf secret {key!r} found as -e KEY=VALUE on argv (T1 regression)"
+                )
+
+    def test_env_file_is_0600(self, tmp_path):
+        """The --env-file tmpfile must be mode 0600 (owner-read-only)."""
+        secrets = {"ANTHROPIC_API_KEY": "sk-ant-test-key"}
+        docker_cmd, _ = self._build_with_secrets(secrets, tmp_path)
+        assert docker_cmd.env_file is not None
+        mode = docker_cmd.env_file.stat().st_mode & 0o777
+        assert mode == 0o600, f"env-file perms {oct(mode)} — expected 0600"
+
+    def test_env_file_registered_in_tmp_files(self, tmp_path):
+        """env_file must be in tmp_files for crash-safe post-spawn cleanup."""
+        secrets = {"PKB_MCP_TOKEN": "mcp-secret"}
+        docker_cmd, tmp_files = self._build_with_secrets(secrets, tmp_path)
+        assert docker_cmd.env_file is not None
+        assert docker_cmd.env_file in tmp_files, (
+            "env_file not registered in tmp_files — crash/SIGKILL cleanup path broken"
+        )
+
+    def test_env_file_none_when_no_conf_forwards(self, tmp_path):
+        """When get_container_env_forwards returns empty, no env-file is created."""
+        docker_cmd, _ = self._build_with_secrets({}, tmp_path)
+        assert docker_cmd.env_file is None
+
+    def test_env_file_referenced_in_cmd(self, tmp_path):
+        """--env-file arg must point at the created tmpfile path."""
+        secrets = {"ANTHROPIC_API_KEY": "sk-ant-test-key"}
+        docker_cmd, _ = self._build_with_secrets(secrets, tmp_path)
+        assert "--env-file" in docker_cmd.cmd
+        ef_idx = docker_cmd.cmd.index("--env-file")
+        assert docker_cmd.cmd[ef_idx + 1] == str(docker_cmd.env_file)
+
+
+class TestIsFloatingTag:
+    """Unit tests for the _is_floating_tag helper.
+
+    Covers the distinction between floating tags (must be reconciled against
+    the registry on each dispatch) and immutable tags (safe to fast-path).
+    Root cause of aops-aa4c85a6: :latest was treated as immutable, causing
+    stale cached workers to persist silently.
+    """
+
+    def test_latest_is_floating(self):
+        assert _is_floating_tag("aops-crew:latest") is True
+
+    def test_no_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew") is True
+
+    def test_no_tag_with_registry_is_floating(self):
+        assert _is_floating_tag("ghcr.io/nicsuzor/aops-crew") is True
+
+    def test_registry_with_port_no_tag_is_floating(self):
+        assert _is_floating_tag("registry:5000/aops-crew") is True
+
+    def test_named_branch_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:main") is True
+
+    def test_dev_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:dev") is True
+
+    def test_stable_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:stable") is True
+
+    def test_semver_with_v_prefix_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2.3") is False
+
+    def test_semver_without_v_prefix_is_immutable(self):
+        assert _is_floating_tag("aops-crew:1.2.3") is False
+
+    def test_semver_two_part_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2") is False
+
+    def test_digest_pinned_is_immutable(self):
+        assert _is_floating_tag("aops-crew@sha256:abc123def456") is False
+
+    def test_digest_with_tag_is_immutable(self):
+        assert _is_floating_tag("aops-crew:latest@sha256:abc123") is False
+
+    def test_full_registry_semver_is_immutable(self):
+        assert _is_floating_tag("ghcr.io/nicsuzor/aops-crew:v0.3.27") is False
+
+    def test_registry_with_port_and_semver_is_immutable(self):
+        assert _is_floating_tag("registry:5000/aops-crew:v2.0.0") is False
+
+    def test_prerelease_semver_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2.3-dev.5") is False
+
+
+class TestEnsureDockerImage:
+    """Behaviour tests for _ensure_docker_image floating-tag reconciliation.
+
+    Root cause: agy workers were pinned to stale aops-crew:latest because
+    _ensure_docker_image returned early on any local hit regardless of tag
+    mutability (aops-aa4c85a6 / parent epic aops-348e5858).
+    """
+
+    def _proc(self, returncode=0, stderr="", stdout=""):
+        import subprocess
+
+        return subprocess.CompletedProcess(
+            args=[], returncode=returncode, stderr=stderr, stdout=stdout
+        )
+
+    def test_floating_tag_pulls_even_when_cached(self):
+        """A cached :latest image must be re-pulled (reconciled), not used as-is."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists locally
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:latest", False, "docker")
+        calls = mock_run.call_args_list
+        assert len(calls) == 2, "Expected inspect + pull for floating tag"
+        pull_cmd = calls[1][0][0]
+        assert "pull" in pull_cmd
+
+    def test_no_tag_pulls_even_when_cached(self):
+        """A cached image with no tag must be reconciled (defaults to :latest)."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew", False, "docker")
+        assert len(mock_run.call_args_list) == 2
+
+    def test_immutable_tag_skips_pull_when_cached(self):
+        """A cached :vX.Y.Z image must not trigger a registry pull."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:v1.2.3", False, "docker")
+        assert len(mock_run.call_args_list) == 1, (
+            "Immutable tag should early-return after inspect; pull must not be issued"
+        )
+
+    def test_registry_failure_falls_back_to_cache_with_warning(self, capsys):
+        """When registry is unreachable and a cached floating image exists,
+        dispatch must not raise; a warning is printed to stderr."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists locally
+            self._proc(returncode=1, stderr="timeout"),  # pull: registry unreachable
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects):
+            _ensure_docker_image("aops-crew:latest", False, "docker")  # must not raise
+        err = capsys.readouterr().err
+        assert "Warning" in err
+        assert "cached image" in err
+
+    def test_missing_immutable_tag_pulls(self):
+        """A missing immutable-tag image must still be pulled."""
+        side_effects = [
+            self._proc(returncode=1),  # inspect: image absent
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:v1.0.0", False, "docker")
+        assert len(mock_run.call_args_list) == 2
+
+    def test_missing_floating_tag_pulls_and_errors_on_failure(self, capsys):
+        """A missing floating-tag image that fails to pull prints an error."""
+        side_effects = [
+            self._proc(returncode=1),  # inspect: image absent
+            self._proc(returncode=1, stderr="net fail"),  # pull: fails
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects):
+            _ensure_docker_image("aops-crew:latest", False, "docker")
+        err = capsys.readouterr().err
+        assert "Error pulling" in err or "net fail" in err
+
+    def test_docker_binary_not_found_does_not_raise(self):
+        """FileNotFoundError on inspect must be swallowed silently."""
+        with patch("cli.subprocess.run", side_effect=FileNotFoundError):
+            _ensure_docker_image("aops-crew:latest", False, "docker")  # must not raise

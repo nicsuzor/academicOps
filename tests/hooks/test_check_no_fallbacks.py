@@ -89,6 +89,139 @@ def test_allow_fallback_annotation_suppresses(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# #1918 — three silent-fallback shapes the AST visitor used to be blind to.
+# Each shape: positive (flagged) + annotated (suppressed). RCA: the linter
+# reported "OK" on host_secrets.py while a 3-source silent fallback chain was
+# present, because the visitor only matched `.get(..., EMPTY)` and `x or EMPTY`.
+# --------------------------------------------------------------------------
+
+
+# Shape 6 — dict-merge backfill: {**a, **b} (2+ ** unpackings).
+def test_dict_merge_backfill_flagged(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "merge.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("def f(a, b):\n    return {**a, **b}\n")
+    r = _run_on(target)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "{**a, **b}" in r.stdout
+    assert "merge.py:2" in r.stdout
+
+
+def test_dict_merge_single_unpack_not_flagged(tmp_path):
+    """A single `**` unpack with explicit keys is an additive build, not a
+    cross-source backfill — must NOT flag."""
+    target = tmp_path / "aops-core" / "lib" / "single.py"
+    target.parent.mkdir(parents=True)
+    target.write_text('def f(a):\n    return {**a, "k": 1}\n')
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_dict_merge_backfill_annotation_suppresses(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "merge_ok.py"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        "def f(a, b):\n    return {**a, **b}  # allow-fallback: overrides intentionally win\n"
+    )
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+# Shape 7 — swallow-to-empty: except handler returns an empty literal.
+@pytest.mark.parametrize(
+    "ret,expected",
+    [
+        ("return {}", "return {}"),
+        ('return ""', 'return ""'),
+        ("return []", "return []"),
+        ("return None", "return None"),
+        ("return", "return None"),  # bare return swallows into None too
+    ],
+)
+def test_swallow_to_empty_flagged(tmp_path, ret, expected):
+    target = tmp_path / "aops-core" / "lib" / "swallow.py"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        "def f():\n    try:\n        return load()\n    except Exception:\n        " + ret + "\n"
+    )
+    r = _run_on(target)
+    assert r.returncode == 1, f"{ret}: {r.stdout}\n{r.stderr}"
+    assert f"except: {expected}" in r.stdout
+
+
+def test_swallow_returning_real_value_not_flagged(tmp_path):
+    """An except handler that returns a computed value is not swallow-to-empty."""
+    target = tmp_path / "aops-core" / "lib" / "recover.py"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        "def f():\n"
+        "    try:\n        return load()\n"
+        "    except Exception:\n        return compute_default()\n"
+    )
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_swallow_to_empty_annotation_suppresses(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "swallow_ok.py"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        "def f():\n"
+        "    try:\n        return load()\n"
+        "    except FileNotFoundError:\n"
+        "        return {}  # allow-fallback: missing cache is a legitimate empty\n"
+    )
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+# Shape 8 — get-or-get chain: a.get(x) or b.get(x) / a.get(x) or c[x].
+@pytest.mark.parametrize(
+    "expr",
+    ['a.get("x") or b.get("x")', 'a.get("x") or c["x"]'],
+)
+def test_get_or_get_chain_flagged(tmp_path, expr):
+    target = tmp_path / "aops-core" / "lib" / "chain.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("def f(a, b, c):\n    return " + expr + "\n")
+    r = _run_on(target)
+    assert r.returncode == 1, f"{expr}: {r.stdout}\n{r.stderr}"
+    assert "Cross-source value-masking fallback" in r.stdout
+
+
+def test_get_or_get_same_source_not_flagged(tmp_path):
+    """`d.get(a) or d.get(b)` reads from ONE source — ordinary short-circuit
+    selection, not a cross-source fallback."""
+    target = tmp_path / "aops-core" / "lib" / "samesrc.py"
+    target.parent.mkdir(parents=True)
+    target.write_text('def f(d):\n    return d.get("a") or d.get("b")\n')
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_get_or_empty_literal_not_double_reported_as_chain(tmp_path):
+    """`a.get(x) or {}` is the empty-literal chain (shape 2), not get-or-get."""
+    target = tmp_path / "aops-core" / "lib" / "orempty.py"
+    target.parent.mkdir(parents=True)
+    target.write_text('def f(a):\n    return a.get("x") or {}\n')
+    r = _run_on(target)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "... or {}" in r.stdout
+    assert "Cross-source" not in r.stdout
+
+
+def test_get_or_get_chain_annotation_suppresses(tmp_path):
+    target = tmp_path / "aops-core" / "lib" / "chain_ok.py"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        "def f(a, b):\n"
+        '    return a.get("x") or b.get("x")  # allow-fallback: b is the documented backup source\n'
+    )
+    r = _run_on(target)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+# --------------------------------------------------------------------------
 # AC2 — bare-run scope (`_in_scope`) and the pre-commit glob AGREE.
 # The glob is read from the real config (SSoT), not asserted as a literal
 # string, so the test checks the *scope decision* on representative paths.

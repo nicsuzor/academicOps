@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import uuid
 from datetime import UTC, datetime
@@ -500,19 +501,19 @@ def _make_worker_env(
 
     ``container_env_forward`` is polecat.yaml's explicit forwarding whitelist
     (PKB note-b5347f83, Q2): a list of var NAMES whose VALUES are resolved from
-    the host secret store (~/.env.local) at launch — *independent* of whether
-    the launching session (e.g. junior) carries them. This is how the OAuth
-    tokens reach the container without the general agent ever holding them in
-    its own session env. Resolved values are overlaid onto ``env`` so the
-    downstream ``get_container_env_forwards(env)`` emits them as ``-e`` flags.
+    the PROCESS ENVIRONMENT at launch. The launching session (e.g. junior) need
+    not hold the official-named token itself — source-name indirection means it
+    can carry the AOPS-prefixed source name instead. Populating the environment
+    with these secrets is the operator's responsibility (out of scope for AOPS).
+    Resolved values are overlaid onto ``env`` so the downstream
+    ``get_container_env_forwards(env)`` emits them as ``-e`` flags.
     """
     env = os.environ.copy()
     apply_env_mappings(env)
 
-    # Resolve the explicit container forwarding whitelist from the host secret
-    # store. ~/.env.local is authoritative; process env is the fallback (covers
-    # the GHA surface, which has no ~/.env.local but injects secrets via the
-    # process env). Empty values are skipped by resolve_forward_values.
+    # Resolve the explicit container forwarding whitelist from the process env
+    # ONLY (no file reading). Empty/absent values are skipped by
+    # resolve_forward_values (forward-if-present semantics).
     if container_env_forward:
         from lib.host_secrets import resolve_forward_values
 
@@ -967,6 +968,7 @@ class DockerCmd(NamedTuple):
     cmd: list[str]
     staging_dir: Path | None
     workspace_dir: Path | None = None
+    env_file: Path | None = None
 
 
 class DockerSock(NamedTuple):
@@ -1332,9 +1334,49 @@ def _init_container_memory(
     return memory_limit, daemon_mem
 
 
+_IMMUTABLE_TAG_RE = re.compile(r"^v?\d+\.\d+(\.\d+)?([+\-][a-zA-Z0-9._+\-]*)?$")
+
+
+def _is_floating_tag(image: str) -> bool:
+    """Return True if the image uses a mutable/floating tag that requires registry reconciliation.
+
+    Floating: :latest, no explicit tag (Docker defaults to :latest), or any
+    non-versioned tag (e.g. :main, :dev, :stable).
+    Immutable: digest-pinned (@sha256:...) or a semantic-version tag (:vX.Y.Z or :X.Y.Z).
+    """
+    # Digest-pinned references are content-addressed and never change.
+    if "@sha256:" in image:
+        return False
+    # Find the last colon. If the text after it contains '/', the colon was part of
+    # a registry:port prefix (e.g. registry:5000/image), not a tag separator.
+    colon_idx = image.rfind(":")
+    if colon_idx == -1:
+        return True  # No tag at all → Docker defaults to :latest → floating
+    potential_tag = image[colon_idx + 1 :]
+    if "/" in potential_tag:
+        return True  # Colon was registry:port, not a tag → no explicit tag → floating
+    if not potential_tag or potential_tag == "latest":
+        return True
+    # Semantic version tags are immutable: vX.Y.Z, X.Y.Z (optional pre-release/build metadata).
+    if _IMMUTABLE_TAG_RE.match(potential_tag):
+        return False
+    # Any other tag (:main, :dev, :stable, branch names, etc.) is floating.
+    return True
+
+
 def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
-    """Ensure Docker image is present; pull it if not, silencing output unless verbose."""
-    # Fast check: does the image exist locally?
+    """Ensure Docker image is present; pull it if not, silencing output unless verbose.
+
+    Floating tags (:latest or non-versioned) are reconciled against the registry even
+    when a local copy already exists — a cached floating tag may be stale.  A stale
+    cached :latest was the root cause of aops-aa4c85a6 (parent epic aops-348e5858):
+    the cached image predated fix #1835 and its baked router emitted {} for agy
+    PreToolUse ALLOW, hard-denying every tool call.
+
+    Immutable tags (digest-pinned or :vX.Y.Z) keep the existing fast path.
+    If the registry is unreachable and a local copy exists, fall back with a stderr
+    warning rather than hard-failing dispatch.
+    """
     try:
         inspect = subprocess.run(
             [docker_binary, "image", "inspect", image], capture_output=True, check=False
@@ -1343,12 +1385,22 @@ def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
         # Docker binary not found — let the actual docker run command surface the error
         # via the existing FileNotFoundError handler in crew/run.
         return
-    if inspect.returncode == 0:
+    image_exists_locally = inspect.returncode == 0
+
+    if image_exists_locally and not _is_floating_tag(image):
+        # Fast path: immutable tag present locally — it cannot have changed.
         return
 
-    # Image missing, pull it
+    # Pull: either the image is absent, or it uses a floating tag that must be
+    # reconciled against the registry to catch stale caches.
     if verbose:
-        print(f"Pulling Docker image {image}...", file=sys.stderr)
+        if image_exists_locally:
+            print(
+                f"Reconciling cached floating image {image} against registry...",
+                file=sys.stderr,
+            )
+        else:
+            print(f"Pulling Docker image {image}...", file=sys.stderr)
     cmd = [docker_binary, "pull"]
     if not verbose:
         cmd.append("-q")
@@ -1357,9 +1409,17 @@ def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
         pull_result = subprocess.run(cmd, check=False, capture_output=not verbose, text=True)
     except FileNotFoundError:
         return
-    if pull_result.returncode != 0 and not verbose:
-        print(f"Error pulling image {image}:", file=sys.stderr)
-        print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
+    if pull_result.returncode != 0:
+        if image_exists_locally:
+            # Registry unreachable — fall back to cached image rather than failing dispatch.
+            print(
+                f"Warning: Could not reconcile {image} against registry "
+                "(registry unreachable); using cached image.",
+                file=sys.stderr,
+            )
+        elif not verbose:
+            print(f"Error pulling image {image}:", file=sys.stderr)
+            print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
 
 
 def _build_docker_cmd(
@@ -1556,8 +1616,26 @@ def _build_docker_cmd(
     # GIT_TERMINAL_PROMPT=0 isolation literals.
     # Empty source values are skipped (closes the empty-credential 401 leak).
     conf_forwards = get_container_env_forwards(env)
-    for key, val in conf_forwards.items():
-        cmd.extend(["-e", f"{key}={val}"])
+    _env_file_path: Path | None = None
+    if conf_forwards:
+        # Write secrets to a mode-0600 tmpfile instead of putting values on argv
+        # (argv is world-visible via ps/proc; tmpfile is owner-readable only).
+        # The file is consumed by docker before the container process starts;
+        # _run_docker_container unlinks it as soon as the container is running.
+        # mkstemp already yields a 0600 fd — no umask dance needed.
+        _fd, _env_path_str = tempfile.mkstemp(prefix="polecat-env-", suffix=".env")
+        _env_file_path = Path(_env_path_str)
+        try:
+            with os.fdopen(_fd, "w") as _env_fp:
+                for key, val in conf_forwards.items():
+                    _env_fp.write(f"{key}={val}\n")
+        except Exception:
+            _env_file_path.unlink(missing_ok=True)
+            _env_file_path = None
+            raise
+        cmd.extend(["--env-file", str(_env_file_path)])
+        if tmp_files is not None:
+            tmp_files.append(_env_file_path)
 
     # Project-specific mounts and env (from polecat.yaml mounts: block).
     if project_slug and manager:
@@ -1745,7 +1823,9 @@ def _build_docker_cmd(
 
     cmd.append(image)
     cmd.extend(agent_cmd)
-    return DockerCmd(cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir)
+    return DockerCmd(
+        cmd=cmd, staging_dir=_staging_dir, workspace_dir=workspace_dir, env_file=_env_file_path
+    )
 
 
 def _pkb_termination_watchdog(
@@ -1925,6 +2005,39 @@ def _run_docker_container(
             )
             _watchdog_thread.start()
 
+        # Unlink the --env-file as soon as the container is running.
+        # Docker reads it during create (before the container process starts),
+        # so removing it once the container appears in docker ps is safe.
+        _env_unlink_thread = None
+        if docker_cmd.env_file is not None:
+            _env_file_to_unlink = docker_cmd.env_file
+
+            def _unlink_env_after_spawn() -> None:
+                try:
+                    deadline = time.monotonic() + 30.0
+                    while time.monotonic() < deadline:
+                        try:
+                            r = subprocess.run(
+                                ["docker", "ps", "-q", "-f", f"name={container_name}"],
+                                capture_output=True,
+                                text=True,
+                                timeout=5.0,
+                            )
+                        except subprocess.TimeoutExpired:
+                            continue
+                        if r.stdout.strip():
+                            break
+                        time.sleep(0.2)
+                finally:
+                    _env_file_to_unlink.unlink(missing_ok=True)
+
+            _env_unlink_thread = threading.Thread(
+                target=_unlink_env_after_spawn,
+                daemon=True,
+                name="polecat-env-unlink",
+            )
+            _env_unlink_thread.start()
+
         try:
             _result = subprocess.run(
                 cmd, cwd=cwd, env=env, capture_output=capture_output, text=text
@@ -1956,6 +2069,8 @@ def _run_docker_container(
                 _watchdog_cancel.set()
             if _watchdog_thread is not None:
                 _watchdog_thread.join(timeout=5.0)
+            if _env_unlink_thread is not None:
+                _env_unlink_thread.join(timeout=35.0)
 
     # Replace "docker run --rm" with "docker create" (no --rm, we clean up manually)
     # The cmd starts with ["docker", "run", "--rm", ...]
@@ -1967,6 +2082,10 @@ def _run_docker_container(
         print(f"docker create failed: {result.stderr}", file=sys.stderr)
         return result
     container_id = result.stdout.strip()
+
+    # docker create has consumed the --env-file; unlink it now (remote daemon path).
+    if docker_cmd.env_file is not None:
+        docker_cmd.env_file.unlink(missing_ok=True)
 
     try:
         # Copy workspace into the container and fix ownership.
@@ -2538,7 +2657,7 @@ def _require_claude_oauth_or_exit(cli_tool: str) -> None:
     injected into the container under the official name ``CLAUDE_CODE_OAUTH_TOKEN``
     (aops-b368109a); the official name itself is a transitional fallback source.
     This check uses the exact same resolution path as the launcher
-    (``resolve_forward_values``), so it honours ``~/.env.local`` and the alias
+    (``resolve_forward_values``), reading the PROCESS ENV ONLY plus the alias
     indirection. If nothing resolves we fail here, before spawning a worktree,
     rather than letting the worker hit a generic 401 deep in headless execution.
 

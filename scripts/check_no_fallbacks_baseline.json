@@ -1,6 +1,13 @@
 {
-  "_comment": "Grandfathered silent-fallback sites pending burn-down by the P0 content-sweep aops-682e75a5. Keyed by repo-relative file -> pattern -> count. NEW fallbacks beyond these counts still fail. Regenerate with `scripts/check_no_fallbacks.py --update-baseline`; delete this file once the sweep empties it.",
+  "_comment": "Grandfathered silent-fallback sites pending burn-down by the P0 content-sweep aops-682e75a5. Keyed by repo-relative file -> pattern -> count. NEW fallbacks beyond these counts still fail. Regenerate with `scripts/check_no_fallbacks.py --update-baseline`; delete this file once the sweep empties it. The dict-merge / except-return-empty / get-or-get shapes were added in #1918; their pre-existing legitimate sites are grandfathered here. aops-core/lib/host_secrets.py (the #1918 RCA target, fixed by PR #1919) is deliberately NOT baselined so its 3 hits keep blocking until #1919 lands.",
   "baseline": {
+    "aops-core/hooks/router.py": {
+      "except: return None": 1,
+      "raw_input.get('agentId') or self.session_data.get('agent_id')": 1,
+      "raw_input.get('agent_type') or self.session_data.get('subagent_type')": 1,
+      "raw_input.get('session_id') or os.environ.get('AOPS_SESSION_ID')": 1,
+      "self.session_data.get('session_id') or os.environ.get('AOPS_SESSION_ID')": 1
+    },
     "aops-core/lib/automode.py": {
       ".get(..., [])": 3,
       ".get(..., {})": 1
@@ -10,16 +17,21 @@
     },
     "aops-core/lib/gates/custom_actions.py": {
       "... or ''": 1,
-      ".get(..., [])": 1
+      ".get(..., [])": 1,
+      "except: return None": 1
     },
     "aops-core/lib/gates/custom_conditions.py": {
       "... or ''": 2,
-      ".get(..., '')": 2,
+      ".get(..., '')": 1,
       "os.environ.get(..., 'warn')": 4
     },
     "aops-core/lib/gates/engine.py": {
       "... or ''": 3,
-      ".get(..., '')": 2
+      ".get(..., '')": 2,
+      "{**a, **b}": 2
+    },
+    "aops-core/lib/git_safety.py": {
+      "except: return None": 1
     },
     "aops-core/lib/hook_utils.py": {
       ".get(..., '')": 2,
@@ -27,10 +39,13 @@
     },
     "aops-core/lib/insights_generator.py": {
       ".get(..., '')": 1,
-      ".get(..., [])": 1
+      ".get(..., [])": 1,
+      "except: return \"\"": 1,
+      "{**a, **b}": 2
     },
     "aops-core/lib/paths.py": {
-      ".get(..., {})": 1
+      ".get(..., {})": 1,
+      "except: return {}": 1
     },
     "aops-core/lib/polecat_config.py": {
       "... or {}": 4
@@ -44,19 +59,26 @@
       "... or []": 1,
       ".get(..., '')": 2
     },
+    "aops-core/lib/session_paths.py": {
+      "except: return None": 1
+    },
     "aops-core/lib/session_reader.py": {
       "... or ''": 1,
       "... or {}": 2,
       ".get(..., '')": 33,
       ".get(..., [])": 12,
-      ".get(..., {})": 12
+      ".get(..., {})": 12,
+      "except: return None": 1,
+      "except: return {}": 1
     },
     "aops-core/lib/session_state.py": {
       ".get(..., '')": 1
     },
     "aops-core/lib/session_summary.py": {
       "... or ''": 1,
-      ".get(..., [])": 2
+      ".get(..., [])": 2,
+      "except: return None": 1,
+      "except: return []": 1
     },
     "aops-core/lib/subagent_transcript.py": {
       "... or {}": 2,
@@ -67,33 +89,44 @@
     },
     "aops-core/lib/transcript_parser.py": {
       "... or ''": 19,
-      "... or []": 7,
+      "... or []": 5,
       "... or {}": 15,
-      ".get(..., '')": 71,
+      ".get(..., '')": 69,
       ".get(..., [])": 38,
-      ".get(..., {})": 26
+      ".get(..., {})": 25,
+      "data.get('stopReason') or message.get('stop_reason')": 1,
+      "except: return None": 2,
+      "reflection.get('task_id') or os.environ.get('AOPS_TASK_ID')": 1
+    },
+    "aops-core/lib/transcript_paths.py": {
+      "except: return None": 1
+    },
+    "aops-core/scripts/check_transcript_secrets.py": {
+      "except: return []": 1
     },
     "aops-core/scripts/dump_pr_state.py": {
-      "... or ''": 1,
       "... or []": 1,
       "... or {}": 1,
       ".get(..., '')": 3,
       ".get(..., [])": 2,
-      ".get(..., {})": 1
-    },
-    "aops-core/scripts/ingest_cowork.py": {
-      ".get(..., '')": 1
+      ".get(..., {})": 1,
+      "except: return None": 1
     },
     "aops-core/scripts/run-mcp.sh": {
       "${TMPDIR:-/tmp}": 1
     },
+    "aops-core/scripts/sync_gha_sessions.py": {
+      "except: return {}": 2
+    },
     "aops-core/scripts/transcript.py": {
       "... or ''": 2,
       "... or []": 11,
-      "... or {}": 7,
+      "... or {}": 6,
       ".get(..., '')": 2,
-      ".get(..., [])": 12,
-      ".get(..., {})": 2
+      ".get(..., [])": 10,
+      ".get(..., {})": 2,
+      "except: return None": 1,
+      "except: return {}": 1
     },
     "aops-tools/skills/analyst/scripts/assumption_checks.py": {
       ".get(..., {})": 2
@@ -105,13 +138,26 @@
       "... or ''": 8,
       "... or []": 1,
       ".get(..., '')": 6,
-      ".get(..., {})": 2
+      ".get(..., {})": 2,
+      "env.get('DOCKER_HOST') or os.environ.get('DOCKER_HOST', '')": 1,
+      "env.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY')": 1,
+      "env.get('POLECAT_STAGING_BASE') or os.environ.get('POLECAT_STAGING_BASE')": 1,
+      "except: return None": 12,
+      "{**a, **b}": 1
     },
     "polecat/diagnostics.py": {
       "... or ''": 1
     },
     "polecat/finalize.py": {
-      "... or ''": 6
+      "... or ''": 6,
+      "except: return None": 4
+    },
+    "polecat/pkb_bridge.py": {
+      "_fm.get('project') or _data.get('project')": 1,
+      "except: return None": 1,
+      "fm.get('branch') or data.get('branch')": 1,
+      "fm.get('project') or data.get('project')": 1,
+      "fm.get('type') or data.get('type', 'task')": 1
     },
     "polecat/prompt_template.py": {
       "... or {}": 1,
@@ -124,7 +170,8 @@
       "os.environ.get(..., 300)": 1
     },
     "polecat/validation.py": {
-      "... or ''": 1
+      "... or ''": 1,
+      "except: return None": 1
     },
     "scripts/audit_agent_compliance.py": {
       "... or {}": 3,
@@ -141,7 +188,16 @@
     "scripts/build.py": {
       "... or {}": 2,
       ".get(..., [])": 2,
-      ".get(..., {})": 1
+      ".get(..., {})": 1,
+      "except: return \"\"": 1,
+      "except: return None": 2
+    },
+    "scripts/check_framework_integrity.py": {
+      "except: return []": 1
+    },
+    "scripts/check_no_fallbacks.py": {
+      "except: return []": 3,
+      "except: return {}": 1
     },
     "scripts/check_workflow_timeout_breaches.py": {
       "... or ''": 2,
@@ -193,7 +249,8 @@
     },
     "scripts/weight_calc_substrate_prototype.py": {
       "... or []": 2,
-      ".get(..., [])": 2
+      ".get(..., [])": 2,
+      "except: return None": 2
     }
   }
 }

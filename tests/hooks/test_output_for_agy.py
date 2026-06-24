@@ -52,11 +52,28 @@ def _assert_accepted(payload, event):
 # --- Acceptance across every event x verdict -------------------------------
 
 
+def _get_supported_kwargs(event, verdict):
+    kwargs = {}
+    if event == "PreToolUse":
+        # PreToolUse ONLY supports short_reason (which maps to denyReason)
+        # Note: even for 'allow' we can provide it, but it isn't output.
+        # However, for 'deny', it's required.
+        kwargs["system"] = "short reason"
+    elif event in ("PreInvocation", "PostInvocation"):
+        # Invocation events ONLY support advisory (which maps to injectSteps)
+        kwargs["context"] = "advisory text"
+    elif event == "Stop":
+        # Stop ONLY supports short_reason (which maps to reason)
+        kwargs["system"] = "short reason"
+    return kwargs
+
+
 @pytest.mark.parametrize("event", list(ACCEPT_MODEL_BY_EVENT))
 @pytest.mark.parametrize("verdict", ["allow", "deny", "warn", "ask"])
 def test_every_event_and_verdict_is_accepted_by_agy(event, verdict):
     """No (event, verdict) combination may emit output agy's protojson rejects."""
-    payload = _agy(verdict, event=event, context="advisory text", system="short reason")
+    kwargs = _get_supported_kwargs(event, verdict)
+    payload = _agy(verdict, event=event, **kwargs)
     _assert_accepted(payload, event)
 
 
@@ -68,7 +85,8 @@ def test_no_claude_schema_field_ever_leaks(event, verdict):
     ``reason`` is legal on StopHookResult, so it is only forbidden off the Stop
     result; every other field is forbidden everywhere.
     """
-    payload = _agy(verdict, event=event, context="advisory text", system="short reason")
+    kwargs = _get_supported_kwargs(event, verdict)
+    payload = _agy(verdict, event=event, **kwargs)
     forbidden = (
         _FORBIDDEN_FIELDS
         if event != "Stop"
@@ -103,7 +121,7 @@ def test_pretooluse_nonblocking_emits_explicit_allow_tool_true(verdict):
     verdict must set ``allowTool`` true, not merely be "accepted" by the
     unknown-field guard.
     """
-    payload = _agy(verdict, event="PreToolUse", context="ignored")
+    payload = _agy(verdict, event="PreToolUse")
     assert payload == {"allowTool": True}
     # No deny fields leak onto a non-blocking verdict.
     assert "denyReason" not in payload
@@ -184,7 +202,7 @@ def test_pretooluse_ask_is_blocked_in_headless_agy():
 
 @pytest.mark.parametrize("verdict", ["allow", "deny", "warn", "ask"])
 def test_posttooluse_is_always_empty(verdict):
-    assert _agy(verdict, event="PostToolUse", context="x", system="y") == {}
+    assert _agy(verdict, event="PostToolUse") == {}
 
 
 # --- PreInvocation (UserPromptSubmit) --------------------------------------
@@ -247,14 +265,34 @@ def test_postinvocation_allow_is_empty():
     assert _agy("allow", event="PostInvocation") == {}
 
 
+def test_postinvocation_with_both_system_and_context_folds_into_steps():
+    """PostInvocation with system_message+context_injection must not crash.
+
+    The IDA WARN policy sets both system_message ("≡ Honesty check...") and
+    context_injection ("be honest..."). The old code raised ValueError, making
+    the router subprocess exit non-zero with no stdout — callers got {} and the
+    IDA advisory was silently dropped (aops-test-1798).
+    """
+    payload = _agy("warn", event="PostInvocation", system="status msg", context="advisory text")
+    steps = payload.get("injectSteps", [])
+    assert steps, f"both system+context must be delivered via injectSteps: {payload!r}"
+    joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
+    assert "status msg" in joined and "advisory text" in joined, (
+        f"both messages must appear in injectSteps: {joined!r}"
+    )
+
+
 # --- Stop ------------------------------------------------------------------
 
 
 def test_stop_deny_surfaces_reason_without_guessed_decision():
-    payload = _agy("deny", event="Stop", context="commit your work before stopping")
-    assert payload == {"reason": "commit your work before stopping"}
-    # The blocking `decision` enum is deferred (aops-939b6c3a) — never guessed.
-    assert "decision" not in payload
+    """StopHookResult supports reason, but the hard block decision is deferred."""
+    payload = _agy("deny", event="Stop", system="short reason")
+    assert payload == {"reason": "short reason"}
+
+
+def test_stop_empty_without_reason():
+    assert _agy("allow", event="Stop") == {}
 
 
 def test_stop_allow_is_empty():
@@ -264,8 +302,15 @@ def test_stop_allow_is_empty():
 # --- Unknown event ---------------------------------------------------------
 
 
-def test_unknown_event_is_empty_object():
-    assert _agy("deny", event="SessionStart", context="x", system="y") == {}
+def test_unknown_event_without_fields_is_empty_object():
+    assert _agy("allow", event="SessionStart") == {}
+
+
+def test_unknown_event_with_fields_crashes_loudly():
+    with pytest.raises(
+        ValueError, match="agy does not support any fields for unmapped event SessionStart."
+    ):
+        _agy("deny", event="SessionStart", context="x", system="y")
 
 
 # --- Deferred hard stop-block (forcing function) ---------------------------

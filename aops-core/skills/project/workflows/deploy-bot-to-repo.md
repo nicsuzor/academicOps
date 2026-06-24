@@ -15,7 +15,8 @@ version: 1.0.0
 existing repo so it reviews PRs with the universal axioms plus project context.
 
 **Owner**: `/project` skill. **Invoke** when onboarding a repo or upgrading its
-tier. Current deployment state lives in [[DEPLOYMENTS|specs/DEPLOYMENTS.md]].
+tier. Current deployment state (which repos run which tier) lives in the PKB —
+search "aops bot deployment registry".
 
 **Prerequisites**: `gh` CLI authed with `repo` + `workflow` scopes; GitHub Actions enabled on the target; rights to set repo secrets.
 
@@ -78,7 +79,7 @@ gh secret list --repo "$REPO"; gh workflow list --repo "$REPO"
 ```
 
 Open a test PR; confirm the bot reviews within minutes. Record the new
-deployment in [[DEPLOYMENTS|specs/DEPLOYMENTS.md]].
+deployment in the PKB deployment registry (search "aops bot deployment registry").
 
 ## Install scripts
 
