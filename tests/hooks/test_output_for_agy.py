@@ -265,6 +265,23 @@ def test_postinvocation_allow_is_empty():
     assert _agy("allow", event="PostInvocation") == {}
 
 
+def test_postinvocation_with_both_system_and_context_folds_into_steps():
+    """PostInvocation with system_message+context_injection must not crash.
+
+    The IDA WARN policy sets both system_message ("≡ Honesty check...") and
+    context_injection ("be honest..."). The old code raised ValueError, making
+    the router subprocess exit non-zero with no stdout — callers got {} and the
+    IDA advisory was silently dropped (aops-test-1798).
+    """
+    payload = _agy("warn", event="PostInvocation", system="status msg", context="advisory text")
+    steps = payload.get("injectSteps", [])
+    assert steps, f"both system+context must be delivered via injectSteps: {payload!r}"
+    joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
+    assert "status msg" in joined and "advisory text" in joined, (
+        f"both messages must appear in injectSteps: {joined!r}"
+    )
+
+
 # --- Stop ------------------------------------------------------------------
 
 
