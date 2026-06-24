@@ -39,7 +39,9 @@ __all__ = [
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "SENTINEL_GATE_MODE",
+    "RBG_REVIEW_GATE_MODE",
     "ENFORCER_TOOL_CALL_THRESHOLD",
+    "RBG_REVIEW_DEGRADE_THRESHOLD",
     # Slash-command + enforcer-channel hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
     "ENFORCER_CHANNEL_SENTINEL",
@@ -55,7 +57,9 @@ if TYPE_CHECKING:
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
     SENTINEL_GATE_MODE: str
+    RBG_REVIEW_GATE_MODE: str
     ENFORCER_TOOL_CALL_THRESHOLD: int
+    RBG_REVIEW_DEGRADE_THRESHOLD: int
 
 
 # =============================================================================
@@ -113,8 +117,17 @@ _GATE_MODE_DEFAULTS = {
     # Sentinel defaults to block — this is a safety gate protecting user
     # environment files from destructive ops, not just an advisory.
     "SENTINEL_GATE_MODE": "block",
+    # RBG-review defaults to block: the per-turn axiom review must RUN before
+    # Stop can pass (Nic's directive — guaranteed coverage). This is a real
+    # DENY, not advisory; the escape-hatch (RBG_REVIEW_DEGRADE_THRESHOLD)
+    # protects against a structurally-broken rbg dispatch trapping the session.
+    "RBG_REVIEW_GATE_MODE": "block",
 }
 _ENFORCER_THRESHOLD_DEFAULT = 50
+# Consecutive Stop-DENYs from the rbg-review gate in one turn before it degrades
+# to WARN-and-allow (loud, not silent). Matches the 5-block router-level safety
+# override; the escape-hatch is failure-degradation only, never a normal bypass.
+_RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT = 5
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
@@ -128,6 +141,14 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
             return int(raw)
         except ValueError:
             return _ENFORCER_THRESHOLD_DEFAULT
+    if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
+        raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
+        if raw is None:
+            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
+        try:
+            return int(raw)
+        except ValueError:
+            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
