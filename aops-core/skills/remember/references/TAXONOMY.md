@@ -214,9 +214,9 @@ Goals represent identity-level commitments — _who I am / how I define myself_.
 
 Every task in the PKB must have a parent. When creating a task, agents and scripts should resolve the most contextually appropriate parent (such as the active parent task or project root).
 
-However, during emergency session handovers, bails (`/dump`), or when capturing ad-hoc work where no parent is obvious, the `adhoc-sessions` node is the **default catch-all parent for resume/handover tasks**.
+However, during emergency session handovers, bails (`/dump`), or when capturing ad-hoc work where no parent is obvious, the ad-hoc sessions root is the **default catch-all parent for resume/handover tasks**. Its canonical id is `adhoc-826c89bd` (human-readable alias/permalink: `adhoc-sessions`).
 
-Skills like `/dump` or `/end-session` that need to rapidly persist a loose thread must use `parent="adhoc-sessions"` rather than failing or omitting the parent field.
+Skills like `/dump` or `/end-session` that need to rapidly persist a loose thread must set `parent="adhoc-826c89bd"` (the canonical id) rather than failing or omitting the parent field. **Do not pass the bare alias string `parent="adhoc-sessions"`** — it is not a stable node id and can fuzzy-resolve to a sibling `adhoc-sessions-*` task instead of the root, silently detaching the new task from the catch-all parent (the original cause of the 108-child detachment fixed under epic-3ca38214 / mem-5b1e3b45).
 
 ---
 
