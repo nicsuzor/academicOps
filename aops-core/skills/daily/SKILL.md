@@ -36,6 +36,7 @@ A factual, reportive snapshot of the day: what happened, what's open, what's due
 - **Never remove user notes.** Preserve everything the user wrote, plus their ticks (`[x]`) and annotations, across regenerations. Match items by ID/PR/subject and carry ticks forward.
 - **You may turn user notes into neat, well-formatted prose** — but only if you lose no truth. When unsure, keep the original wording.
 - **No empty sections.** Omit a section rather than render an empty heading. On a morning with no sessions yet, omit Today's Log entirely.
+- **Today's Log is reconstructed from primary sources, never substituted.** Before writing Today's Log you MUST open today's session transcripts — `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`) — and reconstruct the day from them. Assembling it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list is a criterion substitution: it reproduces the file, not the day. If no same-day interactive transcript exists, omit the section — do not back-fill it from second-hand artifacts.
 
 ## Tools you may invoke
 
