@@ -142,7 +142,10 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     if client_type == "agy":
         steps = output.get("injectSteps")
         assert steps, f"agy PostInvocation: IDA must go to injectSteps: {output!r}"
-        joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
+        joined = " ".join(
+            s.get("userMessage", "") or s.get("systemMessage", {}).get("systemMessage", "")
+            for s in steps
+        )
         assert _IDA_MARKER in joined, (
             f"agy PostInvocation injectSteps must carry the IDA reminder: {output!r}"
         )

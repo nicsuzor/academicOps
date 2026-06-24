@@ -138,7 +138,7 @@ repos:
         language: system
         pass_filenames: true
         files: '^(aops-core|polecat|scripts|aops-tools)/.*\.(py|sh)$|^aops-core/agent-env-map\.conf$'
-        exclude: '(^|/)(\.venv|dist|node_modules|__pycache__|\.claude)/'
+        exclude: '(^|/)(\.venv|dist|node_modules|__pycache__|\.claude|\.uv-cache)/'
 
       # G3 (release-publish-pipeline §4) — uv.lock must stay in sync with
       # pyproject.toml. release-please regenerates the lock in the release PR; this
