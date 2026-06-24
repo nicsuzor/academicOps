@@ -1,6 +1,8 @@
 from hooks.gate_config import (
     ENFORCER_GATE_MODE,
     ENFORCER_TOOL_CALL_THRESHOLD,
+    RBG_REVIEW_DEGRADE_THRESHOLD,
+    RBG_REVIEW_GATE_MODE,  # noqa: F401  (referenced via custom_check, kept for discoverability)
     SENTINEL_GATE_MODE,
     SLASH_COMMAND_PROMPT_PATTERNS,
 )
@@ -35,13 +37,23 @@ from lib.gate_types import (
 #      this list wins a same-tier collision.
 #
 # The order and its rationale (highest precedence first):
-#   sentinel  — PreToolUse destructive-op safety block; protects the user's
-#               environment, never advisory. Highest-stakes forcing function.
-#   enforcer  — periodic compliance self-check (PreToolUse threshold block).
-#   qa        — verification-before-exit (Stop); ahead of handover so a missing
-#               verifier surfaces before the handover reminder.
-#   handover  — structured-handover-before-exit (Stop): prevents work loss.
-#   ida       — honesty reminder (Stop); advisory, lowest precedence.
+#   sentinel    — PreToolUse destructive-op safety block; protects the user's
+#                 environment, never advisory. Highest-stakes forcing function.
+#   enforcer    — periodic compliance self-check (PreToolUse threshold block).
+#   rbg-review  — end-of-session rbg axiom audit, scoped to task-bound
+#                 (polecat/crew) sessions only. Armed CLOSED for polecat/crew,
+#                 OPEN (inert) for ad hoc interactive — so interactive users do
+#                 NOT eat a per-turn rbg delay. The enforcer every-N cadence is
+#                 the in-session mechanism; this gate adds only the final
+#                 backstop before a task-bound session exits. Placed ahead of
+#                 qa/handover/ida so its DENY + rbg-dispatch instruction is the
+#                 one delivered first; once rbg has run the gate clears and the
+#                 later Stop gates take over. Serialises rbg-review ->
+#                 qa/handover -> ida cleanly and never masks Ida.
+#   qa          — verification-before-exit (Stop); ahead of handover so a missing
+#                 verifier surfaces before the handover reminder.
+#   handover    — structured-handover-before-exit (Stop): prevents work loss.
+#   ida         — honesty reminder (Stop); advisory, lowest precedence.
 # ----------------------------------------------------------------------
 GATE_CONFIGS = [
     # --- Sentinel ---
@@ -133,6 +145,130 @@ GATE_CONFIGS = [
                 message_key="enforcer.policy_message",
                 context_key="enforcer.policy_context",
                 custom_action="prepare_compliance_report",
+            ),
+        ],
+    ),
+    # --- RBG-review (end-of-session rbg audit, task-bound sessions only) ---
+    # Directive (Nic, 2026-06-24, epic-f490bb11 — rework of the original
+    # block-every-stop #1928): the heavy independent rbg axiom audit is a
+    # Tier-2 backstop that must fire ONCE before a TASK-BOUND (polecat/crew)
+    # session exits — NOT on every armed Stop, and NOT in ad hoc interactive
+    # discussions where the user would notice the per-turn rbg delay. The
+    # enforcer every-N cadence (sentinel/enforcer gate, left untouched) remains
+    # the in-session mechanism; this gate adds only the final exit backstop.
+    #
+    # SCOPING (per-surface, mirrors the handover gate):
+    #   * polecat / crew  -> armed CLOSED from session start; re-arms CLOSED on
+    #     each UserPromptSubmit, so whenever the autonomous session attempts its
+    #     Stop (its exit) the gate is armed and forces a final rbg audit.
+    #   * ad hoc interactive -> starts OPEN (inert) and NEVER re-arms (the UPS
+    #     re-arm trigger is session_type_filtered to polecat/crew). The Stop
+    #     policy never fires, so interactive users eat no per-turn rbg delay.
+    #
+    # Lifecycle (arm -> block -> clear), polecat/crew only:
+    #   * BLOCK: while CLOSED, the Stop policy DENIES (blocks the exit) and
+    #     injects the rbg-dispatch instruction so the agent actually runs rbg.
+    #     The TRIGGER is structural (Stop event + armed flag + session type) —
+    #     NOT a content sniff. The qualitative judgment ("did this session
+    #     comply?") is rbg's.
+    #   * CLEAR: when the rbg subagent runs (SubagentStart/Stop/PostToolUse with
+    #     subagent_type ~ rbg), the gate OPENS, resets the escape-hatch deny
+    #     counter, and latches sticky_until UserPromptSubmit so the rbg
+    #     discharge AND any follow-up edits do not re-block / re-arm THIS turn
+    #     (gate-discharge re-trigger invariant — the rbg run must not loop).
+    #
+    # NOTE — deliberately NO fire-once "open on first Stop" trigger (unlike
+    # qa/handover/ida). Those gates open on the first Stop so a retried Stop in
+    # the same turn passes; that is fine for a block-once advisory but WRONG
+    # here, because it would let the exit Stop pass WITHOUT rbg having run.
+    # The gate stays CLOSED across repeated Stops until rbg actually runs.
+    #
+    # ESCAPE-HATCH (loud, not silent): the engine degrades DENY -> WARN-and-
+    # allow after RBG_REVIEW_DEGRADE_THRESHOLD (default 5) consecutive Stop
+    # blocks in one turn, emitting the rbg_review.degraded message. This
+    # prevents the known infinite-Stop-loop incident if rbg dispatch is
+    # structurally broken. It is failure-degradation ONLY — the healthy path
+    # still requires rbg to run. The router-level 5-blocks-in-2-min override is
+    # a second, independent net.
+    GateConfig(
+        name="rbg-review",
+        description="Final rbg axiom audit before a task-bound session exits.",
+        # Ad hoc interactive sessions start OPEN (inert — no per-turn rbg delay).
+        # Polecat/crew (task-bound, autonomous) start CLOSED (armed) so the final
+        # exit Stop forces an rbg audit. Mirrors the handover gate's per-surface
+        # posture.
+        initial_status=GateStatus.OPEN,
+        initial_status_by_session_type={
+            "polecat": GateStatus.CLOSED,
+            "crew": GateStatus.CLOSED,
+        },
+        stop_deny_downgrade_threshold=RBG_REVIEW_DEGRADE_THRESHOLD,
+        stop_deny_degraded_message_key="rbg_review.degraded",
+        triggers=[
+            # rbg subagent ran -> clear (OPEN), reset escape-hatch counter,
+            # latch sticky until UserPromptSubmit so post-review fixes don't
+            # re-block this turn. Matches the dispatched / completed / tool
+            # forms (SubagentStart, SubagentStop, PostToolUse on the Agent/Task
+            # spawn) and the aops-core: prefix.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    system_message_key="rbg_review.complete",
+                    set_metrics={"stop_deny_count": 0},
+                    sticky_until=["UserPromptSubmit"],
+                ),
+            ),
+            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle,
+            # POLECAT/CREW ONLY. The engine unsticks (sticky_until includes UPS)
+            # BEFORE this trigger evaluates, so the transition to CLOSED
+            # proceeds. Resets the escape-hatch counter so each turn gets a
+            # fresh deny budget. Ad hoc interactive sessions are NOT re-armed
+            # here (session_type_filter) — they stay OPEN and never eat a
+            # per-turn rbg delay; only task-bound sessions get the exit backstop.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="UserPromptSubmit",
+                    session_type_filter=["polecat", "crew"],
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    set_metrics={"stop_deny_count": 0},
+                ),
+            ),
+        ],
+        policies=[
+            # Block mode (default): DENY Stop while CLOSED + inject the rbg
+            # dispatch instruction via the context channel. prepare_rbg_review
+            # builds the turn-review file so {temp_path} resolves. There is NO
+            # fire-once open here, so this re-fires every Stop until rbg runs
+            # (or the escape-hatch degrades it).
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_rbg_review_block_mode",
+                ),
+                verdict=GateVerdict.DENY,
+                custom_action="prepare_rbg_review",
+                message_key="rbg_review.policy_message",
+                context_key="rbg_review.policy_context",
+            ),
+            # Warn mode (staged-rollout parity): block-once advisory via the
+            # warn+context_injection upgrade path.
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="is_rbg_review_warn_mode",
+                ),
+                verdict=GateVerdict.WARN,
+                custom_action="prepare_rbg_review",
+                message_key="rbg_review.policy_message",
+                context_key="rbg_review.policy_context",
             ),
         ],
     ),

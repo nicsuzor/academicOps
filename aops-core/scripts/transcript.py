@@ -47,6 +47,7 @@ from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
     UsageStats,
     aggregate_session_metadata,
+    build_user_prompts,
     extract_initial_prompt,
     extract_reflection_from_entries,
     extract_timeline_events,
@@ -467,6 +468,11 @@ def _should_overwrite_existing(new: dict, existing: dict) -> str | None:
     if new.get("pull_requests") and not existing.get("pull_requests"):
         return "pull_requests resolved"
 
+    # Backfill the cleaned user_prompts array onto summaries that predate
+    # aops-519f8e11 (system_injected flag + user_prompts field).
+    if new.get("user_prompts") is not None and existing.get("user_prompts") is None:
+        return "user_prompts appeared"
+
     return None
 
 
@@ -642,6 +648,7 @@ def _save_minimal_token_summary(
     # Timeline events for path reconstruction
     if timeline_events:
         insights["timeline_events"] = timeline_events
+        insights["user_prompts"] = build_user_prompts(timeline_events)
         # Capture the user's initial intent so the dashboard can orient even on
         # no-reflection / still-running sessions (aops-efffc1f7).
         initial_prompt = extract_initial_prompt(timeline_events)
