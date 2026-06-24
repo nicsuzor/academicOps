@@ -25,9 +25,11 @@ sys.path.insert(0, str(REPO_ROOT / "aops-core"))
 from cli import (
     _build_docker_cmd,
     _clone_has_changes,
+    _ensure_docker_image,
     _find_docker_sock,
     _format_oom_message,
     _is_colima_env,
+    _is_floating_tag,
     _node_version_key,
     _parse_memory_string,
     _replicate_gemini_auth,
@@ -1240,3 +1242,147 @@ class TestConfForwardsEnvFile:
         assert "--env-file" in docker_cmd.cmd
         ef_idx = docker_cmd.cmd.index("--env-file")
         assert docker_cmd.cmd[ef_idx + 1] == str(docker_cmd.env_file)
+
+
+class TestIsFloatingTag:
+    """Unit tests for the _is_floating_tag helper.
+
+    Covers the distinction between floating tags (must be reconciled against
+    the registry on each dispatch) and immutable tags (safe to fast-path).
+    Root cause of aops-aa4c85a6: :latest was treated as immutable, causing
+    stale cached workers to persist silently.
+    """
+
+    def test_latest_is_floating(self):
+        assert _is_floating_tag("aops-crew:latest") is True
+
+    def test_no_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew") is True
+
+    def test_no_tag_with_registry_is_floating(self):
+        assert _is_floating_tag("ghcr.io/nicsuzor/aops-crew") is True
+
+    def test_registry_with_port_no_tag_is_floating(self):
+        assert _is_floating_tag("registry:5000/aops-crew") is True
+
+    def test_named_branch_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:main") is True
+
+    def test_dev_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:dev") is True
+
+    def test_stable_tag_is_floating(self):
+        assert _is_floating_tag("aops-crew:stable") is True
+
+    def test_semver_with_v_prefix_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2.3") is False
+
+    def test_semver_without_v_prefix_is_immutable(self):
+        assert _is_floating_tag("aops-crew:1.2.3") is False
+
+    def test_semver_two_part_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2") is False
+
+    def test_digest_pinned_is_immutable(self):
+        assert _is_floating_tag("aops-crew@sha256:abc123def456") is False
+
+    def test_digest_with_tag_is_immutable(self):
+        assert _is_floating_tag("aops-crew:latest@sha256:abc123") is False
+
+    def test_full_registry_semver_is_immutable(self):
+        assert _is_floating_tag("ghcr.io/nicsuzor/aops-crew:v0.3.27") is False
+
+    def test_registry_with_port_and_semver_is_immutable(self):
+        assert _is_floating_tag("registry:5000/aops-crew:v2.0.0") is False
+
+    def test_prerelease_semver_is_immutable(self):
+        assert _is_floating_tag("aops-crew:v1.2.3-dev.5") is False
+
+
+class TestEnsureDockerImage:
+    """Behaviour tests for _ensure_docker_image floating-tag reconciliation.
+
+    Root cause: agy workers were pinned to stale aops-crew:latest because
+    _ensure_docker_image returned early on any local hit regardless of tag
+    mutability (aops-aa4c85a6 / parent epic aops-348e5858).
+    """
+
+    def _proc(self, returncode=0, stderr="", stdout=""):
+        import subprocess
+
+        return subprocess.CompletedProcess(
+            args=[], returncode=returncode, stderr=stderr, stdout=stdout
+        )
+
+    def test_floating_tag_pulls_even_when_cached(self):
+        """A cached :latest image must be re-pulled (reconciled), not used as-is."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists locally
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:latest", False, "docker")
+        calls = mock_run.call_args_list
+        assert len(calls) == 2, "Expected inspect + pull for floating tag"
+        pull_cmd = calls[1][0][0]
+        assert "pull" in pull_cmd
+
+    def test_no_tag_pulls_even_when_cached(self):
+        """A cached image with no tag must be reconciled (defaults to :latest)."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew", False, "docker")
+        assert len(mock_run.call_args_list) == 2
+
+    def test_immutable_tag_skips_pull_when_cached(self):
+        """A cached :vX.Y.Z image must not trigger a registry pull."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:v1.2.3", False, "docker")
+        assert len(mock_run.call_args_list) == 1, (
+            "Immutable tag should early-return after inspect; pull must not be issued"
+        )
+
+    def test_registry_failure_falls_back_to_cache_with_warning(self, capsys):
+        """When registry is unreachable and a cached floating image exists,
+        dispatch must not raise; a warning is printed to stderr."""
+        side_effects = [
+            self._proc(returncode=0),  # inspect: image exists locally
+            self._proc(returncode=1, stderr="timeout"),  # pull: registry unreachable
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects):
+            _ensure_docker_image("aops-crew:latest", False, "docker")  # must not raise
+        err = capsys.readouterr().err
+        assert "Warning" in err
+        assert "cached image" in err
+
+    def test_missing_immutable_tag_pulls(self):
+        """A missing immutable-tag image must still be pulled."""
+        side_effects = [
+            self._proc(returncode=1),  # inspect: image absent
+            self._proc(returncode=0),  # pull: success
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects) as mock_run:
+            _ensure_docker_image("aops-crew:v1.0.0", False, "docker")
+        assert len(mock_run.call_args_list) == 2
+
+    def test_missing_floating_tag_pulls_and_errors_on_failure(self, capsys):
+        """A missing floating-tag image that fails to pull prints an error."""
+        side_effects = [
+            self._proc(returncode=1),  # inspect: image absent
+            self._proc(returncode=1, stderr="net fail"),  # pull: fails
+        ]
+        with patch("cli.subprocess.run", side_effect=side_effects):
+            _ensure_docker_image("aops-crew:latest", False, "docker")
+        err = capsys.readouterr().err
+        assert "Error pulling" in err or "net fail" in err
+
+    def test_docker_binary_not_found_does_not_raise(self):
+        """FileNotFoundError on inspect must be swallowed silently."""
+        with patch("cli.subprocess.run", side_effect=FileNotFoundError):
+            _ensure_docker_image("aops-crew:latest", False, "docker")  # must not raise

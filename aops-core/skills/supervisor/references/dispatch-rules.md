@@ -38,6 +38,19 @@ All dispatches run through the pre-dispatch gates in
 The agent authoring a brief must not dispatch against it. See
 [[subagent-contracts#compose-then-dispatch-separation]] for the full protocol.
 
+## Reviewer-Brief Neutrality — never pre-endorse an option to a reviewer
+
+When the dispatch is a **review** (rbg / pauli / marsha / `/strategic-review`), the brief must
+present the artifact and the question **without nominating a preferred answer**. Do not write
+_"verify Option A (the recommended option)"_, _"confirm this is sound"_, or otherwise steer the
+reviewer toward a conclusion — a leading brief degrades the independence the review exists to
+provide. A pre-endorsed option re-frames the reviewer's job from _"is the premise sound?"_ to
+_"audit the implementation of the option I already blessed,"_ and the premise sails through
+unexamined. State the artifact, the decision under review, and the open question; let the
+reviewer's own premise-test (step 0) fire on the **whole** premise, including the trigger and the
+shape, not just the slice you flagged. If the upstream brief already carries a recommendation,
+strip or neutralise it before handing the artifact to the reviewer.
+
 ## Dispatch Surfaces
 
 The discipline is surface-independent. Implementation:

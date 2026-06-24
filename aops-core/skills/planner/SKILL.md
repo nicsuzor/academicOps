@@ -244,6 +244,11 @@ Enforce the following classifications to save user attention:
 
 Canonical — see [[../remember/references/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).
 
+**Academic / peer-review / reading-note items must NOT be filed as `review`.** `review` is reserved for a mid-flight dev/work task blocked awaiting Nic's judgment so a worker can continue — not for standalone material or Nic's own academic to-dos.
+
+- Standalone reference / reading material → `type: knowledge` (or `note`); it carries no actionable status.
+- Nic's own academic work (peer reviews, grant assessments) he must write or submit → a normal actionable task assigned to Nic, never the `review` pipeline state.
+
 ### Premise judgment on promotion to `queued`
 
 When you promote a task into the dispatchable set (`→ queued`), record a **one-sentence, principal-voice premise judgment in the task body** — _"as a sharp principal seeing only this task: is this worth doing, and is the shape right — or bounce it?"_ — or bounce it with a one-line reason instead. Canonical definition, the hard rule, and the worked specimen: [[../remember/references/premise-gate.md]].
