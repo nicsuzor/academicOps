@@ -962,6 +962,12 @@ class HookRouter:
         # Emitting it for other events causes the entire payload to be rejected.
         _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
         if event not in _CLAUDE_HSO_EVENTS:
+            if result.context_injection:
+                raise ValueError(
+                    f"Claude Code does not support context_injection (advisory) for {event}."
+                )
+            if result.verdict in ("deny", "ask"):
+                raise ValueError(f"Claude Code does not support blocking verdicts for {event}.")
             return output
 
         hso = ClaudeHookSpecificOutput(hookEventName=event)
@@ -1140,6 +1146,8 @@ class HookRouter:
 
         # Unknown / unmapped event: the empty object validates against any
         # *Result and never triggers an unknown-field rejection.
+        if short_reason or advisory:
+            raise ValueError(f"agy does not support any fields for unmapped event {event}.")
         return {}
 
 
