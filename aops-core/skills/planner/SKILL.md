@@ -111,7 +111,7 @@ Quickly capture and log new tasks into the graph.
 
 - **Project Mapping**: Map tasks to projects using the `.agents/CORE.md` Component Topology table (e.g. `mem` for PKB/brain code, `aops` for skills/hooks, `qut` for university/student work). If ambiguous, inherit from parent; if still unclear, ask the user. Do not default.
 - **Priority (intent authority)**: Default every captured task and subtask to the uncurated default band (**P3**). See [Priority Assignment Rules](#priority-assignment-rules) below for the full rule.
-- **Metadata**: Populate `due` (YYYY-MM-DD), `effort`, `consequence`, and `classification` fields.
+- **Metadata**: Populate `due` (YYYY-MM-DD), `effort`, `consequence` (frontmatter only — never also as a `## Consequence` body section; frontmatter is canonical), and `classification` fields.
   - `classification` (`spike` / `research` / default execution) is **descriptive shape metadata — it does not enter `focus_score`** (see the `classification` entry in [[../remember/references/TAXONOMY.md]] for how `voi_value` is computed and why shape still matters). Record shape anyway: it is how agents judge whether a node's `voi_value` is trustworthy (genuine spike/probe) versus a deliverable mis-fire ([[mem-830588f3]]). When the user's prompt suggests a spike/probe/research shape, set it accordingly — but **never override a user-set `classification`**; only fill it when absent.
 - **Follow-ups**: Externalize separate linked tasks for prerequisites or follow-up decisions instead of embedding them as prose.
 - **Reporting**: Report using a compact ASCII context tree showing parent, siblings, and the new task marked with `← NEW`. Then halt.
@@ -136,6 +136,12 @@ Synthesize prior context and prioritize tasks strategically.
 **Prioritization**: Rank tasks strictly using the composite `focus_score` signal — the canonical additive composition of priority, severity, deadline pressure, age/staleness, downstream weight, stakeholder waiting, the `urgency` term, and the live **`voi_value`** term. See [[multi-parent]] (canonical PKB summary; SSoT `mem/specs/multi-parent.md` §2.2). `voi_value` (live since 2026-06-01, capped at 5000) rewards leaves with uncertain but important downstream — uncertainty-resolving work that a purely exploitative signal would starve. Component fields (`urgency`, `downstream_weight`, `voi_value`, …) stay visible for filter/debug but are never the primary sort.
 
 - **Live-calibration caveat**: `voi_value` currently **mis-fires on deliverables** — it keys off the _target's_ `downstream_weight`, so any task wired to a busy target inherits near-cap VoI (≈+4,587 observed on a peer-review deliverable) despite resolving no uncertainty, and it stacks with the deadline/stakeholder ramps on the same "important + late" fact ([[mem-830588f3]], fix pending). Do **not** oversell `voi_value` as trustworthy for deliverable-shaped tasks until that fix lands; trust it for genuine spike/probe leaves.
+
+- **Raising a task's focus-score — agent levers** (when told to "give this weight" / "make sure this has appropriate importance" / "this is frustrating" / "worth doing"):
+  - **`contributes_to` edge → target**: wires `downstream_weight` propagation; primary focus lever. Assign a Renooij-Witteman weight + one-sentence justification.
+  - **`consequence` prose** (frontmatter only): documents the stake; feeds the consequence multiplier.
+  - **`severity`**: only on `type: target` nodes; prohibited on tasks/epics.
+  - **`priority` is off-limits as a focus knob**: a qualitative steer is NOT an express band directive — do not convert it to a priority value. Encode importance via edges/consequence; surface via `AskUserQuestion` if a priority band seems warranted.
 
 **Abstraction discipline**: Verify the user's level on the planning ladder (`Success → Strategy → Design → Implementation`). Don't jump levels. Confirm the current level before descending.
 
@@ -193,6 +199,7 @@ Add directed `contributes_to` edges to map dependencies.
 - **Renooij-Witteman Weight Scale**:
   - Certain (1.0), Probable (0.85), Expected (0.75), Fifty-Fifty (0.5), Uncertain (0.25), Improbable (0.15), Impossible (0.0)
 - Enforce that every edge carries a one-sentence justification.
+- **Primary focus lever**: A `contributes_to` edge is the agent's primary mechanism for raising a task's `downstream_weight` and `focus_score`. When a user asks for "more weight" on a task, reach for this first — not `priority`.
 
 ### 6. Maintain (`/garden` / `/densify`)
 
@@ -216,7 +223,7 @@ Enforce the following classifications to save user attention:
 
 `priority` is Nic's personally curated intent, never an agent's estimate of importance. Full canonical rule (the SSoT): [[framework-conventions-summary#intent-authority]].
 
-- **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children.
+- **Tasks**: Leave at the uncurated default band (**P3**); agents never originate a non-default band. Write a non-default band **only** when Nic expressly directs that specific value in the request — inferring, guessing, or estimating it (even for an obviously important task) is prohibited. Never propagate a parent's priority to children. **Qualitative steers are not band directives**: "worth doing", "frustrating", "give it weight", "make sure this has appropriate weight" are NOT express band directives — do not infer or estimate a band from them; encode importance via `contributes_to` edges and `consequence` prose (see [Raising a task's focus-score — agent levers](#2-plan-planning) above).
 - **Priority P0 Calibration**: Setting `priority=0` (P0) is prohibited unless it is deliberately calibrated for active incidents, pipeline-blocking work, or overdue critical deadlines, backed by a documented justification. Refer to [[../remember/references/TAXONOMY.md#p0-calibration-bar]] to avoid boundary violations.
 - **Importance ≠ intent**: route urgency, severity, blocker-status, and your own assessment of value to `consequence`/`severity`/`due`/`status` — never `priority`.
 - **Surface, don't set**: when you think something deserves Nic's attention, raise it **via the input-request tool (`AskUserQuestion`), the visible channel** so _he_ sets intent — never set it for him as a shortcut, and **never treat a recommendation written into the task body or handover block as the act of surfacing** (that is the invisible-surface escape hatch — the decision is silently dropped, [[aops-54fde025]]). A `contributes_to` edge you wire is NOT a substitute for surfacing intent: if the edge leaves the task's `downstream_weight`/`focus_score` at 0, the task is still illegible and the intent decision still owes Nic a visible `AskUserQuestion`.
