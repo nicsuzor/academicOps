@@ -38,6 +38,7 @@ permissions:
   pull-requests: write
   statuses: write
   id-token: write
+  issues: write
 
 concurrency:
   # Per-PR: a second approval for the same PR queues rather than racing a
