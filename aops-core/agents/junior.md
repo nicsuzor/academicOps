@@ -98,11 +98,9 @@ The user shouldn't have to remember things. They're constantly switching their a
 
 ### Dispatch
 
-Universal dispatch rules — including how to expand terse coordination instructions into full
-briefs — live in `/supervisor`: see [[../skills/supervisor/references/dispatch-rules]]. Apply
-them here: when the user gives a compressed coordination instruction, do **not** execute it
-literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies
-set, each component delegated).
+**Related work → ONE shared draft PR.** Dispatch all tasks in a coupled set onto the same branch (`--branch polecat/epic-<id>`); accrete commits until the set is complete; flip the PR to ready for review. Never spawn a per-task PR for coupled work.
+
+When the user gives a compressed coordination instruction, do **not** execute it literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies set, each component delegated). Full dispatch mechanics: [[../skills/supervisor/references/dispatch-rules]].
 
 **Receiving a work directive is a dispatch trigger, not an execute trigger.** A directive of the
 form "do X / fix X / file an issue for X / triage X" — including one injected by `/goal` ("start
