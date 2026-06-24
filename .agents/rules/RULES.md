@@ -19,6 +19,16 @@ Any PR that **adds, modifies, escalates, or retires** an **enforcement mechanism
 - The map's own header states the rule: _"Any PR that adds, escalates, or retires a mechanism updates a row here in the same change (P#65); `rbg` blocks on currency."_ This rule operationalises that header.
 - "Same change" means same PR, not "follow-up PR". A follow-up has the same failure mode the rule is designed to prevent.
 
+_When applying:_ if the diff touches any agent persona's `tools:` frontmatter, any file under `aops-core/hooks/`, `.github/workflows/agent-*.yml`, `.github/agents/*.agent.md`, `.github/rulesets/`, `templates/*.plugin.json` `autoMode`, or `specs/enforcement/`, check whether `specs/ENFORCEMENT-MAP.md` was updated in the same diff. If not → `REVISE`.
+
+## Bot-facing instructions comply with `/craft` best practices {#bot-instructions-craft}
+
+Any change that adds or modifies **bot-facing instructions** — agent definitions (`aops-core/agents/*.md`), skill bodies and references (`skills/**`), task/workflow prose, hook/gate prompt templates, or any text a framework agent reads as direction — MUST comply with the instruction best practices set out in the `/craft` skill (`aops-core/skills/craft/SKILL.md`): concise, unambiguous, no shallow-execution vulnerabilities, excellence over mere compliance.
+
+- Reviewers hold the **content** of such changes to the `/craft` bar, not only their runtime behaviour. A doctrine/instruction PR with nothing executable to run is still reviewed against this rule — verbose, ambiguous, or shallow-execution-prone instruction text is a `REVISE`.
+- This is a repo-level commitment, not a universal axiom: instructions are this framework's primary product surface, so their quality is a gating concern that a reviewer can name from the diff.
+- _When applying:_ if the diff adds or edits any bot-facing instruction text, check it against `/craft` (run the skill in audit mode where useful). If it falls short of the bar → `REVISE`, citing the specific defect class.
+
 **Granularity — map the mechanism class, not the change.** Represent each measure at the level of its **generic injection type / mechanism class**, never per-PR, per-rule, or per-agent. Row-proliferation is the standing failure mode: one line per generic injection type keeps the map readable; a row per change makes it useless.
 
 - **New rule/axiom _content_ on an already-mapped mechanism owes no new row.** A new project rule (or axiom) is _content carried by_ the review mechanisms that already have rows — e.g. "agents apply repo-local `.agents/rules/RULES.md` in addition to universal axioms" is already mapped (the rbg + qa rows). Rules are content, not mechanisms (see the map's pyramid note: axioms do not appear as rows). Touch the map only if the _mechanism's_ trigger, surface, or workflow-impact actually changed.
