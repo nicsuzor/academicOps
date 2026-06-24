@@ -1334,9 +1334,49 @@ def _init_container_memory(
     return memory_limit, daemon_mem
 
 
+_IMMUTABLE_TAG_RE = re.compile(r"^v?\d+\.\d+(\.\d+)?([+\-][a-zA-Z0-9._+\-]*)?$")
+
+
+def _is_floating_tag(image: str) -> bool:
+    """Return True if the image uses a mutable/floating tag that requires registry reconciliation.
+
+    Floating: :latest, no explicit tag (Docker defaults to :latest), or any
+    non-versioned tag (e.g. :main, :dev, :stable).
+    Immutable: digest-pinned (@sha256:...) or a semantic-version tag (:vX.Y.Z or :X.Y.Z).
+    """
+    # Digest-pinned references are content-addressed and never change.
+    if "@sha256:" in image:
+        return False
+    # Find the last colon. If the text after it contains '/', the colon was part of
+    # a registry:port prefix (e.g. registry:5000/image), not a tag separator.
+    colon_idx = image.rfind(":")
+    if colon_idx == -1:
+        return True  # No tag at all → Docker defaults to :latest → floating
+    potential_tag = image[colon_idx + 1 :]
+    if "/" in potential_tag:
+        return True  # Colon was registry:port, not a tag → no explicit tag → floating
+    if not potential_tag or potential_tag == "latest":
+        return True
+    # Semantic version tags are immutable: vX.Y.Z, X.Y.Z (optional pre-release/build metadata).
+    if _IMMUTABLE_TAG_RE.match(potential_tag):
+        return False
+    # Any other tag (:main, :dev, :stable, branch names, etc.) is floating.
+    return True
+
+
 def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
-    """Ensure Docker image is present; pull it if not, silencing output unless verbose."""
-    # Fast check: does the image exist locally?
+    """Ensure Docker image is present; pull it if not, silencing output unless verbose.
+
+    Floating tags (:latest or non-versioned) are reconciled against the registry even
+    when a local copy already exists — a cached floating tag may be stale.  A stale
+    cached :latest was the root cause of aops-aa4c85a6 (parent epic aops-348e5858):
+    the cached image predated fix #1835 and its baked router emitted {} for agy
+    PreToolUse ALLOW, hard-denying every tool call.
+
+    Immutable tags (digest-pinned or :vX.Y.Z) keep the existing fast path.
+    If the registry is unreachable and a local copy exists, fall back with a stderr
+    warning rather than hard-failing dispatch.
+    """
     try:
         inspect = subprocess.run(
             [docker_binary, "image", "inspect", image], capture_output=True, check=False
@@ -1345,12 +1385,22 @@ def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
         # Docker binary not found — let the actual docker run command surface the error
         # via the existing FileNotFoundError handler in crew/run.
         return
-    if inspect.returncode == 0:
+    image_exists_locally = inspect.returncode == 0
+
+    if image_exists_locally and not _is_floating_tag(image):
+        # Fast path: immutable tag present locally — it cannot have changed.
         return
 
-    # Image missing, pull it
+    # Pull: either the image is absent, or it uses a floating tag that must be
+    # reconciled against the registry to catch stale caches.
     if verbose:
-        print(f"Pulling Docker image {image}...", file=sys.stderr)
+        if image_exists_locally:
+            print(
+                f"Reconciling cached floating image {image} against registry...",
+                file=sys.stderr,
+            )
+        else:
+            print(f"Pulling Docker image {image}...", file=sys.stderr)
     cmd = [docker_binary, "pull"]
     if not verbose:
         cmd.append("-q")
@@ -1359,9 +1409,17 @@ def _ensure_docker_image(image: str, verbose: bool, docker_binary: str) -> None:
         pull_result = subprocess.run(cmd, check=False, capture_output=not verbose, text=True)
     except FileNotFoundError:
         return
-    if pull_result.returncode != 0 and not verbose:
-        print(f"Error pulling image {image}:", file=sys.stderr)
-        print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
+    if pull_result.returncode != 0:
+        if image_exists_locally:
+            # Registry unreachable — fall back to cached image rather than failing dispatch.
+            print(
+                f"Warning: Could not reconcile {image} against registry "
+                "(registry unreachable); using cached image.",
+                file=sys.stderr,
+            )
+        elif not verbose:
+            print(f"Error pulling image {image}:", file=sys.stderr)
+            print(pull_result.stderr or pull_result.stdout, file=sys.stderr)
 
 
 def _build_docker_cmd(
