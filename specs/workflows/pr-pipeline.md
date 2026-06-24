@@ -495,7 +495,23 @@ The responder is **NOT** the Stage-2 mechanic run earlier. It is a distinct, tig
 
 Judgment-call and recusal REVISEs must surface to the human gate **unmodified**. The responder must not attempt to auto-apply them, and must not dismiss them.
 
-**No-op-on-green guard (the crux — PR #1614 / P5 applied pre-admission).** The `check-mechred` job in `pr-pipeline.yml` reads `enforcer-status` and `qa-status` on HEAD using `scripts/ci/check-mechanical-red.sh`. If both are `success`, the guard fires (`has_mechanical_red=false`) and `pre-admission-responder` is **skipped immediately**. This is the same cost pathology that motivated P5 — a green PR must never spawn a runner for the responder, no matter what.
+**Dispatch triggers — enforcer, qa, AND Pytest red (#1965).** The responder exists to clear mechanically-fixable red pre-admission, and **failing CI is explicitly mechanical** (per `enforcer.agent.md` §3 / the §3.8 boundary table: "failing CI that needs a deterministic code fix"). The eligible dispatch triggers on HEAD are therefore:
+
+- `enforcer-status == failure`, OR
+- `qa-status == failure`, OR
+- the `Pytest` check-run `== failure` **and that failure is attributable to the PR's own diff** (see the base-broken guard below).
+
+**Why Pytest is read differently from enforcer/qa.** `Pytest` is a **GitHub Actions check-run**, not a commit status, so it never appears in the `commits/{sha}/statuses` API that `check-mechanical-red.sh` reads for `enforcer-status`/`qa-status`/`admit-status`. This was the root cause of #1965: a PR whose only red was Pytest satisfied neither status condition, so the no-op-on-green guard fired and **no responder was dispatched** — the PR sat stranded red (observed on #1955/#1956/#1957, 2026-06-24). The fix passes HEAD's Pytest result into the gate deterministically as `PYTEST_RESULT` (the `needs.pytest.result` of the same `pr-pipeline.yml` run). `check-mechred` now declares `needs: [lint, enforcer, qa, pytest]`, so the `Pytest` check-run is **terminal** when the gate evaluates — no polling, no race. `pytest` finishes well before the slow enforcer/qa agents, so it adds no critical-path latency.
+
+**Base-broken Pytest guard (the #1965 aggravating factor — anti-thundering-herd).** A test broken on the **base branch** reddens Pytest on _every_ PR. Naively dispatching the responder for it would spawn a thundering herd of useless runs, because the responder **cannot fix a base failure from a PR branch**. So a Pytest failure is an eligible trigger **only when Pytest is not also failing on the base branch**. `check-mechanical-red.sh` determines this conservatively: when (and only when) enforcer + qa are both green and `PYTEST_RESULT == failure`, it queries the latest **completed** `Pytest` check-run on `origin/$BASE_BRANCH` (live via the check-runs API; injectable as `BASE_CHECK_RUNS_JSON` for tests):
+
+- base Pytest `failure` → **not attributable** to the PR → skip, surface to human.
+- base Pytest `success`, or no completed base run found → **attributable** to the PR's diff → dispatch.
+- base state **unverifiable** (live API error) → **fail closed** (skip, surface to human) rather than risk a herd.
+
+This is deliberately conservative: a PR that introduces a _new_ Pytest failure on top of an already-broken base is also suppressed (it cannot be distinguished from inherited base breakage without per-test diffing, which is out of scope). That trades a few missed dispatches for hard protection against the herd; such PRs surface to the human like any other un-cleared red. When the base is fixed, the next push re-evaluates and the responder dispatches normally.
+
+**No-op-on-green guard (the crux — PR #1614 / P5 applied pre-admission).** The `check-mechred` job in `pr-pipeline.yml` reads `enforcer-status` and `qa-status` on HEAD using `scripts/ci/check-mechanical-red.sh`. If both are `success` **and there is no PR-attributable Pytest red**, the guard fires (`has_mechanical_red=false`) and `pre-admission-responder` is **skipped immediately**. This is the same cost pathology that motivated P5 — a green PR must never spawn a runner for the responder, no matter what.
 
 **Stage-2 guard.** `check-mechanical-red.sh` also checks `admit-status`. If `admit-status=success` (PR already admitted), the responder is skipped and the Stage-2 mechanic (§3.3) handles any remaining red. The responder must not run alongside the Stage-2 loop — `check-admit`'s `needs: [pre-admission-responder]` ensures the responder completes (or is skipped) before `check-admit` dispatches the mechanic.
 
@@ -507,7 +523,7 @@ Judgment-call and recusal REVISEs must surface to the human gate **unmodified**.
 lint → enforcer → qa → [check-mechred] → [pre-admission-responder]
 ```
 
-`check-mechred` runs after Stage-1 convergence (same convergence precondition as `check-admit`). If the responder commits a fix, it stamps `Responder-By:` and pushes; the new `synchronize` cancels the current run and restarts Stage 1 on the new SHA. Enforcer + qa re-verify the new SHA per the normal loop-skip protocol (§10).
+`check-mechred` runs after Stage-1 convergence (same convergence precondition as `check-admit`) and additionally `needs: [..., pytest]` so HEAD's `Pytest` check-run is terminal when the gate reads `PYTEST_RESULT` (#1965). If the responder commits a fix, it stamps `Responder-By:` and pushes; the new `synchronize` cancels the current run and restarts Stage 1 on the new SHA. Enforcer + qa re-verify the new SHA per the normal loop-skip protocol (§10).
 
 **Dispatch sequence.** `check-admit` now `needs: [lint, enforcer, qa, pre-admission-responder]`. For Stage-2 passes (admitted PRs), `check-mechred` immediately returns `has_mechanical_red=false` (Stage-2 guard fires), `pre-admission-responder` is skipped, and `check-admit` proceeds with only a ~5s `check-mechred` overhead — negligible on the Stage-2 critical path.
 

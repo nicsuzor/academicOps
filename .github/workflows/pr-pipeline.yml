@@ -312,7 +312,14 @@ jobs:
 
   check-mechred:
     name: Check for pre-admission mechanical red
-    needs: [lint, enforcer, qa]
+    # `pytest` is in needs (not just lint/enforcer/qa) so that the HEAD `Pytest`
+    # check-run is TERMINAL when this gate evaluates — needs.pytest.result is
+    # passed to the gate as PYTEST_RESULT. `Pytest` is a check-run, not a commit
+    # status, so it is invisible to the statuses API the gate reads for
+    # enforcer/qa/admit (root cause of #1965: a Pytest-only red dispatched no
+    # responder). pytest finishes well before the slow enforcer/qa agents, so
+    # this adds no critical-path latency.
+    needs: [lint, enforcer, qa, pytest]
     # Same convergence precondition as check-admit: Stage 1 fully ran with no commits.
     # Enforcer/qa must have posted terminal verdicts on this SHA.
     if: >-
@@ -340,6 +347,10 @@ jobs:
         run: bash scripts/ci/check-mechanical-red.sh
         env:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          # HEAD Pytest result from this same run (terminal — pytest is in needs).
+          # `failure` is an eligible dispatch trigger, gated by the base-broken
+          # guard inside the script (#1965). pr-pipeline.md §3.8.
+          PYTEST_RESULT: ${{ needs.pytest.result }}
 
   pre-admission-responder:
     name: Pre-Admission Responder
