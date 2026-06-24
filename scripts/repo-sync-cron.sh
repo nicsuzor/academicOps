@@ -29,6 +29,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
+# 1a. Failure alerting. A silent cron failure (lost credentials + no alerting of
+# any kind) once hid a ~24h sync outage. These make failures LOUD: a durable
+# status file, a best-effort desktop notification, and a non-zero exit so the run
+# stops cleanly instead of churning auth errors and starving other jobs.
+STATUS_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/repo-sync-cron.status"
+mkdir -p "$(dirname "$STATUS_FILE")" 2>/dev/null || true
+_now() { date '+%Y-%m-%d %H:%M:%S'; }
+fail() {
+    local msg="$1"
+    echo "$(_now) FATAL: ${msg}" >&2
+    echo "FAIL $(_now) ${msg}" > "$STATUS_FILE" 2>/dev/null || true
+    # Best-effort native notification; harmless no-op off-GUI or on non-macOS.
+    if command -v osascript >/dev/null 2>&1; then
+        osascript -e "display notification \"${msg//\"/}\" with title \"repo-sync-cron FAILED\"" >/dev/null 2>&1 || true
+    fi
+    exit 1
+}
+
 # 2. Source environment — avoid eval; only process simple export VAR=VALUE lines
 #    Expand $HOME and ~ since read -r preserves them literally.
 if [[ -f "$HOME/.env.local" ]]; then
@@ -56,6 +74,27 @@ if [[ -f "$HOME/.env.local" ]]; then
     done < "$HOME/.env.local"
 fi
 
+# 2a. Decrypt sops-managed secrets (AOPS_BOT_GH_TOKEN et al). The interactive
+# shell loads these via dotfiles/.zsh/01-env.zsh, but cron is non-interactive and
+# never sources it — so without this block cron silently loses every secret. This
+# is exactly the regression that broke sync: a shell env-loading refactor moved
+# secrets into sops, and cron (still reading only ~/.env.local) lost the bot
+# token. Keep this in sync with 01-env.zsh: same secrets path, same age key.
+export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+_secrets_file="$HOME/dotfiles/secrets/aops-secrets.env"
+if command -v sops >/dev/null 2>&1 && [[ -f "$_secrets_file" ]]; then
+    if _sops_plain="$(sops -d "$_secrets_file" 2>&1)"; then
+        # Use a here-string, NOT process substitution: `source <(...)` silently
+        # fails in a stripped cron environment (no usable /dev/fd), leaving every
+        # secret unset — which is precisely how this breaks without a peep.
+        set -a; source /dev/stdin <<< "$_sops_plain"; set +a
+    else
+        echo "$(_now) WARN: sops failed to decrypt $_secrets_file — secrets NOT loaded: $_sops_plain" >&2
+    fi
+    unset _sops_plain
+fi
+unset _secrets_file
+
 # Required env: must come from ~/.env.local (sourced above) or the cron
 # environment. No defaults — silent fallback to $HOME/brain or
 # $HOME/.polecat/sessions has bitten us before by writing to the wrong
@@ -72,13 +111,25 @@ export USER="${USER:-$(whoami)}"
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
 # Git HTTPS auth for cron (no SSH agent available)
-# Uses env-based git config so nothing persists to ~/.gitconfig
-if [[ -n "${AOPS_BOT_GH_TOKEN:-}" ]]; then
-    export GH_TOKEN="${AOPS_BOT_GH_TOKEN}"
-    export GIT_CONFIG_COUNT=1
-    export GIT_CONFIG_KEY_0="credential.helper"
-    export GIT_CONFIG_VALUE_0='!f() { echo "username=x-access-token"; echo "password=${AOPS_BOT_GH_TOKEN}"; }; f'
+# Uses env-based git config so nothing persists to ~/.gitconfig.
+# Fail LOUD on missing/invalid credentials rather than running blind: without a
+# working token every git/gh call 401s, the run churns retries, holds the shared
+# flock, and starves the hourly job — silently, for as long as it takes someone
+# to notice. Refuse to proceed instead.
+if [[ -z "${AOPS_BOT_GH_TOKEN:-}" ]]; then
+    fail "AOPS_BOT_GH_TOKEN unset after loading ~/.env.local and sops secrets. Check that secrets/aops-secrets.env decrypts and defines it, and that ~/.config/sops/age/keys.txt is readable by cron."
 fi
+# A present-but-expired token is the other way this breaks silently — one cheap
+# call catches it before we do any real work.
+_auth_code="$(curl -s -o /dev/null -w '%{http_code}' -m 10 -H "Authorization: token ${AOPS_BOT_GH_TOKEN}" https://api.github.com/user || echo 000)"
+if [[ "$_auth_code" != "200" ]]; then
+    fail "AOPS_BOT_GH_TOKEN present but GitHub auth returned HTTP ${_auth_code} (expired/revoked?). Rotate it in secrets/aops-secrets.env."
+fi
+unset _auth_code
+export GH_TOKEN="${AOPS_BOT_GH_TOKEN}"
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0="credential.helper"
+export GIT_CONFIG_VALUE_0='!f() { echo "username=x-access-token"; echo "password=${AOPS_BOT_GH_TOKEN}"; }; f'
 
 # Ensure we are in the AOPS directory for uv run commands
 cd "${AOPS}"
@@ -198,3 +249,4 @@ else
 fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') repo-sync-cron done"
+echo "OK $(_now)" > "$STATUS_FILE" 2>/dev/null || true

@@ -108,15 +108,12 @@ def test_agy_deny_uses_top_level_allow_tool(monkeypatch, tmp_path):
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
 
-    # The deny is structural: top-level allowTool=false blocks the tool with no
-    # enum string and no nesting under permissionOverrides.
-    assert output.get("allowTool") is False, (
-        f"Expected a structural DENY via top-level allowTool=false; "
-        f"got {output!r}. stderr: {stderr}"
-    )
-    assert output.get("denyReason"), (
-        f"Expected a denyReason on the structural DENY; got {output!r}. stderr: {stderr}"
-    )
+    # Post-fix (strict format): The enforcer gate produces an advisory.
+    # Since agy PreToolUse does not support context_injection, the router
+    # will fail loudly as requested.
+    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
+    assert "agy PreToolUse does not support context_injection" in stderr
+
     # MUST NOT nest under permissionOverrides (the pre-fix shape that live agy
     # rejected with "syntax error … unexpected token {").
     assert "permissionOverrides" not in output, (
@@ -150,15 +147,12 @@ def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
     _seed_enforcer_deny(monkeypatch, tmp_path, sid)
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
-    # Post-fix the deny is structural (top-level allowTool=false), not a
-    # ``decision`` enum and not nested under permissionOverrides.
-    assert output.get("allowTool") is False, (
-        f"setup: expected a structural DENY (top-level allowTool=false), got {output!r}"
-    )
-    assert "permissionOverrides" not in output, (
-        f"setup: deny must not be wrong-nested under permissionOverrides "
-        f"(the protojson-rejected pre-fix shape), got {output!r}"
-    )
+
+    # Post-fix (strict format): The enforcer gate produces an advisory.
+    # Since agy PreToolUse does not support context_injection, the router
+    # will fail loudly as requested, instead of secretly dropping or injecting it.
+    assert not output, f"setup: expected router to crash due to strict checking, got {output!r}"
+    assert "agy PreToolUse does not support context_injection" in stderr
 
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
     assert accepted, (
