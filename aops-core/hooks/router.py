@@ -998,6 +998,64 @@ class HookRouter:
 
         return output
 
+    @staticmethod
+    def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
+        """Build an agy ``HookInjectedStep`` list carrying ``text``.
+
+        ``HookInjectedStep`` is a oneof. Field types decoded directly from the
+        ``exa.hooks_pb`` FileDescriptorProto embedded in the agy 1.0.7 binary
+        (FieldDescriptorProto ``type`` per member):
+
+            tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
+            user_message       (2)  TYPE_STRING   scalar string
+            ephemeral_message  (3)  TYPE_STRING   scalar string
+            system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
+
+        We emit the ``userMessage`` member — a TYPE_STRING scalar, so its
+        protojson is the bare string ``{"userMessage": text}``. ``userMessage``
+        injects the advisory as a persistent user turn rather than an
+        ``ephemeralMessage`` (member 3), which agy renders once and then discards
+        from context. The IDA / handover advisories are intended to remain
+        visible to the model for the rest of the turn, so the persistent
+        ``userMessage`` channel is preferred for visibility. Both are valid
+        TYPE_STRING scalars per the descriptor above; the choice is a
+        rendering-persistence trade-off, not a schema one.
+
+        REGISTRATION (verified, keep): a vanilla, doc-shaped PreInvocation hook
+        FIRES on agy 1.0.7 — ``strace -f`` shows ``execve`` of
+        ``router.sh --client agy PreInvocation``. The earlier "agy never spawns
+        PreInvocation" conclusion was a confound: our hooks.json had wrapped the
+        invocation events in the PreToolUse ``matcher``/``hooks[]`` shape, so agy
+        phantom-logged ``json_hook_caller.go:144 ... executing command`` but
+        spawned nothing. Per https://antigravity.google/docs/hooks#supported-events
+        the invocation/Stop events require a FLAT handler list directly under the
+        event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
+        spawns.
+
+        DELIVERY VERIFIED — agy 1.0.7 (model-echo control 2026-06-12,
+        session 2be4d40a / conv deaabeef): PreInvocation ``injectSteps`` ARE
+        delivered to model context (verified with the ``ephemeralMessage``
+        scalar). The model quoted our injected Skills-Routing-Table + PKB text
+        verbatim, byte-matching the router's PreInvocation stdout. The earlier
+        claim of an "agy-side delivery gap" (commit cd583eff) was based on
+        transcript grep — the WRONG observable. The correct observable is MODEL
+        ECHO, not ``transcript_full.jsonl``. The ``injectSteps`` delivery path is
+        the same for both scalar members; ``userMessage`` differs only in that
+        the rendered text persists rather than being discarded after the turn.
+
+        TRANSCRIPT OBSERVABILITY NOTE: agy 1.0.7 does NOT log hook-injected
+        ``injectSteps`` as steps in ``transcript_full.jsonl``. A sentinel that
+        appears in hook stdout will appear ZERO times in the transcript even when
+        the model receives it. The user-visible perception that "SessionStart
+        never fires" comes from this transcript-logging gap: hook logs are the
+        only trace of injection, and the injected text is invisible in
+        transcripts. Verify injection delivery via model echo (ask the model to
+        repeat back unique injected content), never via transcript grep.
+        """
+        if not text:
+            return []
+        return [{"userMessage": text}]
+
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
 
@@ -1067,22 +1125,18 @@ class HookRouter:
                 raise ValueError("agy PostToolUse does not support any fields.")
             return {}
 
-        if event == "PreInvocation":
-            steps = []
-            if short_reason:
-                steps.append({"ephemeralMessage": short_reason})
-            if advisory:
-                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
-                steps.append({"ephemeralMessage": hidden_advisory})
-            return {"injectSteps": steps} if steps else {}
-
-        if event == "PostInvocation":
-            steps = []
-            if short_reason:
-                steps.append({"ephemeralMessage": short_reason})
-            if advisory:
-                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
-                steps.append({"ephemeralMessage": hidden_advisory})
+        if event in ("PreInvocation", "PostInvocation"):
+            # Neither invocation event has a system_message channel in the
+            # protojson schema. Fold short_reason into the advisory text so gate
+            # messages (e.g. IDA warn: system_message + context_injection both
+            # set) are not silently dropped via a ValueError crash — the
+            # subprocess would otherwise exit non-zero with empty stdout, which
+            # callers interpret as {} (aops-0e87f615 / #1798). The folded text is
+            # delivered through injectSteps' userMessage scalar.
+            combined = (
+                "\n\n".join(filter(None, [short_reason, advisory])) if short_reason else advisory
+            )
+            steps = self._agy_inject_steps(combined)
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":

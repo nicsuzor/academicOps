@@ -22,6 +22,8 @@ When you promote a task into the dispatchable set, answer **one open question** 
 
 That sentence is the whole artifact. Promote with it, or bounce the task with a one-line reason instead.
 
+**Precondition for any new-mechanism task — establish current state first.** Before you record the premise sentence on a task that proposes a **new or changed mechanism** (gate, env var, context builder, classifier, schema, dispatch path), first establish from live code + the PKB + the PR/issue/memory record whether **it already exists** or **was already decided**. A premise judged without knowing the current state is a guess, not a judgment; "adds a second path beside an existing one" and "re-raises a settled decision as novel" are both premise defects that bounce the task. This is cheap judgment-driven discovery (a few PKB searches + `rg`/`git`/`gh` reads), not a mechanism — the full rationale lives in the review-time twin (`premise-test.md` §"Establish current state and prior decisions FIRST").
+
 ### HARD RULE — one open sentence, never a checklist, never a field
 
 - It is **one open prose sentence in the body**. It is **never** a frontmatter field, a form, or a `- [ ]` checklist.

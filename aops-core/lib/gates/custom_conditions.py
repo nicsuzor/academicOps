@@ -118,6 +118,25 @@ def check_custom_condition(
         # the WARN verdict to decision=block for the Stop hook.
         return os.environ.get("QA_GATE_MODE", "warn") == "warn"
 
+    if name == "is_rbg_review_block_mode":
+        # RBG-review gate policy: active only when RBG_REVIEW_GATE_MODE is
+        # blocking. Block mode delivers the dispatch instruction via the
+        # context_injection channel (upgraded to decision=block on Stop), which
+        # is what makes the agent actually run rbg. This is the directive's
+        # required posture: a real DENY until rbg has run for the armed turn.
+        from hooks.gate_config import RBG_REVIEW_GATE_MODE
+
+        return RBG_REVIEW_GATE_MODE in ("block", "deny")
+
+    if name == "is_rbg_review_warn_mode":
+        # RBG-review gate policy: active only when RBG_REVIEW_GATE_MODE is warn.
+        # Warn still injects the dispatch instruction (block-once per turn via
+        # the warn+context_injection upgrade path), but does not hard-hold the
+        # session. Provided for parity / staged rollout; default mode is block.
+        from hooks.gate_config import RBG_REVIEW_GATE_MODE
+
+        return RBG_REVIEW_GATE_MODE == "warn"
+
     if name == "is_handover_block_mode":
         # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking
         # AND the session did real work (write tool or task claim).
