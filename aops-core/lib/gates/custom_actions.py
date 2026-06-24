@@ -266,6 +266,23 @@ def execute_custom_action(
             logger.warning("Failed to create QA audit file: %s", e)
             return None
 
+    if name == "prepare_rbg_review":
+        # Build the rbg-review audit file from the session transcript so the
+        # rbg_review.policy_context template ({temp_path}) has a real file to
+        # point the agent's rbg dispatch at. Fires on Stop while the gate is
+        # CLOSED (armed and rbg has not run this turn). Mirrors prepare_qa_review.
+        # On failure, return None so the gate engine falls back to the policy's
+        # default verdict (block) rather than bypassing the gate.
+        try:
+            temp_path = create_audit_file(ctx.session_id, "rbg_review", ctx)
+            state.metrics["temp_path"] = str(temp_path)
+            return GateResult.allow(
+                system_message=f"RBG review file ready: {temp_path}",
+            )
+        except Exception as e:
+            logger.warning("Failed to create rbg-review audit file: %s", e)
+            return None  # allow-fallback: None -> engine falls back to the policy's default DENY (gate still blocks; never bypasses)
+
     if name == "update_todo_in_progress":
         # Track whether the agent currently has an in-progress todo item.
         # Called via PostToolUse trigger on TodoWrite. (#319 mid-work false BLOCK)
