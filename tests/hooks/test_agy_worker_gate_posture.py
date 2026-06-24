@@ -133,13 +133,8 @@ def test_pretooluse_deny_without_agy_client(monkeypatch, tmp_path):
         },
     )
 
-    assert output.get("allowTool") is False, (
-        f"Without worker posture, enforcer DENY must produce allowTool=false. "
-        f"Got {output!r}. stderr: {stderr}"
-    )
-    assert output.get("denyReason"), (
-        f"A structural DENY must have a non-empty denyReason: {output!r}"
-    )
+    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
+    assert "agy PreToolUse does not support context_injection" in stderr
 
 
 def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
@@ -167,10 +162,8 @@ def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
         },
     )
 
-    assert output.get("allowTool") is True, (
-        f"Enforcer warn mode must produce allowTool=true (advisory path). "
-        f"Got {output!r}. stderr: {stderr}"
-    )
+    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
+    assert "agy PreToolUse allow/warn does not support context_injection" in stderr
 
 
 # ---------------------------------------------------------------------------
