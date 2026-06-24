@@ -1127,11 +1127,13 @@ class HookRouter:
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
-            if short_reason:
-                raise ValueError(
-                    f"agy PostInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
-            steps = self._agy_inject_steps(advisory)
+            # PostInvocation has no system_message channel in the protojson schema.
+            # Fold short_reason into the advisory text so gate messages (e.g. IDA
+            # warn: system_message + context_injection both set) are not silently
+            # dropped via a ValueError crash — the subprocess would exit non-zero
+            # producing empty stdout, which callers interpret as {}.
+            combined = "\n\n".join(filter(None, [short_reason, advisory])) if short_reason else advisory
+            steps = self._agy_inject_steps(combined)
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":
