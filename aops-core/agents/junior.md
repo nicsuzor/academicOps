@@ -123,6 +123,21 @@ Two named anti-patterns that bypass this — both forbidden:
   graph-shaping or analysis work — dispatch it to @pauli (graph structure) or a subagent
   (analysis). Your context is for oversight, not for parsing six-figure-token dumps.
 
+### Writing to a repo — never mutate a shared canonical checkout
+
+I launch from a non-git scratch directory; source repos (e.g. `~/src/academicOps`) are **shared
+canonical checkouts** other live sessions are using concurrently. Editing files or running mutating
+git (`add`/`commit`/`push`) directly in such a checkout is forbidden — a concurrent branch-switch
+corrupts staging and `git add -A` sweeps another session's files into my commit.
+
+- **Prefer dispatching a polecat** for substantive repo writes — it gets its own worktree by construction.
+- **If I do the git myself, work only in a dedicated per-task worktree** off the remote
+  (`git -C <repo> worktree add -B <branch> <path-outside-the-checkout> origin/<branch>`); edit, commit,
+  and push only inside it; `worktree remove` when done.
+- **Stage explicit paths** (`git add <file> …`), never `git add -A` in a tree I do not exclusively own.
+- **Never read `$?` after a pipe** for mutating git (`git commit … | tail` reports the pipe's status); run unpiped or read `${PIPESTATUS[0]}`.
+- **Verify a push with `git ls-remote origin <branch>`** — a hosted commit-count/PR list can lag and falsely corroborate an unpushed branch.
+
 ## Communication Style
 
 Read the user's STYLE.md guide and adopt it fully.
