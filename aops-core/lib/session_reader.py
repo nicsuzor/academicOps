@@ -359,18 +359,23 @@ def build_rich_session_context(transcript_path: Path | str, max_turns: int = 15)
 
 
 def build_audit_session_context(
-    transcript_path: Path | str, *, entries: list[Any] | None = None
+    transcript_path: Path | str,
+    *,
+    entries: list[Any] | None = None,
+    max_turns: int | None = None,
 ) -> str:
     """Build deep session context for audit and compliance review.
 
     Unlike build_rich_session_context (designed for scope-drift detection with
-    thin, wide context), this produces a chronological narrative of the entire
+    thin, wide context), this produces a chronological narrative of the
     session: user requests, agent reasoning, tool calls with results, and
     decisions made. The auditor needs to see what actually happened to provide
     a grounded verdict.
 
     Design choices:
-    - ALL turns included (no max_turns cap) — auditor must see full history
+    - Full detail WITHIN the window — every turn shown carries its tool calls,
+      reasoning, and results (no historical/recent split that hides tool calls
+      from older shown turns; aops-e4e90f31 truncated-read false-pass bug).
     - Agent reasoning text preserved at length (2000 chars) — auditor needs
       to see *why* decisions were made, not just what tools were called
     - Task/subagent prompts and results shown — these are major decision points
@@ -378,10 +383,22 @@ def build_audit_session_context(
     - Noise filtered: TodoWrite, system-reminders, hook internals excluded
     - Tool results included for key tools (Task, Bash) — outcomes matter
 
+    Windowing (aops-5bc65f76): the single windowed builder for both the
+    enforcer (PreToolUse cadence) and rbg-review (Stop) dispatches. When
+    ``max_turns`` is set, only the LAST ``max_turns`` conversation turns are
+    rendered — the window is the enforcer cadence + 2 (n+2). Because rbg fires
+    every n tool-calls, each n+2 window overlaps the previous one by 2 turns,
+    so a clean sliding window covers every turn at full detail without a
+    full-session re-send (does NOT reopen the #1869 false-PASS hole — that hole
+    was truncation of detail WITHIN a shown turn, not bounding the window).
+    ``max_turns=None`` (default) renders the whole session.
+
     Args:
         transcript_path: Path to session transcript JSONL file
         entries: Pre-parsed session entries to avoid redundant file I/O.
             If not provided, the transcript is parsed from disk.
+        max_turns: If set, render only the last ``max_turns`` conversation
+            turns (the n+2 cadence window). ``None`` renders all turns.
 
     Returns:
         Formatted markdown context suitable for review agent consumption
@@ -418,6 +435,13 @@ def build_audit_session_context(
 
         valid_turns.append(turn)
 
+    # Window to the last n+2 turns when a cap is requested (aops-5bc65f76).
+    # The enforcer cadence guarantees overlapping windows, so trimming older
+    # turns here loses no coverage while bounding token cost. max_turns=None
+    # keeps the full session.
+    if max_turns is not None and max_turns > 0 and len(valid_turns) > max_turns:
+        valid_turns = valid_turns[-max_turns:]
+
     lines: list[str] = []
 
     # Noise tools the reviewer doesn't need to see individually
@@ -429,10 +453,12 @@ def build_audit_session_context(
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
 
-    # All turns included at full detail — auditor must see complete history.
-    # Do NOT restore a historical/recent split here: hiding tool calls from
-    # older turns lets violations in those turns pass the enforcer unseen
-    # (aops-e4e90f31 truncated-read false-pass bug).
+    # Every turn in the (possibly windowed) set is rendered at full detail —
+    # do NOT restore a historical/recent split within the window: hiding tool
+    # calls from older shown turns lets violations in those turns pass the
+    # enforcer unseen (aops-e4e90f31 truncated-read false-pass bug). Bounding
+    # the window via max_turns is safe (overlapping cadence windows); dropping
+    # detail from a shown turn is not.
     turn_num = 0
 
     for turn in valid_turns:
