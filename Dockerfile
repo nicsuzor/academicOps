@@ -218,6 +218,21 @@ RUN umask 000 && set -e && \
         fi ; \
     done
 
+# Build-time assertion: agy PreToolUse-allow path must emit {"allowTool": true}.
+# Regression guard for aops-aa4c85a6 (parent epic aops-348e5858): a stale baked
+# router emitted {} for a PreToolUse ALLOW event. agy protojson parses stdout as
+# exa.hooks_pb.PreToolHookResult, where an OMITTED bool defaults to false — so {}
+# causes agy to deny every tool call. AOPS_AGY_CLIENT=1 sets is_subagent=True so
+# gates are skipped and the plain ALLOW path is exercised in isolation.
+RUN set -e; \
+    ROUTER=/home/worker/.gemini/antigravity-cli/plugins/aops-core/hooks/router.sh; \
+    out=$(printf '{"toolCall":{"name":"Bash","args":{"command":"echo test"}},"workspacePaths":["/workspace"]}' \
+          | AOPS_AGY_CLIENT=1 bash "$ROUTER" --client agy PreToolUse 2>/dev/null); \
+    echo "agy PreToolUse-allow output: $out" >&2; \
+    echo "$out" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('allowTool') is True, repr(d)" \
+        || { echo "FATAL: agy PreToolUse-allow did not emit allowTool:true — stale router baked?" >&2; exit 1; }; \
+    echo "Build check passed: agy PreToolUse-allow emits allowTool:true" >&2
+
 # Pre-build Python project venv at a stable image path.
 # UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
 # preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
