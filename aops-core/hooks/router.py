@@ -1125,6 +1125,11 @@ class HookRouter:
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
+            # PostInvocation has no system_message channel in the protojson schema.
+            # Fold short_reason into the advisory text so gate messages (e.g. IDA
+            # warn: system_message + context_injection both set) are not silently
+            # dropped via a ValueError crash — the subprocess would exit non-zero
+            # producing empty stdout, which callers interpret as {}.
             if short_reason:
                 advisory = f"{short_reason}\n\n{advisory}" if advisory else short_reason
             steps = self._agy_inject_steps(advisory)

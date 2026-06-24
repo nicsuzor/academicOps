@@ -960,6 +960,91 @@ class TestBuildAuditSessionContext:
         # Sentinel must include the count of turns processed
         assert "<!-- audit-complete: 3 turns -->" in result
 
+    def test_max_turns_window_keeps_only_last_n_turns(self, tmp_path):
+        """max_turns windows to the last n turns (aops-5bc65f76 n+2 cadence window).
+
+        With max_turns set, older turns are dropped but every SHOWN turn keeps
+        full detail. The audit-complete sentinel reports the windowed count.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "windowed.jsonl"
+        entries_data = []
+        for i in range(1, 11):  # 10 turns
+            entries_data += [
+                _create_user_entry(f"Turn {i} request", i * 100),
+                _create_assistant_entry(i * 100 + 1),
+            ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        # Window of 4 -> only the last 4 turns (7..10) appear.
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=4)
+
+        for i in range(1, 7):
+            assert f"Turn {i} request" not in result, f"Turn {i} should be windowed out"
+        for i in range(7, 11):
+            assert f"Turn {i} request" in result, f"Turn {i} should be in window"
+        # Sentinel reports the windowed turn count, not the full session count.
+        assert "<!-- audit-complete: 4 turns -->" in result
+
+    def test_max_turns_none_renders_all_turns(self, tmp_path):
+        """max_turns=None (default) renders the whole session — no windowing."""
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "full.jsonl"
+        entries_data = []
+        for i in range(1, 7):
+            entries_data += [
+                _create_user_entry(f"Turn {i} request", i * 100),
+                _create_assistant_entry(i * 100 + 1),
+            ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
+        for i in range(1, 7):
+            assert f"Turn {i} request" in result
+        assert "<!-- audit-complete: 6 turns -->" in result
+
+    def test_window_larger_than_session_keeps_all_detail(self, tmp_path):
+        """A window wider than the session shows every turn at full detail.
+
+        Guards the #1869 coverage invariant: a Write tool call in turn 1 must
+        still be visible when the window exceeds the session length.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "short.jsonl"
+        entries_data = [
+            _create_user_entry("Turn 1 request", 0),
+            _create_tool_use_entry("Write", {"file_path": "/secret/violation.py"}, 1),
+            _create_tool_result_entry("tool-1", "File written", offset=2),
+        ]
+        for i in range(2, 5):
+            entries_data += [
+                _create_user_entry(f"Turn {i} request", i * 100),
+                _create_assistant_entry(i * 100 + 1),
+            ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+        # n+2 default window (52) >> 4 turns -> nothing trimmed.
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=52)
+        assert "Write" in result
+        assert "/secret/violation.py" in result
+        for i in range(1, 5):
+            assert f"Turn {i} request" in result
+
 
 class TestExtractGateContextExceptionHandling:
     """Tests for extract_gate_context exception handling."""

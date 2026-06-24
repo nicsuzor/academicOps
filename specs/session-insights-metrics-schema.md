@@ -23,41 +23,52 @@ Reference schema for session insights JSON files written by `aops-core/scripts/t
 
 ## Optional Standard Fields
 
-| Field                       | Type           | Description                                    |
-| --------------------------- | -------------- | ---------------------------------------------- |
-| `friction_points`           | array[string]  | Obstacles or blockers encountered              |
-| `proposed_changes`          | array[string]  | Follow-up actions or improvements              |
-| `workflows_used`            | array[string]  | Framework workflows invoked                    |
-| `subagents_invoked`         | array[string]  | Subagent identifiers spawned                   |
-| `learning_observations`     | array[string]  | Lessons captured                               |
-| `context_gaps`              | array[string]  | Missing context that caused friction           |
-| `conversation_flow`         | array          | Structured turn log                            |
-| `user_prompts`              | array[string]  | Significant user instructions                  |
-| `workflow_improvements`     | array[string]  | Suggested workflow changes                     |
-| `jit_context_needed`        | array[string]  | JIT context that was absent                    |
-| `context_distractions`      | array[string]  | Irrelevant context loaded                      |
-| `framework_reflections`     | array[object]  | Structured per-reflection entries (see below)  |
-| `timeline_events`           | array[object]  | Ordered session events for path reconstruction |
-| `token_metrics`             | object         | Token usage breakdown (see section below)      |
-| `subagent_count`            | int            | Number of subagents spawned                    |
-| `enforcer_blocks`           | int            | Number of enforcer interventions               |
-| `acceptance_criteria_count` | int            | Acceptance criteria evaluated                  |
-| `user_mood`                 | float          | Sentiment proxy, range -1.0 to 1.0             |
-| `user_prompt_count`         | int or null    | Count of real user-role turns                  |
-| `current_bead_id`           | string or null | PKB bead/task linked to session                |
-| `worker_name`               | string or null | Agent worker identity                          |
-| `task_id`                   | string         | Linked task ID (from `$AOPS_TASK_ID`)          |
-| `repo`                      | string         | Alias of `project` for downstream consumers    |
-| `pr_url`                    | string         | PR URL if a PR was created this session        |
-| `outputs`                   | array          | Declared outputs from reflection               |
-| `output_explicit_none`      | bool           | Whether agent declared no outputs explicitly   |
-| `output_none_reason`        | string or null | Reason for no outputs                          |
-| `tasks_worked`              | array          | Tasks touched during session                   |
-| `references`                | array          | External references cited                      |
-| `quality_warnings`          | array          | Quality-bar flags from reflection              |
-| `thread_pickup`             | object         | Resume context for next session                |
-| `started_at`                | string         | ISO 8601 session start time                    |
-| `ended_at`                  | string         | ISO 8601 session end time                      |
+| Field                       | Type           | Description                                                                                      |
+| --------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `friction_points`           | array[string]  | Obstacles or blockers encountered                                                                |
+| `proposed_changes`          | array[string]  | Follow-up actions or improvements                                                                |
+| `workflows_used`            | array[string]  | Framework workflows invoked                                                                      |
+| `subagents_invoked`         | array[string]  | Subagent identifiers spawned                                                                     |
+| `learning_observations`     | array[string]  | Lessons captured                                                                                 |
+| `context_gaps`              | array[string]  | Missing context that caused friction                                                             |
+| `conversation_flow`         | array          | Structured turn log                                                                              |
+| `user_prompts`              | array[object]  | Ordered human-typed prompts `{timestamp, text}` — excludes system-injected turns (aops-519f8e11) |
+| `workflow_improvements`     | array[string]  | Suggested workflow changes                                                                       |
+| `jit_context_needed`        | array[string]  | JIT context that was absent                                                                      |
+| `context_distractions`      | array[string]  | Irrelevant context loaded                                                                        |
+| `framework_reflections`     | array[object]  | Structured per-reflection entries (see below)                                                    |
+| `timeline_events`           | array[object]  | Ordered session events for path reconstruction                                                   |
+| `token_metrics`             | object         | Token usage breakdown (see section below)                                                        |
+| `subagent_count`            | int            | Number of subagents spawned                                                                      |
+| `enforcer_blocks`           | int            | Number of enforcer interventions                                                                 |
+| `acceptance_criteria_count` | int            | Acceptance criteria evaluated                                                                    |
+| `user_mood`                 | float          | Sentiment proxy, range -1.0 to 1.0                                                               |
+| `user_prompt_count`         | int or null    | Count of genuine human-typed turns (`system_injected=false`)                                     |
+| `current_bead_id`           | string or null | PKB bead/task linked to session                                                                  |
+| `worker_name`               | string or null | Agent worker identity                                                                            |
+| `task_id`                   | string         | Linked task ID (from `$AOPS_TASK_ID`)                                                            |
+| `repo`                      | string         | Alias of `project` for downstream consumers                                                      |
+| `pr_url`                    | string         | PR URL if a PR was created this session                                                          |
+| `outputs`                   | array          | Declared outputs from reflection                                                                 |
+| `output_explicit_none`      | bool           | Whether agent declared no outputs explicitly                                                     |
+| `output_none_reason`        | string or null | Reason for no outputs                                                                            |
+| `tasks_worked`              | array          | Tasks touched during session                                                                     |
+| `references`                | array          | External references cited                                                                        |
+| `quality_warnings`          | array          | Quality-bar flags from reflection                                                                |
+| `thread_pickup`             | object         | Resume context for next session                                                                  |
+| `started_at`                | string         | ISO 8601 session start time                                                                      |
+| `ended_at`                  | string         | ISO 8601 session end time                                                                        |
+
+### `timeline_events` entry structure
+
+Each entry has at minimum `{timestamp, type}`. The `user_prompt` type also carries:
+
+| Field             | Type    | Description                                                                                                                                                                                                                                                                   |
+| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`     | string  | Raw prompt text                                                                                                                                                                                                                                                               |
+| `system_injected` | boolean | `true` for machine-authored turns (harness envelopes, worker dispatch, skill bodies, loaded context). `false` for human-typed prompts. Mining "what the user typed" = filter `system_injected=false` across all clients with zero hand-written noise regexes (aops-519f8e11). |
+
+`user_prompts` (top-level array) is the pre-filtered view: `[{timestamp, text}]` where each entry is a `user_prompt` event with `system_injected=false`.
 
 ### `framework_reflections` entry structure
 

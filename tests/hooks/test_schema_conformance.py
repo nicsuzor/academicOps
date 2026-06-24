@@ -117,6 +117,29 @@ def test_agy_pretooluse_deny_uses_top_level_allow_tool(router):
     assert "permissionOverrides" not in payload
 
 
+def test_agy_postinvocation_folds_system_and_context_into_steps(router):
+    """PostInvocation with both system_message+context_injection must fold both
+    into injectSteps, not crash.
+
+    The IDA WARN policy sets both system_message ("≡ Honesty check...") and
+    context_injection ("be honest..."). PostInvocation has no system_message
+    channel, so short_reason is folded into the advisory text. The earlier code
+    raised ValueError here, making the router subprocess exit non-zero with no
+    stdout — callers got {} and the IDA advisory was silently dropped
+    (aops-test-1798). Ported from the consolidated test_output_for_agy.py.
+    """
+    canonical = CanonicalHookOutput(
+        verdict="warn", system_message="status msg", context_injection="advisory text"
+    )
+    payload = router.output_for_agy(canonical, "PostInvocation")
+    steps = payload.get("injectSteps", [])
+    assert steps, f"both system+context must be delivered via injectSteps: {payload!r}"
+    joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
+    assert "status msg" in joined and "advisory text" in joined, (
+        f"both messages must appear in injectSteps: {joined!r}"
+    )
+
+
 def test_agy_injected_step_oneof_variant_shapes_match_binary_descriptor():
     HookInjectedStep.model_validate({"ephemeralMessage": "scalar ok"})
     with pytest.raises(ValidationError):
