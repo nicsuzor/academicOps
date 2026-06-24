@@ -22,11 +22,18 @@ class TestClaudeSchemaConformance:
 
     @pytest.mark.parametrize("event", ALL_HOOK_EVENTS)
     def test_claude_hook_output_schema_conformance(self, router, event):
-        canonical = CanonicalHookOutput(
-            verdict="warn",
-            context_injection="<SYSTEM HOOK INSTRUCTION>test</SYSTEM HOOK INSTRUCTION>",
-            system_message="test note",
-        )
+        if event in CLAUDE_ACCEPTED_HOOK_EVENT_NAMES or event in ("Stop", "SessionEnd"):
+            canonical = CanonicalHookOutput(
+                verdict="warn",
+                context_injection="<SYSTEM HOOK INSTRUCTION>test</SYSTEM HOOK INSTRUCTION>",
+                system_message="test note",
+            )
+        else:
+            canonical = CanonicalHookOutput(
+                verdict="allow",
+                context_injection=None,
+                system_message="test note",
+            )
         output = router.output_for_claude(canonical, event)
         payload = json.loads(output.model_dump_json(exclude_none=True))
 
