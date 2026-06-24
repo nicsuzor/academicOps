@@ -40,6 +40,22 @@ class TestIsSystemInjectedPrompt:
     def test_markdown_text_is_user_typed(self) -> None:
         assert _is_system_injected_prompt("## heading\nsome content") is False
 
+    def test_learn_after_loaded_context_is_user_typed(self) -> None:
+        # Harness prepends a <loaded_context> block before the human's message.
+        # The human's "/learn" must NOT be misflagged as system_injected.
+        text = "<loaded_context>\nsome injected context\n</loaded_context>\n/learn"
+        assert _is_system_injected_prompt(text) is False
+
+    def test_human_prompt_after_loaded_context_with_attributes_is_user_typed(
+        self,
+    ) -> None:
+        # Variant with tag attributes (e.g. <loaded_context type="skills">)
+        text = (
+            '<loaded_context type="skills">\nsome context\n</loaded_context>\n'
+            "what does this function do?"
+        )
+        assert _is_system_injected_prompt(text) is False
+
     # --- machine-injected: must return True ---
 
     def test_empty_string_is_injected(self) -> None:

@@ -1543,10 +1543,14 @@ _CONTROL_ENVELOPE_PATTERNS = [
     re.compile(r"<local-command-stdout>.*?</local-command-stdout>", re.DOTALL),
     re.compile(r"<command-message>.*?</command-message>", re.DOTALL),
     re.compile(r"<tool-use-id>.*?</tool-use-id>", re.DOTALL),
+    # loaded_context blocks are harness-injected context prepended to a turn.
+    # They must be stripped BEFORE the prefix check so that a human prompt
+    # following the block (e.g. "/learn") is not misflagged system_injected.
+    re.compile(r"<loaded_context[^>]*>.*?</loaded_context>", re.DOTALL),
     # Stray / self-closing control tags left behind after the blocks above.
     re.compile(
         r"</?(?:task-notification|system-reminder|tool-use-id|task-id|output-file|"
-        r"status|summary|local-command-stdout|command-message)[^>]*>"
+        r"status|summary|local-command-stdout|command-message|loaded_context)[^>]*>"
     ),
 ]
 
@@ -1563,7 +1567,9 @@ _WORKER_PREAMBLE_MARKERS = (
 # harness/framework, not the human at the keyboard.  Used by
 # _is_system_injected_prompt to set the system_injected flag on timeline events.
 _SYSTEM_INJECTED_PREFIXES: tuple[str, ...] = (
-    "<loaded_context",  # harness-injected context blocks
+    # Note: <loaded_context> is NOT here — it is stripped by _CONTROL_ENVELOPE_PATTERNS
+    # before this check runs, so the fallthrough empty-after-strip path handles bare
+    # injections, and human text following a block is preserved correctly.
     "**Invoked",  # skill-body invocations
     "**Purpose**",  # skill-body preamble
     "# /",  # skill-body heading (e.g. "# /learn\n")
@@ -1592,9 +1598,14 @@ def _is_system_injected_prompt(text: str) -> bool:
     """Return True when a user_prompt turn was machine-injected, not human-typed.
 
     Checks purely syntactic signals — no NLP.  A turn is system_injected when:
-    - it is empty or collapses to empty after control-envelope stripping, OR
-    - it starts with a known machine-authored prefix (harness envelopes, worker
-      dispatch, skill bodies, loaded-context blocks).
+    - it is empty or collapses to empty after control-envelope stripping (which
+      includes ``<loaded_context>`` blocks — see ``_CONTROL_ENVELOPE_PATTERNS``), OR
+    - it starts with a known machine-authored prefix (worker dispatch, skill bodies).
+
+    Ordering matters: the prefix check runs on the RAW stripped text, but
+    ``<loaded_context>`` is intentionally NOT in ``_SYSTEM_INJECTED_PREFIXES``.
+    It is stripped by ``clean_prompt_text`` in the fallthrough, so a human prompt
+    that follows a prepended ``<loaded_context>`` block is preserved correctly.
 
     A human can type ``/learn`` mid-session and that remains user_typed — only
     the injected *skill body* (large, formatted, starts with ``**Invoked`` or
