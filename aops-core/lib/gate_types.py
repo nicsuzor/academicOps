@@ -192,3 +192,16 @@ class GateConfig(BaseModel):
 
     # Optional countdown warning before threshold
     countdown: CountdownConfig | None = None
+
+    # Stop-DENY escape-hatch (per-gate override of the engine default).
+    # After this many CONSECUTIVE Stop DENYs from this gate in one turn, the
+    # engine degrades DENY -> WARN-and-allow so a structurally-broken forcing
+    # function cannot permanently trap the session (the infinite-Stop-loop
+    # prior incident). None -> use the engine default (_STOP_DENY_DOWNGRADE_
+    # THRESHOLD). Set higher for hard gates that must really run (e.g.
+    # rbg-review uses 5 to match the router-level 5-block safety override).
+    stop_deny_downgrade_threshold: int | None = None
+    # Template key for a LOUD, user-visible message emitted on the Stop where
+    # the gate degrades (the escape-hatch fire). Rendered with {threshold}.
+    # None -> degrade silently (legacy behaviour for advisory gates).
+    stop_deny_degraded_message_key: str | None = None
