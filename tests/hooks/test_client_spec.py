@@ -9,13 +9,7 @@ rewire, this test guards against the SSoT drifting from what the wire expects.
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-
-import pytest
 from hooks import client_spec as cs
-
-REPO = Path(__file__).resolve().parents[2]
 
 # The inbound wire→internal mappings the router historically resolved through the
 # flat ``router.GEMINI_EVENT_MAP`` union (now removed — the router reads
@@ -44,13 +38,24 @@ _EXPECTED_INBOUND: dict[str, dict[str, str]] = {
     },
 }
 
-
-@pytest.fixture(scope="module")
-def build_mod():
-    spec = importlib.util.spec_from_file_location("buildmod", REPO / "scripts" / "build.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+# The outbound internal→Gemini-wire map the build historically resolved through
+# its own ``CLAUDE_TO_GEMINI_EVENTS`` copy (now removed — ``scripts/build.py``
+# reads ``client_spec.to_wire_events``). Frozen here as the regression anchor:
+# client_spec must keep reproducing every one of these. (The build's old
+# identity-passthrough of already-Gemini names — BeforeTool/AfterTool/etc. — was
+# dead for a Claude-format source and is intentionally not reproduced.)
+_EXPECTED_OUTBOUND_GEMINI: dict[str, list[str]] = {
+    "PreToolUse": ["BeforeTool"],
+    "PostToolUse": ["AfterTool"],
+    "UserPromptSubmit": ["BeforeAgent"],
+    "Stop": ["SessionEnd", "AfterAgent"],
+    "SessionStart": ["SessionStart"],
+    "SessionEnd": ["SessionEnd"],
+    "SubagentStart": ["BeforeTool"],
+    "SubagentStop": ["AfterTool"],
+    "PreCompact": ["BeforeAgent"],
+    "Notification": ["BeforeAgent"],
+}
 
 
 class TestInboundEventMap:
@@ -71,14 +76,12 @@ class TestInboundEventMap:
 class TestOutboundEventMap:
     """`to_wire_events` must reproduce the build's Claude->external maps."""
 
-    def test_gemini_outbound_matches_build(self, build_mod):
-        c2g = build_mod.CLAUDE_TO_GEMINI_EVENTS
-        for claude_ev, gem in c2g.items():
-            if claude_ev in ("BeforeTool", "AfterTool", "BeforeAgent", "AfterAgent"):
-                continue  # build identity-passthrough of already-gemini names
-            targets = gem if isinstance(gem, list) else [gem]
-            valid = sorted(t for t in targets if cs.valid_wire_event("gemini", t))
-            assert sorted(cs.to_wire_events("gemini", claude_ev)) == valid, claude_ev
+    def test_gemini_outbound_matches_build(self):
+        for claude_ev, expected in _EXPECTED_OUTBOUND_GEMINI.items():
+            # Every expected target must be a valid Gemini wire event...
+            assert all(cs.valid_wire_event("gemini", t) for t in expected), claude_ev
+            # ...and client_spec must reproduce the historical build mapping.
+            assert sorted(cs.to_wire_events("gemini", claude_ev)) == sorted(expected), claude_ev
 
     def test_agy_outbound_matches_documented_invariants(self):
         assert cs.to_wire_events("agy", "UserPromptSubmit") == ["PreInvocation"]
