@@ -73,6 +73,10 @@ class Probe:
     # Tools this probe needs the model to attempt (for BLOCK detection). The probe
     # prompt asks the model to read a canary file; blocked => canary text absent.
     needs_model: bool = True
+    # Deny probes must deny EVERY invocation (not fire-once): a fire-once deny lets
+    # the model's retry hit the inert second fire and succeed, so block can't be
+    # measured. Set on deny/block candidates so the hook denies persistently.
+    persistent_deny: bool = False
 
 
 @dataclass
@@ -118,18 +122,28 @@ def gemini_available() -> bool:
 # ---------------------------------------------------------------------------
 # Probe-hook installation helpers
 # ---------------------------------------------------------------------------
-def _write_fire_once_hook(path: Path, output_json: dict) -> None:
-    """Write a fire-once probe hook script that emits ``output_json`` once.
+def _write_probe_hook(path: Path, output_json: dict, fire_once: bool = True) -> None:
+    """Write a probe hook script that emits ``output_json``.
 
-    On the second+ invocation it emits an inert allow ({} for agy, approve for
-    claude/gemini) so Stop/inject probes cannot loop.
+    fire_once=True (default): emit the output ONCE, then an inert ``{}`` on every
+    later invocation, so Stop/inject probes cannot loop.
+    fire_once=False: emit the output on EVERY invocation — required for deny/block
+    probes, where a fire-once deny would let the model's retry hit the inert second
+    fire and succeed, making the block unmeasurable.
     """
     payload = json.dumps(output_json)
-    inert = "{}"
-    script = f"""#!/bin/bash
+    if fire_once:
+        script = f"""#!/bin/bash
 FLAG="$(dirname "$0")/.fired"
-if [ -f "$FLAG" ]; then echo '{inert}'; exit 0; fi
+if [ -f "$FLAG" ]; then echo '{{}}'; exit 0; fi
 touch "$FLAG"
+cat <<'PROBE_EOF'
+{payload}
+PROBE_EOF
+exit 0
+"""
+    else:
+        script = f"""#!/bin/bash
 cat <<'PROBE_EOF'
 {payload}
 PROBE_EOF
@@ -165,7 +179,9 @@ def run_claude(probe: Probe, sentinel: str, workdir: Path, timeout: int = 150) -
     claude_dir.mkdir(parents=True, exist_ok=True)
     (workdir / "canary.txt").write_text(CANARY_TEXT + "\n")
     hook = workdir / "probe_hook.sh"
-    _write_fire_once_hook(hook, _fill_sentinel(probe.output, sentinel))
+    _write_probe_hook(
+        hook, _fill_sentinel(probe.output, sentinel), fire_once=not probe.persistent_deny
+    )
     settings = {
         "hooks": {probe.wire_event: [{"hooks": [{"type": "command", "command": f"bash {hook}"}]}]}
     }
@@ -245,7 +261,9 @@ def run_agy(
     agents_dir.mkdir(parents=True, exist_ok=True)
     (workdir / "canary.txt").write_text(CANARY_TEXT + "\n")
     hook = workdir / "probe_hook.sh"
-    _write_fire_once_hook(hook, _fill_sentinel(probe.output, sentinel))
+    _write_probe_hook(
+        hook, _fill_sentinel(probe.output, sentinel), fire_once=not probe.persistent_deny
+    )
     # agy hooks.json: PreInvocation/PostInvocation/Stop are flat; tool events wrapper.
     flat = probe.wire_event in ("PreInvocation", "PostInvocation", "Stop")
     cmd = f"bash {hook}"
@@ -343,6 +361,7 @@ def candidates() -> list[Probe]:
                 }
             },
             "PreToolUse deny blocks the tool; reason reaches agent.",
+            persistent_deny=True,
         )
     )
     P.append(
@@ -419,6 +438,7 @@ def candidates() -> list[Probe]:
             "agy-pretooluse-deny",
             {"allowTool": False, "denyReason": "probe SENTINEL"},
             "agy PreToolUse {allowTool:false,denyReason} blocks (verified-live baseline).",
+            persistent_deny=True,
         )
     )
     P.append(
@@ -429,6 +449,7 @@ def candidates() -> list[Probe]:
             "agy-pretooluse-deny",
             {"decision": "deny", "reason": "probe SENTINEL"},
             "agy PreToolUse {decision:deny,reason} (docs) ALSO blocks?",
+            persistent_deny=True,
         )
     )
     P.append(

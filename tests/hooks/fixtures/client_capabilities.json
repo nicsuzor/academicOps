@@ -27,7 +27,7 @@
       "signal": {
         "accepted": true,
         "agent_saw": true,
-        "blocked": false,
+        "blocked": true,
         "continued": true,
         "note": "num_turns=3"
       }
