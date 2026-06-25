@@ -57,11 +57,17 @@ STAGE="$(mktemp -d "${TMPDIR:-/tmp}/aops-ts-sync.XXXXXX")" || { echo "[aops-ts] 
 trap 'rm -rf "$STAGE"' EXIT
 
 # --- locate aops-core (sibling plugin) so we can run transcript.py ---
+# Use a while-read over process substitution so paths containing spaces don't
+# word-split (a silent split would drop us to the raw/unredacted fallback).
 AOPS_CORE=""
-for c in "${AOPS_SRC_DIR:-/nonexistent}/aops-core" \
-         $(ls -d "$HOME"/.claude/plugins/cache/academicOps/aops-core/*/ 2>/dev/null | sort -rV); do
-  if [ -f "${c%/}/scripts/transcript.py" ]; then AOPS_CORE="${c%/}"; break; fi
-done
+if [ -f "${AOPS_SRC_DIR:-/nonexistent}/aops-core/scripts/transcript.py" ]; then
+  AOPS_CORE="${AOPS_SRC_DIR}/aops-core"
+else
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    if [ -f "${c%/}/scripts/transcript.py" ]; then AOPS_CORE="${c%/}"; break; fi
+  done < <(ls -d "$HOME"/.claude/plugins/cache/academicOps/aops-core/*/ 2>/dev/null | sort -rV)
+fi
 
 # transcript.py writes transcripts/ + summaries/ under $AOPS_SESSIONS; point that
 # at the staging dir and pass --no-sync so it never tries to git-commit/push.
@@ -91,7 +97,7 @@ fi
 # --- push everything to the tailnet host ---
 # shellcheck disable=SC2086
 if rsync -az --no-perms --no-owner --no-group --exclude 'transcript.log' \
-     -e "ssh -o BatchMode=yes ${AOPS_TS_SSH_OPTS:-}" \
+     -e "ssh -o BatchMode=yes -o ConnectTimeout=10 ${AOPS_TS_SSH_OPTS:-}" \
      "$STAGE"/ "$AOPS_TS_SYNC_DEST"; then
   echo "[aops-ts] session synced to $AOPS_TS_SYNC_DEST"
 else
