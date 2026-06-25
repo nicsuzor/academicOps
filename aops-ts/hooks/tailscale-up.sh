@@ -24,29 +24,46 @@ command -v tailscale >/dev/null 2>&1 || {
   exit 0
 }
 
+# Some remote environments run the session as a non-root user; tailscale(d) then
+# needs sudo. Use passwordless sudo when available, else run direct (works as root).
+SUDO=""
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+  SUDO="sudo -n"
+fi
+
+# Log to a user-writable dir: the shell performs the redirect (as the session
+# user), so /var/log would fail with "permission denied" for non-root even under sudo.
+LOG="${TMPDIR:-/tmp}/tailscaled.log"
+
 # Already connected? Nothing to do (daemon + state persist within a container).
-if tailscale status >/dev/null 2>&1; then
-  echo "[aops-ts] tailscale already up as $(tailscale ip -4 2>/dev/null | head -1)"
+if $SUDO tailscale status >/dev/null 2>&1; then
+  echo "[aops-ts] tailscale already up as $($SUDO tailscale ip -4 2>/dev/null | head -1)"
   exit 0
 fi
 
 # Daemon is per-process (the container cache keeps files, not processes) — start it if absent.
 if ! pgrep -x tailscaled >/dev/null 2>&1; then
-  mkdir -p /var/lib/tailscale /var/run/tailscale
-  setsid tailscaled \
+  $SUDO mkdir -p /var/lib/tailscale /var/run/tailscale
+  $SUDO setsid tailscaled \
     --state=/var/lib/tailscale/tailscaled.state \
     --socket=/var/run/tailscale/tailscaled.sock \
     --tun=tailscale0 \
-    >/var/log/tailscaled.log 2>&1 </dev/null & disown || true
-  for _ in $(seq 1 30); do [ -S /var/run/tailscale/tailscaled.sock ] && break; sleep 0.5; done
+    >"$LOG" 2>&1 </dev/null & disown || true
+  # Wait for the socket, but fail fast if the daemon dies (missing tun, fatal error)
+  # instead of blocking session start for the full 15s.
+  for _ in $(seq 1 30); do
+    [ -S /var/run/tailscale/tailscaled.sock ] && break
+    pgrep -x tailscaled >/dev/null 2>&1 || break
+    sleep 0.5
+  done
 fi
 
-if tailscale up --authkey="${TS_AUTHKEY}" \
+if $SUDO tailscale up --authkey="${TS_AUTHKEY}" \
      --hostname="claude-web-${HOSTNAME:-sandbox}" \
      --accept-routes --accept-dns=true; then
-  echo "[aops-ts] tailscale up as $(tailscale ip -4 2>/dev/null | head -1)"
+  echo "[aops-ts] tailscale up as $($SUDO tailscale ip -4 2>/dev/null | head -1)"
 else
-  echo "[aops-ts] 'tailscale up' failed; see /var/log/tailscaled.log"
+  echo "[aops-ts] 'tailscale up' failed; see $LOG"
 fi
 
 exit 0
