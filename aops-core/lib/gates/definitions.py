@@ -606,7 +606,22 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
-            # Block mode: advisory injected into agent context via reason channel.
+            # Interactive block mode: concise disclosure for held-turn register.
+            # session_type_filter ensures this fires ONLY for interactive sessions;
+            # batch/autonomous/polecat/crew sessions fall through to the full reminder.
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                    session_type_filter=["interactive"],
+                    custom_check="is_ida_block_mode",
+                ),
+                verdict=GateVerdict.DENY,
+                message_key="ida.policy_message",
+                context_key="ida.interactive_reminder",
+            ),
+            # Block mode (batch/autonomous): full honesty manifest, byte-identical
+            # to pre-change for all non-interactive session types.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -617,10 +632,21 @@ GATE_CONFIGS = [
                 message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
-            # Warn mode: block-once — advisory injected into agent context via
-            # the warn+context_injection upgrade path in output_for_claude().
-            # Gate opens on first Stop (fire-once trigger above) so subsequent
-            # Stops in the same turn are not re-blocked. Re-arms on UPS.
+            # Interactive warn mode: concise disclosure, revisable held checkpoint.
+            # session_type_filter ensures this fires ONLY for interactive sessions.
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                    session_type_filter=["interactive"],
+                    custom_check="is_ida_warn_mode",
+                ),
+                verdict=GateVerdict.WARN,
+                message_key="ida.policy_message",
+                context_key="ida.interactive_reminder",
+            ),
+            # Warn mode (batch/autonomous): full manifest — block-once per turn.
+            # Byte-identical to pre-change for polecat/crew/gha/autonomous sessions.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",

@@ -236,7 +236,14 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         category=TemplateCategory.CONTEXT_INJECTION,
         filename="ida-reminder.md",
         required_vars=(),
-        description="Agent-facing honesty check injected into context on Stop",
+        description="Agent-facing honesty check injected into context on Stop (batch/autonomous sessions)",
+    ),
+    "ida.interactive_reminder": TemplateSpec(
+        name="ida.interactive_reminder",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="ida-interactive-reminder.md",
+        required_vars=(),
+        description="Concise honesty disclosure for interactive held-turn register — lighter than batch manifest, never silent, revisable by user",
     ),
     "ida.policy_message": TemplateSpec(
         name="ida.policy_message",

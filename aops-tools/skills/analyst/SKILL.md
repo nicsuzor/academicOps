@@ -29,6 +29,8 @@ Support academic research data analysis through technology-agnostic principles: 
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
+**Academic research disposition:** The cross-cutting principles that govern all academic work — data immutability, research-questions-drive-design, reproducibility, methodological transparency, fail-fast on data quality — live in the shared core at [[aops-core/agents/academic-disposition.md]]. This skill extends those principles with the empirical data-pipeline specifics below.
+
 ## 🚨 CRITICAL: Research Data is Immutable
 
 Source datasets, ground truth labels, experimental records, and research configurations are SACRED. NEVER modify, reformat, or "fix" them. If infrastructure doesn't support a format: HALT and report. Violations are scholarly misconduct.
