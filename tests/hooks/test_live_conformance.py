@@ -57,10 +57,10 @@ def _baseline_cells() -> list[dict]:
 def _remeasure() -> dict[str, dict]:
     """Re-run the harness for all available clients; return {label: signal}."""
     proc = subprocess.run(
-        [sys.executable, str(HARNESS), "--out", "/dev/stdout"],
+        [sys.executable, "-u", str(HARNESS), "--out", "/dev/stdout"],
         capture_output=True,
         text=True,
-        timeout=3600,
+        timeout=900,
     )
     # The harness prints RUN lines then the JSON report (to --out=/dev/stdout, mixed
     # with the progress lines). Extract the trailing JSON object.

@@ -20,6 +20,19 @@ Run:  uv run python scripts/verify_hook_formats.py            # all available cl
       uv run python scripts/verify_hook_formats.py --client claude
       uv run python scripts/verify_hook_formats.py --only claude-stop-additionalcontext
 
+Observability:
+- Run UNBUFFERED (``python -u`` / ``PYTHONUNBUFFERED=1``) so per-probe progress
+  streams live; every probe prints a ``START``/``RUN`` line with ``flush=True``.
+- ``--progress-log PATH`` (default ``<--out dir>/verify_hook_formats.progress.log``)
+  appends a timestamped per-probe line to a STREAMING log file distinct from the
+  ``--out`` JSON report, so ``tail -f`` works while a long live run is in flight.
+
+Timeouts (cold-start aware, tightened from the original over-generous values):
+- claude probe: 120s; agy probe: 180s (cold agy spins up a fresh venv — the
+  agy PreToolUse floor alone is 15s, so this stays generous to avoid flaky
+  skips on a cold start while no longer waiting >5min); outer re-measure
+  subprocess (pytest layer): 900s.
+
 Design notes:
 - Each probe runs in an ISOLATED temp workspace with ONLY its probe hook, so the
   repo's own aops-core plugin hooks never pollute the measurement.
@@ -48,6 +61,28 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 FIXTURE = REPO / "tests" / "hooks" / "fixtures" / "client_capabilities.json"
 AGY_LOG_GLOB = os.path.expanduser("~/.gemini/antigravity-cli/log/cli-*.log")
+
+
+def _progress(line: str, log_path: Path | None) -> None:
+    """Print a probe-progress line unbuffered AND append it to the streaming log.
+
+    The streaming log is distinct from the ``--out`` JSON report so ``tail -f``
+    works during a long live run. Always flushes stdout so progress streams even
+    when stdout is block-buffered (i.e. redirected to a file without ``-u``).
+    """
+    import datetime
+
+    stamped = f"{datetime.datetime.now().isoformat(timespec='seconds')} {line}"
+    print(line, flush=True)
+    if log_path is not None:
+        try:
+            with log_path.open("a") as fh:
+                fh.write(stamped + "\n")
+        except OSError:
+            # Streaming-log write is best-effort; never fail a probe run because
+            # the chosen log dir is unwritable (e.g. --out /dev/stdout → /dev).
+            pass
+
 
 # Substrings in an agy cli log that mean the protojson parser REJECTED our output.
 AGY_REJECT_MARKERS = (
@@ -174,7 +209,7 @@ def _fill_sentinel(output: dict, sentinel: str) -> dict:
 # ---------------------------------------------------------------------------
 # Claude runner
 # ---------------------------------------------------------------------------
-def run_claude(probe: Probe, sentinel: str, workdir: Path, timeout: int = 150) -> Signal:
+def run_claude(probe: Probe, sentinel: str, workdir: Path, timeout: int = 120) -> Signal:
     claude_dir = workdir / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
     (workdir / "canary.txt").write_text(CANARY_TEXT + "\n")
@@ -255,7 +290,7 @@ def _newest_agy_log() -> Path | None:
 
 
 def run_agy(
-    probe: Probe, sentinel: str, workdir: Path, dangerous: bool, timeout: int = 320
+    probe: Probe, sentinel: str, workdir: Path, dangerous: bool, timeout: int = 180
 ) -> Signal:
     agents_dir = workdir / ".agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
@@ -526,7 +561,31 @@ def main() -> int:
         help="also run agy with --dangerously-skip-permissions (contradiction test)",
     )
     ap.add_argument("--out", default=str(FIXTURE), help="capability fixture path")
+    ap.add_argument(
+        "--progress-log",
+        default=None,
+        help="streaming per-probe progress log (default: <out dir>/verify_hook_formats.progress.log); "
+        "distinct from --out so tail -f works during a long live run",
+    )
     args = ap.parse_args()
+
+    out_path = Path(args.out)
+    if args.progress_log:
+        progress_log: Path | None = Path(args.progress_log)
+    else:
+        # Default beside --out, EXCEPT when --out is a device/non-dir target
+        # (e.g. the pytest layer's --out /dev/stdout), where /dev is unwritable.
+        out_dir = out_path.parent
+        progress_log = (
+            out_dir / "verify_hook_formats.progress.log"
+            if out_dir.is_dir() and os.access(out_dir, os.W_OK) and str(out_dir) != "/dev"
+            else None
+        )
+    if progress_log is not None:
+        try:
+            progress_log.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            progress_log = None
 
     avail = {"claude": claude_available(), "agy": agy_available(), "gemini": gemini_available()}
     probes = candidates()
@@ -535,14 +594,21 @@ def main() -> int:
     if args.only:
         probes = [p for p in probes if p.label == args.only]
 
+    _progress(f"START run: {len(probes)} probe(s); progress -> {progress_log}", progress_log)
+
     results: list[CellResult] = []
-    for p in probes:
+    for idx, p in enumerate(probes, 1):
         cr = CellResult(p.label, p.client, p.wire_event, p.group, p.hypothesis)
         if not avail.get(p.client):
             cr.signal = Signal(note=f"{p.client} unavailable")
             results.append(cr)
-            print(f"SKIP  {p.label:48s} ({p.client} unavailable)")
+            _progress(
+                f"SKIP  [{idx}/{len(probes)}] {p.label:48s} ({p.client} unavailable)", progress_log
+            )
             continue
+        _progress(
+            f"START [{idx}/{len(probes)}] {p.label:48s} ({p.client}/{p.wire_event})", progress_log
+        )
         sentinel = f"PROBE-{uuid.uuid4().hex[:10].upper()}"
         with _tempworkspace() as wd:
             if p.client == "claude":
@@ -553,9 +619,10 @@ def main() -> int:
                 cr.signal = Signal(note="gemini runner not implemented (TODO)")
         results.append(cr)
         s = cr.signal
-        print(
-            f"RUN   {p.label:48s} accepted={s.accepted} agent_saw={s.agent_saw} "
-            f"blocked={s.blocked} continued={s.continued} :: {s.note}"
+        _progress(
+            f"RUN   [{idx}/{len(probes)}] {p.label:48s} accepted={s.accepted} agent_saw={s.agent_saw} "
+            f"blocked={s.blocked} continued={s.continued} :: {s.note}",
+            progress_log,
         )
         # agy contradiction test: re-run the deny probe with --dangerously-skip-permissions.
         if args.agy_dangerous and p.client == "agy" and p.wire_event == "PreToolUse":
@@ -571,8 +638,9 @@ def main() -> int:
                     sig,
                 )
             )
-            print(
-                f"RUN   {p.label + '+dangerous':48s} accepted={sig.accepted} blocked={sig.blocked} :: {sig.note}"
+            _progress(
+                f"RUN   [{idx}/{len(probes)}] {p.label + '+dangerous':48s} accepted={sig.accepted} blocked={sig.blocked} :: {sig.note}",
+                progress_log,
             )
 
     report = {
@@ -582,9 +650,9 @@ def main() -> int:
         "gemini_present": avail["gemini"],
         "cells": [asdict(r) for r in results],
     }
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(report, indent=2) + "\n")
-    print(f"\nWrote {len(results)} cells -> {args.out}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2) + "\n")
+    _progress(f"DONE  Wrote {len(results)} cells -> {args.out}", progress_log)
     return 0
 
 
