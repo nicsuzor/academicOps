@@ -4,14 +4,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from hooks.gate_config import extract_subagent_type
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
+from lib.tool_categories import extract_subagent_type
 
 # --- Fixture loading (mirrors test_gate_verdicts.py pattern) ---
 

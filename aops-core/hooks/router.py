@@ -42,12 +42,14 @@ try:
     from lib.gate_model import GateResult, GateVerdict
     from lib.gates.engine import GenericGate
     from lib.gates.registry import GateRegistry
+    from lib.hook_context import HookContext
     from lib.hook_utils import is_subagent_session
     from lib.session_naming import get_session_short_hash
     from lib.session_paths import get_pid_session_map_path
     from lib.session_state import SessionState
+    from lib.tool_categories import extract_subagent_type
 
-    from hooks.gate_config import extract_subagent_type
+    from hooks import client_spec
     from hooks.schemas import (
         CanonicalHookOutput,
         ClaudeGeneralHookOutput,
@@ -55,7 +57,6 @@ try:
         ClaudeStopHookOutput,
         GeminiHookOutput,
         GeminiHookSpecificOutput,
-        HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
@@ -121,25 +122,14 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
         print(f"DEBUG_LOG error: {e}", file=sys.stderr)
 
 
-# Event mapping: external client names -> internal canonical names.
-# Applied to all clients (Gemini event names passed via positional arg,
-# agy/Antigravity event names passed in the JSON payload as hook_event_name).
-GEMINI_EVENT_MAP = {
-    # Gemini CLI event names
-    "SessionStart": "SessionStart",
-    "BeforeTool": "PreToolUse",
-    "AfterTool": "PostToolUse",
-    "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
-    "AfterAgent": "Stop",  # This is the event after the agent returns their final response for a turn.
-    "SessionEnd": "SessionEnd",
-    "Notification": "Notification",
-    "PreCompress": "PreCompact",
-    "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
-    "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
-    # Antigravity CLI (agy) event names — mapped to canonical internal names
-    "PreInvocation": "UserPromptSubmit",  # agy: fires before each agent invocation
-    "PostInvocation": "Stop",  # agy: fires after each agent invocation
-}
+# Inbound wire-event → internal canonical name mapping is the SSoT's job:
+# ``client_spec.to_internal_event(client, wire)`` (Table 1 of
+# specs/hooks/CLIENT-TRANSLATION.md). normalize_input() calls it with the
+# resolved ``--client``; the per-client map replaces the old flat
+# ``GEMINI_EVENT_MAP`` union (which recognised every client's names regardless
+# of caller). Production always supplies ``--client`` (main() raises otherwise),
+# so the per-client lookup is exact; only legacy/test callers pass no client and
+# fall back to identity.
 
 # --- Gate Status Display ---
 
@@ -289,12 +279,16 @@ class HookRouter:
                 instead of showing ``model=unknown``.
         """
 
-        # 1. Determine Event Name
-        if gemini_event:
-            hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
-        else:
-            raw_event = raw_input.get("hook_event_name") or ""  # allow-fallback: maps to itself
-            hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
+        # 1. Determine Event Name — resolved through the client_spec SSoT.
+        # Gemini/agy pass the wire event positionally (gemini_event); agy may
+        # also carry it in stdin as hook_event_name. The per-client inbound map
+        # turns the wire name into the internal canonical name (Claude is
+        # identity). to_internal_event falls back to identity for an unmapped
+        # wire name or a missing client, matching the prior union's behaviour.
+        raw_event = gemini_event or raw_input.get("hook_event_name")
+        wire_event = raw_event or ""  # allow-fallback: identity for an absent event name
+        client = client_type or ""  # allow-fallback: identity map when no --client (test/legacy)
+        hook_event = client_spec.to_internal_event(client, wire_event)
 
         # 2. Determine Session ID
         session_id = raw_input.get("session_id") or raw_input.get("conversationId")

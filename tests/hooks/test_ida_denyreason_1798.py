@@ -133,7 +133,12 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     sid = f"1798-postinvocation-{client_type}"
     _arm_ida(monkeypatch, tmp_path, sid, client_type)
 
-    output, stderr = run_router({"conversationId": sid}, "PostInvocation")
+    # The Stop-family event is client-specific on the wire: agy fires
+    # ``PostInvocation`` (→Stop), claude fires ``Stop`` natively. The router
+    # resolves each through client_spec's per-client inbound map, so feed the
+    # event the client actually emits rather than agy's name for both.
+    stop_event = "PostInvocation" if client_type == "agy" else "Stop"
+    output, stderr = run_router({"conversationId": sid}, stop_event)
 
     assert "denyReason" not in output, f"PostInvocation must not emit denyReason: {output!r}"
     assert _IDA_MARKER in str(output), (

@@ -17,10 +17,10 @@ AOPS_CORE = Path(__file__).resolve().parents[2] / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.schemas import HookContext
 from lib.gate_types import GateCondition, GateConfig, GatePolicy, GateStatus
 from lib.gates.definitions import GATE_CONFIGS
 from lib.gates.engine import GenericGate
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 _CONFIGS = {c.name: c for c in GATE_CONFIGS}

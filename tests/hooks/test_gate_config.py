@@ -17,13 +17,15 @@ if str(AOPS_CORE) not in sys.path:
 
 # WS7 — gate-hygiene primitives (composition, never-block, enforcer channel, register).
 from hooks.gate_config import (  # noqa: E402
-    COMPLIANCE_SUBAGENT_TYPES,
     ENFORCER_CHANNEL_SENTINEL,
+    is_enforcer_channel,
+)
+from lib.tool_categories import (  # noqa: E402
+    COMPLIANCE_SUBAGENT_TYPES,
     SPAWN_TOOLS,
     TOOL_CATEGORIES,
     extract_subagent_type,
     get_tool_category,
-    is_enforcer_channel,
     is_never_block,
 )
 

@@ -16,8 +16,9 @@ import pytest
 aops_core_dir = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_core_dir))
 
-from hooks.schemas import CanonicalHookOutput, HookContext
+from hooks.schemas import CanonicalHookOutput
 from hooks.unified_logger import log_hook_event
+from lib.hook_context import HookContext
 
 
 @pytest.fixture

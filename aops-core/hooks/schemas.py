@@ -1,13 +1,11 @@
 from typing import Any, Literal, TypeAlias
 
-# HookContext lives in lib/ so gate-engine code in lib/gates/* can consume it
-# without importing upward from hooks/. Re-exported here for backward
-# compatibility with downstream callers.
-from lib.hook_context import HookContext
+# HookContext lives in lib/hook_context.py (so gate-engine code in lib/gates/*
+# can consume it without importing upward from hooks/). Import it directly from
+# there — this module no longer re-exports it.
 from pydantic import BaseModel, Field
 
 __all__ = [
-    "HookContext",
     "ClaudeHookSpecificOutput",
     "ClaudeStopHookOutput",
     "ClaudeGeneralHookOutput",

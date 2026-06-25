@@ -4,34 +4,14 @@ Gate Configuration: gate-mode env-var resolution and slash-command detection.
 Tool categorization (TOOL_CATEGORIES, get_tool_category, is_never_block,
 COMPLIANCE_SUBAGENT_TYPES, SPAWN_TOOLS, extract_subagent_type) lives in
 `lib/tool_categories.py` — it is consumed by gate-engine code in `lib/gates/*`
-and must not live in the `hooks/` layer.
-
-Names re-exported below preserve the public API for downstream callers
-(tests, external scripts, etc.).
+and must not live in the `hooks/` layer. Import those names directly from
+`lib.tool_categories`; this module no longer re-exports them.
 """
 
 import os
 from typing import TYPE_CHECKING
 
-from lib.tool_categories import (
-    COMPLIANCE_SUBAGENT_TYPES,
-    NEVER_BLOCK_CATEGORIES,
-    SPAWN_TOOLS,
-    TOOL_CATEGORIES,
-    extract_subagent_type,
-    get_tool_category,
-    is_never_block,
-)
-
 __all__ = [
-    # Re-exports from lib/tool_categories
-    "COMPLIANCE_SUBAGENT_TYPES",
-    "NEVER_BLOCK_CATEGORIES",
-    "SPAWN_TOOLS",
-    "TOOL_CATEGORIES",
-    "extract_subagent_type",
-    "get_tool_category",
-    "is_never_block",
     # Gate modes (PEP 562 lazy attrs)
     "ENFORCER_GATE_MODE",
     "HANDOVER_GATE_MODE",

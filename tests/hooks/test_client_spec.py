@@ -14,9 +14,35 @@ from pathlib import Path
 
 import pytest
 from hooks import client_spec as cs
-from hooks.router import GEMINI_EVENT_MAP
 
 REPO = Path(__file__).resolve().parents[2]
+
+# The inbound wire→internal mappings the router historically resolved through the
+# flat ``router.GEMINI_EVENT_MAP`` union (now removed — the router reads
+# ``client_spec.to_internal_event`` per-client). Frozen here as the regression
+# anchor: client_spec must keep reproducing every one of these, partitioned by
+# the client that actually emits the wire name.
+_EXPECTED_INBOUND: dict[str, dict[str, str]] = {
+    "gemini": {
+        "SessionStart": "SessionStart",
+        "BeforeTool": "PreToolUse",
+        "AfterTool": "PostToolUse",
+        "BeforeAgent": "UserPromptSubmit",
+        "AfterAgent": "Stop",
+        "SessionEnd": "SessionEnd",
+        "Notification": "Notification",
+        "PreCompress": "PreCompact",
+        "SubagentStart": "SubagentStart",
+        "SubagentStop": "SubagentStop",
+    },
+    "agy": {
+        "PreInvocation": "UserPromptSubmit",
+        "PostInvocation": "Stop",
+        "PreToolUse": "PreToolUse",
+        "PostToolUse": "PostToolUse",
+        "Stop": "Stop",
+    },
+}
 
 
 @pytest.fixture(scope="module")
@@ -28,14 +54,14 @@ def build_mod():
 
 
 class TestInboundEventMap:
-    """`to_internal_event` must reproduce the runtime `GEMINI_EVENT_MAP` (gemini+agy)."""
+    """`to_internal_event` must reproduce the historical inbound map, per-client."""
 
     def test_every_runtime_inbound_entry_is_reproduced(self):
-        for wire, internal in GEMINI_EVENT_MAP.items():
-            resolved = {cs.to_internal_event(c, wire) for c in ("gemini", "agy")}
-            assert internal in resolved, (
-                f"wire {wire!r}->{internal!r} not reproduced by client_spec inbound (got {resolved})"
-            )
+        for client, mapping in _EXPECTED_INBOUND.items():
+            for wire, internal in mapping.items():
+                assert cs.to_internal_event(client, wire) == internal, (
+                    f"{client}: wire {wire!r}->{internal!r} not reproduced by client_spec inbound"
+                )
 
     def test_claude_inbound_is_identity(self):
         for ev in ("PreToolUse", "UserPromptSubmit", "Stop", "SessionStart", "PostToolUse"):
