@@ -75,20 +75,48 @@ Core invariants:
 
 `scripts/verify_hook_formats.py` + `tests/hooks/test_live_conformance.py`
 (`@live @slow`, skip-if-client-unavailable). Parametrized over
-`(client × event × candidate_shape × scenario)`. Per cell: install a probe hook emitting
-the candidate shape with a unique sentinel in the agent channel; run the client headless;
-ask the model to echo any system/context instruction it received. Records three signals:
-**ACCEPTED** (no client error), **AGENT_SAW** (model echoed the sentinel — delivery proven
-by MODEL ECHO, never transcript grep), **BLOCKED** (deny actually blocked / stop re-entered).
-Output is committed as `client_capabilities.json` — the empirical SSoT. When a client
-changes upstream, a signal flips and this test goes red. **This is what ends the guessing.**
+`(client × event × candidate_shape × scenario)`. Per cell: install/drive a probe hook
+emitting the candidate shape with a unique sentinel in the agent channel; run the client
+headless; ask the model to echo any system/context instruction it received. Records the
+full audience/persistence signal:
+
+- **ACCEPTED** — no client error / wire shape not rejected.
+- **AGENT_SAW** — the MODEL echoed the sentinel (delivery proven by MODEL ECHO, never
+  transcript grep — invariant #14): a REPORT-prompt run.
+- **USER_SAW** — did the HUMAN see it in the user-facing terminal stream? A SEPARATE
+  NEUTRAL-prompt run (the model is NOT asked to echo), so a sentinel in the user stream can
+  only be the CLIENT rendering the channel — distinct from agent_saw. `None` = not
+  headless-observable (e.g. Claude's interactive-TUI-only `systemMessage` banner) — an
+  HONEST gap, never faked to a pass.
+- **PERSISTED** — a second `--continue`/`--resume`/`--conversation` turn with NO new
+  injection: does the model still recall the sentinel? ≥2 samples (recall was
+  non-deterministic). Recorded; asserted only where the recall signal is robust.
+- **BLOCKED** — deny actually blocked / stop re-entered.
+
+Output is committed as `client_capabilities.json` — the empirical SSoT, carrying per cell
+BOTH the measured signal AND the table's CLAIMED audience/persistence, so
+`test_table_cell_matches_measurement` asserts the matrix cell == the live measurement (the
+table becomes test-enforced truth). When a client changes upstream, a signal flips and this
+test goes red. **This is what ends the guessing.**
+
+> **agy 1.0.12 isolation caveat (measured 2026-06-25):** agy loads hooks ONLY from a plugin
+> installed via `agy plugin install` — it ignores workspace/unregistered probe hooks. So agy
+> channels the live aops router DOES emit (`ephemeralMessage`) are measured by driving the
+> real plugin (`agy_real_plugin` cells); channels it does NOT emit (`userMessage`, the nested
+> `systemMessage` member, native `Stop`, `terminationBehavior`, synthetic PreToolUse) are
+> recorded as `unmeasurable on 1.0.12` and SKIPPED with that reason — never faked.
 
 ## Authoritative channel matrix (live docs + to be confirmed by harness, 2026-06-25)
 
 See `client_spec.py` for the machine-readable form. Key facts:
 
-- **agy has NO hidden agent-only channel** — injected steps are user-visible; only knob is
-  `userMessage` (persistent) vs `ephemeralMessage` (transient) + `<details>` collapse.
+- **agy injectSteps are MODEL-FACING, not user-visible** — CORRECTED by live measurement
+  (2026-06-25, agy 1.0.12): the injected `ephemeralMessage` advisory reaches the MODEL
+  (C✓, model echoes it) but is ABSENT from the user-facing terminal stream (U✗) — it does
+  NOT leak to the human. (Supersedes the earlier "injected steps are user-visible" claim,
+  which conflated the model reporting injected context with the client rendering it.) The
+  knob is `userMessage` (persistent, P✓ — docs claim, not live-confirmed on 1.0.12) vs
+  `ephemeralMessage` (transient, **P✗ LIVE-PROVEN**) + `<details>` collapse.
 - **agy PreToolUse** docs = `decision`/`reason`/`permissionOverrides`; verified-live =
   top-level `allowTool`/`denyReason`. Binary descriptor has BOTH. Harness decides; until
   then emit both consistent (belt-and-suspenders) — `{}` is NEVER allow (omitted bool=false).
@@ -130,11 +158,11 @@ For agy these markers are STRIPPED before delivery (`router.py:1038-1039`); for 
 The token `systemMessage` collides across three layers; this collision is itself a
 documented source of confusion. The reader must NEVER conflate them:
 
-| # | identity                                                                    | layer / type                                                                                                        | where                                                                                                | audience                                                                                                                                                                                   |
-| - | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1 | **Claude top-level `systemMessage`** (wire output field)                    | Claude wire schema (`ClaudeGeneralHookOutput`/`ClaudeStopHookOutput`)                                               | `router.py:860,952,958`; `schemas.py:50,73`                                                          | **USER-only** banner; agent does NOT see it (C✗).                                                                                                                                          |
-| 2 | **internal `CanonicalHookOutput.system_message`** = the gate "short_reason" | our canonical model                                                                                                 | `schemas.py:131`; gate `message_key`                                                                 | a payload, NOT a channel — its DESTINATION is per-client: Claude→`systemMessage` (#1, USER), Gemini→`reason`/`systemMessage` (USER), agy→`denyReason`/`reason`/`ephemeralMessage` (MODEL). |
-| 3 | **agy injectSteps `systemMessage` member** (member 4 of the step union)     | agy `exa.hooks_pb` injectStep — structured `HookSystemMessage`, nested `{"systemMessage": {"systemMessage": text}}` | NOT emitted by `output_for_agy` today (only `ephemeralMessage` is — `router.py:1072,1075,1081,1083`) | **‹being measured› — see note below**; distinct from agy's top-level `systemMessage`, which agy REJECTS as an unknown protojson field (`router.py:1006`, invariant #1).                    |
+| # | identity                                                                    | layer / type                                                                                                        | where                                                                                                | audience                                                                                                                                                                                                                                                                                          |
+| - | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | **Claude top-level `systemMessage`** (wire output field)                    | Claude wire schema (`ClaudeGeneralHookOutput`/`ClaudeStopHookOutput`)                                               | `router.py:860,952,958`; `schemas.py:50,73`                                                          | **USER-only** banner; agent does NOT see it (C✗).                                                                                                                                                                                                                                                 |
+| 2 | **internal `CanonicalHookOutput.system_message`** = the gate "short_reason" | our canonical model                                                                                                 | `schemas.py:131`; gate `message_key`                                                                 | a payload, NOT a channel — its DESTINATION is per-client: Claude→`systemMessage` (#1, USER), Gemini→`reason`/`systemMessage` (USER), agy→`denyReason`/`reason`/`ephemeralMessage` (MODEL).                                                                                                        |
+| 3 | **agy injectSteps `systemMessage` member** (member 4 of the step union)     | agy `exa.hooks_pb` injectStep — structured `HookSystemMessage`, nested `{"systemMessage": {"systemMessage": text}}` | NOT emitted by `output_for_agy` today (only `ephemeralMessage` is — `router.py:1072,1075,1081,1083`) | **‹unmeasurable on agy 1.0.12 — see note below› (not headless-testable without an `agy plugin install`; last DIRECT evidence mem-83cedbdd = DROPPED on 1.0.7)**; distinct from agy's top-level `systemMessage`, which agy REJECTS as an unknown protojson field (`router.py:1006`, invariant #1). |
 
 So: internal `system_message` (#2) is a _payload that routes to different channels per
 client_; Claude's top-level `systemMessage` (#1) is one such USER-only destination; agy's
@@ -174,13 +202,13 @@ agy `injectSteps` are **MODEL-facing, NOT human-terminal** — there is NO hidde
 channel and NO separate user banner; delivery is observable only by MODEL ECHO, not transcript
 (invariant #14, `CLIENT-TRANSLATION.md` invariant list). The two `injectSteps` member variants:
 
-| channel (wire field)                                                                                                         | U                | C                | P                | basis                                                                                                                                                                                                                                                                                                                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `injectSteps[].ephemeralMessage`                                                                                             | ✗                | ✓                | ✗                | rendered into model context ONCE then DISCARDED — transient; does NOT persist as a turn. `router.py:1072,1075,1081,1083`; invariant #5                                                                                                                                                                                                                |
-| `injectSteps[].userMessage`                                                                                                  | ✗                | ✓                | ✓                | rendered into model context and PERSISTS as a user turn in history. (defined member; not currently emitted by the renderer) `client_spec.py:90-91`, invariant #5                                                                                                                                                                                      |
-| `injectSteps[].systemMessage` (member 4 — structured `HookSystemMessage`, nested `{"systemMessage":{"systemMessage":text}}`) | ‹being measured› | ‹being measured› | ‹being measured› | distinct from agy top-level `systemMessage` (which agy REJECTS, `router.py:1006`). NOT emitted by the renderer today. Audience (USER-facing vs agent-context) + persistence are the open question at `client_spec.py:186` ("Is there a USER-facing message channel for system_message?") — a live measurement is in progress. Do NOT guess; see note. |
-| `denyReason` (PreToolUse, `allowTool=false`)                                                                                 | ✗                | ✓                | ✓                | top-level deny reason fed to the model on the blocked call; structural block. `router.py:1054-1057`, `client_spec.py:220`                                                                                                                                                                                                                             |
-| `reason` (Stop)                                                                                                              | ✗                | ✓                | ✓                | StopHookResult reason fed to the model. `router.py:1087-1095`                                                                                                                                                                                                                                                                                         |
+| channel (wire field)                                                                                                         | U                        | C                        | P                        | basis                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `injectSteps[].ephemeralMessage`                                                                                             | ✗ **(LIVE-PROVEN)**      | ✓ **(LIVE-PROVEN)**      | ✗ **(LIVE-PROVEN)**      | **MEASURED 2026-06-25 (agy 1.0.12, live aops PreInvocation advisory): the model echoed the injected advisory verbatim (C✓); a NEUTRAL-prompt run left it ABSENT from the user-facing terminal stream (U✗ — it does NOT leak to the user); a `--conversation` resume turn did NOT recall it (P✗, 2/2 samples). Proof: `tests/hooks/test_live_conformance.py::test_table_cell_matches_measurement[agy-preinvocation-ephemeralmessage]`, fixture `client_capabilities.json`.** Rendered into model context ONCE then DISCARDED — transient. `router.py:1072,1075,1081,1083`; invariant #5         |
+| `injectSteps[].userMessage`                                                                                                  | ✗                        | ✓                        | ✓                        | rendered into model context and PERSISTS as a user turn in history. (defined member; NOT emitted by the renderer — and NOT live-measurable on agy 1.0.12 without an `agy plugin install`, since agy ignores workspace/unregistered probe hooks; see note) `client_spec.py:90-91`, invariant #5                                                                                                                                                                                                                                                                                                 |
+| `injectSteps[].systemMessage` (member 4 — structured `HookSystemMessage`, nested `{"systemMessage":{"systemMessage":text}}`) | ‹unmeasurable on 1.0.12› | ‹unmeasurable on 1.0.12› | ‹unmeasurable on 1.0.12› | distinct from agy top-level `systemMessage` (which agy REJECTS, `router.py:1006`). NOT emitted by the renderer. **NOT live-measurable headless on agy 1.0.12: the router does not emit this member AND agy 1.0.12 loads hooks ONLY from a plugin installed via `agy plugin install` — it ignores a workspace `.agents/hooks.json`, an unregistered plugin dir, and a manifest-only entry (measured 2026-06-25). So a synthetic probe cannot deliver it without mutating Nic's live build.** Last DIRECT evidence is mem-83cedbdd (agy DROPPED systemMessage on 1.0.7). Do NOT guess; see note. |
+| `denyReason` (PreToolUse, `allowTool=false`)                                                                                 | ✗                        | ✓                        | ✓                        | top-level deny reason fed to the model on the blocked call; structural block. `router.py:1054-1057`, `client_spec.py:220`                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `reason` (Stop)                                                                                                              | ✗                        | ✓                        | ✓                        | StopHookResult reason fed to the model. `router.py:1087-1095`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 > agy has no TOP-LEVEL `systemMessage`/user-banner field that the router emits — the
 > `output_for_agy` formatter emits ONLY the fields each `*Result` protojson message defines
@@ -189,15 +217,29 @@ channel and NO separate user banner; delivery is observable only by MODEL ECHO, 
 > model-facing `injectSteps`/`denyReason`/`reason` channel as advisory — there is no
 > user-only split in the EMITTED output.
 >
-> **agy injectSteps `systemMessage` member (member 4) — BEING MEASURED:** `‹being
-> measured›`. This structured `HookSystemMessage` step variant (nested
+> **agy injectSteps `systemMessage` member (member 4) — UNMEASURABLE HEADLESS ON 1.0.12
+> (measured 2026-06-25):** This structured `HookSystemMessage` step variant (nested
 > `{"systemMessage":{"systemMessage":text}}`) is a _defined_ injectStep member that the
-> renderer does NOT currently emit. Whether it is USER-facing (a real human-visible channel,
-> which would give agy its first user-only split) or agent-context, and whether it persists,
-> is the open question recorded at `client_spec.py:186`. A live measurement is in progress;
-> the supervisor will finalize these cells. Do NOT guess — a wrong agy field is silently
-> discarded (invariant #1), so an unverified audience claim here would be worse than the
-> honest `‹being measured›` marker.
+> renderer does NOT emit. Resolving its audience/persistence requires injecting a SYNTHETIC
+> probe shape — but **agy 1.0.12 loads hooks ONLY from a plugin installed via `agy plugin
+> install`**: it IGNORES a workspace `.agents/hooks.json`, an unregistered
+> `~/.gemini/config/plugins/<name>/hooks.json`, and a plugin merely added to
+> `import_manifest.json` (in every case the cli log shows it loaded only
+> `aops-core/hooks.json` — "loaded 2 named hooks from 1 hooks.json file(s)"). So a probe
+> for this member cannot be delivered without a full plugin install that mutates Nic's LIVE
+> build — which the live-harness task's HARD RULES forbid. The cell is therefore recorded
+> HONESTLY as `‹unmeasurable on 1.0.12›` rather than guessed (a wrong agy field is silently
+> discarded — invariant #1). The last DIRECT evidence remains mem-83cedbdd: agy DROPPED
+> `systemMessage` on 1.0.7. To resolve it, install a throwaway probe plugin via `agy plugin
+> install` on a NON-live host and add an `agy_real_plugin`-style cell.
+>
+> **What WAS proven live (2026-06-25, agy 1.0.12, the SHIPPING aops router):**
+> `injectSteps[].ephemeralMessage` — the channel the router actually emits — is
+> **U✗ C✓ P✗**: the model reads it (C✓), it does NOT leak to the user terminal (U✗, the
+> answer to bug aops-d10e7db6's concern on the agy surface), and it does NOT persist across
+> a `--conversation` resume (P✗). Test-enforced by
+> `tests/hooks/test_live_conformance.py::test_table_cell_matches_measurement` against the
+> committed `client_capabilities.json`.
 
 ### TABLE — event × message-kind × client
 
@@ -223,20 +265,20 @@ client does not register / support that event-kind.
 
 #### UserPromptSubmit (agy: PreInvocation) — `pkb.nudge` (T0) + `hydration.warn` (main session) injection
 
-| message kind                    | Claude                         | Gemini                         | agy (PreInvocation)                                                                                                                                                | template (source)                                                                                                                                                  |
-| ------------------------------- | ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| advisory (`context_injection`)  | `additionalContext` — U✗ C✓ P✓ | `additionalContext` — U✗ C✓ P✓ | `injectSteps[].ephemeralMessage`, advisory wrapped in `<details><summary>System Advisory (Agent Context)</summary>` — U✗ C✓ **P‹in-flux›** (`router.py:1069-1076`) | `pkb-nudge.md` (`pkb.nudge`, CONTEXT_INJECTION) + `hydration-gate-warn.md` (`hydration.warn`, USER_MESSAGE — routing hint, main session only; `router.py:561-578`) |
-| short-reason (`system_message`) | `systemMessage` — U✓ C✗ P✗     | `systemMessage` — U✓ C✗ P✗     | `injectSteps[].ephemeralMessage` (bare) — U✗ C✓ **P‹in-flux›** (`router.py:1071-1072`)                                                                             | gate `message_key` (none fire on UPS by default; hydration hint via `hydration.warn`)                                                                              |
+| message kind                    | Claude                         | Gemini                         | agy (PreInvocation)                                                                                                                                                                             | template (source)                                                                                                                                                  |
+| ------------------------------- | ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| advisory (`context_injection`)  | `additionalContext` — U✗ C✓ P✓ | `additionalContext` — U✗ C✓ P✓ | `injectSteps[].ephemeralMessage`, advisory wrapped in `<details><summary>System Advisory (Agent Context)</summary>` — **U✗ C✓ P✗ (LIVE-PROVEN 2026-06-25, agy 1.0.12)** (`router.py:1069-1076`) | `pkb-nudge.md` (`pkb.nudge`, CONTEXT_INJECTION) + `hydration-gate-warn.md` (`hydration.warn`, USER_MESSAGE — routing hint, main session only; `router.py:561-578`) |
+| short-reason (`system_message`) | `systemMessage` — U✓ C✗ P✗     | `systemMessage` — U✓ C✗ P✗     | `injectSteps[].ephemeralMessage` (bare) — **U✗ C✓ P✗ (LIVE-PROVEN)** (`router.py:1071-1072`)                                                                                                    | gate `message_key` (none fire on UPS by default; hydration hint via `hydration.warn`)                                                                              |
 
-> **agy PreInvocation advisory persistence — IN FLUX:** `‹PENDING FINAL DECISION — ephemeralMessage(transient, P✗) vs userMessage(persistent, P✓); see live measurement, epic aops-aa512c33›`. **Current emitted code = `ephemeralMessage` (transient)** (`router.py:1072,1075`). Both members are fully defined in the legend above; the active choice is being decided by a live measurement and the supervisor will finalize this cell.
+> **agy PreInvocation advisory persistence — RESOLVED P✗ (LIVE-PROVEN 2026-06-25, agy 1.0.12):** the emitted `ephemeralMessage` is **transient — it does NOT persist**. A live run injected the real aops PreInvocation advisory, confirmed the model read it (agent echo, C✓), then asked the model on a `--conversation` resume turn (no new injection) to recall it: it did NOT (P✗, 2/2 samples). It also does NOT leak to the user terminal (U✗). The alternative `userMessage` member (claimed persistent, P✓) is NOT emitted by the router AND is not live-measurable on 1.0.12 (agy ignores synthetic probe hooks — see the member-4 note above), so its P✓ remains a docs claim, not a live proof. **Current emitted code = `ephemeralMessage` (transient, P✗)** (`router.py:1072,1075`). Test: `test_table_cell_matches_measurement[agy-preinvocation-ephemeralmessage]`.
 
 #### Stop (Claude/Gemini) · PostInvocation + native Stop (agy) — `qa`, `handover`, `ida` gates
 
-| message kind                                                   | Claude (Stop)                                                                                           | Gemini (AfterAgent/SessionEnd)                                                                                 | agy (PostInvocation)                                                                                                                      | agy (native Stop, provisional)                                    | template (source)                                                                                                                         |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| advisory / recovery (`context_injection`) — WARN mode          | `hookSpecificOutput.additionalContext`, NO block — U✗ C✓ P✓ (2.1.191 mem-4ab6cc0b; `router.py:930-938`) | `reason` via block (`agent_context_without_block=False`, `client_spec.py:213`) — agent sees on retry; U✓ C✓ P✓ | `injectSteps[].ephemeralMessage` wrapped in `<details>` — U✗ C✓ **P‹in-flux›** (`router.py:1078-1085`)                                    | **n/a** — agy Stop RAISES on advisory (`router.py:1089-1092`)     | `qa-policy-context.md` (`qa.policy_context`) · `stop-gate-handover-block.md` (`stop.handover_block`) · `ida-reminder.md` (`ida.reminder`) |
-| advisory / enforcement (`context_injection`) — DENY/block mode | `decision="block"` + `reason` (markers stripped for user) — U✓ C✓ P✓ (`router.py:925-929`)              | `reason` (decision="deny") — U✓ C✗ P✗; recovery → `additionalContext` U✗ C✓ P✓ (`router.py:865-879`)           | `injectSteps[].ephemeralMessage` (terminationBehavior hard-block PROVISIONAL, not emitted — `router.py:1029-1032`) — U✗ C✓ **P‹in-flux›** | `reason` only (`router.py:1087-1095`; advisory RAISES) — U✗ C✓ P✓ | same as above                                                                                                                             |
-| short-reason / banner (`system_message`)                       | `stopReason` + `systemMessage` — U✓ C✗ P✗ (`router.py:950-952`)                                         | `systemMessage` (+`reason` on deny) — U✓                                                                       | `injectSteps[].ephemeralMessage` (bare) — U✗ C✓ **P‹in-flux›** (`router.py:1081-1082`)                                                    | `reason` — U✗ C✓ P✓ (`router.py:1095`)                            | `qa-policy-message.md` · `handover-policy-message.md` · `ida-policy-message.md`                                                           |
+| message kind                                                   | Claude (Stop)                                                                                           | Gemini (AfterAgent/SessionEnd)                                                                                 | agy (PostInvocation)                                                                                                                                                                | agy (native Stop, provisional)                                    | template (source)                                                                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| advisory / recovery (`context_injection`) — WARN mode          | `hookSpecificOutput.additionalContext`, NO block — U✗ C✓ P✓ (2.1.191 mem-4ab6cc0b; `router.py:930-938`) | `reason` via block (`agent_context_without_block=False`, `client_spec.py:213`) — agent sees on retry; U✓ C✓ P✓ | `injectSteps[].ephemeralMessage` wrapped in `<details>` (PostInvocation) — **U✗ C✓ P✗ (LIVE-PROVEN 2026-06-25, agy 1.0.12)** (`router.py:1078-1085`)                                | **n/a** — agy Stop RAISES on advisory (`router.py:1089-1092`)     | `qa-policy-context.md` (`qa.policy_context`) · `stop-gate-handover-block.md` (`stop.handover_block`) · `ida-reminder.md` (`ida.reminder`) |
+| advisory / enforcement (`context_injection`) — DENY/block mode | `decision="block"` + `reason` (markers stripped for user) — U✓ C✓ P✓ (`router.py:925-929`)              | `reason` (decision="deny") — U✓ C✗ P✗; recovery → `additionalContext` U✗ C✓ P✓ (`router.py:865-879`)           | `injectSteps[].ephemeralMessage` — **U✗ C✓ P✗ (LIVE-PROVEN)**; the `terminationBehavior` hard-block is PROVISIONAL/not emitted (`router.py:1029-1032`) and ‹unmeasurable on 1.0.12› | `reason` only (`router.py:1087-1095`; advisory RAISES) — U✗ C✓ P✓ | same as above                                                                                                                             |
+| short-reason / banner (`system_message`)                       | `stopReason` + `systemMessage` — U✓ C✗ P✗ (`router.py:950-952`)                                         | `systemMessage` (+`reason` on deny) — U✓                                                                       | `injectSteps[].ephemeralMessage` (bare, PostInvocation) — **U✗ C✓ P✗ (LIVE-PROVEN)** (`router.py:1081-1082`)                                                                        | `reason` — U✗ C✓ P✓ (`router.py:1095`)                            | `qa-policy-message.md` · `handover-policy-message.md` · `ida-policy-message.md`                                                           |
 
 #### SessionStart / SessionEnd / Notification / SubagentStart / SubagentStop
 
@@ -251,7 +293,10 @@ client does not register / support that event-kind.
 
 1. **agy injectSteps are model-facing, never a user banner** — Claude/Gemini split USER
    (`systemMessage`/`reason`) from AGENT (`additionalContext`); agy has ONE model-facing
-   channel and NO user-only split. (`router.py:1009-1011`, invariant #1, #14.)
+   channel and NO user-only split. (`router.py:1009-1011`, invariant #1, #14.) **LIVE-PROVEN
+   2026-06-25 (agy 1.0.12): a NEUTRAL-prompt run shows the injected `ephemeralMessage`
+   advisory reaches the model (C✓) but is ABSENT from the user terminal (U✗) — it does NOT
+   leak to the human** (`test_table_cell_matches_measurement[agy-preinvocation-ephemeralmessage]`).
 2. **agy PreToolUse cannot carry advisory at all** — Claude/Gemini ride `additionalContext`
    on an allow; agy PreToolHookResult has only `allowTool`/`denyReason`, so a warn-mode gate
    carrying advisory on PreToolUse is impossible on agy (renderer raises). (`router.py:1041-1062`.)

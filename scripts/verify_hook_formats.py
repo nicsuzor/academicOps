@@ -543,7 +543,7 @@ AGY_PLUGIN_ADVISORY_MARKER = "System Advisory (Agent Context)"
 
 
 def run_agy(
-    probe: Probe, sentinel: str, workdir: Path, dangerous: bool, timeout: int = 360
+    probe: Probe, sentinel: str, workdir: Path, dangerous: bool, timeout: int = 480
 ) -> Signal:
     """Drive agy headless and measure the five observables.
 

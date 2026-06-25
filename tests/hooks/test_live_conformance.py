@@ -107,6 +107,9 @@ def _is_skip_note(note: str) -> bool:
         # agy 1.0.12 ignores synthetic probe hooks; channels not emitted by the
         # live aops router are honestly recorded as unmeasurable (not faked pass).
         or "unmeasurable" in note
+        # a cold-start timeout means the cell was not OBSERVED this run — an honest
+        # gap (skip with reason), never a silent pass and never a false contradiction.
+        or "timeout" in note
     )
 
 

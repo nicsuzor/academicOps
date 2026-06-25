@@ -9,84 +9,315 @@
       "client": "claude",
       "wire_event": "PreToolUse",
       "group": "claude-pretooluse",
-      "hypothesis": "PreToolUse allow delivers additionalContext to agent, no block.",
+      "hypothesis": "PreToolUse allow additionalContext: agent-only (C\u2713), user\u2717.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": false,
         "continued": true,
-        "note": "num_turns=2"
-      }
+        "user_saw": false,
+        "persisted": null,
+        "note": "num_turns=2; user_saw(neutral)=False"
+      },
+      "table_cell": "PreToolUse advisory \u00b7 Claude additionalContext U\u2717 C\u2713 P\u2713",
+      "claim_user_saw": false,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": false
     },
     {
       "label": "claude-pretooluse-deny",
       "client": "claude",
       "wire_event": "PreToolUse",
       "group": "claude-pretooluse",
-      "hypothesis": "PreToolUse deny blocks the tool; reason reaches agent.",
+      "hypothesis": "PreToolUse deny permissionDecisionReason: blocks; reason to agent.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": true,
         "continued": true,
-        "note": "num_turns=3"
-      }
+        "user_saw": null,
+        "persisted": null,
+        "note": "num_turns=2"
+      },
+      "table_cell": "PreToolUse deny-reason \u00b7 Claude permissionDecisionReason U\u2713 C\u2713 P\u2713",
+      "claim_user_saw": null,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": true
     },
     {
       "label": "claude-userpromptsubmit-additionalcontext",
       "client": "claude",
       "wire_event": "UserPromptSubmit",
       "group": "claude-ups",
-      "hypothesis": "UserPromptSubmit additionalContext reaches agent without block.",
+      "hypothesis": "UPS additionalContext: agent-only (C\u2713 P\u2713), user\u2717.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": null,
         "continued": true,
-        "note": "num_turns=2"
-      }
+        "user_saw": false,
+        "persisted": false,
+        "note": "num_turns=2; persist_samples=2 recalled=False; user_saw(neutral)=False"
+      },
+      "table_cell": "UPS advisory \u00b7 Claude additionalContext U\u2717 C\u2713 P\u2713",
+      "claim_user_saw": false,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
     },
     {
       "label": "claude-stop-additionalcontext-noblock",
       "client": "claude",
       "wire_event": "Stop",
       "group": "claude-stop",
-      "hypothesis": "Stop additionalContext (no decision:block) accepted + delivered + continues.",
+      "hypothesis": "Stop additionalContext (no block): agent-only (C\u2713 P\u2713), user\u2717, continues.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": null,
         "continued": true,
-        "note": "num_turns=2"
-      }
+        "user_saw": false,
+        "persisted": false,
+        "note": "num_turns=2; persist_samples=2 recalled=False; user_saw(neutral)=False"
+      },
+      "table_cell": "Stop advisory WARN \u00b7 Claude additionalContext U\u2717 C\u2713 P\u2713",
+      "claim_user_saw": false,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
     },
     {
       "label": "claude-stop-additionalcontext-marked",
       "client": "claude",
       "wire_event": "Stop",
       "group": "claude-stop",
-      "hypothesis": "Stop additionalContext WITH framework trust markers \u2014 delivery/compliance.",
+      "hypothesis": "Stop additionalContext WITH trust markers: still agent-only, user\u2717.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": null,
         "continued": true,
-        "note": "num_turns=2"
-      }
+        "user_saw": false,
+        "persisted": null,
+        "note": "num_turns=2; user_saw(neutral)=False"
+      },
+      "table_cell": "Stop advisory (marked) \u00b7 Claude additionalContext C\u2713 (user_saw confounded)",
+      "claim_user_saw": null,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
     },
     {
       "label": "claude-stop-decision-block",
       "client": "claude",
       "wire_event": "Stop",
       "group": "claude-stop",
-      "hypothesis": "Stop decision:block delivers reason to agent + continues (enforcement path).",
+      "hypothesis": "Stop decision:block reason: agent\u2713 (enforcement); reaches user as notice.",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": null,
         "continued": true,
+        "user_saw": null,
+        "persisted": null,
         "note": "num_turns=3"
-      }
+      },
+      "table_cell": "Stop enforcement \u00b7 Claude decision=block reason U\u2713 C\u2713 P\u2713",
+      "claim_user_saw": null,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "claude-ups-systemmessage",
+      "client": "claude",
+      "wire_event": "UserPromptSubmit",
+      "group": "claude-systemmessage",
+      "hypothesis": "Claude top-level systemMessage: USER-only banner; agent does NOT see it.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": false,
+        "blocked": null,
+        "continued": true,
+        "user_saw": null,
+        "persisted": null,
+        "note": "num_turns=2"
+      },
+      "table_cell": "UPS short-reason \u00b7 Claude systemMessage U\u2713 C\u2717 P\u2717 (U not headless-observable)",
+      "claim_user_saw": null,
+      "claim_agent_saw": false,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-preinvocation-ephemeralmessage",
+      "client": "agy",
+      "wire_event": "PreInvocation",
+      "group": "agy-inject",
+      "hypothesis": "agy ephemeralMessage (LIVE aops PreInvocation advisory): model-context (C\u2713); USER-visible? (Nic: does it LEAK?); PERSISTS?",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": null,
+        "user_saw": false,
+        "persisted": false,
+        "note": "dangerous=False; agent_saw(report)=True; persist_samples=2 persisted=False conv=5b07ae3c; user_saw(neutral)=False"
+      },
+      "table_cell": "UPS advisory \u00b7 agy ephemeralMessage U\u2717 C\u2713 P? (Nic: does it LEAK to user?)",
+      "claim_user_saw": false,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-postinvocation-ephemeralmessage",
+      "client": "agy",
+      "wire_event": "PostInvocation",
+      "group": "agy-inject",
+      "hypothesis": "agy PostInvocation ephemeralMessage (LIVE aops Ida advisory): model-context (C\u2713); user-visible? persists?",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": null,
+        "user_saw": false,
+        "persisted": false,
+        "note": "dangerous=False; agent_saw(report)=True; persist_samples=2 persisted=False conv=cd4cb691; user_saw(neutral)=False"
+      },
+      "table_cell": "Stop advisory \u00b7 agy PostInvocation ephemeralMessage U\u2717 C\u2713 P?",
+      "claim_user_saw": false,
+      "claim_agent_saw": true,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-pretooluse-allowtool-true",
+      "client": "agy",
+      "wire_event": "PreToolUse",
+      "group": "agy-pretooluse-allow",
+      "hypothesis": "agy PreToolUse {allowTool:true}: synthetic-only -> unmeasurable on 1.0.12.",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "PreToolUse allow \u00b7 agy allowTool=true (synthetic-only: unmeasurable 1.0.12)",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-pretooluse-allowtool-false",
+      "client": "agy",
+      "wire_event": "PreToolUse",
+      "group": "agy-pretooluse-deny",
+      "hypothesis": "agy PreToolUse deny: synthetic-only -> unmeasurable on 1.0.12.",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "PreToolUse deny \u00b7 agy denyReason (synthetic-only: unmeasurable 1.0.12)",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-preinvocation-usermessage",
+      "client": "agy",
+      "wire_event": "PreInvocation",
+      "group": "agy-inject",
+      "hypothesis": "agy userMessage (claimed P\u2713): synthetic-only -> unmeasurable on 1.0.12.",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "UPS advisory \u00b7 agy userMessage U\u2717 C\u2713 P\u2713 (synthetic-only: unmeasurable 1.0.12)",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-preinvocation-systemmessage-member",
+      "client": "agy",
+      "wire_event": "PreInvocation",
+      "group": "agy-inject",
+      "hypothesis": "agy injectSteps systemMessage MEMBER: not emitted by aops router + synthetic-only -> unmeasurable on 1.0.12 (mem-83cedbdd: dropped on 1.0.7).",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "UPS advisory \u00b7 agy injectSteps.systemMessage member \u2039unmeasurable 1.0.12\u203a",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-postinvocation-terminationbehavior",
+      "client": "agy",
+      "wire_event": "PostInvocation",
+      "group": "agy-hardstop",
+      "hypothesis": "agy terminationBehavior hard-block: synthetic-only -> unmeasurable on 1.0.12.",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "Stop hard-block \u00b7 agy terminationBehavior (PROVISIONAL, unmeasurable 1.0.12)",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
+    },
+    {
+      "label": "agy-stop-decision-continue",
+      "client": "agy",
+      "wire_event": "Stop",
+      "group": "agy-hardstop",
+      "hypothesis": "agy native Stop: synthetic-only -> unmeasurable on 1.0.12.",
+      "signal": {
+        "accepted": null,
+        "agent_saw": null,
+        "blocked": null,
+        "continued": null,
+        "user_saw": null,
+        "persisted": null,
+        "note": "unmeasurable on agy 1.0.12: channel not emitted by the live aops router and agy ignores workspace/unregistered probe hooks (requires agy plugin install, which would mutate Nic's live build). dangerous=False"
+      },
+      "table_cell": "Stop short-reason \u00b7 agy native Stop reason (PROVISIONAL, unmeasurable 1.0.12)",
+      "claim_user_saw": null,
+      "claim_agent_saw": null,
+      "claim_persisted": null,
+      "claim_blocked": null
     }
   ]
 }

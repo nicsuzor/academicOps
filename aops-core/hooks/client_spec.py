@@ -219,12 +219,24 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     # channel, so advisory cannot ride an allow; reason carries the deny reason.
     ("agy", Event.PRE_TOOL): ChannelSpec(True, False, True),
     ("agy", Event.POST_TOOL): ChannelSpec(False, False, False, notes="{} only"),
-    # PreInvocation injectSteps delivery VERIFIED by model echo (invariant #14).
-    ("agy", Event.USER_PROMPT): ChannelSpec(False, True, True, notes="injectSteps"),
-    # PostInvocation: injectSteps deliver advisory (verified); terminationBehavior
-    # hard-block PROVISIONAL pending harness.
+    # PreInvocation injectSteps delivery LIVE-PROVEN by model echo (invariant #14,
+    # 2026-06-25 agy 1.0.12): ephemeralMessage reaches the model (C✓) but does NOT
+    # leak to the user terminal (U✗) and does NOT persist across --conversation
+    # (P✗). user_message=True here means a user banner is structurally possible,
+    # NOT that the EMITTED ephemeralMessage is user-visible — it is not.
+    # test_table_cell_matches_measurement[agy-preinvocation-ephemeralmessage].
+    ("agy", Event.USER_PROMPT): ChannelSpec(
+        False, True, True, notes="injectSteps; ephemeralMessage U✗ C✓ P✗ live-proven"
+    ),
+    # PostInvocation: injectSteps deliver advisory (ephemeralMessage U✗ C✓ P✗
+    # LIVE-PROVEN, same as PreInvocation); terminationBehavior hard-block PROVISIONAL
+    # — not emitted and unmeasurable on agy 1.0.12 (ignores synthetic probe hooks).
     ("agy", Event.STOP): ChannelSpec(
-        True, True, True, notes="injectSteps + terminationBehavior", provisional=True
+        True,
+        True,
+        True,
+        notes="injectSteps U✗ C✓ P✗ live-proven; terminationBehavior unmeasurable",
+        provisional=True,
     ),
 }
 
