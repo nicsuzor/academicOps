@@ -307,9 +307,24 @@ def run_agy(
             log_text = ""
     rejected = any(m in log_text for m in AGY_REJECT_MARKERS)
     hook_fired = "executing command" in log_text or probe.wire_event in log_text
-    unauth = "not logged into Antigravity" in (stdout + log_text) or "You are not logged in" in (
-        stdout + log_text
+    # Authentication discriminator. The token markers "not logged into
+    # Antigravity" / "You are not logged in" appear in the cli log even on a
+    # FULLY AUTHENTICATED run — they are benign background singleflight poll
+    # failures for a SECONDARY token source (Cache(loadCodeAssistResponse),
+    # ListExperiments, FetchAvailableModels, fetchAdminControls) that do not gate
+    # the model turn. Keying unauth on that string is a FALSE POSITIVE that
+    # suppressed every delivery/enforcement signal (measured 2026-06-25). The
+    # TRUE signal of a fatal auth failure is that the MODEL TURN never ran: no
+    # conversation stream completed AND the model produced no stdout. So we treat
+    # a run as unauthenticated only when the auth marker is present *and* the
+    # model turn did not complete.
+    auth_marker = "not logged into Antigravity" in log_text or "You are not logged in" in log_text
+    model_turn_ran = (
+        "Stopping conversation stream" in log_text
+        or "Streaming conversation" in log_text
+        or bool(stdout.strip())
     )
+    unauth = auth_marker and not model_turn_ran
     accepted = (not rejected) if hook_fired else None
     agent_saw = sentinel in stdout if not unauth else None
     blocked = None
