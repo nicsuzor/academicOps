@@ -11,4 +11,6 @@ You must **curate** the knowledge base:
 - Capture knowledge, not actions or events.
 
 **Local markdown files like MEMORY.md entries are NOT durable or authoritative.** Do PKB search first even when a named memory entry seems to answer the question.
+
+Before halting on a capability/infrastructure claim, verify it live (`command -v`, `--version`, token mtime) — a prose note may be stale/wrongly-scoped (e.g. a container-only limit). Host capability truth is SSoT note `kb-337e2cf5`. A one-time token refresh is not a standing human-driver requirement.
 <academicOps memory reminder>

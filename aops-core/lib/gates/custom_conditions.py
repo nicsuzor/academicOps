@@ -90,6 +90,13 @@ def check_custom_condition(
         # block until the agent has finished its current sub-task. (#319)
         return not state.metrics.get("has_in_progress_todo", False)
 
+    if name == "is_ida_active":
+        # IDA gate trigger: fires when IDA mode is warn or block (not off).
+        # Used by the AskUserQuestion trigger which must never deny — the
+        # trigger delivers advisory context injection only (GateResult.allow).
+        mode = os.environ.get("IDA_GATE_MODE", "warn")  # allow-fallback: optional
+        return mode in ("warn", "block", "deny")
+
     if name == "is_ida_block_mode":
         # IDA gate policy: active only when IDA_GATE_MODE is blocking.
         # Separating block vs warn into distinct policies lets each choose

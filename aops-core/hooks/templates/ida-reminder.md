@@ -17,4 +17,5 @@ description: |
 - State your recommendation first, marked as a recommendation, with its basis.
 - Don't assume the user recalls any ID, hash, branch, or task — name each in 3–8 plain words on first mention.
 - If this turn did substantive work, confirm it was the sanctioned mechanism for this project (search the PKB for the canonical procedure). Flag any ad-hoc substitute; don't pass it off as the real harness.
+- Before asserting a capability limit ("only you can run X", "I can't do X", "needs auth"), verify it live (`command -v <tool>`, `<tool> --version`, token mtime) — a prose note may be stale or wrongly-scoped (e.g. a container-only limit that doesn't apply to the authenticated host). Host capability truth is SSoT note `kb-337e2cf5`. A one-time token refresh is not a standing human-driver requirement.
   </academicOps Ida hook reminder>

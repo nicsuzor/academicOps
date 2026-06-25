@@ -604,6 +604,41 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
+            # On PreToolUse AskUserQuestion (mid-turn blocker challenge):
+            #
+            # Component C: inject capability-verification advisory so the agent
+            # is reminded to verify live before asserting a blocker ("only you
+            # can", "I can't run X", "needs auth"). Fires mid-turn at the moment
+            # the blocker is manufactured — the only moment that catches the
+            # agy-auth-halt incident class (issue #1751).
+            #
+            # Component B: re-close the gate (CLOSED is a no-op when already
+            # CLOSED; re-closes when OPEN after a prior Stop fire-once). This
+            # gives: block-once → allow-retry → re-close-on-AskUserQuestion →
+            # re-block-on-next-Stop.
+            #
+            # Delivery: triggers use GateResult.allow + context_injection, so
+            # this is advisory-inject only — AskUserQuestion is never denied.
+            # Policies for never-block tools are skipped by is_never_block in
+            # _evaluate_policies; triggers are NOT subject to that guard, so
+            # the advisory reaches the agent via additionalContext (PreToolUse
+            # hookSpecificOutput) without blocking the question.
+            #
+            # Arming posture: armed in ALL session types (including interactive)
+            # because this incident class occurred in an interactive /pull.
+            # The cost is one advisory nudge per AskUserQuestion — acceptable
+            # given the gate mode is warn (never deny on this event path).
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PreToolUse",
+                    tool_name_pattern=r"^AskUserQuestion$",
+                    custom_check="is_ida_active",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    context_key="ida.askuserquestion_reminder",
+                ),
+            ),
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
