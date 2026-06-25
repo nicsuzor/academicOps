@@ -43,6 +43,8 @@ There is no separate dist repo. `nicsuzor/academicOps` is both the source of tru
 
 `aops-tools` is a separate, lightweight plugin: skills only, no hooks/agents/MCP. Built from `aops-tools/` with its own `templates/aops-tools.*` manifests.
 
+`aops-ts` is a separate, **opt-in** plugin: a single `SessionStart` hook (no skills/agents/MCP) that runs `tailscale up` so tailnet-only services (e.g. the PKB MCP at `*.ts.net`) resolve in remote/cloud sessions. It is intentionally standalone — a self-contained bash hook with no router/Python/uv dependency — so it can be enabled independently of aops-core, and joining the tailnet stays an explicit choice. Built from `aops-ts/` by `build_aops_ts` (Claude only → `dist/aops-ts-claude`) with the `templates/aops-ts.plugin.json` manifest; registered in `templates/marketplace.json` with source `./dist/aops-ts-claude`. Tailscale itself is installed by the environment's setup script, not this plugin (the authkey only exists at session runtime, so bring-up must be a hook, not setup).
+
 ## The cowork build variant
 
 `aops-cowork` is a separate plugin built from the same `aops-core/` source tree. It is Claude-shaped (same `.claude-plugin/plugin.json` + `.mcp.json` layout) but ships **four** cowork-specific differences:

@@ -1587,6 +1587,74 @@ def build_aops_extras(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_ts(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "claude",
+    version: str = "0.1.0",
+):
+    """Build the aops-ts extension for a specific platform.
+
+    aops-ts is a tiny, opt-in package: a single SessionStart hook that brings
+    Tailscale up in remote/cloud sessions so tailnet services (e.g. the PKB MCP
+    at *.ts.net) resolve. It is intentionally standalone — a self-contained bash
+    hook with no router/Python/uv dependency — so it can be enabled on its own,
+    independent of aops-core. Only the Claude platform is built; the tailnet
+    bring-up targets Claude Code on the web.
+    """
+    print(f"Building aops-ts for {platform} (v{version})...")
+    plugin_name = "aops-ts"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-ts build")
+        return
+
+    dist_dir = dist_root / f"aops-ts-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Copy the hook payload (and docs) verbatim. Hooks are auto-discovered by
+    # Claude Code from hooks/hooks.json — no manifest declaration needed.
+    items_to_copy = ["hooks", "README.md"]
+    for item in items_to_copy:
+        src = src_dir / item
+        if src.exists():
+            safe_copy(src, content_dir / item)
+
+    # Claude: copy plugin.json with version injection + marketplace-field hygiene.
+    if platform == "claude":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.plugin.json"
+        dist_plugin_dir = dist_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields that
+                # otherwise trip CC's "Unrecognized keys" install validation.
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                manifest.pop("userConfig", None)
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1654,6 +1722,9 @@ def main():
     # Build aops-extras (replaceable technology-specific skills package)
     build_aops_extras(aops_root, dist_root, "gemini", version)
     build_aops_extras(aops_root, dist_root, "claude", version)
+
+    # Build aops-ts (opt-in Tailscale bring-up hook — Claude/web only)
+    build_aops_ts(aops_root, dist_root, "claude", version)
 
     # Build components (Antigravity)
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
