@@ -142,8 +142,13 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     if client_type == "agy":
         steps = output.get("injectSteps")
         assert steps, f"agy PostInvocation: IDA must go to injectSteps: {output!r}"
+        # injectSteps scalar channels (invariant #5): ephemeralMessage is preferred
+        # (transient), userMessage is the persistent variant. The renderer emits
+        # ephemeralMessage; legacy systemMessage kept for back-compat with older shapes.
         joined = " ".join(
-            s.get("userMessage", "") or s.get("systemMessage", {}).get("systemMessage", "")
+            s.get("ephemeralMessage", "")
+            or s.get("userMessage", "")
+            or s.get("systemMessage", {}).get("systemMessage", "")
             for s in steps
         )
         assert _IDA_MARKER in joined, (
