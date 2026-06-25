@@ -1595,12 +1595,14 @@ def build_aops_ts(
 ):
     """Build the aops-ts extension for a specific platform.
 
-    aops-ts is a tiny, opt-in package: a single SessionStart hook that brings
-    Tailscale up in remote/cloud sessions so tailnet services (e.g. the PKB MCP
-    at *.ts.net) resolve. It is intentionally standalone — a self-contained bash
-    hook with no router/Python/uv dependency — so it can be enabled on its own,
-    independent of aops-core. Only the Claude platform is built; the tailnet
-    bring-up targets Claude Code on the web.
+    aops-ts is a tiny, opt-in package with two hooks for remote/cloud sessions:
+    a SessionStart hook that brings Tailscale up so tailnet services (e.g. the
+    PKB MCP at *.ts.net) resolve, and a SessionEnd hook that parses the session
+    transcript and rsyncs it to a tailnet host so cloud transcripts survive
+    container reclamation. The bring-up hook is self-contained bash; the sync
+    hook reuses aops-core's transcript.py when present (raw-JSONL fallback
+    otherwise). Only the Claude platform is built; the tailnet bring-up targets
+    Claude Code on the web.
     """
     print(f"Building aops-ts for {platform} (v{version})...")
     plugin_name = "aops-ts"
