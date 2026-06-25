@@ -193,7 +193,7 @@ markers = [
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
   "e2e: end-to-end tests requiring live infra (POLECAT_E2E=1 to run)",
-  "live: drives real headless clients to measure hook-format conformance (AOPS_RUN_LIVE_HOOKS=1 to run)",
+  "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
 ]
 
 [project.scripts]

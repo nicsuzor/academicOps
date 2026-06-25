@@ -9,11 +9,15 @@ client changes a hook behaviour, a signal flips and the matching cell FAILS here
 changes, instead of discovering it as a field regression weeks later.
 
 This suite is OPT-IN and never runs in ordinary CI:
-  * marked ``@pytest.mark.live`` and ``@pytest.mark.slow``;
-  * skipped unless ``AOPS_RUN_LIVE_HOOKS=1`` is set;
-  * each cell is skipped if its client is unavailable/unauthenticated.
+  * marked ``@pytest.mark.live`` and ``@pytest.mark.slow`` — the default
+    ``addopts`` (``-m 'not slow and not integration and not demo'``) deselects
+    it, so it only runs when explicitly selected with ``-m live``;
+  * each cell is skipped if its client is unavailable/unauthenticated (the
+    harness auto-detects via ``shutil.which`` + per-cell unavailable/unauthed
+    notes), so a credential-less CI never drives a real client even if the
+    marker filter were lifted.
 
-Run it:  AOPS_RUN_LIVE_HOOKS=1 uv run pytest tests/hooks/test_live_conformance.py -m live -q
+Run it:  uv run pytest tests/hooks/test_live_conformance.py -m live -q
 
 The fast, deterministic counterpart (router-vs-table) is the unit matrix; this
 file is table-vs-reality.
@@ -22,7 +26,6 @@ file is table-vs-reality.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -34,8 +37,6 @@ HARNESS = REPO / "scripts" / "verify_hook_formats.py"
 FIXTURE = REPO / "tests" / "hooks" / "fixtures" / "client_capabilities.json"
 
 pytestmark = [pytest.mark.live, pytest.mark.slow]
-
-_RUN_LIVE = os.environ.get("AOPS_RUN_LIVE_HOOKS") == "1"
 
 # Signal fields that constitute the behavioural contract for a cell. A None in the
 # committed baseline means "not measurable" (e.g. agy delivery while unauthed) and
@@ -73,8 +74,10 @@ def _remeasure() -> dict[str, dict]:
 
 @pytest.fixture(scope="session")
 def remeasured() -> dict[str, dict]:
-    if not _RUN_LIVE:
-        pytest.skip("set AOPS_RUN_LIVE_HOOKS=1 to run live conformance (drives real clients)")
+    # No env gate: selection is the ``@live`` marker (deselected by default
+    # addopts) + the harness's own ``shutil.which`` availability detection and
+    # per-cell unavailable/unauthenticated skips. A credential-less CI run that
+    # somehow selected this suite still drives no real client.
     return _remeasure()
 
 
