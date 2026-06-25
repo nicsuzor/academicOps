@@ -922,8 +922,14 @@ class TestBuildAuditSessionContext:
         result = build_audit_session_context(str(jsonl_path))
         assert "<!-- audit-complete:" not in result
 
-    def test_audit_complete_sentinel_includes_turn_count(self, tmp_path):
-        """Audit sentinel reports turn count so RBG can detect suspicious mismatches."""
+    def test_session_reader_does_not_add_sentinel(self, tmp_path):
+        """build_audit_session_context does not emit the audit sentinel.
+
+        The sentinel is added by custom_actions.py after template rendering so
+        it lands as the absolute last line of the file (#1976).  Session-reader
+        output must not contain it — the downstream appender is the single
+        point of injection.
+        """
         from lib.session_reader import SessionProcessor, build_audit_session_context
 
         jsonl_path = tmp_path / "three-turns.jsonl"
@@ -943,14 +949,15 @@ class TestBuildAuditSessionContext:
         )
         result = build_audit_session_context(str(jsonl_path), entries=entries)
 
-        # Sentinel must include the count of turns processed
+        # Sentinel is injected by custom_actions.py, not here.
         assert "<!-- audit-complete: 3 turns -->" not in result
 
     def test_max_turns_window_keeps_only_last_n_turns(self, tmp_path):
         """max_turns windows to the last n turns (aops-5bc65f76 n+2 cadence window).
 
         With max_turns set, older turns are dropped but every SHOWN turn keeps
-        full detail. The audit-complete sentinel reports the windowed count.
+        full detail.  The audit-complete sentinel is appended by custom_actions.py
+        after rendering and is not present in session-reader output.
         """
         from lib.session_reader import SessionProcessor, build_audit_session_context
 
@@ -974,7 +981,7 @@ class TestBuildAuditSessionContext:
             assert f"Turn {i} request" not in result, f"Turn {i} should be windowed out"
         for i in range(7, 11):
             assert f"Turn {i} request" in result, f"Turn {i} should be in window"
-        # Sentinel reports the windowed turn count, not the full session count.
+        # Sentinel is appended by custom_actions.py, not session_reader.
         assert "<!-- audit-complete: 4 turns -->" not in result
 
     def test_max_turns_none_renders_all_turns(self, tmp_path):
