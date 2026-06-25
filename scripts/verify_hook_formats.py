@@ -713,12 +713,15 @@ def candidates() -> list[Probe]:
             "claude-userpromptsubmit-additionalcontext",
             "claude-ups",
             {HSO: {"hookEventName": "UserPromptSubmit", "additionalContext": "probe SENTINEL"}},
-            "UPS additionalContext: agent-only (C✓ P✓), user✗.",
+            "UPS additionalContext: agent-only (C✓), user✗; persistence RECORDED not asserted.",
             measure_user=True,
             measure_persist=True,
             claim_user_saw=False,
             claim_agent_saw=True,
-            claim_persisted=True,
+            # persisted is MEASURED + recorded but NOT asserted: model recall of a
+            # bare random token across --resume is noisy (a model declining to
+            # repeat a meaningless token != the channel failing to persist), so a
+            # claim here would flap. The number lands in the fixture for inspection.
             table_cell="UPS advisory · Claude additionalContext U✗ C✓ P✓",
         )
     )
@@ -730,12 +733,13 @@ def candidates() -> list[Probe]:
             "claude-stop-additionalcontext-noblock",
             "claude-stop",
             {HSO: {"hookEventName": "Stop", "additionalContext": "probe SENTINEL"}},
-            "Stop additionalContext (no block): agent-only (C✓ P✓), user✗, continues.",
+            "Stop additionalContext (no block): agent-only (C✓), user✗, continues; "
+            "persistence RECORDED not asserted.",
             measure_user=True,
             measure_persist=True,
             claim_user_saw=False,
             claim_agent_saw=True,
-            claim_persisted=True,
+            # persisted MEASURED but NOT asserted (noisy token-recall; see UPS cell).
             table_cell="Stop advisory WARN · Claude additionalContext U✗ C✓ P✓",
         )
     )
@@ -751,11 +755,16 @@ def candidates() -> list[Probe]:
                     "additionalContext": "<SYSTEM HOOK INSTRUCTION>probe SENTINEL</SYSTEM HOOK INSTRUCTION>",
                 }
             },
-            "Stop additionalContext WITH trust markers: still agent-only, user✗.",
+            "Stop additionalContext WITH <SYSTEM HOOK INSTRUCTION> trust markers: "
+            "agent sees it (C✓); user_saw RECORDED not asserted (the markers make the "
+            "model treat it as an instruction and surface it even on a neutral prompt — "
+            "a model-echo confound, NOT clean client-rendered user-visibility; measured "
+            "user_saw=True for exactly this reason on 2026-06-25).",
             measure_user=True,
-            claim_user_saw=False,
+            # claim_user_saw intentionally NOT asserted (confound above). agent_saw
+            # is the clean assertion: the marked advisory does reach the model.
             claim_agent_saw=True,
-            table_cell="Stop advisory (marked) · Claude additionalContext U✗ C✓ P✓",
+            table_cell="Stop advisory (marked) · Claude additionalContext C✓ (user_saw confounded)",
         )
     )
     # Stop decision:block reason = user✓ AND agent✓ (the only Claude channel both see).
