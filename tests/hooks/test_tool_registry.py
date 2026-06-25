@@ -162,3 +162,73 @@ def test_call_mcp_tool_unknown_server_falls_back_to_write():
     (not a crash) — the unwrap only HELPS recognition, never weakens it."""
     ti = {"ServerName": "totallyunknown", "ToolName": "do_something"}
     assert get_tool_category("call_mcp_tool", ti) == "write"
+
+
+# ---------------------------------------------------------------------------
+# BUILD-NAME PROJECTION faithfulness (§P3b): the build-side tool/agent NAME maps
+# were moved out of scripts/build.py into the SSoT here. These frozen literals
+# are the regression anchor — the SSoT must keep reproducing EXACTLY what the
+# build inline copies produced (deliberately distinct from runtime names: e.g.
+# Claude Agent/Task -> activate_skill in build frontmatter).
+# ---------------------------------------------------------------------------
+_FROZEN_CLAUDE_TO_GEMINI_TOOL = {
+    "Read": "read_file",
+    "Write": "write_file",
+    "Edit": "replace",
+    "Glob": "glob",
+    "Grep": "grep_search",
+    "grep": "grep_search",
+    "Bash": "run_shell_command",
+    "bash": "run_shell_command",
+    "Skill": "activate_skill",
+    "Task": "activate_skill",
+    "Agent": "activate_skill",
+    "AskUserQuestion": "ask_user",
+    "ExitPlanMode": "enter_plan_mode",
+    "TodoWrite": "write_todos",
+    "NotebookEdit": None,
+    "WebFetch": "web_fetch",
+    "WebSearch": "google_web_search",
+    "browser_navigate": "navigate_page",
+    "browser_snapshot": "take_snapshot",
+    "browser_take_screenshot": "take_screenshot",
+    "browser_click": "click",
+    "browser_wait_for": "wait_for",
+    "browser_evaluate": "evaluate_script",
+    "browser_type": "type_text",
+    "browser_resize": "resize_page",
+}
+
+
+def test_build_claude_to_gemini_tool_map_frozen():
+    assert tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL == _FROZEN_CLAUDE_TO_GEMINI_TOOL
+
+
+def test_build_spawn_collapse_distinct_from_runtime():
+    """The build collapses Agent/Task to activate_skill, but the RUNTIME registry
+    emits invoke_agent/delegate_to_agent — proving the two halves stay distinct."""
+    assert tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL["Agent"] == "activate_skill"
+    assert tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL["Task"] == "activate_skill"
+    by_canonical = {s.canonical: s for s in tool_registry.REGISTRY}
+    assert by_canonical["Agent"].gemini == "invoke_agent"
+    assert by_canonical["Task"].gemini == "delegate_to_agent"
+
+
+def test_build_to_claude_tool_map_frozen_core():
+    m = tool_registry.BUILD_TO_CLAUDE_TOOL
+    assert m["read_file"] == "Read"
+    assert m["replace"] == "Edit"
+    assert m["run_shell_command"] == "Bash"
+    assert m["activate_skill"] == "Skill"
+    # passthrough identity for already-Claude names
+    assert m["Read"] == "Read" and m["Agent"] == "Agent" and m["Task"] == "Task"
+
+
+def test_build_body_notation_and_spawn_rewrites_frozen():
+    gem = tool_registry.BUILD_BODY_TOOL_NOTATION["gemini"]
+    assert gem["Read("] == "read_file(" and gem["`Grep`"] == "`grep_search`"
+    assert tool_registry.BUILD_BODY_TOOL_NOTATION["claude"] == {}
+    assert tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES[0] == (
+        "Task(subagent_type=",
+        "activate_skill(name=",
+    )

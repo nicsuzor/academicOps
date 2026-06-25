@@ -151,6 +151,154 @@ AGY_MCP_WRAPPER_TOOL = "call_mcp_tool"
 
 
 # =============================================================================
+# BUILD-NAME PROJECTION (Table 2, BUILD half — CLIENT-TRANSLATION.md §P3b)
+# =============================================================================
+# DISTINCT from the RUNTIME registry above. These maps are what the BUILD writes
+# into a client's agent FRONTMATTER / body text when generating dist — and a
+# client's build-frontmatter tool name DELIBERATELY differs from its runtime name
+# (e.g. Claude ``Agent``/``Task`` are rewritten to ``activate_skill`` in a Gemini
+# agent's frontmatter so the agent loads, but the Gemini *runtime* emits
+# ``invoke_agent``/``delegate_to_agent``). That is why this projection lives in a
+# SEPARATE structure and must NOT be derived from / folded into the runtime
+# ``ToolSpec.gemini`` column — doing so would make recognition diverge from
+# reality. This is the SSoT that ``scripts/build.py`` reads (replacing its inline
+# ``GEMINI_TOOL_NAME_MAP`` / ``TOOL_NAME_MAP`` copies), EXACTLY mirroring how
+# P3a moved the event maps into ``client_spec``.
+#
+# Each entry is the CURRENT build behaviour, encoded verbatim — no new tool names.
+
+# Claude-source frontmatter tool name -> Gemini frontmatter tool name.
+# A value of ``None`` means "drop the tool" (no Gemini equivalent).
+BUILD_CLAUDE_TO_GEMINI_TOOL: dict[str, str | None] = {
+    # File operations (Claude Code -> Gemini)
+    "Read": "read_file",
+    "Write": "write_file",
+    "Edit": "replace",
+    "Glob": "glob",
+    "Grep": "grep_search",
+    "grep": "grep_search",  # lowercase variant
+    # Shell execution
+    "Bash": "run_shell_command",
+    "bash": "run_shell_command",  # lowercase variant
+    # Skills/Agents — build collapses all spawn-likes to activate_skill in
+    # frontmatter (NOT the runtime names invoke_agent/delegate_to_agent).
+    "Skill": "activate_skill",
+    "Task": "activate_skill",
+    "Agent": "activate_skill",
+    # User interaction / planning / todos (Claude built-ins -> agy/gemini native).
+    # NotebookEdit has no equivalent -> drop.
+    "AskUserQuestion": "ask_user",
+    "ExitPlanMode": "enter_plan_mode",
+    "TodoWrite": "write_todos",
+    "NotebookEdit": None,
+    # Web operations
+    "WebFetch": "web_fetch",
+    "WebSearch": "google_web_search",
+    # Browser/Playwright (Claude Code -> Gemini chrome-devtools-mcp)
+    "browser_navigate": "navigate_page",
+    "browser_snapshot": "take_snapshot",
+    "browser_take_screenshot": "take_screenshot",
+    "browser_click": "click",
+    "browser_wait_for": "wait_for",
+    "browser_evaluate": "evaluate_script",
+    "browser_type": "type_text",
+    "browser_resize": "resize_page",
+}
+
+# Generic/Gemini frontmatter tool name -> Claude Code frontmatter tool name.
+# Used when projecting a (possibly Gemini-named) source agent INTO a Claude
+# artifact; unknown names pass through unchanged at the call site.
+BUILD_TO_CLAUDE_TOOL: dict[str, str] = {
+    # File operations
+    "read_file": "Read",
+    "write_file": "Write",
+    "replace": "Edit",
+    "list_directory": "Glob",
+    "glob": "Glob",
+    "grep": "Grep",
+    "search_file_content": "Grep",
+    # Shell execution
+    "bash": "Bash",
+    "run_shell_command": "Bash",
+    # Skills/Agents
+    "activate_skill": "Skill",
+    # Web operations
+    "web_fetch": "WebFetch",
+    "web_search": "WebSearch",
+    # Already correct names (passthrough)
+    "Read": "Read",
+    "Write": "Write",
+    "Edit": "Edit",
+    "Glob": "Glob",
+    "Grep": "Grep",
+    "Bash": "Bash",
+    "Skill": "Skill",
+    "Task": "Task",
+    "Agent": "Agent",
+    "WebFetch": "WebFetch",
+    "WebSearch": "WebSearch",
+    "TodoWrite": "TodoWrite",
+    "AskUserQuestion": "AskUserQuestion",
+    "NotebookEdit": "NotebookEdit",
+    # Browser/Playwright (Gemini chrome-devtools-mcp -> Claude Code)
+    "navigate_page": "browser_navigate",
+    "take_snapshot": "browser_snapshot",
+    "take_screenshot": "browser_take_screenshot",
+    "click": "browser_click",
+    "wait_for": "browser_wait_for",
+    "evaluate_script": "browser_evaluate",
+    "type_text": "browser_type",
+    "resize_page": "browser_resize",
+    # Passthrough for browser_* names (already canonical)
+    "browser_navigate": "browser_navigate",
+    "browser_snapshot": "browser_snapshot",
+    "browser_take_screenshot": "browser_take_screenshot",
+    "browser_click": "browser_click",
+    "browser_wait_for": "browser_wait_for",
+    "browser_evaluate": "browser_evaluate",
+    "browser_type": "browser_type",
+    "browser_resize": "browser_resize",
+}
+
+# Body-text tool-call NOTATION rewrites the build applies to a client's prose
+# (call notation, descriptive notation, backticked notation). Keyed by build
+# platform name (``gemini`` / ``claude`` — the value the build hands the body
+# translator). Encodes the CURRENT replacements verbatim and in order.
+BUILD_BODY_TOOL_NOTATION: dict[str, dict[str, str]] = {
+    "gemini": {
+        "Read(": "read_file(",
+        "Write(": "write_file(",
+        "Edit(": "replace(",
+        "ls(": "list_directory(",
+        "Glob(": "glob(",
+        "Grep(": "grep_search(",
+        "Read tool": "read_file tool",
+        "Write tool": "write_file tool",
+        "Edit tool": "replace tool",
+        "`Read`": "`read_file`",
+        "`Write`": "`write_file`",
+        "`Edit`": "`replace`",
+        "`ls`": "`list_directory`",
+        "`Glob`": "`glob`",
+        "`Grep`": "`grep_search`",
+        "Read or Grep": "read_file or grep_search",
+    },
+    "claude": {},
+}
+
+# Gemini body-text spawn/skill rewrites applied AFTER the notation map above
+# (Task/Skill collapse to activate_skill in prose, mirroring the frontmatter
+# collapse). Ordered list of (find, replace) pairs — applied in sequence.
+BUILD_GEMINI_BODY_SPAWN_REWRITES: tuple[tuple[str, str], ...] = (
+    ("Task(subagent_type=", "activate_skill(name="),
+    ("Skill(skill=", "activate_skill(name="),
+    ("Task() tool", "activate_skill() tool"),
+    ("`Task(`", "`activate_skill(`"),
+    ("`Skill(`", "`activate_skill(`"),
+)
+
+
+# =============================================================================
 # Derived lookups (built once)
 # =============================================================================
 def _runtime_name_to_category() -> dict[str, str]:
