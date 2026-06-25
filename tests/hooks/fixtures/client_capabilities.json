@@ -1,0 +1,92 @@
+{
+  "generated_note": "Live conformance measurement \u2014 see scripts/verify_hook_formats.py",
+  "claude_version": "2.1.191 (Claude Code)",
+  "agy_present": true,
+  "gemini_present": true,
+  "cells": [
+    {
+      "label": "claude-pretooluse-allow-additionalcontext",
+      "client": "claude",
+      "wire_event": "PreToolUse",
+      "group": "claude-pretooluse",
+      "hypothesis": "PreToolUse allow delivers additionalContext to agent, no block.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": false,
+        "continued": true,
+        "note": "num_turns=2"
+      }
+    },
+    {
+      "label": "claude-pretooluse-deny",
+      "client": "claude",
+      "wire_event": "PreToolUse",
+      "group": "claude-pretooluse",
+      "hypothesis": "PreToolUse deny blocks the tool; reason reaches agent.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": false,
+        "continued": true,
+        "note": "num_turns=3"
+      }
+    },
+    {
+      "label": "claude-userpromptsubmit-additionalcontext",
+      "client": "claude",
+      "wire_event": "UserPromptSubmit",
+      "group": "claude-ups",
+      "hypothesis": "UserPromptSubmit additionalContext reaches agent without block.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": true,
+        "note": "num_turns=2"
+      }
+    },
+    {
+      "label": "claude-stop-additionalcontext-noblock",
+      "client": "claude",
+      "wire_event": "Stop",
+      "group": "claude-stop",
+      "hypothesis": "Stop additionalContext (no decision:block) accepted + delivered + continues.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": true,
+        "note": "num_turns=2"
+      }
+    },
+    {
+      "label": "claude-stop-additionalcontext-marked",
+      "client": "claude",
+      "wire_event": "Stop",
+      "group": "claude-stop",
+      "hypothesis": "Stop additionalContext WITH framework trust markers \u2014 delivery/compliance.",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": true,
+        "note": "num_turns=2"
+      }
+    },
+    {
+      "label": "claude-stop-decision-block",
+      "client": "claude",
+      "wire_event": "Stop",
+      "group": "claude-stop",
+      "hypothesis": "Stop decision:block delivers reason to agent + continues (enforcement path).",
+      "signal": {
+        "accepted": true,
+        "agent_saw": true,
+        "blocked": null,
+        "continued": true,
+        "note": "num_turns=3"
+      }
+    }
+  ]
+}
