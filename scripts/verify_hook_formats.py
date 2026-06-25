@@ -126,6 +126,12 @@ class Probe:
     claim_blocked: bool | None = None
     # The table-row reference this cell proves (for traceability in the report).
     table_cell: str = ""
+    # agy ONLY: this channel is emitted by the LIVE aops-core router, so it is
+    # measurable by driving the real plugin (no config mutation). When False, the
+    # channel is synthetic-only and NOT measurable headless on agy 1.0.12 (which
+    # ignores workspace/unregistered probe hooks) — the runner returns an honest
+    # "unmeasurable" Signal. See run_agy.
+    agy_real_plugin: bool = False
 
 
 @dataclass
@@ -422,9 +428,28 @@ def run_claude(probe: Probe, sentinel: str, workdir: Path, timeout: int = 120) -
 # ---------------------------------------------------------------------------
 # agy runner
 # ---------------------------------------------------------------------------
+AGY_CONV_GLOB = os.path.expanduser("~/.gemini/antigravity-cli/conversations/*.db")
+
+
 def _newest_agy_log() -> Path | None:
     logs = sorted(glob.glob(AGY_LOG_GLOB), key=os.path.getmtime)
     return Path(logs[-1]) if logs else None
+
+
+def _newest_agy_conversation_id(after_mtime: float) -> str | None:
+    """The conversation id (db filename stem) created/updated after ``after_mtime``.
+
+    agy stores each conversation as ``conversations/<id>.db``; ``--conversation
+    <id>`` resumes it explicitly. Capturing the id from the agent_saw run lets the
+    persistence turn resume EXACTLY that conversation, instead of the fragile
+    ``--continue`` (global most-recent) which an interleaved user_saw run breaks.
+    """
+    dbs = [Path(p) for p in glob.glob(AGY_CONV_GLOB)]
+    dbs = [p for p in dbs if os.path.getmtime(p) >= after_mtime - 1.0]
+    if not dbs:
+        return None
+    newest = max(dbs, key=os.path.getmtime)
+    return newest.stem
 
 
 def _write_agy_hooks(workdir: Path, wire_event: str, hook: Path) -> None:
@@ -446,8 +471,8 @@ def _write_agy_hooks(workdir: Path, wire_event: str, hook: Path) -> None:
 
 def _run_agy_once(
     argv_extra: list[str], prompt: str, workdir: Path, dangerous: bool, timeout: int
-) -> tuple[str, str]:
-    """Run one agy -p invocation; return (stdout, cli-log-text-for-this-run).
+) -> tuple[str, str, str | None]:
+    """Run one agy -p invocation; return (stdout, cli-log-text, conversation-id).
 
     agy ``-p`` STDOUT is the MODEL'S REPLY (the user-facing terminal stream in
     headless print mode) — measured 2026-06-25: with a clean stdin (</dev/null)
@@ -459,8 +484,11 @@ def _run_agy_once(
     stdout, which is precisely how user-visibility is distinguished from the
     model-echo agent_saw run.
     """
+    import time
+
     log_before = _newest_agy_log()
     mtime_before = os.path.getmtime(log_before) if log_before else 0.0
+    started = time.time()
     argv = ["agy"]
     if dangerous:
         argv.append("--dangerously-skip-permissions")
@@ -475,7 +503,7 @@ def _run_agy_once(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return "", "__TIMEOUT__"
+        return "", "__TIMEOUT__", None
     stdout = proc.stdout or ""  # allow-fallback: captured stdout optional, "" = none
     log = _newest_agy_log()
     log_text = ""
@@ -484,7 +512,8 @@ def _run_agy_once(
             log_text = log.read_text(errors="replace")
         except OSError:
             log_text = ""
-    return stdout, log_text
+    conv_id = _newest_agy_conversation_id(started)
+    return stdout, log_text, conv_id
 
 
 def _agy_unauth(stdout: str, log_text: str) -> bool:
@@ -503,94 +532,113 @@ def _agy_unauth(stdout: str, log_text: str) -> bool:
     return auth_marker and not model_turn_ran
 
 
+# A STABLE substring of the LIVE aops-core agy advisory that the router injects
+# via injectSteps[].ephemeralMessage on PreInvocation/PostInvocation. Measured
+# 2026-06-25: the router wraps advisory in "<details><summary>System Advisory
+# (Agent Context)</summary>" and the Ida honesty reminder includes this phrase.
+# Used as the delivery sentinel for the REAL-PLUGIN agy measurement (see
+# run_agy): a substring no ordinary prompt would produce, present iff the aops
+# ephemeralMessage advisory reached the surface under test.
+AGY_PLUGIN_ADVISORY_MARKER = "System Advisory (Agent Context)"
+
+
 def run_agy(
     probe: Probe, sentinel: str, workdir: Path, dangerous: bool, timeout: int = 360
 ) -> Signal:
-    """Drive agy headless and measure all five observables.
+    """Drive agy headless and measure the five observables.
 
-    ISOLATION NOTE: the global aops-core agy plugin (symlinked to Nic's live
-    build) co-fires its own PreInvocation/Stop hooks on these runs. That is
-    tolerated WITHOUT touching Nic's config because every probe injects a UNIQUE
-    ``PROBE-<uuid>`` sentinel: the aops advisory cannot contain our sentinel, so
-    a sentinel hit proves OUR cell's delivery independent of the co-firing plugin.
-    Disabling the plugin would mutate ``~/.gemini/config/import_manifest.json``
-    (a live file) for no measurement gain.
+    AGY 1.0.12 ISOLATION FINDING (measured 2026-06-25, this host): agy does NOT
+    load hooks from a workspace ``.agents/hooks.json``, NOR from an unregistered
+    ``~/.gemini/config/plugins/<name>/hooks.json``, NOR from a plugin merely
+    added to ``import_manifest.json`` — in every case the cli log shows it loaded
+    ONLY ``~/.gemini/config/plugins/aops-core/hooks.json`` ("loaded 2 named hooks
+    from 1 hooks.json file(s)"). Injecting an ARBITRARY probe shape therefore
+    requires a full ``agy plugin install`` that mutates Nic's LIVE build
+    (symlinks, integrity records, both manifests) beyond a clean restore — which
+    the task's HARD RULES forbid for synthetic probes.
 
-    AGENT_SAW: REPORT_PROMPT run; sentinel in stdout (the model echoed it).
-    USER_SAW:  NEUTRAL_PROMPT run; sentinel in stdout means agy RENDERED the
-               channel to the human (the model was not asked to echo). For
-               injectSteps this is expected ABSENT (model-context only) — the
-               empirical answer to "does ephemeralMessage leak to the user?".
-    PERSISTED: a second turn via ``--continue`` (no new injection: the fire-once
-               hook is spent) asks the model to recall the sentinel; >=2 samples.
-    BLOCKED:   PreToolUse deny => canary contents never reach the model.
+    So the agy channels are measured TWO ways:
+
+    1. REAL-PLUGIN cells (``agy_real_plugin=True``) — the LIVE aops-core router
+       genuinely emits this channel (``injectSteps[].ephemeralMessage`` on
+       PreInvocation/PostInvocation). We drive agy with the real plugin and use
+       the actual advisory text (``AGY_PLUGIN_ADVISORY_MARKER``) as the delivery
+       sentinel. This needs NO config change and measures the SHIPPING behaviour,
+       which is strictly more honest than a synthetic probe:
+         * AGENT_SAW — REPORT_PROMPT: model quotes the advisory verbatim.
+         * USER_SAW  — NEUTRAL_PROMPT: the advisory is ABSENT from stdout (the
+           user-facing terminal stream) unless agy renders it to the human. This
+           is the empirical answer to Nic's "does ephemeralMessage leak?".
+         * PERSISTED — second turn via ``--conversation <id>`` (no new injection
+           because the advisory is per-turn); does the model still recall it?
+    2. SYNTHETIC-ONLY cells (``agy_real_plugin=False``) — channels the aops
+       router does NOT emit (``userMessage``, the nested ``systemMessage`` member,
+       agy native ``Stop``, ``terminationBehavior``, a synthetic PreToolUse deny).
+       These are NOT measurable headless on 1.0.12 without mutating the live build
+       (see finding above), so they return an HONEST ``Signal(note="unmeasurable
+       …")`` — the pytest layer skips them WITH the reason; never a faked pass.
     """
-    hook = workdir / "probe_hook.sh"
-    _write_probe_hook(
-        hook, _fill_sentinel(probe.output, sentinel), fire_once=not probe.persistent_deny
-    )
-    (workdir / "canary.txt").write_text(CANARY_TEXT + "\n")
-    _write_agy_hooks(workdir, probe.wire_event, hook)
+    notes = [f"dangerous={dangerous}"]
+    if not getattr(probe, "agy_real_plugin", False):
+        return Signal(
+            note=(
+                "unmeasurable on agy 1.0.12: channel not emitted by the live aops "
+                "router and agy ignores workspace/unregistered probe hooks (requires "
+                "agy plugin install, which would mutate Nic's live build). " + "; ".join(notes)
+            )
+        )
 
-    # --- AGENT_SAW run (report prompt) ---
-    stdout, log_text = _run_agy_once([], REPORT_PROMPT, workdir, dangerous, timeout)
+    # REAL-PLUGIN measurement. ``workdir`` is a clean scratch dir; the live
+    # aops-core plugin fires automatically. The advisory marker is the sentinel.
+    (workdir / "canary.txt").write_text(CANARY_TEXT + "\n")
+    marker = AGY_PLUGIN_ADVISORY_MARKER
+
+    # --- AGENT_SAW: report prompt; model quotes the injected advisory. ---
+    stdout, log_text, conv_id = _run_agy_once([], REPORT_PROMPT, workdir, dangerous, timeout)
     if log_text == "__TIMEOUT__":
         return Signal(note="agy timeout (agent-saw run)")
     rejected = any(m in log_text for m in AGY_REJECT_MARKERS)
-    hook_fired = "executing command" in log_text or probe.wire_event in log_text
+    plugin_loaded = "aops-core/hooks.json" in log_text or "named hooks" in log_text
     unauth = _agy_unauth(stdout, log_text)
-    accepted = (not rejected) if hook_fired else None
-    agent_saw = (sentinel in stdout) if not unauth else None
-    blocked: bool | None = None
-    if probe.wire_event == "PreToolUse":
-        blocked = (CANARY_TEXT not in stdout) if not unauth else None
-    notes = [f"dangerous={dangerous}"]
+    accepted = (not rejected) if plugin_loaded else None
+    agent_saw = (marker in stdout) if not unauth else None
     if unauth:
         notes.append("unauthenticated (wire-acceptance only)")
-    if not hook_fired:
-        notes.append("hook did not fire (check registration)")
+    if not plugin_loaded:
+        notes.append("live aops plugin did not load")
+    notes.append(f"agent_saw(report)={agent_saw}")
 
-    # --- USER_SAW: NEUTRAL prompt; sentinel in user-facing stdout only if agy
-    #     renders the channel to the human (model not asked to echo). ---
-    user_saw: bool | None = None
-    if probe.measure_user and not unauth:
-        with _tempworkspace() as wd2:
-            hook2 = wd2 / "probe_hook.sh"
-            _write_probe_hook(
-                hook2,
-                _fill_sentinel(probe.output, sentinel),
-                fire_once=not probe.persistent_deny,
-            )
-            (wd2 / "canary.txt").write_text(CANARY_TEXT + "\n")
-            _write_agy_hooks(wd2, probe.wire_event, hook2)
-            so2, lt2 = _run_agy_once([], NEUTRAL_PROMPT, wd2, dangerous, timeout)
-        if lt2 == "__TIMEOUT__" or _agy_unauth(so2, lt2):
-            notes.append("user-saw run unmeasurable")
-        else:
-            user_saw = sentinel in so2
-            notes.append(f"user_saw(neutral)={user_saw}")
-
-    # --- PERSISTED: second turn via --continue, no new injection ---
-    # The agent_saw run above already fired the fire-once hook (its flag file
-    # ``<workdir>/.fired`` now exists), so a ``--continue`` turn from the SAME
-    # workspace re-enters the SAME conversation and the spent hook emits ``{}``
-    # (no new injection). If the model still quotes the sentinel, the channel
-    # PERSISTED into conversation history; if not, it was ephemeral/transient.
+    # --- PERSISTED: resume the SAME conversation; advisory recalled next turn? ---
     persisted: bool | None = None
-    if probe.measure_persist and not unauth and agent_saw:
+    if probe.measure_persist and not unauth and agent_saw and conv_id:
         recalled = False
         for _ in range(PERSIST_SAMPLES):
-            so3, lt3 = _run_agy_once(["--continue"], PERSIST_PROMPT, workdir, dangerous, timeout)
-            if lt3 != "__TIMEOUT__" and sentinel in so3:
+            so3, lt3, _ = _run_agy_once(
+                ["--conversation", conv_id], PERSIST_PROMPT, workdir, dangerous, timeout
+            )
+            if lt3 != "__TIMEOUT__" and marker in so3:
                 recalled = True
                 break
         persisted = recalled
-        notes.append(f"persist_samples={PERSIST_SAMPLES} persisted={persisted}")
+        notes.append(f"persist_samples={PERSIST_SAMPLES} persisted={persisted} conv={conv_id[:8]}")
+
+    # --- USER_SAW: NEUTRAL prompt; advisory in user-facing stdout only if agy
+    #     renders it to the human (model not asked to echo). Nic's question. ---
+    user_saw: bool | None = None
+    if probe.measure_user and not unauth:
+        with _tempworkspace() as wd2:
+            (wd2 / "canary.txt").write_text(CANARY_TEXT + "\n")
+            so2, lt2, _ = _run_agy_once([], NEUTRAL_PROMPT, wd2, dangerous, timeout)
+        if lt2 == "__TIMEOUT__" or _agy_unauth(so2, lt2):
+            notes.append("user-saw run unmeasurable")
+        else:
+            user_saw = marker in so2
+            notes.append(f"user_saw(neutral)={user_saw}")
 
     return Signal(
         accepted=accepted,
         agent_saw=agent_saw,
-        blocked=blocked,
+        blocked=None,
         continued=None,
         user_saw=user_saw,
         persisted=persisted,
@@ -744,58 +792,21 @@ def candidates() -> list[Probe]:
     )
 
     # ======================= Antigravity (agy 1.0.12) =======================
-    # PreToolUse allow (verified-live baseline + docs variant).
-    P.append(
-        Probe(
-            "agy",
-            "PreToolUse",
-            "agy-pretooluse-allowtool-true",
-            "agy-pretooluse-allow",
-            {"allowTool": True},
-            "agy PreToolUse {allowTool:true} lets the tool run.",
-            claim_blocked=False,
-            table_cell="PreToolUse allow · agy allowTool=true",
-        )
-    )
-    P.append(
-        Probe(
-            "agy",
-            "PreToolUse",
-            "agy-pretooluse-decision-allow",
-            "agy-pretooluse-allow",
-            {"decision": "allow"},
-            "agy PreToolUse {decision:allow} (docs) ALSO lets the tool run?",
-            table_cell="PreToolUse allow (docs variant) · agy decision=allow",
-        )
-    )
-    # PreToolUse deny: blocks; denyReason fed to model (C✓), user✗.
-    P.append(
-        Probe(
-            "agy",
-            "PreToolUse",
-            "agy-pretooluse-allowtool-false",
-            "agy-pretooluse-deny",
-            {"allowTool": False, "denyReason": "probe SENTINEL"},
-            "agy PreToolUse {allowTool:false,denyReason} blocks; reason to model.",
-            persistent_deny=True,
-            claim_blocked=True,
-            table_cell="PreToolUse deny-reason · agy denyReason U✗ C✓ P✓",
-        )
-    )
-    P.append(
-        Probe(
-            "agy",
-            "PreToolUse",
-            "agy-pretooluse-decision-deny",
-            "agy-pretooluse-deny",
-            {"decision": "deny", "reason": "probe SENTINEL"},
-            "agy PreToolUse {decision:deny,reason} (docs) ALSO blocks?",
-            persistent_deny=True,
-            table_cell="PreToolUse deny (docs variant) · agy decision=deny",
-        )
-    )
-    # ===== THE CONTESTED INJECT CELLS — Nic's primary questions =====
-    # ephemeralMessage: claimed U✗ C✓ P✗ (model-context, transient). Measure ALL.
+    # ISOLATION FINDING (measured 2026-06-25): agy 1.0.12 loads hooks ONLY from a
+    # plugin INSTALLED into ~/.gemini/config/plugins (registered via `agy plugin
+    # install`). It ignores a workspace .agents/hooks.json, an unregistered plugin
+    # dir, AND a plugin merely added to import_manifest.json. So an ARBITRARY
+    # synthetic probe shape cannot be delivered without mutating Nic's LIVE build.
+    # Therefore:
+    #   * REAL-PLUGIN cells (ephemeralMessage on Pre/PostInvocation) ARE measured
+    #     by driving the live aops-core router (which emits exactly that channel)
+    #     — agy_real_plugin=True; the actual advisory text is the sentinel.
+    #   * every other agy cell (PreToolUse allow/deny, userMessage, the nested
+    #     systemMessage member, native Stop, terminationBehavior) is SYNTHETIC-ONLY
+    #     and returns an honest "unmeasurable on 1.0.12" Signal (pytest skips it
+    #     WITH the reason — never a faked pass).
+
+    # --- REAL-PLUGIN, measurable: ephemeralMessage (Nic's primary questions) ---
     P.append(
         Probe(
             "agy",
@@ -803,51 +814,16 @@ def candidates() -> list[Probe]:
             "agy-preinvocation-ephemeralmessage",
             "agy-inject",
             {"injectSteps": [{"ephemeralMessage": "probe SENTINEL"}]},
-            "agy ephemeralMessage: model-context (C✓), USER-visible? (Nic q), PERSISTS?",
+            "agy ephemeralMessage (LIVE aops PreInvocation advisory): model-context (C✓); "
+            "USER-visible? (Nic: does it LEAK?); PERSISTS?",
             measure_user=True,
             measure_persist=True,
+            agy_real_plugin=True,
             claim_user_saw=False,
             claim_agent_saw=True,
-            claim_persisted=False,
-            table_cell="UPS advisory · agy ephemeralMessage U✗ C✓ P✗ (Nic: does it LEAK to user?)",
+            table_cell="UPS advisory · agy ephemeralMessage U✗ C✓ P? (Nic: does it LEAK to user?)",
         )
     )
-    # userMessage: claimed U✗ C✓ P✓ (model-context, PERSISTS as a user turn).
-    P.append(
-        Probe(
-            "agy",
-            "PreInvocation",
-            "agy-preinvocation-usermessage",
-            "agy-inject",
-            {"injectSteps": [{"userMessage": "probe SENTINEL"}]},
-            "agy userMessage: model-context (C✓); PERSISTS (P✓)? USER-visible?",
-            measure_user=True,
-            measure_persist=True,
-            claim_user_saw=False,
-            claim_agent_saw=True,
-            claim_persisted=True,
-            table_cell="UPS advisory · agy userMessage U✗ C✓ P✓",
-        )
-    )
-    # systemMessage MEMBER #3 — the ‹being measured› cell. Nested structured step.
-    # mem-83cedbdd (1.0.7) says agy DROPS systemMessage; a 1.0.12 ad-hoc run claimed
-    # it delivers. This probe RESOLVES it. No claim_* asserted (it is the open
-    # question being filled) — the measurement WRITES the truth into the table.
-    P.append(
-        Probe(
-            "agy",
-            "PreInvocation",
-            "agy-preinvocation-systemmessage-member",
-            "agy-inject",
-            {"injectSteps": [{"systemMessage": {"systemMessage": "probe SENTINEL"}}]},
-            "agy injectSteps systemMessage MEMBER (nested): DELIVERS on 1.0.12? user-visible? "
-            "(resolves mem-83cedbdd 'drops' vs ad-hoc 'delivers').",
-            measure_user=True,
-            measure_persist=True,
-            table_cell="UPS advisory · agy injectSteps.systemMessage member ‹BEING MEASURED›",
-        )
-    )
-    # PostInvocation ephemeralMessage (Stop-equivalent advisory channel).
     P.append(
         Probe(
             "agy",
@@ -855,13 +831,66 @@ def candidates() -> list[Probe]:
             "agy-postinvocation-ephemeralmessage",
             "agy-inject",
             {"injectSteps": [{"ephemeralMessage": "probe SENTINEL"}]},
-            "agy PostInvocation ephemeralMessage: model-context (C✓), user-visible? persists?",
+            "agy PostInvocation ephemeralMessage (LIVE aops Ida advisory): model-context (C✓); "
+            "user-visible? persists?",
             measure_user=True,
             measure_persist=True,
+            agy_real_plugin=True,
             claim_user_saw=False,
             claim_agent_saw=True,
-            claim_persisted=False,
-            table_cell="Stop advisory · agy PostInvocation ephemeralMessage U✗ C✓ P✗",
+            table_cell="Stop advisory · agy PostInvocation ephemeralMessage U✗ C✓ P?",
+        )
+    )
+
+    # --- SYNTHETIC-ONLY: unmeasurable headless on agy 1.0.12 (honest skip) ---
+    P.append(
+        Probe(
+            "agy",
+            "PreToolUse",
+            "agy-pretooluse-allowtool-true",
+            "agy-pretooluse-allow",
+            {"allowTool": True},
+            "agy PreToolUse {allowTool:true}: synthetic-only -> unmeasurable on 1.0.12.",
+            table_cell="PreToolUse allow · agy allowTool=true (synthetic-only: unmeasurable 1.0.12)",
+        )
+    )
+    P.append(
+        Probe(
+            "agy",
+            "PreToolUse",
+            "agy-pretooluse-allowtool-false",
+            "agy-pretooluse-deny",
+            {"allowTool": False, "denyReason": "probe SENTINEL"},
+            "agy PreToolUse deny: synthetic-only -> unmeasurable on 1.0.12.",
+            persistent_deny=True,
+            table_cell="PreToolUse deny · agy denyReason (synthetic-only: unmeasurable 1.0.12)",
+        )
+    )
+    P.append(
+        Probe(
+            "agy",
+            "PreInvocation",
+            "agy-preinvocation-usermessage",
+            "agy-inject",
+            {"injectSteps": [{"userMessage": "probe SENTINEL"}]},
+            "agy userMessage (claimed P✓): synthetic-only -> unmeasurable on 1.0.12.",
+            table_cell="UPS advisory · agy userMessage U✗ C✓ P✓ (synthetic-only: unmeasurable 1.0.12)",
+        )
+    )
+    # The ‹being measured› cell. aops router does NOT emit it + agy ignores
+    # synthetic probes -> CANNOT resolve headless without mutating the live build.
+    # Recorded HONESTLY as unmeasurable (mem-83cedbdd: agy DROPPED it on 1.0.7 —
+    # the last DIRECT evidence, not re-confirmable here without a plugin install).
+    P.append(
+        Probe(
+            "agy",
+            "PreInvocation",
+            "agy-preinvocation-systemmessage-member",
+            "agy-inject",
+            {"injectSteps": [{"systemMessage": {"systemMessage": "probe SENTINEL"}}]},
+            "agy injectSteps systemMessage MEMBER: not emitted by aops router + synthetic-only "
+            "-> unmeasurable on 1.0.12 (mem-83cedbdd: dropped on 1.0.7).",
+            table_cell="UPS advisory · agy injectSteps.systemMessage member ‹unmeasurable 1.0.12›",
         )
     )
     P.append(
@@ -874,8 +903,8 @@ def candidates() -> list[Probe]:
                 "injectSteps": [{"ephemeralMessage": "probe SENTINEL"}],
                 "terminationBehavior": "force_continue",
             },
-            "agy PostInvocation terminationBehavior:force_continue re-enters the loop.",
-            table_cell="Stop hard-block · agy PostInvocation terminationBehavior (PROVISIONAL)",
+            "agy terminationBehavior hard-block: synthetic-only -> unmeasurable on 1.0.12.",
+            table_cell="Stop hard-block · agy terminationBehavior (PROVISIONAL, unmeasurable 1.0.12)",
         )
     )
     P.append(
@@ -885,10 +914,8 @@ def candidates() -> list[Probe]:
             "agy-stop-decision-continue",
             "agy-hardstop",
             {"decision": "continue", "reason": "probe SENTINEL"},
-            "agy native Stop {decision:continue,reason} re-enters + reason reaches model.",
-            measure_user=True,
-            claim_user_saw=False,
-            table_cell="Stop short-reason · agy native Stop reason U✗ C✓ P✓ (PROVISIONAL)",
+            "agy native Stop: synthetic-only -> unmeasurable on 1.0.12.",
+            table_cell="Stop short-reason · agy native Stop reason (PROVISIONAL, unmeasurable 1.0.12)",
         )
     )
     return P

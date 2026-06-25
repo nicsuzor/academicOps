@@ -100,7 +100,14 @@ def remeasured() -> dict[str, dict]:
 
 def _is_skip_note(note: str) -> bool:
     note = (note or "").lower()
-    return "unavailable" in note or "unauthenticated" in note or "not implemented" in note
+    return (
+        "unavailable" in note
+        or "unauthenticated" in note
+        or "not implemented" in note
+        # agy 1.0.12 ignores synthetic probe hooks; channels not emitted by the
+        # live aops router are honestly recorded as unmeasurable (not faked pass).
+        or "unmeasurable" in note
+    )
 
 
 @pytest.mark.parametrize(
