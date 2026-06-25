@@ -41,7 +41,19 @@ pytestmark = [pytest.mark.live, pytest.mark.slow]
 # Signal fields that constitute the behavioural contract for a cell. A None in the
 # committed baseline means "not measurable" (e.g. agy delivery while unauthed) and
 # is not asserted.
-_CONTRACT_FIELDS = ("accepted", "agent_saw", "blocked", "continued")
+_CONTRACT_FIELDS = ("accepted", "agent_saw", "blocked", "continued", "user_saw", "persisted")
+
+# The audience/persistence columns each cell CLAIMS (from CLIENT-TRANSLATION.md),
+# paired with the measured Signal field that proves it. The committed baseline
+# carries both the claim and the measurement, so this assertion does NOT re-drive
+# the clients — it enforces "the table cell == what the live harness measured",
+# turning the matrix from prose assertion into test-enforced truth.
+_CLAIM_PAIRS = (
+    ("claim_user_saw", "user_saw"),
+    ("claim_agent_saw", "agent_saw"),
+    ("claim_persisted", "persisted"),
+    ("claim_blocked", "blocked"),
+)
 
 
 def _load_fixture() -> dict:
@@ -56,11 +68,16 @@ def _baseline_cells() -> list[dict]:
 
 def _remeasure() -> dict[str, dict]:
     """Re-run the harness for all available clients; return {label: signal}."""
+    # The harness now drives up to ~5 turns per cell (agent_saw + neutral user_saw
+    # + >=2 persistence samples), each a cold-ish headless client turn, across all
+    # cells — so the outer budget is large. The drift test is opt-in (@live) and
+    # rarely run; the fast table==measurement enforcement reads the committed
+    # baseline and does NOT re-drive clients.
     proc = subprocess.run(
         [sys.executable, "-u", str(HARNESS), "--out", "/dev/stdout"],
         capture_output=True,
         text=True,
-        timeout=900,
+        timeout=5400,
     )
     # The harness prints RUN lines then the JSON report (to --out=/dev/stdout, mixed
     # with the progress lines). Extract the trailing JSON object.
@@ -113,4 +130,53 @@ def test_client_behaviour_matches_baseline(cell: dict, remeasured: dict[str, dic
         f"A client updated its hook contract. Update client_spec.py + the renderer "
         f"+ re-baseline the fixture (scripts/verify_hook_formats.py). "
         f"hypothesis: {cell.get('hypothesis')}"
+    )
+
+
+@pytest.mark.parametrize(
+    "cell",
+    _baseline_cells() or [pytest.param(None, marks=pytest.mark.skip(reason="no baseline fixture"))],
+    ids=lambda c: c["label"] if isinstance(c, dict) else "no-baseline",
+)
+def test_table_cell_matches_measurement(cell: dict) -> None:
+    """Each CLIENT-TRANSLATION.md table cell's CLAIM == the LIVE measurement.
+
+    This is the proof that turns the audience/persistence matrix from prose
+    assertion into test-enforced truth. The committed baseline
+    (``client_capabilities.json``, regenerated from a live authenticated run)
+    carries, per cell, BOTH the table's claimed property (``claim_user_saw`` /
+    ``claim_agent_saw`` / ``claim_persisted`` / ``claim_blocked``) AND the
+    measured ``Signal``. A claim that disagrees with the measurement FAILS here —
+    so an editor cannot quietly change a table cell to a value the live client
+    does not exhibit, and a client behaviour change that contradicts the table is
+    caught the next time the baseline is regenerated.
+
+    A claim of ``None`` means "the table does not assert this column for this
+    cell" (e.g. user-visibility of an interactive-TUI-only Claude banner, which
+    is NOT headless-observable — an HONEST gap recorded as None, never faked to a
+    pass) and is not asserted.
+    """
+    label = cell["label"]
+    sig = cell["signal"]
+    if _is_skip_note(sig.get("note", "")):
+        pytest.skip(f"{label}: baseline not measurable ({sig.get('note')})")
+
+    mismatches = {}
+    for claim_field, measured_field in _CLAIM_PAIRS:
+        claim = cell.get(claim_field)
+        if claim is None:
+            continue  # the table does not assert this column for this cell
+        measured = sig.get(measured_field)
+        if measured is None:
+            # The table claims a value the live run could not observe this time.
+            # Honest gap (e.g. unauthenticated/timeout); do not assert a pass.
+            mismatches[measured_field] = (f"claim={claim}", "measured=None (unobserved)")
+        elif measured != claim:
+            mismatches[measured_field] = (f"claim={claim}", f"measured={measured}")
+
+    assert not mismatches, (
+        f"TABLE CELL CONTRADICTS LIVE MEASUREMENT for {label!r}: {mismatches}. "
+        f"table_cell: {cell.get('table_cell')!r}. "
+        f"Either the CLIENT-TRANSLATION.md cell is wrong, or the client changed. "
+        f"Re-baseline (scripts/verify_hook_formats.py) and correct the table cell."
     )
