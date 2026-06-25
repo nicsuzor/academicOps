@@ -756,10 +756,11 @@ def candidates() -> list[Probe]:
                 }
             },
             "Stop additionalContext WITH <SYSTEM HOOK INSTRUCTION> trust markers: "
-            "agent sees it (C✓); user_saw RECORDED not asserted (the markers make the "
-            "model treat it as an instruction and surface it even on a neutral prompt — "
-            "a model-echo confound, NOT clean client-rendered user-visibility; measured "
-            "user_saw=True for exactly this reason on 2026-06-25).",
+            "agent sees it (C✓); user_saw RECORDED not asserted — and NON-DETERMINISTIC: "
+            "the markers can make the model surface the content even on a neutral prompt "
+            "(model-echo confound, NOT clean client-rendered user-visibility). Measured "
+            "user_saw=True once and user_saw=False on two later samples (2026-06-25) — "
+            "exactly why claim_user_saw is not asserted for this cell.",
             measure_user=True,
             # claim_user_saw intentionally NOT asserted (confound above). agent_saw
             # is the clean assertion: the marked advisory does reach the model.
