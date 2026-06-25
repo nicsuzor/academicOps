@@ -53,26 +53,37 @@ NON_HSO_EVENTS = sorted(
 class TestCanonicalChannelRouting:
     """Channel routing from CanonicalHookOutput → Claude Stop output."""
 
-    def test_warn_with_advisory_routes_to_reason(self, router):
+    def test_warn_with_advisory_delivers_without_block(self, router):
+        # Invariant B / P4 line (c): warn-mode Stop advisory delivers via
+        # hookSpecificOutput.additionalContext WITHOUT a spurious block.
+        # Claude Code 2.1.191 accepts + delivers additionalContext on Stop
+        # without blocking (mem-4ab6cc0b, live-verified 2026-06-25;
+        # channel_spec("claude","Stop").agent_context_without_block == True).
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
         assert isinstance(output, ClaudeStopHookOutput)
-        assert output.decision == "block"
-        # reason carries the advisory BODY, with the marker scaffold stripped
-        # (reason is user-visible — see ADVISORY_IN_REASON).
-        assert output.reason == ADVISORY_IN_REASON
-        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
+        # No spurious block — the agent keeps continuing (warn semantics).
+        assert output.decision == "approve"
+        # Advisory rides the agent-only additionalContext channel; markers stay
+        # intact there (the gate's trust framing — additionalContext is NOT
+        # user-visible, unlike `reason`).
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == ADVISORY
+        assert output.hookSpecificOutput.hookEventName == "Stop"
 
-    def test_stop_does_not_emit_hook_specific_output(self, router):
+    def test_warn_advisory_not_in_user_visible_reason(self, router):
+        # The retired block-to-deliver no longer leaks advisory into the
+        # user-visible `reason` for warn-mode gates.
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
-        assert not hasattr(output, "hookSpecificOutput") or output.hookSpecificOutput is None
+        assert output.reason is None
 
     def test_session_end_same_routing_as_stop(self, router):
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "SessionEnd")
-        assert output.decision == "block"
-        assert output.reason == ADVISORY_IN_REASON
+        assert output.decision == "approve"
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == ADVISORY
 
     def test_approve_when_no_advisory(self, router):
         canonical = CanonicalHookOutput(
@@ -103,15 +114,17 @@ class TestCanonicalChannelRouting:
 class TestStopHookJsonEnvelope:
     """Serialised JSON envelope carries advisory only in agent channels."""
 
-    def test_serialised_json_carries_advisory_in_reason_not_stop_reason(self, router):
+    def test_serialised_json_carries_warn_advisory_in_additional_context(self, router):
+        # Invariant B / P4 (c): warn-mode Stop advisory rides
+        # hookSpecificOutput.additionalContext (agent-only), not a block.
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
         payload = json.loads(output.model_dump_json(exclude_none=True))
 
-        assert payload.get("decision") == "block"
-        assert payload.get("reason") == ADVISORY_IN_REASON
+        assert payload.get("decision") == "approve"
+        assert payload.get("hookSpecificOutput", {}).get("additionalContext") == ADVISORY
 
-        for user_field in ("stopReason", "systemMessage"):
+        for user_field in ("stopReason", "systemMessage", "reason"):
             value = payload.get(user_field)
             if value is not None:
                 assert "SYSTEM HOOK INSTRUCTION" not in value, (

@@ -37,13 +37,18 @@ class TestClaudeSchemaConformance:
         output = router.output_for_claude(canonical, event)
         payload = json.loads(output.model_dump_json(exclude_none=True))
 
+        # Stop/SessionEnd ALSO accept hookSpecificOutput as of Claude Code 2.1.191
+        # (mem-4ab6cc0b, live-verified 2026-06-25) — the warn-mode advisory rides
+        # additionalContext there without a block (P4 (c)). The stale 2.1.158
+        # belief (Stop rejects hookSpecificOutput) is retired.
+        _hso_accepted = CLAUDE_ACCEPTED_HOOK_EVENT_NAMES | {"Stop", "SessionEnd"}
         hso = payload.get("hookSpecificOutput")
         if hso is not None:
             event_name = hso.get("hookEventName")
-            assert event_name in CLAUDE_ACCEPTED_HOOK_EVENT_NAMES, (
+            assert event_name in _hso_accepted, (
                 f"Hook event {event!r} emitted hookSpecificOutput with "
                 f"hookEventName={event_name!r}, which Claude Code will reject. "
-                f"Accepted values: {CLAUDE_ACCEPTED_HOOK_EVENT_NAMES}"
+                f"Accepted values: {_hso_accepted}"
             )
 
 

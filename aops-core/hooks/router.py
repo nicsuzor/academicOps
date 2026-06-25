@@ -888,53 +888,58 @@ class HookRouter:
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
 
-            # Channel routing for Stop/SessionEnd (see aops-d10e7db6):
-            # - `reason` feeds the advisory to the agent when decision=="block"
-            #   (Claude Code Stop hook API: `reason` = "Feedback for Claude",
-            #   `systemMessage` = "Warning message for user", `stopReason` =
-            #   "Not shown to Claude"). This routing is per the Claude Code
-            #   Python SDK TypedDict; behaviour may differ for other clients.
-            # - `stopReason` and `systemMessage` are user-visible only —
-            #   do NOT route advisory/recovery text here.
+            # Channel routing for Stop/SessionEnd. The DECISION of whether a
+            # warn-mode advisory must block-to-deliver is POLICY, read from the
+            # SSoT channel table (client_spec) — not hardcoded here. The wire
+            # FIELD names (decision/reason vs hookSpecificOutput.additionalContext)
+            # are structural and stay in this renderer (invariant B: the
+            # block-to-deliver decision is the property that kept regressing, so
+            # it lives in exactly one place — the table cell).
             #
-            # Advisory/recovery context (the <SYSTEM HOOK INSTRUCTION> block)
-            # MUST land in the agent's context. The only Stop channel that
-            # achieves that is decision=="block" + reason. WARN-with-context
-            # therefore upgrades the *output* decision to "block" at the output
-            # layer so the advisory reaches the agent. The internal verdict
-            # stays "warn" — the stop-block safety net (auto-approve after
-            # 5 blocks in 2 minutes) keys on the internal verdict field, not
-            # on this output decision, so routine RBG advisories do not trip it.
+            # channel_spec("claude","Stop").agent_context_without_block:
+            #   True  (Claude Code 2.1.191, mem-4ab6cc0b, live-verified
+            #          2026-06-25) -> a warn that only needs to DELIVER advisory
+            #          rides hookSpecificOutput.additionalContext WITHOUT a block.
+            #          This RETIRES the legacy WARN->block-to-deliver upgrade.
+            #   False (legacy 2.1.158) -> no agent-only Stop channel, so a warn
+            #          carrying advisory must upgrade to decision="block"+reason
+            #          purely to deliver it.
             #
-            # hookSpecificOutput is deliberately NOT emitted on Stop. Claude
-            # Code's Stop output schema rejects it: the validator fails with
-            # "Hook JSON output validation failed — (root): Invalid input" and
-            # discards the ENTIRE payload, silently dropping decision+reason
-            # too. The validator's own expected-schema lists hookSpecificOutput
-            # only for PreToolUse / UserPromptSubmit / PostToolUse /
-            # PostToolBatch — never Stop. So Stop has no agent-only context
-            # channel; `reason` (also user-visible) is the only path to the
-            # model. Verified Claude Code 2.1.158, 2026-05-31 (see kb-fcc2b95c).
+            # ENFORCEMENT (deny/block-mode handover) ALWAYS blocks — delivery !=
+            # enforcement: a non-blocking nudge can be disregarded by the model
+            # (mem-4ab6cc0b), so block-mode gates keep decision="block".
+            spec = client_spec.channel_spec("claude", "Stop")
+            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+
             ctx_inj = result.context_injection
             sys_msg = result.system_message
 
             # The Stop `reason` field is BOTH user-visible (Claude Code renders
             # a blocking Stop hook's reason as a notice) and agent-visible —
-            # there is no agent-only Stop channel. Strip the marker scaffold so
-            # the advisory reads as a clean notice rather than a raw system dump.
+            # there is no agent-only `reason` channel. Strip the marker scaffold
+            # so the advisory reads as a clean notice rather than a raw system
+            # dump. hookSpecificOutput.additionalContext IS agent-only, so it
+            # keeps the markers intact (the gate's trust framing).
             agent_reason = _strip_hook_markers(ctx_inj)
 
             if result.verdict == "deny":
+                # Enforcement path: must HALT the agent.
                 output.decision = "block"
                 if agent_reason:
                     output.reason = agent_reason
             elif result.verdict == "warn" and ctx_inj:
-                # Upgrade output decision to "block" so the advisory lands in
-                # the agent's context on the next turn. The internal verdict
-                # remains "warn" — only the Claude Code output decision field
-                # changes here, not the router's internal safety-net counter.
-                output.decision = "block"
-                output.reason = agent_reason
+                if agent_ctx_without_block:
+                    # Deliver without blocking — additionalContext reaches the
+                    # agent's context on the next turn (it keeps continuing).
+                    # The internal verdict stays "warn".
+                    output.decision = "approve"
+                    output.hookSpecificOutput = ClaudeHookSpecificOutput(
+                        hookEventName=event, additionalContext=ctx_inj
+                    )
+                else:
+                    # No agent-only channel: upgrade to block purely to deliver.
+                    output.decision = "block"
+                    output.reason = agent_reason
             else:
                 output.decision = "approve"
 
