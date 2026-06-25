@@ -167,6 +167,7 @@ def create_audit_file(
         # `tail -3` (aops-e4e90f31, #1976).
         if content and gate == "enforcer":
             import re
+
             # Extract turn count from session_context if possible, fallback to ?
             turns = re.findall(r"#### Turn (\d+)", session_context)
             turn_num = turns[-1] if turns else "?"

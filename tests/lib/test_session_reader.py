@@ -915,6 +915,7 @@ class TestBuildAuditSessionContext:
 
     def test_audit_complete_sentinel_not_present(self, tmp_path):
         from lib.session_reader import build_audit_session_context
+
         jsonl_path = tmp_path / "session.jsonl"
         entries_data = [_create_user_entry("Do some work", 0), _create_assistant_entry(1)]
         _write_jsonl(jsonl_path, entries_data)
