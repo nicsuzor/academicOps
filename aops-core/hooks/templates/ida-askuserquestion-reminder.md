@@ -9,12 +9,9 @@ description: |
 ---
 
 <academicOps Ida hook — capability check>
-You are about to ask the user a question. If this question asserts or implies a capability limit ("only you can run X", "I can't do X", "needs authentication", "X isn't available"), STOP and verify it live first:
+Before you ask the user a question:
 
-- Is the binary on PATH? `command -v <tool>`
-- What version is actually installed? `<tool> --version` (do NOT trust a version anchored in a prose note — notes go stale)
-- Is there a valid credential? Check the token path + mtime (a recent mtime means active, refreshed use)
-- Does the tool degrade gracefully (skip-if-unavailable) rather than hard-require auth?
-
-Host capability truth is SSoT note `kb-337e2cf5`. A one-time token refresh is NOT a standing human-driver requirement. The interactive-OAuth limit applies only to credential-less polecat containers, NOT the authenticated host.
-</academicOps Ida hook — capability check>
+- Is there a clear best answer? It's your responsibility to make the decision, we can revert later if needed.
+- Can you find out yourself? Don't waste the user's time.
+- Are you just confirming? Don't ask permission to do your job.
+  </academicOps Ida hook — capability check>
