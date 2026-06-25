@@ -32,6 +32,17 @@ That sentence is the whole step-0 artifact. You write it first; only then do you
 
 Reading the code first is exactly what lets a clean, well-tested surface **launder** a bad premise. Engage the diffstat and the task before the code, while the question _"should this exist at all?"_ is still askable without the pull of polished implementation. **You cannot emit an approving verdict without first writing the step-0 sentence** — that bind is the forcing function; it must remain item 0 in each skill's output schema.
 
+### Establish current state and prior decisions FIRST — the precondition to judging the premise
+
+You cannot soundly judge _"is this a good idea, in this shape?"_ for a proposed **new mechanism** (gate, env var, context builder, classifier, schema, env axis, dispatch path) until you know whether **the mechanism already exists** or **the decision was already made**. A premise judged in a vacuum — without establishing how the system already runs and what was already decided — is not a premise judgment; it is a guess that happens to read as one. This is the single most common way a sound-sounding premise launders an over-build: the reviewer approves "this is a reasonable mechanism" while blind to the fact that it already exists, or was already tried and abandoned, or was already decided the other way.
+
+So, before the step-0 sentence on any proposal that **adds or changes a mechanism**, establish — from live code, the PKB, and the decision record (PRs/issues/memories), not from intuition — two things:
+
+- **Does this already run?** Is there an existing arming trigger, env var, builder, gate, or path that already does this (or most of it)? Adding a _second_ path beside an existing one is itself a premise defect — bounce it toward extending the one that exists.
+- **Was this already decided?** Search the PKB and the PR/issue record for a prior decision on this exact question. Re-raising a settled call as if novel, or contradicting a prior decision without naming and engaging it, fails the premise regardless of how reasonable the proposal reads.
+
+This precondition is **judgment-driven discovery, not a mechanism** — a few targeted PKB searches and `rg`/`git`/`gh` reads, exactly the cheap current-state probe the framework expects before any build. It does not become a checklist: the two questions above are priming for the one judgment, not boxes to tick. When the answer to either is "yes, it exists / it was decided", the verdict on a proposal that ignored that is a **rejection** — and per `/learn` retro §2a the miss is scored against the reviewer who approved a new-mechanism premise without establishing current state.
+
 ## 2. A bad premise fails — regardless of test coverage
 
 If a sharp principal would bounce the premise, the verdict is a **rejection even with green CI, clean code, and satisfied AC**. The skill-local rejection token:

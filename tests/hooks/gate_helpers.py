@@ -106,18 +106,22 @@ def set_gate_modes(
     enforcer: str = "block",
     hydration: str = "off",
     ida: str = "off",
+    rbg_review: str = "off",
     enforcer_threshold: int = 50,
 ) -> None:
     """Stamp the requested gate modes onto the environment.
 
-    ida defaults to "off" so existing test scenarios that expect "allow" on Stop
-    keep their invariants. Tests targeting ida behaviour pass it explicitly.
+    ida and rbg_review default to "off" so existing test scenarios that expect
+    "allow" on Stop keep their invariants — the rbg-review gate is a NEW Stop
+    gate that would otherwise DENY every Stop and mask the gate under test.
+    Tests targeting ida / rbg-review behaviour pass the mode explicitly.
     """
     monkeypatch.setenv("HANDOVER_GATE_MODE", handover)
     monkeypatch.setenv("QA_GATE_MODE", qa)
     monkeypatch.setenv("ENFORCER_GATE_MODE", enforcer)
     monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
     monkeypatch.setenv("IDA_GATE_MODE", ida)
+    monkeypatch.setenv("RBG_REVIEW_GATE_MODE", rbg_review)
     monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(enforcer_threshold))
 
 
