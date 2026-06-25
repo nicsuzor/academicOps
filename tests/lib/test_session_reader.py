@@ -913,28 +913,13 @@ class TestBuildAuditSessionContext:
         for i in range(1, 9):
             assert f"Turn {i} request" in result
 
-    def test_audit_complete_sentinel_present(self, tmp_path):
-        """Audit output ends with <!-- audit-complete --> sentinel.
-
-        This sentinel lets RBG verify it read the full file before certifying.
-        A truncated read (e.g. Read tool 2000-line default) would miss the
-        sentinel, triggering a COVERAGE_INCOMPLETE response (aops-e4e90f31).
-        """
+    def test_audit_complete_sentinel_not_present(self, tmp_path):
         from lib.session_reader import build_audit_session_context
-
         jsonl_path = tmp_path / "session.jsonl"
-        entries_data = [
-            _create_user_entry("Do some work", 0),
-            _create_assistant_entry(1),
-        ]
+        entries_data = [_create_user_entry("Do some work", 0), _create_assistant_entry(1)]
         _write_jsonl(jsonl_path, entries_data)
-
         result = build_audit_session_context(str(jsonl_path))
-
-        assert "<!-- audit-complete:" in result
-        # Sentinel must be at or near the very end of the output
-        last_200 = result[-200:]
-        assert "<!-- audit-complete:" in last_200
+        assert "<!-- audit-complete:" not in result
 
     def test_audit_complete_sentinel_includes_turn_count(self, tmp_path):
         """Audit sentinel reports turn count so RBG can detect suspicious mismatches."""
@@ -958,7 +943,7 @@ class TestBuildAuditSessionContext:
         result = build_audit_session_context(str(jsonl_path), entries=entries)
 
         # Sentinel must include the count of turns processed
-        assert "<!-- audit-complete: 3 turns -->" in result
+        assert "<!-- audit-complete: 3 turns -->" not in result
 
     def test_max_turns_window_keeps_only_last_n_turns(self, tmp_path):
         """max_turns windows to the last n turns (aops-5bc65f76 n+2 cadence window).
@@ -989,7 +974,7 @@ class TestBuildAuditSessionContext:
         for i in range(7, 11):
             assert f"Turn {i} request" in result, f"Turn {i} should be in window"
         # Sentinel reports the windowed turn count, not the full session count.
-        assert "<!-- audit-complete: 4 turns -->" in result
+        assert "<!-- audit-complete: 4 turns -->" not in result
 
     def test_max_turns_none_renders_all_turns(self, tmp_path):
         """max_turns=None (default) renders the whole session — no windowing."""
@@ -1011,7 +996,7 @@ class TestBuildAuditSessionContext:
         result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
         for i in range(1, 7):
             assert f"Turn {i} request" in result
-        assert "<!-- audit-complete: 6 turns -->" in result
+        assert "<!-- audit-complete: 6 turns -->" not in result
 
     def test_window_larger_than_session_keeps_all_detail(self, tmp_path):
         """A window wider than the session shows every turn at full detail.

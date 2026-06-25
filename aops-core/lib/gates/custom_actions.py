@@ -161,6 +161,20 @@ def create_audit_file(
                 or "",  # allow-fallback: empty scope when no skill / scope file absent
             },
         )
+
+        # Coverage sentinel: must be the last line of the rendered file so that
+        # a truncated read is detectable. The rbg auditor requires this via
+        # `tail -3` (aops-e4e90f31, #1976).
+        if content and gate == "enforcer":
+            import re
+            # Extract turn count from session_context if possible, fallback to ?
+            turns = re.findall(r"#### Turn (\d+)", session_context)
+            turn_num = turns[-1] if turns else "?"
+
+            # Use rstrip to ensure no trailing newlines from the template
+            # push the sentinel out of the `tail -3` window
+            content = content.rstrip() + f"\n\n<!-- audit-complete: {turn_num} turns -->\n"
+
     except (KeyError, ValueError, FileNotFoundError) as e:
         render_errors.append(f"{gate}.context: {e}")
         try:
