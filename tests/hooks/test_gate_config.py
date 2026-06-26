@@ -308,18 +308,13 @@ class TestEnforcerChannelSentinel:
         assert not is_enforcer_channel("")
         assert not is_enforcer_channel(None)
 
-    def test_enforcer_templates_carry_the_sentinel(self):
-        """The enforcer instruction + policy-context templates must embed the marker.
-
-        This is the load-bearing wiring: if the sentinel is dropped from the
-        templates, the injection-defence distinction silently stops working.
-        """
-        templates_dir = AOPS_CORE / "hooks" / "templates"
-        for name in ("enforcer-instruction.md", "enforcer-policy-context.md"):
-            content = (templates_dir / name).read_text()
-            assert ENFORCER_CHANNEL_SENTINEL in content, (
-                f"{name} must carry the enforcer-channel sentinel (#1315)"
-            )
+    # test_enforcer_templates_carry_the_sentinel removed 2026-06-26 (user-directed):
+    # commit 1fb2b8d0 ("update instructions") intentionally simplified the enforcer
+    # templates and dropped the `<!-- aops:enforcer-channel -->` marker from both
+    # enforcer-instruction.md and enforcer-policy-context.md. `is_enforcer_channel`
+    # remains defined/exported in gate_config.py but has no live caller, so the
+    # template-marker assertion guarded a currently-unconsumed defence. If the
+    # injection-defence is re-wired, restore both the marker and this test.
 
 
 class TestGatePrecedence:
