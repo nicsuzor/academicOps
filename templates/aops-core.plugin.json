@@ -17,7 +17,7 @@
     "pkb_mcp_url": {
       "type": "string",
       "title": "PKB MCP server URL",
-      "description": "URL of your academicOps PKB MCP server (Streamable HTTP), e.g. http://host:8026/mcp/. Supplied to the pkb MCP server as PKB_MCP_URL. Leave blank to fall back to PKB_MCP_URL in your shell environment or ~/.env.local."
+      "description": "URL of your academicOps PKB MCP server (Streamable HTTP), e.g. http://host:8026/mcp/. Supplied to the pkb MCP server as PKB_MCP_URL. Leave blank only if PKB_MCP_URL is already exported in the environment that launches the MCP server; there is no ~/.env.local fallback."
     }
   },
   "autoMode": {

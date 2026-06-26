@@ -4,30 +4,28 @@
 # Called by Claude Code / Cowork / Gemini plugin MCP launchers, which provide a
 # minimal PATH and do NOT propagate the user's shell env.
 #
-# On Claude, the plugin manifest declares a `userConfig.pkb_mcp_url` value that
-# Claude Code substitutes into this server's `env` block as PKB_MCP_URL — so the
-# URL arrives reliably via the launcher, no shell-env propagation required. On
-# Cowork the userConfig substitution path is unreliable and Gemini has no such
-# mechanism, so this script still resolves PKB_MCP_URL itself for those launchers.
+# PKB_MCP_URL MUST arrive via this process's environment — there is no file
+# fallback. Each launcher is responsible for supplying it:
+#   - Claude: the plugin manifest declares `userConfig.pkb_mcp_url`, which Claude
+#     Code substitutes into this server's `env` block as PKB_MCP_URL. In headless
+#     containers the value is pre-seeded into settings.json
+#     (pluginConfigs["aops-core@academicOps"].options.pkb_mcp_url) from the
+#     container env — see polecat/entrypoint.sh.
+#   - Gemini: the extension's pkb env block sets PKB_MCP_URL: ${PKB_MCP_URL},
+#     expanded from the host/container env.
+#   - Cowork / dev shells: PKB_MCP_URL must be exported in the launching env.
 # (specs: brain PKB framework-observability.)
 #
-# Resolution order:
-#   1. inherited PKB_MCP_URL (Claude userConfig env block; or dev shell launches)
-#   2. ~/.env.local (canonical user-config file used across academicOps)
-#   3. unset → hard fail (no silent fallback to broken local stdio)
+# Resolution: inherited PKB_MCP_URL from the environment, or hard fail. No
+# silent fallback to ~/.env.local or to a broken local stdio server.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/ensure-path.sh"
 
-# Resolve PKB_MCP_URL: env wins; otherwise source ~/.env.local.
-if [[ -z "$PKB_MCP_URL" && -f "$HOME/.env.local" ]]; then
-    # shellcheck disable=SC1091
-    set -a; source "$HOME/.env.local"; set +a
-fi
-
 if [[ -z "$PKB_MCP_URL" ]]; then
-    echo "CRITICAL: PKB_MCP_URL is not set." >&2
-    echo "Set it in ~/.env.local or your shell environment." >&2
+    echo "CRITICAL: PKB_MCP_URL is not set in the environment." >&2
+    echo "It must be supplied via the launcher (Claude userConfig / Gemini env" >&2
+    echo "block) or exported in your shell. There is no ~/.env.local fallback." >&2
     exit 1
 fi
 
