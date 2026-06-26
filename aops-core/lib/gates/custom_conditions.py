@@ -6,6 +6,13 @@ from lib.hook_context import HookContext
 from lib.session_state import SessionState
 from lib.tool_categories import get_tool_category
 
+# Lighter interactive cadence for the SOFT (warn-mode) handover nudge: fire at
+# most once per this many turns (one turn = one UserPromptSubmit). Keeps the
+# soft nudge from firing on every interactive work-turn while still surfacing it
+# periodically / at a natural close (spec mem-438429c5 §5.5). The polecat
+# hard-block path is unaffected (no cadence — it stays fully armed).
+_HANDOVER_WARN_TURN_CADENCE = 5
+
 # =============================================================================
 # SENTINEL GATE — destructive-env-op detection
 # =============================================================================
@@ -169,7 +176,24 @@ def check_custom_condition(
             return False
         from hooks.gate_config import HANDOVER_GATE_MODE
 
-        return HANDOVER_GATE_MODE == "warn"
+        if HANDOVER_GATE_MODE != "warn":
+            return False
+        # Lighter interactive cadence (spec mem-438429c5 §5.5): the SOFT
+        # handover nudge is rate-limited to at most once per
+        # _HANDOVER_WARN_TURN_CADENCE turns, so an interactive session that does
+        # work turn after turn is not nagged on every work-turn. The interactive
+        # handover gate re-closes on every write/claim (all-session triggers), so
+        # without this it would surface every turn. The polecat HARD-block path
+        # (is_handover_block_mode) has NO cadence limit and stays fully armed.
+        # The last-fired turn is recorded by the warn policy's
+        # record_handover_warn_fired action; the FIRST fire is never suppressed
+        # (no recorded turn yet).
+        last_fired = state.metrics.get("handover_warn_last_fired_turn")
+        if last_fired is not None and (
+            session_state.global_turn_count - last_fired < _HANDOVER_WARN_TURN_CADENCE
+        ):
+            return False
+        return True
 
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)
