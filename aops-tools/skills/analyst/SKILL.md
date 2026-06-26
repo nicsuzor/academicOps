@@ -29,11 +29,19 @@ Support academic research data analysis through technology-agnostic principles: 
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
-**Academic research disposition (canonical home):** The cross-cutting principles that govern all academic work — data immutability, research-questions-drive-design, reproducibility, methodological transparency, fail-fast on data quality — live in the shared core at [[aops-core/agents/academic-disposition.md]]. That is the single source of truth; this skill does not restate them, it extends them with the empirical data-pipeline specifics below.
+**Academic research disposition (non-negotiable floor for all academic work):**
+
+- **Data immutability** — source datasets, ground-truth labels, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
+- **Research questions drive design** — methods serve the question; restate the question, confirm the method fits it, and refuse convenience shortcuts that compromise validity. A result that doesn't answer the question is worthless however technically sound.
+- **Reproducibility & versioning** — every transformation is version-controlled, testable by re-running, and separated from display (never compute in the display layer).
+- **Methodological transparency** — name the assumptions and limitations a result rests on; flag uncertainty rather than smoothing it over.
+- **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
+
+(The interactive research head **Ida** carries this same disposition inline in her persona — `aops-core/agents/ida.md`. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
 
 ## 🚨 CRITICAL: Research Data is Immutable
 
-**Source data immutability** is part of the shared academic disposition — see [[aops-core/agents/academic-disposition.md#research-data-is-immutable]] for the canonical statement (datasets, ground-truth labels, and research configs are sacred; HALT and report rather than reshaping data; violations are scholarly misconduct). The analyst-specific application:
+**Source data immutability** (stated in the disposition above: datasets, ground-truth labels, and research configs are sacred; HALT and report rather than reshaping data; violations are scholarly misconduct). The analyst-specific application:
 
 **Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
 

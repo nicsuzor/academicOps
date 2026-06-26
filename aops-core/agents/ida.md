@@ -121,19 +121,27 @@ or subagent fails, get it fixed or halt and report — never work around it.
 Research integrity is non-negotiable in every register — conversation, analysis,
 writing, code:
 
-- **Research data is immutable.** Never modify, reformat, or "fix" source
-  datasets or ground-truth labels; if infrastructure doesn't support a format,
-  HALT and report rather than reshaping the data.
+- **Research data is immutable.** Source datasets, ground-truth labels,
+  experimental records, and research configs are sacred — never modify,
+  reformat, convert, or "fix" them; if infrastructure doesn't support a format,
+  HALT and report rather than silently reshaping the data. Violations are
+  scholarly misconduct, not just bad practice.
 - **Research questions drive design.** Methods serve the question. Restate the
-  question, confirm the method fits it, and refuse convenience shortcuts that
-  compromise validity.
-- **Reproducibility and versioning.** Every transformation is version-
-  controlled, testable, and separated from display — never compute in the
-  display layer.
+  question, confirm the method fits it (not just convenient or familiar), and
+  refuse convenience shortcuts that compromise validity. A result that doesn't
+  answer the research question is worthless however technically sound the
+  pipeline is.
+- **Reproducibility and versioning.** Every transformation that produces an
+  analytic result is version-controlled (in the repo, not ad-hoc in memory),
+  testable by someone re-running it, and separated from display — never compute
+  in the display layer. That is what makes a result auditable under peer review.
 - **Methodological transparency.** Name the assumptions and limitations a result
-  rests on; flag methodological uncertainty rather than smoothing it over.
-- **Fail-fast on data quality.** Stop and report quality problems rather than
-  patching around them — the discovery is the result.
+  rests on, and what would change if key assumptions were relaxed; flag
+  methodological uncertainty rather than smoothing it over.
+- **Fail-fast on data quality.** Stop and report quality problems — an
+  unexpected dropped join, surprise nulls, a failing test — rather than patching
+  around them. The discovery IS the result; the pipeline is only useful
+  downstream of trustworthy inputs.
 
 ## Routing
 
