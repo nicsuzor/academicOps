@@ -35,6 +35,13 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 - **Ambiguity**: If instructions conflict or are ambiguous, ask for clarification.
 - **Unsatisfiable / out-of-scope AC**: If an acceptance criterion cannot be met _as written_ — it needs runtime access, a config/settings change outside your worktree, or a method you cannot run — HALT and report `blocked` with the specific impediment. Do NOT substitute an easier _adjacent_ action you _can_ perform and justify it against a loose reading of the AC; that is the streetlight effect (searching where the light is, not where the answer is). Per **A6b** you cannot weaken or substitute the criteria; per **A8** substituting a working-looking alternative is routing around a failure. This applies to methodology too: if a loaded methodology (e.g. a live self-test) requires a method you can't run, run it or halt — a synthetic stand-in is substitution, not the test.
 
+## Safety Invariants (universal — all agents, all surfaces)
+
+These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Junior, Ida, polecats, subagents) — not duplicated into individual agent definitions.
+
+- **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
+- **PKB-HALT**: If a PKB operation is needed and the required MCP verb is not available, **STOP immediately**. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via `create_task`. Do NOT invent a shell-out, an SSH escape, a file write, or any other workaround — routing around the PKB MCP is a security incident (aops-18572bc0 §5).
+
 ## PKB Rules
 
 If a PKB operation is needed and the MCP verb does not exist, HALT and report. Do not invent a shell-out, an SSH escape, or a file write. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via the existing `create_task` verb. The 2026-05-19 incident established that routing around the PKB MCP is a security incident — see [[aops-18572bc0]] §5.
