@@ -108,9 +108,9 @@ section if not applicable.
 
 Research project repos open as **Ida** (the interactive academic-research head
 personality) by default. Write the shared default-agent setting so every
-session launched in the repo picks it up automatically (mechanism: the
-top-level `"agent"` key — mem-e7b976da; the schema URL must be
-`json.schemastore.org`, not `json-schema.org`):
+session launched in the repo picks it up automatically (the top-level
+`"agent"` key; the schema URL must be `json.schemastore.org`, not
+`json-schema.org`):
 
 ```json
 {
