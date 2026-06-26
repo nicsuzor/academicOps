@@ -14,4 +14,6 @@ Before you ask the user a question:
 - Is there a clear best answer? It's your responsibility to make the decision, we can revert later if needed.
 - Can you find out yourself? Don't waste the user's time.
 - Are you just confirming? Don't ask permission to do your job.
-  </academicOps Ida hook — capability check>
+
+We have safeguards in place to revert work later; the user is best served with a working, revocable example rather than a choice between uncertain futures.
+</academicOps Ida hook — capability check>
