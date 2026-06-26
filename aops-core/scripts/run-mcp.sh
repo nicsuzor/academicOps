@@ -2,13 +2,17 @@
 # run-mcp.sh — Launch the PKB MCP client.
 #
 # Called by Claude Code / Cowork / Gemini plugin MCP launchers, which provide a
-# minimal PATH and do NOT propagate the user's shell env. We resolve PKB_MCP_URL
-# ourselves rather than relying on the launcher's `${VAR}` template substitution
-# (Cowork's userConfig path is broken and the env path is unreliable across
-# launchers — specs moved to brain PKB: framework-observability).
+# minimal PATH and do NOT propagate the user's shell env.
+#
+# On Claude, the plugin manifest declares a `userConfig.pkb_mcp_url` value that
+# Claude Code substitutes into this server's `env` block as PKB_MCP_URL — so the
+# URL arrives reliably via the launcher, no shell-env propagation required. On
+# Cowork the userConfig substitution path is unreliable and Gemini has no such
+# mechanism, so this script still resolves PKB_MCP_URL itself for those launchers.
+# (specs: brain PKB framework-observability.)
 #
 # Resolution order:
-#   1. inherited PKB_MCP_URL (works in dev shell launches)
+#   1. inherited PKB_MCP_URL (Claude userConfig env block; or dev shell launches)
 #   2. ~/.env.local (canonical user-config file used across academicOps)
 #   3. unset → hard fail (no silent fallback to broken local stdio)
 
