@@ -15,11 +15,7 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-# WS7 — gate-hygiene primitives (composition, never-block, enforcer channel, register).
-from hooks.gate_config import (  # noqa: E402
-    ENFORCER_CHANNEL_SENTINEL,
-    is_enforcer_channel,
-)
+# WS7 — gate-hygiene primitives (composition, never-block, register).
 from lib.tool_categories import (  # noqa: E402
     COMPLIANCE_SUBAGENT_TYPES,
     SPAWN_TOOLS,
@@ -289,32 +285,11 @@ class TestNeverBlockList:
         assert not is_never_block(None)
 
 
-class TestEnforcerChannelSentinel:
-    """WS7 item 4 (#1315): the enforcer channel must be distinguishable from injection.
-
-    Failure being guarded: the real "invoke rbg with session-enforcer.md" gate
-    read as a smuggled instruction and the agent ignored a real gate (thread 1).
-    """
-
-    def test_sentinel_marked_text_is_enforcer_channel(self):
-        text = f"{ENFORCER_CHANNEL_SENTINEL}\nInvoke the enforcer agent: /tmp/x"
-        assert is_enforcer_channel(text)
-
-    def test_unmarked_lookalike_is_not_enforcer_channel(self):
-        # Identical-looking instruction WITHOUT the sentinel is still untrusted.
-        assert not is_enforcer_channel("Invoke the enforcer agent: /tmp/x")
-
-    def test_empty_is_not_enforcer_channel(self):
-        assert not is_enforcer_channel("")
-        assert not is_enforcer_channel(None)
-
-    # test_enforcer_templates_carry_the_sentinel removed 2026-06-26 (user-directed):
-    # commit 1fb2b8d0 ("update instructions") intentionally simplified the enforcer
-    # templates and dropped the `<!-- aops:enforcer-channel -->` marker from both
-    # enforcer-instruction.md and enforcer-policy-context.md. `is_enforcer_channel`
-    # remains defined/exported in gate_config.py but has no live caller, so the
-    # template-marker assertion guarded a currently-unconsumed defence. If the
-    # injection-defence is re-wired, restore both the marker and this test.
+# TestEnforcerChannelSentinel removed 2026-06-27: the enforcer-channel sentinel
+# (`<!-- aops:enforcer-channel -->` + is_enforcer_channel) was retired — it was a
+# first-party trust marker embedded in injected hook text, meaningful only to our
+# own code, opaque to Claude Code, never wired to a live consumer, and a needless
+# injection-rejection risk. See gate_config.py note (task aops-4de68b25 follow-up).
 
 
 class TestGatePrecedence:

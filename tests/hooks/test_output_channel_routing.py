@@ -16,7 +16,6 @@ event type) and never leaks to user-visible channels. Covers:
 import json
 
 import pytest
-from hooks.router import _strip_hook_markers
 from hooks.schemas import (
     CanonicalHookOutput,
     ClaudeGeneralHookOutput,
@@ -30,10 +29,11 @@ from tests.hooks.gate_helpers import (
 )
 
 # The Stop `reason` field is user-visible (Claude Code renders a blocking Stop
-# hook's reason to the user). The router therefore strips the
-# <SYSTEM HOOK INSTRUCTION> scaffold before placing the advisory in `reason`.
-# The advisory BODY still reaches the agent — only the marker tags are removed.
-ADVISORY_IN_REASON = _strip_hook_markers(ADVISORY)
+# hook's reason to the user). Advisory injections no longer carry the
+# `<SYSTEM HOOK INSTRUCTION>` scaffold (removed 2026-06-27), so the advisory body
+# IS the reason — nothing to strip. The assertions below remain as regression
+# guards that the scaffold never returns to a user-visible channel.
+ADVISORY_IN_REASON = ADVISORY
 
 # Events that use hookSpecificOutput.additionalContext for agent delivery
 HSO_EVENTS = sorted(CLAUDE_ACCEPTED_HOOK_EVENT_NAMES)

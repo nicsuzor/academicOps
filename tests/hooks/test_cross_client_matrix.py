@@ -64,16 +64,17 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks import client_spec  # noqa: E402
-from hooks.router import HookRouter, _strip_hook_markers  # noqa: E402
+from hooks.router import HookRouter  # noqa: E402
 from hooks.schemas import CanonicalHookOutput  # noqa: E402
 
 from tests.hooks.agy_accept_contract import is_accepted_by_agy  # noqa: E402
 
-# The advisory the gate layer injects (agent-only), with the framework trust
-# markers. Reused from gate_helpers' shape so the matrix exercises a real
-# marked advisory, not a toy string.
-ADVISORY = "<SYSTEM HOOK INSTRUCTION>provide evidence for EACH claim.</SYSTEM HOOK INSTRUCTION>"
-ADVISORY_BODY = _strip_hook_markers(ADVISORY)
+# The advisory the gate layer injects (agent-only). The `<SYSTEM HOOK INSTRUCTION>`
+# scaffold was removed 2026-06-27, so the advisory is plain text; ADVISORY_BODY
+# is retained as an alias for the rows below. The "marker not in user channel"
+# assertion stays as a regression guard that the scaffold never returns.
+ADVISORY = "provide evidence for EACH claim."
+ADVISORY_BODY = ADVISORY
 USER_MSG = "Handover required before stop"
 
 

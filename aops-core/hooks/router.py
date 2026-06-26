@@ -69,21 +69,17 @@ except ImportError as e:
 
 DEBUG_LOG_DIR = Path("/tmp")
 
-# Advisory text destined for the agent is wrapped in these markers by the gate
-# engine (lib/gates/engine.py). They are a model-facing signal only — nothing
-# parses them. On channels that are ALSO user-visible (the Stop `reason` field,
-# which Claude Code renders to the user as a notice), the raw tags read as a
-# system dump, so we strip them before display. Agent-only channels
-# (hookSpecificOutput.additionalContext) keep the markers intact.
-_HOOK_MARKER_OPEN = "<SYSTEM HOOK INSTRUCTION>"
-_HOOK_MARKER_CLOSE = "</SYSTEM HOOK INSTRUCTION>"
 
+def _clean_advisory(text: str | None) -> str | None:
+    """None-safe whitespace trim for advisory / reason text.
 
-def _strip_hook_markers(text: str | None) -> str | None:
-    """Remove the <SYSTEM HOOK INSTRUCTION> scaffold from user-visible text."""
-    if not text:
-        return text
-    return text.replace(_HOOK_MARKER_OPEN, "").replace(_HOOK_MARKER_CLOSE, "").strip()
+    The legacy `<SYSTEM HOOK INSTRUCTION>` marker scaffold was removed
+    2026-06-27 (see lib/gates/engine.py): it meant nothing to Claude Code, read
+    as a smuggled system instruction, and risked tripping the client's own
+    hook-injection rejection. Advisory text now stands on its own, so there is
+    nothing to strip but surrounding whitespace.
+    """
+    return text.strip() if text else text
 
 
 def _debug_log_path(session_id: str | None) -> Path:
@@ -920,7 +916,7 @@ class HookRouter:
             # so the advisory reads as a clean notice rather than a raw system
             # dump. hookSpecificOutput.additionalContext IS agent-only, so it
             # keeps the markers intact (the gate's trust framing).
-            agent_reason = _strip_hook_markers(ctx_inj)
+            agent_reason = _clean_advisory(ctx_inj)
 
             if result.verdict == "deny":
                 # Enforcement path: must HALT the agent.
@@ -1035,8 +1031,8 @@ class HookRouter:
         # "ask" cannot prompt in a headless agy run, so the safe, enforcing
         # interpretation of a gate that wanted to stop-and-confirm is to block.
         is_block = verdict in ("deny", "ask")
-        advisory = _strip_hook_markers(result.context_injection)
-        short_reason = _strip_hook_markers(result.system_message)
+        advisory = _clean_advisory(result.context_injection)
+        short_reason = _clean_advisory(result.system_message)
 
         if event == "PreToolUse":
             # PreToolHookResult only supports allowTool and denyReason.

@@ -5,13 +5,9 @@ category: template
 description: |
   Full context injection when the rbg-review gate blocks Stop. Instructs the
   main agent to dispatch the rbg axiom-review subagent for the SESSION before a
-  task-bound (polecat/crew) session is allowed to exit. Carries the
-  enforcer-channel sentinel so the injection
-  defence treats this as a first-party gate instruction, not smuggled input
-  (#1315). Variables: {temp_path} — path to the rendered session-review file.
+  task-bound (polecat/crew) session is allowed to exit.
+  Variables: {temp_path} — path to the rendered session-review file.
 ---
-
-<!-- aops:enforcer-channel -->
 
 <academicOps rbg-review gate>
 ⚖ **Final axiom audit required before this task-bound session exits.** This session has not yet been audited by **rbg** (the axiom judge). This is the end-of-session backstop for autonomous/task-bound (polecat/crew) work — the in-session enforcer cadence already ran; this is the final check. You cannot stop until rbg has run and returned a verdict.

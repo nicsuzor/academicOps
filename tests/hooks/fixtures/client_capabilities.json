@@ -72,18 +72,19 @@
       "client": "claude",
       "wire_event": "Stop",
       "group": "claude-stop",
-      "hypothesis": "Stop additionalContext (no block): agent-only (C\u2713 P\u2713), user\u2717, continues.",
+      "hypothesis": "Stop additionalContext (no block): agent sees (C\u2713 P\u2713), continues. USER-visibility NOT headless-observable (see note).",
       "signal": {
         "accepted": true,
         "agent_saw": true,
         "blocked": null,
         "continued": true,
-        "user_saw": false,
+        "user_saw": null,
         "persisted": false,
-        "note": "num_turns=2; persist_samples=2 recalled=False; user_saw(neutral)=False"
+        "note": "num_turns=2; persist_samples=2 recalled=False. user_saw was previously recorded False but that was an ARTIFACT: the headless probe measures `sentinel in rt3` where rt3 is the `claude -p` JSON result envelope (the model's reply text), which structurally cannot contain a hook's additionalContext regardless of TTY rendering. So False was guaranteed by construction, not observed. Per the harness convention (Signal.user_saw docstring), a channel the headless probe cannot observe must be null, not False. DOCUMENTED + HUMAN-VERIFIED 2026-06-26: the official Claude Code hooks docs (code.claude.com/docs/en/hooks.md, Stop section) state Stop additionalContext is `shown as 'Stop hook feedback' in transcript` \u2014 user-visible BY DESIGN. Confirmed live (interactive `claude` TTY, IDA_GATE_MODE=warn): the TUI renders it as a `Stop hook feedback:` notice ALONGSIDE the short systemMessage, so the real interactive value is user_saw=TRUE. The U? in table_cell is the HEADLESS harness's blindness, not genuine ambiguity. Needs a PTY/tmux oracle to measure in-harness."
       },
-      "table_cell": "Stop advisory WARN \u00b7 Claude additionalContext U\u2717 C\u2713 P\u2713",
-      "claim_user_saw": false,
+      "table_cell": "Stop advisory WARN \u00b7 Claude additionalContext U? (headless-blind; U\u2713 human-verified) C\u2713 P\u2713",
+      "claim_user_saw": null,
+      "claim_user_saw_human_verified": true,
       "claim_agent_saw": true,
       "claim_persisted": null,
       "claim_blocked": null

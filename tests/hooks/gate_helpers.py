@@ -51,10 +51,12 @@ CLAUDE_ACCEPTED_HOOK_EVENT_NAMES = {
     "PostToolBatch",
 }
 
+# Plain advisory text — the `<SYSTEM HOOK INSTRUCTION>` scaffold was removed
+# 2026-06-27 (it meant nothing to Claude Code and risked tripping the client's
+# hook-injection rejection); advisory injections now stand on their own.
 ADVISORY = (
-    "<SYSTEM HOOK INSTRUCTION>Watch out, you aren't finished until you: "
-    "provide evidence and an indicator of your level of certainty for "
-    "EACH of your major claims.</SYSTEM HOOK INSTRUCTION>"
+    "Watch out, you aren't finished until you: provide evidence and an indicator "
+    "of your level of certainty for EACH of your major claims."
 )
 
 

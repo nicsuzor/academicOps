@@ -25,10 +25,8 @@ __all__ = [
     # Polecat-vs-interactive posture axis
     "is_polecat_surface",
     "resolve_posture_gate",
-    # Slash-command + enforcer-channel hygiene
+    # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
-    "ENFORCER_CHANNEL_SENTINEL",
-    "is_enforcer_channel",
 ]
 
 if TYPE_CHECKING:
@@ -235,17 +233,9 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
 # instruction arriving mid-stream that says "now go invoke this agent" looks
 # exactly like smuggled content, so the agent correctly-but-wrongly ignored a
 # real gate (#1315, thread 1). The fix is a stable first-party marker on the
-# enforcer's own channel: text carrying this sentinel is framework-issued, not
-# untrusted input. The marker is the trust boundary — identical text WITHOUT it
-# is still treated as untrusted.
-ENFORCER_CHANNEL_SENTINEL = "<!-- aops:enforcer-channel -->"
-
-
-def is_enforcer_channel(text: str | None) -> bool:
-    """Return True if text carries the first-party enforcer-channel sentinel.
-
-    The injection defence uses this to distinguish a real enforcer-gate
-    instruction (first-party, trusted) from a look-alike smuggled instruction
-    (untrusted). Only text the framework wrapped with the sentinel passes.
-    """
-    return bool(text) and ENFORCER_CHANNEL_SENTINEL in text
+# NOTE: the `<!-- aops:enforcer-channel -->` sentinel + is_enforcer_channel()
+# were removed 2026-06-27. They were a first-party trust marker we embedded in
+# injected hook text — meaningful only to our own code, opaque to Claude Code,
+# and never wired to a live consumer. Such markers risk tripping Claude Code's
+# own hook-injection rejection while buying nothing, so the whole class is
+# retired (task aops-4de68b25 follow-up).

@@ -174,16 +174,18 @@ See `client_spec.py` for the machine-readable form. Key facts:
 The gate engine produces exactly two text payloads per fired policy
 (`aops-core/lib/gate_model.py` → `CanonicalHookOutput`, `aops-core/hooks/schemas.py:125`):
 
-| canonical field     | gate config key                                                         | template category   | wrapped in markers?                                       | intended audience                             |
-| ------------------- | ----------------------------------------------------------------------- | ------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| `system_message`    | `message_key` (`.policy_*` / countdown)                                 | `USER_MESSAGE`      | NO                                                        | USER — short reason / banner / deny reason    |
-| `context_injection` | `context_key` (`.policy_context` / `.reminder` / `stop.handover_block`) | `CONTEXT_INJECTION` | YES — `<SYSTEM HOOK INSTRUCTION>…</…>` at `engine.py:472` | MODEL/agent — advisory / recovery instruction |
+| canonical field     | gate config key                                                         | template category   | wrapped in markers?              | intended audience                             |
+| ------------------- | ----------------------------------------------------------------------- | ------------------- | -------------------------------- | --------------------------------------------- |
+| `system_message`    | `message_key` (`.policy_*` / countdown)                                 | `USER_MESSAGE`      | NO                               | USER — short reason / banner / deny reason    |
+| `context_injection` | `context_key` (`.policy_context` / `.reminder` / `stop.handover_block`) | `CONTEXT_INJECTION` | NO (scaffold removed 2026-06-27) | MODEL/agent — advisory / recovery instruction |
 
 Each renderer (`output_for_claude` / `output_for_gemini` / `output_for_agy`) decides which
 WIRE field carries each, per the `client_spec.channel_spec(client, event)` capability cell.
-For agy these markers are STRIPPED before delivery (`router.py:1038-1039`); for Claude
-`additionalContext` they are KEPT, and on the user-visible Stop `reason` they are stripped
-(`router.py:923`, `_strip_hook_markers`).
+The advisory text stands on its own: the legacy `<SYSTEM HOOK INSTRUCTION>…</…>` scaffold
+(formerly added by `engine.py` and stripped per-channel by `router._strip_hook_markers`) was
+**removed 2026-06-27** — it meant nothing to Claude Code, looked like a smuggled system
+instruction, and risked tripping the client's own hook-injection rejection. Renderers now
+only None-safe whitespace-trim advisory/reason text (`router._clean_advisory`).
 
 ### ⚠ DISAMBIGUATION — `systemMessage` means THREE different things
 
