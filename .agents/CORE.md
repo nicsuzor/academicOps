@@ -40,11 +40,7 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Junior, Ida, polecats, subagents) — not duplicated into individual agent definitions.
 
 - **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
-- **PKB-HALT**: If a PKB operation is needed and the required MCP verb is not available, **STOP immediately**. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via `create_task`. Do NOT invent a shell-out, an SSH escape, a file write, or any other workaround — routing around the PKB MCP is a security incident (aops-18572bc0 §5).
-
-## PKB Rules
-
-If a PKB operation is needed and the MCP verb does not exist, HALT and report. Do not invent a shell-out, an SSH escape, or a file write. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via the existing `create_task` verb. The 2026-05-19 incident established that routing around the PKB MCP is a security incident — see [[aops-18572bc0]] §5.
+- **PKB-HALT**: If a PKB operation is needed and the required MCP verb is not available, **STOP immediately**. Emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript and file a follow-up task via `create_task`. Do NOT invent a shell-out, an SSH escape, a file write, or any other workaround — routing around the PKB MCP is a security incident (aops-18572bc0 §5; the 2026-05-19 incident established this).
 
 ## Key Components
 
