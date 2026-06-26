@@ -22,6 +22,8 @@ __all__ = [
     "RBG_REVIEW_GATE_MODE",
     "ENFORCER_TOOL_CALL_THRESHOLD",
     "RBG_REVIEW_DEGRADE_THRESHOLD",
+    # Polecat-vs-interactive posture axis
+    "is_polecat_surface",
     # Slash-command + enforcer-channel hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
     "ENFORCER_CHANNEL_SENTINEL",
@@ -72,6 +74,34 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
     r"<command-name>\s*/[a-zA-Z0-9_-]+\s*</command-name>",  # Claude Code slash command (skill invocation)
     r"^\s*#\s*/(?:end[-_]session|dump|remember|planner)\b",  # Gemini CLI slash-command injection (e.g. "# /dump …")
 ]
+
+# =============================================================================
+# POLECAT-vs-INTERACTIVE POSTURE AXIS
+# =============================================================================
+# The single structural signal that separates the two registers the framework
+# runs in: autonomous polecat (drive-to-done) vs interactive (hold between
+# steps). It is NOT a session_type classifier and NOT a launch-time
+# autonomous/interactive mode switch (both explicitly rejected — spec
+# mem-438429c5 §6). The polecat dispatcher (polecat/cli.py) marks every
+# polecat/crew container with AOPS_POLECAT_CONTAINER=1 (aops-b368109a) and
+# stages the per-surface gate posture as *_GATE_MODE env vars resolved from
+# polecat.yaml. The bare interactive host (junior/ida) carries neither, and so
+# is — by definition — NOT a polecat surface. The POSTURE gates (handover, ida)
+# resolve their block/warn/deny mode off this axis.
+
+
+def is_polecat_surface() -> bool:
+    """True iff this session runs on an autonomous polecat (or crew) surface.
+
+    The sole structural discriminator for the polecat-vs-interactive posture
+    axis. The dispatcher sets AOPS_POLECAT_CONTAINER=1 inside every polecat /
+    crew container; a bare interactive host session never has it. Posture
+    resolution keys on this to decide whether an unconfigured posture gate
+    fails loudly (polecat — misconfig) or resolves to the interactive posture
+    (non-polecat).
+    """
+    return os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
+
 
 # =============================================================================
 # GATE MODES

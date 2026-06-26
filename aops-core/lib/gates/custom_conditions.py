@@ -94,22 +94,29 @@ def check_custom_condition(
         # IDA gate trigger: fires when IDA mode is warn or block (not off).
         # Used by the AskUserQuestion trigger which must never deny — the
         # trigger delivers advisory context injection only (GateResult.allow).
-        mode = os.environ.get("IDA_GATE_MODE", "warn")  # allow-fallback: optional
-        return mode in ("warn", "block", "deny")
+        # Posture resolves via gate_config (the polecat-vs-not posture axis),
+        # the same mechanism the handover gate uses — NOT a bare os.environ read.
+        from hooks.gate_config import IDA_GATE_MODE
+
+        return IDA_GATE_MODE in ("warn", "block", "deny")
 
     if name == "is_ida_block_mode":
         # IDA gate policy: active only when IDA_GATE_MODE is blocking.
         # Separating block vs warn into distinct policies lets each choose
         # appropriate message channels (context_key vs message_key) so
         # warn mode doesn't inadvertently upgrade Stop to decision=block.
-        return os.environ.get("IDA_GATE_MODE", "warn") in ("block", "deny")
+        from hooks.gate_config import IDA_GATE_MODE
+
+        return IDA_GATE_MODE in ("block", "deny")
 
     if name == "is_ida_warn_mode":
         # IDA gate policy: active only when IDA_GATE_MODE is warn.
         # Warn mode delivers the advisory via system_message only (user-visible)
         # rather than context_injection, so output_for_claude does not upgrade
         # the WARN verdict to decision=block for the Stop hook.
-        return os.environ.get("IDA_GATE_MODE", "warn") == "warn"
+        from hooks.gate_config import IDA_GATE_MODE
+
+        return IDA_GATE_MODE == "warn"
 
     if name == "is_qa_block_mode":
         # QA gate policy: active only when QA_GATE_MODE is blocking.
