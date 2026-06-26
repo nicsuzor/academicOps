@@ -13,6 +13,8 @@ created: 2026-06-26
 
 **Status**: Approved (Nic, 2026-06-26). Design-dialogue origin and provenance record: [[mem-438429c5]] (consolidates decisions [[mem-47da1659]], [[mem-d241b0c2]], [[mem-f164fc68]] and the supervision-architecture note [[note-36c15a69]]; mechanism note [[mem-e7b976da]]). This spec file is the SSoT going forward; the note remains the dated provenance trail. Reconciled through two strategic-review rounds (rbg + pauli + marsha → james) plus a direct design dialogue with Nic.
 
+> **Doctrine revision (Nic, 2026-06-26, supersedes the shared-skill design below).** Agents are **not subclassable**. The original design extracted the co-working disposition + quality floor into a single `interactive-coordinator` skill that both Junior and Ida referenced, with Ida written as Junior's "thin sibling" — that is subclassing, and it makes the agents non-portable and forces a leaky conditional (framework-coupled floor items kept "conditional" in a skill a stranger repo would load). New rule: **disposition lives in the agent definition; each head agent is fully self-contained and carries its own disposition inline** (duplicated prose across Junior and Ida is the accepted cost of self-containment). The `interactive-coordinator` skill is **deleted**. Reusable _procedures_ (dispatch mechanics, supervision, task lifecycle) stay where they already are — `/supervisor`, `/dispatch`, `/task-lifecycle` — and agents invoke them; that is not subclassing. Universal safety stays in the session-start SSoT only because it must reach agent-less surfaces (polecats), not for DRY. Sections below that describe the shared `interactive-coordinator` skill are retained for provenance but are superseded by this note.
+
 ## User Story
 
 **As** a person co-working live, step-by-step, in a single local repo with the framework's head agent (Junior in the framework, Ida in a research repo),
@@ -30,22 +32,22 @@ created: 2026-06-26
 1. [ ] In an interactive (non-polecat) session, the agent **holds between steps** — the user drives the sequence — and does not front-run a plan or chase "land the plane".
 2. [ ] In an interactive session, the agent **does not deflect a self-answerable question to the user** (the #1974/#1975 failure); it answers from its own means (read a file, confirm a fact) or delegates substantive work for context hygiene.
 3. [ ] The **autonomous drive-to-completion** behaviour fires **only on the polecat surface**, not on every Junior session.
-4. [ ] The **quality floor** (did what was asked / saved + committed / checked assumptions / gave references + confidence / did not stop short) applies to **both** Junior and Ida, sourced from **one shared skill**, not a copied block.
+4. [ ] The **quality floor** (did what was asked / saved + committed / checked assumptions / gave references + confidence / did not stop short) is carried **in full by each agent's own definition** — Junior and Ida are each self-contained. Duplicated prose is the accepted cost; agents are not subclassed off a shared disposition block. _(Revised 2026-06-26 — was "sourced from one shared skill".)_
 5. [ ] **Safety Invariants + PKB-HALT** are injected once from the **session-start SSoT** and reach **every** surface including polecats; no per-agent copy remains in `junior.md` or `ida.md`.
 6. [ ] On the interactive path the handover gate is **soft block-once-then-release** (deliver once via the non-blocking agent-visible Stop channel, then open the gate); on the polecat path it is **hard block-until-resolved**.
 7. [ ] The **honesty floor stays every-turn, revisable, and never silent** — preserved exactly as it runs on the branch today.
 8. [ ] Hook posture (block/warn) is **resolved per-surface from `polecat.yaml`** via an explicit named "is this a polecat surface?" resolver; an unconfigured **posture** surface fails loudly (halt-on-unresolved), never silently blocks.
-9. [ ] Ida is a **thin sibling**: it references the universal safety SSoT + the shared interactive-coordinator skill and adds only the research dispatch default (local-delegate-and-wait) + the academic disposition; it is auto-selected per research repo via `"agent": "ida"` in `.claude/settings.json`.
+9. [ ] Ida is a **self-contained agent**: it carries its full co-working disposition, quality floor, and academic disposition **inline** — it does not reference Junior or a shared disposition skill. It adds the research dispatch default (local-delegate-and-wait); auto-selected per research repo via `"agent": "ida"` in `.claude/settings.json`. _(Revised 2026-06-26 — was "thin sibling references the shared skill".)_
 
 ### Failure Modes (if ANY occur, the implementation is WRONG)
 
 1. [ ] A hard Stop-gate BLOCK fires on a legitimately-held interactive turn (reconstructs #1978).
-2. [ ] The quality floor or the safety prose is **extracted but the inline copy is left in `junior.md`** (recreates the rbg-F1 duplication this spec exists to kill).
+2. [ ] An agent is written as a **diff against another agent** — "near-twin / inherits / do not duplicate" framing, or a reference to a shared disposition skill in place of carrying its own disposition. _(Revised 2026-06-26: self-containment now overrides the no-duplication goal for agent disposition; the forbidden thing is subclassing, not duplication.)_
 3. [ ] `junior.md`'s safety copy is removed **before** session-start injection is _observed_ reaching a real polecat transcript — opening a window where polecat-Junior boots with zero safety prose.
 4. [ ] The "no code-level gate-mode defaults" change touches a **safety** gate (`SENTINEL_GATE_MODE`, `RBG_REVIEW_GATE_MODE`, etc.), silently disabling a fail-safe. The rule is fenced to the two **posture** gates only.
 5. [ ] "Fail loudly" is implemented as silent-allow (fail-open) on a safety gate — the forbidden failure is silent-_allow_, not silent-block.
 6. [ ] The non-polecat surface is handled by a literal "remove default, else error" that either errors out or re-blocks interactive sessions, instead of an explicit named resolver branch.
-7. [ ] The PKB-curation / save-progress-to-task items are baked **unconditionally** into the shared skill that stranger-repo Ida always loads (re-introduces the SSoT leak `note-36c15a69` exists to prevent) instead of being kept conditional/framework-coupled.
+7. [ ] _(Obsolete after the 2026-06-26 revision — there is no shared skill.)_ The PKB-curation / save-progress floor is fine to state plainly in each agent: both Junior and Ida are framework agents (they carry the PKB MCP tools), so they always operate in the framework context — no "conditional" leak to guard against.
 8. [ ] A replacement transcript sentinel is added, or new tests are added, in the hook PR (out of scope — see below).
 
 ---
