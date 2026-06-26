@@ -94,6 +94,48 @@ PY
     then
         echo "WARN: failed to seed pkb_mcp_url into settings.json; pkb MCP may not connect." >&2
     fi
+
+    # Inject PKB_MCP_URL into Antigravity (agy) MCP config.
+    #
+    # Antigravity is unlike Claude: its mcp_config.json supports a per-server
+    # `env` block, but it does NOT expand `${VAR}` references (unlike Gemini CLI)
+    # and has no plugin userConfig mechanism. So neither the Claude userConfig
+    # path nor Gemini's `${PKB_MCP_URL}` form works — we must write the LITERAL
+    # resolved URL into the pkb server's `env` block. agy installs the plugin to
+    # two locations (the source plugin dir under antigravity-cli/plugins and the
+    # registered copy under config/plugins); patch every aops-core mcp_config.json
+    # that declares a pkb server so whichever agy reads is covered.
+    # agy reads its config from <GEMINI_CLI_HOME>/.gemini (polecat sets
+    # GEMINI_CLI_HOME=/home/worker in-container); fall back to $HOME/.gemini.
+    # Glob from the .gemini dir itself — Python's recursive `**` does NOT descend
+    # into hidden directories, so rooting at the dotdir is required to reach the
+    # baked plugins.
+    if [ -n "$GEMINI_CLI_HOME" ]; then
+        AGY_GEMINI_DIR="$GEMINI_CLI_HOME/.gemini"
+    else
+        AGY_GEMINI_DIR="$HOME/.gemini"
+    fi
+    PKB_MCP_URL="$PKB_MCP_URL" AGY_GEMINI_DIR="$AGY_GEMINI_DIR" python3 - <<'PY' || echo "WARN: failed to inject PKB_MCP_URL into agy mcp_config.json; agy pkb MCP may not connect." >&2
+import glob, json, os, sys
+
+url = os.environ["PKB_MCP_URL"]
+home = os.environ["AGY_GEMINI_DIR"]
+patched = 0
+for path in glob.glob(f"{home}/**/mcp_config.json", recursive=True):
+    try:
+        data = json.loads(open(path).read())
+    except (OSError, ValueError):
+        continue
+    pkb = data.get("mcpServers", {}).get("pkb")
+    if not isinstance(pkb, dict):
+        continue
+    pkb.setdefault("env", {})["PKB_MCP_URL"] = url
+    open(path, "w").write(json.dumps(data, indent=2) + "\n")
+    print(f"Injected literal PKB_MCP_URL into {path} (mcpServers.pkb.env)", file=sys.stderr)
+    patched += 1
+if patched == 0:
+    print("Note: no agy mcp_config.json with a pkb server found (non-agy image?).", file=sys.stderr)
+PY
 fi
 
 # Execute the agent command (e.g., claude, gemini, bash).
