@@ -8,10 +8,19 @@ Tests the three-component design:
      (ida.askuserquestion_reminder) into the agent's context at the moment the
      blocker is manufactured — regardless of gate open/closed state.
 
-Hard constraint (verified): AskUserQuestion is NEVER denied on any path.
+Hard constraint: AskUserQuestion is never denied. This holds NOT because each
+gate is individually checked, but because the gate engine consults the global
+``is_never_block`` list before emitting any deny/block on a PreToolUse tool, and
+no individual gate may override that list (lib/tool_categories.py). The
+structural proof of the class-wide guarantee is
+``test_askuserquestion_globally_never_block``; the IDA-mode sweep below
+additionally verifies the IDA gate honours it across warn/block/deny.
 """
 
 from __future__ import annotations
+
+from lib.template_registry import TemplateRegistry
+from lib.tool_categories import is_never_block
 
 from tests.hooks.gate_helpers import (
     GateStatus,
@@ -22,7 +31,17 @@ from tests.hooks.gate_helpers import (
     set_gate_modes,
 )
 
-_CAPABILITY_MARKER = "capability"  # present in ida-askuserquestion-reminder.md
+# Structural identity, not a prose token: the AskUserQuestion trigger injects the
+# rendered content of context_key "ida.askuserquestion_reminder" (definitions.py).
+# Assert against that render — never a substring like "capability" — so the
+# advisory wording stays free to change without breaking the routing test
+# ({#judgment-non-delegable}).
+_AUQ_CONTEXT_KEY = "ida.askuserquestion_reminder"
+
+
+def _rendered_auq_advisory() -> str:
+    """The exact text the AskUserQuestion advisory template renders to."""
+    return TemplateRegistry.instance().render(_AUQ_CONTEXT_KEY, {})
 
 
 def _auq_pretool_ctx(session_id: str = "test-ida-auq") -> HookContext:
@@ -68,8 +87,9 @@ class TestIdaAskUserQuestionAdvisoryInject:
             "IDA active: AskUserQuestion must receive capability-verification advisory "
             f"in context_injection. Got: {result!r}"
         )
-        assert _CAPABILITY_MARKER in result.context_injection, (
-            f"Advisory must contain '{_CAPABILITY_MARKER}'. Got: {result.context_injection!r}"
+        assert result.context_injection == _rendered_auq_advisory(), (
+            "Injected advisory must be the rendered ida.askuserquestion_reminder "
+            f"template, not arbitrary text. Got: {result.context_injection!r}"
         )
 
     def test_askuserquestion_injects_advisory_in_block_mode(self, router, monkeypatch):
@@ -87,10 +107,16 @@ class TestIdaAskUserQuestionAdvisoryInject:
             "IDA block mode: AskUserQuestion must still receive advisory (not a deny). "
             f"Got: {result!r}"
         )
-        assert _CAPABILITY_MARKER in result.context_injection
+        assert result.context_injection == _rendered_auq_advisory()
 
-    def test_askuserquestion_never_denied(self, router, monkeypatch):
-        """Hard constraint: AskUserQuestion must NEVER receive a deny/block verdict."""
+    def test_askuserquestion_never_denied_across_ida_modes(self, router, monkeypatch):
+        """The IDA gate never denies AskUserQuestion, across every IDA mode.
+
+        Scoped deliberately to the IDA gate. The class-wide guarantee ("never
+        denied on ANY path — all gates, all clients") is not provable by
+        enumerating gates here; it is proved structurally at its chokepoint by
+        ``test_askuserquestion_globally_never_block``.
+        """
         for mode in ("warn", "block", "deny"):
             set_gate_modes(monkeypatch, ida=mode)
             reinit_gates_with_defaults()
@@ -103,9 +129,24 @@ class TestIdaAskUserQuestionAdvisoryInject:
             verdict = getattr(result, "verdict", None)
             verdict_value = getattr(verdict, "value", verdict) if verdict else None
             assert verdict_value not in ("deny", "block"), (
-                f"AskUserQuestion must NEVER be denied (ida mode={mode!r}). "
+                f"IDA gate must NEVER deny AskUserQuestion (ida mode={mode!r}). "
                 f"Got verdict={verdict_value!r}, result={result!r}"
             )
+
+    def test_askuserquestion_globally_never_block(self):
+        """Structural proof of the class-wide claim: NO gate can deny AskUserQuestion.
+
+        "AskUserQuestion is never denied on any path" is true not because each
+        gate/mode/client is enumerated, but because the gate engine consults the
+        global ``is_never_block`` list before emitting any deny/block on a
+        PreToolUse tool, and no individual gate may override it
+        (lib/tool_categories.py; engine.py PreToolUse guard). Asserting that
+        chokepoint invariant proves the universal claim over the whole class.
+        """
+        assert is_never_block("AskUserQuestion"), (
+            "AskUserQuestion must be in the global never-block set — that single "
+            "guard is what makes 'never denied on any path' true across all gates."
+        )
 
     def test_askuserquestion_no_advisory_when_ida_off(self, router, monkeypatch):
         """IDA off: AskUserQuestion gets no advisory injection."""
@@ -118,10 +159,8 @@ class TestIdaAskUserQuestionAdvisoryInject:
         result = router._dispatch_gates(ctx, state)
 
         if result is not None:
-            assert (
-                not result.context_injection or _CAPABILITY_MARKER not in result.context_injection
-            ), (
-                "IDA off: capability advisory must NOT be injected. "
+            assert result.context_injection != _rendered_auq_advisory(), (
+                "IDA off: the capability advisory must NOT be injected. "
                 f"Got: {result.context_injection!r}"
             )
 
@@ -136,7 +175,7 @@ class TestIdaAskUserQuestionAdvisoryInject:
         ctx = _auq_pretool_ctx("test-auq-closed")
         result_closed = router._dispatch_gates(ctx, state_closed)
         assert result_closed is not None and result_closed.context_injection
-        assert _CAPABILITY_MARKER in result_closed.context_injection
+        assert result_closed.context_injection == _rendered_auq_advisory()
 
         # Test when gate is OPEN (after a Stop fire-once)
         state_open = make_gate_trigger_state("ida")
@@ -144,7 +183,7 @@ class TestIdaAskUserQuestionAdvisoryInject:
         ctx_open = _auq_pretool_ctx("test-auq-open")
         result_open = router._dispatch_gates(ctx_open, state_open)
         assert result_open is not None and result_open.context_injection
-        assert _CAPABILITY_MARKER in result_open.context_injection
+        assert result_open.context_injection == _rendered_auq_advisory()
 
 
 # ---------------------------------------------------------------------------
