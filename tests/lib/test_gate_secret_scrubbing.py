@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from hooks.schemas import HookContext
 from lib.gates.custom_actions import create_audit_file
+from lib.hook_context import HookContext
 from lib.secret_redaction import REDACTED
 
 # A realistic env dump containing secrets

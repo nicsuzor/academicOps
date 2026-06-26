@@ -35,12 +35,6 @@ def _load_user_prompts():
 
 up = _load_user_prompts()
 
-STOP_HOOK_BOILERPLATE = (
-    "≡ **Before you stop — be honest:**\n"
-    "- Have you actually delivered what the user requested?\n"
-    "- Make sure you provide a final summary in dot points as the last message."
-)
-
 
 class TestFrontmatterTaskTitle:
     """transcript.py-side AC: generated frontmatter carries task_title."""
@@ -237,7 +231,6 @@ class TestNoisePrompts:
         [
             "",
             "   ",
-            STOP_HOOK_BOILERPLATE,
             "<system-reminder>do this</system-reminder>",
             "/daily",
             "y",
@@ -288,19 +281,11 @@ class TestRender:
         # No per-prompt heading for the collapsed session.
         assert "### Prompt" not in md
 
-    def test_stop_hook_prompt_dropped_in_interactive_session(self):
-        real = "Refactor user_prompts.py to separate workers from my prompts"
-        interactive = _thread(
-            self._start(10),
-            is_automated=False,
-            prompts=[_prompt(STOP_HOOK_BOILERPLATE), _prompt(real)],
-        )
-        md = "\n".join(up.render([interactive], "2026-06-06"))
-
-        assert real in md
-        assert "Before you stop" not in md
-        # Exactly one prompt survived the noise filter.
-        assert md.count("### Prompt") == 1
+    # (The former test_stop_hook_prompt_dropped_in_interactive_session was
+    # removed: the brittle "before you stop"/"be honest" substring filter it
+    # guarded no longer exists — spec mem-438429c5 §5.6. The honesty reminder is
+    # now kept until the deferred structural transcript-rendering fix
+    # (aops-884e4214); no replacement sentinel is added.)
 
     def test_interactive_session_retained_in_full(self):
         p1 = "First, audit the redaction path"
@@ -323,7 +308,7 @@ class TestRender:
         interactive = _thread(
             self._start(12),
             is_automated=False,
-            prompts=[_prompt("y"), _prompt(STOP_HOOK_BOILERPLATE)],
+            prompts=[_prompt("y"), _prompt("<system-reminder>do this</system-reminder>")],
         )
         md = "\n".join(up.render([interactive], "2026-06-06"))
         assert "### Prompt" not in md

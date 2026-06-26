@@ -21,10 +21,10 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
 

@@ -30,7 +30,9 @@ class TestUniversalRouter:
         # when running inside a Claude Code session (env leak into test)
         with patch.dict("os.environ", {"AOPS_SESSION_ID": ""}, clear=False):
             router_instance.session_data = {}  # Also clear cached session data
-            ctx = router_instance.normalize_input(raw, gemini_event="BeforeTool")
+            ctx = router_instance.normalize_input(
+                raw, gemini_event="BeforeTool", client_type="gemini"
+            )
 
         assert ctx.hook_event == "PreToolUse"
         assert ctx.tool_name == "read_file"

@@ -30,14 +30,15 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.gate_config import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 from hooks.router import HookRouter
-from hooks.schemas import CanonicalHookOutput, HookContext
+from hooks.schemas import CanonicalHookOutput
 from lib.gate_model import GateVerdict
 from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
+from lib.tool_categories import COMPLIANCE_SUBAGENT_TYPES, TOOL_CATEGORIES, get_tool_category
 
 # --- Fixture loading ---
 

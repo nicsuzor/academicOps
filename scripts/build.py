@@ -37,26 +37,24 @@ except ImportError as e:
     print(f"Sys Path: {sys.path}", file=sys.stderr)
     sys.exit(1)
 
+# The client-translation SSoT (Table 1 of specs/hooks/CLIENT-TRANSLATION.md):
+# event-name maps (both directions), valid wire events, registration shapes, and
+# cold-start timeout floors. Stdlib-only by design so the build imports it without
+# pulling in the hook runtime's deps. This REPLACES the three previously-divergent
+# copies of the event map (router.GEMINI_EVENT_MAP, the build's own
+# CLAUDE_TO_GEMINI_EVENTS + AGY_EVENT_MAP, scripts/transforms/hooks.py).
+sys.path.insert(0, str(SCRIPT_DIR.parent / "aops-core"))
+from hooks import client_spec  # noqa: E402
 
-# Event name mapping: Claude Code -> Gemini CLI
-CLAUDE_TO_GEMINI_EVENTS = {
-    "PreToolUse": "BeforeTool",
-    "PostToolUse": "AfterTool",
-    "UserPromptSubmit": "BeforeAgent",
-    "Stop": ["SessionEnd", "AfterAgent"],  # Stop needs both for unified router.py handling
-    # These are the same in both
-    "SessionStart": "SessionStart",
-    "SessionEnd": "SessionEnd",
-    "SubagentStart": "BeforeTool",  # Subagents are tools in Gemini
-    "SubagentStop": "AfterTool",  # Subagents are tools in Gemini
-    "PreCompact": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
-    "Notification": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
-    # Gemini-specific (keep as-is if present)
-    "BeforeTool": "BeforeTool",
-    "AfterTool": "AfterTool",
-    "BeforeAgent": "BeforeAgent",
-    "AfterAgent": "AfterAgent",
-}
+# Table 2 of specs/hooks/CLIENT-TRANSLATION.md, BUILD half (§P3b): the build-name
+# tool-NAME projection (Claude<->Gemini frontmatter maps + body-text tool-call
+# notation rewrites). Stdlib-only, same import-at-load contract as client_spec.
+# This REPLACES the build's inline GEMINI_TOOL_NAME_MAP / TOOL_NAME_MAP copies and
+# the body-text mapping/spawn-rewrite literals. NOTE: these are BUILD-frontmatter
+# names, deliberately distinct from the RUNTIME-emitted names in the same module
+# (e.g. Claude Agent/Task -> build writes activate_skill, runtime emits
+# invoke_agent/delegate_to_agent) — see tool_registry's build-projection header.
+from lib import tool_registry  # noqa: E402
 
 # Directory/file names that are local build detritus and must never be packaged
 # into a plugin artifact. mypy/ruff/pytest caches in particular contain files
@@ -376,14 +374,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         return
 
     src_hooks = config["hooks"]
-    VALID_GEMINI_EVENTS = (
-        "SessionStart",
-        "BeforeAgent",
-        "AfterAgent",
-        "BeforeTool",
-        "AfterTool",
-        "SessionEnd",
-    )
+    valid_gemini_events = client_spec.VALID_WIRE_EVENTS["gemini"]
     gemini_hooks: dict = {}
 
     for claude_event, hook_list in src_hooks.items():
@@ -391,14 +382,14 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         if claude_event.endswith("-disabled"):
             continue
 
-        # Map event name(s)
-        target_events = CLAUDE_TO_GEMINI_EVENTS.get(claude_event, [claude_event])
-        if isinstance(target_events, str):
-            target_events = [target_events]
+        # Map event name(s) via the SSoT. Events with no Gemini equivalent map to
+        # [] and are dropped (one internal event can fan out — Stop -> SessionEnd
+        # AND AfterAgent).
+        target_events = client_spec.to_wire_events("gemini", claude_event)
 
         for gemini_event in target_events:
             # Skip events that don't exist in Gemini
-            if gemini_event not in VALID_GEMINI_EVENTS:
+            if gemini_event not in valid_gemini_events:
                 print(f"  Skipping unsupported Gemini event: {gemini_event} (from {claude_event})")
                 continue
 
@@ -472,42 +463,6 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         print("Warning: hooks.json has no 'hooks' key")
         return
 
-    # Events that agy natively supports (no name transformation needed)
-    VALID_AGY_EVENTS = (
-        "PreToolUse",
-        "PostToolUse",
-        "PreInvocation",
-        "PostInvocation",
-    )
-
-    # Invocation/Stop events use a DIFFERENT registration shape than tool events.
-    # Per https://antigravity.google/docs/hooks#supported-events, the
-    # PreInvocation/PostInvocation (and Stop) handlers must be a FLAT handler list
-    # directly under the event key:
-    #     "PreInvocation": [{"type": "command", "command": "...", "timeout": N}]
-    # The matcher/hooks[] wrapper is ONLY for PreToolUse/PostToolUse. When the
-    # invocation events were wrapped in the tool-event shape, agy phantom-logged
-    # "executing command" (json_hook_caller.go:144) but never spawned the process
-    # — the PreInvocation context-injection hook silently never fired (the agy
-    # PreInvocation no-op symptom). Emitting the flat list makes the hook fire.
-    FLAT_LIST_AGY_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
-
-    # Claude Code events that must be renamed for agy compatibility
-    AGY_EVENT_MAP = {
-        "UserPromptSubmit": "PreInvocation",
-        "Stop": "PostInvocation",
-    }
-
-    # Defence-in-depth timeout floors for agy (ms). The real cold-start fix is the
-    # venv prebuild in `make install-agy`; this floor is a safety net so that if a
-    # venv prebuild is ever skipped/failed, the first PreToolUse cold `uv run`
-    # build does not blow the timeout and produce a spurious "Tool call denied by
-    # jsonhook__..." (aops-7697a478). With a warm venv the hook returns in <100ms,
-    # so a higher ceiling costs nothing in steady state.
-    AGY_TIMEOUT_FLOOR_MS = {
-        "PreToolUse": 15000,
-    }
-
     def _transform_hook(hook: dict, output_event: str) -> dict:
         """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
         new_hook = dict(hook)
@@ -521,8 +476,10 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
             cmd = f"{cmd} {output_event}"
             new_hook["command"] = cmd
         # Raise the timeout to the agy floor (defence-in-depth for cold-start;
-        # never lower an already-higher source value).
-        floor = AGY_TIMEOUT_FLOOR_MS.get(output_event)
+        # never lower an already-higher source value). The floor (agy PreToolUse =
+        # 15000ms, invariant #10) is a safety net for the first cold `uv run` venv
+        # build; with a warm venv the hook returns in <100ms. SSoT: client_spec.
+        floor = client_spec.timeout_floor_ms("agy", output_event)
         if floor is not None and new_hook.get("timeout", 0) < floor:
             new_hook["timeout"] = floor
         return new_hook
@@ -534,13 +491,23 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         if event.endswith("-disabled"):
             continue
 
-        # Rename Claude-only events to their agy equivalents
-        output_event = AGY_EVENT_MAP.get(event, event)
-
-        if output_event not in VALID_AGY_EVENTS:
+        # Map the internal/Claude event name to its agy wire event via the SSoT
+        # (UserPromptSubmit -> PreInvocation, Stop -> PostInvocation; tool events
+        # are identity). Events with no agy equivalent map to [] and are dropped.
+        # agy never fans out (each internal event -> exactly one wire event).
+        wire_events = client_spec.to_wire_events("agy", event)
+        if not wire_events:
             continue
+        output_event = wire_events[0]
 
-        if output_event in FLAT_LIST_AGY_EVENTS:
+        # Invocation/Stop events use a DIFFERENT registration shape than tool
+        # events (config_shape == "flat"): the handlers are a FLAT list directly
+        # under the event key, NOT the matcher/hooks[] wrapper (which is ONLY for
+        # PreToolUse/PostToolUse, invariant #9). When invocation events were
+        # wrapped in the tool-event shape, agy phantom-logged "executing command"
+        # but never spawned the process — the PreInvocation context-injection hook
+        # silently never fired. Emitting the flat list makes the hook fire.
+        if client_spec.config_shape("agy", output_event) == "flat":
             # FLAT handler list directly under the event key — no matcher/hooks[]
             # wrapper. agy only spawns invocation/Stop hooks in this shape.
             flat_hooks = []
@@ -598,44 +565,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
     original_tools = frontmatter.get("tools", [])
 
-    # Tool name mapping: Claude Code -> Gemini CLI
-    # (inverse of the Claude mapping below)
-    GEMINI_TOOL_NAME_MAP = {
-        # File operations (Claude Code -> Gemini)
-        "Read": "read_file",
-        "Write": "write_file",
-        "Edit": "replace",
-        "Glob": "glob",
-        "Grep": "grep_search",
-        "grep": "grep_search",  # lowercase variant
-        # Shell execution
-        "Bash": "run_shell_command",
-        "bash": "run_shell_command",  # lowercase variant
-        # Skills/Agents
-        "Skill": "activate_skill",
-        "Task": "activate_skill",
-        "Agent": "activate_skill",
-        # User interaction / planning / todos (Claude built-ins → agy native)
-        # AskUserQuestion was the original gap that caused junior to fail load
-        # validation; the others are listed here so future agents using them are
-        # also translated correctly. NotebookEdit has no agy equivalent → drop.
-        "AskUserQuestion": "ask_user",
-        "ExitPlanMode": "enter_plan_mode",
-        "TodoWrite": "write_todos",
-        "NotebookEdit": None,
-        # Web operations
-        "WebFetch": "web_fetch",
-        "WebSearch": "google_web_search",
-        # Browser/Playwright (Claude Code -> Gemini chrome-devtools-mcp)
-        "browser_navigate": "navigate_page",
-        "browser_snapshot": "take_snapshot",
-        "browser_take_screenshot": "take_screenshot",
-        "browser_click": "click",
-        "browser_wait_for": "wait_for",
-        "browser_evaluate": "evaluate_script",
-        "browser_type": "type_text",
-        "browser_resize": "resize_page",
-    }
+    # Tool name mapping: Claude Code -> Gemini CLI (SSoT: tool_registry, §P3b).
+    # BUILD-frontmatter names, deliberately distinct from runtime-emitted names.
+    GEMINI_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL
 
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
@@ -683,58 +615,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # 1. Comma-separated string (not YAML array)
         # 2. PascalCase tool names for built-in tools
 
-        # Tool name mapping: generic/Gemini -> Claude Code
-        TOOL_NAME_MAP = {
-            # File operations
-            "read_file": "Read",
-            "write_file": "Write",
-            "replace": "Edit",
-            "list_directory": "Glob",
-            "glob": "Glob",
-            "grep": "Grep",
-            "search_file_content": "Grep",
-            # Shell execution
-            "bash": "Bash",
-            "run_shell_command": "Bash",
-            # Skills/Agents
-            "activate_skill": "Skill",
-            # Web operations
-            "web_fetch": "WebFetch",
-            "web_search": "WebSearch",
-            # Already correct names (passthrough)
-            "Read": "Read",
-            "Write": "Write",
-            "Edit": "Edit",
-            "Glob": "Glob",
-            "Grep": "Grep",
-            "Bash": "Bash",
-            "Skill": "Skill",
-            "Task": "Task",
-            "Agent": "Agent",
-            "WebFetch": "WebFetch",
-            "WebSearch": "WebSearch",
-            "TodoWrite": "TodoWrite",
-            "AskUserQuestion": "AskUserQuestion",
-            "NotebookEdit": "NotebookEdit",
-            # Browser/Playwright (Gemini chrome-devtools-mcp -> Claude Code)
-            "navigate_page": "browser_navigate",
-            "take_snapshot": "browser_snapshot",
-            "take_screenshot": "browser_take_screenshot",
-            "click": "browser_click",
-            "wait_for": "browser_wait_for",
-            "evaluate_script": "browser_evaluate",
-            "type_text": "browser_type",
-            "resize_page": "browser_resize",
-            # Passthrough for browser_* names (already canonical)
-            "browser_navigate": "browser_navigate",
-            "browser_snapshot": "browser_snapshot",
-            "browser_take_screenshot": "browser_take_screenshot",
-            "browser_click": "browser_click",
-            "browser_wait_for": "browser_wait_for",
-            "browser_evaluate": "browser_evaluate",
-            "browser_type": "browser_type",
-            "browser_resize": "browser_resize",
-        }
+        # Tool name mapping: generic/Gemini -> Claude Code (SSoT: tool_registry, §P3b).
+        TOOL_NAME_MAP = tool_registry.BUILD_TO_CLAUDE_TOOL
 
         # Transform each tool name
         transformed_tools = []
@@ -767,31 +649,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
 def translate_tool_calls(text: str, platform: str) -> str:
     """Translate abstract tool calls to platform-specific names."""
-    # 1. Platform-specific mappings
-    # We map call notation, descriptive notation, and backticked notation
-    mappings = {
-        "gemini": {
-            "Read(": "read_file(",
-            "Write(": "write_file(",
-            "Edit(": "replace(",
-            "ls(": "list_directory(",
-            "Glob(": "glob(",
-            "Grep(": "grep_search(",
-            "Read tool": "read_file tool",
-            "Write tool": "write_file tool",
-            "Edit tool": "replace tool",
-            "`Read`": "`read_file`",
-            "`Write`": "`write_file`",
-            "`Edit`": "`replace`",
-            "`ls`": "`list_directory`",
-            "`Glob`": "`glob`",
-            "`Grep`": "`grep_search`",
-            "Read or Grep": "read_file or grep_search",
-        },
-        "claude": {},
-    }
-
-    platform_map = mappings.get(
+    # 1. Platform-specific body-text tool-call notation map (call/descriptive/
+    # backticked). SSoT: tool_registry.BUILD_BODY_TOOL_NOTATION (§P3b).
+    platform_map = tool_registry.BUILD_BODY_TOOL_NOTATION.get(
         platform, {}
     )  # allow-fallback: default to no-op for unrecognized platforms
     for abstract, concrete in platform_map.items():
@@ -808,14 +668,10 @@ def translate_tool_calls(text: str, platform: str) -> str:
             text,
         )
 
-        # Task(subagent_type=...) -> activate_skill(name=...)
-        text = text.replace("Task(subagent_type=", "activate_skill(name=")
-        # Skill(skill=...) -> activate_skill(name=...)
-        text = text.replace("Skill(skill=", "activate_skill(name=")
-        # Update descriptive text references
-        text = text.replace("Task() tool", "activate_skill() tool")
-        text = text.replace("`Task(`", "`activate_skill(`")
-        text = text.replace("`Skill(`", "`activate_skill(`")
+        # Task/Skill body-text spawn collapse to activate_skill (SSoT:
+        # tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES, §P3b). Applied in order.
+        for find, replace in tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES:
+            text = text.replace(find, replace)
 
     elif platform == "antigravity":
         # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude

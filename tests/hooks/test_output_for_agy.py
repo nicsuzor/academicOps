@@ -211,7 +211,11 @@ def test_posttooluse_is_always_empty(verdict):
 def test_preinvocation_injects_context_as_steps():
     payload = _agy("allow", event="PreInvocation", context="search the PKB first")
     steps = payload["injectSteps"]
-    assert steps == [{"userMessage": "search the PKB first"}]
+    assert steps == [
+        {
+            "ephemeralMessage": "<details><summary>System Advisory (Agent Context)</summary>\n\nsearch the PKB first\n</details>"
+        }
+    ]
 
 
 def test_preinvocation_without_context_is_empty():
@@ -224,17 +228,20 @@ def test_injected_step_oneof_variant_shapes_match_binary_descriptor():
     Decoded from the ``exa.hooks_pb`` FileDescriptorProto in the agy binary:
     ``system_message``/``tool_call`` are TYPE_MESSAGE (nested object),
     ``user_message``/``ephemeral_message`` are TYPE_STRING (scalar). The router
-    emits the ``userMessage`` member — a persistent scalar string, preferred over
-    the ``ephemeralMessage`` scalar (which agy renders once then discards) so the
-    advisory stays visible for the turn.
+    emits the ``ephemeralMessage`` member — the variant agy natively renders. We
+    visually wrap long advisories in a <details> tag.
     This test guards both the emitted shape and the accept-contract's typing so
     a regression is caught offline.
     """
     from tests.hooks.agy_accept_contract import HookInjectedStep, is_accepted_by_agy
 
-    # The router's emitted variant: userMessage is a scalar string.
+    # The router's emitted variant: ephemeralMessage is a scalar string with details block.
     payload = _agy("allow", event="PreInvocation", context="x")
-    assert payload["injectSteps"] == [{"userMessage": "x"}]
+    assert payload["injectSteps"] == [
+        {
+            "ephemeralMessage": "<details><summary>System Advisory (Agent Context)</summary>\n\nx\n</details>"
+        }
+    ]
     accepted, offending = is_accepted_by_agy(payload, "PreInvocation")
     assert accepted, offending
 
@@ -255,7 +262,11 @@ def test_injected_step_oneof_variant_shapes_match_binary_descriptor():
 
 def test_postinvocation_delivers_advisory_via_injectsteps():
     payload = _agy("deny", event="PostInvocation", context="finish the handover")
-    assert payload["injectSteps"] == [{"userMessage": "finish the handover"}]
+    assert payload["injectSteps"] == [
+        {
+            "ephemeralMessage": "<details><summary>System Advisory (Agent Context)</summary>\n\nfinish the handover\n</details>"
+        }
+    ]
     # The hard stop-block enum is deferred — not emitted as a guess.
     assert "terminationBehavior" not in payload
 
@@ -275,7 +286,11 @@ def test_postinvocation_with_both_system_and_context_folds_into_steps():
     payload = _agy("warn", event="PostInvocation", system="status msg", context="advisory text")
     steps = payload.get("injectSteps", [])
     assert steps, f"both system+context must be delivered via injectSteps: {payload!r}"
-    joined = " ".join(s.get("userMessage", "") for s in steps)
+    # OURS delivers via the ``ephemeralMessage`` scalar (the settled agy advisory
+    # channel): short_reason and advisory are emitted as separate steps rather
+    # than folded into a single ``userMessage``. The #1798 invariant is the same —
+    # neither message may be silently dropped.
+    joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
     assert "status msg" in joined and "advisory text" in joined, (
         f"both messages must appear in injectSteps: {joined!r}"
     )

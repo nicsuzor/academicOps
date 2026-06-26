@@ -20,42 +20,46 @@ def router(monkeypatch):
 
 
 class TestGeminiEventMapping:
-    """Test regression cases for Gemini event mapping."""
+    """Test regression cases for Gemini event mapping.
+
+    Production passes ``--client gemini`` for these hooks; the router resolves
+    the wire name through ``client_spec.to_internal_event("gemini", …)``.
+    """
 
     def test_gemini_before_tool_maps_to_pre_tool_use(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="BeforeTool")
+            ctx = router.normalize_input(raw, gemini_event="BeforeTool", client_type="gemini")
         assert ctx.hook_event == "PreToolUse"
 
     def test_gemini_after_tool_maps_to_post_tool_use(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="AfterTool")
+            ctx = router.normalize_input(raw, gemini_event="AfterTool", client_type="gemini")
         assert ctx.hook_event == "PostToolUse"
 
     def test_gemini_before_agent_maps_to_user_prompt_submit(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="BeforeAgent")
+            ctx = router.normalize_input(raw, gemini_event="BeforeAgent", client_type="gemini")
         assert ctx.hook_event == "UserPromptSubmit"
 
     def test_gemini_after_agent_maps_to_stop(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="AfterAgent")
+            ctx = router.normalize_input(raw, gemini_event="AfterAgent", client_type="gemini")
         assert ctx.hook_event == "Stop"
 
     def test_gemini_session_end_maps_to_stop(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="SessionEnd")
+            ctx = router.normalize_input(raw, gemini_event="SessionEnd", client_type="gemini")
         assert ctx.hook_event == "SessionEnd"
 
     def test_gemini_event_without_mapping_passes_through(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="UnknownEvent")
+            ctx = router.normalize_input(raw, gemini_event="UnknownEvent", client_type="gemini")
         assert ctx.hook_event == "UnknownEvent"
 
 
@@ -110,33 +114,35 @@ class TestAntigravityEventMapping:
     gate logic (which checks hook_event == "UserPromptSubmit" etc.) works
     correctly when agy fires hooks.
 
-    agy sends events via hook_event_name in the JSON payload (--client claude).
+    agy sends events via hook_event_name in the JSON payload under
+    ``--client agy`` (the build rewrites ``--client claude`` → ``--client agy``
+    for the agy assets), so the router resolves them through the agy inbound map.
     """
 
     def test_pre_invocation_maps_to_user_prompt_submit(self, router):
         """agy PreInvocation → UserPromptSubmit (fires before each agent turn)."""
         raw = {"session_id": "test-session", "hook_event_name": "PreInvocation"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="claude")
+            ctx = router.normalize_input(raw, client_type="agy")
         assert ctx.hook_event == "UserPromptSubmit"
 
     def test_post_invocation_maps_to_stop(self, router):
         """agy PostInvocation → Stop (fires after each agent invocation)."""
         raw = {"session_id": "test-session", "hook_event_name": "PostInvocation"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="claude")
+            ctx = router.normalize_input(raw, client_type="agy")
         assert ctx.hook_event == "Stop"
 
     def test_agy_pre_tool_use_passes_through(self, router):
         """agy PreToolUse uses same event name as Claude Code — no transform needed."""
         raw = {"session_id": "test-session", "hook_event_name": "PreToolUse"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="claude")
+            ctx = router.normalize_input(raw, client_type="agy")
         assert ctx.hook_event == "PreToolUse"
 
     def test_agy_post_tool_use_passes_through(self, router):
         """agy PostToolUse uses same event name as Claude Code — no transform needed."""
         raw = {"session_id": "test-session", "hook_event_name": "PostToolUse"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="claude")
+            ctx = router.normalize_input(raw, client_type="agy")
         assert ctx.hook_event == "PostToolUse"
