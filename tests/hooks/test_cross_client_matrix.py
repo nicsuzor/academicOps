@@ -1,7 +1,9 @@
 """Cross-client router conformance matrix — Test Layer A of specs/hooks/CLIENT-TRANSLATION.md.
 
-The fast, deterministic, CI counterpart of the live conformance harness
-(``test_live_conformance.py`` = Test Layer B). This is the SINGLE parametrized
+The fast, deterministic, CI counterpart of the live conformance harnesses (the
+headless ``test_live_conformance.py`` = Test Layer B was deleted 2026-06-26;
+user-visibility is now measured by the PTY harness ``scripts/pty_hook_probe.py``
+= Test Layer C). This is the SINGLE parametrized
 ``(client × event × scenario)`` matrix the spec calls for (CLIENT-TRANSLATION.md
 §"Test layer A"), replacing the scattered per-client test bodies with ONE
 ``run_router`` fixture + per-client **interpreters**.

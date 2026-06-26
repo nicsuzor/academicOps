@@ -34,10 +34,13 @@ Two concerns live here:
    ``injectSteps``) are structural and live in the renderers — the table carries
    POLICY (what is supported), not byte layout.
 
-PROVISIONAL cells are contested/empirically-pending and resolved by the live
-conformance harness (``scripts/verify_hook_formats.py`` →
-``tests/hooks/fixtures/client_capabilities.json``). They are flagged
-``provisional=True`` with a note so a wrong guess is never silently load-bearing.
+PROVISIONAL cells are contested/empirically-pending. USER-visibility cells are
+resolved by the PTY harness (``scripts/pty_hook_probe.py`` →
+``tests/hooks/fixtures/pty_capabilities.json``, Test Layer C — drives a real
+interactive ``claude`` in tmux). The headless ``scripts/verify_hook_formats.py``
+was removed 2026-06-26 (it was structurally blind to TTY user-visibility). Cells
+are flagged ``provisional=True`` with a note so a wrong guess is never silently
+load-bearing.
 """
 
 from __future__ import annotations
@@ -224,7 +227,8 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     # leak to the user terminal (U✗) and does NOT persist across --conversation
     # (P✗). user_message=True here means a user banner is structurally possible,
     # NOT that the EMITTED ephemeralMessage is user-visible — it is not.
-    # test_table_cell_matches_measurement[agy-preinvocation-ephemeralmessage].
+    # Recorded in tests/hooks/fixtures/client_capabilities.json (frozen 2026-06-26;
+    # the agy live-measurement harness was deleted, value stands as recorded).
     ("agy", Event.USER_PROMPT): ChannelSpec(
         False, True, True, notes="injectSteps; ephemeralMessage U✗ C✓ P✗ live-proven"
     ),

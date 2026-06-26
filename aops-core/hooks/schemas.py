@@ -41,6 +41,29 @@ class ClaudeStopHookOutput(BaseModel):
       (mem-4ab6cc0b; harness probe ``claude-stop-additionalcontext-noblock``).
       This RETIRES the legacy WARN→block-to-deliver upgrade for warn-mode gates —
       a warn that only needs to DELIVER no longer has to spuriously block.
+      CAVEAT (DOCUMENTED + human-verified 2026-06-26): additionalContext on Stop
+      is NOT agent-only on the user's screen. The official Claude Code hooks docs
+      (code.claude.com/docs/en/hooks.md, "Stop") state additionalContext is
+      "shown as 'Stop hook feedback' in transcript" — i.e. user-visible BY
+      DESIGN, not a quirk. Confirmed live on the interactive TUI. CRITICAL: the
+      ``systemMessage``/``stopReason`` assignment in output_for_claude() is
+      UNCONDITIONAL (outside the verdict branch), so the short user line is
+      emitted in BOTH block and warn modes. The user therefore ALWAYS sees TWO
+      things on a gate Stop: the short ``systemMessage`` ("Stop says: …") AND the
+      full long context — via ``reason`` ("Stop hook blocking error") in block
+      mode, or via ``additionalContext`` ("Stop hook feedback") in warn mode.
+      block and warn are EQUALLY noisy for the user (human-verified BOTH modes
+      2026-06-26); the mode changes only the transcript LABEL and whether the
+      agent is hard-blocked — it does NOT reduce user-visible noise. The
+      "agent-only / user-not-shown" claim came from a headless harness that
+      cannot observe TTY rendering (it only sees the ``claude -p`` JSON result
+      envelope). PTY-PROVEN 2026-06-26: ``scripts/pty_hook_probe.py`` drives a
+      real interactive ``claude`` in tmux and captured ``Stop hook feedback:``
+      rendered to the user for warn-mode additionalContext (fixture
+      ``tests/hooks/fixtures/pty_capabilities.json``, cell
+      ``stop-additionalcontext-warn`` → user_saw=True). Reducing
+      Stop noise is a TEMPLATE-LENGTH / CADENCE / suppressOutput problem, NOT a
+      channel-routing or gate-mode one.
     - ``decision="block"`` + ``reason``: Claude is prevented from stopping and the
       ``reason`` text is fed to the agent. This is the ENFORCEMENT path — kept for
       deny/block-mode gates (handover) that must HALT the agent. Delivery alone
