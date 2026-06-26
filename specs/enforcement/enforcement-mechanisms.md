@@ -68,6 +68,16 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Scope**: polecat, crew, interactive
 - **Status**: planned — verify
 
+#### apply_triage labels (scheduled)
+
+- **Pipeline layer**: L0 Capture (scheduled batch)
+- **Pyramid tier**: base
+- **Trigger**: scheduled job over open PRs
+- **Purpose**: Label open PRs (`triage:*`) — `triage:escalate` only on a halted pipeline (`mechanic-status` FAILURE/ERROR), red/conflict → `triage:pipeline`. No issues opened.
+- **Location**: `aops-core/scripts/dump_pr_state.py`
+- **Scope**: GHA / host scheduled
+- **Status**: active
+
 ### L1 Context injection
 
 #### session_env_setup
@@ -108,6 +118,16 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Purpose**: Project-level instructions the host CLI auto-loads into the system prompt.
 - **Location**: `.agents/AGENTS.md` (this repo); CLAUDE.md may be supplied by the user at cwd
 - **Scope**: polecat, crew, interactive
+- **Status**: active
+
+#### pkb-first directive
+
+- **Pipeline layer**: L1 Context injection
+- **Pyramid tier**: base
+- **Trigger**: loaded with `.agents/CORE.md` at startup (CWD-dependent `@`-import)
+- **Purpose**: Instruct agents to use the PKB before reading source — the always-on operative restatement of `single-source-of-truth` for retrieval.
+- **Location**: `.agents/CORE.md`
+- **Scope**: all (where CORE.md is on the import path)
 - **Status**: active
 
 #### Gate status strip
@@ -216,6 +236,36 @@ Entries below use the fixed schema declared in `specs/enforcement/enforcement.md
 - **Purpose**: Write a single canonical per-event record so observability and agent review work against one log shape.
 - **Location**: `aops-core/hooks/unified_logger.py`
 - **Scope**: polecat, crew, interactive
+- **Status**: active
+
+#### aca_data_autocommit
+
+- **Pipeline layer**: L4 Soft gates
+- **Pyramid tier**: base
+- **Trigger**: PostToolUse, after a state-modifying call in the provider-specific data dir
+- **Purpose**: Auto-commit the `$ACA_DATA` directory so research data changes are never lost between turns.
+- **Location**: `aops-core/hooks/router.py` — `_run_aca_data_autocommit`
+- **Scope**: polecat, crew, interactive
+- **Status**: active
+
+#### Pre-commit hooks (deterministic, no LLM)
+
+- **Pipeline layer**: L4 Soft gates (local commit time)
+- **Pyramid tier**: middle (mechanical block/auto-fix; aborts the commit)
+- **Trigger**: `git commit` (pre-commit framework)
+- **Purpose**: Deterministic gate on every commit. `check-no-new-orphan-md` (new `.md` outside the canonical-location allowlist, R5.6); `check-no-fallbacks` (silent-fallback patterns across all first-party python/shell — `halt-on-failure`/P#8; pre-existing sites grandfathered in `check_no_fallbacks_baseline.json`); `normalize-mcp-names` (auto-heals Gemini-form MCP names to Claude form, #1128); plus the autofixers (trailing-whitespace, end-of-file-fixer, ruff --fix) which fix-then-abort.
+- **Location**: `scripts/check_no_new_orphan_md.py`, `scripts/check_no_fallbacks.py`, `scripts/normalize_mcp_names.py`; wired in `.pre-commit-config.yaml`
+- **Scope**: all (local git)
+- **Status**: active
+
+#### Bridge-level guards
+
+- **Pipeline layer**: L4 Soft gates
+- **Pyramid tier**: middle (hard block at the bridge boundary)
+- **Trigger**: `create_task` call (prefix guard); polecat session launch (OAUTH pre-flight)
+- **Purpose**: `create_task` prefix guard — task ID prefix must match the task type / project slug. `claude` OAUTH pre-flight — exits 4 when `CLAUDE_CODE_OAUTH_TOKEN` is unset, before launching a polecat worker.
+- **Location**: `polecat/pkb_bridge.py` (prefix guard); `polecat/cli.py` (OAUTH pre-flight)
+- **Scope**: polecat (primary)
 - **Status**: active
 
 ### L5 Hard blocks
