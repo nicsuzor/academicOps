@@ -30,7 +30,7 @@
     "mcpServers": {
       "pkb": {
         "command": "bash",
-        "args": ["${HOME}/.gemini/antigravity-cli/plugins/aops-core/scripts/run-mcp.sh"]
+        "args": ["${extensionPath}/scripts/run-mcp.sh"]
       }
     }
   }

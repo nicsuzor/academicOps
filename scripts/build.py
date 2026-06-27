@@ -466,14 +466,20 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         new_hook = dict(hook)
         if "command" in new_hook:
             cmd = new_hook["command"]
-            cmd = cmd.replace(
-                '"${CLAUDE_PLUGIN_ROOT}/hooks/router.sh"',
-                "$HOME/.gemini/antigravity-cli/plugins/aops-core/hooks/router.sh",
-            )
-            cmd = cmd.replace(
-                "${CLAUDE_PLUGIN_ROOT}",
-                "$HOME/.gemini/antigravity-cli/plugins/aops-core",
-            )
+            # agy runs PreToolUse/PostToolUse/Pre|PostInvocation hooks with the
+            # process CWD set to the plugin's install dir (verified at runtime on
+            # agy 1.0.13). So a plain CWD-RELATIVE path to router.sh resolves with
+            # NO path variable and NO hardcoded path. router.sh self-locates via
+            # $0, so HOOK_DIR is computed correctly from the relative invocation.
+            #
+            # Do NOT use ${extensionPath} here: agy does NOT resolve it in native
+            # plugin-format command strings (it becomes empty → `bash /hooks/
+            # router.sh: No such file or directory`). That is upstream agy bug
+            # google-antigravity/antigravity-cli#390 (open as of 1.0.13). Do NOT
+            # use a literal $HOME/... path either: agy execs the command via argv
+            # (not a shell), so $HOME would reach bash as a literal token.
+            cmd = cmd.replace('"${CLAUDE_PLUGIN_ROOT}/hooks/router.sh"', "hooks/router.sh")
+            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}/hooks/router.sh", "hooks/router.sh")
             cmd = cmd.replace("--client claude", "--client agy")
             cmd = f"{cmd} {output_event}"
             new_hook["command"] = cmd
@@ -678,11 +684,10 @@ def translate_tool_calls(text: str, platform: str) -> str:
     elif platform == "antigravity":
         # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
         # tool names (no frontmatter/body transformation). It uses Claude Code hook
-        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
-        # is not defined in agy; hooks hardcode this same path, so we match it here.
-        text = text.replace(
-            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
-        )
+        # event names (PreToolUse etc.) but its own plugin root variable.
+        # ${extensionPath} resolves to the plugin's final install dir (agy resolves
+        # it at load time), matching the hooks/mcp path scheme.
+        text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
     return text
 
@@ -1120,15 +1125,24 @@ def build_aops_core(
                         f.write("\n")
                     print(f"✓ Updated {dist_extension_json} with MCP config")
 
-            # Prepare for Antigravity 2.0 Plugin
+            # Prepare for Antigravity 2.0 Plugin (native mcp_config.json).
+            #
+            # We ship ${extensionPath} as the SSoT path token, but agy does NOT
+            # resolve it in native-format mcp_config.json, and it spawns MCP
+            # servers with the WORKSPACE cwd (not the plugin dir) — so neither a
+            # path variable nor a relative path resolves at runtime (verified on
+            # agy 1.0.13; upstream bug google-antigravity/antigravity-cli#390,
+            # open). Unlike hooks (which agy runs FROM the plugin dir, so they use
+            # a cwd-relative path), MCP has no in-config escape. The `make
+            # install-agy` target therefore resolves ${extensionPath} → the actual
+            # install dir AFTER `agy plugin install` (a discovered path, nothing
+            # hardcoded in source). Remove that step once #390 is fixed.
             if platform == "antigravity":
                 servers_config = mcp_config.get("mcpServers", mcp_config)
-                # Replace variables if they came from a Claude-style template
                 ag_servers_json = json.dumps(servers_config)
                 ag_servers_json = ag_servers_json.replace(
-                    "${CLAUDE_PLUGIN_ROOT}", "${HOME}/.gemini/antigravity-cli/plugins/aops-core"
-                ).replace("${extensionPath}", "${HOME}/.gemini/antigravity-cli/plugins/aops-core")
-
+                    "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
+                )
                 ag_servers_config = json.loads(ag_servers_json)
                 ag_mcp_config = {"mcpServers": ag_servers_config}
 
