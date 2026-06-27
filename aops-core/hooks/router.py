@@ -42,12 +42,14 @@ try:
     from lib.gate_model import GateResult, GateVerdict
     from lib.gates.engine import GenericGate
     from lib.gates.registry import GateRegistry
+    from lib.hook_context import HookContext
     from lib.hook_utils import is_subagent_session
     from lib.session_naming import get_session_short_hash
     from lib.session_paths import get_pid_session_map_path
     from lib.session_state import SessionState
+    from lib.tool_categories import extract_subagent_type
 
-    from hooks.gate_config import extract_subagent_type
+    from hooks import client_spec
     from hooks.schemas import (
         CanonicalHookOutput,
         ClaudeGeneralHookOutput,
@@ -55,7 +57,6 @@ try:
         ClaudeStopHookOutput,
         GeminiHookOutput,
         GeminiHookSpecificOutput,
-        HookContext,
     )
     from hooks.unified_logger import log_event_to_session, log_hook_event
 except ImportError as e:
@@ -68,21 +69,17 @@ except ImportError as e:
 
 DEBUG_LOG_DIR = Path("/tmp")
 
-# Advisory text destined for the agent is wrapped in these markers by the gate
-# engine (lib/gates/engine.py). They are a model-facing signal only — nothing
-# parses them. On channels that are ALSO user-visible (the Stop `reason` field,
-# which Claude Code renders to the user as a notice), the raw tags read as a
-# system dump, so we strip them before display. Agent-only channels
-# (hookSpecificOutput.additionalContext) keep the markers intact.
-_HOOK_MARKER_OPEN = "<SYSTEM HOOK INSTRUCTION>"
-_HOOK_MARKER_CLOSE = "</SYSTEM HOOK INSTRUCTION>"
 
+def _clean_advisory(text: str | None) -> str | None:
+    """None-safe whitespace trim for advisory / reason text.
 
-def _strip_hook_markers(text: str | None) -> str | None:
-    """Remove the <SYSTEM HOOK INSTRUCTION> scaffold from user-visible text."""
-    if not text:
-        return text
-    return text.replace(_HOOK_MARKER_OPEN, "").replace(_HOOK_MARKER_CLOSE, "").strip()
+    The legacy `<SYSTEM HOOK INSTRUCTION>` marker scaffold was removed
+    2026-06-27 (see lib/gates/engine.py): it meant nothing to Claude Code, read
+    as a smuggled system instruction, and risked tripping the client's own
+    hook-injection rejection. Advisory text now stands on its own, so there is
+    nothing to strip but surrounding whitespace.
+    """
+    return text.strip() if text else text
 
 
 def _debug_log_path(session_id: str | None) -> Path:
@@ -121,25 +118,14 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
         print(f"DEBUG_LOG error: {e}", file=sys.stderr)
 
 
-# Event mapping: external client names -> internal canonical names.
-# Applied to all clients (Gemini event names passed via positional arg,
-# agy/Antigravity event names passed in the JSON payload as hook_event_name).
-GEMINI_EVENT_MAP = {
-    # Gemini CLI event names
-    "SessionStart": "SessionStart",
-    "BeforeTool": "PreToolUse",
-    "AfterTool": "PostToolUse",
-    "BeforeAgent": "UserPromptSubmit",  # Mapped to UPS for unified handling
-    "AfterAgent": "Stop",  # This is the event after the agent returns their final response for a turn.
-    "SessionEnd": "SessionEnd",
-    "Notification": "Notification",
-    "PreCompress": "PreCompact",
-    "SubagentStart": "SubagentStart",  # Explicit mapping if Gemini sends it
-    "SubagentStop": "SubagentStop",  # Explicit mapping if Gemini sends it
-    # Antigravity CLI (agy) event names — mapped to canonical internal names
-    "PreInvocation": "UserPromptSubmit",  # agy: fires before each agent invocation
-    "PostInvocation": "Stop",  # agy: fires after each agent invocation
-}
+# Inbound wire-event → internal canonical name mapping is the SSoT's job:
+# ``client_spec.to_internal_event(client, wire)`` (Table 1 of
+# specs/hooks/CLIENT-TRANSLATION.md). normalize_input() calls it with the
+# resolved ``--client``; the per-client map replaces the old flat
+# ``GEMINI_EVENT_MAP`` union (which recognised every client's names regardless
+# of caller). Production always supplies ``--client`` (main() raises otherwise),
+# so the per-client lookup is exact; only legacy/test callers pass no client and
+# fall back to identity.
 
 # --- Gate Status Display ---
 
@@ -289,12 +275,16 @@ class HookRouter:
                 instead of showing ``model=unknown``.
         """
 
-        # 1. Determine Event Name
-        if gemini_event:
-            hook_event = GEMINI_EVENT_MAP.get(gemini_event, gemini_event)
-        else:
-            raw_event = raw_input.get("hook_event_name") or ""  # allow-fallback: maps to itself
-            hook_event = GEMINI_EVENT_MAP.get(raw_event, raw_event)
+        # 1. Determine Event Name — resolved through the client_spec SSoT.
+        # Gemini/agy pass the wire event positionally (gemini_event); agy may
+        # also carry it in stdin as hook_event_name. The per-client inbound map
+        # turns the wire name into the internal canonical name (Claude is
+        # identity). to_internal_event falls back to identity for an unmapped
+        # wire name or a missing client, matching the prior union's behaviour.
+        raw_event = gemini_event or raw_input.get("hook_event_name")
+        wire_event = raw_event or ""  # allow-fallback: identity for an absent event name
+        client = client_type or ""  # allow-fallback: identity map when no --client (test/legacy)
+        hook_event = client_spec.to_internal_event(client, wire_event)
 
         # 2. Determine Session ID
         session_id = raw_input.get("session_id") or raw_input.get("conversationId")
@@ -894,53 +884,58 @@ class HookRouter:
         if event == "Stop" or event == "SessionEnd":
             output = ClaudeStopHookOutput()
 
-            # Channel routing for Stop/SessionEnd (see aops-d10e7db6):
-            # - `reason` feeds the advisory to the agent when decision=="block"
-            #   (Claude Code Stop hook API: `reason` = "Feedback for Claude",
-            #   `systemMessage` = "Warning message for user", `stopReason` =
-            #   "Not shown to Claude"). This routing is per the Claude Code
-            #   Python SDK TypedDict; behaviour may differ for other clients.
-            # - `stopReason` and `systemMessage` are user-visible only —
-            #   do NOT route advisory/recovery text here.
+            # Channel routing for Stop/SessionEnd. The DECISION of whether a
+            # warn-mode advisory must block-to-deliver is POLICY, read from the
+            # SSoT channel table (client_spec) — not hardcoded here. The wire
+            # FIELD names (decision/reason vs hookSpecificOutput.additionalContext)
+            # are structural and stay in this renderer (invariant B: the
+            # block-to-deliver decision is the property that kept regressing, so
+            # it lives in exactly one place — the table cell).
             #
-            # Advisory/recovery context (the <SYSTEM HOOK INSTRUCTION> block)
-            # MUST land in the agent's context. The only Stop channel that
-            # achieves that is decision=="block" + reason. WARN-with-context
-            # therefore upgrades the *output* decision to "block" at the output
-            # layer so the advisory reaches the agent. The internal verdict
-            # stays "warn" — the stop-block safety net (auto-approve after
-            # 5 blocks in 2 minutes) keys on the internal verdict field, not
-            # on this output decision, so routine RBG advisories do not trip it.
+            # channel_spec("claude","Stop").agent_context_without_block:
+            #   True  (Claude Code 2.1.191, mem-4ab6cc0b, live-verified
+            #          2026-06-25) -> a warn that only needs to DELIVER advisory
+            #          rides hookSpecificOutput.additionalContext WITHOUT a block.
+            #          This RETIRES the legacy WARN->block-to-deliver upgrade.
+            #   False (legacy 2.1.158) -> no agent-only Stop channel, so a warn
+            #          carrying advisory must upgrade to decision="block"+reason
+            #          purely to deliver it.
             #
-            # hookSpecificOutput is deliberately NOT emitted on Stop. Claude
-            # Code's Stop output schema rejects it: the validator fails with
-            # "Hook JSON output validation failed — (root): Invalid input" and
-            # discards the ENTIRE payload, silently dropping decision+reason
-            # too. The validator's own expected-schema lists hookSpecificOutput
-            # only for PreToolUse / UserPromptSubmit / PostToolUse /
-            # PostToolBatch — never Stop. So Stop has no agent-only context
-            # channel; `reason` (also user-visible) is the only path to the
-            # model. Verified Claude Code 2.1.158, 2026-05-31 (see kb-fcc2b95c).
+            # ENFORCEMENT (deny/block-mode handover) ALWAYS blocks — delivery !=
+            # enforcement: a non-blocking nudge can be disregarded by the model
+            # (mem-4ab6cc0b), so block-mode gates keep decision="block".
+            spec = client_spec.channel_spec("claude", "Stop")
+            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+
             ctx_inj = result.context_injection
             sys_msg = result.system_message
 
             # The Stop `reason` field is BOTH user-visible (Claude Code renders
             # a blocking Stop hook's reason as a notice) and agent-visible —
-            # there is no agent-only Stop channel. Strip the marker scaffold so
-            # the advisory reads as a clean notice rather than a raw system dump.
-            agent_reason = _strip_hook_markers(ctx_inj)
+            # there is no agent-only `reason` channel. Strip the marker scaffold
+            # so the advisory reads as a clean notice rather than a raw system
+            # dump. hookSpecificOutput.additionalContext IS agent-only, so it
+            # keeps the markers intact (the gate's trust framing).
+            agent_reason = _clean_advisory(ctx_inj)
 
             if result.verdict == "deny":
+                # Enforcement path: must HALT the agent.
                 output.decision = "block"
                 if agent_reason:
                     output.reason = agent_reason
             elif result.verdict == "warn" and ctx_inj:
-                # Upgrade output decision to "block" so the advisory lands in
-                # the agent's context on the next turn. The internal verdict
-                # remains "warn" — only the Claude Code output decision field
-                # changes here, not the router's internal safety-net counter.
-                output.decision = "block"
-                output.reason = agent_reason
+                if agent_ctx_without_block:
+                    # Deliver without blocking — additionalContext reaches the
+                    # agent's context on the next turn (it keeps continuing).
+                    # The internal verdict stays "warn".
+                    output.decision = "approve"
+                    output.hookSpecificOutput = ClaudeHookSpecificOutput(
+                        hookEventName=event, additionalContext=ctx_inj
+                    )
+                else:
+                    # No agent-only channel: upgrade to block purely to deliver.
+                    output.decision = "block"
+                    output.reason = agent_reason
             else:
                 output.decision = "approve"
 
@@ -998,57 +993,6 @@ class HookRouter:
 
         return output
 
-    @staticmethod
-    def _agy_inject_steps(text: str | None) -> list[dict[str, Any]]:
-        """Build an agy ``HookInjectedStep`` list carrying ``text``.
-
-        ``HookInjectedStep`` is a oneof. Field types decoded directly from the
-        ``exa.hooks_pb`` FileDescriptorProto embedded in the agy 1.0.7 binary
-        (FieldDescriptorProto ``type`` per member):
-
-            tool_call          (1)  TYPE_MESSAGE  .exa.hooks_pb.HookToolCall
-            user_message       (2)  TYPE_STRING   scalar string
-            ephemeral_message  (3)  TYPE_STRING   scalar string
-            system_message     (4)  TYPE_MESSAGE  .exa.hooks_pb.HookSystemMessage
-
-        We emit the ``ephemeralMessage`` member — a TYPE_STRING scalar, so its
-        protojson is the bare string ``{"ephemeralMessage": text}``. This is the
-        same channel agy uses to inject its OWN per-turn reminders (the
-        ``bash_command_reminder`` ephemeral that renders at the top of every
-        turn), so it is the schema-correct, most-likely-to-render member.
-
-        REGISTRATION (verified, keep): a vanilla, doc-shaped PreInvocation hook
-        FIRES on agy 1.0.7 — ``strace -f`` shows ``execve`` of
-        ``router.sh --client agy PreInvocation``. The earlier "agy never spawns
-        PreInvocation" conclusion was a confound: our hooks.json had wrapped the
-        invocation events in the PreToolUse ``matcher``/``hooks[]`` shape, so agy
-        phantom-logged ``json_hook_caller.go:144 ... executing command`` but
-        spawned nothing. Per https://antigravity.google/docs/hooks#supported-events
-        the invocation/Stop events require a FLAT handler list directly under the
-        event key (fixed in ``_generate_antigravity_hooks_json``); the hook now
-        spawns.
-
-        DELIVERY VERIFIED — agy 1.0.7 (model-echo control 2026-06-12,
-        session 2be4d40a / conv deaabeef): PreInvocation ``injectSteps`` ARE
-        delivered to model context. The model quoted our injected
-        Skills-Routing-Table + PKB text verbatim, byte-matching the router's
-        PreInvocation stdout. The earlier claim of an "agy-side delivery gap"
-        (commit cd583eff) was based on transcript grep — the WRONG observable.
-        The correct observable is MODEL ECHO, not ``transcript_full.jsonl``.
-
-        TRANSCRIPT OBSERVABILITY NOTE: agy 1.0.7 does NOT log hook-injected
-        ``injectSteps`` as steps in ``transcript_full.jsonl``. A sentinel that
-        appears in hook stdout will appear ZERO times in the transcript even when
-        the model receives it. The user-visible perception that "SessionStart
-        never fires" comes from this transcript-logging gap: hook logs are the
-        only trace of injection, and the injected text is invisible in
-        transcripts. Verify injection delivery via model echo (ask the model to
-        repeat back unique injected content), never via transcript grep.
-        """
-        if not text:
-            return []
-        return [{"ephemeralMessage": text}]
-
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
 
@@ -1087,8 +1031,8 @@ class HookRouter:
         # "ask" cannot prompt in a headless agy run, so the safe, enforcing
         # interpretation of a gate that wanted to stop-and-confirm is to block.
         is_block = verdict in ("deny", "ask")
-        advisory = _strip_hook_markers(result.context_injection)
-        short_reason = _strip_hook_markers(result.system_message)
+        advisory = _clean_advisory(result.context_injection)
+        short_reason = _clean_advisory(result.system_message)
 
         if event == "PreToolUse":
             # PreToolHookResult only supports allowTool and denyReason.
@@ -1119,23 +1063,21 @@ class HookRouter:
             return {}
 
         if event == "PreInvocation":
+            steps = []
             if short_reason:
-                raise ValueError(
-                    f"agy PreInvocation does not support system_message (short_reason: {short_reason!r})"
-                )
-            steps = self._agy_inject_steps(advisory)
+                steps.append({"ephemeralMessage": short_reason})
+            if advisory:
+                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
+                steps.append({"ephemeralMessage": hidden_advisory})
             return {"injectSteps": steps} if steps else {}
 
         if event == "PostInvocation":
-            # PostInvocation has no system_message channel in the protojson schema.
-            # Fold short_reason into the advisory text so gate messages (e.g. IDA
-            # warn: system_message + context_injection both set) are not silently
-            # dropped via a ValueError crash — the subprocess would exit non-zero
-            # producing empty stdout, which callers interpret as {}.
-            combined = (
-                "\n\n".join(filter(None, [short_reason, advisory])) if short_reason else advisory
-            )
-            steps = self._agy_inject_steps(combined)
+            steps = []
+            if short_reason:
+                steps.append({"ephemeralMessage": short_reason})
+            if advisory:
+                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
+                steps.append({"ephemeralMessage": hidden_advisory})
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":

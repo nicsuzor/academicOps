@@ -301,4 +301,14 @@ def execute_custom_action(
         session_state.session_did_work = True
         return None
 
+    if name == "record_handover_warn_fired":
+        # Record the turn on which the SOFT (warn-mode) handover nudge fired, so
+        # the is_handover_warn_mode cadence check rate-limits re-firing to at
+        # most once per _HANDOVER_WARN_TURN_CADENCE turns (spec mem-438429c5
+        # §5.5). Runs only when the warn policy is selected (i.e. on a fire),
+        # so the recorded turn is the genuine last-fired turn. The polecat
+        # hard-block policy does NOT use this action — it stays fully armed.
+        state.metrics["handover_warn_last_fired_turn"] = session_state.global_turn_count
+        return None
+
     return None

@@ -16,11 +16,12 @@ from typing import Any
 
 import psutil
 from lib.gate_model import GateResult
+from lib.hook_context import HookContext
 from lib.session_paths import get_hook_log_path
 from lib.session_state import SessionState
 
 from hooks.internal_models import HookLogEntry
-from hooks.schemas import CanonicalHookOutput, HookContext
+from hooks.schemas import CanonicalHookOutput
 
 # Set up logging
 logging.basicConfig(

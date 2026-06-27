@@ -2,14 +2,14 @@
 Internal Pydantic models for hook scripts.
 
 These models define typed structures for internal hook operations.
-External API contracts are defined in schemas.py (HookContext, CanonicalHookOutput).
+External output contracts are defined in schemas.py (CanonicalHookOutput);
+HookContext lives in lib/hook_context.py.
 """
 
 from typing import Any
 
+from lib.hook_context import HookContext
 from pydantic import BaseModel, Field
-
-from .schemas import HookContext
 
 
 class SessionCleanupResult(BaseModel):

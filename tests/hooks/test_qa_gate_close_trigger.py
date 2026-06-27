@@ -19,9 +19,9 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter  # noqa: E402
-from hooks.schemas import HookContext  # noqa: E402
 from lib.gate_types import GateState, GateStatus  # noqa: E402
 from lib.gates.registry import GateRegistry  # noqa: E402
+from lib.hook_context import HookContext  # noqa: E402
 from lib.session_state import SessionState  # noqa: E402
 
 

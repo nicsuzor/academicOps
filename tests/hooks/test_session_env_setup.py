@@ -17,8 +17,8 @@ aops_core_dir = Path(__file__).parent.parent.parent / "aops-core"
 if str(aops_core_dir) not in sys.path:
     sys.path.insert(0, str(aops_core_dir))
 
-from hooks.schemas import HookContext
 from hooks.session_env_setup import run_session_env_setup
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 

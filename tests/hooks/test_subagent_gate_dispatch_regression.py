@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 import pytest
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gate_types import (
     GateCondition,
@@ -28,6 +27,7 @@ from lib.gate_types import (
 )
 from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 # --- Minimal gate configs for testing ---
@@ -366,8 +366,10 @@ class TestReadOnlyToolExclusion:
             raw_input={},
         )
 
-        # Mock get_tool_category to return "read_only" for Read
-        with patch("hooks.gate_config.get_tool_category", return_value="read_only"):
+        # Mock get_tool_category to return "read_only" for Read. Patch it where
+        # the gate's check() path looks it up (lib.gates.engine) — that binding
+        # governs excluded_tool_categories matching, not the gate_config name.
+        with patch("lib.gates.engine.get_tool_category", return_value="read_only"):
             result = gate.check(ctx, state)
 
         # Read tool should not be denied
