@@ -802,6 +802,32 @@
       "claim_agent_saw_a": null,
       "claim_user_saw_b": null,
       "table_cell": "Stop short-reason \u00b7 agy native Stop reason (PROVISIONAL; unmeasurable 1.0.13)"
+    },
+    {
+      "label": "stop-stopreason-only",
+      "client": "claude",
+      "wire_event": "Stop",
+      "hypothesis": "stopReason in isolation (no systemMessage): does it render as 'Stop says:' like systemMessage?",
+      "gate_mode": "",
+      "user_saw_a": false,
+      "user_saw_b": false,
+      "early_user_saw_a": false,
+      "early_user_saw_b": false,
+      "agent_ctx_a": false,
+      "agent_ctx_b": null,
+      "in_transcript_a": false,
+      "in_transcript_b": true,
+      "transcript_found": true,
+      "agent_ctx_authoritative": true,
+      "measurement_caveats": [],
+      "unmeasurable": false,
+      "uses_real_hooks": false,
+      "note": "USER [earlyA=False earlyB=False lateA=False lateB=False] \u2192 A=False B=False; AGENT ctx A=False B=None; in_transcript A=False B=True; transcript=found; attempts=a1:ok+tx",
+      "pane_excerpt": "",
+      "claim_user_saw_a": null,
+      "claim_agent_saw_a": null,
+      "claim_user_saw_b": true,
+      "table_cell": "Stop banner \u00b7 stopReason only (isolation probe)"
     }
   ]
 }

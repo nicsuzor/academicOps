@@ -368,6 +368,23 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
         )
     )
 
+    # 9. stopReason in isolation — does it render differently from systemMessage?
+    # In stop-blockmode-real (probe 5), stopReason=SENTINELB was bundled with
+    # systemMessage=SENTINELB so we couldn't distinguish which field caused the
+    # "Stop says:" banner. This probe isolates stopReason with no systemMessage.
+    P.append(
+        Probe(
+            "stop-stopreason-only",
+            "claude",
+            "Stop",
+            {"stopReason": "SENTINELB"},
+            NEUTRAL_PROMPT,
+            "stopReason in isolation (no systemMessage): does it render as 'Stop says:' like systemMessage?",
+            claim_user_saw_b=True,
+            table_cell="Stop banner · stopReason only (isolation probe)",
+        )
+    )
+
     # ====================================================================
     # CLAUDE — SessionEnd (mirrors Stop, different event name)
     # ====================================================================
@@ -1322,14 +1339,38 @@ def main() -> int:
     if not args.no_matrix:
         _print_matrix(results)
 
-    report = {
-        "generated_note": "PTY user-visibility measurement — scripts/pty_hook_probe.py (Layer C)",
-        "claude_version": _client_version("claude"),
-        "agy_version": _client_version("agy") if any(p.client == "agy" for p in probes) else None,
-        "cells": [asdict(r) for r in results],
-    }
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(report, indent=2) + "\n")
+    # Merge into existing fixture when --only is used (partial run), so we
+    # don't overwrite previously-measured cells with a 1-cell file.
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.only and out_path.exists():
+        existing = json.loads(out_path.read_text())
+        existing_by_label = {
+            c["label"]: c for c in existing.get("cells", [])
+        }  # allow-fallback: fixture may predate cells key
+        for r in results:
+            existing_by_label[r.label] = asdict(r)
+        # Preserve original cell order, then append any new labels at the end.
+        all_labels = list(existing_by_label.keys())
+        merged_cells = [existing_by_label[lbl] for lbl in all_labels]
+        report = {
+            "generated_note": existing.get(
+                "generated_note", ""
+            ),  # allow-fallback: optional fixture field
+            "claude_version": existing.get("claude_version", _client_version("claude")),
+            "agy_version": existing.get("agy_version"),
+            "cells": merged_cells,
+        }
+    else:
+        report = {
+            "generated_note": "PTY user-visibility measurement — scripts/pty_hook_probe.py (Layer C)",
+            "claude_version": _client_version("claude"),
+            "agy_version": _client_version("agy")
+            if any(p.client == "agy" for p in probes)
+            else None,
+            "cells": [asdict(r) for r in results],
+        }
+    out_path.write_text(json.dumps(report, indent=2) + "\n")
     print(f"DONE wrote {len(results)} cells -> {args.out}", flush=True)
     return 0
 
