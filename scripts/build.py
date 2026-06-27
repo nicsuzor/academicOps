@@ -1122,8 +1122,8 @@ def build_aops_core(
                 # Replace variables if they came from a Claude-style template
                 ag_servers_json = json.dumps(servers_config)
                 ag_servers_json = ag_servers_json.replace(
-                    "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
-                )
+                    "${CLAUDE_PLUGIN_ROOT}", "${HOME}/.gemini/antigravity-cli/plugins/aops-core"
+                ).replace("${extensionPath}", "${HOME}/.gemini/antigravity-cli/plugins/aops-core")
 
                 ag_servers_config = json.loads(ag_servers_json)
                 ag_mcp_config = {"mcpServers": ag_servers_config}
