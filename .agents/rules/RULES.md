@@ -6,8 +6,6 @@ description: Project-specific process rules for the academicOps repository. Load
 
 These rules are **project-specific** — they apply to the `academicOps` repository in addition to (not in place of) the universal axioms in [[AXIOMS]]. Each rule targets a **class** of cases, not a single instance (Categorical-Imperative discipline, [[AXIOMS#categorical-imperative]]).
 
-Identity scheme: each rule has a durable **slug** (`{#slug}` heading anchor). Cite by slug, never by ordinal. Rules may be added, merged, retired, or reordered without invalidating cross-references.
-
 A rule lives here when it (a) governs how this repo's enforcement / authority / governance surfaces operate, AND (b) cannot be derived from the universal axioms alone — it states a project-level commitment whose violation is concrete enough that a reviewer can name the breach from the diff. Anything that is a universal claim belongs in [[AXIOMS]] instead.
 
 ## Enforcement-Map Currency — every mechanism change updates the map in the same PR {#enforcement-map-currency}
@@ -28,3 +26,8 @@ Any PR that **adds, modifies, escalates, or retires** an **enforcement mechanism
 - _Example — a real new mechanism (illustrative, NOT an exhaustive trigger list):_ PR #1824 (`feat(junior): replace PKB wildcard with explicit allowlist`) changed an agent's `tools:` allowlist — a chokepoint/funnel (L4) mechanism per the Pyramid — and shipped without a row; `rbg` returns `REVISE`. _Counter-example — no row owed:_ adding a new process rule to `.agents/rules/RULES.md` adds _content_ to the already-mapped "agents apply repo-local RULES.md" mechanism; no new row is owed.
 
 _When applying:_ ask first **"does this diff change the regulatory surface — what any agent is made to do?"** If yes, confirm the map describes the post-merge reality at the **mechanism-class grain**: update the existing generic row if its trigger/surface/impact changed; add a row only for a new mechanism class; add nothing for new rule/axiom _content_ on an already-mapped mechanism. If the surface changed and the map does not reflect it → `REVISE`.
+
+## Markdown files MUST NOT include irrelevant text
+
+- Any change to an agent instruction, skill, or documentation file MUST comply with the rules set out in `specs/meta/doc-taxonomy.md`.
+- NO CRUFT: All prose must be concise and adapted for the target audience.
