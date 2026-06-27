@@ -467,6 +467,10 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         if "command" in new_hook:
             cmd = new_hook["command"]
             cmd = cmd.replace(
+                '"${CLAUDE_PLUGIN_ROOT}/hooks/router.sh"',
+                "$HOME/.gemini/antigravity-cli/plugins/aops-core/hooks/router.sh",
+            )
+            cmd = cmd.replace(
                 "${CLAUDE_PLUGIN_ROOT}",
                 "$HOME/.gemini/antigravity-cli/plugins/aops-core",
             )

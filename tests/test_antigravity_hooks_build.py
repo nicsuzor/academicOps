@@ -157,6 +157,10 @@ class TestAntigravityHooksBuildTransform:
                 assert "$HOME/.gemini/antigravity-cli/plugins/aops-core" in cmd, (
                     f"Expected agy install path missing in {event} hook: {cmd}"
                 )
+                # Verify that quotation marks around the command/path have been removed
+                assert '"$HOME/.gemini' not in cmd, (
+                    f"Command path has quotation marks in {event} hook: {cmd}"
+                )
 
     def test_client_flag_is_agy(self, transform):
         """agy hooks must use --client agy."""
