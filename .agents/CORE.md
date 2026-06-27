@@ -37,7 +37,7 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 
 ## Safety Invariants (universal — all agents, all surfaces)
 
-These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Junior, Ida, polecats, subagents) — not duplicated into individual agent definitions.
+These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Junior, Ida, polecats, subagents) — do not add per-agent copies in individual agent definitions.
 
 - **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
 - **PKB-HALT**: Fail fast if the memory tools don't work. When a PKB operation needs an MCP verb that isn't available, STOP and report it — never route around the PKB with a shell-out, an SSH escape, or a file write.
