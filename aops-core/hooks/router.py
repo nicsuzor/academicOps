@@ -456,6 +456,27 @@ class HookRouter:
         provider = session_naming.get_provider_name(client_type=client_type)
         task_id = os.environ.get("AOPS_TASK_ID")
 
+        # 10b. Background tasks and pause detection (Claude Code 2.1.145+)
+        background_tasks = raw_input.get(
+            "background_tasks", []
+        )  # allow-fallback: optional Claude Code 2.1.145+ field
+        session_crons = raw_input.get(
+            "session_crons", []
+        )  # allow-fallback: optional Claude Code 2.1.145+ field
+        is_paused = False
+
+        # A session is paused waiting to be woken up if there are any session crons,
+        # or if there are background tasks that are not just simple shell commands.
+        if session_crons:
+            is_paused = True
+        elif background_tasks:
+            for task in background_tasks:
+                # "shell" tasks don't wake up the session, but "subagent", "monitor",
+                # "workflow", etc. do. So if we have anything other than shell, we are paused.
+                if task.get("type") != "shell":
+                    is_paused = True
+                    break
+
         # 11. Build Context and POP processed fields from raw_input
         # We pop now so the remainder in ctx.raw_input is "extra" data
         processed_fields = [
@@ -481,6 +502,8 @@ class HookRouter:
             "isSidechain",
             "subagent_type",
             "agent_type",
+            "background_tasks",
+            "session_crons",
         ]
         slug = raw_input.get("slug")
         cwd = raw_input.get("cwd")
@@ -497,6 +520,9 @@ class HookRouter:
             client_type=client_type,
             is_subagent=is_subagent,
             subagent_type=subagent_type,
+            background_tasks=background_tasks,
+            session_crons=session_crons,
+            is_paused=is_paused,
             # Metadata (aops-d9ba7159)
             machine=machine,
             provider=provider,
@@ -751,6 +777,11 @@ class HookRouter:
             "SubagentStop",
             "UserPromptSubmit",
         ):
+            return None
+
+        # Do not block agents getting interrupted by our stop hooks when they are
+        # just waiting for results.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.is_paused:
             return None
 
         # Never block when the runtime signals a retry sequence. Both Claude

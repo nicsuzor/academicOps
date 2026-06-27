@@ -61,5 +61,10 @@ class HookContext(BaseModel):
 
     subagent_type: str | None = None
 
+    # Claude Code 2.1.145+ Background Work arrays
+    background_tasks: list[dict[str, Any]] = Field(default_factory=list)
+    session_crons: list[dict[str, Any]] = Field(default_factory=list)
+    is_paused: bool = Field(default=False)
+
     # Raw Input (for fallback/passthrough)
     raw_input: dict[str, Any] = Field(default_factory=dict)
