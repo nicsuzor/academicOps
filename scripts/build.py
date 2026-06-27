@@ -991,8 +991,11 @@ def build_aops_core(
                 # Leaked 'source' and 'category' cause issues in local cache
                 manifest.pop("source", None)
                 manifest.pop("category", None)
-                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
-                manifest.pop("userConfig", None)
+                # 'userConfig' IS used on Claude: it prompts for PKB_MCP_URL at
+                # enable time and substitutes it into the pkb MCP server env
+                # (see mcp.json.template "claude" block). The cowork template ships
+                # no userConfig because Cowork's userConfig path is unreliable —
+                # there run-mcp.sh resolves the URL from the env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
@@ -1042,10 +1045,17 @@ def build_aops_core(
             # Cowork uses the same plugin contract: a single `.mcp.json` at the
             # archive root, pointed to by `plugin.json.mcpServers`.
             if platform in ("claude", "cowork"):
-                claude_mcp_config = mcp_template.get("claude", mcp_template)
+                # Pick the platform-specific block: the "claude" block injects
+                # PKB_MCP_URL from userConfig; the "cowork" block omits that env
+                # (Cowork's userConfig path is unreliable) and lets run-mcp.sh
+                # resolve the URL. Fall back to the claude block, then the whole
+                # template, if a dedicated block is absent.
+                shaped_mcp_config = mcp_template.get(
+                    platform, mcp_template.get("claude", mcp_template)
+                )
                 dist_mcp_path = dist_dir / ".mcp.json"
                 with open(dist_mcp_path, "w") as f:
-                    json.dump(claude_mcp_config, f, indent=2)
+                    json.dump(shaped_mcp_config, f, indent=2)
                     f.write("\n")
 
             # Prepare for Gemini Extension
