@@ -172,12 +172,42 @@ Key properties:
 
 ## 3. The two stages and the gate
 
-### 3.1 Stage 1 — Triage (every push) — **LIVE**
+### 3.1 Stage 1 — Triage (fire-once on ready, then re-verify only when admitted) — **LIVE**
 
 A single **triage orchestrator** (`pr-pipeline.yml`) is the workflow triggered by
 `pull_request` (`opened`, `synchronize`, `ready_for_review`, `reopened`). It runs the
 committing agents in cost order under the **ordered short-circuit** rule (§3.4). The
 dev/mechanic agent does **not** run in Stage 1 — triage is cheap by construction.
+
+**Fire-once gate (the expensive reviewers do NOT run on every push).** `lint`,
+`typecheck`, and `pytest` run on every push (they are cheap). The expensive named
+reviewers — `enforcer` and `qa` — are gated so they fire **once when the PR is marked
+ready, and then NOT AGAIN until the PR is admitted.** Concretely, the `enforcer` job's
+`if:` adds, on top of the pre-existing lint-not-committed and not-draft guards, the clause:
+
+```
+(github.event_name != 'pull_request' || github.event.action != 'synchronize' || needs.initialize.outputs.admitted == 'true')
+```
+
+So the reviewers run on `opened`/`ready_for_review`/`reopened` (a non-`synchronize`
+action), and on a `synchronize` **only** when `initialize` carried admission forward
+(`admitted == 'true'`, i.e. a post-admission mechanic fix SHA that Stage-2 must
+re-verify, §3.5). On a **pre-admission `synchronize`** `admitted` is `'false'`, so
+`enforcer` skips and — via the dependency-starvation cascade (§3.9) — `qa`,
+`check-mechred`, `check-admit` and the in-pipeline `mechanic` skip with it. `initialize`
+exposes `admitted` as a job output computed from the same admit-status carry-forward it
+already performs (§5).
+
+**Why.** A churning PR that takes many pre-admission pushes used to re-run the full
+reviewer panel on every one of them, re-litigating the same open findings against
+unrelated commits (forensic: PR #1970 — one enforcer finding re-emitted identically
+across six push-triggered cycles over ~35h). Under the fire-once gate the panel runs
+once at ready, the maintainer reads it and pushes/iterates freely without burning
+reviewer invocations, and the reviewers re-engage at the admission boundary (§5) and
+then on every mechanic fix SHA inside the Stage-2 loop (§3.5). `review-attestation` (a
+cheap script, not an agent) still runs on every push and reads red while the reviewers
+are absent — harmless, since a pre-admission PR is ungated by `admit-status` regardless;
+the admission boundary re-posts it green on the admitted SHA (§5).
 
 Each agent **fixes what it can and leaves its status red for what it can't.** There is no
 clean "autofixer vs reviewer" split: `lint` autofixes formatting but goes red on a lint
@@ -547,6 +577,8 @@ The `admit-on-review.yml` approve-path mechanic retains its own explicit `draft 
 
 **The activation edge is `ready_for_review`.** The `pull_request` trigger already includes `types: [opened, synchronize, ready_for_review, reopened]` — keep it. When the author converts a draft to ready, the `ready_for_review` event fires the pipeline and all expensive jobs run on HEAD SHA.
 
+> **The draft guard is not the only guard on `enforcer`/`qa`.** On a _ready_ (non-draft) PR the expensive reviewers are _additionally_ gated by the **fire-once gate (§3.1)**: they fire on `ready_for_review`/`opened`/`reopened` and at the admission boundary (§5), but **not** on a pre-admission `synchronize`. The same dependency-starvation cascade documented above carries that skip through `qa`/`check-mechred`/`check-admit`/`mechanic`. So a green pre-admission push does not re-run the panel; see §3.1 for the gate clause and §5 for the admission-boundary re-fire.
+
 **Behaviour on a draft PR.** `enforcer-status`, `qa-status`, and `review-attestation` are NOT posted while the PR is a draft. `review-attestation` also carries the draft guard so it does NOT run on a draft — this avoids a permanent red required-check on every WIP PR (it would otherwise fail closed because the reviewer statuses are absent). Draft PRs cannot merge regardless of required-check state; when the PR is marked ready, `ready_for_review` re-runs the pipeline and attestation posts on HEAD SHA.
 
 **`workflow_call` path is unaffected.** The draft guard is conditioned on the event being a `pull_request` event (`github.event_name != 'pull_request' || github.event.pull_request.draft == false`). When `pr-pipeline.yml` is invoked via `workflow_call`, `github.event_name` is `workflow_call`, the left-hand side is true, and the expensive jobs run normally.
@@ -785,14 +817,34 @@ exactly this reason (PRs #735/#754).
 
 ## 5. Graduation — `admit-status` + armed auto-merge — **LIVE**
 
-Graduation is deliberately cheap: no bot approval, no agent, no checkout.
+Graduation is deliberately cheap for an already-reviewed PR: no agent, no checkout. When
+the fire-once gate (§3.1) left the admitted SHA un-reviewed, the admission boundary also
+re-fires the reviewers on it (the agent cost the pre-admission pushes saved is paid here,
+once).
 
 - `admit-on-review.yml` (§3.2), on a maintainer's PR **review approval**, does: (1) sets
   the required **`admit-status`** to `success` on the admitted SHA, (2) arms
-  `gh pr merge --auto --squash --delete-branch`, and (3) dispatches the mechanic's first
-  pass (unless enforcer + qa are already green, in which case auto-merge handles it).
+  `gh pr merge --auto --squash --delete-branch`, then (3) classifies the named-reviewer
+  state on the admitted SHA (`reviewers_green`) and acts on it:
+  - **already green** (PR admitted right after its ready-review, no intervening pushes) →
+    auto-merge handles the merge; no re-verification, no mechanic.
+  - **not green** (absent because the §3.1 gate skipped the reviewers on pre-admission
+    pushes, OR red) → **re-fire the reviewers on the admitted SHA** (`admit-enforcer` →
+    `admit-qa`, the same reusable workflows the pipeline uses) and **recompute the
+    required `review-attestation`** on that SHA (`admit-attestation`, post-only — it does
+    not fail-closed-exit, so a legitimately-red re-verify does not fail the run). Then
+    `decide-mechanic` re-reads the settled reviewer state and dispatches the mechanic's
+    first pass **only if red/pending remains**; if the re-verify came back green,
+    auto-merge fires with no mechanic.
+- This re-fire is what makes the §3.1 fire-once gate safe against the fail-closed
+  `review-attestation` required check (§3.7, §7): the admitted SHA always ends with
+  `enforcer-status`, `qa-status`, and `review-attestation` posted on it, so auto-merge can
+  fire for a clean PR **without** depending on the mechanic pushing a commit (the deadlock
+  a naive "skip reviewers until admitted" gate would create when the mechanic has nothing
+  to do).
 - The merge fires the moment **all required checks are green and the PR is mergeable** —
-  immediately for an already-green PR, or after the Stage-2 loop converges green.
+  immediately for an already-green PR, or after the admission re-verify / Stage-2 loop
+  converges green.
 - **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
   set by a human-approval-driven job rather than a merge-prep run, the no-op runner on every
   green PR (P5) is gone.
