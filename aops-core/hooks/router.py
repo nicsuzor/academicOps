@@ -1052,30 +1052,28 @@ class HookRouter:
             # PreToolHookResult only supports allowTool and denyReason.
             # denyReason corresponds strictly to short_reason (system_message).
             # It DOES NOT support advisory (context_injection).
-            if advisory:
-                sys.stderr.write(
-                    f"Warning: dropping unsupported context_injection for agy PreToolUse: {advisory!r}\n"
-                )
             if is_block:
                 if not short_reason:
                     raise ValueError(
                         f"agy PreToolUse deny requires short_reason. (Got advisory: {advisory!r})"
                     )
+                if advisory:
+                    raise ValueError(
+                        f"agy PreToolUse does not support context_injection (advisory: {advisory!r})"
+                    )
                 return {
                     "allowTool": False,
                     "denyReason": short_reason,
                 }
+            if advisory:
+                raise ValueError(
+                    f"agy PreToolUse allow/warn does not support context_injection (advisory: {advisory!r})"
+                )
             return {"allowTool": True}
 
         if event == "PostToolUse":
-            if short_reason:
-                sys.stderr.write(
-                    f"Warning: dropping unsupported system_message for agy PostToolUse: {short_reason!r}\n"
-                )
-            if advisory:
-                sys.stderr.write(
-                    f"Warning: dropping unsupported context_injection for agy PostToolUse: {advisory!r}\n"
-                )
+            if short_reason or advisory:
+                raise ValueError("agy PostToolUse does not support any fields.")
             return {}
 
         if event == "PreInvocation":
