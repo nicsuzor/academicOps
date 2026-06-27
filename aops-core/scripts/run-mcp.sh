@@ -29,6 +29,14 @@ if [[ -z "$PKB_MCP_URL" ]]; then
     exit 1
 fi
 
+# Normalise the URL: strip trailing slashes. The streamable-HTTP endpoint is
+# served at `…/mcp` (no trailing slash); a `…/mcp/` value 404s and the proxy
+# fails to connect. Container/env configs routinely carry a trailing slash, so
+# tolerate it here rather than depending on every supplier getting it exact.
+while [[ "$PKB_MCP_URL" == */ ]]; do
+    PKB_MCP_URL="${PKB_MCP_URL%/}"
+done
+
 if ! command -v uvx &> /dev/null; then
     echo "CRITICAL: 'uvx' not found on PATH after probing common locations." >&2
     echo "Install uv: https://docs.astral.sh/uv/getting-started/installation/" >&2
