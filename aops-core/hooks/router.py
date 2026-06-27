@@ -1224,6 +1224,7 @@ def main():
                 hook_event=hook_event,
                 client_type=client_type,
                 raw_input=raw_input,
+                trace_id=None,
             )
 
         try:
