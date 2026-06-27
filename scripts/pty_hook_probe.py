@@ -597,12 +597,12 @@ def run_probe(probe: Probe, workspace: Path) -> Result:
     # self-caveated measurement, not a failure.
     MAX_ATTEMPTS = 3
     pane = transcript = ""
-    attempts: list[str] = []
+    run_attempts: list[str] = []
     for n in range(1, MAX_ATTEMPTS + 1):
         (workspace / ".fired").unlink(missing_ok=True)  # re-arm the fire-once hook
         status, pane = _drive_once(workspace, session, probe)
         transcript = _transcript_text(workspace)
-        attempts.append(f"a{n}:{status}{'+tx' if transcript else '+notx'}")
+        run_attempts.append(f"a{n}:{status}{'+tx' if transcript else '+notx'}")
         if status == "ok" and transcript:
             break
         time.sleep(2.0)
@@ -661,7 +661,7 @@ def run_probe(probe: Probe, workspace: Path) -> Result:
         f"USER pane A={res.user_saw_a} B={res.user_saw_b}; "
         f"AGENT ctx A={res.agent_ctx_a} B={res.agent_ctx_b}; "
         f"in_transcript A={res.in_transcript_a} B={res.in_transcript_b}; "
-        f"transcript={'found' if transcript else 'MISSING'}; attempts={','.join(attempts)}"
+        f"transcript={'found' if transcript else 'MISSING'}; attempts={','.join(run_attempts)}"
     )
     return res
 
