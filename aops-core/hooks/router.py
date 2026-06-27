@@ -733,10 +733,24 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # Gates only evaluate in the main agent session for tool-call events.
-        # Stop/SubagentStop are exempt: Claude Code agents (background jobs)
-        # get is_subagent=True despite being independent sessions (#19220).
-        if ctx.is_subagent and ctx.hook_event not in ("Stop", "SessionEnd", "SubagentStop"):
+        # Gates skip TOOL-CALL events (PreToolUse/PostToolUse) in subagent
+        # sessions — a non-interactive worker can't action a compliance prompt,
+        # and an inline subagent's tool calls aren't the operation that counts.
+        # SESSION-LIFECYCLE events are exempt from that skip so session-level
+        # gates (IDA honesty, handover) work for Claude Code background agents,
+        # which get is_subagent=True despite being independent sessions (#19220):
+        #   - Stop / SessionEnd  → the gate FIRES.
+        #   - UserPromptSubmit    → the fire-once gate RE-ARMS for the next turn.
+        #       Without this a fire-once Stop gate fires exactly once and then
+        #       stays OPEN forever — IDA went silent after turn 1 in background
+        #       sessions because its UPS re-arm was being dropped here.
+        #   - SubagentStop        → main-context bookkeeping about a finished subagent.
+        if ctx.is_subagent and ctx.hook_event not in (
+            "Stop",
+            "SessionEnd",
+            "SubagentStop",
+            "UserPromptSubmit",
+        ):
             return None
 
         # Never block when the runtime signals a retry sequence. Both Claude
