@@ -49,6 +49,8 @@ The taxonomy already locates the work: **`ready` is not just "I want to do this"
 
 So: **the decomposition gate sits at `inbox → ready`**. The `ready → queued` transition stays as the user's prerogative; the planner's job is to make sure that when a task enters the pool of things the user _could_ queue, the user has the artifacts they need to make that decision quickly and well.
 
+**`inbox → ready` is a _computed_ graduation, not a manual planner write.** `ready` is set automatically once decomposition is complete and all hard dependencies are resolved (canonical: [[TAXONOMY]] §"Status Values and Transitions", and `TAXONOMY.md` "`ready` is set automatically…"). The gate below defines _what the planner must produce_ for that graduation to be earned — it does not authorise the planner to hand-write the `ready` band. The criteria are unchanged; only the act of stamping the status is the system's, not the agent's. `ready → queued` remains the user's manual gate.
+
 Rationale summary:
 
 - `inbox → ready` is already where the taxonomy says decomposition has happened. The gate makes the implicit promise auditable.
@@ -76,7 +78,7 @@ Each gate has a single responsibility:
 
 ## Required Outputs of the Decomposition Pass
 
-To promote a node from `inbox` to `ready`, the planner must produce all of the following. None are optional. Missing any one means the node stays in `inbox`.
+For a node to graduate from `inbox` to `ready`, the planner must produce all of the following. None are optional. Until every one is present the node stays in `inbox`; once they are all in place, `ready` is **computed automatically** — the planner does not hand-write the band (see the computed-graduation note above).
 
 ### 1. Subtask breakdown (or explicit "leaf" assertion)
 
@@ -128,9 +130,9 @@ For every parent crossing `inbox → ready`, the planner creates two review-lens
 
 Each lens task is a **child of the parent being reviewed**, with `depends_on: []` (lenses don't block the parent — they annotate it) and tag `lens: <name>`. Status starts at `inbox`, transitions to `done` when the lens completes its review, with the verdict written to the lens task body.
 
-The planner waits for both lens tasks to reach `done` before promoting the parent to `ready`. The lens verdicts are inputs to the planner's promotion decision — they don't auto-block. If RBG flags an axiom violation, the planner reads the verdict, decides whether to revise the decomposition, the AC, the AC verification, or to overrule (with rationale recorded). Same for Pauli.
+The planner waits for both lens tasks to reach `done` before treating the parent as ready-eligible (the lens tasks are themselves part of "decomposition complete", so until they resolve `ready` is not yet computed). The lens verdicts are inputs to the planner's readiness decision — they don't auto-block. If RBG flags an axiom violation, the planner reads the verdict, decides whether to revise the decomposition, the AC, the AC verification, or to overrule (with rationale recorded). Same for Pauli.
 
-**This is the concrete answer to "feedback from rbg/pauli before marking ready"**: lens tasks are created, executed, and resolved; their verdicts inform the planner's decision; the planner records the decision; the parent then transitions.
+**This is the concrete answer to "feedback from rbg/pauli before ready"**: lens tasks are created, executed, and resolved; their verdicts inform the planner's decision; the planner records the decision; once the required outputs are complete the parent graduates to `ready` automatically (the planner does not hand-write the band).
 
 The user can override at any point — the planner reports lens findings to the user as part of the promotion proposal, and the user can say "ship it anyway" if they disagree with a lens.
 
@@ -181,7 +183,7 @@ Already covered above (sibling concerns). This spec **does not subsume them**. T
 
 ## Acceptance Criteria for This Spec
 
-- [ ] Planner SKILL.md decompose mode names the five required outputs and refuses to mark `ready` without them.
+- [ ] Planner SKILL.md decompose mode names the five required outputs; a node does not graduate to `ready` (computed) without them, and the planner does not hand-write the band.
 - [ ] Verification task template exists and is linked from the planner workflow.
 - [ ] RBG-lens and Pauli-lens task templates exist; planner creates these on every gate crossing.
 - [ ] Lens verdicts are recorded as task body content; planner reads them before promoting.

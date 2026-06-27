@@ -252,8 +252,8 @@ Log results in the following format:
 
 ### 3. Execution Rules
 
-- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]).
-- **Priority P0 Calibration**: Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
+- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]). Set any status only from the canonical set ([[../remember/references/TAXONOMY.md#status-values-and-transitions]]); created tasks default to `inbox` and `ready` is computed downstream — do not hand-write it.
+- **Priority (leave at default; only Nic sets intent)**: Leave `priority` at the uncurated default band on swept tasks — never infer, estimate, or propagate a band ([[framework-conventions-summary#intent-authority]]). To make a swept task **more important**, raise the `stated_weight` of its `contributes_to` edge (Renooij-Witteman verbal scale; see [[wire-edges]] / [[../remember/references/TAXONOMY.md#target-nodes]]), never bump priority. Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
 - **Verification**: Verify closed issues are successfully set to `state: closed`.
 - **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
 - **Handoff**: Run verification after completing the cycle:
