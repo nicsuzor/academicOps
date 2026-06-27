@@ -33,7 +33,6 @@ class TestTaskNotificationSilent:
     def test_task_notification_ups_returns_empty_dict(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         monkeypatch.setattr("hooks.router.persist_session_data", lambda data: None)
-        monkeypatch.setattr("hooks.router.log_event_to_session", lambda *a, **kw: None)
 
         router = HookRouter()
 

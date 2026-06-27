@@ -58,7 +58,7 @@ try:
         GeminiHookOutput,
         GeminiHookSpecificOutput,
     )
-    from hooks.unified_logger import log_event_to_session, log_hook_event
+    from hooks.unified_logger import log_hook_event
 except ImportError as e:
     # Fail fast if schemas missing
     print(f"CRITICAL: Failed to import: {e}", file=sys.stderr)
@@ -700,12 +700,6 @@ class HookRouter:
         self, ctx: HookContext, state: SessionState, merged_result: CanonicalHookOutput
     ) -> None:
         """Run special handlers (logging, notifications) that aren't gates."""
-        # Unified logger
-        try:
-            log_event_to_session(ctx.session_id, ctx.hook_event, ctx.raw_input, state)
-        except Exception as e:
-            print(f"WARNING: unified_logger error: {e}", file=sys.stderr)
-
         # Session env setup on start
         if ctx.hook_event == "SessionStart":
             try:
