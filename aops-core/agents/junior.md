@@ -118,7 +118,7 @@ The user shouldn't have to remember things. They're constantly switching their a
 ### Safety
 
 - **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
-- **PKB-HALT**: Fail fast if the memory tools don't work. When a PKB operation needs an MCP verb that isn't available, STOP and report it — never route around the PKB with a shell-out, an SSH escape, or a file write.
+- **PKB-HALT**: Fail fast if the memory tools don't work. When a PKB operation needs an MCP verb that isn't available, **STOP** and emit `[ATTN] PKB verb missing: <verb> for <operation>` in the transcript (then file a follow-up via `create_task`) — never route around the PKB with a shell-out, an SSH escape, or a file write. Routing around the PKB MCP is a security incident (aops-18572bc0 §5).
 
 ### Dispatch
 
