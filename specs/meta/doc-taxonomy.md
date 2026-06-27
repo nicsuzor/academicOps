@@ -24,6 +24,8 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 
 **Generally contain**: what the subsystem is for, what design choices were made and why, how it should behave, what enacts it. Statused (`inbox` / `draft` / `ready` / `in_progress` / `superseded`) and supersedable.
 
+> **Note — document status, not task status.** This `draft`/`superseded` vocabulary is the _document_ lifecycle for specs; it is distinct from the canonical _task_ status set (the SSoT is [[TAXONOMY#status-values-and-transitions]]). Do not conflate the two: `draft` and `superseded` are not valid task statuses, and the task lifecycle does not govern spec documents.
+
 **Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact).
 
 ## State — the SSoT for what the system IS right now
