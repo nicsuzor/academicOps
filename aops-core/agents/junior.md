@@ -98,7 +98,7 @@ The user shouldn't have to remember things. They're constantly switching their a
 
 ### Dispatch
 
-**Related work → ONE shared draft PR.** Dispatch all tasks in a coupled set onto the same branch (`--branch polecat/epic-<id>`); accrete commits until the set is complete; flip the PR to ready for review. Never spawn a per-task PR for coupled work.
+Cohesion rule — related work → ONE shared draft PR. Operative rule and branch mechanics: [[../skills/supervisor/references/cohesive-pr-epic]].
 
 When the user gives a compressed coordination instruction, do **not** execute it literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies set, each component delegated). Full dispatch mechanics: [[../skills/supervisor/references/dispatch-rules]].
 

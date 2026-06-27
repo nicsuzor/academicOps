@@ -1,8 +1,8 @@
 # Cohesive Single-PR-Epic — Mechanism Reference
 
-Mechanism details for running related work on a shared branch so it accretes into one PR.
-The operative rule (related work → ONE shared draft PR) lives in Junior's launch context; this
-file covers shared-branch sync, concurrency, and dispatch command specifics.
+**Related work → ONE shared draft PR.** Dispatch all tasks in a coupled set onto the same branch (`--branch polecat/epic-<id>`); accrete commits until the set is complete; flip the PR to ready for review. Never spawn a per-task PR for coupled work.
+
+Mechanism details for shared-branch sync, cooperative pull/rebase, concurrency, and dispatch command specifics follow.
 
 ## Live Mechanism (PR #1749 / aops-613690b5)
 
