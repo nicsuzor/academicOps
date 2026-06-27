@@ -110,9 +110,15 @@ def test_agy_deny_uses_top_level_allow_tool(monkeypatch, tmp_path):
 
     # Post-fix (strict format): The enforcer gate produces an advisory.
     # Since agy PreToolUse does not support context_injection, the router
-    # will fail loudly as requested.
-    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse does not support context_injection" in stderr
+    # drops it with a warning.
+    assert output.get("allowTool") is False, (
+        f"Without worker posture, enforcer DENY must produce allowTool=false. "
+        f"Got {output!r}. stderr: {stderr}"
+    )
+    assert output.get("denyReason"), (
+        f"A structural DENY must have a non-empty denyReason: {output!r}"
+    )
+    assert "Warning: dropping unsupported context_injection for agy PreToolUse" in stderr
 
     # MUST NOT nest under permissionOverrides (the pre-fix shape that live agy
     # rejected with "syntax error … unexpected token {").
@@ -150,9 +156,15 @@ def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
 
     # Post-fix (strict format): The enforcer gate produces an advisory.
     # Since agy PreToolUse does not support context_injection, the router
-    # will fail loudly as requested, instead of secretly dropping or injecting it.
-    assert not output, f"setup: expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse does not support context_injection" in stderr
+    # drops it with a warning.
+    assert output.get("allowTool") is False, (
+        f"Without worker posture, enforcer DENY must produce allowTool=false. "
+        f"Got {output!r}. stderr: {stderr}"
+    )
+    assert output.get("denyReason"), (
+        f"A structural DENY must have a non-empty denyReason: {output!r}"
+    )
+    assert "Warning: dropping unsupported context_injection for agy PreToolUse" in stderr
 
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
     assert accepted, (

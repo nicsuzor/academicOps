@@ -1052,28 +1052,30 @@ class HookRouter:
             # PreToolHookResult only supports allowTool and denyReason.
             # denyReason corresponds strictly to short_reason (system_message).
             # It DOES NOT support advisory (context_injection).
+            if advisory:
+                sys.stderr.write(
+                    f"Warning: dropping unsupported context_injection for agy PreToolUse: {advisory!r}\n"
+                )
             if is_block:
                 if not short_reason:
                     raise ValueError(
                         f"agy PreToolUse deny requires short_reason. (Got advisory: {advisory!r})"
                     )
-                if advisory:
-                    raise ValueError(
-                        f"agy PreToolUse does not support context_injection (advisory: {advisory!r})"
-                    )
                 return {
                     "allowTool": False,
                     "denyReason": short_reason,
                 }
-            if advisory:
-                raise ValueError(
-                    f"agy PreToolUse allow/warn does not support context_injection (advisory: {advisory!r})"
-                )
             return {"allowTool": True}
 
         if event == "PostToolUse":
-            if short_reason or advisory:
-                raise ValueError("agy PostToolUse does not support any fields.")
+            if short_reason:
+                sys.stderr.write(
+                    f"Warning: dropping unsupported system_message for agy PostToolUse: {short_reason!r}\n"
+                )
+            if advisory:
+                sys.stderr.write(
+                    f"Warning: dropping unsupported context_injection for agy PostToolUse: {advisory!r}\n"
+                )
             return {}
 
         if event == "PreInvocation":
@@ -1157,23 +1159,52 @@ def main():
         raise OSError("No --client flag provided on hook invocation.")
 
     # Pipeline
-    ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
-    result = router.execute_hooks(ctx)
+    ctx = None
+    try:
+        ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
+        result = router.execute_hooks(ctx)
 
-    # Output (JSON conversion happens only here)
-    if client_type == "agy":
-        # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
-        # first unknown field — it does NOT speak Gemini's hook dialect (the
-        # silent-drop bug 4c73f02a introduced; aops-27004ffd). Format against the
-        # ORIGINAL agy event name, not the internal mapped ctx.hook_event.
-        agy_event = gemini_event or raw_event_name or ctx.hook_event
-        print(json.dumps(router.output_for_agy(result, agy_event)))
-    elif client_type == "gemini":
-        output = router.output_for_gemini(result, ctx.hook_event)
-        print(output.model_dump_json(exclude_none=True))
-    else:
-        output = router.output_for_claude(result, ctx.hook_event)
-        print(output.model_dump_json(exclude_none=True))
+        # Output (JSON conversion happens only here)
+        if client_type == "agy":
+            # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
+            # first unknown field — it does NOT speak Gemini's hook dialect (the
+            # silent-drop bug 4c73f02a introduced; aops-27004ffd). Format against the
+            # ORIGINAL agy event name, not the internal mapped ctx.hook_event.
+            agy_event = gemini_event or raw_event_name or ctx.hook_event
+            print(json.dumps(router.output_for_agy(result, agy_event)))
+        elif client_type == "gemini":
+            output = router.output_for_gemini(result, ctx.hook_event)
+            print(output.model_dump_json(exclude_none=True))
+        else:
+            output = router.output_for_claude(result, ctx.hook_event)
+            print(output.model_dump_json(exclude_none=True))
+    except Exception as e:
+        import traceback
+
+        error_msg = f"{e.__class__.__name__}: {str(e)}\n{traceback.format_exc()}"
+
+        if ctx is None:
+            from lib.hook_context import HookContext
+
+            session_id = (
+                raw_input.get("session_id") or os.environ.get("AOPS_SESSION_ID") or "unknown"
+            )  # allow-fallback: session_id is optional in crash-logging context
+            hook_event = gemini_event or raw_event_name or "unknown"
+            ctx = HookContext(
+                session_id=session_id,
+                hook_event=hook_event,
+                client_type=client_type,
+                raw_input=raw_input,
+            )
+
+        try:
+            from hooks.unified_logger import log_hook_event
+
+            log_hook_event(ctx, exit_code=1, error=error_msg)
+        except Exception as log_err:
+            print(f"WARNING: Failed to log crashed hook event: {log_err}", file=sys.stderr)
+
+        raise e
 
 
 if __name__ == "__main__":

@@ -39,6 +39,7 @@ def log_hook_event(
     ctx: HookContext,
     output: CanonicalHookOutput | None = None,
     exit_code: int = 0,
+    error: str | None = None,
 ) -> None:
     """
     Log a hook event to the per-session hooks log file.
@@ -82,6 +83,8 @@ def log_hook_event(
 
     log_dict = log_entry.model_dump()
     log_dict["debug"] = debug_metrics
+    if error:
+        log_dict["error"] = error
 
     with log_path.open("a") as f:
         json.dump(
