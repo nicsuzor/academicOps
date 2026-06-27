@@ -244,6 +244,8 @@ Enforce the following classifications to save user attention:
 
 Canonical — see [[../remember/references/TAXONOMY.md#status-values-and-transitions]]. Typical flow: `inbox` → `ready` → `queued` → `in_progress` → `merge_ready` → `done` (with `blocked`, `paused`, `someday`, `cancelled` as alternatives).
 
+`inbox` is the default; `inbox → ready` is **automatic** — `ready` is computed once decomposition is complete and all hard dependencies resolve (do not hand-write it). The only manual status gates are the human `ready → queued` (Nic's prerogative — the dispatch gate) and the agent claim at `queued → in_progress`.
+
 **Academic / peer-review / reading-note items must NOT be filed as `review`.** `review` is reserved for a mid-flight dev/work task blocked awaiting Nic's judgment so a worker can continue — not for standalone material or Nic's own academic to-dos.
 
 - Standalone reference / reading material → `type: knowledge` (or `note`); it carries no actionable status.
