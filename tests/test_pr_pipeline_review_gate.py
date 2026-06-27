@@ -48,6 +48,40 @@ def test_qa_still_short_circuits_on_enforcer_commit():
     assert "needs.enforcer.outputs.committed != 'true'" in qa_if, qa_if
 
 
+# ── Fire-once gate: reviewers fire on ready, not on pre-admission pushes (§3.1) ──
+
+
+def test_enforcer_fire_once_gate_skips_preadmission_synchronize():
+    """§3.1: the expensive enforcer must NOT re-run on every pre-admission push.
+    Its `if:` gates a `synchronize` action behind admission carried forward by
+    `initialize` (so it fires on ready/opened/reopened and on post-admission
+    mechanic SHAs, but skips a pre-admission `synchronize`)."""
+    enf = _jobs()["enforcer"]
+    assert "initialize" in enf["needs"], enf["needs"]
+    cond = enf["if"]
+    assert "github.event.action != 'synchronize'" in cond, cond
+    assert "needs.initialize.outputs.admitted == 'true'" in cond, cond
+
+
+def test_initialize_exposes_admitted_output():
+    """The fire-once gate reads `needs.initialize.outputs.admitted`; the
+    `initialize` job must declare it and the carry-forward step must emit both
+    truth values."""
+    init = _jobs()["initialize"]
+    assert "admitted" in init.get("outputs", {}), init.get("outputs")
+    body = "\n".join(step.get("run", "") for step in init["steps"] if isinstance(step, dict))
+    assert "admitted=true" in body and "admitted=false" in body, body
+
+
+def test_cheap_checks_still_run_every_push():
+    """Only the expensive agents are gated; lint/typecheck/pytest keep running on
+    every push (they have no synchronize/admitted clause)."""
+    jobs = _jobs()
+    for name in ("lint", "typecheck", "pytest"):
+        cond = jobs[name].get("if", "")
+        assert "admitted" not in cond, (name, cond)
+
+
 # ── AC1/AC2: fail-closed liveness + named-reviewer attestation ───────────────
 
 
