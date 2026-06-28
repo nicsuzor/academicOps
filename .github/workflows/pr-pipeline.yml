@@ -96,6 +96,15 @@ jobs:
     timeout-minutes: 45
     name: Initialize
     runs-on: ubuntu-latest
+    # `admitted` mirrors the admit-status this job just set on HEAD: 'true' only when
+    # a prior admission was carried forward across an agent-authored fix commit
+    # (§5), 'false' otherwise (fresh/ready/reopened, human push, or un-admitted
+    # prior). The enforcer/qa Stage-1 gate reads it to fire reviewers ONCE on ready
+    # and then NOT AGAIN until admitted (§3.1) — a pre-admission `synchronize` has
+    # admitted='false', so the expensive reviewers skip; a post-admission mechanic
+    # `synchronize` carries admitted='true', so Stage-2 re-verification runs (§3.5).
+    outputs:
+      admitted: ${{ steps.admit-carry.outputs.admitted }}
     steps:
       # admit-status carry-forward (pr-pipeline §5). admit-status is the required
       # human gate; it is set to success only by `admit-on-review.yml` (§3.2)
@@ -125,6 +134,9 @@ jobs:
               -f state="pending" \
               -f context="admit-status" \
               -f description="Awaiting admission — approve the PR to admit (review approval)"
+            # Not admitted on this HEAD — the Stage-1 reviewer gate (§3.1) reads this
+            # to skip enforcer/qa on a pre-admission `synchronize`.
+            echo "admitted=false" >> "$GITHUB_OUTPUT"
           }
 
           # Fresh PR (or re-opened) is never pre-admitted.
@@ -169,6 +181,9 @@ jobs:
               -f state="success" \
               -f context="admit-status" \
               -f description="Admission carried forward across agent fix commit"
+            # Admitted on this HEAD — the Stage-1 reviewer gate (§3.1) reads this so
+            # enforcer/qa DO re-verify the mechanic's post-admission fix SHA (§3.5).
+            echo "admitted=true" >> "$GITHUB_OUTPUT"
           else
             echo "Human push detected — resetting admission to pending (must be re-judged)"
             set_admit_pending
@@ -247,9 +262,30 @@ jobs:
     secrets: inherit
 
   # ─── Step 2: Enforcer ────────────────────────────────────────────
+  # FIRE-ONCE-ON-READY gate (§3.1). The expensive reviewers run when the PR is
+  # marked ready and then NOT AGAIN until admitted — they do NOT re-fire on every
+  # pre-admission push. The gate has three live clauses (all but the last are the
+  # pre-existing guards):
+  #   - lint did not autofix (a lint commit changes the SHA → that pass short-circuits);
+  #   - not a draft PR (§3.9), and `workflow_call` invocations are unaffected;
+  #   - NOT a pre-admission `synchronize`: the reviewers fire on `opened`/`ready_for_review`/
+  #     `reopened` (action != 'synchronize'), and on a `synchronize` ONLY when
+  #     `initialize` carried admission forward (admitted == 'true') — i.e. a POST-admission
+  #     mechanic fix SHA that Stage-2 must re-verify (§3.5). A pre-admission `synchronize`
+  #     has admitted == 'false', so enforcer skips and — via the documented dependency
+  #     cascade (§3.9) — qa, check-mechred, check-admit and the mechanic skip with it.
+  #     The admission boundary re-fires the reviewers on the admitted SHA (admit-on-review.yml).
+  # `always()` is required because `initialize` is conditional (skipped on fork-origin
+  # PRs); the explicit `needs.lint.result == 'success'` restores the success-gate that
+  # the bare `needs: [lint]` edge used to provide.
   enforcer:
-    needs: [lint]
-    if: needs.lint.outputs.committed != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: [lint, initialize]
+    if: >-
+      always() &&
+      needs.lint.result == 'success' &&
+      needs.lint.outputs.committed != 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'pull_request' || github.event.action != 'synchronize' || needs.initialize.outputs.admitted == 'true')
     name: Enforcer Review
     uses: ./.github/workflows/agent-enforcer.yml
     with:

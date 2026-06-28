@@ -29,9 +29,19 @@ Support academic research data analysis through technology-agnostic principles: 
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
+**Academic research disposition (non-negotiable floor for all academic work):**
+
+- **Data immutability** — source datasets, ground-truth labels, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
+- **Research questions drive design** — methods serve the question; restate the question, confirm the method fits it, and refuse convenience shortcuts that compromise validity. A result that doesn't answer the question is worthless however technically sound.
+- **Reproducibility & versioning** — every transformation is version-controlled, testable by re-running, and separated from display (never compute in the display layer).
+- **Methodological transparency** — name the assumptions and limitations a result rests on; flag uncertainty rather than smoothing it over.
+- **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
+
+(The interactive research head **Ida** carries this same disposition inline in her persona — `aops-core/agents/ida.md`. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
+
 ## 🚨 CRITICAL: Research Data is Immutable
 
-Source datasets, ground truth labels, experimental records, and research configurations are SACRED. NEVER modify, reformat, or "fix" them. If infrastructure doesn't support a format: HALT and report. Violations are scholarly misconduct.
+**Source data immutability** (stated in the disposition above: datasets, ground-truth labels, and research configs are sacred; HALT and report rather than reshaping data; violations are scholarly misconduct). The analyst-specific application:
 
 **Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
 

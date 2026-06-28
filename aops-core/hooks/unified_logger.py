@@ -15,12 +15,11 @@ from datetime import datetime
 from typing import Any
 
 import psutil
-from lib.gate_model import GateResult
+from lib.hook_context import HookContext
 from lib.session_paths import get_hook_log_path
-from lib.session_state import SessionState
 
 from hooks.internal_models import HookLogEntry
-from hooks.schemas import CanonicalHookOutput, HookContext
+from hooks.schemas import CanonicalHookOutput
 
 # Set up logging
 logging.basicConfig(
@@ -38,6 +37,7 @@ def log_hook_event(
     ctx: HookContext,
     output: CanonicalHookOutput | None = None,
     exit_code: int = 0,
+    error: str | None = None,
 ) -> None:
     """
     Log a hook event to the per-session hooks log file.
@@ -81,6 +81,8 @@ def log_hook_event(
 
     log_dict = log_entry.model_dump()
     log_dict["debug"] = debug_metrics
+    if error:
+        log_dict["error"] = error
 
     with log_path.open("a") as f:
         json.dump(
@@ -90,25 +92,3 @@ def log_hook_event(
             default=_json_serializer,
         )
         f.write("\n")
-
-
-def log_event_to_session(
-    session_id: str, hook_event: str, input_data: dict[str, Any], state: SessionState | None = None
-) -> GateResult | None:
-    """Update session state for a hook event.
-
-    This is now a thin wrapper. Most state logic is in Gates.
-    We might update basic metrics here if needed, or rely on Gates.
-    For now, we keep it as a no-op placeholder for the registry if called.
-
-    Args:
-        session_id: Session ID
-        hook_event: Name of the hook event
-        input_data: Full input data from the hook
-        state: SessionState object (optional, if passed by new router)
-
-    Returns:
-        None
-    """
-    # Logic moved to Gate implementations (CustodietGate, etc.)
-    return None

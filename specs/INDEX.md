@@ -36,6 +36,7 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[effectual-planning-agent]] — Planner agent design
 - [[orchestrator-boundary]] — CLI orchestrator authority boundary
 - [[polecat-system]] — Distributed worker dispatch
+- [[interactive-coworking]] — Polecat↔interactive axis, thin Ida sibling, hook-router separation
 
 ### [[workflows]] — Multi-step processes
 

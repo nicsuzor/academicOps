@@ -46,6 +46,16 @@
       },
       "source": "./dist/aops-cowork",
       "category": "productivity"
+    },
+    {
+      "name": "aops-ts",
+      "description": "AcademicOps Tailscale bring-up - opt-in SessionStart hook that joins the tailnet in remote/cloud sessions so tailnet services (e.g. the PKB MCP) resolve",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-ts-claude",
+      "category": "productivity"
     }
   ]
 }

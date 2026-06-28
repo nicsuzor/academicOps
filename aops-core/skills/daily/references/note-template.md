@@ -27,7 +27,7 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 
 ## Today's Log
 
-<!-- What happened so far today. While the day is in flight: verbatim user prompts in time order, one outcome line each, then a "what you were trying to do" line. At day's end: an editorial synthesis (proportional detail, named patterns, honest about dropped threads). Describe the past factually; never rank future work. Omit this whole section on an empty morning. -->
+<!-- What happened so far today. SOURCE (mandatory): reconstruct this from today's PRIMARY sources — the session transcripts at `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`). You MUST open them before writing this section. Do NOT synthesise it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list — those are second-hand and reproduce the file, not the day. While the day is in flight: verbatim user prompts in time order, one outcome line each, then a "what you were trying to do" line. At day's end: an editorial synthesis (proportional detail, named patterns, honest about dropped threads). Describe the past factually; never rank future work. Omit this whole section on an empty morning (no same-day interactive session transcripts). -->
 
 **11:50 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally"_ → failed at the config layer: `unknown gates keys: ['commit']`; blocked all dispatch on this host.
 

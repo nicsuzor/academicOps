@@ -251,10 +251,9 @@ Scaffold drops this into every new research project. It is the **gate**: no anal
 ---
 title: "Dispatch smoke test: <project>"
 type: task
-priority: 1
 project: <slug>
 tags: [smoke-test, infrastructure, gate]
-status: ready
+status: inbox
 assignee: polecat
 consequence: |
   If this fails, no dispatched polecat can reach raw research data.
@@ -278,6 +277,10 @@ not "fall back" to summary documents (see P#42 extension, P#102).
 
 ### BigQuery probe
 ```
+
+> The scaffold template above omits `priority` deliberately: it stays at the uncurated default band. `priority` is Nic's curated intent — agents (and scaffolds) never originate a non-default band ([[framework-conventions-summary#intent-authority]]). Importance is expressed via `consequence` prose and `contributes_to` `stated_weight`, not a priority bump.
+
+> `status` starts as `inbox` (the default for every new node, TAXONOMY:326). The smoke-test task has no hard dependencies, so it auto-graduates to `ready` immediately via the computed-readiness rule (TAXONOMY:460). Do not hand-write `ready`.
 
 bq query --nouse_legacy_sql --format=json --max_rows=1\
 "SELECT COUNT(*) AS n FROM \`{{data.sources.bigquery.project}}.{{data.sources.bigquery.dataset}}.{{data.sources.bigquery.canonical_table}}\` LIMIT 1"

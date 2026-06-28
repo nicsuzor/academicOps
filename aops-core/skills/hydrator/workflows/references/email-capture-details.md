@@ -49,11 +49,13 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 - **Medium (50-80%)**: Suggest but flag for review (#suggested-categorization)
 - **Low (<50%)**: Create in inbox, needs manual categorization (#needs-categorization)
 
+Captured tasks are created at the default `inbox` status. Any status you set must come from the canonical set — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
+
 ## Step 5 & 6: Metadata and Task Creation
 
 ### Capture Metadata (do not infer priority/severity)
 
-1. **Leave `priority` at the uncurated default band.** Email capture **never** infers a priority band from the email's urgency, deadline, or apparent importance — inferring intent is an authority the agent does not have. Deadline pressure is carried by `due` (it enters ranking via `focus_score`, not the priority band) and importance by `consequence`; the band stays at the default. Setting `priority=0` (P0) requires deliberate calibration and justification (see [[../../../remember/references/TAXONOMY.md#p0-calibration-bar]]). If Nic expressly directs a band in the captured message ("make this P1"), transcribe exactly that and nothing more. Intent/priority authority — the canonical rule: [[framework-conventions-summary#intent-authority]].
+1. **Leave `priority` at the uncurated default band.** Email capture **never** infers a priority band from the email's urgency, deadline, or apparent importance — inferring intent is an authority the agent does not have. Deadline pressure is carried by `due` (it enters ranking via `focus_score`, not the priority band) and importance by `consequence`; the band stays at the default. Setting `priority=0` (P0) requires deliberate calibration and justification (see [[../../../remember/references/TAXONOMY.md#p0-calibration-bar]]). If Nic expressly directs a band in the captured message ("make this P1"), transcribe exactly that and nothing more. Intent/priority authority — the canonical rule: [[framework-conventions-summary#intent-authority]]. **To make a captured task more important, never bump priority** — raise the `stated_weight` of its `contributes_to` edge (Renooij-Witteman verbal scale; see [[wire-edges]] / [[../../../remember/references/TAXONOMY.md#target-nodes]]).
 
 2. **Omit severity.** Tasks created from emails are ordinary work items. Never assign non-zero severity to these tasks, as severity belongs exclusively on target milestones (see [[../../../remember/references/TAXONOMY.md#severity-target-boundary]]).
 
@@ -64,7 +66,7 @@ Query the PKB for relevant context (projects, goals, relationships). Match actio
 
 ### Create "Ready for Action" Tasks
 
-Tasks must be **self-contained** — a person reading the task should understand what's needed without opening the original email.
+Tasks must be **self-contained** — a person reading the task should understand what's needed without opening the original email. ("Ready for Action" is a body-quality bar, **not** the `ready` status: created tasks stay at the default `inbox`, and `ready` is computed downstream once decomposition + deps are complete — canonical set: [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].)
 
 #### Task Body Quality Requirements (MANDATORY)
 

@@ -468,8 +468,11 @@ class GenericGate:
                     state,
                     session_state,
                 )
-                if ctx_inj:
-                    ctx_inj = "<SYSTEM HOOK INSTRUCTION>" + ctx_inj + "</SYSTEM HOOK INSTRUCTION>"
+                # NOTE: advisory injections are no longer wrapped in a
+                # `<SYSTEM HOOK INSTRUCTION>` scaffold (removed 2026-06-27). That
+                # tag meant nothing to Claude Code, looked exactly like a smuggled
+                # system instruction, and risked tripping the client's own
+                # hook-injection rejection. The advisory text stands on its own.
 
                 # Combine prefixes
                 final_sys_msg = sys_msg_prefix + sys_msg

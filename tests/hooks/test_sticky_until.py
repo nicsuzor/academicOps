@@ -14,7 +14,6 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.schemas import HookContext  # noqa: E402
 from lib.gate_types import (  # noqa: E402
     GateCondition,
     GateConfig,
@@ -24,6 +23,7 @@ from lib.gate_types import (  # noqa: E402
     GateTrigger,
 )
 from lib.gates.engine import GenericGate  # noqa: E402
+from lib.hook_context import HookContext  # noqa: E402
 from lib.session_state import SessionState  # noqa: E402
 
 

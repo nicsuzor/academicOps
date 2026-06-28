@@ -141,3 +141,53 @@ def test_allowlist_is_per_login_not_substring():
         admit_allowlist="nicsuzor",
     )
     assert out["state"] == "skip"
+
+
+# ── Admission-boundary re-verification (§3.1 fire-once + §5) ──────────────────
+#
+# The fire-once gate (pr-pipeline §3.1) skips enforcer/qa on pre-admission pushes,
+# so the admitted SHA can lack the REQUIRED enforcer-status / qa-status /
+# review-attestation. admit-on-review.yml must re-fire the reviewers + recompute
+# attestation ON THE ADMITTED SHA so auto-merge can fire without depending on the
+# mechanic pushing a commit.
+
+import yaml  # noqa: E402
+
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "admit-on-review.yml"
+
+
+def _admit_jobs() -> dict:
+    return yaml.safe_load(WORKFLOW.read_text())["jobs"]
+
+
+def test_admission_refire_jobs_exist_and_target_admitted_sha():
+    jobs = _admit_jobs()
+    for name in ("admit-enforcer", "admit-qa", "admit-attestation", "decide-mechanic"):
+        assert name in jobs, f"missing admission job {name}"
+    # The reviewers re-run against the admitted SHA, not live HEAD.
+    assert jobs["admit-enforcer"]["with"]["sha"] == "${{ needs.admit.outputs.admitted_sha }}"
+    assert jobs["admit-qa"]["with"]["sha"] == "${{ needs.admit.outputs.admitted_sha }}"
+
+
+def test_admission_refire_only_when_not_already_green():
+    jobs = _admit_jobs()
+    assert "needs.admit.outputs.reviewers_green != 'true'" in jobs["admit-enforcer"]["if"]
+    assert "needs.admit.outputs.reviewers_green != 'true'" in jobs["admit-qa"]["if"]
+    assert "needs.admit.outputs.reviewers_green != 'true'" in jobs["admit-attestation"]["if"]
+
+
+def test_admit_attestation_reposts_required_review_attestation():
+    body = "\n".join(
+        step.get("run", "")
+        for step in _admit_jobs()["admit-attestation"]["steps"]
+        if isinstance(step, dict)
+    )
+    assert 'context="review-attestation"' in body, body
+
+
+def test_first_mechanic_dispatch_waits_on_decide_mechanic():
+    """The first mechanic dispatch is decided AFTER re-verification settles, so it
+    keys off decide-mechanic (not the admit job's pre-refire reading)."""
+    mech = _admit_jobs()["mechanic"]
+    assert "decide-mechanic" in mech["needs"], mech["needs"]
+    assert "needs.decide-mechanic.outputs.need_mechanic == 'true'" in mech["if"], mech["if"]

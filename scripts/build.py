@@ -37,26 +37,24 @@ except ImportError as e:
     print(f"Sys Path: {sys.path}", file=sys.stderr)
     sys.exit(1)
 
+# The client-translation SSoT (Table 1 of specs/hooks/CLIENT-TRANSLATION.md):
+# event-name maps (both directions), valid wire events, registration shapes, and
+# cold-start timeout floors. Stdlib-only by design so the build imports it without
+# pulling in the hook runtime's deps. This REPLACES the three previously-divergent
+# copies of the event map (router.GEMINI_EVENT_MAP, the build's own
+# CLAUDE_TO_GEMINI_EVENTS + AGY_EVENT_MAP, scripts/transforms/hooks.py).
+sys.path.insert(0, str(SCRIPT_DIR.parent / "aops-core"))
+from hooks import client_spec  # noqa: E402
 
-# Event name mapping: Claude Code -> Gemini CLI
-CLAUDE_TO_GEMINI_EVENTS = {
-    "PreToolUse": "BeforeTool",
-    "PostToolUse": "AfterTool",
-    "UserPromptSubmit": "BeforeAgent",
-    "Stop": ["SessionEnd", "AfterAgent"],  # Stop needs both for unified router.py handling
-    # These are the same in both
-    "SessionStart": "SessionStart",
-    "SessionEnd": "SessionEnd",
-    "SubagentStart": "BeforeTool",  # Subagents are tools in Gemini
-    "SubagentStop": "AfterTool",  # Subagents are tools in Gemini
-    "PreCompact": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
-    "Notification": "BeforeAgent",  # Map to BeforeAgent as a safe fallback
-    # Gemini-specific (keep as-is if present)
-    "BeforeTool": "BeforeTool",
-    "AfterTool": "AfterTool",
-    "BeforeAgent": "BeforeAgent",
-    "AfterAgent": "AfterAgent",
-}
+# Table 2 of specs/hooks/CLIENT-TRANSLATION.md, BUILD half (§P3b): the build-name
+# tool-NAME projection (Claude<->Gemini frontmatter maps + body-text tool-call
+# notation rewrites). Stdlib-only, same import-at-load contract as client_spec.
+# This REPLACES the build's inline GEMINI_TOOL_NAME_MAP / TOOL_NAME_MAP copies and
+# the body-text mapping/spawn-rewrite literals. NOTE: these are BUILD-frontmatter
+# names, deliberately distinct from the RUNTIME-emitted names in the same module
+# (e.g. Claude Agent/Task -> build writes activate_skill, runtime emits
+# invoke_agent/delegate_to_agent) — see tool_registry's build-projection header.
+from lib import tool_registry  # noqa: E402
 
 # Directory/file names that are local build detritus and must never be packaged
 # into a plugin artifact. mypy/ruff/pytest caches in particular contain files
@@ -311,33 +309,39 @@ AOPS_CORE_PYPROJECT_PLACEHOLDER_VERSION = "0.0.0"
 
 # Matches the `version = "..."` line under [project] (placeholder in source).
 _PYPROJECT_VERSION_RE = re.compile(r'(?m)^(version\s*=\s*)"[^"]*"')
-# Matches the hatch wheel `packages = [...]` line (single-line list as authored).
-_PYPROJECT_PACKAGES_RE = re.compile(r"(?m)^packages\s*=\s*\[[^\]]*\]")
 
 
 def generate_aops_core_pyproject(
     version: str, platform: str = "claude", aops_root: Path | None = None
 ) -> str:
-    """Return aops-core/pyproject.toml content with the build version stamped in.
+    """Return the shipped pyproject.toml content with the build version stamped in.
 
-    Reads the tracked source manifest at ``aops-core/pyproject.toml`` (the single
-    source of truth for shipped hook deps) and substitutes the placeholder
-    version with the real build version.
+    Each platform reads its own tracked source manifest — the single source of
+    truth for that surface's shipped runtime deps — and substitutes the
+    placeholder version with the real build version.
 
-    The cowork build ships NO hooks (the shared aops-core hook stack serves the
-    Cowork surface when aops-core is installed from the dist marketplace — see
-    task aops-04075740 / mem-fe29111a). With no ``hooks/`` package on disk,
-    listing it under hatch's wheel packages would break ``uv sync --frozen`` at
-    runtime, so for the cowork platform the ``hooks`` package is trimmed from the
-    wheel packages list, leaving only ``lib``.
+    - ``claude`` / ``gemini`` / ``antigravity`` read ``aops-core/pyproject.toml``
+      (ships ``lib`` + ``hooks``).
+    - ``cowork`` reads ``aops-cowork/pyproject.toml``. aops-cowork is a REAL
+      composed package (see build_aops_core): it carries its own committed
+      manifest, already lib-only because the cowork build ships NO hooks (the
+      shared aops-core hook stack serves the Cowork surface when aops-core is
+      installed from the dist marketplace — task aops-04075740 / mem-fe29111a).
+      Listing a ``hooks`` package that isn't on disk would break
+      ``uv sync --frozen`` at runtime, so the committed cowork manifest declares
+      ``packages = ["lib"]`` directly rather than having it trimmed here.
     """
     if aops_root is None:
         aops_root = SCRIPT_DIR.parent
-    src_pyproject = aops_root / "aops-core" / "pyproject.toml"
+    if platform == "cowork":
+        src_pyproject = aops_root / "aops-cowork" / "pyproject.toml"
+        missing_hint = "aops-cowork is a real composed package; its pyproject.toml must be tracked"
+    else:
+        src_pyproject = aops_root / "aops-core" / "pyproject.toml"
+        missing_hint = "cannot build aops-core without it (epic-267fe017)"
     if not src_pyproject.exists():
         raise FileNotFoundError(
-            f"Required source manifest {src_pyproject} not found — "
-            "cannot build aops-core without it (epic-267fe017)"
+            f"Required source manifest {src_pyproject} not found — {missing_hint}"
         )
     content = src_pyproject.read_text()
 
@@ -346,14 +350,6 @@ def generate_aops_core_pyproject(
         raise ValueError(
             f"Could not stamp version into {src_pyproject} (no [project] version line)"
         )
-
-    if platform == "cowork":
-        content, n_pkg = _PYPROJECT_PACKAGES_RE.subn('packages = ["lib"]', content, count=1)
-        if n_pkg != 1:
-            raise ValueError(
-                f"Could not trim hooks package for cowork in {src_pyproject} "
-                "(no wheel packages line)"
-            )
     return content
 
 
@@ -376,14 +372,7 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         return
 
     src_hooks = config["hooks"]
-    VALID_GEMINI_EVENTS = (
-        "SessionStart",
-        "BeforeAgent",
-        "AfterAgent",
-        "BeforeTool",
-        "AfterTool",
-        "SessionEnd",
-    )
+    valid_gemini_events = client_spec.VALID_WIRE_EVENTS["gemini"]
     gemini_hooks: dict = {}
 
     for claude_event, hook_list in src_hooks.items():
@@ -391,14 +380,14 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
         if claude_event.endswith("-disabled"):
             continue
 
-        # Map event name(s)
-        target_events = CLAUDE_TO_GEMINI_EVENTS.get(claude_event, [claude_event])
-        if isinstance(target_events, str):
-            target_events = [target_events]
+        # Map event name(s) via the SSoT. Events with no Gemini equivalent map to
+        # [] and are dropped (one internal event can fan out — Stop -> SessionEnd
+        # AND AfterAgent).
+        target_events = client_spec.to_wire_events("gemini", claude_event)
 
         for gemini_event in target_events:
             # Skip events that don't exist in Gemini
-            if gemini_event not in VALID_GEMINI_EVENTS:
+            if gemini_event not in valid_gemini_events:
                 print(f"  Skipping unsupported Gemini event: {gemini_event} (from {claude_event})")
                 continue
 
@@ -472,57 +461,33 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         print("Warning: hooks.json has no 'hooks' key")
         return
 
-    # Events that agy natively supports (no name transformation needed)
-    VALID_AGY_EVENTS = (
-        "PreToolUse",
-        "PostToolUse",
-        "PreInvocation",
-        "PostInvocation",
-    )
-
-    # Invocation/Stop events use a DIFFERENT registration shape than tool events.
-    # Per https://antigravity.google/docs/hooks#supported-events, the
-    # PreInvocation/PostInvocation (and Stop) handlers must be a FLAT handler list
-    # directly under the event key:
-    #     "PreInvocation": [{"type": "command", "command": "...", "timeout": N}]
-    # The matcher/hooks[] wrapper is ONLY for PreToolUse/PostToolUse. When the
-    # invocation events were wrapped in the tool-event shape, agy phantom-logged
-    # "executing command" (json_hook_caller.go:144) but never spawned the process
-    # — the PreInvocation context-injection hook silently never fired (the agy
-    # PreInvocation no-op symptom). Emitting the flat list makes the hook fire.
-    FLAT_LIST_AGY_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
-
-    # Claude Code events that must be renamed for agy compatibility
-    AGY_EVENT_MAP = {
-        "UserPromptSubmit": "PreInvocation",
-        "Stop": "PostInvocation",
-    }
-
-    # Defence-in-depth timeout floors for agy (ms). The real cold-start fix is the
-    # venv prebuild in `make install-agy`; this floor is a safety net so that if a
-    # venv prebuild is ever skipped/failed, the first PreToolUse cold `uv run`
-    # build does not blow the timeout and produce a spurious "Tool call denied by
-    # jsonhook__..." (aops-7697a478). With a warm venv the hook returns in <100ms,
-    # so a higher ceiling costs nothing in steady state.
-    AGY_TIMEOUT_FLOOR_MS = {
-        "PreToolUse": 15000,
-    }
-
     def _transform_hook(hook: dict, output_event: str) -> dict:
         """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
         new_hook = dict(hook)
         if "command" in new_hook:
             cmd = new_hook["command"]
-            cmd = cmd.replace(
-                "${CLAUDE_PLUGIN_ROOT}",
-                "$HOME/.gemini/antigravity-cli/plugins/aops-core",
-            )
+            # agy runs PreToolUse/PostToolUse/Pre|PostInvocation hooks with the
+            # process CWD set to the plugin's install dir (verified at runtime on
+            # agy 1.0.13). So a plain CWD-RELATIVE path to router.sh resolves with
+            # NO path variable and NO hardcoded path. router.sh self-locates via
+            # $0, so HOOK_DIR is computed correctly from the relative invocation.
+            #
+            # Do NOT use ${extensionPath} here: agy does NOT resolve it in native
+            # plugin-format command strings (it becomes empty → `bash /hooks/
+            # router.sh: No such file or directory`). That is upstream agy bug
+            # google-antigravity/antigravity-cli#390 (open as of 1.0.13). Do NOT
+            # use a literal $HOME/... path either: agy execs the command via argv
+            # (not a shell), so $HOME would reach bash as a literal token.
+            cmd = cmd.replace('"${CLAUDE_PLUGIN_ROOT}/hooks/router.sh"', "hooks/router.sh")
+            cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}/hooks/router.sh", "hooks/router.sh")
             cmd = cmd.replace("--client claude", "--client agy")
             cmd = f"{cmd} {output_event}"
             new_hook["command"] = cmd
         # Raise the timeout to the agy floor (defence-in-depth for cold-start;
-        # never lower an already-higher source value).
-        floor = AGY_TIMEOUT_FLOOR_MS.get(output_event)
+        # never lower an already-higher source value). The floor (agy PreToolUse =
+        # 15000ms, invariant #10) is a safety net for the first cold `uv run` venv
+        # build; with a warm venv the hook returns in <100ms. SSoT: client_spec.
+        floor = client_spec.timeout_floor_ms("agy", output_event)
         if floor is not None and new_hook.get("timeout", 0) < floor:
             new_hook["timeout"] = floor
         return new_hook
@@ -534,13 +499,23 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
         if event.endswith("-disabled"):
             continue
 
-        # Rename Claude-only events to their agy equivalents
-        output_event = AGY_EVENT_MAP.get(event, event)
-
-        if output_event not in VALID_AGY_EVENTS:
+        # Map the internal/Claude event name to its agy wire event via the SSoT
+        # (UserPromptSubmit -> PreInvocation, Stop -> PostInvocation; tool events
+        # are identity). Events with no agy equivalent map to [] and are dropped.
+        # agy never fans out (each internal event -> exactly one wire event).
+        wire_events = client_spec.to_wire_events("agy", event)
+        if not wire_events:
             continue
+        output_event = wire_events[0]
 
-        if output_event in FLAT_LIST_AGY_EVENTS:
+        # Invocation/Stop events use a DIFFERENT registration shape than tool
+        # events (config_shape == "flat"): the handlers are a FLAT list directly
+        # under the event key, NOT the matcher/hooks[] wrapper (which is ONLY for
+        # PreToolUse/PostToolUse, invariant #9). When invocation events were
+        # wrapped in the tool-event shape, agy phantom-logged "executing command"
+        # but never spawned the process — the PreInvocation context-injection hook
+        # silently never fired. Emitting the flat list makes the hook fire.
+        if client_spec.config_shape("agy", output_event) == "flat":
             # FLAT handler list directly under the event key — no matcher/hooks[]
             # wrapper. agy only spawns invocation/Stop hooks in this shape.
             flat_hooks = []
@@ -598,44 +573,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
     original_tools = frontmatter.get("tools", [])
 
-    # Tool name mapping: Claude Code -> Gemini CLI
-    # (inverse of the Claude mapping below)
-    GEMINI_TOOL_NAME_MAP = {
-        # File operations (Claude Code -> Gemini)
-        "Read": "read_file",
-        "Write": "write_file",
-        "Edit": "replace",
-        "Glob": "glob",
-        "Grep": "grep_search",
-        "grep": "grep_search",  # lowercase variant
-        # Shell execution
-        "Bash": "run_shell_command",
-        "bash": "run_shell_command",  # lowercase variant
-        # Skills/Agents
-        "Skill": "activate_skill",
-        "Task": "activate_skill",
-        "Agent": "activate_skill",
-        # User interaction / planning / todos (Claude built-ins → agy native)
-        # AskUserQuestion was the original gap that caused junior to fail load
-        # validation; the others are listed here so future agents using them are
-        # also translated correctly. NotebookEdit has no agy equivalent → drop.
-        "AskUserQuestion": "ask_user",
-        "ExitPlanMode": "enter_plan_mode",
-        "TodoWrite": "write_todos",
-        "NotebookEdit": None,
-        # Web operations
-        "WebFetch": "web_fetch",
-        "WebSearch": "google_web_search",
-        # Browser/Playwright (Claude Code -> Gemini chrome-devtools-mcp)
-        "browser_navigate": "navigate_page",
-        "browser_snapshot": "take_snapshot",
-        "browser_take_screenshot": "take_screenshot",
-        "browser_click": "click",
-        "browser_wait_for": "wait_for",
-        "browser_evaluate": "evaluate_script",
-        "browser_type": "type_text",
-        "browser_resize": "resize_page",
-    }
+    # Tool name mapping: Claude Code -> Gemini CLI (SSoT: tool_registry, §P3b).
+    # BUILD-frontmatter names, deliberately distinct from runtime-emitted names.
+    GEMINI_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL
 
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
@@ -683,58 +623,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # 1. Comma-separated string (not YAML array)
         # 2. PascalCase tool names for built-in tools
 
-        # Tool name mapping: generic/Gemini -> Claude Code
-        TOOL_NAME_MAP = {
-            # File operations
-            "read_file": "Read",
-            "write_file": "Write",
-            "replace": "Edit",
-            "list_directory": "Glob",
-            "glob": "Glob",
-            "grep": "Grep",
-            "search_file_content": "Grep",
-            # Shell execution
-            "bash": "Bash",
-            "run_shell_command": "Bash",
-            # Skills/Agents
-            "activate_skill": "Skill",
-            # Web operations
-            "web_fetch": "WebFetch",
-            "web_search": "WebSearch",
-            # Already correct names (passthrough)
-            "Read": "Read",
-            "Write": "Write",
-            "Edit": "Edit",
-            "Glob": "Glob",
-            "Grep": "Grep",
-            "Bash": "Bash",
-            "Skill": "Skill",
-            "Task": "Task",
-            "Agent": "Agent",
-            "WebFetch": "WebFetch",
-            "WebSearch": "WebSearch",
-            "TodoWrite": "TodoWrite",
-            "AskUserQuestion": "AskUserQuestion",
-            "NotebookEdit": "NotebookEdit",
-            # Browser/Playwright (Gemini chrome-devtools-mcp -> Claude Code)
-            "navigate_page": "browser_navigate",
-            "take_snapshot": "browser_snapshot",
-            "take_screenshot": "browser_take_screenshot",
-            "click": "browser_click",
-            "wait_for": "browser_wait_for",
-            "evaluate_script": "browser_evaluate",
-            "type_text": "browser_type",
-            "resize_page": "browser_resize",
-            # Passthrough for browser_* names (already canonical)
-            "browser_navigate": "browser_navigate",
-            "browser_snapshot": "browser_snapshot",
-            "browser_take_screenshot": "browser_take_screenshot",
-            "browser_click": "browser_click",
-            "browser_wait_for": "browser_wait_for",
-            "browser_evaluate": "browser_evaluate",
-            "browser_type": "browser_type",
-            "browser_resize": "browser_resize",
-        }
+        # Tool name mapping: generic/Gemini -> Claude Code (SSoT: tool_registry, §P3b).
+        TOOL_NAME_MAP = tool_registry.BUILD_TO_CLAUDE_TOOL
 
         # Transform each tool name
         transformed_tools = []
@@ -767,31 +657,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
 def translate_tool_calls(text: str, platform: str) -> str:
     """Translate abstract tool calls to platform-specific names."""
-    # 1. Platform-specific mappings
-    # We map call notation, descriptive notation, and backticked notation
-    mappings = {
-        "gemini": {
-            "Read(": "read_file(",
-            "Write(": "write_file(",
-            "Edit(": "replace(",
-            "ls(": "list_directory(",
-            "Glob(": "glob(",
-            "Grep(": "grep_search(",
-            "Read tool": "read_file tool",
-            "Write tool": "write_file tool",
-            "Edit tool": "replace tool",
-            "`Read`": "`read_file`",
-            "`Write`": "`write_file`",
-            "`Edit`": "`replace`",
-            "`ls`": "`list_directory`",
-            "`Glob`": "`glob`",
-            "`Grep`": "`grep_search`",
-            "Read or Grep": "read_file or grep_search",
-        },
-        "claude": {},
-    }
-
-    platform_map = mappings.get(
+    # 1. Platform-specific body-text tool-call notation map (call/descriptive/
+    # backticked). SSoT: tool_registry.BUILD_BODY_TOOL_NOTATION (§P3b).
+    platform_map = tool_registry.BUILD_BODY_TOOL_NOTATION.get(
         platform, {}
     )  # allow-fallback: default to no-op for unrecognized platforms
     for abstract, concrete in platform_map.items():
@@ -808,23 +676,18 @@ def translate_tool_calls(text: str, platform: str) -> str:
             text,
         )
 
-        # Task(subagent_type=...) -> activate_skill(name=...)
-        text = text.replace("Task(subagent_type=", "activate_skill(name=")
-        # Skill(skill=...) -> activate_skill(name=...)
-        text = text.replace("Skill(skill=", "activate_skill(name=")
-        # Update descriptive text references
-        text = text.replace("Task() tool", "activate_skill() tool")
-        text = text.replace("`Task(`", "`activate_skill(`")
-        text = text.replace("`Skill(`", "`activate_skill(`")
+        # Task/Skill body-text spawn collapse to activate_skill (SSoT:
+        # tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES, §P3b). Applied in order.
+        for find, replace in tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES:
+            text = text.replace(find, replace)
 
     elif platform == "antigravity":
         # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
         # tool names (no frontmatter/body transformation). It uses Claude Code hook
-        # event names (PreToolUse etc.) but its own plugin root path. ${extensionPath}
-        # is not defined in agy; hooks hardcode this same path, so we match it here.
-        text = text.replace(
-            "${CLAUDE_PLUGIN_ROOT}", "$HOME/.gemini/antigravity-cli/plugins/aops-core"
-        )
+        # event names (PreToolUse etc.) but its own plugin root variable.
+        # ${extensionPath} resolves to the plugin's final install dir (agy resolves
+        # it at load time), matching the hooks/mcp path scheme.
+        text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
 
     return text
 
@@ -918,14 +781,32 @@ def build_aops_core(
         safe_copy(src, dst)
     print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
 
-    # 1a-pre. Drop the cowork-sync skill on every platform except cowork.
-    # The skill describes the PKB ↔ native task-list mirror that only Cowork's
-    # harness uses; the same source file would be misleading on claude/gemini/agy.
-    if platform != "cowork":
+    # 1a-pre. Compose the real aops-cowork package on top of the aops-core base.
+    # aops-cowork is a TRACKED package (aops-cowork/), not a manifest fabricated
+    # from templates/: its plugin.json and pyproject are sourced from there
+    # (below), and its own content — the cowork-sync skill describing the PKB ↔
+    # native task-list mirror that only Cowork's harness uses — is overlaid here.
+    # That skill lives ONLY in the cowork package, so the other surfaces
+    # (claude/gemini/agy) never see it; no drop step is needed.
+    if platform == "cowork":
+        cowork_pkg = aops_root / "aops-cowork"
+        cowork_skills = cowork_pkg / "skills"
+        if cowork_skills.is_dir():
+            overlaid = 0
+            for skill_dir in cowork_skills.iterdir():
+                if skill_dir.name.startswith(".") or not skill_dir.is_dir():
+                    continue
+                safe_copy(skill_dir, content_dir / "skills" / skill_dir.name)
+                overlaid += 1
+            if overlaid:
+                print(f"  ✓ Overlaid {overlaid} aops-cowork package skill(s) (e.g. cowork-sync)")
+    else:
+        # Defensive: if a stray cowork-sync ever lands in the aops-core base,
+        # keep it out of the non-cowork surfaces.
         cowork_sync_dir = content_dir / "skills" / "cowork-sync"
         if cowork_sync_dir.exists():
             shutil.rmtree(cowork_sync_dir)
-            print(f"  - Dropped cowork-sync skill (not for {platform})")
+            print(f"  - Dropped stray cowork-sync skill (not for {platform})")
 
     # 1a. Post-copy: translate tool names in all .md files for Gemini/Antigravity.
     # Agents get transform_agent_for_platform above (frontmatter + body);
@@ -966,16 +847,20 @@ def build_aops_core(
         verb = "kept" if platform == "cowork" else "stripped"
         print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
 
-    # 1b. Stamp the tracked aops-core/pyproject.toml (the in-tree SSoT for shipped
-    # hook deps, epic-267fe017) with the build version and write it into the dist
-    # payload, then lock against that stamped copy so pyproject.toml and uv.lock
-    # ship in lockstep. aops-core/uv.lock is NOT tracked — it is generated here
-    # per-platform (the cowork variant trims the hooks package). `uv sync --frozen`
-    # at runtime then installs exactly what the manifest declared, no drift.
+    # 1b. Stamp the tracked source pyproject (the in-tree SSoT for shipped deps)
+    # with the build version and write it into the dist payload, then lock against
+    # that stamped copy so pyproject.toml and uv.lock ship in lockstep. The source
+    # is per-platform: aops-core/pyproject.toml (epic-267fe017) for claude/gemini/
+    # agy, and the real aops-cowork/pyproject.toml (lib-only) for cowork. uv.lock
+    # is NOT tracked — it is generated here per-platform. `uv sync --frozen` at
+    # runtime then installs exactly what the manifest declared, no drift.
+    pyproject_source = (
+        "aops-cowork/pyproject.toml" if platform == "cowork" else "aops-core/pyproject.toml"
+    )
     pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
-    print(f"  ✓ Stamped pyproject.toml (v{version}) from aops-core/pyproject.toml")
+    print(f"  ✓ Stamped pyproject.toml (v{version}) from {pyproject_source}")
 
     subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
     print("  ✓ Regenerated uv.lock from pyproject.toml")
@@ -1116,13 +1001,15 @@ def build_aops_core(
             sys.exit(1)
 
     if platform in ("claude", "cowork"):
-        # Both use the same plugin contract (.claude-plugin/plugin.json); cowork
-        # ships from a distinct template so its `name`, `description`, and
-        # keywords are tuned for the Cowork variant.
-        template_name = (
-            "aops-core.cowork-plugin.json" if platform == "cowork" else "aops-core.plugin.json"
-        )
-        src_plugin_json = aops_root / "templates" / template_name
+        # Both use the same plugin contract (.claude-plugin/plugin.json). claude
+        # ships from a template; cowork is a REAL composed package, so its
+        # manifest is the tracked aops-cowork/.claude-plugin/plugin.json (its
+        # `name`, `description`, and keywords are tuned for the Cowork variant
+        # and maintained as source, not fabricated here).
+        if platform == "cowork":
+            src_plugin_json = aops_root / "aops-cowork" / ".claude-plugin" / "plugin.json"
+        else:
+            src_plugin_json = aops_root / "templates" / "aops-core.plugin.json"
         dist_plugin_dir = dist_dir / ".claude-plugin"
         dist_plugin_json = dist_plugin_dir / "plugin.json"
         if src_plugin_json.exists():
@@ -1135,8 +1022,11 @@ def build_aops_core(
                 # Leaked 'source' and 'category' cause issues in local cache
                 manifest.pop("source", None)
                 manifest.pop("category", None)
-                # 'userConfig' is no longer used (env resolution moved to run-mcp.sh)
-                manifest.pop("userConfig", None)
+                # 'userConfig' IS used on Claude: it prompts for PKB_MCP_URL at
+                # enable time and substitutes it into the pkb MCP server env
+                # (see mcp.json.template "claude" block). The cowork template ships
+                # no userConfig because Cowork's userConfig path is unreliable —
+                # there run-mcp.sh resolves the URL from the env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
@@ -1186,10 +1076,17 @@ def build_aops_core(
             # Cowork uses the same plugin contract: a single `.mcp.json` at the
             # archive root, pointed to by `plugin.json.mcpServers`.
             if platform in ("claude", "cowork"):
-                claude_mcp_config = mcp_template.get("claude", mcp_template)
+                # Pick the platform-specific block: the "claude" block injects
+                # PKB_MCP_URL from userConfig; the "cowork" block omits that env
+                # (Cowork's userConfig path is unreliable) and lets run-mcp.sh
+                # resolve the URL. Fall back to the claude block, then the whole
+                # template, if a dedicated block is absent.
+                shaped_mcp_config = mcp_template.get(
+                    platform, mcp_template.get("claude", mcp_template)
+                )
                 dist_mcp_path = dist_dir / ".mcp.json"
                 with open(dist_mcp_path, "w") as f:
-                    json.dump(claude_mcp_config, f, indent=2)
+                    json.dump(shaped_mcp_config, f, indent=2)
                     f.write("\n")
 
             # Prepare for Gemini Extension
@@ -1228,15 +1125,24 @@ def build_aops_core(
                         f.write("\n")
                     print(f"✓ Updated {dist_extension_json} with MCP config")
 
-            # Prepare for Antigravity 2.0 Plugin
+            # Prepare for Antigravity 2.0 Plugin (native mcp_config.json).
+            #
+            # We ship ${extensionPath} as the SSoT path token, but agy does NOT
+            # resolve it in native-format mcp_config.json, and it spawns MCP
+            # servers with the WORKSPACE cwd (not the plugin dir) — so neither a
+            # path variable nor a relative path resolves at runtime (verified on
+            # agy 1.0.13; upstream bug google-antigravity/antigravity-cli#390,
+            # open). Unlike hooks (which agy runs FROM the plugin dir, so they use
+            # a cwd-relative path), MCP has no in-config escape. The `make
+            # install-agy` target therefore resolves ${extensionPath} → the actual
+            # install dir AFTER `agy plugin install` (a discovered path, nothing
+            # hardcoded in source). Remove that step once #390 is fixed.
             if platform == "antigravity":
                 servers_config = mcp_config.get("mcpServers", mcp_config)
-                # Replace variables if they came from a Claude-style template
                 ag_servers_json = json.dumps(servers_config)
                 ag_servers_json = ag_servers_json.replace(
                     "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
                 )
-
                 ag_servers_config = json.loads(ag_servers_json)
                 ag_mcp_config = {"mcpServers": ag_servers_config}
 
@@ -1587,6 +1493,76 @@ def build_aops_extras(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_ts(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "claude",
+    version: str = "0.1.0",
+):
+    """Build the aops-ts extension for a specific platform.
+
+    aops-ts is a tiny, opt-in package with two hooks for remote/cloud sessions:
+    a SessionStart hook that brings Tailscale up so tailnet services (e.g. the
+    PKB MCP at *.ts.net) resolve, and a SessionEnd hook that parses the session
+    transcript and rsyncs it to a tailnet host so cloud transcripts survive
+    container reclamation. The bring-up hook is self-contained bash; the sync
+    hook reuses aops-core's transcript.py when present (raw-JSONL fallback
+    otherwise). Only the Claude platform is built; the tailnet bring-up targets
+    Claude Code on the web.
+    """
+    print(f"Building aops-ts for {platform} (v{version})...")
+    plugin_name = "aops-ts"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-ts build")
+        return
+
+    dist_dir = dist_root / f"aops-ts-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # Copy the hook payload (and docs) verbatim. Hooks are auto-discovered by
+    # Claude Code from hooks/hooks.json — no manifest declaration needed.
+    items_to_copy = ["hooks", "README.md"]
+    for item in items_to_copy:
+        src = src_dir / item
+        if src.exists():
+            safe_copy(src, content_dir / item)
+
+    # Claude: copy plugin.json with version injection + marketplace-field hygiene.
+    if platform == "claude":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.plugin.json"
+        dist_plugin_dir = dist_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
+
+                # Hygiene: strip marketplace-only and deprecated fields that
+                # otherwise trip CC's "Unrecognized keys" install validation.
+                manifest.pop("source", None)
+                manifest.pop("category", None)
+                manifest.pop("userConfig", None)
+
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1631,10 +1607,6 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
-    # Generate GHA agent prompts and reusable workflows for the dist repo
-    generate_gha_agents(aops_root, dist_root)
-    generate_reusable_workflows(aops_root, dist_root)
-
     # Build components (Gemini)
     build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
 
@@ -1654,6 +1626,9 @@ def main():
     # Build aops-extras (replaceable technology-specific skills package)
     build_aops_extras(aops_root, dist_root, "gemini", version)
     build_aops_extras(aops_root, dist_root, "claude", version)
+
+    # Build aops-ts (opt-in Tailscale bring-up hook — Claude/web only)
+    build_aops_ts(aops_root, dist_root, "claude", version)
 
     # Build components (Antigravity)
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
@@ -1678,345 +1653,6 @@ def main():
         create_git_tags(aops_root, version)
 
     print("\nBuild complete. Dist artifacts in dist/")
-
-
-_GHA_OPS_SECTION = """\
-## GHA Operational Rules
-
-- **Credential Isolation (P#51)**: Use `GH_TOKEN` from environment. Never use personal credentials or `gh auth login`.
-- **One review only**: File a single `gh pr review` — do not post separate comments. Put everything in the review body.
-- **Be specific**: Reference file paths, line numbers, and axiom numbers (e.g. `utils.py:45 — P#8 violation`).
-- **Depth over breadth**: One well-analysed finding beats seven surface nits.
-- **Conservative fixes**: If a fix might change intended behaviour, comment instead.
-- **No manual lint/style fixes**: Automated tooling handles that; focus on substance.\
-"""
-
-_GHA_TRAILER_MAP: dict[str, tuple[str, str]] = {
-    "enforcer": ("Review-By", "aops-enforcer"),
-    "qa": ("QA-By", "aops-qa"),
-}
-
-
-def _parse_agent_frontmatter(text: str) -> tuple[dict, str]:
-    """Parse YAML frontmatter delimited by '---' lines.
-
-    Returns (frontmatter_dict, body_text).
-    Only parses simple scalar key: value lines (not lists or nested).
-    """
-    if not text.startswith("---\n"):
-        return {}, text
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        return {}, text
-    fm_text = text[4:end]
-    body = text[end + 5 :]  # skip "\n---\n"
-
-    frontmatter: dict = {}
-    for line in fm_text.splitlines():
-        if ": " in line and not line.startswith(" ") and not line.startswith("-"):
-            key, _, val = line.partition(": ")
-            frontmatter[key.strip()] = val.strip()
-
-    return frontmatter, body
-
-
-def _strip_agent_body_h1(body: str) -> str:
-    """Strip the leading '# Heading' line from an agent body, if present."""
-    lines = body.lstrip("\n").splitlines(keepends=True)
-    if lines and lines[0].startswith("# "):
-        remaining = lines[1:]
-        if remaining and remaining[0] == "\n":
-            remaining = remaining[1:]
-        return "".join(remaining)
-    return body.lstrip("\n")
-
-
-def generate_gha_agents(aops_root: Path, dist_root: Path) -> None:
-    """Generate GHA agent prompts from canonical aops-core/agents/ sources.
-
-    Reads enforcer.md and qa.md — the review agents —
-    transforms them for GitHub Actions context (no plugin, axioms inlined),
-    and writes to dist/gha-agents/.
-
-    dev-standards.md and framework-ops.md are Claude Code-only subagents
-    and are intentionally excluded.
-    """
-    print("\nGenerating GHA agent prompts...")
-    agents_src = aops_root / "aops-core" / "agents"
-    axioms_path = aops_root / ".agents" / "rules" / "AXIOMS.md"
-    axioms_review_path = aops_root / ".agents" / "rules" / "AXIOMS-REVIEW.md"
-    gha_out = dist_root / "gha-agents"
-    gha_out.mkdir(parents=True, exist_ok=True)
-
-    if not axioms_path.exists():
-        print(f"  ✗ {axioms_path} not found — skipping GHA agent generation")
-        return
-
-    _, axioms_body = _parse_agent_frontmatter(axioms_path.read_text())
-    axioms_body = _strip_agent_body_h1(axioms_body).strip()
-
-    if not axioms_review_path.exists():
-        raise FileNotFoundError(
-            f"{axioms_review_path} not found — required for review agent prompts"
-        )
-    _, axioms_review_body = _parse_agent_frontmatter(axioms_review_path.read_text())
-    axioms_review_body = _strip_agent_body_h1(axioms_review_body).strip()
-
-    # Review agents only — dev-standards and framework-ops are CC-only subagents
-    review_agents = ["enforcer", "qa"]
-
-    for agent_name in review_agents:
-        src_path = agents_src / f"{agent_name}.md"
-        if not src_path.exists():
-            print(f"  ⚠ {src_path} not found, skipping")
-            continue
-
-        frontmatter, body = _parse_agent_frontmatter(src_path.read_text())
-        description = frontmatter.get("description", agent_name)
-
-        # Strip the canonical "# {Name} Agent" heading — replaced by
-        # the description-derived identity header.
-        body_content = _strip_agent_body_h1(body).strip()
-
-        shared_err_handling_path = aops_root / ".github" / "agents" / "shared-error-handling.md"
-        if not shared_err_handling_path.exists():
-            raise FileNotFoundError(
-                f"Required file not found: {shared_err_handling_path}. "
-                "Cannot build GHA agents without Anti-Silent-Failure rule."
-            )
-        shared_err_handling_body = shared_err_handling_path.read_text().strip()
-
-        trailer_key, trailer_value = _GHA_TRAILER_MAP.get(
-            agent_name, ("Review-By", f"aops-{agent_name}")
-        )
-
-        sections = [
-            f"# {description}",
-            "",
-            *([shared_err_handling_body, ""] if shared_err_handling_body else []),
-            body_content,
-            "",
-            "---",
-            "",
-            _GHA_OPS_SECTION,
-            "",
-            "When pushing fixes, commit with the required trailer:",
-            "",
-            "```bash",
-            "git add -A",
-            f'git commit -m "fix: address review findings\\n\\n{trailer_key}: {trailer_value}"',
-            "git push",
-            "```",
-            "",
-            "---",
-            "",
-            "## Framework Axioms",
-            "",
-            "<!-- Source: .agents/rules/AXIOMS.md — regenerate via `scripts/build.py` if axioms change -->",
-            "",
-            "The following principles are always active, regardless of domain context.",
-            "",
-            axioms_body,
-            "",
-        ]
-
-        sections.extend(
-            [
-                "---",
-                "",
-                "## Review Questions",
-                "",
-                "<!-- Source: .agents/rules/AXIOMS-REVIEW.md — regenerate via `scripts/build.py` if axioms change -->",
-                "",
-                axioms_review_body,
-                "",
-            ]
-        )
-
-        out_path = gha_out / f"{agent_name}.agent.md"
-        out_path.write_text("\n".join(sections))
-        print(f"  ✓ {out_path.relative_to(aops_root)}")
-
-
-# --- Reusable GHA Workflow Generation ---
-
-_DIST_REPO = "nicsuzor/academicOps"
-
-_GHA_WORKFLOW_AGENTS: dict[str, dict[str, str | bool | int]] = {
-    "enforcer": {
-        "display_name": "Enforcer Review",
-        "description": "Universal standards enforcer — axiom compliance reviewer",
-        "can_push": True,
-        "tools": "Bash,Edit,Read,Write",
-        "trailer": "Enforcer-By: agent",
-        "timeout": 30,
-    },
-    "qa": {
-        "display_name": "QA Verification",
-        "description": "Independent end-to-end verification before completion",
-        "can_push": False,
-        "tools": "Bash,Read",
-        "trailer": "QA-By: agent",
-        "timeout": 45,
-    },
-}
-
-# Template uses __PLACEHOLDER__ style to avoid conflicts with GitHub ${{ }} expressions
-# and shell { } grouping syntax.
-_GHA_WORKFLOW_TEMPLATE = """\
-# Agent: __DISPLAY_NAME__
-# __DESCRIPTION__
-# Prompt: gha-agents/__AGENT_NAME__.agent.md (generated from aops-core/agents/__AGENT_NAME__.md)
-#
-# Reusable workflow. Call from other repos:
-#   uses: __DIST_REPO__/.github/workflows/agent-__AGENT_NAME__.yml@dist
-
-name: "Agent: __DISPLAY_NAME__"
-
-on:
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR number to review'
-        type: string
-        required: true
-      ref:
-        description: 'Git ref to checkout'
-        type: string
-        required: true
-  workflow_call:
-    inputs:
-      pr_number:
-        description: 'PR number to review'
-        type: string
-        required: true
-      ref:
-        description: 'Git ref to checkout'
-        type: string
-        required: true
-    secrets:
-      CLAUDE_CODE_OAUTH_TOKEN:
-        required: true
-
-jobs:
-  __JOB_ID__:
-    name: __DISPLAY_NAME__
-    runs-on: ubuntu-latest
-    timeout-minutes: __TIMEOUT__
-    concurrency:
-      group: agent-__AGENT_NAME__-${{ inputs.pr_number }}
-      cancel-in-progress: true
-    permissions:
-      contents: __CONTENTS_PERM__
-      pull-requests: write
-      statuses: write
-      id-token: write
-      issues: write
-      actions: read
-    steps:
-      # Checkout the caller's repo (the PR under review)
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ inputs.ref }}
-
-      # Checkout dist repo for the generated agent prompt
-      - uses: actions/checkout@v4
-        with:
-          repository: __DIST_REPO__
-          ref: dist
-          path: .aops-dist
-          sparse-checkout: gha-agents/__AGENT_NAME__.agent.md
-
-      - name: Loop detection
-        id: loop-check
-        run: |
-          LAST_MSG=$(git log -1 --format='%B')
-          if echo "$LAST_MSG" | grep -qE '(Review-By|Audit-By|QA-By|Enforcer-By|Merge-Prep-By):'; then
-            echo "Last commit was from an agent — skipping to avoid loop"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Read agent prompt
-        if: steps.loop-check.outputs.skip != 'true'
-        id: prompt
-        run: |
-          PROMPT=$(cat .aops-dist/gha-agents/__AGENT_NAME__.agent.md)
-          {
-            echo "prompt<<AGENT_EOF"
-            echo "$PROMPT"
-            echo "AGENT_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run __DISPLAY_NAME__
-        if: steps.loop-check.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@v1
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            ${{ steps.prompt.outputs.prompt }}
-
-            ---
-
-            Review PR #${{ inputs.pr_number }} in repository ${{ github.repository }}.
-
-            1. Read `.agents/CORE.md` from the repo root (if it exists) for local project context.
-            2. Run `gh pr view ${{ inputs.pr_number }}` to understand the PR.
-            3. Run `gh pr diff ${{ inputs.pr_number }}` to see the changes.
-            4. Apply the review protocol from your instructions above.
-            5. Use `gh pr review` to file your review (APPROVE or REQUEST_CHANGES).
-               Start the review body with `## __DISPLAY_NAME__` for identification.
-
-            If you push fixes, use commit trailer: `__TRAILER__`
-
-            PR ref: ${{ inputs.ref }}
-          claude_args: '--allowed-tools "__TOOLS__"'
-"""
-
-
-def generate_reusable_workflows(aops_root: Path, dist_root: Path) -> None:
-    """Generate reusable GHA workflows for the published distribution.
-
-    For each review agent (enforcer, qa), generates a workflow YAML
-    that can be called from other repos:
-        uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@dist
-
-    Each workflow checks out nicsuzor/academicOps for the generated agent
-    prompt (from `gha-agents/` at the repo root), so no private repo access
-    is needed.
-    """
-    print("\nGenerating reusable GHA workflows...")
-    gha_agents_dir = dist_root / "gha-agents"
-    workflows_out = dist_root / ".github" / "workflows"
-    workflows_out.mkdir(parents=True, exist_ok=True)
-
-    for agent_name, config in _GHA_WORKFLOW_AGENTS.items():
-        agent_file = gha_agents_dir / f"{agent_name}.agent.md"
-        if not agent_file.exists():
-            print(f"  ⚠ {agent_file} not found, skipping workflow for {agent_name}")
-            continue
-
-        job_id = str(config["display_name"]).lower().replace(" ", "-")
-        contents_perm = "write" if config["can_push"] else "read"
-
-        workflow = _GHA_WORKFLOW_TEMPLATE
-        workflow = workflow.replace("__DIST_REPO__", _DIST_REPO)
-        workflow = workflow.replace("__AGENT_NAME__", agent_name)
-        workflow = workflow.replace("__DISPLAY_NAME__", str(config["display_name"]))
-        workflow = workflow.replace("__DESCRIPTION__", str(config["description"]))
-        workflow = workflow.replace("__JOB_ID__", job_id)
-        workflow = workflow.replace("__TIMEOUT__", str(config["timeout"]))
-        workflow = workflow.replace("__CONTENTS_PERM__", contents_perm)
-        workflow = workflow.replace("__TOOLS__", str(config["tools"]))
-        workflow = workflow.replace("__TRAILER__", str(config["trailer"]))
-
-        out_path = workflows_out / f"agent-{agent_name}.yml"
-        out_path.write_text(workflow)
-        print(f"  ✓ {out_path.relative_to(aops_root)}")
 
 
 def generate_marketplace(aops_root: Path, dist_root: Path, version: str):

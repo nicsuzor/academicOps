@@ -208,9 +208,6 @@
       ".get(..., [])": 1,
       ".get(..., {})": 1
     },
-    "scripts/generate.py": {
-      ".get(..., [])": 3
-    },
     "scripts/hooks/lifecycle/merge-ready.sh": {
       "${NOTIFY_CMD:-notify-send}": 1,
       "${NTFY_TOPIC:-polecat}": 1

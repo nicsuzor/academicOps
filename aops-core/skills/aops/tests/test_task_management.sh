@@ -37,6 +37,11 @@ echo "Setting up test directory: $TEST_DIR"
 
 mkdir -p "$TEST_DIR"/tasks/{inbox,archived}
 
+# NOTE: the `priority: 1` lines in the fixtures below are YAML-parser test
+# fixtures only — NOT a pattern to copy. In real task creation, agents leave
+# `priority` at the uncurated default band; only Nic sets intent (see
+# aops-core/skills/aops/conventions-summary.md "Intent authority").
+
 # Create good task
 cat > "$TEST_DIR/tasks/inbox/good-task.md" <<'EOF'
 ---

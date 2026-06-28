@@ -245,6 +245,13 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Short user-facing message when Ida gate fires on Stop",
     ),
+    "ida.askuserquestion_reminder": TemplateSpec(
+        name="ida.askuserquestion_reminder",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="ida-askuserquestion-reminder.md",
+        required_vars=(),
+        description="Capability-verification nudge injected on PreToolUse AskUserQuestion",
+    ),
     # --- RBG-review gate (per-turn axiom review must RUN before Stop) ---
     "rbg_review.context": TemplateSpec(
         name="rbg_review.context",

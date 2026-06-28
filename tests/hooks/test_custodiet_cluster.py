@@ -20,10 +20,10 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.gate_types import GateState
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 # ---------------------------------------------------------------------------
@@ -257,7 +257,14 @@ class TestWarnStopSurface:
     """WARN verdicts on Stop events must reach the agent, not the user."""
 
     def test_warn_stop_routes_advisory_to_agent(self, router):
-        """WARN on Stop with context_injection routes to agent via decision=block + reason."""
+        """WARN on Stop with context_injection delivers to agent via additionalContext.
+
+        Invariant B / P4 (c): Claude Code 2.1.191 delivers
+        hookSpecificOutput.additionalContext on Stop WITHOUT a block
+        (mem-4ab6cc0b, live-verified 2026-06-25). A warn-mode advisory no longer
+        upgrades to a spurious block purely to deliver — it rides the agent-only
+        additionalContext channel and the agent keeps continuing (warn semantics).
+        """
 
         # Build a WARN result that mimics IDA / RBG advisory
         warn_result = GateResult.warn(
@@ -268,17 +275,20 @@ class TestWarnStopSurface:
 
         output = router.output_for_claude(canonical, "Stop")
 
-        # decision="block" is the only Stop channel that feeds text to the agent
-        assert output.decision == "block", (
-            "WARN on Stop with advisory must upgrade to decision=block so the "
-            "agent reads the advisory on its next turn (aops-d10e7db6). "
+        # No spurious block — warn semantics preserved (agent may proceed).
+        assert output.decision == "approve", (
+            "WARN on Stop with advisory must NOT block (delivery != enforcement); "
             f"got decision={output.decision!r}"
         )
-        # reason is user-visible (Claude Code shows a blocking Stop reason to
-        # the user); the router strips the <SYSTEM HOOK INSTRUCTION> scaffold,
-        # leaving the advisory body for both the agent and the user notice.
-        assert output.reason == "Proof required"
-        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
+        # Advisory rides the agent-only additionalContext channel (NOT user-visible
+        # reason). Markers stay intact there — it is the gate's trust framing.
+        assert output.hookSpecificOutput is not None
+        assert (
+            output.hookSpecificOutput.additionalContext
+            == "<SYSTEM HOOK INSTRUCTION>Proof required</SYSTEM HOOK INSTRUCTION>"
+        )
+        # reason (user-visible) stays empty for warn-mode advisory.
+        assert output.reason is None
         # Must NOT leak the marker scaffold to user-visible channels.
         assert output.stopReason is None or "SYSTEM HOOK INSTRUCTION" not in (
             output.stopReason or ""
@@ -337,20 +347,28 @@ class TestWarnStopSurface:
         assert output.hookSpecificOutput.additionalContext == "watch out"
         assert output.hookSpecificOutput.permissionDecision == "allow"
 
-    def test_warn_stop_does_not_emit_hook_specific_output(self, router):
-        """WARN on Stop must NOT emit hookSpecificOutput — Claude Code rejects it."""
+    def test_warn_stop_emits_hook_specific_output(self, router):
+        """WARN on Stop emits hookSpecificOutput.additionalContext (2.1.191).
+
+        The legacy "Claude Code rejects hookSpecificOutput on Stop" belief is
+        stale (verified 2.1.158). At 2.1.191 the validator accepts it and
+        delivers additionalContext to the agent without a block (mem-4ab6cc0b).
+        """
         warn_result = GateResult.warn(
             system_message=None,
             context_injection="<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>",
         )
         canonical = router._gate_result_to_canonical(warn_result)
         output = router.output_for_claude(canonical, "Stop")
-        assert not hasattr(output, "hookSpecificOutput"), (
-            "ClaudeStopHookOutput should not have hookSpecificOutput field"
+        assert output.decision == "approve"
+        assert output.hookSpecificOutput is not None
+        # additionalContext is agent-only — markers stay intact.
+        assert (
+            output.hookSpecificOutput.additionalContext
+            == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
         )
-        assert output.decision == "block"
-        # reason is user-visible; marker scaffold stripped (advisory body kept).
-        assert output.reason == "evidence?"
+        # reason (user-visible) stays empty for warn-mode advisory.
+        assert output.reason is None
 
 
 # ===========================================================================

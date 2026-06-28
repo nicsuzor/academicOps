@@ -372,6 +372,21 @@ install-agy:
 		agy plugin install "$(AGY_TOOLS_URL)" && echo "✓ agy aops-tools installed" \
 			|| echo "  ⚠️ agy aops-tools install failed (next dist build should restore it)"; \
 	fi
+	@# Resolve ${extensionPath} in the INSTALLED agy mcp_config.json. agy copies
+	@# the plugin to ~/.gemini/config/plugins/aops-core/ at install but does NOT
+	@# substitute ${extensionPath} in native-format mcp_config.json, and it spawns
+	@# MCP servers with the workspace cwd — so the pkb server's bundled run-mcp.sh
+	@# is otherwise unreachable (upstream bug antigravity-cli#390). We resolve the
+	@# token to the actual install dir (discovered, not hardcoded). Hooks need no
+	@# such step — agy runs them from the plugin dir, so they use a relative path.
+	@# Remove this once #390 is fixed and ${extensionPath} resolves natively.
+	@AGY_RT="$$HOME/.gemini/config/plugins/aops-core"; \
+	if [ -f "$$AGY_RT/mcp_config.json" ]; then \
+		sed -i.bak "s#\$${extensionPath}#$$AGY_RT#g" "$$AGY_RT/mcp_config.json" && rm -f "$$AGY_RT/mcp_config.json.bak" && \
+		echo "  ✓ Resolved \$${extensionPath} -> $$AGY_RT in agy mcp_config.json (antigravity-cli#390 workaround)"; \
+	elif command -v agy >/dev/null 2>&1; then \
+		echo "  ⚠️ agy mcp_config.json not found under $$AGY_RT — pkb MCP path NOT resolved"; \
+	fi
 
 # Optional: install into Windows-side Claude when invoked from WSL.
 # Silently no-ops outside WSL or when no Windows Claude is found.

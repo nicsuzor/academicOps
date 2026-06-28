@@ -849,8 +849,19 @@ once).
     `admit-qa`, the same reusable workflows the pipeline uses) and **recompute the
     required `review-attestation`** on that SHA (`admit-attestation`, post-only — it does
     not re-run the reviewer agents, just reads their posted statuses and posts attestation).
+    not fail-closed-exit, so a legitimately-red re-verify does not fail the run). Then
+    `decide-mechanic` re-reads the settled reviewer state and dispatches the mechanic's
+    first pass **only if red/pending remains**; if the re-verify came back green,
+    auto-merge fires with no mechanic.
+- This re-fire is what makes the §3.1 fire-once gate safe against the fail-closed
+  `review-attestation` required check (§3.7, §7): the admitted SHA always ends with
+  `enforcer-status`, `qa-status`, and `review-attestation` posted on it, so auto-merge can
+  fire for a clean PR **without** depending on the mechanic pushing a commit (the deadlock
+  a naive "skip reviewers until admitted" gate would create when the mechanic has nothing
+  to do).
 - The merge fires the moment **all required checks are green and the PR is mergeable** —
-  immediately for an already-green PR, or after the Stage-2 loop converges green.
+  immediately for an already-green PR, or after the admission re-verify / Stage-2 loop
+  converges green.
 - **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
   set by a human-approval-driven job rather than a merge-prep run, the no-op runner on every
   green PR (P5) is gone.
