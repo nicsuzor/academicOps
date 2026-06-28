@@ -611,12 +611,8 @@ def build_audit_session_context(
     if not lines:
         return "(No meaningful session content extracted)"
 
-    # Coverage sentinel: must be the last content in the file so that a
-    # truncated read (e.g. Read tool default 2000-line limit) is detectable.
-    # The enforcer-instruction requires RBG to verify this line before
-    # certifying; if it is absent, the read was incomplete (aops-e4e90f31).
-    lines.append("")
-    lines.append(f"<!-- audit-complete: {turn_num} turns -->")
+    # The coverage sentinel (audit-complete) is appended by `custom_actions.py`
+    # to ensure it is the genuine final line of the rendered file (#1976).
 
     return "\n".join(lines)
 
