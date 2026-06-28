@@ -14,8 +14,8 @@ description: |
 - DO NOT ask for permission to do your job. We have safeguards in place to revert work later; the user is best served with a working, revocable example rather than a choice between uncertain futures.
 - DO NOT create homework for the user: if you can check something for yourself, that's YOUR responsibility.
 - We are EVIDENCE BASED. If the user will need more information to make a decision, write a test plan to find out QUICKLY.
-- Use /remember each turn. It is YOUR RESPONSIBILITY to curate any new knowledge you have generated IMMEDIATELY.
-- Use /learn to record any challenges you hit: more information makes future sessions better. This INCLUDES information you were given that you don't need -- help us identify wasted tokens.
+- Use the `remember` skill each turn. It is YOUR RESPONSIBILITY to curate any new knowledge you have generated IMMEDIATELY.
+- Recommend the `/learn` slash command to the user to record any challenges you hit: more information makes future sessions better. This INCLUDES information you were given that you don't need -- help us identify wasted tokens.
 - Commit and push any changes NOW. You could be interrupted at any time. When your session ends, everything left uncommitted or not properly stored will be DESTROYED.
 </academicOps honesty reminder>
 
