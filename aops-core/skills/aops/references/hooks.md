@@ -12,6 +12,49 @@ description: academicOps hook architecture, PATH bootstrap, MCP server config, a
 
 For Claude Code's hook system in general, see the [official docs](https://code.claude.com/docs/en/hooks) and [plugins reference](https://code.claude.com/docs/en/plugins-reference). This document covers the academicOps-specific implementation.
 
+## Hook message visibility quick-reference
+
+Full Output Matrix — PTY Hook Probe (Layer C) script — validated 2026-06-27
+
+label client gate U✓A U✓B earA C✓A C✓B tx?
+─────────────────────────────────────────────────────────────────────────────────────────────────
+stop-block-reason claude block ✓ ✗ ✓ ✓ ✗ ✓
+stop-additionalcontext-warn claude noblock ✓ ✗ ✓ ✓ ✗ ✓
+stop-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
+stop-warnmode-real claude noblock ✓ ✓ ✓ ✓ ? ✓
+stop-blockmode-real claude block ✓ ✓ ✓ ✓ ? ✓
+stop-block-suppressoutput claude block ✓ ✗ ✓ ✓ ✗ ✓\
+stop-noblock-suppressoutput claude noblock ✓ ✗ ✓ ✓ ✗ ✓\
+stop-block-continue-false claude block ✓ ✗ ✓ ✓ ✗ ✓
+─────────────────────────────────────────────────────────────────────────────────────────────────
+sessionend-block-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
+sessionend-additionalcontext claude noblock ✗ ✗ ✗ ✗ ✗ ✓\
+─────────────────────────────────────────────────────────────────────────────────────────────────
+ups-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
+ups-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
+ups-deny-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
+─────────────────────────────────────────────────────────────────────────────────────────────────
+pretool-deny-reason claude block ✗ ✗ ✗ ✓ ✗ ✓
+pretool-ask-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
+pretool-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
+pretool-deny-systemmessage claude block ✗ ✓ ✗ ✓ ? ✓
+pretool-allow-systemmessage claude noblock ✗ ✓ ✗ ✗ ? ✓
+─────────────────────────────────────────────────────────────────────────────────────────────────
+posttool-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
+posttool-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
+─────────────────────────────────────────────────────────────────────────────────────────────────
+sessionstart-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
+sessionstart-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
+─────────────────────────────────────────────────────────────────────────────────────────────────
+agy-preinvocation-live agy - ✗ ✗ ? ✗ ✓ ✗
+agy-postinvocation-live agy - ✗ ✗ ? ✗ ✓ ✗
+agy-*-unmeas [5 stubs] agy - ? ? ? ? ? ✗
+─────────────────────────────────────────────────────────────────────────────────────────────────
+U✓A/B = user saw sentinel on a banner line (early OR late snap)
+earA = user saw sentinelA on EARLY snap only (transient toasts)
+C✓A/B = agent received sentinel in context ? = in transcript, source ambiguous
+tx = visible in transcript
+
 ## Active Hooks
 
 | File                  | Event            | Purpose                          |
