@@ -122,11 +122,9 @@ The user shouldn't have to remember things. They're constantly switching their a
 
 ### Dispatch
 
-Universal dispatch rules — including how to expand terse coordination instructions into full
-briefs — live in `/supervisor`: see [[../skills/supervisor/references/dispatch-rules]]. Apply
-them here: when the user gives a compressed coordination instruction, do **not** execute it
-literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies
-set, each component delegated).
+Cohesion rule — related work → ONE shared draft PR. Operative rule and branch mechanics: [[../skills/supervisor/references/cohesive-pr-epic]].
+
+When the user gives a compressed coordination instruction, do **not** execute it literally; turn it into the full brief yourself (parallel-able vs. sequential units, dependencies set, each component delegated). Full dispatch mechanics: [[../skills/supervisor/references/dispatch-rules]].
 
 **Receiving a work directive is a dispatch trigger, not an execute trigger.** A directive of the
 form "do X / fix X / file an issue for X / triage X" — including one injected by `/goal` ("start

@@ -104,6 +104,7 @@ For each rule, the mechanisms that reinforce it, by pyramid band (**L1–L2 inje
 | `cite-sources`           | —                              | `/learn` RCA-schema block                                        | `rbg`                                        | `enforcer-status`                                                    |
 | `judgment-non-delegable` | premise judgment on `→ queued` | **premise gate** (`/pull`/`/dispatch`/`/supervisor` hard-refuse) | premise test (rbg + pauli + `/verify`)       | review backstop                                                      |
 | **all axioms**           | AXIOMS weight (rbg only)       | `enforcer` gate (every N calls)                                  | `enforcer`/`rbg` subagent, `rbg-review` Stop | `enforcer-status` AND-gate                                           |
+| `single-source-of-truth` | `junior.md` pointer (always-on) | **related-work cohesion: ONE shared draft PR per coupled task set** (`cohesive-pr-epic.md`) | `rbg` | `enforcer-status` |
 
 > Project-local rules (`.agents/rules/RULES.md`) are enforced the same way: `rbg` (local + GHA `enforcer-status`) and `qa.agent` (GHA `qa-status`, Process-Compliance dimension) cite violations by `{#slug}`. The least-privilege **agent `tools:` allowlist** (`junior.md` + `ida.md` — no graph-mutation verbs in either; Ida adds `mcp__outlook__*`/`mcp__zot__*` domain tools for the academic-research role; graph-shaping routes to pauli via `/planner`, the sole graph-shaper) is a static L4 chokepoint enforcing `exercise-authority` (junior PR #1824; Ida D6).
 

@@ -1,8 +1,8 @@
-# Cohesive Single-PR-Epic Pattern
+# Cohesive Single-PR-Epic — Mechanism Reference
 
-The framework defaults to the **cohesive single-PR-epic pattern** for all epics whose subtasks
-are meant to land together. The only exception is when subtasks must genuinely ship and be
-deployed independently — then they keep legacy branch-per-task behavior.
+**Related work → ONE shared draft PR.** Dispatch all tasks in a coupled set onto the same branch (`--branch polecat/epic-<id>`); accrete commits until the set is complete; flip the PR to ready for review. Never spawn a per-task PR for coupled work.
+
+Mechanism details for shared-branch sync, cooperative pull/rebase, concurrency, and dispatch command specifics follow.
 
 ## Live Mechanism (PR #1749 / aops-613690b5)
 
@@ -24,20 +24,16 @@ deployed independently — then they keep legacy branch-per-task behavior.
    - **Sequential-dependency units**: carry explicit `depends_on: [<id>]` edges; blocked until
      predecessor tasks are marked complete.
 
-## One Epic, One PR — promote at the capstone
+## Promotion Timing
 
-**One epic ships as ONE pull request.** No per-task / single-part PRs reach the merge pipeline.
-Your single PR-state action is the **promotion at the end**: flip it ready once all work items
-are `done` and the capstone (one cumulative `marsha` pass) is green. A PR with outstanding work
-items is the normal mid-epic state — do not promote early.
+Flip the shared PR to ready once all work items are `done` and the capstone (`marsha` pass) is
+green. A PR with outstanding work items is the normal mid-epic state — do not promote early.
 
-You do **not** manage merge mechanics. The single PR materialises automatically when the first
-worker on the shared branch finishes; workers never create PRs, and the supervisor never
-hand-creates one. Draft-vs-ready enforcement and the merge gate are infrastructure's job —
-branch protection holds the line (no merge without Nic's per-SHA `APPROVED`), polecat handles
-draft creation. Don't re-draft PRs, don't simulate approvals, don't add merge-gate banners to
-PR bodies. If a worker's push conflicts on the shared branch it rebases and retries; if that
-can't resolve, set the task `blocked` and escalate.
+The single PR materialises automatically when the first worker on the shared branch finishes;
+workers never create PRs, and the supervisor never hand-creates one. Draft-vs-ready enforcement
+and the merge gate are infrastructure's job — branch protection holds the line; polecat handles
+draft creation. Don't re-draft PRs, don't simulate approvals. If a worker's push conflicts on
+the shared branch it rebases and retries; if that can't resolve, set the task `blocked`.
 
 ## Canonical Dispatch Command (polecat surface)
 
