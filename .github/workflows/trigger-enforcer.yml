@@ -3,7 +3,7 @@
 # Fires the v2 enforcer reusable workflow on demand: the `/enforce` PR comment
 # and manual workflow_dispatch. This is the academicOps-side shim — external
 # consumers define an equivalent file pointing to @enforcer-v1 (see
-# specs/pr-pipeline-v2.md §7).
+# specs/workflows/pr-pipeline.md §7).
 #
 # DELIBERATELY NO `pull_request` trigger (aops-db83bad5). The automatic per-PR
 # enforcer path is owned SOLELY by pr-pipeline.yml (job `enforcer`, also on

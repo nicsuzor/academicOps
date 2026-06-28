@@ -245,11 +245,26 @@ jobs:
             -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
 
   # ─── Decide the first mechanic dispatch — AFTER any admission re-verification ──
-  # The mechanic exists to CLEAR RED (§3.5). Re-read the named reviewer statuses on
-  # the admitted SHA once re-verification has settled, and dispatch the mechanic
-  # only when red/pending remains. Both green → the armed auto-merge handles the
-  # merge and a mechanic run would be a no-op racing branch deletion. `always()`
-  # because admit-enforcer/admit-qa are skipped when the reviewers were already green.
+  # The mechanic exists to CLEAR RED (§3.5) AND to RESOLVE CONFLICTS (§3.3/§3.11).
+  # Re-read the named reviewer statuses AND the PR's mergeability on the admitted
+  # SHA once re-verification has settled, and dispatch the mechanic when EITHER:
+  #   (a) a red/pending reviewer signal remains (development to clear it), OR
+  #   (b) the PR is CONFLICTING with the base (conflict resolution).
+  #
+  # (b) is load-bearing and was the prior deadlock (§3.11): a conflicting PR never
+  # gets a `pull_request` triage run — GitHub cannot build the `refs/pull/N/merge`
+  # ref, so no run fires. Admission via review approval (this workflow, on
+  # `pull_request_review`) is the ONLY path that reaches a conflicting PR, and the
+  # mechanic dispatched here is the ONLY agent that resolves the conflict. Keying
+  # the dispatch on reviewer-colour ALONE meant a conflicting-but-green PR got
+  # `need_mechanic=false`, armed an auto-merge that can never fire (CONFLICTING is
+  # unmergeable), and nothing ever resolved the conflict — a permanent deadlock.
+  # Mergeability is an INDEPENDENT merge gate; reviewers green is not sufficient to
+  # skip the mechanic when the PR is CONFLICTING.
+  #
+  # Only when reviewers are BOTH green AND the PR is not conflicting does the armed
+  # auto-merge handle the merge with no mechanic run. `always()` because
+  # admit-enforcer/admit-qa are skipped when the reviewers were already green.
   decide-mechanic:
     name: Decide mechanic dispatch
     needs: [authorize, admit, admit-enforcer, admit-qa]
@@ -261,18 +276,33 @@ jobs:
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
       REPO: ${{ github.repository }}
       HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
+      PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
     steps:
-      - name: Read final reviewer state on the admitted SHA
+      - name: Read final reviewer state + mergeability on the admitted SHA
         id: decide
         run: |
           ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
           QA=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
-          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' on $HEAD_SHA"
-          if [ "$ENF" = "success" ] && [ "$QA" = "success" ]; then
-            echo "Both reviewers green — auto-merge handles it; mechanic not needed."
+
+          # Mergeability is computed asynchronously by GitHub; poll until it
+          # settles (UNKNOWN → MERGEABLE/CONFLICTING). By admission time it is
+          # almost always already computed; the poll is a short safety margin.
+          MERGEABLE="UNKNOWN"
+          for _ in 1 2 3 4 5; do
+            MERGEABLE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
+            [ "$MERGEABLE" != "UNKNOWN" ] && break
+            sleep 3
+          done
+
+          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' mergeable='${MERGEABLE}' on $HEAD_SHA"
+          if [ "$ENF" = "success" ] && [ "$QA" = "success" ] && [ "$MERGEABLE" != "CONFLICTING" ]; then
+            echo "Both reviewers green and PR is not conflicting — auto-merge handles it; mechanic not needed."
             echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
+          elif [ "$MERGEABLE" = "CONFLICTING" ]; then
+            echo "PR is CONFLICTING — dispatching mechanic to resolve the conflict (§3.11), regardless of reviewer colour."
+            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
           else
             echo "Red/pending reviewer signal — dispatching mechanic to clear it."
             echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
