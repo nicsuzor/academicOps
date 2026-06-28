@@ -186,40 +186,27 @@ def _gemini_workspace_name(cwd: str | None = None) -> str:
 
 
 def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
-    """Get Gemini status directory from transcript_path or AOPS_SESSION_STATE_DIR.
+    """Get Gemini status directory from GEMINI_SESSION_ID or ANTIGRAVITY_CONVERSATION_ID.
 
-    Gemini transcript paths look like:
-    ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
-    or
-    ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
+    (Note: transcript_path and AOPS_SESSION_STATE_DIR are now handled natively
+    in get_session_status_dir and do not fall through to here).
 
     Resolution order:
-    1. transcript_path (parent of chats/ or logs/)
-    2. AOPS_SESSION_STATE_DIR (when it points inside ~/.gemini/)
-    3. ~/.gemini/tmp/<sha256(cwd)>/ when GEMINI_SESSION_ID is set —
-       matches Gemini CLI's own per-project layout. Used at SessionStart
-       when transcript_path hasn't been emitted yet and AOPS_SESSION_STATE_DIR
-       is the var we are about to compute.
+    1. ~/.gemini/tmp/<basename>/ when GEMINI_SESSION_ID is set (Gemini CLI layout).
+    2. ~/.gemini/antigravity-cli/brain/<id>/.system_generated/ when
+       ANTIGRAVITY_CONVERSATION_ID is set (Antigravity CLI layout).
 
-    Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
+    Returns the directory or None if not detectable.
     """
-    # 1. Extract from transcript_path (parent of chats/ or logs/)
-    if transcript_path:
-        for parent in Path(transcript_path).parents:
-            if parent.name in ("chats", "logs"):
-                return parent.parent
-
-    # 2. AOPS_SESSION_STATE_DIR (set at SessionStart, persisted for session)
-    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-    if state_dir and "/.gemini/" in state_dir:
-        return Path(state_dir)
-
-    # 3. Derive from cwd basename — matches Gemini CLI's per-project layout
-    #    (~/.gemini/tmp/<basename>/). Used at SessionStart when transcript_path
-    #    has not been emitted yet and AOPS_SESSION_STATE_DIR is the var we are
-    #    about to compute.
+    # 1. Derive from cwd basename — matches Gemini CLI's per-project layout.
     if os.environ.get("GEMINI_SESSION_ID"):
         return Path.home() / ".gemini" / "tmp" / _gemini_workspace_name()
+
+    # 2. Antigravity CLI (agy) fallback. AGY sanitizes its environment (stripping
+    #    AOPS_SESSION_STATE_DIR) but explicitly preserves ANTIGRAVITY_CONVERSATION_ID.
+    conv_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID")
+    if conv_id:
+        return Path.home() / ".gemini" / "antigravity-cli" / "brain" / conv_id / ".system_generated"
 
     return None
 
@@ -409,33 +396,23 @@ def get_session_status_dir(
     transcript_path: str | None = None,
     client_type: str | None = None,
 ) -> Path:
-    """Get session status directory from AOPS_SESSION_STATE_DIR or the explicit client.
+    """Get session status directory from AOPS_SESSION_STATE_DIR, transcript_path, or client fallbacks.
 
     Resolution order (NO silent fallbacks — a session that can't be placed
     raises; it is NEVER guessed into the wrong harness's directory):
 
-    1. ``AOPS_SESSION_STATE_DIR`` env var — set by the router at SessionStart on
-       harnesses that have one (Claude via ``CLAUDE_ENV_FILE`` propagation,
-       regular Gemini). Antigravity (agy) has no SessionStart and no env-file
-       propagation, so this is permanently unset there and every artefact is
-       placed per-event by the branches below.
-    2. Gemini-family (regular Gemini CLI + Antigravity/agy), routed by the
-       EXPLICIT ``--client`` signal OR positive Gemini detection from the
-       transcript path / ``GEMINI_SESSION_ID``. A gemini/agy session MUST
-       resolve to its real ``~/.gemini`` directory or fail loud — it must never
-       fall through to the Claude branch and silently write under
-       ``~/.claude/projects`` (aops-bc8e18c5).
-    3. Claude Code: ``~/.claude/projects/<encoded-cwd>/``. The cwd-derivation is
-       Claude's real on-disk convention, not a guess — reached only for an
-       explicit ``claude`` client, or a non-hook caller (``client_type is None``)
-       whose ``session_id`` is a Claude UUID.
+    1. ``AOPS_SESSION_STATE_DIR`` env var — set by the router at SessionStart.
+    2. ``transcript_path`` — when passed in the JSON payload (Claude Code, Gemini CLI),
+       this is immune to environment sanitization. It deterministically anchors the
+       status directory adjacent to the client's own session log.
+    3. Gemini-family (regular Gemini CLI + Antigravity/agy) environment fallbacks
+       like GEMINI_SESSION_ID or ANTIGRAVITY_CONVERSATION_ID.
+    4. Claude Code legacy fallback — deriving from cwd.
 
     Args:
         session_id: Optional session ID for client detection.
-        transcript_path: Optional transcript path for Gemini detection.
-        client_type: Explicit hook-caller identity from ``--client``
-            ("claude" | "gemini" | "agy"). When provided it is authoritative —
-            session-id shape is NOT used to infer the harness.
+        transcript_path: Optional transcript path (highly preferred).
+        client_type: Explicit hook-caller identity from ``--client`` ("claude" | "gemini" | "agy").
 
     Returns:
         Path to session status directory (created if doesn't exist)
@@ -447,9 +424,20 @@ def get_session_status_dir(
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 2. Gemini-family (regular Gemini CLI + Antigravity/agy). Routed by the
-    #    explicit --client signal or positive Gemini detection. A gemini/agy
-    #    session MUST resolve to its real ~/.gemini dir or fail loud — it must
+    # 2. Unified transcript-path resolution: put files next to the client's own files
+    # This channel is immune to environment sanitization because it comes from the JSON payload.
+    if transcript_path:
+        tp = Path(transcript_path)
+        if client_type in ("gemini", "agy") or _is_gemini_session(session_id, transcript_path):
+            status_dir = tp.parent.parent
+        else:
+            status_dir = tp.parent
+
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+
+    # 3. Gemini-family fallback (e.g. SessionStart where transcript_path is not yet set or AGY)
+    #    A gemini/agy session MUST resolve to its real ~/.gemini dir or fail loud — it must
     #    NEVER fall through to the Claude branch (NO FALLBACKS, aops-bc8e18c5).
     if client_type in ("gemini", "agy") or _is_gemini_session(session_id, transcript_path):
         gemini_dir = _get_gemini_status_dir(transcript_path)
@@ -459,13 +447,11 @@ def get_session_status_dir(
 
         raise ValueError(
             f"Gemini/agy session (client={client_type!r}) but cannot determine status "
-            "directory: no AOPS_SESSION_STATE_DIR, no resolvable transcript_path, and no "
-            "GEMINI_SESSION_ID. Refusing to fall back to the Claude project dir. "
-            "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
+            "directory: no AOPS_SESSION_STATE_DIR, no transcript_path, no GEMINI_SESSION_ID, "
+            "and no ANTIGRAVITY_CONVERSATION_ID. Refusing to fall back to the Claude project dir."
         )
 
-    # 3. Claude Code session — explicit claude client, or a non-hook caller
-    #    (client_type is None) whose session_id is a Claude UUID.
+    # 4. Claude Code session fallback — explicit claude client, or a non-hook caller UUID match
     import re
 
     is_claude_uuid = bool(
@@ -480,13 +466,11 @@ def get_session_status_dir(
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 4. Fail loud (NO FALLBACKS)
+    # 5. Fail loud (NO FALLBACKS)
     raise ValueError(
         f"Could not definitively determine session status directory for session_id "
         f"'{session_id}' (client={client_type!r}). Session did not match Gemini/agy "
-        "(no --client gemini/agy, transcript_path, or GEMINI_SESSION_ID) and did not "
-        "match Claude (no --client claude and no valid UUID). "
-        "Failing fast per NO-FALLBACKS axiom."
+        "and did not match Claude. Failing fast per NO-FALLBACKS axiom."
     )
 
 
