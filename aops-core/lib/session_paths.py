@@ -186,40 +186,27 @@ def _gemini_workspace_name(cwd: str | None = None) -> str:
 
 
 def _get_gemini_status_dir(transcript_path: str | None = None) -> Path | None:
-    """Get Gemini status directory from transcript_path or AOPS_SESSION_STATE_DIR.
+    """Get Gemini status directory from GEMINI_SESSION_ID or ANTIGRAVITY_CONVERSATION_ID.
 
-    Gemini transcript paths look like:
-    ~/.gemini/tmp/<hash>/chats/session-<uuid>.json
-    or
-    ~/.gemini/tmp/<hash>/logs/session-<uuid>.jsonl
+    (Note: transcript_path and AOPS_SESSION_STATE_DIR are now handled natively
+    in get_session_status_dir and do not fall through to here).
 
     Resolution order:
-    1. transcript_path (parent of chats/ or logs/)
-    2. AOPS_SESSION_STATE_DIR (when it points inside ~/.gemini/)
-    3. ~/.gemini/tmp/<sha256(cwd)>/ when GEMINI_SESSION_ID is set —
-       matches Gemini CLI's own per-project layout. Used at SessionStart
-       when transcript_path hasn't been emitted yet and AOPS_SESSION_STATE_DIR
-       is the var we are about to compute.
+    1. ~/.gemini/tmp/<basename>/ when GEMINI_SESSION_ID is set (Gemini CLI layout).
+    2. ~/.gemini/antigravity-cli/brain/<id>/.system_generated/ when
+       ANTIGRAVITY_CONVERSATION_ID is set (Antigravity CLI layout).
 
-    Returns the ~/.gemini/tmp/<hash>/ directory or None if not detectable.
+    Returns the directory or None if not detectable.
     """
-    # 1. Extract from transcript_path (parent of chats/ or logs/)
-    if transcript_path:
-        for parent in Path(transcript_path).parents:
-            if parent.name in ("chats", "logs"):
-                return parent.parent
-
-    # 2. AOPS_SESSION_STATE_DIR (set at SessionStart, persisted for session)
-    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
-    if state_dir and "/.gemini/" in state_dir:
-        return Path(state_dir)
-
-    # 3. Derive from cwd basename — matches Gemini CLI's per-project layout
-    #    (~/.gemini/tmp/<basename>/). Used at SessionStart when transcript_path
-    #    has not been emitted yet and AOPS_SESSION_STATE_DIR is the var we are
-    #    about to compute.
+    # 1. Derive from cwd basename — matches Gemini CLI's per-project layout.
     if os.environ.get("GEMINI_SESSION_ID"):
         return Path.home() / ".gemini" / "tmp" / _gemini_workspace_name()
+
+    # 2. Antigravity CLI (agy) fallback. AGY sanitizes its environment (stripping
+    #    AOPS_SESSION_STATE_DIR) but explicitly preserves ANTIGRAVITY_CONVERSATION_ID.
+    conv_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID")
+    if conv_id:
+        return Path.home() / ".gemini" / "antigravity-cli" / "brain" / conv_id / ".system_generated"
 
     return None
 
@@ -237,33 +224,98 @@ def get_gemini_logs_dir(transcript_path: str | None = None) -> Path | None:
     return None
 
 
-def _find_existing_state_file(session_id: str, status_dir: Path) -> Path | None:
-    """Locate the existing session-state JSON file for ``session_id``, if any.
+def _env_path_belongs_to_session(env_path: str, session_id: str) -> bool:
+    """False only if a pinned env path is a canonical artefact of a DIFFERENT session.
 
-    The state file is the canonical timestamp anchor for a session: every
-    hook/gate/transcript artefact derives its base name from it. Subsequent
-    hooks discover it by scanning ``status_dir`` for a file matching
-    ``session_id`` (e.g. Gemini, which has no ``CLAUDE_ENV_FILE`` analog
-    for propagating an explicit path).
+    Pinned paths (``AOPS_HOOK_LOG_PATH``, ``AOPS_GATE_FILE_*``) are set at
+    SessionStart and inherited by child processes. A child that is a DIFFERENT
+    session (e.g. agy spawned from a Claude session, or a polecat sub-session)
+    must not honour the parent's path — it would write into the wrong session's
+    log (observed cross-contamination).
+
+    We reject ONLY when the path's filename is a canonical session artefact whose
+    short-hash differs from this session. An arbitrary path (explicit operator
+    override, test temp file) is honoured as before — this guard narrows behaviour
+    to the contamination case only. The session hash is read positionally from the
+    canonical ``YYYYMMDD-HHMM-<hash>-...`` prefix, NOT via parse_session_filename,
+    so the guard needs no polecat config (it must work in any hook environment).
+    """
+    parts = Path(env_path).name.split("-")
+    is_canonical = (
+        len(parts) >= 3
+        and len(parts[0]) == 8
+        and parts[0].isdigit()  # YYYYMMDD
+        and len(parts[1]) == 4
+        and parts[1].isdigit()  # HHMM
+    )
+    if not is_canonical:
+        return True  # arbitrary override, honour it
+    try:
+        short = session_naming.get_session_short_hash(session_id)
+    except ValueError:
+        return True
+    return parts[2] == short
+
+
+def _find_session_anchor_base(session_id: str, status_dir: Path) -> str | None:
+    """Return the canonical base name for ``session_id`` by scanning ``status_dir``.
+
+    Every per-session artefact (state ``.json``, ``-hooks.jsonl``, gate ``.md``)
+    must share ONE base name so a session never splits across filenames. The base
+    is normally pinned at SessionStart (``AOPS_HOOK_LOG_PATH`` etc.), but agy has
+    no SessionStart, and even on Claude the volatile inputs that feed a fresh base
+    (cwd-derived repo name, crew, wall-clock minute) can differ between hook
+    invocations — e.g. a hook running from the symlinked plugin dir resolves repo
+    ``aops-antigravity`` while another resolves ``aops-core``, splitting the
+    session across two bases (aops-… #390 fallout).
+
+    This anchor removes that dependency: it discovers the base purely from artefacts
+    already on disk for the session's short-hash, matching BOTH state files and hook
+    logs (not just state), and chooses **deterministically** — the lexically
+    smallest base, i.e. the earliest ``YYYYMMDD-HHMM`` then lexical tiebreak. The
+    choice is independent of mtime and of which artefact type was written first, so
+    every writer converges on the same base even if a prior run already split it.
     """
     if not status_dir.is_dir():
         return None
     short = session_naming.get_session_short_hash(session_id)
     today = datetime.now().astimezone().strftime("%Y%m%d")
     yesterday = (datetime.now().astimezone() - timedelta(days=1)).strftime("%Y%m%d")
-    candidates: list[Path] = []
-    for date_compact in (today, yesterday):
-        # Unified format (insights variant has no -variant suffix, ext .json)
-        candidates.extend(status_dir.glob(f"{date_compact}-????-{short}-*.json"))
-        # Legacy formats kept readable so old state files still anchor.
-        candidates.extend(status_dir.glob(f"{date_compact}-??-*-{short}-*.json"))
-        candidates.extend(status_dir.glob(f"{date_compact}-??-{short}.json"))
-        candidates.extend(status_dir.glob(f"{date_compact}-{short}.json"))
-    # Drop temp/swap files
-    candidates = [p for p in candidates if not p.name.startswith("aops-")]
-    if not candidates:
+
+    # Strip a known artefact suffix (variant+ext) to recover the shared base.
+    # Done by string-suffix, NOT parse_session_filename, so anchoring never needs
+    # the polecat provider set / config (it must work in any environment, incl.
+    # bare hooks with no AOPS_SESSIONS). Longest suffix first so "-hooks.jsonl"
+    # wins over a bare ".json".
+    suffixes = sorted(
+        {f"{a['variant']}{a['ext']}" for a in session_naming.ARTIFACT_TYPES.values()},
+        key=len,
+        reverse=True,
+    )
+
+    def _to_base(name: str) -> str | None:
+        for suffix in suffixes:
+            if suffix and name.endswith(suffix):
+                return name[: -len(suffix)]
         return None
-    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+    bases: set[str] = set()
+    for date_compact in (today, yesterday):
+        # Unified format, any artefact type (state .json, -hooks.jsonl, etc.).
+        for pattern in (
+            f"{date_compact}-????-{short}-*.json",
+            f"{date_compact}-????-{short}-*.jsonl",
+        ):
+            for p in status_dir.glob(pattern):
+                if p.name.startswith("aops-"):  # temp/swap files
+                    continue
+                base = _to_base(p.name)
+                if base is not None:
+                    bases.add(base)
+    if not bases:
+        return None
+    # Deterministic anchor: smallest base = earliest YYYYMMDD-HHMM, lexical tiebreak.
+    return min(bases)
 
 
 def _canonical_artifact_path(
@@ -285,12 +337,9 @@ def _canonical_artifact_path(
 
     art = session_naming.ARTIFACT_TYPES[artifact_type]
 
-    existing = _find_existing_state_file(session_id, status_dir)
-    if existing is not None:
-        parsed = session_naming.parse_session_filename(existing.name)
-        if parsed is not None:
-            base = parsed.base_name()
-            return status_dir / f"{base}{art['variant']}{art['ext']}"
+    base = _find_session_anchor_base(session_id, status_dir)
+    if base is not None:
+        return status_dir / f"{base}{art['variant']}{art['ext']}"
 
     filename = session_naming.generate_session_filename(
         session_id,
@@ -319,12 +368,13 @@ def get_hook_log_path(
     - Gemini: ``~/.gemini/tmp/<workspace>/<base>-hooks.jsonl``
 
     Resolution order:
-    1. ``AOPS_HOOK_LOG_PATH`` env var (set at SessionStart, propagated for
-       Claude via ``CLAUDE_ENV_FILE``).
-    2. Sibling of the existing state file in the session status dir — found
-       on disk so that Gemini hooks (which inherit no env-file) still anchor
-       on the same canonical timestamp as SessionStart wrote.
-    3. A freshly-generated filename (only on SessionStart, before save).
+    1. ``AOPS_HOOK_LOG_PATH`` env var — but ONLY when it belongs to THIS session
+       (its filename carries this session's short-hash). The guard matters because
+       the var is inherited by child processes: launching agy from inside a Claude
+       session would otherwise make agy's hooks write into the Claude session's log
+       (observed cross-contamination). agy has no SessionStart and never sets it.
+    2. The on-disk anchor (``_find_session_anchor_base``) — works without any env or
+       SessionStart, so agy converges on one file.
 
     Args:
         session_id: Session ID from Claude Code or Gemini CLI
@@ -335,7 +385,8 @@ def get_hook_log_path(
         Path to the hook log file
     """
     if env_hook_log_path := os.environ.get("AOPS_HOOK_LOG_PATH"):
-        return Path(env_hook_log_path)
+        if _env_path_belongs_to_session(env_hook_log_path, session_id):
+            return Path(env_hook_log_path)
 
     return _canonical_artifact_path(session_id, transcript_path, date, "hooks", client_type)
 
@@ -345,33 +396,23 @@ def get_session_status_dir(
     transcript_path: str | None = None,
     client_type: str | None = None,
 ) -> Path:
-    """Get session status directory from AOPS_SESSION_STATE_DIR or the explicit client.
+    """Get session status directory from AOPS_SESSION_STATE_DIR, transcript_path, or client fallbacks.
 
     Resolution order (NO silent fallbacks — a session that can't be placed
     raises; it is NEVER guessed into the wrong harness's directory):
 
-    1. ``AOPS_SESSION_STATE_DIR`` env var — set by the router at SessionStart on
-       harnesses that have one (Claude via ``CLAUDE_ENV_FILE`` propagation,
-       regular Gemini). Antigravity (agy) has no SessionStart and no env-file
-       propagation, so this is permanently unset there and every artefact is
-       placed per-event by the branches below.
-    2. Gemini-family (regular Gemini CLI + Antigravity/agy), routed by the
-       EXPLICIT ``--client`` signal OR positive Gemini detection from the
-       transcript path / ``GEMINI_SESSION_ID``. A gemini/agy session MUST
-       resolve to its real ``~/.gemini`` directory or fail loud — it must never
-       fall through to the Claude branch and silently write under
-       ``~/.claude/projects`` (aops-bc8e18c5).
-    3. Claude Code: ``~/.claude/projects/<encoded-cwd>/``. The cwd-derivation is
-       Claude's real on-disk convention, not a guess — reached only for an
-       explicit ``claude`` client, or a non-hook caller (``client_type is None``)
-       whose ``session_id`` is a Claude UUID.
+    1. ``AOPS_SESSION_STATE_DIR`` env var — set by the router at SessionStart.
+    2. ``transcript_path`` — when passed in the JSON payload (Claude Code, Gemini CLI),
+       this is immune to environment sanitization. It deterministically anchors the
+       status directory adjacent to the client's own session log.
+    3. Gemini-family (regular Gemini CLI + Antigravity/agy) environment fallbacks
+       like GEMINI_SESSION_ID or ANTIGRAVITY_CONVERSATION_ID.
+    4. Claude Code legacy fallback — deriving from cwd.
 
     Args:
         session_id: Optional session ID for client detection.
-        transcript_path: Optional transcript path for Gemini detection.
-        client_type: Explicit hook-caller identity from ``--client``
-            ("claude" | "gemini" | "agy"). When provided it is authoritative —
-            session-id shape is NOT used to infer the harness.
+        transcript_path: Optional transcript path (highly preferred).
+        client_type: Explicit hook-caller identity from ``--client`` ("claude" | "gemini" | "agy").
 
     Returns:
         Path to session status directory (created if doesn't exist)
@@ -383,9 +424,20 @@ def get_session_status_dir(
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 2. Gemini-family (regular Gemini CLI + Antigravity/agy). Routed by the
-    #    explicit --client signal or positive Gemini detection. A gemini/agy
-    #    session MUST resolve to its real ~/.gemini dir or fail loud — it must
+    # 2. Unified transcript-path resolution: put files next to the client's own files
+    # This channel is immune to environment sanitization because it comes from the JSON payload.
+    if transcript_path:
+        tp = Path(transcript_path)
+        if client_type in ("gemini", "agy") or _is_gemini_session(session_id, transcript_path):
+            status_dir = tp.parent.parent
+        else:
+            status_dir = tp.parent
+
+        status_dir.mkdir(parents=True, exist_ok=True)
+        return status_dir
+
+    # 3. Gemini-family fallback (e.g. SessionStart where transcript_path is not yet set or AGY)
+    #    A gemini/agy session MUST resolve to its real ~/.gemini dir or fail loud — it must
     #    NEVER fall through to the Claude branch (NO FALLBACKS, aops-bc8e18c5).
     if client_type in ("gemini", "agy") or _is_gemini_session(session_id, transcript_path):
         gemini_dir = _get_gemini_status_dir(transcript_path)
@@ -395,13 +447,11 @@ def get_session_status_dir(
 
         raise ValueError(
             f"Gemini/agy session (client={client_type!r}) but cannot determine status "
-            "directory: no AOPS_SESSION_STATE_DIR, no resolvable transcript_path, and no "
-            "GEMINI_SESSION_ID. Refusing to fall back to the Claude project dir. "
-            "Set AOPS_SESSION_STATE_DIR or ensure transcript_path is provided."
+            "directory: no AOPS_SESSION_STATE_DIR, no transcript_path, no GEMINI_SESSION_ID, "
+            "and no ANTIGRAVITY_CONVERSATION_ID. Refusing to fall back to the Claude project dir."
         )
 
-    # 3. Claude Code session — explicit claude client, or a non-hook caller
-    #    (client_type is None) whose session_id is a Claude UUID.
+    # 4. Claude Code session fallback — explicit claude client, or a non-hook caller UUID match
     import re
 
     is_claude_uuid = bool(
@@ -416,13 +466,11 @@ def get_session_status_dir(
         status_dir.mkdir(parents=True, exist_ok=True)
         return status_dir
 
-    # 4. Fail loud (NO FALLBACKS)
+    # 5. Fail loud (NO FALLBACKS)
     raise ValueError(
         f"Could not definitively determine session status directory for session_id "
         f"'{session_id}' (client={client_type!r}). Session did not match Gemini/agy "
-        "(no --client gemini/agy, transcript_path, or GEMINI_SESSION_ID) and did not "
-        "match Claude (no --client claude and no valid UUID). "
-        "Failing fast per NO-FALLBACKS axiom."
+        "and did not match Claude. Failing fast per NO-FALLBACKS axiom."
     )
 
 
@@ -446,20 +494,13 @@ def get_session_file_path(
     Returns:
         Path to session state file
     """
-    filename = session_naming.generate_session_filename(
-        session_id,
-        timestamp=_parse_date_arg(date),
-        artifact_type="insights",
-        crew_name=session_naming.resolve_crew_name(),
-        # Thread the explicit --client signal into the provider component so an
-        # agy session's summary file is named "...-antigravity-..." not
-        # "...-claude-..." (aops-7f698bdd). Without this, SessionState.save()
-        # wrote the headline ...-aopscore-claude.json artifact even when
-        # client_type=agy correctly resolved the directory below.
-        provider=session_naming.get_provider_name(client_type=client_type),
-        task_id=os.environ.get("AOPS_TASK_ID"),
-    )
-    return get_session_status_dir(session_id, transcript_path, client_type) / filename
+    # Delegate to the anchor-aware resolver so the state file shares the session's
+    # single canonical base. Previously this generated a FRESH name every call from
+    # volatile inputs (cwd-derived repo name via get_repo_name, crew, wall-clock
+    # minute) — so when a later hook ran from a different cwd the repo flipped
+    # (e.g. aops-core ↔ aops-antigravity) and SessionState.save() wrote a SECOND
+    # state file, splitting the session. Anchoring reuses the first base instead.
+    return _canonical_artifact_path(session_id, transcript_path, date, "insights", client_type)
 
 
 def get_session_directory(
@@ -557,17 +598,18 @@ def get_gate_file_path(
     """
     env_var = f"AOPS_GATE_FILE_{gate.upper()}"
     if env_path := os.environ.get(env_var):
-        return Path(env_path)
+        # Honour the pinned path only when it names THIS session (the var is
+        # inherited by child processes — a different session must not reuse it).
+        if _env_path_belongs_to_session(env_path, session_id):
+            return Path(env_path)
 
-    # Anchor on the existing state file so all artefacts share one base name.
+    # Anchor on any existing artefact so all files share one base name.
     status_dir = get_session_status_dir(session_id, transcript_path, client_type)
-    existing = _find_existing_state_file(session_id, status_dir)
-    if existing is not None:
-        parsed = session_naming.parse_session_filename(existing.name)
-        if parsed is not None:
-            return status_dir / f"{parsed.base_name()}-{gate}.md"
+    base = _find_session_anchor_base(session_id, status_dir)
+    if base is not None:
+        return status_dir / f"{base}-{gate}.md"
 
-    # SessionStart fallback: build a fresh base before the state file exists.
+    # SessionStart fallback: build a fresh base before any artefact exists.
     base = session_naming.generate_base_name(
         session_id,
         timestamp=_parse_date_arg(date),

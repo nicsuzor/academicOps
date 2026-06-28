@@ -232,8 +232,14 @@ class SessionState(BaseModel):
             for pattern in [unified_pattern, hh_pattern, legacy_pattern]:
                 matches = list(status_dir.glob(pattern))
                 if matches:
-                    # Use the most recent file if multiple matches
-                    path = max(matches, key=lambda p: p.stat().st_mtime)
+                    # Deterministic pick: the lexically smallest name = earliest
+                    # YYYYMMDD-HHMM base. This matches the anchor save() now uses
+                    # (get_session_file_path -> _find_session_anchor_base picks the
+                    # same earliest base), so load and save always agree on ONE
+                    # file even if a prior run split the session across bases.
+                    # (Was max-mtime, which could read a different file than save
+                    # wrote when volatile inputs flipped the base name.)
+                    path = min(matches)
                     for attempt in range(retries):
                         try:
                             text = path.read_text()

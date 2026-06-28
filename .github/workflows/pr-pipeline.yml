@@ -77,7 +77,7 @@ jobs:
       - name: Assert no distribution artifacts are tracked
         run: |
           set -euo pipefail
-          OFFENDERS="$(git ls-files -- dist aops-claude aops-tools-claude aops-cowork aops-gemini aops-tools-gemini aops-antigravity aops-tools-antigravity gemini-extension.json || true)"
+          OFFENDERS="$(git ls-files -- dist aops-claude aops-tools-claude aops-gemini aops-tools-gemini aops-antigravity aops-tools-antigravity gemini-extension.json || true)"
           if [ -n "$OFFENDERS" ]; then
             echo "::error::Built distribution artifacts (dirs or generated manifests) must never be committed to dev — they belong only on the published main branch."
             echo "$OFFENDERS"
