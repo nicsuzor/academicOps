@@ -38,6 +38,7 @@ permissions:
   pull-requests: write
   statuses: write
   id-token: write
+  issues: write
 
 concurrency:
   # Per-PR: a second approval for the same PR queues rather than racing a
@@ -97,11 +98,15 @@ jobs:
       statuses: write
     outputs:
       # The SHA actually admitted (re-read live — the PR may have advanced since
-      # the review was submitted). The mechanic dispatches against THIS SHA.
+      # the review was submitted). Re-verification + the mechanic target THIS SHA.
       admitted_sha: ${{ steps.admit.outputs.admitted_sha }}
-      # Whether the mechanic is needed: false when enforcer+qa are already green
-      # on the admitted SHA (auto-merge will fire; no development to do).
-      need_mechanic: ${{ steps.admit.outputs.need_mechanic }}
+      # Whether the named reviewers are ALREADY green on the admitted SHA. 'true'
+      # when the PR was admitted right after its ready-review with no intervening
+      # pushes — auto-merge fires immediately, no re-verification needed. 'false'
+      # when pre-admission pushes advanced HEAD past the last reviewed SHA (§3.1
+      # fire-once gate skipped the reviewers on those pushes), so enforcer/qa/
+      # attestation are absent here and the admission boundary re-fires them below.
+      reviewers_green: ${{ steps.admit.outputs.reviewers_green }}
     env:
       # Bot PAT required to write the required `admit-status` and arm auto-merge
       # (the default token cannot satisfy a required check posted as a status
@@ -136,16 +141,135 @@ jobs:
           gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
             || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
 
-          # (c) Decide whether the mechanic is needed. The mechanic exists to
-          # CLEAR RED (enforcer/qa). If both are already success on the admitted
-          # SHA, there is nothing to develop — the armed auto-merge handles the
-          # merge and dispatching the mechanic would be a no-op runner (and could
-          # race the branch deletion). Dispatch the mechanic only when red remains.
+          # (c) Are the named reviewers ALREADY green on the admitted SHA? Under the
+          # §3.1 fire-once gate the reviewers run on ready + at admission, NOT on
+          # pre-admission pushes — so an admitted SHA that advanced past the last
+          # reviewed commit has ABSENT enforcer/qa statuses here. Classify so the
+          # admission boundary re-fires the reviewers when they are not already green
+          # (absent OR red). When both are already success, auto-merge handles the
+          # merge and no re-verification or mechanic is needed.
           ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
           QA=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
-          echo "enforcer-status=$ENF qa-status=$QA on $HEAD_SHA"
+          echo "enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' on $HEAD_SHA"
+          if [ "$ENF" = "success" ] && [ "$QA" = "success" ]; then
+            echo "Both reviewers already green on the admitted SHA — auto-merge handles it."
+            echo "reviewers_green=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Reviewers not green on the admitted SHA — admission boundary will re-fire them."
+            echo "reviewers_green=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─── Admission-boundary re-verification (§3.1 fire-once + §3.7 attestation) ──
+  # The §3.1 fire-once gate skips enforcer/qa on pre-admission pushes, so the
+  # admitted SHA can lack the REQUIRED enforcer-status / qa-status / review-attestation
+  # (§7). These jobs re-fire the named reviewers ON THE ADMITTED SHA and recompute
+  # the attestation, so the required checks resolve and auto-merge can fire — for an
+  # already-clean PR — WITHOUT depending on the mechanic pushing a commit (the
+  # deadlock the naive gate would create). They run ONLY when the reviewers are not
+  # already green on the admitted SHA (`admit.reviewers_green != 'true'`) and the PR
+  # is non-draft. Same reusable workflows the pipeline uses; the `sha` input posts
+  # their statuses to the admitted SHA.
+  admit-enforcer:
+    name: Admission re-verify — Enforcer
+    needs: [authorize, admit]
+    if: needs.admit.outputs.reviewers_green != 'true' && github.event.pull_request.draft == false
+    uses: ./.github/workflows/agent-enforcer.yml
+    with:
+      pr_number: ${{ needs.authorize.outputs.pr_number }}
+      ref: ${{ needs.authorize.outputs.head_ref }}
+      sha: ${{ needs.admit.outputs.admitted_sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  admit-qa:
+    name: Admission re-verify — QA
+    needs: [authorize, admit, admit-enforcer]
+    # Mirror the pipeline's inverted gradient (§3.4): qa runs whenever the enforcer
+    # produced a verdict (success OR failure) and did not commit — a red enforcer
+    # must not gate qa off. Skipped only when enforcer was skipped/cancelled, or
+    # committed a fix (a new SHA → the pipeline re-verifies that SHA via Stage-2).
+    if: >-
+      always() &&
+      needs.admit.outputs.reviewers_green != 'true' &&
+      github.event.pull_request.draft == false &&
+      (needs.admit-enforcer.result == 'success' || needs.admit-enforcer.result == 'failure') &&
+      needs.admit-enforcer.outputs.committed != 'true'
+    uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: ${{ needs.authorize.outputs.pr_number }}
+      ref: ${{ needs.authorize.outputs.head_ref }}
+      sha: ${{ needs.admit.outputs.admitted_sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  admit-attestation:
+    name: Admission re-verify — Review Attestation
+    needs: [authorize, admit, admit-enforcer, admit-qa]
+    # Recompute the REQUIRED review-attestation on the admitted SHA after the
+    # reviewers re-ran. The pipeline's own review-attestation last ran on a
+    # pre-admission push where the reviewers were skipped, so it is red/absent;
+    # this re-posts it green (or honestly red, if the re-verify came back red — the
+    # mechanic then clears it). POST-only: unlike the pipeline job it does NOT
+    # fail-closed-exit, because a legitimately-red re-verify must not fail this run.
+    if: >-
+      always() &&
+      needs.admit.result == 'success' &&
+      needs.admit.outputs.reviewers_green != 'true' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute attestation decision on the admitted SHA
+        id: attest
+        run: ./scripts/ci/review-attestation.sh
+      - name: Post review-attestation status on the admitted SHA
+        env:
+          STATE: ${{ steps.attest.outputs.state }}
+          DESC: ${{ steps.attest.outputs.description }}
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="review-attestation" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+  # ─── Decide the first mechanic dispatch — AFTER any admission re-verification ──
+  # The mechanic exists to CLEAR RED (§3.5). Re-read the named reviewer statuses on
+  # the admitted SHA once re-verification has settled, and dispatch the mechanic
+  # only when red/pending remains. Both green → the armed auto-merge handles the
+  # merge and a mechanic run would be a no-op racing branch deletion. `always()`
+  # because admit-enforcer/admit-qa are skipped when the reviewers were already green.
+  decide-mechanic:
+    name: Decide mechanic dispatch
+    needs: [authorize, admit, admit-enforcer, admit-qa]
+    if: always() && needs.admit.result == 'success' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      need_mechanic: ${{ steps.decide.outputs.need_mechanic }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
+    steps:
+      - name: Read final reviewer state on the admitted SHA
+        id: decide
+        run: |
+          ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
+          QA=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
+          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' on $HEAD_SHA"
           if [ "$ENF" = "success" ] && [ "$QA" = "success" ]; then
             echo "Both reviewers green — auto-merge handles it; mechanic not needed."
             echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
@@ -257,10 +381,15 @@ jobs:
   # Subsequent passes (2…N) are dispatched by pr-pipeline.yml's check-admit →
   # mechanic on the synchronize events the mechanic's commits fire; admit-status
   # carries forward across those agent commits (§5), so there is no race there.
+  #
+  # Gated on `decide-mechanic` (not `admit`) so the dispatch decision is made AFTER
+  # any admission-boundary re-verification has settled — the §3.1 fire-once gate
+  # means the admitted SHA's reviewer verdicts may only exist once admit-enforcer/
+  # admit-qa have re-run here. decide-mechanic depends on those jobs, so this waits.
   mechanic:
     name: Mechanic (Stage 2 — first dispatch)
-    needs: [authorize, admit]
-    if: needs.admit.outputs.need_mechanic == 'true' && github.event.pull_request.draft == false
+    needs: [authorize, admit, decide-mechanic]
+    if: needs.decide-mechanic.outputs.need_mechanic == 'true' && github.event.pull_request.draft == false
     uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ needs.authorize.outputs.pr_number }}

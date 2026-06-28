@@ -551,7 +551,7 @@ _SCOPE_DIRS = ("aops-core", "polecat", "scripts", "aops-tools")
 
 # Path components that take a file out of scope no matter where they appear:
 # virtualenvs, build output, package caches, and isolated worktrees.
-_EXCLUDE_PARTS = frozenset({".venv", "dist", "node_modules", "__pycache__", ".claude"})
+_EXCLUDE_PARTS = frozenset({".venv", "dist", "node_modules", "__pycache__", ".claude", ".uv-cache"})
 
 # The one non-suffix file we check by name (literal defaults here leak into
 # every host session — issue #930). Only the canonical top-level copy.

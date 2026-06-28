@@ -104,6 +104,27 @@ For non-research projects (tool/library), omit the research data line and
 replace with the project's primary constraint. Also omit the Data freshness
 section if not applicable.
 
+### `.claude/settings.json` — default to Ida for research repos
+
+Research project repos open as **Ida** (the interactive academic-research head
+personality) by default. Write the shared default-agent setting so every
+session launched in the repo picks it up automatically (the top-level
+`"agent"` key; the schema URL must be `json.schemastore.org`, not
+`json-schema.org`):
+
+```json
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "agent": "ida"
+}
+```
+
+This file is **git-tracked** (it carries the shared agent default, so it must
+travel with the repo — see the `.gitignore` note below); machine-local
+overrides go in `.claude/settings.local.json`, which stays gitignored. For a
+non-research tool/library project, omit the `"agent"` key (those default to
+Junior).
+
 ### `README.md`
 
 ````markdown
@@ -161,7 +182,9 @@ credentials/
 *.pem
 
 # Claude Code / academicOps
-.claude/settings.json
+# NOTE: .claude/settings.json is intentionally TRACKED — it carries the shared
+# repo defaults (e.g. "agent": "ida" so research repos open as Ida). Only the
+# machine-local override file is ignored.
 .claude/settings.local.json
 .claude/agents/
 .academicOps/

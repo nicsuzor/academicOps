@@ -17,10 +17,10 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter  # noqa: F401
-from hooks.schemas import HookContext  # noqa: F401
 from lib.gate_model import GateVerdict  # noqa: F401
 from lib.gate_types import GateState, GateStatus  # noqa: F401
 from lib.gates.registry import GateRegistry  # noqa: F401
+from lib.hook_context import HookContext  # noqa: F401
 from lib.session_state import SessionState
 
 # --- Constants ---
@@ -51,10 +51,12 @@ CLAUDE_ACCEPTED_HOOK_EVENT_NAMES = {
     "PostToolBatch",
 }
 
+# Plain advisory text — the `<SYSTEM HOOK INSTRUCTION>` scaffold was removed
+# 2026-06-27 (it meant nothing to Claude Code and risked tripping the client's
+# hook-injection rejection); advisory injections now stand on their own.
 ADVISORY = (
-    "<SYSTEM HOOK INSTRUCTION>Watch out, you aren't finished until you: "
-    "provide evidence and an indicator of your level of certainty for "
-    "EACH of your major claims.</SYSTEM HOOK INSTRUCTION>"
+    "Watch out, you aren't finished until you: provide evidence and an indicator "
+    "of your level of certainty for EACH of your major claims."
 )
 
 
@@ -106,18 +108,22 @@ def set_gate_modes(
     enforcer: str = "block",
     hydration: str = "off",
     ida: str = "off",
+    rbg_review: str = "off",
     enforcer_threshold: int = 50,
 ) -> None:
     """Stamp the requested gate modes onto the environment.
 
-    ida defaults to "off" so existing test scenarios that expect "allow" on Stop
-    keep their invariants. Tests targeting ida behaviour pass it explicitly.
+    ida and rbg_review default to "off" so existing test scenarios that expect
+    "allow" on Stop keep their invariants — the rbg-review gate is a NEW Stop
+    gate that would otherwise DENY every Stop and mask the gate under test.
+    Tests targeting ida / rbg-review behaviour pass the mode explicitly.
     """
     monkeypatch.setenv("HANDOVER_GATE_MODE", handover)
     monkeypatch.setenv("QA_GATE_MODE", qa)
     monkeypatch.setenv("ENFORCER_GATE_MODE", enforcer)
     monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
     monkeypatch.setenv("IDA_GATE_MODE", ida)
+    monkeypatch.setenv("RBG_REVIEW_GATE_MODE", rbg_review)
     monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(enforcer_threshold))
 
 

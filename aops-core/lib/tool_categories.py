@@ -29,6 +29,8 @@ Lookup performance:
 import re
 from typing import Any
 
+from lib import tool_registry
+
 # =============================================================================
 # COMPLIANCE SUBAGENT TYPES
 # =============================================================================
@@ -80,6 +82,12 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
         False,
     ),  # Gemini CLI >= ~0.40
     "activate_skill": (("skill", "name"), True),
+    # Antigravity (agy): spawn tool. The type is NESTED under
+    # ``Subagents: [{TypeName: ...}]`` (not a flat param), so the flat lookup here
+    # returns nothing and ``extract_subagent_type`` falls back to
+    # ``tool_registry.agy_subagents_type``. Registered so agy spawns are recognised
+    # as spawn tools at all (previously unknown -> defaulted to ``write``).
+    "invoke_subagent": ((), False),
     # Gemini: bare agent tools (Strategy 2)
     "aops_core_enforcer": ((), False),
     "aops_core_rbg": ((), False),
@@ -377,6 +385,19 @@ for _category, _variants in _generate_pkb_variants().items():
     TOOL_CATEGORIES.setdefault(_category, set()).update(_variants)
 del _category, _variants
 
+# Merge the cross-client tool registry (Table 2 SSoT — lib/tool_registry.py).
+# This is the SINGLE source for the core file/shell/web/spawn/interaction tool
+# names across Claude, Gemini, and agy — including the agy RUNTIME vocabulary
+# (view_file, run_command, write_to_file, replace_file_content, invoke_subagent,
+# manage_task, …) that was previously unknown here, so agy tool calls fell through
+# to the conservative ``write`` default and broke spawn/enforcer/sentinel matching.
+# Server-specific MCP sets (Outlook, Zotero, Playwright, …) stay defined above; the
+# registry only owns the cross-client core. The merge is additive and must never
+# DISAGREE with an existing entry (asserted by tests/hooks/test_tool_registry.py).
+for _category, _reg_names in tool_registry.names_by_category().items():
+    TOOL_CATEGORIES.setdefault(_category, set()).update(_reg_names)
+del _category, _reg_names
+
 
 # Build O(1) reverse index. Rebuilt only if TOOL_CATEGORIES is mutated.
 _TOOL_CATEGORY_INDEX: dict[str, str] = {
@@ -420,6 +441,14 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
             - Detect ToolSearch select: queries (infrastructure bypass)
             - Extract subagent_type for compliance-spawn bypass
     """
+    # 0. Antigravity (agy) wraps EVERY MCP call in ``call_mcp_tool`` with the real
+    # server/tool in ``tool_input`` ({ServerName, ToolName, Arguments}). Unwrap it to
+    # the canonical ``mcp__<server>__<tool>`` name and classify THAT — otherwise every
+    # agy MCP/PKB call falls through to the ``write`` default and gets gated.
+    unwrapped = tool_registry.unwrap_agy_mcp_call(tool_name, tool_input)
+    if unwrapped is not None:
+        return get_tool_category(unwrapped, None)
+
     # 1. ToolSearch with select: prefix is a pure tool-loading operation (infrastructure).
     # Blocking it creates an unresolvable loop: the agent needs ToolSearch to load
     # tools, but ToolSearch is sometimes blocked.
@@ -505,6 +534,14 @@ def extract_subagent_type(
                 stripped = value.strip().lstrip("/")
                 if stripped:
                     return stripped, is_skill
+        # Strategy 2b: agy nests the subagent type under ``Subagents: [{TypeName}]``
+        # (invoke_subagent) rather than a flat param. Fall back to the registry's
+        # nested extractor for those tools.
+        reg = tool_registry.SPAWN_TABLE.get(tool_name)
+        if reg and reg[2]:  # agy_subagents
+            nested = tool_registry.agy_subagents_type(tool_input)
+            if nested:
+                return nested, is_skill
         return None, is_skill
 
     return None, False

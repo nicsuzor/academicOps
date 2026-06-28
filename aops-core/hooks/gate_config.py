@@ -4,34 +4,14 @@ Gate Configuration: gate-mode env-var resolution and slash-command detection.
 Tool categorization (TOOL_CATEGORIES, get_tool_category, is_never_block,
 COMPLIANCE_SUBAGENT_TYPES, SPAWN_TOOLS, extract_subagent_type) lives in
 `lib/tool_categories.py` — it is consumed by gate-engine code in `lib/gates/*`
-and must not live in the `hooks/` layer.
-
-Names re-exported below preserve the public API for downstream callers
-(tests, external scripts, etc.).
+and must not live in the `hooks/` layer. Import those names directly from
+`lib.tool_categories`; this module no longer re-exports them.
 """
 
 import os
 from typing import TYPE_CHECKING
 
-from lib.tool_categories import (
-    COMPLIANCE_SUBAGENT_TYPES,
-    NEVER_BLOCK_CATEGORIES,
-    SPAWN_TOOLS,
-    TOOL_CATEGORIES,
-    extract_subagent_type,
-    get_tool_category,
-    is_never_block,
-)
-
 __all__ = [
-    # Re-exports from lib/tool_categories
-    "COMPLIANCE_SUBAGENT_TYPES",
-    "NEVER_BLOCK_CATEGORIES",
-    "SPAWN_TOOLS",
-    "TOOL_CATEGORIES",
-    "extract_subagent_type",
-    "get_tool_category",
-    "is_never_block",
     # Gate modes (PEP 562 lazy attrs)
     "ENFORCER_GATE_MODE",
     "HANDOVER_GATE_MODE",
@@ -39,11 +19,14 @@ __all__ = [
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "SENTINEL_GATE_MODE",
+    "RBG_REVIEW_GATE_MODE",
     "ENFORCER_TOOL_CALL_THRESHOLD",
-    # Slash-command + enforcer-channel hygiene
+    "RBG_REVIEW_DEGRADE_THRESHOLD",
+    # Polecat-vs-interactive posture axis
+    "is_polecat_surface",
+    "resolve_posture_gate",
+    # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
-    "ENFORCER_CHANNEL_SENTINEL",
-    "is_enforcer_channel",
 ]
 
 if TYPE_CHECKING:
@@ -55,7 +38,9 @@ if TYPE_CHECKING:
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
     SENTINEL_GATE_MODE: str
+    RBG_REVIEW_GATE_MODE: str
     ENFORCER_TOOL_CALL_THRESHOLD: int
+    RBG_REVIEW_DEGRADE_THRESHOLD: int
 
 
 # =============================================================================
@@ -90,6 +75,34 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 ]
 
 # =============================================================================
+# POLECAT-vs-INTERACTIVE POSTURE AXIS
+# =============================================================================
+# The single structural signal that separates the two registers the framework
+# runs in: autonomous polecat (drive-to-done) vs interactive (hold between
+# steps). It is NOT a session_type classifier and NOT a launch-time
+# autonomous/interactive mode switch (both explicitly rejected — spec
+# mem-438429c5 §6). The polecat dispatcher (polecat/cli.py) marks every
+# polecat/crew container with AOPS_POLECAT_CONTAINER=1 (aops-b368109a) and
+# stages the per-surface gate posture as *_GATE_MODE env vars resolved from
+# polecat.yaml. The bare interactive host (junior/ida) carries neither, and so
+# is — by definition — NOT a polecat surface. The POSTURE gates (handover, ida)
+# resolve their block/warn/deny mode off this axis.
+
+
+def is_polecat_surface() -> bool:
+    """True iff this session runs on an autonomous polecat (or crew) surface.
+
+    The sole structural discriminator for the polecat-vs-interactive posture
+    axis. The dispatcher sets AOPS_POLECAT_CONTAINER=1 inside every polecat /
+    crew container; a bare interactive host session never has it. Posture
+    resolution keys on this to decide whether an unconfigured posture gate
+    fails loudly (polecat — misconfig) or resolves to the interactive posture
+    (non-polecat).
+    """
+    return os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
+
+
+# =============================================================================
 # GATE MODES
 # =============================================================================
 # Gate enforcement modes are read directly from environment variables. The
@@ -100,24 +113,97 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 # When no env var is set (e.g. host orchestrator chat, fresh-install dev
 # machine), defaults below apply: warn for human-facing gates, off for
 # hydration. These match the previous BUILTIN_GATES posture.
+#
+# EXCEPTION — the POSTURE gates (HANDOVER_GATE_MODE / IDA_GATE_MODE) are NOT in
+# this dict. Their block/warn posture is DEFINED per-surface in polecat.yaml
+# and resolved by resolve_posture_gate() off the polecat-vs-interactive axis;
+# a code default there silently masks an unconfigured surface — exactly how a
+# non-polecat host session used to fall through to a hard BLOCK (#1978). The
+# entries that REMAIN are deliberate fail-safes (SENTINEL/RBG-review are real
+# DENYs, Nic directive) or non-posture advisories (QA/ENFORCER/HYDRATION) —
+# do NOT remove them (spec mem-438429c5 §5.3 SCOPE FENCE).
 
 _GATE_MODE_DEFAULTS = {
-    # Handover defaults to block: a session that did real work (write tool or
-    # task claim) must hand over before Stop. Read-only sessions are exempt via
-    # session_did_work=False in custom_conditions (the policy returns no verdict).
-    "HANDOVER_GATE_MODE": "block",
     "QA_GATE_MODE": "warn",
     "ENFORCER_GATE_MODE": "warn",
     "HYDRATION_GATE_MODE": "off",
-    "IDA_GATE_MODE": "warn",
     # Sentinel defaults to block — this is a safety gate protecting user
     # environment files from destructive ops, not just an advisory.
     "SENTINEL_GATE_MODE": "block",
+    # RBG-review defaults to block: the per-turn axiom review must RUN before
+    # Stop can pass (Nic's directive — guaranteed coverage). This is a real
+    # DENY, not advisory; the escape-hatch (RBG_REVIEW_DEGRADE_THRESHOLD)
+    # protects against a structurally-broken rbg dispatch trapping the session.
+    "RBG_REVIEW_GATE_MODE": "block",
 }
+
+# =============================================================================
+# POSTURE GATES — resolved off the polecat-vs-interactive axis, NO code default
+# =============================================================================
+# The two POSTURE gates (handover, ida/honesty). Their block/warn/deny mode is
+# DEFINED per-surface in polecat.yaml (gates.handover / gates.ida) and staged
+# into polecat containers by the launcher as *_GATE_MODE env vars. They have NO
+# code-level default — see resolve_posture_gate for the resolution order and
+# the named non-polecat branch (spec mem-438429c5 §5.3, R1-rbg + R1-pauli).
+_POSTURE_GATES = ("HANDOVER_GATE_MODE", "IDA_GATE_MODE")
+
+# The interactive (non-polecat) posture for the posture gates. The bare
+# interactive host (junior/ida) is — by definition — NOT a polecat, so the
+# launcher never staged a polecat.yaml posture for it; it reads its posture
+# HERE instead. Both default to "warn" → soft-once handover (delivered via
+# additionalContext, then the gate opens) and an every-turn, revisable,
+# never-silent honesty floor — NOT a hard block (that is the #1978 nag).
+_INTERACTIVE_POSTURE = {
+    "HANDOVER_GATE_MODE": "warn",
+    "IDA_GATE_MODE": "warn",
+}
+
+
+def resolve_posture_gate(name: str) -> str:
+    """Resolve a POSTURE gate's mode (block/warn/deny) for the current surface.
+
+    Posture gates carry NO code default. Resolution order, keyed on the
+    polecat-vs-interactive axis (is_polecat_surface):
+
+      1. Explicit ``*_GATE_MODE`` env — the polecat launcher resolves it from
+         polecat.yaml on the host and stages it into the container.
+         Authoritative when present (covers every polecat/crew surface, and any
+         deployment that sets the var explicitly).
+      2. Non-polecat (interactive) surface — the NAMED resolver branch: the
+         bare interactive host is not a polecat, the launcher staged no posture
+         for it, so it resolves the interactive posture (_INTERACTIVE_POSTURE:
+         soft-once handover, warn honesty). This is an EXPLICIT branch keyed on
+         is_polecat_surface(), NOT a silent fallback.
+      3. Polecat surface with no env — UNRESOLVED. Fail LOUDLY (halt): a
+         polecat whose posture was never staged is a misconfiguration; silently
+         guessing a default would reconstruct the bug this change exists to
+         kill. NEVER fail-open (silent-allow), and never silently re-block a
+         non-polecat session — both are the forbidden failures (mem-438429c5
+         §5.3 R1-rbg: "fail loudly" = halt-on-unresolved, never fail-open).
+    """
+    env_val = os.environ.get(name)
+    if env_val is not None:
+        return env_val
+    if not is_polecat_surface():
+        return _INTERACTIVE_POSTURE[name]
+    raise RuntimeError(
+        f"{name} is unresolved on a polecat surface. Posture gates carry no "
+        f"code default and must be staged from polecat.yaml by the launcher "
+        f"(polecat/cli.py _apply_gate_env). Refusing to guess — halt-on-"
+        f"unresolved, never fail-open (spec mem-438429c5 §5.3)."
+    )
+
+
 _ENFORCER_THRESHOLD_DEFAULT = 50
+# Consecutive Stop-DENYs from the rbg-review gate in one turn before it degrades
+# to WARN-and-allow (loud, not silent). Matches the 5-block router-level safety
+# override; the escape-hatch is failure-degradation only, never a normal bypass.
+_RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT = 5
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
+    if name in _POSTURE_GATES:
+        return resolve_posture_gate(name)
     if name in _GATE_MODE_DEFAULTS:
         return os.environ.get(name, _GATE_MODE_DEFAULTS[name])
     if name == "ENFORCER_TOOL_CALL_THRESHOLD":
@@ -128,28 +214,12 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
             return int(raw)
         except ValueError:
             return _ENFORCER_THRESHOLD_DEFAULT
+    if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
+        raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
+        if raw is None:
+            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
+        try:
+            return int(raw)
+        except ValueError:
+            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-# =============================================================================
-# WS7 item 4 — enforcer channel sentinel (#1315)
-# =============================================================================
-# The enforcer gate injects an instruction telling the main agent to invoke rbg
-# with a session-log path. In the field this read as a prompt injection — an
-# instruction arriving mid-stream that says "now go invoke this agent" looks
-# exactly like smuggled content, so the agent correctly-but-wrongly ignored a
-# real gate (#1315, thread 1). The fix is a stable first-party marker on the
-# enforcer's own channel: text carrying this sentinel is framework-issued, not
-# untrusted input. The marker is the trust boundary — identical text WITHOUT it
-# is still treated as untrusted.
-ENFORCER_CHANNEL_SENTINEL = "<!-- aops:enforcer-channel -->"
-
-
-def is_enforcer_channel(text: str | None) -> bool:
-    """Return True if text carries the first-party enforcer-channel sentinel.
-
-    The injection defence uses this to distinguish a real enforcer-gate
-    instruction (first-party, trusted) from a look-alike smuggled instruction
-    (untrusted). Only text the framework wrapped with the sentinel passes.
-    """
-    return bool(text) and ENFORCER_CHANNEL_SENTINEL in text

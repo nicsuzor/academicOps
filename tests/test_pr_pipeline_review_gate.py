@@ -48,6 +48,40 @@ def test_qa_still_short_circuits_on_enforcer_commit():
     assert "needs.enforcer.outputs.committed != 'true'" in qa_if, qa_if
 
 
+# ── Fire-once gate: reviewers fire on ready, not on pre-admission pushes (§3.1) ──
+
+
+def test_enforcer_fire_once_gate_skips_preadmission_synchronize():
+    """§3.1: the expensive enforcer must NOT re-run on every pre-admission push.
+    Its `if:` gates a `synchronize` action behind admission carried forward by
+    `initialize` (so it fires on ready/opened/reopened and on post-admission
+    mechanic SHAs, but skips a pre-admission `synchronize`)."""
+    enf = _jobs()["enforcer"]
+    assert "initialize" in enf["needs"], enf["needs"]
+    cond = enf["if"]
+    assert "github.event.action != 'synchronize'" in cond, cond
+    assert "needs.initialize.outputs.admitted == 'true'" in cond, cond
+
+
+def test_initialize_exposes_admitted_output():
+    """The fire-once gate reads `needs.initialize.outputs.admitted`; the
+    `initialize` job must declare it and the carry-forward step must emit both
+    truth values."""
+    init = _jobs()["initialize"]
+    assert "admitted" in init.get("outputs", {}), init.get("outputs")
+    body = "\n".join(step.get("run", "") for step in init["steps"] if isinstance(step, dict))
+    assert "admitted=true" in body and "admitted=false" in body, body
+
+
+def test_cheap_checks_still_run_every_push():
+    """Only the expensive agents are gated; lint/typecheck/pytest keep running on
+    every push (they have no synchronize/admitted clause)."""
+    jobs = _jobs()
+    for name in ("lint", "typecheck", "pytest"):
+        cond = jobs[name].get("if", "")
+        assert "admitted" not in cond, (name, cond)
+
+
 # ── AC1/AC2: fail-closed liveness + named-reviewer attestation ───────────────
 
 
@@ -105,6 +139,24 @@ def test_check_mechred_job_exists_with_convergence_condition():
     assert "needs.lint.outputs.committed != 'true'" in cm_if
     assert "needs.enforcer.outputs.committed != 'true'" in cm_if
     assert "needs.qa.outputs.committed != 'true'" in cm_if
+
+
+def test_check_mechred_needs_pytest_and_passes_result(_=None):
+    """#1965: `Pytest` is a check-run, not a commit status, so check-mechred must
+    take `pytest` as a needs dependency (making it terminal) and forward
+    needs.pytest.result to the gate as PYTEST_RESULT — otherwise a Pytest-only red
+    dispatches no responder."""
+    jobs = _jobs()
+    cm = jobs["check-mechred"]
+    assert "pytest" in set(cm["needs"]), cm["needs"]
+    # The gate step must receive the HEAD Pytest result.
+    steps = cm["steps"]
+    gate_steps = [s for s in steps if "check-mechanical-red.sh" in str(s.get("run", ""))]
+    assert gate_steps, "check-mechred has no step running check-mechanical-red.sh"
+    env = gate_steps[0].get("env", {})
+    assert "PYTEST_RESULT" in env, env
+    assert "needs.pytest.result" in str(env["PYTEST_RESULT"]), env["PYTEST_RESULT"]
+    assert "BASE_BRANCH" in env, env
 
 
 def test_pre_admission_responder_gated_on_mechred_output():

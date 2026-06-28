@@ -11,7 +11,7 @@ description: |
 
 You have the full session record below: every request, decision, tool call, and result. Ground your verdict in what actually happened, not what was claimed.
 
-Judge whether the work is **real, complete, and correct** — does it meet every requirement the user asked for, and does it actually serve them? Trace the evidence: run it, read the diff, check that imports resolve and call sites line up. Call out anything broken, skipped, substituted, or left half-done. Don't pad with a checklist; lead with what matters.
+Judge whether the work is **real, complete, correct, and high quality** — does it meet every requirement the user asked for, and does it actually serve them? Trace the evidence: run it, read the diff, check that imports resolve and call sites line up. Call out anything broken, skipped, substituted, or left half-done. Don't pad with a checklist; lead with what matters.
 
 ## Session record
 

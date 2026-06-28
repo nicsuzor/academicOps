@@ -16,7 +16,6 @@ event type) and never leaks to user-visible channels. Covers:
 import json
 
 import pytest
-from hooks.router import _strip_hook_markers
 from hooks.schemas import (
     CanonicalHookOutput,
     ClaudeGeneralHookOutput,
@@ -30,10 +29,11 @@ from tests.hooks.gate_helpers import (
 )
 
 # The Stop `reason` field is user-visible (Claude Code renders a blocking Stop
-# hook's reason to the user). The router therefore strips the
-# <SYSTEM HOOK INSTRUCTION> scaffold before placing the advisory in `reason`.
-# The advisory BODY still reaches the agent — only the marker tags are removed.
-ADVISORY_IN_REASON = _strip_hook_markers(ADVISORY)
+# hook's reason to the user). Advisory injections no longer carry the
+# `<SYSTEM HOOK INSTRUCTION>` scaffold (removed 2026-06-27), so the advisory body
+# IS the reason — nothing to strip. The assertions below remain as regression
+# guards that the scaffold never returns to a user-visible channel.
+ADVISORY_IN_REASON = ADVISORY
 
 # Events that use hookSpecificOutput.additionalContext for agent delivery
 HSO_EVENTS = sorted(CLAUDE_ACCEPTED_HOOK_EVENT_NAMES)
@@ -53,26 +53,37 @@ NON_HSO_EVENTS = sorted(
 class TestCanonicalChannelRouting:
     """Channel routing from CanonicalHookOutput → Claude Stop output."""
 
-    def test_warn_with_advisory_routes_to_reason(self, router):
+    def test_warn_with_advisory_delivers_without_block(self, router):
+        # Invariant B / P4 line (c): warn-mode Stop advisory delivers via
+        # hookSpecificOutput.additionalContext WITHOUT a spurious block.
+        # Claude Code 2.1.191 accepts + delivers additionalContext on Stop
+        # without blocking (mem-4ab6cc0b, live-verified 2026-06-25;
+        # channel_spec("claude","Stop").agent_context_without_block == True).
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
         assert isinstance(output, ClaudeStopHookOutput)
-        assert output.decision == "block"
-        # reason carries the advisory BODY, with the marker scaffold stripped
-        # (reason is user-visible — see ADVISORY_IN_REASON).
-        assert output.reason == ADVISORY_IN_REASON
-        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
+        # No spurious block — the agent keeps continuing (warn semantics).
+        assert output.decision == "approve"
+        # Advisory rides the agent-only additionalContext channel; markers stay
+        # intact there (the gate's trust framing — additionalContext is NOT
+        # user-visible, unlike `reason`).
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == ADVISORY
+        assert output.hookSpecificOutput.hookEventName == "Stop"
 
-    def test_stop_does_not_emit_hook_specific_output(self, router):
+    def test_warn_advisory_not_in_user_visible_reason(self, router):
+        # The retired block-to-deliver no longer leaks advisory into the
+        # user-visible `reason` for warn-mode gates.
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
-        assert not hasattr(output, "hookSpecificOutput") or output.hookSpecificOutput is None
+        assert output.reason is None
 
     def test_session_end_same_routing_as_stop(self, router):
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "SessionEnd")
-        assert output.decision == "block"
-        assert output.reason == ADVISORY_IN_REASON
+        assert output.decision == "approve"
+        assert output.hookSpecificOutput is not None
+        assert output.hookSpecificOutput.additionalContext == ADVISORY
 
     def test_approve_when_no_advisory(self, router):
         canonical = CanonicalHookOutput(
@@ -103,15 +114,17 @@ class TestCanonicalChannelRouting:
 class TestStopHookJsonEnvelope:
     """Serialised JSON envelope carries advisory only in agent channels."""
 
-    def test_serialised_json_carries_advisory_in_reason_not_stop_reason(self, router):
+    def test_serialised_json_carries_warn_advisory_in_additional_context(self, router):
+        # Invariant B / P4 (c): warn-mode Stop advisory rides
+        # hookSpecificOutput.additionalContext (agent-only), not a block.
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
         output = router.output_for_claude(canonical, "Stop")
         payload = json.loads(output.model_dump_json(exclude_none=True))
 
-        assert payload.get("decision") == "block"
-        assert payload.get("reason") == ADVISORY_IN_REASON
+        assert payload.get("decision") == "approve"
+        assert payload.get("hookSpecificOutput", {}).get("additionalContext") == ADVISORY
 
-        for user_field in ("stopReason", "systemMessage"):
+        for user_field in ("stopReason", "systemMessage", "reason"):
             value = payload.get(user_field)
             if value is not None:
                 assert "SYSTEM HOOK INSTRUCTION" not in value, (
@@ -215,35 +228,29 @@ class TestNonHSOEventSafety:
     """
 
     @pytest.mark.parametrize("event", NON_HSO_EVENTS)
-    def test_no_hook_specific_output_emitted(self, router, event):
-        canonical = CanonicalHookOutput(
-            verdict="warn", context_injection=ADVISORY, system_message="banner"
-        )
-        output = router.output_for_claude(canonical, event)
-        assert isinstance(output, ClaudeGeneralHookOutput)
-        assert output.hookSpecificOutput is None, (
-            f"{event}: hookSpecificOutput emitted for non-HSO event — "
-            f"Claude Code would reject the entire payload"
-        )
-
-    @pytest.mark.parametrize("event", NON_HSO_EVENTS)
     def test_system_message_still_delivered(self, router, event):
         canonical = CanonicalHookOutput(verdict="allow", system_message="Session info")
         output = router.output_for_claude(canonical, event)
         assert output.systemMessage == "Session info"
 
     @pytest.mark.parametrize("event", NON_HSO_EVENTS)
-    def test_context_injection_silently_dropped(self, router, event):
-        """context_injection for non-HSO events has no agent delivery channel."""
+    def test_context_injection_crashes_loudly(self, router, event):
+        """context_injection for non-HSO events has no agent delivery channel and must crash."""
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
-        output = router.output_for_claude(canonical, event)
-        payload = json.loads(output.model_dump_json(exclude_none=True))
-        assert "additionalContext" not in json.dumps(payload), (
-            f"{event}: context_injection appeared in output despite no HSO channel"
-        )
-        assert "SYSTEM HOOK INSTRUCTION" not in (payload.get("systemMessage") or ""), (
-            f"{event}: advisory leaked into systemMessage as fallback"
-        )
+        with pytest.raises(
+            ValueError,
+            match=f"Claude Code does not support context_injection \\(advisory\\) for {event}",
+        ):
+            router.output_for_claude(canonical, event)
+
+    @pytest.mark.parametrize("event", NON_HSO_EVENTS)
+    def test_blocking_verdict_crashes_loudly(self, router, event):
+        """Blocking verdicts for non-HSO events (like SessionStart) are not supported by Claude and must crash."""
+        canonical = CanonicalHookOutput(verdict="deny", system_message="blocked")
+        with pytest.raises(
+            ValueError, match=f"Claude Code does not support blocking verdicts for {event}"
+        ):
+            router.output_for_claude(canonical, event)
 
 
 # ===========================================================================
@@ -254,7 +261,7 @@ class TestNonHSOEventSafety:
 class TestCrossEventAdvisoryNeverLeaksToUser:
     """Advisory text must NEVER appear in user-visible fields, for ANY event."""
 
-    @pytest.mark.parametrize("event", ALL_HOOK_EVENTS)
+    @pytest.mark.parametrize("event", HSO_EVENTS + STOP_EVENTS)
     @pytest.mark.parametrize("verdict", ["warn", "deny"])
     def test_advisory_absent_from_user_visible_fields(self, router, event, verdict):
         canonical = CanonicalHookOutput(

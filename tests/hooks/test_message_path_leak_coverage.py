@@ -94,6 +94,7 @@ def _body_leaked_into(user_text: str | None, context_body: str) -> bool:
 _TEMPLATE_VARS: dict[str, dict[str, object]] = {
     "enforcer.policy_context": {"temp_path": "/tmp/enforcer-ctx.md", "ops_since_open": 50},
     "qa.policy_context": {"temp_path": "/tmp/qa-gate.md"},
+    "rbg_review.policy_context": {"temp_path": "/tmp/rbg-review.md"},
     "enforcer.policy_message": {"ops_since_open": 50},
 }
 
@@ -482,10 +483,14 @@ class TestRealPipelineEnforcerLeak:
 #
 # Claude Code renders a blocking Stop hook's `reason` to the user as a notice
 # (confirmed empirically: the full advisory appeared as "Stop hook error: ...").
-# There is no agent-only Stop channel, so the advisory necessarily shows. The
-# accepted contract (design decision: "beautify the visible reason") is that
-# `reason` must read as a clean human notice — it must NOT carry the raw
-# <SYSTEM HOOK INSTRUCTION> scaffold, which is a model-facing signal only.
+# For BLOCK-mode Stop gates the advisory rides the user-visible `reason`, so it
+# necessarily shows. The accepted contract (design decision: "beautify the
+# visible reason") is that `reason` must read as a clean human notice — it must
+# NOT carry the raw <SYSTEM HOOK INSTRUCTION> scaffold, which is model-facing
+# only. For WARN-mode gates (P4 (c), mem-4ab6cc0b) the advisory instead rides
+# the agent-only hookSpecificOutput.additionalContext (2.1.191) and the
+# user-visible channels stay empty — so tidiness is checked on whichever channel
+# is user-visible.
 #
 # This is the invariant the sibling test_output_channel_routing.py misses: it
 # treats `reason` as an agent-only channel and never checks it for user-facing
@@ -509,12 +514,23 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        # These gates block (or warn-upgraded-to-block), so reason is populated
-        # and shown to the user.
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        assert _MARKER_OPEN not in output.reason and _MARKER_CLOSE not in output.reason, (
-            f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into the "
-            f"user-visible Stop reason: {output.reason[:120]!r}"
+        # block-mode advisory rides the user-visible `reason` (must be tidy);
+        # warn-mode advisory rides the agent-only `additionalContext` (markers
+        # intentionally kept) and leaves the user-visible channels clean (P4 (c),
+        # mem-4ab6cc0b). Whichever carries the advisory must be scaffold-free in
+        # the USER-VISIBLE channel.
+        if mode == "block":
+            assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+            user_text = output.reason
+        else:
+            assert output.hookSpecificOutput is not None, (
+                f"{gate_name} ({mode}): warn advisory must ride additionalContext"
+            )
+            # User-visible channels must not carry the advisory at all.
+            user_text = (output.reason or "") + (output.stopReason or "")
+        assert _MARKER_OPEN not in user_text and _MARKER_CLOSE not in user_text, (
+            f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into a "
+            f"user-visible Stop channel: {user_text[:120]!r}"
         )
 
     # Raw agent-invocation call syntax (Gemini `invoke_agent(...)` / Claude
@@ -536,9 +552,18 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        leaked = [s for s in self._CALL_SYNTAX if s in output.reason]
+        # block-mode: advisory in user-visible `reason`. warn-mode: advisory in
+        # agent-only `additionalContext`; user-visible channels stay empty (P4 (c)).
+        if mode == "block":
+            assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+            user_text = output.reason
+        else:
+            assert output.hookSpecificOutput is not None, (
+                f"{gate_name} ({mode}): warn advisory must ride additionalContext"
+            )
+            user_text = (output.reason or "") + (output.stopReason or "")
+        leaked = [s for s in self._CALL_SYNTAX if s in user_text]
         assert not leaked, (
-            f"{gate_name} ({mode}): raw agent-invocation syntax {leaked} leaked into the "
-            f"user-visible Stop reason: {output.reason[:160]!r}"
+            f"{gate_name} ({mode}): raw agent-invocation syntax {leaked} leaked into a "
+            f"user-visible Stop channel: {user_text[:160]!r}"
         )

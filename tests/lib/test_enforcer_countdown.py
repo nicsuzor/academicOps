@@ -7,10 +7,10 @@ threshold is reached, giving agents advance notice to run compliance checks.
 from __future__ import annotations
 
 import pytest
-from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gate_types import CountdownConfig, GateConfig
 from lib.gates.engine import GenericGate
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 

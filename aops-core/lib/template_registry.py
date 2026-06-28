@@ -245,6 +245,49 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Short user-facing message when Ida gate fires on Stop",
     ),
+    "ida.askuserquestion_reminder": TemplateSpec(
+        name="ida.askuserquestion_reminder",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="ida-askuserquestion-reminder.md",
+        required_vars=(),
+        description="Capability-verification nudge injected on PreToolUse AskUserQuestion",
+    ),
+    # --- RBG-review gate (per-turn axiom review must RUN before Stop) ---
+    "rbg_review.context": TemplateSpec(
+        name="rbg_review.context",
+        category=TemplateCategory.SUBAGENT_INSTRUCTION,
+        filename="rbg-review-context.md",
+        required_vars=("session_context", "tool_name"),
+        description="Turn record written to the temp file the rbg-review subagent reads",
+    ),
+    "rbg_review.policy_message": TemplateSpec(
+        name="rbg_review.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="rbg-review-policy-message.md",
+        required_vars=(),
+        description="Short user-facing message when the rbg-review gate blocks Stop",
+    ),
+    "rbg_review.policy_context": TemplateSpec(
+        name="rbg_review.policy_context",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="rbg-review-policy-context.md",
+        required_vars=("temp_path",),
+        description="Context injection instructing the agent to dispatch rbg before Stop",
+    ),
+    "rbg_review.complete": TemplateSpec(
+        name="rbg_review.complete",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="rbg-review-complete.md",
+        required_vars=(),
+        description="Status message when rbg has run and the rbg-review gate clears",
+    ),
+    "rbg_review.degraded": TemplateSpec(
+        name="rbg_review.degraded",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="rbg-review-degraded.md",
+        required_vars=("threshold",),
+        description="Loud escape-hatch message when rbg-review degrades to WARN-and-allow",
+    ),
 }
 
 

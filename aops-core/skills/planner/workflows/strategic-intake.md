@@ -34,7 +34,7 @@ version: 1.0.0
    | High Uncertainty (Need Info)      | **Spike**   | Create research/probe task                |
    | Too vague to classify             | **Seed**    | Create with `status: inbox`, link loosely |
 
-4. **Place in Graph** — Create or update the node. Extract structured metadata if mentioned (`due`, `effort`, `consequence`). Link to related nodes via wikilinks. Set appropriate status (`inbox` for unexamined/developing fragments). **Criticality focus**: Explicitly identify if this fragment is on a critical path for active goals.
+4. **Place in Graph** — Create or update the node. Extract structured metadata if mentioned (`due`, `effort`, `consequence`). Link to related nodes via wikilinks. Set an appropriate status from the canonical set ([[../../remember/references/TAXONOMY.md#status-values-and-transitions]]) — use `inbox` (the default) for unexamined/developing fragments; do not hand-write `ready` (it is computed once decomposition + deps are complete). **Leave `priority` at the default P3** — only Nic sets intent ([[framework-conventions-summary#intent-authority]]); to give a fragment more importance, raise the `stated_weight` of its `contributes_to` edge (Renooij-Witteman verbal scale; see [[wire-edges]] / [[../../remember/references/TAXONOMY.md#target-nodes]]), never bump priority. **Criticality focus**: Explicitly identify if this fragment is on a critical path for active goals.
 
 5. **Surface Assumptions** — What must be true for this fragment to matter? If non-obvious, note them explicitly. Assumptions are load-bearing hypotheses — if wrong, dependent work is invalid.
 

@@ -20,10 +20,10 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateResult, GateVerdict
 from lib.gate_types import GateState
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 # ---------------------------------------------------------------------------
@@ -257,7 +257,14 @@ class TestWarnStopSurface:
     """WARN verdicts on Stop events must reach the agent, not the user."""
 
     def test_warn_stop_routes_advisory_to_agent(self, router):
-        """WARN on Stop with context_injection routes to agent via decision=block + reason."""
+        """WARN on Stop with context_injection delivers to agent via additionalContext.
+
+        Invariant B / P4 (c): Claude Code 2.1.191 delivers
+        hookSpecificOutput.additionalContext on Stop WITHOUT a block
+        (mem-4ab6cc0b, live-verified 2026-06-25). A warn-mode advisory no longer
+        upgrades to a spurious block purely to deliver — it rides the agent-only
+        additionalContext channel and the agent keeps continuing (warn semantics).
+        """
 
         # Build a WARN result that mimics IDA / RBG advisory
         warn_result = GateResult.warn(
@@ -268,17 +275,20 @@ class TestWarnStopSurface:
 
         output = router.output_for_claude(canonical, "Stop")
 
-        # decision="block" is the only Stop channel that feeds text to the agent
-        assert output.decision == "block", (
-            "WARN on Stop with advisory must upgrade to decision=block so the "
-            "agent reads the advisory on its next turn (aops-d10e7db6). "
+        # No spurious block — warn semantics preserved (agent may proceed).
+        assert output.decision == "approve", (
+            "WARN on Stop with advisory must NOT block (delivery != enforcement); "
             f"got decision={output.decision!r}"
         )
-        # reason is user-visible (Claude Code shows a blocking Stop reason to
-        # the user); the router strips the <SYSTEM HOOK INSTRUCTION> scaffold,
-        # leaving the advisory body for both the agent and the user notice.
-        assert output.reason == "Proof required"
-        assert "SYSTEM HOOK INSTRUCTION" not in output.reason
+        # Advisory rides the agent-only additionalContext channel (NOT user-visible
+        # reason). Markers stay intact there — it is the gate's trust framing.
+        assert output.hookSpecificOutput is not None
+        assert (
+            output.hookSpecificOutput.additionalContext
+            == "<SYSTEM HOOK INSTRUCTION>Proof required</SYSTEM HOOK INSTRUCTION>"
+        )
+        # reason (user-visible) stays empty for warn-mode advisory.
+        assert output.reason is None
         # Must NOT leak the marker scaffold to user-visible channels.
         assert output.stopReason is None or "SYSTEM HOOK INSTRUCTION" not in (
             output.stopReason or ""
@@ -337,20 +347,28 @@ class TestWarnStopSurface:
         assert output.hookSpecificOutput.additionalContext == "watch out"
         assert output.hookSpecificOutput.permissionDecision == "allow"
 
-    def test_warn_stop_does_not_emit_hook_specific_output(self, router):
-        """WARN on Stop must NOT emit hookSpecificOutput — Claude Code rejects it."""
+    def test_warn_stop_emits_hook_specific_output(self, router):
+        """WARN on Stop emits hookSpecificOutput.additionalContext (2.1.191).
+
+        The legacy "Claude Code rejects hookSpecificOutput on Stop" belief is
+        stale (verified 2.1.158). At 2.1.191 the validator accepts it and
+        delivers additionalContext to the agent without a block (mem-4ab6cc0b).
+        """
         warn_result = GateResult.warn(
             system_message=None,
             context_injection="<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>",
         )
         canonical = router._gate_result_to_canonical(warn_result)
         output = router.output_for_claude(canonical, "Stop")
-        assert not hasattr(output, "hookSpecificOutput"), (
-            "ClaudeStopHookOutput should not have hookSpecificOutput field"
+        assert output.decision == "approve"
+        assert output.hookSpecificOutput is not None
+        # additionalContext is agent-only — markers stay intact.
+        assert (
+            output.hookSpecificOutput.additionalContext
+            == "<SYSTEM HOOK INSTRUCTION>evidence?</SYSTEM HOOK INSTRUCTION>"
         )
-        assert output.decision == "block"
-        # reason is user-visible; marker scaffold stripped (advisory body kept).
-        assert output.reason == "evidence?"
+        # reason (user-visible) stays empty for warn-mode advisory.
+        assert output.reason is None
 
 
 # ===========================================================================
@@ -434,7 +452,7 @@ class TestAuditFileMemoisation:
         created_calls = []
 
         # Patch create_audit_file to track calls
-        def fake_create_audit(session_id, gate, ctx_arg):
+        def fake_create_audit(session_id, gate, ctx_arg, **kwargs):
             new_file = tmp_path / "new_audit.md"
             new_file.write_text("New audit")
             created_calls.append(new_file)
@@ -477,3 +495,94 @@ class TestAuditFileMemoisation:
 
         expected_size = transcript.stat().st_size
         assert state.metrics.get("transcript_parse_pos") == expected_size
+
+
+# ===========================================================================
+# aops-5bc65f76 — one windowed builder (n+2) + bound-task directive injection
+# ===========================================================================
+
+
+class TestAuditWindowAndDirective:
+    """The single windowed builder window = n+2, and the bound-task directive
+    is prepended to the rbg review payload."""
+
+    def test_window_is_enforcer_threshold_plus_two(self, monkeypatch):
+        """_audit_window_turns() == ENFORCER_TOOL_CALL_THRESHOLD + 2."""
+        import importlib
+
+        from lib.gates import custom_actions
+
+        monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "30")
+        importlib.reload(sys.modules["hooks.gate_config"])
+        assert custom_actions._audit_window_turns() == 32
+
+    def test_bound_task_directive_empty_when_no_task(self):
+        from lib.gates import custom_actions
+
+        assert custom_actions._bound_task_directive(None) == ""
+        assert custom_actions._bound_task_directive("") == ""
+
+    def test_bound_task_directive_loads_title_and_body(self, monkeypatch):
+        """When a task is bound, the directive carries its id, title, and body."""
+        from lib.gates import custom_actions
+
+        class _FakeTask:
+            title = "Do the thing"
+            body = "## Brief\nStay on target."
+
+        monkeypatch.setattr(
+            "polecat.pkb_bridge.get_task", lambda task_id: _FakeTask(), raising=False
+        )
+        out = custom_actions._bound_task_directive("aops-1234")
+        assert "aops-1234" in out
+        assert "Do the thing" in out
+        assert "Stay on target." in out
+        assert out.startswith("## Bound Task Directive")
+
+    def test_bound_task_directive_graceful_on_lookup_failure(self, monkeypatch):
+        """A PKB lookup failure yields an empty directive, never raises."""
+        from lib.gates import custom_actions
+
+        def _boom(task_id):
+            raise RuntimeError("PKB offline")
+
+        monkeypatch.setattr("polecat.pkb_bridge.get_task", _boom, raising=False)
+        assert custom_actions._bound_task_directive("aops-1234") == ""
+
+    def test_directive_prepended_to_rbg_payload(self, monkeypatch, tmp_path):
+        """create_audit_file prepends the bound-task directive to the payload."""
+        from lib.gates import custom_actions
+
+        transcript = tmp_path / "session.jsonl"
+        entries_data = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": _make_timestamp(0),
+                "message": {"content": [{"type": "text", "text": "Implement the feature"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": _make_timestamp(1),
+                "message": {"content": [{"type": "text", "text": "On it."}]},
+            },
+        ]
+        _write_jsonl(transcript, entries_data)
+
+        class _FakeTask:
+            title = "Implement feature X"
+            body = "Only touch module X."
+
+        monkeypatch.setattr(
+            "polecat.pkb_bridge.get_task", lambda task_id: _FakeTask(), raising=False
+        )
+
+        ctx = _make_ctx(hook_event="Stop", transcript_path=str(transcript), tool_name="Stop")
+        gate_path = custom_actions.create_audit_file(
+            "test-session", "qa", ctx, bound_task_id="aops-9999"
+        )
+        content = gate_path.read_text()
+        assert "Bound Task Directive" in content
+        assert "Implement feature X" in content
+        assert "Only touch module X." in content

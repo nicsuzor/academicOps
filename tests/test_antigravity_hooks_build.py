@@ -147,15 +147,30 @@ class TestAntigravityHooksBuildTransform:
             elif "command" in entry:
                 yield entry.get("command", "")
 
-    def test_plugin_root_var_replaced_with_shell_var(self, transform):
-        """All commands must use hardcoded $HOME path not ${CLAUDE_PLUGIN_ROOT}."""
+    def test_plugin_root_var_replaced_with_cwd_relative_path(self, transform):
+        """Hook commands must invoke router.sh via a CWD-RELATIVE path.
+
+        agy runs hooks with the process CWD set to the plugin's install dir
+        (verified at runtime on agy 1.0.13), so `bash hooks/router.sh` resolves
+        with no path variable and no hardcoded path; router.sh self-locates via
+        $0. agy does NOT resolve ${extensionPath} in native-format command
+        strings (becomes empty → "bash: /hooks/router.sh: No such file") — that is
+        upstream bug google-antigravity/antigravity-cli#390 — and a literal
+        $HOME/... can't be used because agy execs via argv, not a shell.
+        """
         for event, hook_entries in transform["hooks"].items():
             for cmd in self._iter_commands(hook_entries):
                 assert "${CLAUDE_PLUGIN_ROOT}" not in cmd, (
                     f"${'{CLAUDE_PLUGIN_ROOT}'} not replaced in {event} hook: {cmd}"
                 )
-                assert "$HOME/.gemini/antigravity-cli/plugins/aops-core" in cmd, (
-                    f"Expected agy install path missing in {event} hook: {cmd}"
+                assert "bash hooks/router.sh" in cmd, (
+                    f"Expected cwd-relative 'bash hooks/router.sh' in {event} hook: {cmd}"
+                )
+                assert "${extensionPath}" not in cmd, (
+                    f"{event} hook must not use ${'{extensionPath}'} (agy #390 leaves it unresolved): {cmd}"
+                )
+                assert "$HOME" not in cmd, (
+                    f"Hook command must not hardcode $HOME (argv exec won't expand it): {cmd}"
                 )
 
     def test_client_flag_is_agy(self, transform):

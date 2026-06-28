@@ -142,6 +142,8 @@ Extract insights from session transcripts that agents may not have saved during 
 **Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files), including synced GHA sessions in `$AOPS_SESSIONS/github/`.
 **Output**: Updates to canonical topic notes (preferred); new canonical notes where the topic lacks one; rarely, a linked narrow note for genuinely topic-less observations.
 
+> **If the mining goal is to extract user prompts or command invocations** (e.g. what `/learn` was called with, prompt frequency, skill usage patterns), use the **structured summaries corpus** instead of reading transcript markdown files. Path: `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. See `specs/CAPABILITIES.md §Session Summaries` for full reference. Raw transcript files are the fallback for content not present in summaries (agent reasoning, tool calls, full context).
+
 ### Process
 
 1. **Sync GHA sessions**: Run `aops-core/scripts/sync_gha_sessions.py` to fetch new transcripts from GitHub Actions artifacts into `$AOPS_SESSIONS/github/`.

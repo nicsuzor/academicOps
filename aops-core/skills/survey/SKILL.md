@@ -93,6 +93,14 @@ When the transcript shows an artifact whose **premise** a sharp principal would 
 
 This makes the reviewer's miss visible and attributed — the compounding fix for floor-optimisation (#1585): a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it.
 
+### 2b. Pyramid discipline — when a retro fix shapes how an agent behaves
+
+Any fix that changes what an agent is directed to do (an instruction, persona edit, rule, hook, gate, or chokepoint) is a **regulatory-pyramid action**. A retro applying one MUST:
+
+- **Default to the lowest sufficient tier; escalate only on demonstrated insufficiency.** Start at the instruction tier and stay there. Per [[enforcement.md]] §4 ("Default to instructions"; Braithwaite responsive regulation) and the ENFORCEMENT-MAP Cost axis, a heavier mechanism (deterministic gate → post-hoc enforcer → L4 chokepoint/funnel) is justified ONLY after a _clear, correctly-placed, propagated_ instruction was shown to fail. **Forbidden:** reflexively parking a heavier guard "to be safe" beside an instruction that has not yet failed, or framing the heavier tier as "the real enforcement" while the instruction tier is untested — that is belt-and-braces bloat (permanent maintenance + a new failure surface against a problem the prompt tier never attempted). An untested or mislocated instruction is NOT evidence the tier is exhausted. If a heavier guard might _later_ be warranted, record it on the follow-up task as **DEFERRED pending demonstrated insufficiency**, never as open enforcement.
+- **Record the enforcement-map decision.** Adding or strengthening any behavioural control triggers `{#enforcement-map-currency}` (it covers instructions and persona edits, not only gates). State the grain call in the review: either the change is _content on an already-mapped mechanism class_ (e.g. a repo-local `.agents/CORE.md` / persona edit rides the already-mapped L1 SessionStart-reads row → **no new row owed**) or it is a _genuinely new mechanism class_ (→ add one row to `specs/ENFORCEMENT-MAP.md` in the same change). Never leave the decision unrecorded.
+- **Place and propagate at the correct layer.** A framework-wide truth (true for every agent/host, not one machine) belongs in the **canonical agent definition** (`aops-core/agents/<agent>.md`) via a gated aops PR — not buried in one host's local launch context. A local-only edit is an acceptable immediate stopgap, but the retro MUST then recommend propagation to the canonical layer — this is the "correctly placed + propagated" precondition §4 requires before any later escalation.
+
 ### 3. Output Requirements
 
 Produce a review in this exact format. Keep text concise:
@@ -125,17 +133,21 @@ Produce a review in this exact format. Keep text concise:
 
 ### 5. Retro Anti-Patterns
 
-| Anti-pattern                                                                                                                                    | What to do instead                                                                                                                                                                                                                   |
-| :---------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary) | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed. |
-| Including remediation proposals in the report                                                                                                   | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Propose fixes directly in the codebase (if permitted) but keep the filed issue strictly forensic.                            |
-| Citing a single session as justification for a new mechanism                                                                                    | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                       |
+| Anti-pattern                                                                                                                                                                                                                                        | What to do instead                                                                                                                                                                                                                   |
+| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary)                                                                                                     | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed. |
+| Including remediation proposals in the report                                                                                                                                                                                                       | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Propose fixes directly in the codebase (if permitted) but keep the filed issue strictly forensic.                            |
+| Citing a single session as justification for a new mechanism                                                                                                                                                                                        | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                       |
+| Stacking a heavier guard beside an untested instruction fix ("the real enforcement still open"), or applying a behavioural fix without recording the enforcement-map grain decision / propagating a framework-wide truth to the canonical agent def | Apply §2b: lowest sufficient tier first, escalate only on demonstrated insufficiency (defer heavier guards), record the `{#enforcement-map-currency}` decision, propagate framework-wide truths to `aops-core/agents/<agent>.md`.    |
 
 ---
 
 ## Mode: trend
 
 Review multiple sessions to identify systemic effectiveness and trends.
+
+> **Corpus selection — prompt mining vs trend reading.**
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/CAPABILITIES.md §Session Summaries` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 
@@ -240,8 +252,8 @@ Log results in the following format:
 
 ### 3. Execution Rules
 
-- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]).
-- **Priority P0 Calibration**: Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
+- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]). Set any status only from the canonical set ([[../remember/references/TAXONOMY.md#status-values-and-transitions]]); created tasks default to `inbox` and `ready` is computed downstream — do not hand-write it.
+- **Priority (leave at default; only Nic sets intent)**: Leave `priority` at the uncurated default band on swept tasks — never infer, estimate, or propagate a band ([[framework-conventions-summary#intent-authority]]). To make a swept task **more important**, raise the `stated_weight` of its `contributes_to` edge (Renooij-Witteman verbal scale; see [[wire-edges]] / [[../remember/references/TAXONOMY.md#target-nodes]]), never bump priority. Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
 - **Verification**: Verify closed issues are successfully set to `state: closed`.
 - **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
 - **Handoff**: Run verification after completing the cycle:

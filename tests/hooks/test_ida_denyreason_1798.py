@@ -1,6 +1,6 @@
 """Engine-level invariant harness for issue #1798 — IDA text as PreToolUse denyReason.
 
-SYMPTOM (#1798): in agy (Antigravity CLI 1.0.7) sessions the IDA reminder text
+SYMPTOM (#1798): in agy (Antigravity CLI) sessions the IDA reminder text
 ("≡ Before you stop — be honest:") was reported surfacing as the ``denyReason``
 field of a ``PreToolHookResult`` for an ordinary read tool (``grep_search``).
 
@@ -84,8 +84,8 @@ def _grep_pretool_payload(session_id: str) -> dict:
 
     ``conversationId`` is read by the router for all clients via
     ``raw_input.get("session_id") or raw_input.get("conversationId")``.
-    ``toolCall`` at the ROOT reflects the real agy 1.0.7 shape (session
-    6d3d5783) after the #1800 fix.
+    ``toolCall`` at the ROOT reflects the real agy wire shape (session
+    6d3d5783, observed on agy 1.0.7; current at 1.0.12) after the #1800 fix.
     """
     return {
         "conversationId": session_id,
@@ -133,7 +133,12 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     sid = f"1798-postinvocation-{client_type}"
     _arm_ida(monkeypatch, tmp_path, sid, client_type)
 
-    output, stderr = run_router({"conversationId": sid}, "PostInvocation")
+    # The Stop-family event is client-specific on the wire: agy fires
+    # ``PostInvocation`` (→Stop), claude fires ``Stop`` natively. The router
+    # resolves each through client_spec's per-client inbound map, so feed the
+    # event the client actually emits rather than agy's name for both.
+    stop_event = "PostInvocation" if client_type == "agy" else "Stop"
+    output, stderr = run_router({"conversationId": sid}, stop_event)
 
     assert "denyReason" not in output, f"PostInvocation must not emit denyReason: {output!r}"
     assert _IDA_MARKER in str(output), (
@@ -142,7 +147,15 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     if client_type == "agy":
         steps = output.get("injectSteps")
         assert steps, f"agy PostInvocation: IDA must go to injectSteps: {output!r}"
-        joined = " ".join(s.get("ephemeralMessage", "") for s in steps)
+        # injectSteps scalar channels (invariant #5): ephemeralMessage is preferred
+        # (transient), userMessage is the persistent variant. The renderer emits
+        # ephemeralMessage; legacy systemMessage kept for back-compat with older shapes.
+        joined = " ".join(
+            s.get("ephemeralMessage", "")
+            or s.get("userMessage", "")
+            or s.get("systemMessage", {}).get("systemMessage", "")
+            for s in steps
+        )
         assert _IDA_MARKER in joined, (
             f"agy PostInvocation injectSteps must carry the IDA reminder: {output!r}"
         )

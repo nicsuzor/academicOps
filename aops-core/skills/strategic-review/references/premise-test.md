@@ -32,6 +32,17 @@ That sentence is the whole step-0 artifact. You write it first; only then do you
 
 Reading the code first is exactly what lets a clean, well-tested surface **launder** a bad premise. Engage the diffstat and the task before the code, while the question _"should this exist at all?"_ is still askable without the pull of polished implementation. **You cannot emit an approving verdict without first writing the step-0 sentence** — that bind is the forcing function; it must remain item 0 in each skill's output schema.
 
+### Establish current state and prior decisions FIRST — the precondition to judging the premise
+
+You cannot soundly judge _"is this a good idea, in this shape?"_ for a proposed **new mechanism** (gate, env var, context builder, classifier, schema, env axis, dispatch path) until you know whether **the mechanism already exists** or **the decision was already made**. A premise judged in a vacuum — without establishing how the system already runs and what was already decided — is not a premise judgment; it is a guess that happens to read as one. This is the single most common way a sound-sounding premise launders an over-build: the reviewer approves "this is a reasonable mechanism" while blind to the fact that it already exists, or was already tried and abandoned, or was already decided the other way.
+
+So, before the step-0 sentence on any proposal that **adds or changes a mechanism**, establish — from live code, the PKB, and the decision record (PRs/issues/memories), not from intuition — two things:
+
+- **Does this already run?** Is there an existing arming trigger, env var, builder, gate, or path that already does this (or most of it)? Adding a _second_ path beside an existing one is itself a premise defect — bounce it toward extending the one that exists.
+- **Was this already decided?** Search the PKB and the PR/issue record for a prior decision on this exact question. Re-raising a settled call as if novel, or contradicting a prior decision without naming and engaging it, fails the premise regardless of how reasonable the proposal reads.
+
+This precondition is **judgment-driven discovery, not a mechanism** — a few targeted PKB searches and `rg`/`git`/`gh` reads, exactly the cheap current-state probe the framework expects before any build. It does not become a checklist: the two questions above are priming for the one judgment, not boxes to tick. When the answer to either is "yes, it exists / it was decided", the verdict on a proposal that ignored that is a **rejection** — and per `/learn` retro §2a the miss is scored against the reviewer who approved a new-mechanism premise without establishing current state.
+
 ## 2. A bad premise fails — regardless of test coverage
 
 If a sharp principal would bounce the premise, the verdict is a **rejection even with green CI, clean code, and satisfied AC**. The skill-local rejection token:
@@ -50,6 +61,10 @@ A rejecting verdict (`FAIL` / 🔴 REJECT) requires a falsifying observation the
 ## 3. Generalised framing — overengineering is one worked example
 
 The question is _"was this worth building at all, in this shape?"_ — **not** an overengineering-only check. _Deterministic-rig-for-a-judgment-call_ (a regex / threshold / NLP / bespoke parser / checklist substituting for a call a smart agent should just make — see `judgment-non-delegable`, `exercise-authority` Edge 3) is **one named instance** of the broader "dumb idea" class, not the definition.
+
+### The rig as TRIGGER is the same violation as the rig as DECISION
+
+A deterministic rig fails this test whether it makes the final call **or merely decides whether the judgment fires at all**. A regex / keyword / NLP / threshold / checklist used as the **trigger, pre-filter, router, or gate** in front of a judging agent is `judgment-non-delegable` exactly as much as one used as the verdict — because _selecting which inputs are load-bearing-enough to judge_ is itself a semantic judgment. The "but a smart model still makes the final call" framing is a **laundering move**, not a mitigant: if the rig decides which cases the model ever sees, the rig owns the recall, and the model only ever rules on the rig's leavings. A reviewer must ask of every two-stage "cheap filter → scoped LLM review" design: _is the filter's own decision (which assertions count as suspect) a comprehension call?_ If yes, the filter is forbidden — name it, do not pass it on the strength of the downstream LLM. Concretely: deciding whether a claim is **load-bearing-and-unverified** is a semantic judgment, so a keyword/NLP "assertion-tells × risk-surface" pre-filter standing in for it is the disease, not the cure — even when an LLM micro-review sits behind it.
 
 **Worked specimen (illustrative, NOT a checklist).** PR #1723 proposed a **978-line SHA-parsing freshness tool with magic thresholds** (`STALE ≥ 20 commits` / `≥ 30 days`) and brittle prose-fallback parsing — an entire deterministic machine built to answer a one-read staleness call a smart agent would simply _judge_. Green tests and clean code do not save it: the premise is wrong, so the verdict is `FAIL` / 🔴 REJECT. A reviewer's step-0 sentence — _"why 978 lines of machine for a question I'd answer by reading?"_ — bounces it before the diff is even read.
 

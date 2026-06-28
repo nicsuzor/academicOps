@@ -87,10 +87,12 @@ _SYSTEM_MARKERS = (
 def is_noise_prompt(text: str | None) -> bool:
     """True if a "user" turn is system-injected noise, not Nic typing.
 
-    Dropped: empty/whitespace, the stop-hook honesty-reminder boilerplate,
-    system-injected reminders, bare slash-commands (no substantive args), and
-    single-word acknowledgements. A slash-command *with* a real instruction
-    (e.g. ``/q fix the parser``) is kept — that is Nic typing.
+    Dropped: empty/whitespace, system-injected reminders, bare slash-commands
+    (no substantive args), and single-word acknowledgements. A slash-command
+    *with* a real instruction (e.g. ``/q fix the parser``) is kept — that is
+    Nic typing. (The stop-hook honesty/handover reminder is no longer filtered
+    by a substring match here — spec mem-438429c5 §5.6; the structural fix is
+    deferred to aops-884e4214.)
     """
     if not text:
         return True
@@ -99,9 +101,13 @@ def is_noise_prompt(text: str | None) -> bool:
         return True
     low = s.lower()
 
-    # Stop-hook honesty reminder ("≡ Before you stop — be honest: ...").
-    if "before you stop" in low and "be honest" in low:
-        return True
+    # NOTE: the brittle `"before you stop" && "be honest"` substring filter
+    # that used to live here was removed (spec mem-438429c5 §5.6 — a
+    # deterministic rig doing a semantic job; it broke the instant the honesty
+    # reminder was reworded). No replacement sentinel is added (rejected scope);
+    # the proper structural transcript-rendering fix is deferred (follow-up
+    # aops-884e4214). Stop-hook honesty/handover reminders that reach this path
+    # are no longer specially dropped here.
 
     # System-injected context (reminders, interrupts, continuation banners).
     for marker in _SYSTEM_MARKERS:

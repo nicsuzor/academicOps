@@ -19,6 +19,7 @@ if str(AOPS_CORE_DIR) not in sys.path:
 
 from lib.diag_style import _ok, _warn, section_header
 from lib.gate_model import GateResult, GateVerdict
+from lib.hook_context import HookContext
 from lib.session_paths import (
     get_all_gate_file_paths,
     get_hook_log_path,
@@ -26,8 +27,6 @@ from lib.session_paths import (
     get_session_status_dir,
 )
 from lib.session_state import SessionState
-
-from hooks.schemas import HookContext
 
 
 def set_persistent_env(env_dict: dict[str, str]):

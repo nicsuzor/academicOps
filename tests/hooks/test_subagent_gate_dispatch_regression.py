@@ -2,9 +2,12 @@
 
 Architecture: subagent tool-call events (PreToolUse/PostToolUse with
 is_subagent=True) are invisible to gates — _dispatch_gates() returns None.
-Stop/SessionEnd/SubagentStop events are exempt from this bypass so that
-session-level gates (e.g. IDA) fire even for Claude Code background agents
-which get is_subagent=True despite being independent sessions.
+Stop/SessionEnd/SubagentStop AND UserPromptSubmit events are exempt from this
+bypass so that session-level gates (e.g. IDA) fire even for Claude Code
+background agents which get is_subagent=True despite being independent sessions.
+Stop/SessionEnd make the gate FIRE; UserPromptSubmit lets a fire-once gate
+RE-ARM for the next turn — without it IDA fired once then went silent in
+background sessions (regression covered by TestFireOnceRearmInSubagentSession).
 
 Tests construct GenericGate instances directly from inline GateConfig objects
 to avoid the dual-module-resolution issue with GATE_CONFIGS import under pytest.
@@ -16,7 +19,6 @@ from unittest.mock import patch
 
 import pytest
 from hooks.router import HookRouter
-from hooks.schemas import HookContext
 from lib.gate_model import GateVerdict
 from lib.gate_types import (
     GateCondition,
@@ -28,6 +30,7 @@ from lib.gate_types import (
 )
 from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
+from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
 # --- Minimal gate configs for testing ---
@@ -273,6 +276,116 @@ class TestSubagentGateBypass:
         assert result.verdict == GateVerdict.DENY
 
 
+def _make_ida_like_config() -> GateConfig:
+    """Minimal fire-once honesty gate: armed CLOSED, fires once per Stop, re-arms on UPS."""
+    return GateConfig(
+        name="ida_like",
+        description="Test fire-once honesty gate",
+        initial_status=GateStatus.CLOSED,
+        triggers=[
+            # Stop while CLOSED -> OPEN (fire-once: don't re-fire on retried Stop).
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                ),
+                transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # UserPromptSubmit -> CLOSED (re-arm for the next turn).
+            GateTrigger(
+                condition=GateCondition(hook_event="UserPromptSubmit"),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
+            ),
+        ],
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="Stop",
+                    current_status=GateStatus.CLOSED,
+                ),
+                verdict="warn",
+                message_template="Before you stop, be honest.",
+            ),
+        ],
+    )
+
+
+class TestFireOnceRearmInSubagentSession:
+    """Regression: a fire-once Stop gate (IDA) must RE-ARM on UserPromptSubmit
+    even when is_subagent=True (Claude Code background jobs).
+
+    Bug observed in session 0ff45f86 (2026-06-27): IDA fired once on the first
+    Stop, then every later Stop returned `allow` because the UserPromptSubmit
+    re-arm event was dropped by the subagent-bypass in _dispatch_gates. The
+    exemption let the gate FIRE but not RE-ARM.
+    """
+
+    @pytest.fixture
+    def ida_registry(self):
+        GateRegistry._gates = {}
+        GateRegistry._initialized = False
+        GateRegistry.register(GenericGate(_make_ida_like_config()))
+        GateRegistry._initialized = True
+        yield GateRegistry
+        GateRegistry._gates = {}
+        GateRegistry._initialized = False
+
+    def test_ups_rearm_not_skipped_for_subagent(self, mock_session, ida_registry):
+        """UserPromptSubmit in an is_subagent session must reach the gate and re-arm it."""
+        session_id, state = mock_session
+
+        # Gate already OPEN (it fired on a previous Stop this turn).
+        state.get_gate("ida_like").status = GateStatus.OPEN
+
+        ups_ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="UserPromptSubmit",
+            is_subagent=True,  # background job: everything is flagged is_subagent
+            raw_input={"prompt": "show me the table"},
+        )
+
+        router = _make_router()
+        router._dispatch_gates(ups_ctx, state)
+
+        # Before the fix: _dispatch_gates returned None for UPS, status stayed OPEN.
+        # After the fix: the re-arm trigger runs -> CLOSED, ready to fire next Stop.
+        assert state.get_gate("ida_like").status == GateStatus.CLOSED
+
+    def test_full_fire_rearm_fire_cycle_in_subagent_session(self, mock_session, ida_registry):
+        """End-to-end: fire on Stop -> re-arm on UPS -> fire again on next Stop."""
+        session_id, state = mock_session
+        router = _make_router()
+
+        def run(hook_event, **kw):
+            ctx = HookContext(
+                session_id=session_id,
+                trace_id=None,
+                hook_event=hook_event,
+                is_subagent=True,
+                raw_input=kw.get("raw_input", {}),
+            )
+            return router._dispatch_gates(ctx, state)
+
+        # Armed (CLOSED) — in production this comes from initial_status=CLOSED;
+        # the minimal unit SessionState doesn't seed config initial_status, so
+        # set it explicitly to model the armed-at-session-start state.
+        state.get_gate("ida_like").status = GateStatus.CLOSED
+
+        # Turn 1 Stop: fires (warn), then opens (fire-once).
+        r1 = run("Stop")
+        assert r1 is not None and r1.verdict == GateVerdict.WARN
+        assert state.get_gate("ida_like").status == GateStatus.OPEN
+
+        # New user prompt: re-arms (this is the line that was being dropped).
+        run("UserPromptSubmit", raw_input={"prompt": "next question"})
+        assert state.get_gate("ida_like").status == GateStatus.CLOSED
+
+        # Turn 2 Stop: fires AGAIN (the behaviour that was silently lost).
+        r2 = run("Stop")
+        assert r2 is not None and r2.verdict == GateVerdict.WARN
+
+
 class TestEvaluateTriggersMethod:
     """Test the new evaluate_triggers() public method on GenericGate."""
 
@@ -366,8 +479,10 @@ class TestReadOnlyToolExclusion:
             raw_input={},
         )
 
-        # Mock get_tool_category to return "read_only" for Read
-        with patch("hooks.gate_config.get_tool_category", return_value="read_only"):
+        # Mock get_tool_category to return "read_only" for Read. Patch it where
+        # the gate's check() path looks it up (lib.gates.engine) — that binding
+        # governs excluded_tool_categories matching, not the gate_config name.
+        with patch("lib.gates.engine.get_tool_category", return_value="read_only"):
             result = gate.check(ctx, state)
 
         # Read tool should not be denied

@@ -5,6 +5,8 @@ from unittest.mock import patch
 import pytest
 from lib.session_naming import get_session_short_hash
 from lib.session_paths import (
+    _env_path_belongs_to_session,
+    _find_session_anchor_base,
     _is_gemini_session,
     _is_polecat_sandbox,
     _parse_date_arg,
@@ -122,6 +124,67 @@ class TestIsGeminiSession:
         # No indicators at all
         with patch.dict(os.environ, {}, clear=True):
             assert _is_gemini_session(None, None) is False
+
+
+class TestSessionAnchorBase:
+    """The hook-log/state path must converge on ONE base per session without
+    relying on a SessionStart-pinned env var (agy has no SessionStart)."""
+
+    SID = "955b6ddb-12d5-436e-9823-982206a45091"  # short hash -> 955b6ddb
+
+    def test_none_when_empty(self, tmp_path):
+        assert _find_session_anchor_base(self.SID, tmp_path) is None
+
+    def test_anchors_on_hook_log_not_just_state(self, tmp_path):
+        # Only a -hooks.jsonl exists (no state .json). The old finder matched
+        # state files only and so could not anchor a log-only session.
+        (tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl").touch()
+        assert (
+            _find_session_anchor_base(self.SID, tmp_path)
+            == "20260627-1745-955b6ddb-aopscore-antigravity"
+        )
+
+    def test_converges_across_repo_shortform_flip(self, tmp_path):
+        # The real bug: same session, two bases differing only by cwd-derived repo
+        # name (aops-core vs the symlinked aops-antigravity). Anchor must pick ONE
+        # deterministically (earliest), regardless of write/mtime order.
+        a = tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl"
+        b = tmp_path / "20260627-1745-955b6ddb-aopsantigravity-antigravity.json"
+        a.touch()
+        b.touch()
+        base1 = _find_session_anchor_base(self.SID, tmp_path)
+        # mtime order must not matter — deterministic by name.
+        b.touch()  # make b newest
+        base2 = _find_session_anchor_base(self.SID, tmp_path)
+        assert base1 == base2
+        # earliest lexical base wins ("aopsantigravity" < "aopscore").
+        assert base1 == "20260627-1745-955b6ddb-aopsantigravity-antigravity"
+
+    def test_no_polecat_config_required(self, tmp_path, monkeypatch):
+        # Anchoring must not depend on the provider set / polecat.yaml.
+        monkeypatch.delenv("AOPS_SESSIONS", raising=False)
+        monkeypatch.delenv("AOPS_ENABLED_PROVIDERS", raising=False)
+        (tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl").touch()
+        assert _find_session_anchor_base(self.SID, tmp_path) is not None
+
+
+class TestEnvPathBelongsToSession:
+    """The pinned-path env vars must not leak across sessions (a Claude session's
+    AOPS_HOOK_LOG_PATH inherited by a child agy session wrote to the wrong log)."""
+
+    SID = "955b6ddb-12d5-436e-9823-982206a45091"
+
+    def test_arbitrary_override_honoured(self):
+        assert _env_path_belongs_to_session("/tmp/override.md", self.SID) is True
+
+    def test_same_session_canonical_honoured(self):
+        p = "/x/20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl"
+        assert _env_path_belongs_to_session(p, self.SID) is True
+
+    def test_other_session_canonical_rejected(self):
+        # Inherited from a DIFFERENT session (b51abe55) — must be rejected.
+        p = "/x/20260627-1733-b51abe55-academicops-claude-hooks.jsonl"
+        assert _env_path_belongs_to_session(p, self.SID) is False
 
 
 class TestGetGateFilePath:

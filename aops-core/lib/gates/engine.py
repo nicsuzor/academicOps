@@ -468,8 +468,11 @@ class GenericGate:
                     state,
                     session_state,
                 )
-                if ctx_inj:
-                    ctx_inj = "<SYSTEM HOOK INSTRUCTION>" + ctx_inj + "</SYSTEM HOOK INSTRUCTION>"
+                # NOTE: advisory injections are no longer wrapped in a
+                # `<SYSTEM HOOK INSTRUCTION>` scaffold (removed 2026-06-27). That
+                # tag meant nothing to Claude Code, looked exactly like a smuggled
+                # system instruction, and risked tripping the client's own
+                # hook-injection rejection. The advisory text stands on its own.
 
                 # Combine prefixes
                 final_sys_msg = sys_msg_prefix + sys_msg
@@ -583,16 +586,36 @@ class GenericGate:
         trigger_result = self._evaluate_triggers(context, session_state)
 
         if policy_result and policy_result.verdict == GateVerdict.DENY:
-            # Max-fire downgrade: after N consecutive Stop blocks from this gate,
-            # downgrade to WARN so Gemini sessions (which have no Stop hook and
-            # therefore no Claude-side loop-breaker) can exit without relying on
-            # the termination watchdog (aops-16a15a05, was aops-c5513f7f).
+            # Max-fire downgrade (escape-hatch): after N consecutive Stop blocks
+            # from this gate in one turn, degrade DENY -> WARN-and-allow so a
+            # structurally-broken forcing function cannot permanently trap the
+            # session (the infinite-Stop-loop prior incident). The per-gate
+            # config may raise N above the engine default for a HARD gate that
+            # must really run (e.g. rbg-review at 5) and supply a LOUD,
+            # user-visible degraded message so the escape-hatch is never silent.
+            # Original rationale: Gemini sessions have no Stop hook and so no
+            # Claude-side loop-breaker (aops-16a15a05, was aops-c5513f7f).
             state = self._get_state(session_state)
             deny_count = state.metrics.get("stop_deny_count", 0) + 1
             state.metrics["stop_deny_count"] = deny_count
-            if deny_count >= self._STOP_DENY_DOWNGRADE_THRESHOLD:
+            threshold = (
+                self.config.stop_deny_downgrade_threshold
+                if self.config.stop_deny_downgrade_threshold is not None
+                else self._STOP_DENY_DOWNGRADE_THRESHOLD
+            )
+            if deny_count >= threshold:
+                degraded_msg = policy_result.system_message
+                if self.config.stop_deny_degraded_message_key:
+                    try:
+                        loud = TemplateRegistry.instance().render(
+                            self.config.stop_deny_degraded_message_key,
+                            {"threshold": threshold},
+                        )
+                        degraded_msg = "\n".join(filter(None, [loud, policy_result.system_message]))
+                    except (KeyError, ValueError, FileNotFoundError) as e:
+                        logger.warning("Gate '%s' degraded-message render failed: %s", self.name, e)
                 return GateResult.warn(
-                    system_message=policy_result.system_message,
+                    system_message=degraded_msg,
                     context_injection=policy_result.context_injection,
                 )
             return policy_result

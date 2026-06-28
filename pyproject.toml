@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.3.42"
+version = "0.3.44"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -100,15 +100,12 @@ ignore = [
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
 exclude = [
+  "**/.*",
   "archived/",
   "tests/",
   "**/__pycache__",
-  "**/.mypy_cache",
-  "**/.pytest_cache",
-  "**/.ruff_cache",
   "**/build",
   "**/dist",
-  "**/.venv",
   "**/venv",
   "aops-core/*.md", # Exclude markdown docs
   "aops-core/*.conf", # Exclude config files
@@ -193,6 +190,7 @@ markers = [
   "metrics: observability tests that report metrics (run with '-m metrics')",
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
   "e2e: end-to-end tests requiring live infra (POLECAT_E2E=1 to run)",
+  "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
 ]
 
 [project.scripts]
