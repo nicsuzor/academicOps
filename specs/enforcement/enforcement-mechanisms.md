@@ -642,7 +642,6 @@ Mechanisms below are aspirational, partial, or cannot be fully verified from the
 - **QA gate operational coverage** — gate body present in `aops-core/lib/gates/definitions.py:71`, but `specs/enforcement.md` §3 still labels it "planned"; scope of "planned requirements" not yet codified.
 - **Hydration gate body** — `HYDRATION_GATE_MODE` env var wired in `aops-core/hooks/gate_config.py:398` but no matching `GateConfig` in `aops-core/lib/gates/definitions.py`; currently a stub with default `off`.
 - **Commit gate body** — `COMMIT_GATE_MODE` env var wired in `aops-core/hooks/gate_config.py:399` but no matching `GateConfig` in `aops-core/lib/gates/definitions.py`.
-- **Enforcer rename historical note** — the custodiet→enforcer rename (agent, gate name, env-var surface `CUSTODIET_*` → `ENFORCER_*`) was executed as a hard break; see `specs/enforcement.md` §8 for operator impact.
 - **Complexity-eval at capture** — referenced in planner disposition but no dedicated MCP tool surfaced in the visible PKB tool list; likely lives in the PKB server, not in-repo.
 - **Inbox-default status** — policy is real (tasks capture without status default to inbox) but the enforcement is inside the PKB server, not verifiable from this repo tree.
 - **Gate status strip** — rendering path not isolated to one module; spread across template registry + hydrator; needs a single reference location to be citable.

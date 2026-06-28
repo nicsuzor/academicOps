@@ -70,6 +70,11 @@ The PKB MCP server uses a wrapper script instead of calling `uvx` directly:
 
 ## Hook I/O Schemas
 
+> **SSoT Warning:** The exact JSON schemas and field definitions for hooks are defined in code to prevent drift. For the definitive schema structures, refer to:
+>
+> - Gate models: [`aops-core/lib/gate_types.py`](../../../aops-core/lib/gate_types.py)
+> - Hook routing formats: [`aops-core/hooks/router.py`](../../../aops-core/hooks/router.py)
+
 ### Exit Codes (PreToolUse)
 
 | Exit | Action      | Message source     |
@@ -80,66 +85,16 @@ The PKB MCP server uses a wrapper script instead of calling `uvx` directly:
 
 Exit 2 ignores stdout entirely. For other hook types, always exit 0.
 
-### Common Input (all hooks)
+### Stop/SubagentStop Behavior
 
-```json
-{
-  "session_id": "uuid",
-  "transcript_path": "/path/to/session.jsonl",
-  "cwd": "/working/directory",
-  "permission_mode": "bypassPermissions" | "requirePermissions",
-  "hook_event_name": "PreToolUse" | "PostToolUse" | ...
-}
-```
-
-### PreToolUse — additional fields and output
-
-Input adds: `tool_name`, `tool_input` (tool-specific params).
-
-```json
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "allow" | "deny" | "ask"
-  }
-}
-```
-
-### PostToolUse — additional fields and output
-
-Input adds: `tool_name`, `tool_input`, `tool_response`.
-
-```json
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PostToolUse",
-    "additionalContext": "Optional context injected into conversation"
-  }
-}
-```
-
-### Stop/SubagentStop — output
-
-Must exit 0 for JSON to be processed:
-
-```json
-{
-  "decision": "block",
-  "reason": "Instructions for Claude (agent-visible)",
-  "stopReason": "Message for user (user-visible)"
-}
-```
-
-**Platform constraint (Claude Code 2.1.158, re-verified empirically 2026-05-31):** Stop events do **not** support `hookSpecificOutput` or `additionalContext`. If those fields are present the validator fails (`"Hook JSON output validation failed — (root): Invalid input"`, recorded as a `hook_non_blocking_error` and surfaced to the user as a generic "Stop hook error occurred" notification) and discards the **entire** payload — so `decision`/`reason` are dropped too and the agent is not blocked. The validator's own expected-schema lists `hookSpecificOutput` only for PreToolUse / UserPromptSubmit / PostToolUse / PostToolBatch — never Stop. The only agent-visible channel on Stop is `decision: "block"` + `reason`. `systemMessage` and `stopReason` are user-visible only — the agent never sees them (confirmed absent from the stream-json agent feed). Reproduction: `proof/anthropic-issue/` on the stophooktest branch.
+The Stop hook enforces block/warn behaviors for final-turn verifications. On modern environments (e.g., Claude Code >= 2.1.191), `additionalContext` is supported without forcing a block (warn mode), allowing silent context injection.
 
 | Field                | `decision: "block"`              | `decision: "approve"` |
 | -------------------- | -------------------------------- | --------------------- |
 | `reason`             | Fed to agent as next instruction | Silently discarded    |
 | `systemMessage`      | Shown to user only               | Shown to user only    |
 | `stopReason`         | Shown to user only               | Shown to user only    |
-| `hookSpecificOutput` | **Not supported**                | **Not supported**     |
-
-**Consequence:** non-blocking advisory injection on Stop is impossible. To make the agent see a Stop advisory, you must `decision: "block"` — the agent is forced to re-emit. The academicOps gates use a **block-once** pattern: block on the first Stop in a turn (gate opens via trigger), then approve subsequent Stops. The gate re-arms on `UserPromptSubmit`.
+| `hookSpecificOutput` | **Supported**                    | **Supported**         |
 
 **Router warning**: `merge_outputs` must preserve `decision`, `reason`, `stopReason` — these are NOT in `hookSpecificOutput`.
 
