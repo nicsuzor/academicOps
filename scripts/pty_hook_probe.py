@@ -1035,6 +1035,7 @@ def _drive_once_agy(workspace: Path, session: str) -> tuple[str, str, str]:
 
 def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR0915
     """Run one probe and return a fully-annotated Result."""
+    attempts: list[str] = []
 
     res = Result(
         probe.label,
@@ -1076,7 +1077,7 @@ def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR091
 
         MAX_ATTEMPTS = 2
         neutral_pane = report_pane = ""
-        attempts: list[str] = []
+        attempts = []
         for n in range(1, MAX_ATTEMPTS + 1):
             status, neutral_pane, report_pane = _drive_once_agy(workspace, session)
             attempts.append(f"a{n}:{status}")
@@ -1140,7 +1141,7 @@ def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR091
 
     MAX_ATTEMPTS = 3
     early_pane = late_pane = transcript = ""
-    attempts: list[str] = []
+    attempts = []
     for n in range(1, MAX_ATTEMPTS + 1):
         (workspace / ".fired").unlink(missing_ok=True)
         status, early_pane, late_pane = _drive_once(workspace, session, probe)
