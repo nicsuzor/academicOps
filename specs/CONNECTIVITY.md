@@ -35,23 +35,23 @@ means the edge is inferred, not declared.
 
 ### Agents (`aops-core/agents/*.md`)
 
-| Component | Type  | Owner agent          | Backing spec (path)                                                                                                       | Spec status                      | Connected? |
-| --------- | ----- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------- |
-| junior    | agent | (self / coordinator) | `specs/agents/agent-authority.md` + `agent-permissions.md` + `agent-definition-content.md` (govern all agents)            | inbox / inbox / draft            | yes        |
-| james     | agent | (self)               | `specs/review-dispatch-topology.md`, `specs/workflows/pr-pipeline-v2.md` (orchestrator role); agent-authority/permissions | ready / operative-phased         | yes        |
-| marsha    | agent | (self)               | `specs/agents/agent-permissions.md`; `specs/workflows/pr-pipeline-v2.md`; QA role in `review-dispatch-topology.md`        | inbox / operative-phased / ready | yes        |
-| pauli     | agent | (self)               | `specs/agents/effectual-planning-agent.md` (planner/strategist role); agent-authority/permissions                         | ready                            | yes        |
-| rbg       | agent | (self)               | `specs/enforcement/ultra-vires-enforcer.md`, `specs/enforcement/enforcement.md`; agent-permissions                        | ready / ready                    | yes        |
+| Component | Type  | Owner agent          | Backing spec (path)                                                                                                    | Spec status               | Connected? |
+| --------- | ----- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------- |
+| junior    | agent | (self / coordinator) | `specs/agents/agent-authority.md` + `agent-permissions.md` + `agent-definition-content.md` (govern all agents)         | inbox / inbox / draft     | yes        |
+| james     | agent | (self)               | `specs/review-dispatch-topology.md`, `specs/workflows/pr-pipeline.md` (orchestrator role); agent-authority/permissions | ready / operative         | yes        |
+| marsha    | agent | (self)               | `specs/agents/agent-permissions.md`; `specs/workflows/pr-pipeline.md`; QA role in `review-dispatch-topology.md`        | inbox / operative / ready | yes        |
+| pauli     | agent | (self)               | `specs/agents/effectual-planning-agent.md` (planner/strategist role); agent-authority/permissions                      | ready                     | yes        |
+| rbg       | agent | (self)               | `specs/enforcement/ultra-vires-enforcer.md`, `specs/enforcement/enforcement.md`; agent-permissions                     | ready / ready             | yes        |
 
 ### Agents (`.github/agents/*.md` — PR-pipeline / CI agents)
 
-| Component             | Type           | Owner agent       | Backing spec (path)                                                                         | Spec status                          | Connected?     |
-| --------------------- | -------------- | ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------ | -------------- |
-| pr-reviewer           | agent          | (CI)              | `specs/workflows/pr-pipeline-v2.md` + `pr-pipeline.md`; `specs/review-dispatch-topology.md` | operative-phased / operative / ready | yes            |
-| qa                    | agent          | (CI)              | `specs/workflows/pr-pipeline-v2.md`; `specs/workflows/framework-workflow-expectations.md`   | operative-phased / ready             | yes            |
-| mechanic              | agent          | (CI)              | `specs/workflows/pr-pipeline-v2.md` (Stage-2 dev / admitted fix loop)                       | operative-phased                     | yes            |
-| enforcer              | agent          | (CI; RBG framing) | `specs/enforcement/ultra-vires-enforcer.md`, `specs/enforcement/enforcement.md`             | ready / ready                        | yes            |
-| shared-error-handling | agent fragment | n/a               | — (shared include, not a standalone agent)                                                  | —                                    | n/a (fragment) |
+| Component             | Type           | Owner agent       | Backing spec (path)                                                                    | Spec status       | Connected?     |
+| --------------------- | -------------- | ----------------- | -------------------------------------------------------------------------------------- | ----------------- | -------------- |
+| pr-reviewer           | agent          | (CI)              | `specs/workflows/pr-pipeline.md`; `specs/review-dispatch-topology.md`                  | operative / ready | yes            |
+| qa                    | agent          | (CI)              | `specs/workflows/pr-pipeline.md`; `specs/workflows/framework-workflow-expectations.md` | operative / ready | yes            |
+| mechanic              | agent          | (CI)              | `specs/workflows/pr-pipeline.md` (Stage-2 dev / admitted fix loop)                     | operative         | yes            |
+| enforcer              | agent          | (CI; RBG framing) | `specs/enforcement/ultra-vires-enforcer.md`, `specs/enforcement/enforcement.md`        | ready / ready     | yes            |
+| shared-error-handling | agent fragment | n/a               | — (shared include, not a standalone agent)                                             | —                 | n/a (fragment) |
 
 ### Skills — `aops-core/skills/`
 
@@ -182,8 +182,7 @@ Statuses are from frontmatter (`NONE` = no `status:` field).
 | specs/workflows/framework-workflow-expectations.md                                     | ready            | qa agent / framework workflows                                                         | yes                 |
 | specs/workflows/mcp-decomposition-tools.md                                             | ready            | PKB MCP decomposition tools (external)                                                 | yes (ext)           |
 | specs/workflows/non-interactive-agent-workflow-spec.md                                 | ready            | polecat / headless workers                                                             | yes                 |
-| specs/workflows/pr-pipeline.md                                                         | operative        | pr-reviewer/qa/mechanic agents (v1, superseded by v2)                                  | yes                 |
-| specs/workflows/pr-pipeline-v2.md                                                      | operative-phased | pr-reviewer/qa/mechanic/james                                                          | yes                 |
+| specs/workflows/pr-pipeline.md                                                         | operative        | pr-reviewer/qa/mechanic/james (SSoT — two-stage, review-approval-gated, convergent)    | yes                 |
 | specs/workflows/pr-state-index.md                                                      | NONE             | PR state tracking (CI; no skill)                                                       | partial             |
 | specs/workflows/reconcile.md                                                           | ready            | reconcile workflow (agent-invoked; no dedicated skill — nearest: remember/end_session) | ambiguous           |
 | specs/workflows/research-decomposition.md                                              | in_progress      | `deep-research` skill (topic-match); planner                                           | ambiguous           |
