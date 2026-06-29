@@ -73,6 +73,48 @@ def test_initialize_exposes_admitted_output():
     assert "admitted=true" in body and "admitted=false" in body, body
 
 
+def _initialize_body() -> str:
+    init = _jobs()["initialize"]
+    return "\n".join(step.get("run", "") for step in init["steps"] if isinstance(step, dict))
+
+
+def test_admission_is_sticky_carries_across_any_commit():
+    """§5: admission is STICKY — on a `synchronize`, a prior `admit-status:
+    success` carries forward to the new HEAD regardless of who authored the
+    commit. The carry must be gated only on the PREVIOUS admit state, never on
+    the new commit's author."""
+    body = _initialize_body()
+    # Carry forward keyed purely on the previous HEAD being admitted.
+    assert 'PREV_ADMIT" = "success"' in body, body
+    assert "admitted=true" in body, body
+
+
+def test_admission_carry_drops_bot_vs_human_author_heuristic():
+    """Regression for PR #2005: the old carry-forward classified the new commit's
+    author (GitHub account type `Bot` / `[bot]` login) and reset admission on a
+    "human" push — which misfired on the `botnicbot` service account (type
+    `User`). Sticky admission removes that heuristic entirely; none of its
+    tell-tale tokens may remain in the `initialize` carry step."""
+    body = _initialize_body()
+    for tok in ("IS_AGENT", "AUTHOR_TYPE", "COMMITTER_TYPE", '"[bot]"'):
+        assert tok not in body, f"stale author-classification token {tok!r} still present:\n{body}"
+
+
+def test_force_review_workflow_calls_reviewers_on_dispatch():
+    """§3.12: the Force Review escape hatch is a `workflow_dispatch` that re-runs
+    the SAME reusable reviewer workflows the pipeline uses, so its verdicts are
+    identical and satisfy review-attestation on the SHA."""
+    force = REPO_ROOT / ".github" / "workflows" / "force-review.yml"
+    assert force.exists(), force
+    wf = yaml.safe_load(force.read_text())
+    # PyYAML parses the bare `on:` key as boolean True.
+    triggers = wf.get("on", wf.get(True))
+    assert "workflow_dispatch" in triggers, triggers
+    jobs = wf["jobs"]
+    assert jobs["enforcer"]["uses"].endswith("agent-enforcer.yml"), jobs["enforcer"]
+    assert jobs["qa"]["uses"].endswith("agent-qa.yml"), jobs["qa"]
+
+
 def test_cheap_checks_still_run_every_push():
     """Only the expensive agents are gated; lint/typecheck/pytest keep running on
     every push (they have no synchronize/admitted clause)."""

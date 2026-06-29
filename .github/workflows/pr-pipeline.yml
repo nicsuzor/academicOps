@@ -97,12 +97,12 @@ jobs:
     name: Initialize
     runs-on: ubuntu-latest
     # `admitted` mirrors the admit-status this job just set on HEAD: 'true' only when
-    # a prior admission was carried forward across an agent-authored fix commit
-    # (§5), 'false' otherwise (fresh/ready/reopened, human push, or un-admitted
-    # prior). The enforcer/qa Stage-1 gate reads it to fire reviewers ONCE on ready
-    # and then NOT AGAIN until admitted (§3.1) — a pre-admission `synchronize` has
-    # admitted='false', so the expensive reviewers skip; a post-admission mechanic
-    # `synchronize` carries admitted='true', so Stage-2 re-verification runs (§3.5).
+    # a prior admission was carried forward (sticky, §5), 'false' otherwise
+    # (fresh/ready/reopened or un-admitted prior). The enforcer/qa Stage-1 gate reads
+    # it to fire reviewers ONCE on ready and then NOT AGAIN until admitted (§3.1) — a
+    # pre-admission `synchronize` has admitted='false', so the expensive reviewers
+    # skip; once admitted, every subsequent `synchronize` carries admitted='true', so
+    # Stage-2 re-verification runs on each fix SHA (§3.5).
     outputs:
       admitted: ${{ steps.admit-carry.outputs.admitted }}
     steps:
@@ -113,12 +113,13 @@ jobs:
       # the NON-admit transitions so the gate stays honest across the Stage-2 fix
       # loop:
       #   - opened/reopened/ready_for_review → pending (a fresh PR is not admitted).
-      #   - synchronize: an AGENT-authored fix commit carries a prior admission
-      #     forward (the decision stands); a new HUMAN push resets to pending (a
-      #     substantive human change must be re-judged — re-approve the PR).
-      # The reset trigger is "a new human push" (§5); an additional reset trigger lives
-      # in the Stage-2 mechanic's exhaustion handler (§3.6) — `agent-mechanic.yml` resets
-      # admit-status to pending on loop-ceiling breach to surface the PR back to the gate.
+      #   - synchronize: STICKY — a prior admission carries forward across ANY commit
+      #     (agent or human); admission is an in-principle decision made once and is
+      #     not re-judged on a human push (enforcer+qa still re-verify each SHA, §3.5).
+      # Admission is only ever revoked by a TERMINAL state, not by a push: the Stage-2
+      # mechanic's exhaustion handler (§3.6) — `agent-mechanic.yml` resets admit-status
+      # to pending on loop-ceiling breach to surface the PR back to the gate — and a
+      # §3.10 changes-requested review.
       # No idempotence output is needed any more: admission is event-driven (a
       # review approval), not a parked job that could re-fire on every convergence,
       # so the carry-forward simply keeps admit-status honest on HEAD.
@@ -146,46 +147,34 @@ jobs:
             exit 0
           fi
 
-          # synchronize: only carry an admission forward across agent-authored commits.
+          # synchronize: STICKY admission (§5, "approved in-principle"). Once a
+          # maintainer admits the PR, the admission carries forward across EVERY
+          # subsequent commit — agent OR human — until a TERMINAL state ends it:
+          # a green merge, the §3.6 loop-ceiling exhaustion handler, or a §3.10
+          # changes-requested review (the latter two reset admit-status to pending
+          # out-of-band). We deliberately do NOT re-judge on a human push: enforcer +
+          # qa RE-VERIFY code quality on every SHA inside the loop (§3.5), so a carried
+          # admission never lets an unreviewed diff merge — it only spares the
+          # maintainer from re-approving the same in-principle decision each time a
+          # commit lands. (This also removes the prior bot-vs-human author heuristic,
+          # which misclassified commits by the `botnicbot` service account — GitHub
+          # account type "User" — as human pushes and silently dropped admission
+          # mid-loop, stranding admitted PRs.)
           OLD_SHA="${{ github.event.before }}"
           PREV_ADMIT=$(gh api "repos/${REPO}/commits/${OLD_SHA}/statuses" \
             --jq '[.[] | select(.context == "admit-status")] | sort_by(.updated_at) | last | .state // empty')
 
-          if [ "$PREV_ADMIT" != "success" ]; then
-            echo "Previous admit-status was '${PREV_ADMIT:-none}' — admit-status pending"
-            set_admit_pending
-            exit 0
-          fi
-
-          # Previous HEAD was admitted. Carry forward ONLY if the new HEAD commit was
-          # authored by a pipeline agent (bot). A human push resets to pending.
-          # Agent commits are authored by the bot identities the agents commit as
-          # (lint/release: github-actions[bot]; Claude agents: claude[bot]) — both have
-          # GitHub account type "Bot". We treat a commit as agent-authored if either the
-          # author or committer account type is "Bot" or its login carries a "[bot]" suffix.
-          COMMIT_JSON=$(gh api "repos/${REPO}/commits/${NEW_SHA}")
-          AUTHOR_LOGIN=$(echo "$COMMIT_JSON" | jq -r '.author.login // ""')
-          AUTHOR_TYPE=$(echo "$COMMIT_JSON" | jq -r '.author.type // ""')
-          COMMITTER_TYPE=$(echo "$COMMIT_JSON" | jq -r '.committer.type // ""')
-          echo "New HEAD author='${AUTHOR_LOGIN}' author_type='${AUTHOR_TYPE}' committer_type='${COMMITTER_TYPE}'"
-
-          IS_AGENT=false
-          if [ "$AUTHOR_TYPE" = "Bot" ] || [ "$COMMITTER_TYPE" = "Bot" ]; then
-            IS_AGENT=true
-          fi
-          case "$AUTHOR_LOGIN" in *"[bot]"*) IS_AGENT=true ;; esac
-
-          if [ "$IS_AGENT" = "true" ]; then
-            echo "Agent-authored fix commit — carrying admission forward to ${NEW_SHA}"
+          if [ "$PREV_ADMIT" = "success" ]; then
+            echo "Previous HEAD was admitted — carrying admission forward to ${NEW_SHA} (sticky, §5)"
             gh api "repos/${REPO}/statuses/${NEW_SHA}" \
               -f state="success" \
               -f context="admit-status" \
-              -f description="Admission carried forward across agent fix commit"
+              -f description="Admission carried forward (approved in-principle, §5)"
             # Admitted on this HEAD — the Stage-1 reviewer gate (§3.1) reads this so
-            # enforcer/qa DO re-verify the mechanic's post-admission fix SHA (§3.5).
+            # enforcer/qa DO re-verify every post-admission fix SHA (§3.5).
             echo "admitted=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Human push detected — resetting admission to pending (must be re-judged)"
+            echo "Previous admit-status was '${PREV_ADMIT:-none}' — admit-status pending"
             set_admit_pending
           fi
         env:
