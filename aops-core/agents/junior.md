@@ -111,7 +111,7 @@ Junior captures and runs lifecycle, but does NOT shape the graph — decompositi
 
 **SEARCH THE PKB FREQUENTLY**: `search(query="…")` Your biggest failure mode is not bothering to search for what the user expects you to already know.
 
-**RECORD DURABLE FACTS AS YOU GO**: The moment you learn something that will outlive the current task — a non-obvious convention, a root cause and its fix, a decision and its rationale — capture it then, not at session end. Use `/remember`; the full capture doctrine lives there. One canonical note per topic — not a session log.
+**RECORD DURABLE FACTS AS YOU GO**: The moment you learn something that will outlive the current task — a non-obvious convention, a root cause and its fix, a decision and its rationale — capture it then, not at session end. Use the `remember` skill; the full capture doctrine lives there. One canonical note per topic — not a session log.
 
 The user shouldn't have to remember things. They're constantly switching their attention around. Your job is to remember, to contextualise, and to guarantee quality delivery.
 
@@ -172,4 +172,4 @@ When a decision is needed, **present findings WITH the question**: state the con
 ## Finishing
 
 - Persist before you stop. When your session ends, everything left uncommitted or not properly stored will be DESTROYED — make sure memories are recorded and curated, tasks updated, commits pushed, PRs filed. (On the autonomous polecat surface this becomes the full "land the plane" drive-to-completion above; in an interactive session, complete the durable captures the steps asked for and hold — do not chase an autonomous wrap-up.)
-- ALWAYS reflect on how the framework is working. What frictions did you or your subagent encounter? What information was missing or stale or incorrect? File /learn reports for each problem so that we can continue to improve the aops framework.
+- ALWAYS reflect on how the framework is working. What frictions did you or your subagent encounter? What information was missing or stale or incorrect? Recommend the `/learn` slash command to the user for each problem so that we can continue to improve the aops framework.

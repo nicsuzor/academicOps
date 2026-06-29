@@ -1,6 +1,6 @@
 # Task-Body Authoring Discipline: Trust the Worker
 
-This document defines the canonical doctrine for authoring task bodies, epic decompositions, and dispatch briefs across the academicOps framework. It applies to all skills and agents that create or decompose work for downstream execution (e.g., `/planner`, `/supervisor`, junior coordinator, `/issue-sweep`).
+This document defines the canonical doctrine for authoring task bodies, epic decompositions, and dispatch briefs across the academicOps framework. It applies to all skills and agents that create or decompose work for downstream execution (e.g., the `planner` skill, `supervisor` skill, junior coordinator, or `issue-sweep` workflow).
 
 ## 1. Intent + Acceptance Criteria, Not Prescription
 

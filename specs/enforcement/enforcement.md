@@ -354,15 +354,6 @@ Full session taxonomy and implementation pointers: [`specs/enforcement/hook-rout
 | `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Reflection before exit    |
 | `IDA_GATE_MODE`       | `warn`  | `warn`, `block`        | Honesty/proof reminder    |
 
-The `custodiet` agent and gate have been renamed to `enforcer`. Operators with values set in shell profiles or `~/.env.local`:
-
-| Old                             | New                            |
-| ------------------------------- | ------------------------------ |
-| `CUSTODIET_GATE_MODE`           | `ENFORCER_GATE_MODE`           |
-| `CUSTODIET_TOOL_CALL_THRESHOLD` | `ENFORCER_TOOL_CALL_THRESHOLD` |
-
-Migration is a breaking change unless a backward-compat alias is added at load time — decision deferred to the rename commit.
-
 ## §9 Workflow composition (Phase 3 placeholder)
 
 Task-creating agents compose compliant workflows by combining axioms, heuristics, and procedures at task-creation time. The agent enumerates which axioms apply to the task, which heuristics flag likely hazards, and which procedures are the current recommended sequence — then assembles them into a workflow the executing agent runs.

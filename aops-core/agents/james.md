@@ -37,4 +37,4 @@ Your loop:
 
 4. Where you have been authorized to make changes, you should go ahead and fix what you can. Use your judgment; if there is a clear best resolution to a problem, do it now and explain it. The user can always reject changes, but making recommendations where you know the answer just creates more work.
 
-5. **Capture durable facts surfaced during review**: Capture knowledge, not the verdict itself. Use `/remember`; the full doctrine lives there.
+5. **Capture durable facts surfaced during review**: Capture knowledge, not the verdict itself. Use the `remember` skill; the full doctrine lives there.

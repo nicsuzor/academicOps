@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -132,24 +133,32 @@ class TestSessionAnchorBase:
 
     SID = "955b6ddb-12d5-436e-9823-982206a45091"  # short hash -> 955b6ddb
 
+    # `_find_session_anchor_base` only scans artefacts dated today/yesterday
+    # (session_paths.py), so fixture filenames MUST use a current date — a
+    # hard-coded date silently ages out of that window and the tests fail on every
+    # run after the second day (the 2026-06-27 → 2026-06-29 time-bomb, aops-…).
+    # Compute the prefix the same way the function does so it is always in-window.
+    DATE = datetime.now().astimezone().strftime("%Y%m%d")
+
+    def _base(self, repo: str) -> str:
+        return f"{self.DATE}-1745-955b6ddb-{repo}-antigravity"
+
     def test_none_when_empty(self, tmp_path):
         assert _find_session_anchor_base(self.SID, tmp_path) is None
 
     def test_anchors_on_hook_log_not_just_state(self, tmp_path):
         # Only a -hooks.jsonl exists (no state .json). The old finder matched
         # state files only and so could not anchor a log-only session.
-        (tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl").touch()
-        assert (
-            _find_session_anchor_base(self.SID, tmp_path)
-            == "20260627-1745-955b6ddb-aopscore-antigravity"
-        )
+        base = self._base("aopscore")
+        (tmp_path / f"{base}-hooks.jsonl").touch()
+        assert _find_session_anchor_base(self.SID, tmp_path) == base
 
     def test_converges_across_repo_shortform_flip(self, tmp_path):
         # The real bug: same session, two bases differing only by cwd-derived repo
         # name (aops-core vs the symlinked aops-antigravity). Anchor must pick ONE
         # deterministically (earliest), regardless of write/mtime order.
-        a = tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl"
-        b = tmp_path / "20260627-1745-955b6ddb-aopsantigravity-antigravity.json"
+        a = tmp_path / f"{self._base('aopscore')}-hooks.jsonl"
+        b = tmp_path / f"{self._base('aopsantigravity')}.json"
         a.touch()
         b.touch()
         base1 = _find_session_anchor_base(self.SID, tmp_path)
@@ -158,13 +167,13 @@ class TestSessionAnchorBase:
         base2 = _find_session_anchor_base(self.SID, tmp_path)
         assert base1 == base2
         # earliest lexical base wins ("aopsantigravity" < "aopscore").
-        assert base1 == "20260627-1745-955b6ddb-aopsantigravity-antigravity"
+        assert base1 == self._base("aopsantigravity")
 
     def test_no_polecat_config_required(self, tmp_path, monkeypatch):
         # Anchoring must not depend on the provider set / polecat.yaml.
         monkeypatch.delenv("AOPS_SESSIONS", raising=False)
         monkeypatch.delenv("AOPS_ENABLED_PROVIDERS", raising=False)
-        (tmp_path / "20260627-1745-955b6ddb-aopscore-antigravity-hooks.jsonl").touch()
+        (tmp_path / f"{self._base('aopscore')}-hooks.jsonl").touch()
         assert _find_session_anchor_base(self.SID, tmp_path) is not None
 
 

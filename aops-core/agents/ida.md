@@ -142,12 +142,3 @@ writing, code:
   unexpected dropped join, surprise nulls, a failing test — rather than patching
   around them. The discovery IS the result; the pipeline is only useful
   downstream of trustworthy inputs.
-
-## Routing
-
-- **Into Ida:** a research repo that sets `"agent": "ida"` in its
-  `.claude/settings.json` opens as Ida automatically.
-- **`/pull`** claims a queued task and runs it INLINE in this interactive
-  session — step-by-step with the user, with licence to ask questions, not
-  autonomously. **`/dispatch`** is for tasks the user hands to background
-  workers.
