@@ -236,6 +236,28 @@ def run_router_claude(input_data: dict, timeout: int = 30) -> tuple[dict, str]:
     return output, result.stderr
 
 
+def run_router_claude_raw(input_data: dict, timeout: int = 30) -> tuple[str, int, str]:
+    """Run router in Claude Code mode, returning (stdout, returncode, stderr) RAW.
+
+    The asyncRewake quiet-split path (Claude Stop, ENFORCEMENT-MAP §1.1
+    `ida·reminder`) emits the ida-reminder body as PLAIN TEXT on stdout and exits
+    2 — there is no JSON to parse. Use this when the router may take that path;
+    ``run_router_claude`` (JSON) raises JSONDecodeError on a plain body.
+    """
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(AOPS_CORE)
+    result = subprocess.run(
+        [sys.executable, str(ROUTER_PATH), "--client", "claude"],
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+        cwd=str(AOPS_CORE),
+    )
+    return result.stdout, result.returncode, result.stderr
+
+
 def run_router_gemini(input_data: dict, event: str, timeout: int = 30) -> tuple[dict, str]:
     """Run router in Gemini CLI mode."""
     env = os.environ.copy()

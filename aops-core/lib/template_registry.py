@@ -238,13 +238,9 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Agent-facing honesty check injected into context on Stop",
     ),
-    "ida.policy_message": TemplateSpec(
-        name="ida.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="ida-policy-message.md",
-        required_vars=(),
-        description="Short user-facing message when Ida gate fires on Stop",
-    ),
+    # ida.policy_message (ida-policy-message.md) removed when ida·reminder moved
+    # to the asyncRewake quiet-split: warn mode shows no separate user banner, and
+    # block mode carries its short line inline (gates/definitions.py).
     "ida.askuserquestion_reminder": TemplateSpec(
         name="ida.askuserquestion_reminder",
         category=TemplateCategory.CONTEXT_INJECTION,

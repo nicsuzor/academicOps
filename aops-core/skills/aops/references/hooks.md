@@ -130,7 +130,7 @@ Exit 2 ignores stdout entirely. For other hook types, always exit 0.
 
 ### Stop/SubagentStop Behavior
 
-The Stop hook enforces block/warn behaviors for final-turn verifications. On modern environments (e.g., Claude Code >= 2.1.191), `additionalContext` is supported without forcing a block (warn mode), allowing silent context injection.
+The Stop hook enforces block/warn behaviors for final-turn verifications. On modern environments (e.g., Claude Code >= 2.1.191), `additionalContext` is supported without forcing a block (warn mode), allowing context injection. Note this is **not user-silent** — on Stop the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line (PTY-confirmed on 2.1.195, task aops-c0363bf8). No _user-silent_ (zero user output) Stop channel exists. **But** the `asyncRewake` Stop hook (`asyncRewake:true` + `rewakeMessage` + `rewakeSummary`; fires on exit 2) does deliver the full body to the agent as a `<system-reminder>` while the user sees only a one-line `<summary>` — the quiet "full-to-agent, one-line-to-user" path (decompiled + PTY-proven 5×, [[kb-fcc2b95c]]). Caveat: delivery ≠ compulsion (the woken agent weighs it as advisory). For a hard block use `decision:"block"`+`reason`; the `UserPromptSubmit`-relocation is only needed for warn-mode gates that must let the agent actually stop.
 
 | Field                | `decision: "block"`              | `decision: "approve"` |
 | -------------------- | -------------------------------- | --------------------- |

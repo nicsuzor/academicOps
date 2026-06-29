@@ -648,6 +648,9 @@ GATE_CONFIGS = [
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
+            # The short user-facing line is inline (the former ida-policy-message.md
+            # template was deleted when ida·reminder moved to the asyncRewake
+            # quiet-split — block mode keeps its visible reason, warn mode does not).
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -655,13 +658,18 @@ GATE_CONFIGS = [
                     custom_check="is_ida_block_mode",
                 ),
                 verdict=GateVerdict.DENY,
-                message_key="ida.policy_message",
+                message_template="≡ Honesty check before exit.",
                 context_key="ida.reminder",
             ),
-            # Warn mode: block-once — advisory injected into agent context via
-            # the warn+context_injection upgrade path in output_for_claude().
-            # Gate opens on first Stop (fire-once trigger above) so subsequent
-            # Stops in the same turn are not re-blocked. Re-arms on UPS.
+            # Warn mode: block-once advisory. On Claude Stop the full ida-reminder
+            # body is delivered to the agent via the asyncRewake quiet-split
+            # (router.async_rewake_body_for → exit 2; body → agent
+            # <system-reminder>, one-line config rewakeSummary → user); other
+            # clients fall back to the warn+context_injection path in
+            # output_for_claude()/output_for_*(). No message_key: the user no
+            # longer sees a separate ida banner. Gate opens on first Stop
+            # (fire-once trigger above) so subsequent Stops in the same turn are
+            # not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -669,7 +677,6 @@ GATE_CONFIGS = [
                     custom_check="is_ida_warn_mode",
                 ),
                 verdict=GateVerdict.WARN,
-                message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
         ],
