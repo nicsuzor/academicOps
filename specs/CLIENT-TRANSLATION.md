@@ -125,6 +125,40 @@ what the user sees.**
 > and the reason reached the model). So PreToolUse-deny **U is design-asserted, not
 > PTY-captured** — do not read it as PTY-proven, and do not downgrade it to U✗.
 
+## Authoritative channel matrix (per client)
+
+> **Why this table exists.** The disposition layer in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1.1 (`silent`/`same`/`file` + ephemeral) is only _achievable_ against these per-client capability cells. **U** = USER-visible (human sees it in the terminal). **C** = injected into MODEL/agent context. **P** = PERSISTS beyond the current turn. `✓`/`✗`/`—`. The load-bearing trap: **the same field changes audience by event** — Claude `additionalContext` is `U✗` on UPS/PreToolUse but `U✓` on Stop.
+
+**Claude Code** (`output_for_claude` + PTY harness, 2.1.x):
+
+| channel (wire field)                                    | U | C | P | basis                                                                                                                               |
+| :------------------------------------------------------ | - | - | - | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `hookSpecificOutput.additionalContext` (Pre/UPS/Post)   | ✗ | ✓ | ✓ | agent-only context, no block. **U✗ PTY-proven 2026-06-26** (`ups-/pretool-additionalcontext`). `router.py:991`                      |
+| `hookSpecificOutput.permissionDecisionReason` (deny)    | ✓ | ✓ | ✓ | deny reason shown to user AND fed to agent on the blocked call. `router.py:976-983`                                                 |
+| `hookSpecificOutput.additionalContext` (Stop, no-block) | ✓ | ✓ | ✓ | warn-deliver: reaches agent next turn AND **renders to user as `Stop hook feedback:`** — PTY-proven 2026-06-26. `router.py:930-938` |
+| `decision="block"` + `reason` (Stop)                    | ✓ | ✓ | ✓ | block-to-halt: user sees `Stop hook error:`, agent sees reason (markers stripped for user). `router.py:925-929`                     |
+| `systemMessage` / `stopReason`                          | ✓ | ✗ | ✗ | USER-only banner `Stop says:`; agent does NOT see it (transcript only). PTY-proven. `router.py:950-952`                             |
+
+**Gemini CLI** (`output_for_gemini`):
+
+| channel (wire field)                   | U | C | P | basis                                                                                                                                                                   |
+| :------------------------------------- | - | - | - | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hookSpecificOutput.additionalContext` | ✗ | ✓ | ✓ | injected into agent prompt (BeforeAgent/AfterTool); agent-only. `router.py:869-879`                                                                                     |
+| `reason` (decision="deny")             | ✓ | ✗ | ✗ | USER-visible denial; model never sees it (recovery → `additionalContext`). On **Stop** the agent advisory must ride a block, so its `reason` is U✓. `router.py:865-873` |
+| `systemMessage`                        | ✓ | ✗ | ✗ | USER-only banner. `router.py:859-860`                                                                                                                                   |
+
+**Antigravity (agy)** (`output_for_agy`; `client_spec.py`) — ONE model-facing stream, **no user-only split the router emits**:
+
+| channel (wire field)             | U | C | P | basis                                                                                                                                                                                    |
+| :------------------------------- | - | - | - | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `injectSteps[].ephemeralMessage` | ✗ | ✓ | ✗ | **LIVE-PROVEN 2026-06-25 (agy 1.0.12):** model echoes it (C✓), absent from user terminal (U✗), not recalled on resume (P✗). The channel the router actually emits. `router.py:1072-1083` |
+| `injectSteps[].userMessage`      | ✗ | ✓ | ✓ | persists as a user turn; **defined but NOT emitted** by the renderer (not live-measurable on 1.0.12). `client_spec.py:90-91`                                                             |
+| `denyReason` (PreToolUse deny)   | ✗ | ✓ | ✓ | top-level deny reason fed to model on the blocked call. `router.py:1054-1057`                                                                                                            |
+| `reason` (Stop)                  | ✗ | ✓ | ✓ | StopHookResult reason fed to the model. `router.py:1087-1095`                                                                                                                            |
+| PreToolUse advisory              | — | — | — | **n/a** — agy PreToolHookResult has only `allowTool`/`denyReason`; advisory on a PreToolUse allow RAISES. `router.py:1058-1061`                                                          |
+
+**Differences that drive the disposition layer:** (1) agy injectSteps are model-facing, never a user banner — `silent`-to-user is automatic and `same` is impossible (no user channel). (2) agy PreToolUse cannot carry advisory at all. (3) Claude/Gemini have **no agent-only Stop channel** — any agent-visible Stop payload is also user-visible, so `silent`-on-Stop needs the reminder relocated to the next UPS. (4) `ephemeral`-to-agent is agy-native (`ephemeralMessage` P✗); Claude/Gemini `additionalContext` persists.
+
 ## Payload Routing Flowchart
 
 ```mermaid
@@ -149,7 +183,7 @@ flowchart TD
     A2 -.-> A3
 ```
 
-> **State Mapping.** The extensive mapping tables detailing exact payload routing have been consolidated into the unified macro matrix in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) to preserve Single Source of Truth. Please refer to that document for exact rule-to-mechanism routing logic.
+> **State Mapping.** Two complementary SSoTs in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md): the **§1 macro matrix** owns rule→mechanism→trigger→mode routing, and **§1.1 Per-message routing (agent-first)** owns per-fire _disposition_ — agent template (always present) + user message (`silent`/`same`/`file`) + ephemeral-to-agent target. This file owns the **wire mechanics** below (which client field carries each channel); ENFORCEMENT-MAP owns who-sees-what.
 
 ## Regression-avoidance invariants (24) — encoded as permanent test anchors
 
