@@ -143,3 +143,45 @@ def test_custom_reviewer_set(tmp_path: Path):
     statuses = [_status("enforcer-status", "success", SHA, "2026-06-10T00:00:00Z")]
     out = run(statuses, tmp_path, reviewers="enforcer-status")
     assert out["state"] == "success"
+
+
+def _run_with_summary(statuses: list[dict], tmp_path: Path) -> str:
+    """Run the script with a GITHUB_STEP_SUMMARY sink; return the summary text."""
+    sf = tmp_path / "statuses.json"
+    sf.write_text(json.dumps(statuses))
+    summary = tmp_path / "summary.md"
+    summary.write_text("")
+    subprocess.run(
+        ["bash", str(SCRIPT)],
+        env={
+            "REPO": "o/r",
+            "HEAD_SHA": SHA,
+            "STATUSES_JSON": str(sf),
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return summary.read_text()
+
+
+def test_absent_failure_writes_actionable_summary(tmp_path: Path):
+    """On an absent reviewer, the run summary explains the cause and points to
+    the remedy (approve to admit / Force Review) — not just the terse token."""
+    statuses = [_status("enforcer-status", "success", SHA, "2026-06-10T00:00:00Z")]
+    text = _run_with_summary(statuses, tmp_path)
+    assert "Review attestation failed" in text
+    assert "qa-status" in text
+    assert "Force Review" in text  # the §3.12 escape-hatch remedy is surfaced
+
+
+def test_success_writes_no_failure_summary(tmp_path: Path):
+    """A passing attestation must not emit a failure summary."""
+    statuses = [
+        _status("enforcer-status", "success", SHA, "2026-06-10T00:00:00Z"),
+        _status("qa-status", "success", SHA, "2026-06-10T00:01:00Z"),
+    ]
+    text = _run_with_summary(statuses, tmp_path)
+    assert text.strip() == ""

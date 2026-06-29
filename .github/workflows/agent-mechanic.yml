@@ -229,14 +229,14 @@ jobs:
       #      naming each still-red signal individually.
       #   2. mechanic-status set to `failure` with the loop-ceiling message.
       #   3. admit-status reset to `pending` — surfaces the PR back to the
-      #      human admit gate (the §3.6 third reset trigger, alongside §5's
-      #      carry-across-bot-commits / reset-on-human-push).
+      #      human admit gate. Admission is otherwise STICKY (§5): a push never
+      #      revokes it, so loop-ceiling exhaustion is one of the few TERMINAL
+      #      events that does (alongside a §3.10 changes-requested review).
       #   4. PR left un-merged: required reviewer status(es) are red AND
       #      admit-status is now pending → armed auto-merge cannot fire.
       #   5. Maintainer requested as reviewer so the escalation is visible.
-      #   6. Auto-dispatch loop stops — the next mechanic pass requires either
-      #      a human push (which resets admit-status to pending) or a manual
-      #      re-admission at the gate.
+      #   6. Auto-dispatch loop stops — the next mechanic pass requires a
+      #      re-admission at the gate (re-approve the PR).
       # ──────────────────────────────────────────────────────────────────────
       - name: Exhaustion handler — escalate and halt
         if: steps.sha-skip.outputs.skip != 'true' && steps.ceiling.outputs.exceeded == 'true'
@@ -298,8 +298,8 @@ jobs:
             -f description="Halted: Stage-2 loop ceiling reached ($MECH_COUNT mechanic commits)" \
             -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
 
-          # (3) Reset admit-status to pending — surfaces PR back to the human gate
-          # (§3.6's third reset trigger, alongside §5's carry / human-push reset).
+          # (3) Reset admit-status to pending — surfaces PR back to the human gate.
+          # Admission is sticky (§5); loop-ceiling exhaustion is a TERMINAL revoke.
           # Skip in review-response mode: that path never set admit-status, so there
           # is nothing to reset and doing so would silently revoke an unrelated approval.
           if [ "${MECHANIC_MODE:-}" != "review-response" ]; then
