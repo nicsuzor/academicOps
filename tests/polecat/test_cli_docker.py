@@ -852,7 +852,67 @@ class TestReplicateGeminiAuth:
         assert result is not None
         trust = json.loads((result / ".gemini" / "trustedFolders.json").read_text())
         assert trust.get("/workspace") == "TRUST_FOLDER"
-        assert trust.get(str(work_dir.resolve())) == "TRUST_FOLDER"
+        assert trust.get("/home/worker/project") == "TRUST_FOLDER"
+
+        import shutil
+
+        shutil.rmtree(result)
+
+    def test_config_replication_and_path_resolution(self, tmp_path):
+        """Replicates config directory files and resolves paths and extensionPath."""
+        gemini_dir = tmp_path / ".gemini"
+        gemini_dir.mkdir(parents=True)
+        (gemini_dir / "settings.json").write_text("{}")
+
+        # Create config directory on the "host" home
+        config_dir = gemini_dir / "config"
+        config_dir.mkdir()
+        (config_dir / "mcp_config.json").write_text(
+            json.dumps(
+                {
+                    "mcpServers": {
+                        "test-server": {
+                            "args": ["${extensionPath}/scripts/run.sh", str(tmp_path / "some_file")]
+                        }
+                    }
+                }
+            )
+        )
+
+        plugins_dir = config_dir / "plugins" / "aops-core"
+        plugins_dir.mkdir(parents=True)
+        (plugins_dir / "mcp_config.json").write_text(
+            json.dumps(
+                {"mcpServers": {"pkb": {"args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]}}}
+            )
+        )
+
+        env = {}
+        with patch("cli.Path.home", return_value=tmp_path):
+            result = _replicate_gemini_auth(env)
+
+        assert result is not None
+
+        # Verify replication of config files
+        dst_config = result / ".gemini" / "config"
+        assert (dst_config / "mcp_config.json").exists()
+        assert (dst_config / "plugins" / "aops-core" / "mcp_config.json").exists()
+
+        # Verify replacement of extensionPath/CLAUDE_PLUGIN_ROOT and host home path
+        config_data = json.loads((dst_config / "mcp_config.json").read_text())
+        assert (
+            config_data["mcpServers"]["test-server"]["args"][0]
+            == "/home/worker/.gemini/config/scripts/run.sh"
+        )
+        assert config_data["mcpServers"]["test-server"]["args"][1] == "/home/worker/some_file"
+
+        plugin_data = json.loads(
+            (dst_config / "plugins" / "aops-core" / "mcp_config.json").read_text()
+        )
+        assert (
+            plugin_data["mcpServers"]["pkb"]["args"][0]
+            == "/home/worker/.gemini/config/plugins/aops-core/scripts/run-mcp.sh"
+        )
 
         import shutil
 

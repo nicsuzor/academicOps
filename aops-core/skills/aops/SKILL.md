@@ -43,7 +43,7 @@ exemption" carve-out, and the full proof discipline are canonical at
 ### Handover
 
 - Ensure the next strategic step is filed as a PKB task before exiting.
-- If a design decision produces implementation work affecting multiple files/projects, run `/planner decompose` first.
+- If a design decision produces implementation work affecting multiple files/projects, invoke the `planner` skill to decompose it first.
 
 ### Verification of Assumptions
 
@@ -107,7 +107,7 @@ Follow the **Plan -> Act -> Validate** cycle:
 
 When a coordinator executes a fire-and-forget dispatch with no follow-up or babysit instruction:
 
-- The default terminal move is to close the session promptly (via `/dump` or `/end_session`) rather than idling.
+- The default terminal move is to close the session promptly (via the `dump` or `end_session` skill) rather than idling.
 - Do not promise or wait for a completion notification for a non-notifying dispatch form. If the session has nothing to watch and no babysit instruction, close it immediately.
 - Do not create a tracking task per dispatch (dispatch operations should not spawn overhead tracking tasks).
 

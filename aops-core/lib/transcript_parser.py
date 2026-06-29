@@ -3971,6 +3971,8 @@ class SessionProcessor:
         ]
         if grandparent != project_dir and grandparent.exists():
             search_locations.append(grandparent)
+        if session_path.is_dir():
+            search_locations.append(session_path / ".system_generated")
 
         matches: list[Path] = []
         seen: set[Path] = set()
@@ -3990,7 +3992,10 @@ class SessionProcessor:
                             try:
                                 data = json.loads(line)
                                 tp = data.get("transcript_path")
-                                if tp == target:
+                                matches_target = tp == target or (
+                                    tp and session_path.is_dir() and tp.startswith(target)
+                                )
+                                if matches_target:
                                     matches.append(hook_file)
                                     seen.add(hook_file)
                                     break

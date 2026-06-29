@@ -176,3 +176,36 @@ def test_antigravity_spinner_scrubbing() -> None:
     assert "⢿" not in scrubbed
     assert "Actual output here" in scrubbed
     assert "[binary data omitted:" in scrubbed or "Output:" in scrubbed
+
+
+def test_antigravity_loads_hooks_from_system_generated(tmp_path: Path) -> None:
+    """Verify hooks are loaded from .system_generated/ when path is a directory."""
+    brain_dir = tmp_path / "76d2a81d"
+    system_gen = brain_dir / ".system_generated"
+    logs_dir = system_gen / "logs"
+    logs_dir.mkdir(parents=True)
+
+    # Write a simple transcript file
+    transcript_path = logs_dir / "transcript.jsonl"
+    transcript_path.write_text(
+        '{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT","status":"DONE","created_at":"2026-06-28T10:07:17Z","content":"hello"}\n',
+        encoding="utf-8",
+    )
+
+    # Write a hook file inside .system_generated/
+    hook_file = system_gen / "20260628-1007-76d2a81d-aopscore-antigravity-hooks.jsonl"
+    hook_file.write_text(
+        '{"session_id":"76d2a81d-4b1f-4aae-93f1-2c18e346035c","hook_event":"UserPromptSubmit","session_short_hash":"76d2a81d","logged_at":"2026-06-28T10:07:17Z","exit_code":0,"transcript_path":"'
+        + str(logs_dir / "transcript_full.jsonl")
+        + '"}\n',
+        encoding="utf-8",
+    )
+
+    processor = SessionProcessor()
+    summary, entries, _ = processor.parse_session_file(brain_dir)
+
+    # The entries should contain the hook entry (UserPromptSubmit) mapped to system_reminder
+    has_hook = any(
+        e.type == "system_reminder" and e.hook_event_name == "UserPromptSubmit" for e in entries
+    )
+    assert has_hook, "Expected hooks to be loaded and parsed from .system_generated"
