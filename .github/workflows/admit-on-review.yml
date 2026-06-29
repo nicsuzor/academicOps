@@ -21,8 +21,9 @@
 #      the parked job.
 #
 # What stays unchanged: `admit-status` is still the required merge gate;
-# carry-forward / reset-on-human-push live in `pr-pipeline.yml`'s `initialize`
-# job (§5); the mechanic + its §3.6 bounded loop are owned by
+# sticky carry-forward (admission persists across every push until a terminal
+# state, §5) lives in `pr-pipeline.yml`'s `initialize` job; the mechanic + its
+# §3.6 bounded loop are owned by
 # `agent-mechanic.yml`; passes 2…N of the fix loop are still dispatched by
 # `pr-pipeline.yml`'s `check-admit → mechanic` jobs on the `synchronize` events
 # that the mechanic's own commits fire.

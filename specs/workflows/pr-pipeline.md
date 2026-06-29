@@ -49,7 +49,8 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | **RETIRED human gate:** `pr-fix-loop` GitHub Environment + in-pipeline `admit` job that parked on it                                                                                                                                                                                                                                                                                                              | **RETIRED**   | retired 2026-06-16 — undiscoverable approval UI + stranded mechanic dispatch (no re-trigger event), worked example PR #1858 (§3.2)                                                               |
 | Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `review-attestation`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                                                                                                                                                                         | **LIVE**      | live ruleset ID `13762049` (API-verified 2026-06-19)                                                                                                                                             |
 | **Draft-PR guard**: expensive jobs (`enforcer`, `qa`, `pre-admission-responder`, `review-attestation`) have explicit `draft == false` guards; `admit-on-review.yml` approve path and `changes_requested` path also carry explicit draft guards; the `pr-pipeline.yml` `mechanic` is draft-safe via dependency-starvation cascade (no explicit guard needed — see §3.9); `ready_for_review` is the activation edge | **LIVE**      | `pr-pipeline.yml` + `admit-on-review.yml` `if:` guards; §3.9                                                                                                                                     |
-| `admit-status` carry-forward across agent commits / reset on human push                                                                                                                                                                                                                                                                                                                                           | **LIVE**      | `pr-pipeline.yml` `initialize` job (vestigial `merge-prep-status` carry-forward removed at Phase 5)                                                                                              |
+| **Sticky admission**: `admit-status` carries forward across every push (agent or human) until a terminal state (merge / §3.6 exhaustion / §3.10 changes-requested); a push never re-judges admission (§5)                                                                                                                                                                                                         | **LIVE**      | `pr-pipeline.yml` `initialize` job; worked example PR #2005 (non-bot `botnicbot` push stranded admission under the old reset-on-human-push rule)                                                 |
+| **Code-owner review request** on PR open (`.github/CODEOWNERS` → GitHub auto-requests the maintainer); **Force Review** manual escape hatch (`force-review.yml`, §3.12) re-runs enforcer/qa on demand                                                                                                                                                                                                             | **LIVE**      | `.github/CODEOWNERS`; `.github/workflows/force-review.yml`                                                                                                                                       |
 | **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                                                                                                                                                                                                                                         | **LIVE**      | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5)                                                           |
 | `mechanic-status` informational status                                                                                                                                                                                                                                                                                                                                                                            | **LIVE**      | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                                                                                |
 | **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                                                                                                                                                                                                                                                      | **LIVE**      | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                                                                           |
@@ -243,6 +244,16 @@ and pauli's alignment verdict (if they ran `/strategic-review` by hand), then Ap
 > verdict, the full reasoning remains in the review body so the mechanic and the maintainer
 > can read what must change. See §4.2 for the full contract.
 
+**Surfacing PRs to the gate (code-owner review request).** The maintainer should not have to
+_discover_ PRs by browsing. `.github/CODEOWNERS` (`* @nicsuzor`) makes GitHub **auto-request a
+review from the code owner** the moment a PR is opened, so every PR lands in the owner's
+"Review requested" queue — the native affordance that feeds this admission gate. (GitHub never
+requests review from the PR's own author, so this fires for agent/bot-authored PRs, e.g.
+opened as `botnicbot`, which are exactly the ones needing a human look.) This drives the
+review _request_ only; it is intentionally **not** wired as a "require code-owner review"
+branch-protection rule — `admit-status`, not a GitHub review count, remains the merge gate
+(`required_approving_review_count: 0`).
+
 This is handled by a small event-driven workflow, **`admit-on-review.yml`**
 (`on: pull_request_review: types: [submitted]`). It has **two paths** on review submission:
 
@@ -314,12 +325,19 @@ authorization and the same draft guard (§3.9).
 > `repos/{repo}/collaborators/{login}/permission`; an unresolved permission denies. Fork
 > PRs are skipped at the workflow `if:` (no bot write token).
 >
-> **Persistence across the fix loop.** Admission does not depend on GitHub keeping the
-> review "fresh." `required_approving_review_count` stays `0`, so the approval is not a
-> merge-gate review and "dismiss stale reviews" is irrelevant. Admission persists as the
-> `admit-status` commit status, which carries forward across agent fix commits and resets
-> on a human push (§5). A substantive human change therefore requires a **re-approval** to
-> re-admit — the same "must be re-judged" semantics the Environment gate had.
+> **Persistence across the fix loop — admission is sticky ("approved in-principle").**
+> Admission does not depend on GitHub keeping the review "fresh." `required_approving_review_count`
+> stays `0`, so the approval is not a merge-gate review and "dismiss stale reviews" is
+> irrelevant. Admission persists as the `admit-status` commit status, which **carries
+> forward across every subsequent commit — agent or human — until a terminal state ends
+> it** (§5). The maintainer's approval means _"this PR is approved in principle; proceed to
+> the merge pipeline,"_ and from there the loop runs to a terminal outcome (merge, §3.6
+> exhaustion, or §3.10 changes-requested) without asking the maintainer to re-approve each
+> time a commit lands. This is safe because **enforcer + qa re-verify code quality on every
+> SHA inside the loop (§3.5)** — a carried admission never means an unreviewed diff merges;
+> it only persists the _in-principle_ decision. (Earlier model reset admission on any
+> non-bot push; that misclassified the `botnicbot` service account — GitHub type `User` —
+> as a human push and silently stranded admitted PRs mid-loop. Worked example: PR #2005.)
 
 ### 3.3 Stage 2 — Fix loop (post-admission) — **LIVE** (Phase 5)
 
@@ -486,17 +504,17 @@ abandons).** When `MECH_COUNT >= MAX_MECHANIC_RUNS` and the PR is still not gree
 3. **`admit-status` is reset to `pending`** by the same handler. This is the mechanism that
    "surfaces the PR back to the human admit gate": resetting admission means the PR cannot
    merge on the stale "good idea" decision, and the maintainer must **re-approve the PR** to
-   re-admit (after intervening), or decline. It is a third admit-status transition alongside
-   §5's "carry across agent commits / reset on human push".
+   re-admit (after intervening), or decline. Because admission is otherwise **sticky** (§5 —
+   a push never revokes it), loop exhaustion is one of the two terminal events that does (the
+   other being a §3.10 changes-requested review).
 4. **The PR is left un-merged.** Because the required reviewer status(es) are red **and**
    `admit-status` is now pending, the armed auto-merge cannot fire. No silent merge.
 5. **The maintainer is pinged** (`gh pr edit --add-reviewer nicsuzor`) so the escalation
    is visible, not buried.
 6. **The loop stops auto-dispatching the mechanic.** Resumption requires an explicit human
-   action: either (a) a **new human push** (which independently resets `admit-status` to
-   pending per §5 and re-enters the gate), or (b) a **manual `workflow_dispatch`**
-   re-invocation of the mechanic with a force flag. This mirrors v1's "manual retry resets
-   the halt" semantics.
+   action: **re-approve the PR** to re-admit (after intervening), or use the **Force Review**
+   escape hatch (§3.12) to re-run the reviewers directly. This mirrors v1's "manual retry
+   resets the halt" semantics.
 
 > Net: on exhaustion the PR sits **admitted-no-more, reviewer-red, un-merged, with a named
 > escalation review and the maintainer requested.** A reader can implement this without
@@ -690,6 +708,15 @@ without a `gh` stub — `tests/test_review_attestation.py`). The reviewer set is
 (`REVIEWERS`, default `enforcer-status qa-status`) so cross-repo consumers (§9) attest their
 own named reviewer set.
 
+**Actionable failure message.** The commit-status `description` is length-capped, so it
+carries only the terse per-reviewer token list (`enforcer-status:absent qa-status:stale …`).
+On failure the script additionally writes a **cause-and-remedy breakdown to the GitHub
+Actions run summary** (`$GITHUB_STEP_SUMMARY` — the check/Actions UI): a per-reviewer state
+table plus what each state means and how to fix it (`absent` → the PR is likely un-admitted,
+approve it or run **Force Review** §3.12; `stale` → reviewed a different commit; `failure`
+→ a genuine red verdict to address). This keeps the required check terse while making the
+"why is this red and what do I do" answer visible where the maintainer actually looks.
+
 > **Scope honesty.** The in-repo deliverables — the `review-attestation` job, the fail-closed
 > decision script + tests, and the `review-attestation` entry in the ruleset _file_ — are
 > **LIVE in the repo**. _Applying_ that ruleset entry to the live branch protection is a
@@ -752,9 +779,32 @@ path.
 > **Residual edge.** If the mechanic's resolution does not fully clear the conflict (the base
 > advanced again mid-loop, or a squash-merge ghost conflict — `mechanic.agent.md` §1b), the new
 > head SHA is still `CONFLICTING`, so no `pull_request` run re-fires and the auto-loop stalls.
-> The PR is re-entered by the next review approval (re-dispatches via this same path) or by a
-> human push. The §3.6 exhaustion handler still bounds repeated mechanic passes within a single
-> admission.
+> The PR is re-entered by the next review approval (re-dispatches via this same path), by a
+> human push, or by the **Force Review** escape hatch (§3.12). The §3.6 exhaustion handler still
+> bounds repeated mechanic passes within a single admission.
+
+### 3.12 Force Review — manual escape hatch (Nic, 2026-06-29) — **LIVE**
+
+When a PR is **wedged** — the pipeline failed to start, a reviewer status is stuck
+`absent`/`stale`, or admission/triage state is inconsistent — a maintainer needs a way to
+**force the named merge-gate reviewers to run** without fighting the normal event flow.
+`.github/workflows/force-review.yml` is that hatch:
+
+- **Trigger:** `workflow_dispatch` (Actions → _Force Review_ → Run workflow → enter the PR
+  number; pick `enforcer + qa`, `enforcer only`, or `qa only`).
+- **Mechanism:** a `resolve` job reads the PR's live head `ref`/`sha` from the number, then
+  calls the **same reusable reviewer workflows the pipeline uses** (`agent-enforcer.yml`,
+  `agent-qa.yml`) with explicit inputs. The verdicts they post (`enforcer-status`,
+  `qa-status`) are byte-identical to a normal run and satisfy `review-attestation` on that
+  SHA once green (§3.7).
+- **Bypasses admission ON PURPOSE.** The hatch exists precisely for when admission/triage
+  state is broken, so it does not consult `admit-status`. It does **not** merge anything — it
+  only re-runs the reviewers; merge still requires all required checks green **and** admission
+  (`admit-status`). So the escape hatch can unstick the _reviewers_ without weakening the
+  _merge gate_.
+
+This is the remedy the §3.7 `review-attestation` failure summary points the maintainer to
+when reviewers read `absent`/`stale`.
 
 ## 4. Per-agent contract (locked)
 
@@ -922,24 +972,26 @@ once).
 - **`admit-status` replaces v1's `merge-prep-status`** as the required gate. Because it is
   set by a human-approval-driven job rather than a merge-prep run, the no-op runner on every
   green PR (P5) is gone.
-- **Carry-forward (LIVE, in `pr-pipeline.yml`'s `initialize` job).** Once admitted at SHA
-  _X_, `admit-status` carries forward across _agent-authored_ fix commits during the loop
-  (the admission decision stands). The live rule: on `synchronize`, if the previous HEAD had
-  `admit-status: success` and the new HEAD commit was authored/committed by a bot (account
-  type `Bot` or a `[bot]` login suffix), carry `success` forward; **a new human push resets
-  admission to `pending`** (a substantive human change must be re-judged at the gate). A
-  **third reset trigger** is added by §3.6: **loop exhaustion resets `admit-status` to
-  pending.** (The `initialize` job also still manages a `merge-prep-status` pending/
-  carry-forward transition; that status is now non-required and is vestigial pending the
-  Phase 5 cleanup — see §8/§11.)
+- **Carry-forward — STICKY admission (LIVE, in `pr-pipeline.yml`'s `initialize` job).** Once
+  admitted at SHA _X_, `admit-status` carries forward across **every** subsequent commit —
+  agent _or_ human — during the loop: admission is an _in-principle_ decision ("approved,
+  proceed to the merge pipeline") made once, not re-judged on each push. The live rule: on
+  `synchronize`, if the previous HEAD had `admit-status: success`, carry `success` forward to
+  the new HEAD unconditionally. This is safe because enforcer + qa re-verify every SHA inside
+  the loop (§3.5), so a carried admission never lets an unreviewed diff merge. Admission is
+  revoked **only by a terminal state**, never by a push: (1) §3.6 **loop exhaustion** resets
+  `admit-status` to pending, and (2) a §3.10 **changes-requested review** stops the loop.
+  (Earlier model reset admission on any non-bot push; it keyed on GitHub account type `Bot` /
+  `[bot]` login suffix, which misclassified the `botnicbot` service account — type `User` —
+  as a human push and silently stranded admitted PRs. Worked example: PR #2005.)
 - **`required_approving_review_count` stays `0` (LIVE).** v1 needed two approvals because
   merge-prep counted as approval #1. The merge gate is `admit-status` + the named-reviewer
   statuses, not a counted GitHub review. The review-approval admission model (§3.2)
   **reuses the Approve button as the admission _trigger_** without making it a counted
   merge-gate review: keeping the count at `0` means the approval drives `admit-on-review.yml`
   (which sets `admit-status`) but is not itself a required merge approval, so "dismiss stale
-  reviews" semantics never bear on admission — admission persists as `admit-status` (carry-
-  forward / reset on human push, above).
+  reviews" semantics never bear on admission — admission persists as `admit-status` (sticky
+  carry-forward until a terminal state, above).
 
 > Sequencing (already done): `admit-status` was added to required checks in the _same_ change
 > that dropped approvals to 0 — otherwise there would be a window where green checks alone

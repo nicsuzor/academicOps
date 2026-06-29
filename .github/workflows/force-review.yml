@@ -1,0 +1,94 @@
+# Force Review — manual escape hatch (specs/workflows/pr-pipeline.md §3.12)
+#
+# When a PR is wedged — the pipeline failed to start, a reviewer status is stuck
+# absent/stale, or some gating state is inconsistent — a maintainer can force the
+# named merge-gate reviewers to run directly on the PR's current HEAD, out of
+# band from the normal `pull_request` triage flow. It calls the SAME reusable
+# reviewer workflows the pipeline uses (`agent-enforcer.yml`, `agent-qa.yml`), so
+# the verdicts they post (`enforcer-status`, `qa-status`) are identical to a
+# normal run and satisfy `review-attestation` on this SHA once green.
+#
+# Run from: Actions → "Force Review" → Run workflow → enter the PR number.
+# This bypasses the admission gate ON PURPOSE: it exists precisely for when
+# admission/triage state is broken. It does NOT merge anything — it only re-runs
+# the reviewers; merge still requires all required checks green + admission.
+
+name: Force Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to force the reviewers onto"
+        type: string
+        required: true
+      reviewers:
+        description: "Which reviewers to force-run"
+        type: choice
+        required: true
+        default: "enforcer + qa"
+        options:
+          - "enforcer + qa"
+          - "enforcer only"
+          - "qa only"
+
+permissions:
+  contents: write        # enforcer is an autofixer; may commit a mechanical fix
+  pull-requests: write
+  statuses: write        # post enforcer-status / qa-status on the head SHA
+  id-token: write
+  issues: write
+  actions: read
+
+jobs:
+  # Resolve the PR's live head ref + SHA from the number so the reusable
+  # reviewers receive explicit, non-derived inputs (the §3.1/§4.1 contract).
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.pr.outputs.ref }}
+      sha: ${{ steps.pr.outputs.sha }}
+    steps:
+      - name: Resolve PR head
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ inputs.pr_number }}
+        run: |
+          data="$(gh api "repos/${REPO}/pulls/${PR}")"
+          ref="$(jq -r '.head.ref' <<<"$data")"
+          sha="$(jq -r '.head.sha' <<<"$data")"
+          if [ -z "$ref" ] || [ "$ref" = "null" ] || [ -z "$sha" ] || [ "$sha" = "null" ]; then
+            echo "::error::Could not resolve head ref/sha for PR #${PR}"
+            exit 1
+          fi
+          echo "Forcing reviewers onto PR #${PR} @ ${sha} (branch ${ref})"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+  enforcer:
+    needs: [resolve]
+    if: ${{ contains(inputs.reviewers, 'enforcer') }}
+    name: Force Enforcer Review
+    uses: ./.github/workflows/agent-enforcer.yml
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      ref: ${{ needs.resolve.outputs.ref }}
+      sha: ${{ needs.resolve.outputs.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  qa:
+    needs: [resolve]
+    if: ${{ contains(inputs.reviewers, 'qa') }}
+    name: Force QA Verification
+    uses: ./.github/workflows/agent-qa.yml
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      ref: ${{ needs.resolve.outputs.ref }}
+      sha: ${{ needs.resolve.outputs.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
