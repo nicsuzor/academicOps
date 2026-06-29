@@ -28,12 +28,18 @@ Consolidated from:
 
 Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, Ruth, James, Marsha, Jr — plus the planner, supervisor, polecats, and the orchestrator boundary.
 
+- [[agents]] — Agent ecosystem overview
+- [[junior]] — Junior agent specification
+- [[ida]] — Ida agent specification
+- [[pauli]] — Pauli agent specification
+- [[rbg]] — RBG agent specification
+- [[marsha]] — Marsha agent specification
+- [[james]] — James agent specification
 - [[agent-authority]] — Permissions and skill delegation envelope
 - [[agent-permissions]] — Tool allowlists per agent
 - [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
 - [[agent-compliance-matrix]] — Audit state against authority spec
 - [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
-- [[effectual-planning-agent]] — Planner agent design
 - [[orchestrator-boundary]] — CLI orchestrator authority boundary
 - [[polecat-system]] — Distributed worker dispatch
 - [[interactive-coworking]] — Polecat↔interactive axis, thin Ida sibling, hook-router separation
