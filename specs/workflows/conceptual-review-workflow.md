@@ -4,13 +4,13 @@ title: Conceptual Review Workflow
 type: spec
 status: ready
 tier: workflow
-depends_on: [effectual-planning-agent]
+depends_on: [pauli]
 created: 2026-02-28
 tags: [spec, review, multi-agent, workflow]
 related:
   - non-interactive-agent-workflow-spec
   - polecat-swarms
-  - effectual-planning-agent
+  - pauli
   - research-decomposition
 ---
 
@@ -25,7 +25,7 @@ The conceptual review pattern is implemented through the following framework com
 - **In-Session Criticality**: The [[.agents/skills/critic/SKILL.md|Critic Skill]] provides skeptical second-opinion review of plans and conclusions during interactive sessions.
 - **Orchestration**: [[specs/pr-pipeline.md|PR Pipeline]] manages the convergence loop via GitHub's native PR review system.
 - **Upstream/Downstream**:
-  - [[specs/effectual-planning-agent.md]] -- upstream; strategic planning under uncertainty.
+  - [[specs/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
   - [[specs/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
 
 ## Motivation
@@ -228,7 +228,7 @@ Practising what we preach:
 
 ## Related
 
-- [[effectual-planning-agent]] -- upstream; strategic planning under uncertainty
+- [[pauli]] -- upstream; strategic planning under uncertainty
 - [[non-interactive-c1dda99b]] -- agent lifecycle and Phase 1 decomposition protocol
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
 - [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)

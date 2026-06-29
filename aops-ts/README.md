@@ -72,11 +72,11 @@ a tailnet host. It no-ops (exit 0) unless **all** of these hold:
 
 Config (env):
 
-| Var | Required | Meaning |
-| --- | --- | --- |
-| `AOPS_TS_SYNC_DEST` | yes | rsync/ssh dest on the tailnet, e.g. `nic@services-new:/data/aops-sessions/incoming/` |
-| `AOPS_TS_SSH_OPTS` | no | extra ssh options, e.g. `-o StrictHostKeyChecking=accept-new` |
-| `AOPS_SRC_DIR` | no | aops-core source dir (else the plugin cache is searched) |
+| Var                 | Required | Meaning                                                                              |
+| ------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `AOPS_TS_SYNC_DEST` | yes      | rsync/ssh dest on the tailnet, e.g. `nic@services-new:/data/aops-sessions/incoming/` |
+| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options, e.g. `-o StrictHostKeyChecking=accept-new`                        |
+| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                             |
 
 It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
 producing the same redacted markdown + summary JSON the local pipeline commits to

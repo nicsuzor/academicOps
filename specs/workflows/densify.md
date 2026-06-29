@@ -20,14 +20,14 @@ The PKB is supposed to be a dense knowledge graph — atomic notes joined by `[[
 - Path-based wikilinks (`[[specs/foo.md]]`) survive a layout reorg as orphan references because Obsidian resolves by basename.
 - Existing `pkb` tooling has the raw materials (`pkb_search`, `pkb_context`, `find_duplicates`, `pkb_orphans`) but nothing routes them into a workflow that adds edges.
 
-The [[sleep-cycle]]'s Phase 9 picks "densify edges" as a strategy when other graph metrics are healthy, and delegates to [[effectual-planning-agent|planner]]'s `maintain` mode. But that branch is about **task-graph edges** — `DependsOn` / `SoftDependsOn` between work items. There is no equivalent for **knowledge-graph edges** — `[[wikilinks]]` between concepts, specs, references, knowledge notes.
+The [[sleep-cycle]]'s Phase 9 picks "densify edges" as a strategy when other graph metrics are healthy, and delegates to [[pauli|planner]]'s `maintain` mode. But that branch is about **task-graph edges** — `DependsOn` / `SoftDependsOn` between work items. There is no equivalent for **knowledge-graph edges** — `[[wikilinks]]` between concepts, specs, references, knowledge notes.
 
 This spec defines the **densify** workflow that fills that gap.
 
 ## Giving Effect
 
 - [[sleep-cycle]] — densify will plug in as one of sleep's Phase 9 strategies (alongside today's task-graph variant)
-- [[effectual-planning-agent]] — densify can be invoked in planner's `maintain` mode
+- [[pauli]] — densify can be invoked in planner's `maintain` mode
 - [[pkb-server-spec]] — uses `pkb_search`, `pkb_context`, `pkb_orphans`, `find_duplicates`, document CRUD
 - [[batch-graph-operations]] — bulk frontmatter / append operations
 - [[remember]] (skill) — densify defers to remember for the mechanics of writing wikilinks (where in the body, what alias text)
@@ -271,7 +271,7 @@ A user reading the `## Related` block should never think "why is X linked here?"
 ## See also
 
 - [[sleep-cycle]] — the parent consolidation workflow
-- [[effectual-planning-agent]] — owns `densify --tasks`
+- [[pauli]] — owns `densify --tasks`
 - [[remember]] (skill) — wikilink discipline
 - [[conceptual-review-workflow]] — the QA gate
 - [[batch-graph-operations]] — append-to-document and frontmatter ops

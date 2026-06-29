@@ -40,7 +40,7 @@ means the edge is inferred, not declared.
 | junior    | agent | (self / coordinator) | `specs/agents/agent-authority.md` + `agent-permissions.md` + `agent-definition-content.md` (govern all agents)         | inbox / inbox / draft     | yes        |
 | james     | agent | (self)               | `specs/review-dispatch-topology.md`, `specs/workflows/pr-pipeline.md` (orchestrator role); agent-authority/permissions | ready / operative         | yes        |
 | marsha    | agent | (self)               | `specs/agents/agent-permissions.md`; `specs/workflows/pr-pipeline.md`; QA role in `review-dispatch-topology.md`        | inbox / operative / ready | yes        |
-| pauli     | agent | (self)               | `specs/agents/effectual-planning-agent.md` (planner/strategist role); agent-authority/permissions                      | ready                     | yes        |
+| pauli     | agent | (self)               | `specs/agents/pauli.md` (planner/strategist role); agent-authority/permissions                                         | ready                     | yes        |
 | rbg       | agent | (self)               | `specs/enforcement/ultra-vires-enforcer.md`, `specs/enforcement/enforcement.md`; agent-permissions                     | ready / ready             | yes        |
 
 ### Agents (`.github/agents/*.md` — PR-pipeline / CI agents)
@@ -55,25 +55,25 @@ means the edge is inferred, not declared.
 
 ### Skills — `aops-core/skills/`
 
-| Component        | Type  | Owner agent                      | Backing spec (path)                                                                                                                               | Spec status              | Connected?            |
-| ---------------- | ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | --------------------- |
-| aops             | skill | (none declared)                  | — (no governing spec found; it is the core institutional-memory skill)                                                                            | —                        | **no**                |
-| cowork-sync      | skill | (none)                           | `specs/plugins/plugin-architecture.md` (cowork build packaging) — weak/partial                                                                    | ready                    | ambiguous             |
-| craft            | skill | pauli                            | `specs/workflows/framework-workflow-expectations.md` (instruction quality) — topic-match (judgment)                                               | ready                    | ambiguous             |
-| daily            | skill | pauli                            | `specs/workflows/daily-briefing-bundle.md` + `specs/workflows/daily/*` (the daily workflow tree)                                                  | inbox / mixed            | yes                   |
-| design-rubric    | skill | pauli                            | `specs/future/kb-385bd253-review-lenses-library-specification.md` (review lenses) — topic-match (judgment)                                        | none(fm)                 | ambiguous             |
-| dogfood          | skill | (none)                           | `specs/future/dogfood.md`                                                                                                                         | none(fm)                 | yes                   |
-| dump             | skill | pauli (claims)                   | — (no governing spec; emergency-bail counterpart to end_session)                                                                                  | —                        | **no**                |
-| end_session      | skill | (none)                           | `specs/workflows/session-digest.md`; `specs/GATES.md` (session-close gate) — topic-match                                                          | draft / none(fm)         | yes                   |
-| planner          | skill | pauli                            | `specs/agents/effectual-planning-agent.md` (spec's `Giving Effect` points to a stale `skills/planning/` path; planner is the live implementation) | ready                    | yes (link stale)      |
-| project          | skill | (none)                           | `specs/future/spec-967126cf-…-project-scaffold-redesign….md` (redesign target, not current)                                                       | proposed                 | ambiguous             |
-| remember         | skill | pauli                            | `specs/workflows/feedback-loops.md` + sessions/`sleep-cycle` specs (consolidation) — topic-match                                                  | ready                    | yes                   |
-| research         | skill | (none)                           | — (no dedicated spec; research methodology guardian)                                                                                              | —                        | **no**                |
-| sleep            | skill | pauli                            | superseded_by `remember`; backed historically by the sleep-cycle/consolidation specs                                                              | —                        | yes (deprecated stub) |
-| strategic-review | skill | (none; deploys rbg/pauli/marsha) | `specs/review-dispatch-topology.md`                                                                                                               | ready                    | yes                   |
-| supervisor       | skill | (none)                           | `specs/agents/supervisor.md`                                                                                                                      | ready                    | yes                   |
-| survey           | skill | junior                           | `specs/workflows/session-digest.md`, `specs/workflows/feedback-loops.md`, `specs/ENFORCEMENT-MAP.md` (referenced in body)                         | draft / ready / none(fm) | yes                   |
-| verify           | skill | marsha                           | `specs/workflows/audit-protocol.md`; `specs/GATES.md`; design-rubric pairing                                                                      | ready / none(fm)         | yes                   |
+| Component        | Type  | Owner agent                      | Backing spec (path)                                                                                                            | Spec status              | Connected?            |
+| ---------------- | ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------ | --------------------- |
+| aops             | skill | (none declared)                  | — (no governing spec found; it is the core institutional-memory skill)                                                         | —                        | **no**                |
+| cowork-sync      | skill | (none)                           | `specs/plugins/plugin-architecture.md` (cowork build packaging) — weak/partial                                                 | ready                    | ambiguous             |
+| craft            | skill | pauli                            | `specs/workflows/framework-workflow-expectations.md` (instruction quality) — topic-match (judgment)                            | ready                    | ambiguous             |
+| daily            | skill | pauli                            | `specs/workflows/daily-briefing-bundle.md` + `specs/workflows/daily/*` (the daily workflow tree)                               | inbox / mixed            | yes                   |
+| design-rubric    | skill | pauli                            | `specs/future/kb-385bd253-review-lenses-library-specification.md` (review lenses) — topic-match (judgment)                     | none(fm)                 | ambiguous             |
+| dogfood          | skill | (none)                           | `specs/future/dogfood.md`                                                                                                      | none(fm)                 | yes                   |
+| dump             | skill | pauli (claims)                   | — (no governing spec; emergency-bail counterpart to end_session)                                                               | —                        | **no**                |
+| end_session      | skill | (none)                           | `specs/workflows/session-digest.md`; `specs/GATES.md` (session-close gate) — topic-match                                       | draft / none(fm)         | yes                   |
+| planner          | skill | pauli                            | `specs/agents/pauli.md` (spec's `Giving Effect` points to a stale `skills/planning/` path; planner is the live implementation) | ready                    | yes (link stale)      |
+| project          | skill | (none)                           | `specs/future/spec-967126cf-…-project-scaffold-redesign….md` (redesign target, not current)                                    | proposed                 | ambiguous             |
+| remember         | skill | pauli                            | `specs/workflows/feedback-loops.md` + sessions/`sleep-cycle` specs (consolidation) — topic-match                               | ready                    | yes                   |
+| research         | skill | (none)                           | — (no dedicated spec; research methodology guardian)                                                                           | —                        | **no**                |
+| sleep            | skill | pauli                            | superseded_by `remember`; backed historically by the sleep-cycle/consolidation specs                                           | —                        | yes (deprecated stub) |
+| strategic-review | skill | (none; deploys rbg/pauli/marsha) | `specs/review-dispatch-topology.md`                                                                                            | ready                    | yes                   |
+| supervisor       | skill | (none)                           | `specs/agents/supervisor.md`                                                                                                   | ready                    | yes                   |
+| survey           | skill | junior                           | `specs/workflows/session-digest.md`, `specs/workflows/feedback-loops.md`, `specs/ENFORCEMENT-MAP.md` (referenced in body)      | draft / ready / none(fm) | yes                   |
+| verify           | skill | marsha                           | `specs/workflows/audit-protocol.md`; `specs/GATES.md`; design-rubric pairing                                                   | ready / none(fm)         | yes                   |
 
 ### Skills — `aops-tools/skills/`
 
@@ -97,16 +97,16 @@ means the edge is inferred, not declared.
 
 ### Commands — `aops-core/commands/` (the only 7 command files; each delegates to a skill)
 
-| Component    | Type    | Delegates to skill                                      | Backing spec (via skill)                                                              | Spec status   | Connected?        |
-| ------------ | ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------- | ----------------- |
-| /bump        | command | (none — inline one-liner "you seem stuck, continue")    | —                                                                                     | —             | **no**            |
-| /dispatch    | command | `task-lifecycle` (dispatch mode) → background worker    | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]`       | ready         | yes               |
-| /email       | command | (workflow, not a skill) → `[[workflows/email-capture]]` | `specs/workflows/daily/20-email-capture.md`                                           | none(fm)      | yes (to workflow) |
-| /issue-sweep | command | `survey` (sweep mode) → dispatches `jr`                 | via survey: `specs/ENFORCEMENT-MAP.md`, session-digest                                | mixed         | yes               |
-| /learn       | command | `survey` (retro mode) → dispatches `pauli`              | via survey                                                                            | mixed         | yes               |
-| /maintain    | command | `planner` (maintain mode)                               | via planner: `specs/agents/effectual-planning-agent.md`; `specs/workflows/densify.md` | ready / inbox | yes               |
-| /pull        | command | `task-lifecycle` (execute mode) → inline claim+run      | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]`       | ready         | yes               |
-| /q           | command | `planner` (capture mode)                                | via planner                                                                           | ready         | yes               |
+| Component    | Type    | Delegates to skill                                      | Backing spec (via skill)                                                        | Spec status   | Connected?        |
+| ------------ | ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------- | ----------------- |
+| /bump        | command | (none — inline one-liner "you seem stuck, continue")    | —                                                                               | —             | **no**            |
+| /dispatch    | command | `task-lifecycle` (dispatch mode) → background worker    | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]` | ready         | yes               |
+| /email       | command | (workflow, not a skill) → `[[workflows/email-capture]]` | `specs/workflows/daily/20-email-capture.md`                                     | none(fm)      | yes (to workflow) |
+| /issue-sweep | command | `survey` (sweep mode) → dispatches `jr`                 | via survey: `specs/ENFORCEMENT-MAP.md`, session-digest                          | mixed         | yes               |
+| /learn       | command | `survey` (retro mode) → dispatches `pauli`              | via survey                                                                      | mixed         | yes               |
+| /maintain    | command | `planner` (maintain mode)                               | via planner: `specs/agents/pauli.md`; `specs/workflows/densify.md`              | ready / inbox | yes               |
+| /pull        | command | `task-lifecycle` (execute mode) → inline claim+run      | via task-lifecycle: `specs/agents/supervisor.md`; references `[[premise-gate]]` | ready         | yes               |
+| /q           | command | `planner` (capture mode)                                | via planner                                                                     | ready         | yes               |
 
 ---
 
@@ -121,7 +121,7 @@ Statuses are from frontmatter (`NONE` = no `status:` field).
 | specs/agents/agent-compliance-matrix.md                                                | ready            | audit artifact over the agents                                                         | yes                 |
 | specs/agents/agent-definition-content.md                                               | draft            | all agent-def files (content boundary)                                                 | yes                 |
 | specs/agents/agent-permissions.md                                                      | inbox            | all agents (tool allowlists)                                                           | yes                 |
-| specs/agents/effectual-planning-agent.md                                               | ready            | `planner` skill / `pauli` (spec's own link to `skills/planning/` is **stale**)         | yes (stale link)    |
+| specs/agents/pauli.md                                                                  | ready            | `planner` skill / `pauli` (spec's own link to `skills/planning/` is **stale**)         | yes (stale link)    |
 | specs/agents/orchestrator-boundary.md                                                  | inbox            | junior / CLI orchestrator boundary                                                     | yes                 |
 | specs/agents/polecat-system.md                                                         | ready            | polecat dispatch (external `polecat/cli.py`; not a skill/agent in this tree)           | yes (ext component) |
 | specs/agents/supervisor.md                                                             | ready            | `supervisor` skill; `task-lifecycle` skill; `/pull` + `/dispatch`                      | yes                 |
@@ -233,7 +233,7 @@ Confirmed orphans (no live agent/skill/command gives them effect):
 - `specs/future/spec-967126cf-…project-scaffold-redesign….md` (proposed redesign of `project`, not built)
 - `specs/observability/evidence-driven-debugging.md` (methodology doc; no implementing component)
 
-**On the named candidate `effectual-planning-agent.md`:** NOT a clean orphan. Its `## Giving Effect`
+**On the named candidate `pauli.md`:** NOT a clean orphan. Its `## Giving Effect`
 block links `[[skills/planning/SKILL.md]]`, which is a **stale path** (the live skill is
 `aops-core/skills/planner/`), but the `planner` skill (owned by `pauli`) is unambiguously its
 implementation — the planner SKILL.md even carries "effectual planning" as a trigger. So the spec is

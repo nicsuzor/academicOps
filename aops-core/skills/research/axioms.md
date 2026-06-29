@@ -45,9 +45,3 @@ Prefer over-verification to under-verification on anything externally visible.
 Agents must not circulate, send, or publish any academic output without the user reviewing the final version.
 
 **Derivation**: Direct application of `data-boundaries` — release is a disclosure, and disclosure requires explicit authorization for the specific surface.
-
----
-
-**Note on Evidentiary Immutability**: What was previously listed here as P#42 (Research Data Is Immutable) is now axiom **`evidence-immutable`** (Evidence Is Immutable and Irreplaceable) in `AXIOMS.md`. It applies universally, not just in academic contexts.
-
-**Note on Citation**: What was previously listed here as P#4 (Always Cite Sources) is now axiom **`cite-sources`** in `AXIOMS.md`.
