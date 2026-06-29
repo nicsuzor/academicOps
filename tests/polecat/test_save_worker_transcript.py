@@ -113,6 +113,32 @@ class TestFindRealTranscript:
         assert result is not None
         assert result == session_layout["real_transcript"]
 
+    def test_returns_agy_brain_dir(self, tmp_path: Path) -> None:
+        """agy v1.0.13+ writes brain/<uuid>/.system_generated/logs/transcript*.jsonl;
+        _find_real_transcript must return the <uuid> DIR (so parse_session_file
+        dispatches to _parse_antigravity_brain), not the jsonl file."""
+        run_dir = tmp_path / "sessions" / "polecats" / "task-agy"
+        brain_dir = run_dir / "agy-brain" / "0c8a2ef1-uuid"
+        logs_dir = brain_dir / ".system_generated" / "logs"
+        logs_dir.mkdir(parents=True)
+        (logs_dir / "transcript_full.jsonl").write_text('{"step_index":0,"type":"USER_INPUT"}\n')
+        (logs_dir / "transcript.jsonl").write_text('{"step_index":0,"type":"USER_INPUT"}\n')
+        result = _find_real_transcript(run_dir)
+        assert result == brain_dir
+        assert result.is_dir()
+
+    def test_agy_brain_takes_precedence_over_jsonl_glob(self, tmp_path: Path) -> None:
+        """The agy hooks jsonl under .system_generated must not be returned as the
+        transcript; the brain dir is returned instead."""
+        run_dir = tmp_path / "sessions" / "polecats" / "task-agy"
+        brain_dir = run_dir / "agy-brain" / "uuid-1"
+        sysgen = brain_dir / ".system_generated"
+        (sysgen / "logs").mkdir(parents=True)
+        (sysgen / "logs" / "transcript_full.jsonl").write_text('{"type":"USER_INPUT"}\n')
+        # A stray hooks .jsonl that the generic *.jsonl glob would otherwise match.
+        (sysgen / "20260629-antigravity-hooks.jsonl").write_text('{"hook":"x"}\n')
+        assert _find_real_transcript(run_dir) == brain_dir
+
     def test_returns_none_when_no_session_dir(self) -> None:
         assert _find_real_transcript(None) is None
 
