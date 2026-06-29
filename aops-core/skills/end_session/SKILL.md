@@ -142,15 +142,17 @@ Emit exactly this markdown block:
 
 Omit lines for `PR`, `Issue`, and `Follow-ups` if they do not exist.
 
+**Every follow-up MUST be a real, pullable `task-id` — not prose.** A handover that names a thread the user cannot act on is a defect: "park on a downhill slope" means the user can push off immediately with one command, and that requires an ID. Before writing this block, for each open thread that has no task yet, **create one** (`create_task`, woven into the graph with a `parent` and any `depends_on`) and put its ID here. Never leave a follow-up as a bare description.
+
 #### 7. Thread Pickup (for >=2 follow-up tasks)
 
-If leaving multiple distinct follow-up threads, append:
+If leaving multiple distinct follow-up threads, append the block below. **Each thread MUST lead with the exact command to start it — `/pull <task-id>` — where `<task-id>` is a real task created in step 6 (or already existing).** Stating the thread is not enough; the user has to be able to copy one command and get to work. If a thread has no task, create it first (do not emit a thread without a pullable ID).
 
 ```markdown
 ### Thread Pickup: what next?
 
-- **Thread A**: <action for next session>
-- **Thread B**: <action / dependency>
+- **Thread A** — `/pull <task-id>` (<short title>): <one-line action / why it's next>
+- **Thread B** — `/pull <task-id>` (<short title>): <one-line action / dependency>
 ```
 
 #### 8. Exit
