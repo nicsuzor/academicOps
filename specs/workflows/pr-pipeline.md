@@ -701,60 +701,66 @@ own named reviewer set.
 > §3.7 closes the _silent-absence-reads-as-pass_ hole; it does not, and cannot from a worktree,
 > override a deliberate admin bypass.
 
-### 3.11 Admitting a conflicting PR — GitHub's merge-ref constraint — **LIVE**
+### 3.11 Admitting a conflicting PR — the merge-ref constraint + the sweep — **LIVE**
 
-A PR that is `CONFLICTING` with its base never receives a `pull_request` workflow run.
-GitHub builds the `refs/pull/N/merge` ref that a `pull_request` run checks out by
+A PR that is `CONFLICTING` with its base receives **no `pull_request` AND no
+`pull_request_review` workflow run** — GitHub suppresses _all_ "pull request activity" the
+same way. Both events' runs check out the `refs/pull/N/merge` ref, which GitHub builds by
 test-merging head into base; a merge conflict makes that ref un-buildable, so GitHub
 **silently never creates the run** — no jobs, no logs, no status, no notification. This is
 GitHub platform behaviour, not a pipeline choice (community discussions
 [#11265](https://github.com/orgs/community/discussions/11265),
-[#26304](https://github.com/orgs/community/discussions/26304)).
+[#26304](https://github.com/orgs/community/discussions/26304); [GitHub Docs: events](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows)).
 
-> **Worked example — PR #2005 (branch `agy`).** Opened CONFLICTING with `dev`. Its `opened`
-> event, and a later manual close/reopen, each fired **only** the `pull_request_target`
-> retarget check; the `pull_request` PR Review Pipeline produced **zero** runs on the head
-> SHA. Author had `write` access and the PR was non-draft — the sole cause was the conflict.
+> **Worked example — PR #2005 (branch `agy`), CONFLICTING with `dev`.** Its `opened` event and
+> a later close/reopen each fired **only** the `pull_request_target` retarget check — zero
+> `pull_request` runs. And **two maintainer approvals** (one before and one after the fix for
+> this section shipped) each produced **zero `Admit on Review` runs** — proof that
+> `pull_request_review` is suppressed too, not just `pull_request`.
 
 **Consequences (normative):**
 
-1. **Stage-1 triage (§3.1) and the pre-admission responder (§3.8) never see a conflicting
-   PR.** Both live in `pr-pipeline.yml` on the `pull_request` event, which does not fire.
-   Conflict resolution is therefore **not** the responder's job — the responder is
-   unreachable on exactly the PRs that have a conflict, and its dispatch gate
-   (`check-mechanical-red.sh`) has no conflict trigger anyway (§3.8 lists its triggers:
-   enforcer/qa/Pytest red only). Conflict resolution belongs **solely to the post-admission
-   mechanic** (§3.3).
-2. **A conflicting PR can still be admitted.** The events that DO fire on a conflicting PR
-   are `pull_request_target` (the retarget guard) and `pull_request_review`. Admission is a
-   review approval handled by `admit-on-review.yml` on `pull_request_review` (§3.2), which
-   fires regardless of mergeability. The maintainer approves a conflicting PR exactly as any
-   other — "good idea; make it mergeable" explicitly includes "resolve the conflict."
-3. **On admission, the mechanic is dispatched directly by `admit-on-review.yml`** (the review
-   event re-enters on the admitted SHA), not by a `pull_request` run that would never fire.
+1. **Stage-1 triage (§3.1), the pre-admission responder (§3.8), and `admit-on-review.yml`
+   (§3.2) never see a conflicting PR.** All three hang off `pull_request`/`pull_request_review`,
+   neither of which fires. So a maintainer's "Approve" click on a conflicting PR produces no
+   workflow run at all, and conflict resolution is **not** the responder's job (it is
+   unreachable on conflicting PRs, and `check-mechanical-red.sh` has no conflict trigger
+   anyway). Conflict resolution belongs **solely to the post-admission mechanic** (§3.3).
+2. **The only events that fire on a conflicting PR are merge-ref-immune ones** —
+   `pull_request_target`, `push` (to the base branch), `schedule`, `issue_comment`,
+   `workflow_dispatch`. Reaching a conflicting PR requires one of these. There is no
+   `pull_request_review_target`, so the review-approval admission model **cannot** reach a
+   conflicting PR.
 
-**The dispatch rule (load-bearing).** `admit-on-review.yml`'s `decide-mechanic` job dispatches
-the mechanic when the PR is `CONFLICTING` **even if the named reviewers are both green**.
-Mergeability is an INDEPENDENT merge gate; "reviewers green" is not sufficient to skip the
-mechanic on a conflicting PR. Keying the first-dispatch decision on reviewer colour ALONE was
-a deadlock: a conflicting-but-green PR got `need_mechanic=false`, armed an auto-merge that can
-never fire (`CONFLICTING` is unmergeable), and nothing ever resolved the conflict. The job now
-reads `gh pr view --json mergeable` (polling until it settles) alongside the reviewer statuses
-and dispatches when red/pending reviewers remain **OR** the PR is `CONFLICTING`.
+**The conflict-admission sweep (the entry path).** `conflict-admission-sweep.yml` runs on
+`push` to `dev` (every merge — exactly when open PRs go stale/conflicting) and on a 30-minute
+`schedule` (a backstop for PRs already conflicting when approved), plus manual
+`workflow_dispatch`. Its `discover` job (`scripts/ci/find-conflicting-admitted-prs.sh`,
+unit-tested in `tests/test_find_conflicting_admitted_prs.py`) selects open PRs that are
+`CONFLICTING`, non-draft, same-repo, and **already approved by a write-class maintainer** (same
+authorisation as `admit-on-review.sh`), excluding any whose head SHA already carries a terminal
+`mechanic-status`. For each, the sweep **admits** it — sets the required `admit-status=success`
+and arms `--auto --squash` (the deferred equivalent of `admit-on-review.yml`'s `admit` job,
+which could not fire) — and **dispatches the mechanic** to resolve the conflict. The
+maintainer's standing approval is the admission signal; no second gesture is required.
+
+**Belt-and-suspenders in `admit-on-review.yml`.** Its `decide-mechanic` job also reads
+`gh pr view --json mergeable` and dispatches the mechanic when the PR is `CONFLICTING` even
+with green reviewers — a guard for the narrow window where a PR is mergeable at approval time
+but conflicts before the admit job reads it. Mergeability is an INDEPENDENT merge gate;
+"reviewers green" never skips the mechanic on a conflicting PR.
 
 **Resumption.** Once the mechanic merges `origin/<base>` into the head and pushes (§3.3, §1 of
 `mechanic.agent.md`), the PR becomes `MERGEABLE`. That push is a `synchronize` that **does**
 fire the normal `pull_request` pipeline, so Stage-2 re-verification (§3.5), passes 2…N
-(`check-admit → mechanic`), and the armed auto-merge all resume the standard flow. The
-conflicting-state special case is confined to the **first** dispatch, on the review-approval
-path.
+(`check-admit → mechanic`), and the armed auto-merge all resume the standard flow.
 
-> **Residual edge.** If the mechanic's resolution does not fully clear the conflict (the base
-> advanced again mid-loop, or a squash-merge ghost conflict — `mechanic.agent.md` §1b), the new
-> head SHA is still `CONFLICTING`, so no `pull_request` run re-fires and the auto-loop stalls.
-> The PR is re-entered by the next review approval (re-dispatches via this same path) or by a
-> human push. The §3.6 exhaustion handler still bounds repeated mechanic passes within a single
-> admission.
+> **Halt-and-escalate is correct, not a failure.** If a conflict is ambiguous (e.g. a
+> full-file divergence, or a squash-merge ghost conflict — `mechanic.agent.md` §1b/§1c), the
+> mechanic **halts and posts an escalation review** rather than guessing, leaving a terminal
+> `mechanic-status` on the SHA. The sweep then excludes that SHA (terminal-status guard), so it
+> does not re-dispatch every tick; a human push or re-resolution (new SHA) re-enters the sweep.
+> The §3.6 exhaustion handler bounds repeated mechanic passes within a single admission.
 
 ## 4. Per-agent contract (locked)
 

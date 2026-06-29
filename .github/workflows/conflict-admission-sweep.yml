@@ -1,0 +1,132 @@
+# Conflict Admission Sweep — drives the mechanic onto conflicting, approved PRs.
+#
+# WHY THIS EXISTS (specs/workflows/pr-pipeline.md §3.11). GitHub never fires
+# `pull_request` OR `pull_request_review` on a PR that is CONFLICTING with its
+# base — it cannot build the `refs/pull/N/merge` ref those events' runs check
+# out, so no run is created (silently, no logs). Consequently neither the triage
+# pipeline (`pr-pipeline.yml`) nor the admission workflow (`admit-on-review.yml`)
+# can EVER reach a conflicting PR — a maintainer's "Approve" click produces no
+# workflow run at all. The conflict-resolving mechanic therefore never gets
+# dispatched, and the PR deadlocks at "checks awaiting conflict resolution".
+#
+# This sweep runs on events IMMUNE to the merge-ref constraint — `push` to the
+# base branch (every merge, i.e. exactly when open PRs go stale/conflicting) and
+# a periodic `schedule` — finds open PRs that are CONFLICTING and already approved
+# by a write-class maintainer, ADMITS them (sets `admit-status`, arms auto-merge —
+# the deferred equivalent of `admit-on-review.yml`, which could not fire), and
+# dispatches the mechanic to resolve the conflict. Once the mechanic merges the
+# base and pushes, the PR becomes MERGEABLE and the normal `pull_request` pipeline
+# resumes (§3.5 re-verify → armed auto-merge fires when green).
+#
+# Bounding: `find-conflicting-admitted-prs.sh` excludes any PR whose current head
+# SHA already carries a terminal `mechanic-status` (the mechanic ran and either
+# resolved → new SHA, or halted → escalated), so the schedule never re-dispatches
+# on a SHA already processed. The mechanic's own §3.6 ceiling bounds passes within
+# an admission.
+
+name: Conflict Admission Sweep
+
+on:
+  push:
+    branches: [dev]
+  schedule:
+    # Every 30 minutes — a backstop for PRs that were already conflicting when
+    # approved (no base push imminent to trigger the sweep otherwise).
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  id-token: write
+  issues: write
+  actions: read
+
+concurrency:
+  # One sweep at a time; never cancel an in-flight admit/dispatch.
+  group: conflict-admission-sweep
+  cancel-in-progress: false
+
+jobs:
+  # ─── Discover conflicting, approved PRs that need the mechanic ──────────────
+  discover:
+    name: Discover conflicting + approved PRs
+    # Same-repo only — a sweep on a fork has no bot write token to admit/dispatch.
+    if: github.repository == 'nicsuzor/academicOps'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+      any: ${{ steps.find.outputs.any }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find candidates
+        id: find
+        run: bash scripts/ci/find-conflicting-admitted-prs.sh
+        env:
+          BASE_BRANCH: dev
+
+  # ─── Admit each candidate — set admit-status + arm auto-merge ───────────────
+  # The maintainer's standing approval is the admission decision (it just could
+  # not fire `admit-on-review.yml` while the PR was conflicting). Mirror that
+  # workflow's `admit` job: required `admit-status=success` on HEAD + armed
+  # auto-merge. The mechanic (next job) then makes the PR actually mergeable.
+  admit:
+    name: Admit conflicting PR
+    needs: [discover]
+    if: needs.discover.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pr: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    env:
+      # Bot PAT required to write the required `admit-status` and arm auto-merge
+      # (the default token cannot satisfy a ruleset-trusted required status).
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Set admit-status and arm auto-merge
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot admit PR." >&2
+            exit 1
+          fi
+          PR_NUMBER="${{ matrix.pr.number }}"
+          HEAD_SHA="${{ matrix.pr.sha }}"
+          echo "Admitting conflicting PR #$PR_NUMBER at HEAD $HEAD_SHA (maintainer approval is on record)"
+
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="success" \
+            -f context="admit-status" \
+            -f description="Admitted by standing maintainer approval (conflict-admission sweep, §3.11)" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
+            || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
+
+  # ─── Dispatch the mechanic to resolve each conflict ────────────────────────
+  mechanic:
+    name: Mechanic (conflict resolution)
+    needs: [discover, admit]
+    if: needs.discover.outputs.any == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        pr: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    uses: ./.github/workflows/agent-mechanic.yml
+    with:
+      pr_number: ${{ matrix.pr.number }}
+      ref: ${{ matrix.pr.ref }}
+      sha: ${{ matrix.pr.sha }}
+    secrets:
+      AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
