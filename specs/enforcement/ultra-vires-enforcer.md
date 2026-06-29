@@ -15,14 +15,12 @@ tags: [framework, agent-behavior, guardrails, enforcement, enforcer]
 **Status**: Active — unified gate system implemented.
 **Scope**: Narrow. This spec covers the specific internal mechanism at pipeline layer L4 / L7 of `specs/enforcement.md` — the `enforcer` agent (Haiku) and its PreToolUse gate. It is not the whole pyramid, and it is not a statement about enforcement in general. For the design statement, see `specs/enforcement.md`.
 
-**Rename note**: This mechanism was previously called `custodiet`. The rename to `enforcer` is in progress (see §8 operator impact in `specs/enforcement.md`). Until files are updated, on-disk locations referenced below may still use the `custodiet` name — the mapping is one-for-one.
-
 ## Giving effect
 
 - `aops-core/lib/gates/definitions.py` — gate definition (`enforcer` gate)
 - `aops-core/hooks/gate_config.py` — threshold, mode, sibling env vars
 - `aops-core/agents/enforcer.md` — Haiku agent that reads transcript and evaluates authority compliance
-- `aops-core/agents/enforcer-reviewer.md` — async PR compliance review (formerly `custodiet-reviewer.md`)
+- `aops-core/agents/enforcer-reviewer.md` — async PR compliance review
 - `aops-core/hooks/templates/enforcer-*.md` — context / instruction / countdown templates
 
 ## Purpose
@@ -201,8 +199,6 @@ Use BLOCK only when the violation is clear and the correction is non-negotiable.
 
 ## Implementation evolution
 
-- **Original**: `custodiet_gate.py` (archived) — standalone hook, pre-unified gate system.
-- **Transitional**: `overdue_enforcement.py` (archived) — interim consolidation.
 - **Current**: unified `enforcer` gate in `aops-core/lib/gates/definitions.py`.
 
 Moving the logic into the unified gate architecture gave lifecycle management, icons in the icon strip, and JIT gate opening for compliance agents.
@@ -259,15 +255,6 @@ Moving the logic into the unified gate architecture gave lifecycle management, i
 Claude Code's [auto mode classifier](https://www.anthropic.com/engineering/claude-code-auto-mode) is a Sonnet 4.6 agent that reads the proposed tool call **alongside the conversation transcript and the rules expressed as prose**, then decides whether to allow, surface a permission prompt, or block. It is not a regex matcher and it is not limited to a single tool call's local arguments — explicit user intent in prior turns can override default rules, and stated boundaries in the conversation ("don't push", "wait until I review") become block signals the classifier observes.
 
 In framework terms: the classifier is **rbg-class judgment running at the per-action gate** — fast, transcript-aware, prose-reasoning. Treat it as a peer reviewer, not a pattern matcher.
-
-| Aspect       | CC auto mode classifier                                               | Enforcer subagent                                          |
-| ------------ | --------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Trigger      | Every tool call (pre-execution)                                       | Threshold (~50 writes) or explicit invocation              |
-| Context      | Proposed action + conversation transcript + prose rules               | Full session transcript + axioms / heuristics              |
-| Verdict      | Allow / permission-prompt / block — surfaced to user before execution | OK / WARN / BLOCK injected back into the agent's context   |
-| Latency cost | Negligible (already in the path)                                      | Subagent spawn — non-trivial, hence threshold-gated        |
-| Platform     | Claude Code only                                                      | Claude Code + Gemini                                       |
-| Memory       | Stateless across calls — re-reads transcript each time                | Writes `last_compliance_ts`, runs trend across the session |
 
 **Why both still exist.** They overlap in capability — both can judge prose, both see the transcript. They differ in **where they sit in the loop**:
 

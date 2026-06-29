@@ -130,8 +130,15 @@ for path in glob.glob(f"{home}/**/mcp_config.json", recursive=True):
     if not isinstance(pkb, dict):
         continue
     pkb.setdefault("env", {})["PKB_MCP_URL"] = url
+
+    # Also resolve ${extensionPath} and ${CLAUDE_PLUGIN_ROOT} to the parent directory containing mcp_config.json
+    plugin_dir = os.path.dirname(path)
+    config_str = json.dumps(data)
+    config_str = config_str.replace("${extensionPath}", plugin_dir).replace("${CLAUDE_PLUGIN_ROOT}", plugin_dir)
+    data = json.loads(config_str)
+
     open(path, "w").write(json.dumps(data, indent=2) + "\n")
-    print(f"Injected literal PKB_MCP_URL into {path} (mcpServers.pkb.env)", file=sys.stderr)
+    print(f"Injected literal PKB_MCP_URL and resolved paths into {path}", file=sys.stderr)
     patched += 1
 if patched == 0:
     print("Note: no agy mcp_config.json with a pkb server found (non-agy image?).", file=sys.stderr)

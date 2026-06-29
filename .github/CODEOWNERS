@@ -1,0 +1,22 @@
+# Code owners for academicOps.
+#
+# GitHub automatically REQUESTS a review from the matching code owner(s) the
+# moment a PR is opened (and again when new owned paths are touched), so the
+# maintainer no longer has to discover PRs by browsing — they land in the
+# owner's "Review requested" queue. This is the native affordance the PR
+# pipeline relies on to surface PRs to the human admission gate
+# (specs/workflows/pr-pipeline.md §3.2: a maintainer's review APPROVAL is the
+# admission signal).
+#
+# Note: GitHub never requests review from the PR author, so PRs the maintainer
+# opens themselves are not self-requested — only agent/bot-authored PRs
+# (e.g. opened as `botnicbot`) generate the request, which is exactly the case
+# that needs surfacing.
+#
+# This file drives auto-REQUEST only; it is intentionally NOT wired as a
+# "require review from Code Owners" branch-protection rule — admission
+# (`admit-status`), not a GitHub review count, is the merge gate
+# (`required_approving_review_count: 0`, ruleset 13762049). Adding owner-review
+# enforcement would be a deliberate, separate spec change.
+
+* @nicsuzor
