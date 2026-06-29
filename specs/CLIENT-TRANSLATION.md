@@ -3,7 +3,7 @@
 > **State.** The single source of truth for how the Universal Hook Router translates
 > between Claude Code, Gemini CLI, and Antigravity CLI (agy), and how the build keeps
 > installed assets in sync with what the hooks expect. Per-gate forensic detail →
-> [`specs/GATES.md`](../GATES.md). Enforcement currency → [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
+> [`specs/enforcement/GATES.md`](enforcement/GATES.md). Enforcement currency → [`specs/ENFORCEMENT-MAP.md`](ENFORCEMENT-MAP.md).
 
 ## Problem this solves
 

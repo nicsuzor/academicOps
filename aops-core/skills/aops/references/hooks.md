@@ -8,7 +8,7 @@ description: academicOps hook architecture, PATH bootstrap, MCP server config, a
 
 # Hooks & MCP: academicOps Reference
 
-> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/GATES.md`](../../../../specs/GATES.md). For raw JSONL forensics, see [[forensics-details]].
+> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md). For raw JSONL forensics, see [[forensics-details]].
 
 For Claude Code's hook system in general, see the [official docs](https://code.claude.com/docs/en/hooks) and [plugins reference](https://code.claude.com/docs/en/plugins-reference). This document covers the academicOps-specific implementation.
 
@@ -115,8 +115,8 @@ The PKB MCP server uses a wrapper script instead of calling `uvx` directly:
 
 > **SSoT Warning:** The exact JSON schemas and field definitions for hooks are defined in code to prevent drift. For the definitive schema structures, refer to:
 >
-> - Gate models: [`aops-core/lib/gate_types.py`](../../../aops-core/lib/gate_types.py)
-> - Hook routing formats: [`aops-core/hooks/router.py`](../../../aops-core/hooks/router.py)
+> - Gate models: [`aops-core/lib/gate_types.py`](../../../lib/gate_types.py)
+> - Hook routing formats: [`aops-core/hooks/router.py`](../../../hooks/router.py)
 
 ### Exit Codes (PreToolUse)
 
