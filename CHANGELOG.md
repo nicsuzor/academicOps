@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.44](https://github.com/nicsuzor/academicOps/compare/v0.3.43...v0.3.44) (2026-06-28)
+
+
+### Features
+
+* **routing:** implement deterministic transcript-path routing and AGY fallback ([5251d39](https://github.com/nicsuzor/academicOps/commit/5251d39ccf7c180fb5cb9dec915bfbe6a2da088b))
+
+
+### Bug Fixes
+
+* **sessions:** anchor hook-log/state path on disk, not a SessionStart-pinned env ([f082e38](https://github.com/nicsuzor/academicOps/commit/f082e3830792fa4945718feb378caf2af3f02226))
+
 ## [0.3.43](https://github.com/nicsuzor/academicOps/compare/v0.3.42...v0.3.43) (2026-06-27)
 
 

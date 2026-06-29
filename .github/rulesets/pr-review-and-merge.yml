@@ -112,7 +112,7 @@ rules:
         # returns 0 errors on a clean clone of main).
         # - context: "Type Check / Type Check"
         - context: "Pytest / Pytest"
-        # v2 framework agents (specs/workflows/pr-pipeline-v2.md §7) — each owns its
+        # framework agents (specs/workflows/pr-pipeline.md §7) — each owns its
         # AND-gate slot directly; there is no transitive merge-prep-status gate.
         # enforcer-status: rbg — axiom review (agent-enforcer.yml)
         - context: "enforcer-status"

@@ -223,19 +223,3 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
         except ValueError:
             return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-# =============================================================================
-# WS7 item 4 — enforcer channel sentinel (#1315)
-# =============================================================================
-# The enforcer gate injects an instruction telling the main agent to invoke rbg
-# with a session-log path. In the field this read as a prompt injection — an
-# instruction arriving mid-stream that says "now go invoke this agent" looks
-# exactly like smuggled content, so the agent correctly-but-wrongly ignored a
-# real gate (#1315, thread 1). The fix is a stable first-party marker on the
-# NOTE: the `<!-- aops:enforcer-channel -->` sentinel + is_enforcer_channel()
-# were removed 2026-06-27. They were a first-party trust marker we embedded in
-# injected hook text — meaningful only to our own code, opaque to Claude Code,
-# and never wired to a live consumer. Such markers risk tripping Claude Code's
-# own hook-injection rejection while buying nothing, so the whole class is
-# retired (task aops-4de68b25 follow-up).

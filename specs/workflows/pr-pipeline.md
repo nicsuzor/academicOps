@@ -328,7 +328,9 @@ as Stage 1, with two additions:
 
 - the **dev/mechanic agent** is appended last in the cost order — it does real development
   to clear the red that the autofixers couldn't; and
-- **conflict resolution** runs when the PR is `CONFLICTING` (`git merge origin/<base>`).
+- **conflict resolution** runs when the PR is `CONFLICTING` (`git merge origin/<base>`). A
+  conflicting PR reaches the mechanic only via the review-approval admission path — it never
+  gets a `pull_request` triage run (§3.11).
 
 **LIVE:** `agent-mechanic.yml` is invoked by `pr-pipeline.yml`'s `mechanic` job (gated on
 `admit-status=success` via a tiny `check-admit` precursor); `.github/agents/mechanic.agent.md`
@@ -515,17 +517,33 @@ The responder is **NOT** the Stage-2 mechanic run earlier. It is a distinct, tig
 | When                | Pre-admission, Stage 1 converged with red                   | Post-admission (`admit-status=success`)           |
 | Budget              | `timeout-minutes: 30`, `MAX_RESPONDER_RUNS=3`               | `timeout-minutes: 55`, `MAX_MECHANIC_RUNS=5`      |
 | Scope               | Mechanical fixes only — NO judgment calls, NO full dev work | Real development to clear any red                 |
-| Conflict resolution | YES — clean merge only; ambiguous → halt                    | YES — full mechanic treatment                     |
+| Conflict resolution | **NO** — unreachable on conflicting PRs (§3.11)             | YES — full mechanic treatment                     |
 | Status              | `responder-status` (informational, never required)          | `mechanic-status` (informational, never required) |
 
 **The mechanical/judgment boundary is load-bearing.** The responder reuses the enforcer's existing classification (`.github/agents/enforcer.agent.md` §3):
 
-- **Mechanical** (fix and commit): typos, missing required frontmatter, orphan files, misnamed tools, wrong paths, failing CI that needs a deterministic code fix, merge conflicts (clean-merge only).
+- **Mechanical** (fix and commit): typos, missing required frontmatter, orphan files, misnamed tools, wrong paths, failing CI that needs a deterministic code fix. (Merge conflicts are **out of scope** for the responder — a conflicting PR never reaches it; see §3.11. Conflict resolution is the post-admission mechanic's job alone.)
 - **Judgment** (do NOT touch): design trade-offs, scope objections, strategic concerns, recusal flags (`#recusal`), anything where "what is correct?" requires human decision.
 
 Judgment-call and recusal REVISEs must surface to the human gate **unmodified**. The responder must not attempt to auto-apply them, and must not dismiss them.
 
-**No-op-on-green guard (the crux — PR #1614 / P5 applied pre-admission).** The `check-mechred` job in `pr-pipeline.yml` reads `enforcer-status` and `qa-status` on HEAD using `scripts/ci/check-mechanical-red.sh`. If both are `success`, the guard fires (`has_mechanical_red=false`) and `pre-admission-responder` is **skipped immediately**. This is the same cost pathology that motivated P5 — a green PR must never spawn a runner for the responder, no matter what.
+**Dispatch triggers — enforcer, qa, AND Pytest red (#1965).** The responder exists to clear mechanically-fixable red pre-admission, and **failing CI is explicitly mechanical** (per `enforcer.agent.md` §3 / the §3.8 boundary table: "failing CI that needs a deterministic code fix"). The eligible dispatch triggers on HEAD are therefore:
+
+- `enforcer-status == failure`, OR
+- `qa-status == failure`, OR
+- the `Pytest` check-run `== failure` **and that failure is attributable to the PR's own diff** (see the base-broken guard below).
+
+**Why Pytest is read differently from enforcer/qa.** `Pytest` is a **GitHub Actions check-run**, not a commit status, so it never appears in the `commits/{sha}/statuses` API that `check-mechanical-red.sh` reads for `enforcer-status`/`qa-status`/`admit-status`. This was the root cause of #1965: a PR whose only red was Pytest satisfied neither status condition, so the no-op-on-green guard fired and **no responder was dispatched** — the PR sat stranded red (observed on #1955/#1956/#1957, 2026-06-24). The fix passes HEAD's Pytest result into the gate deterministically as `PYTEST_RESULT` (the `needs.pytest.result` of the same `pr-pipeline.yml` run). `check-mechred` now declares `needs: [lint, enforcer, qa, pytest]`, so the `Pytest` check-run is **terminal** when the gate evaluates — no polling, no race. `pytest` finishes well before the slow enforcer/qa agents, so it adds no critical-path latency.
+
+**Base-broken Pytest guard (the #1965 aggravating factor — anti-thundering-herd).** A test broken on the **base branch** reddens Pytest on _every_ PR. Naively dispatching the responder for it would spawn a thundering herd of useless runs, because the responder **cannot fix a base failure from a PR branch**. So a Pytest failure is an eligible trigger **only when Pytest is not also failing on the base branch**. `check-mechanical-red.sh` determines this conservatively: when (and only when) enforcer + qa are both green and `PYTEST_RESULT == failure`, it queries the latest **completed** `Pytest` check-run on `origin/$BASE_BRANCH` (live via the check-runs API; injectable as `BASE_CHECK_RUNS_JSON` for tests):
+
+- base Pytest `failure` → **not attributable** to the PR → skip, surface to human.
+- base Pytest `success`, or no completed base run found → **attributable** to the PR's diff → dispatch.
+- base state **unverifiable** (live API error) → **fail closed** (skip, surface to human) rather than risk a herd.
+
+This is deliberately conservative: a PR that introduces a _new_ Pytest failure on top of an already-broken base is also suppressed (it cannot be distinguished from inherited base breakage without per-test diffing, which is out of scope). That trades a few missed dispatches for hard protection against the herd; such PRs surface to the human like any other un-cleared red. When the base is fixed, the next push re-evaluates and the responder dispatches normally.
+
+**No-op-on-green guard (the crux — PR #1614 / P5 applied pre-admission).** The `check-mechred` job in `pr-pipeline.yml` reads `enforcer-status` and `qa-status` on HEAD using `scripts/ci/check-mechanical-red.sh`. If both are `success` **and there is no PR-attributable Pytest red**, the guard fires (`has_mechanical_red=false`) and `pre-admission-responder` is **skipped immediately**. This is the same cost pathology that motivated P5 — a green PR must never spawn a runner for the responder, no matter what.
 
 **Stage-2 guard.** `check-mechanical-red.sh` also checks `admit-status`. If `admit-status=success` (PR already admitted), the responder is skipped and the Stage-2 mechanic (§3.3) handles any remaining red. The responder must not run alongside the Stage-2 loop — `check-admit`'s `needs: [pre-admission-responder]` ensures the responder completes (or is skipped) before `check-admit` dispatches the mechanic.
 
@@ -537,7 +555,7 @@ Judgment-call and recusal REVISEs must surface to the human gate **unmodified**.
 lint → enforcer → qa → [check-mechred] → [pre-admission-responder]
 ```
 
-`check-mechred` runs after Stage-1 convergence (same convergence precondition as `check-admit`). If the responder commits a fix, it stamps `Responder-By:` and pushes; the new `synchronize` cancels the current run and restarts Stage 1 on the new SHA. Enforcer + qa re-verify the new SHA per the normal loop-skip protocol (§10).
+`check-mechred` runs after Stage-1 convergence (same convergence precondition as `check-admit`) and additionally `needs: [..., pytest]` so HEAD's `Pytest` check-run is terminal when the gate reads `PYTEST_RESULT` (#1965). If the responder commits a fix, it stamps `Responder-By:` and pushes; the new `synchronize` cancels the current run and restarts Stage 1 on the new SHA. Enforcer + qa re-verify the new SHA per the normal loop-skip protocol (§10).
 
 **Dispatch sequence.** `check-admit` now `needs: [lint, enforcer, qa, pre-admission-responder]`. For Stage-2 passes (admitted PRs), `check-mechred` immediately returns `has_mechanical_red=false` (Stage-2 guard fires), `pre-admission-responder` is skipped, and `check-admit` proceeds with only a ~5s `check-mechred` overhead — negligible on the Stage-2 critical path.
 
@@ -611,10 +629,10 @@ When a write-class maintainer submits a **`CHANGES_REQUESTED`** review on a read
 
 **De-conflict with the pre-admission responder (§3.8, load-bearing boundary):**
 
-| Agent                    | Triggered by       | Scope                                        | Status context           |
-| ------------------------ | ------------------ | -------------------------------------------- | ------------------------ |
-| pre-admission-responder  | push (synchronize) | mechanical CI/conflicts, pre-admission only  | `responder-status`       |
-| review-response mechanic | review submitted   | human reviewer comments, any admission state | `review-response-status` |
+| Agent                    | Triggered by       | Scope                                                        | Status context           |
+| ------------------------ | ------------------ | ------------------------------------------------------------ | ------------------------ |
+| pre-admission-responder  | push (synchronize) | mechanical CI red, pre-admission only (no conflicts — §3.11) | `responder-status`       |
+| review-response mechanic | review submitted   | human reviewer comments, any admission state                 | `review-response-status` |
 
 These two agents address orthogonal concerns and are triggered by different events, so they cannot both fire on the same event. The race scenario (review submitted while a responder run is already in-progress on the same SHA) is guarded: `authorize-changes` reads `responder-status` on HEAD before dispatching — if `pending`, the review-response dispatch is skipped for this review event. The mechanic workflow's concurrency group (`agent-mechanic-{PR}`) also queues review-response runs behind any in-flight Stage-2 mechanic run for the same PR.
 
@@ -682,6 +700,61 @@ own named reviewer set.
 > to be a third such dependency is retired — admission is now a PR review approval, §3.2.)
 > §3.7 closes the _silent-absence-reads-as-pass_ hole; it does not, and cannot from a worktree,
 > override a deliberate admin bypass.
+
+### 3.11 Admitting a conflicting PR — GitHub's merge-ref constraint — **LIVE**
+
+A PR that is `CONFLICTING` with its base never receives a `pull_request` workflow run.
+GitHub builds the `refs/pull/N/merge` ref that a `pull_request` run checks out by
+test-merging head into base; a merge conflict makes that ref un-buildable, so GitHub
+**silently never creates the run** — no jobs, no logs, no status, no notification. This is
+GitHub platform behaviour, not a pipeline choice (community discussions
+[#11265](https://github.com/orgs/community/discussions/11265),
+[#26304](https://github.com/orgs/community/discussions/26304)).
+
+> **Worked example — PR #2005 (branch `agy`).** Opened CONFLICTING with `dev`. Its `opened`
+> event, and a later manual close/reopen, each fired **only** the `pull_request_target`
+> retarget check; the `pull_request` PR Review Pipeline produced **zero** runs on the head
+> SHA. Author had `write` access and the PR was non-draft — the sole cause was the conflict.
+
+**Consequences (normative):**
+
+1. **Stage-1 triage (§3.1) and the pre-admission responder (§3.8) never see a conflicting
+   PR.** Both live in `pr-pipeline.yml` on the `pull_request` event, which does not fire.
+   Conflict resolution is therefore **not** the responder's job — the responder is
+   unreachable on exactly the PRs that have a conflict, and its dispatch gate
+   (`check-mechanical-red.sh`) has no conflict trigger anyway (§3.8 lists its triggers:
+   enforcer/qa/Pytest red only). Conflict resolution belongs **solely to the post-admission
+   mechanic** (§3.3).
+2. **A conflicting PR can still be admitted.** The events that DO fire on a conflicting PR
+   are `pull_request_target` (the retarget guard) and `pull_request_review`. Admission is a
+   review approval handled by `admit-on-review.yml` on `pull_request_review` (§3.2), which
+   fires regardless of mergeability. The maintainer approves a conflicting PR exactly as any
+   other — "good idea; make it mergeable" explicitly includes "resolve the conflict."
+3. **On admission, the mechanic is dispatched directly by `admit-on-review.yml`** (the review
+   event re-enters on the admitted SHA), not by a `pull_request` run that would never fire.
+
+**The dispatch rule (load-bearing).** `admit-on-review.yml`'s `decide-mechanic` job dispatches
+the mechanic when the PR is `CONFLICTING` **even if the named reviewers are both green**.
+Mergeability is an INDEPENDENT merge gate; "reviewers green" is not sufficient to skip the
+mechanic on a conflicting PR. Keying the first-dispatch decision on reviewer colour ALONE was
+a deadlock: a conflicting-but-green PR got `need_mechanic=false`, armed an auto-merge that can
+never fire (`CONFLICTING` is unmergeable), and nothing ever resolved the conflict. The job now
+reads `gh pr view --json mergeable` (polling until it settles) alongside the reviewer statuses
+and dispatches when red/pending reviewers remain **OR** the PR is `CONFLICTING`.
+
+**Resumption.** Once the mechanic merges `origin/<base>` into the head and pushes (§3.3, §1 of
+`mechanic.agent.md`), the PR becomes `MERGEABLE`. That push is a `synchronize` that **does**
+fire the normal `pull_request` pipeline, so Stage-2 re-verification (§3.5), passes 2…N
+(`check-admit → mechanic`), and the armed auto-merge all resume the standard flow. The
+conflicting-state special case is confined to the **first** dispatch, on the review-approval
+path.
+
+> **Residual edge.** If the mechanic's resolution does not fully clear the conflict (the base
+> advanced again mid-loop, or a squash-merge ghost conflict — `mechanic.agent.md` §1b), the new
+> head SHA is still `CONFLICTING`, so no `pull_request` run re-fires and the auto-loop stalls.
+> The PR is re-entered by the next review approval (re-dispatches via this same path) or by a
+> human push. The §3.6 exhaustion handler still bounds repeated mechanic passes within a single
+> admission.
 
 ## 4. Per-agent contract (locked)
 
@@ -832,6 +905,7 @@ once).
     pushes, OR red) → **re-fire the reviewers on the admitted SHA** (`admit-enforcer` →
     `admit-qa`, the same reusable workflows the pipeline uses) and **recompute the
     required `review-attestation`** on that SHA (`admit-attestation`, post-only — it does
+    not re-run the reviewer agents, just reads their posted statuses and posts attestation).
     not fail-closed-exit, so a legitimately-red re-verify does not fail the run). Then
     `decide-mechanic` re-reads the settled reviewer state and dispatches the mechanic's
     first pass **only if red/pending remains**; if the re-verify came back green,

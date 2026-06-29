@@ -111,6 +111,7 @@ def _debug_log_input(raw_input: dict[str, Any], args: Any) -> None:
             "client": getattr(args, "client", None),
             "event": getattr(args, "event", None),
             "input": raw_input,
+            "environ": dict(os.environ),
         }
         with _debug_log_path(session_id).open("a") as f:
             f.write(json.dumps(entry) + "\n")

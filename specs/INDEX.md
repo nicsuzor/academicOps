@@ -50,8 +50,7 @@ The big-W "what to do and in what order" specs. Workflow engine, decomposition, 
 - [[mcp-decomposition-tools]] — Decomposition primitives in PKB MCP
 - [[strategic-triage]] — Where strategic work routing happens
 - [[conceptual-review-workflow]] — Reviewing concept documents
-- [[pr-pipeline]] — Pull request lifecycle (v1, superseded; describes operative merge-prep until v2 Phase 5)
-- [[pr-pipeline-v2]] — PR pipeline v2 (operative, phased — two-stage, Environment-gated, convergent; Phase 1 shipped)
+- [[pr-pipeline]] — PR pipeline (operative SSoT — two-stage, review-approval-gated, convergent; conflict resolution via the mechanic on admission, §3.11)
 - [[audit-protocol]] — Framework audit standard
 - [[daily-briefing-bundle]] — `/daily` skill bundle
 - [[60-importance-escalation|workflows/daily/60-importance-escalation]] — Importance-to-visibility escalation model
