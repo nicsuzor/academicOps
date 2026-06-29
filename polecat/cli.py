@@ -2316,6 +2316,7 @@ def _replicate_gemini_auth(
         "projects.json",
         "state.json",
         "policies",
+        "config",
     ]
 
     existing_files = [f for f in auth_files if (gemini_dir / f).exists()]
@@ -2347,6 +2348,28 @@ def _replicate_gemini_auth(
             if src_policies.is_dir():
                 for policy_file in src_policies.glob("*.toml"):
                     shutil.copy2(policy_file, policies_dir / policy_file.name)
+            continue
+
+        if f == "config":
+            src_config = gemini_dir / "config"
+            dst_config = target_dir / "config"
+            dst_config.mkdir(parents=True, exist_ok=True)
+            # Copy config/mcp_config.json if it exists
+            mcp_cfg = src_config / "mcp_config.json"
+            if mcp_cfg.exists():
+                shutil.copy2(mcp_cfg, dst_config / "mcp_config.json")
+            # Copy config/plugins/**/mcp_config.json
+            src_plugins = src_config / "plugins"
+            if src_plugins.is_dir():
+                dst_plugins = dst_config / "plugins"
+                dst_plugins.mkdir(parents=True, exist_ok=True)
+                for p_dir in src_plugins.iterdir():
+                    if p_dir.is_dir():
+                        p_mcp = p_dir / "mcp_config.json"
+                        if p_mcp.exists():
+                            dst_p_dir = dst_plugins / p_dir.name
+                            dst_p_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(p_mcp, dst_p_dir / "mcp_config.json")
             continue
 
         if f == "trustedFolders.json" and work_dir:
@@ -2496,6 +2519,31 @@ def _replicate_gemini_auth(
             src = ag_dir / f
             if src.exists():
                 shutil.copy2(src, target_ag_dir / f, follow_symlinks=True)
+
+    # Replace host home directory paths and template variables in settings/configs
+    host_home_str = str(home)
+    container_home_str = "/home/worker"
+    for dirpath, _dirnames, filenames in os.walk(target_dir):
+        for fname in filenames:
+            fpath = Path(dirpath) / fname
+            if fpath.suffix in (".json", ".jsonl", ".toml", ".txt", ".md"):
+                try:
+                    content = fpath.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    continue
+                changed = False
+                if host_home_str in content:
+                    content = content.replace(host_home_str, container_home_str)
+                    changed = True
+                if "${extensionPath}" in content or "${CLAUDE_PLUGIN_ROOT}" in content:
+                    container_fpath = Path(container_home_str) / fpath.relative_to(tmp_gemini_home)
+                    container_dir = str(container_fpath.parent)
+                    content = content.replace("${extensionPath}", container_dir).replace(
+                        "${CLAUDE_PLUGIN_ROOT}", container_dir
+                    )
+                    changed = True
+                if changed:
+                    fpath.write_text(content, encoding="utf-8")
 
     # Make all replicated files and directories writable by any UID.
     # Gemini's sandbox container may run as a different user than the host
@@ -5105,7 +5153,7 @@ def run(
 
         if interactive:
             # Interactive mode
-            cmd.append(prompt)
+            cmd.extend(["-i", prompt])
         else:
             # Headless mode with a timeout
             cmd.extend(["-p", prompt, "--print-timeout", "9m"])
