@@ -13,7 +13,7 @@ needs_task: false
 mode: dispatch
 domain:
   - operations
-allowed-tools: Task, Bash, Read, Grep, Skill, mcp__plugin_aops-core_pkb__get_task, mcp__plugin_aops-core_pkb__get_task_children, mcp__plugin_aops-core_pkb__list_tasks, mcp__plugin_aops-core_pkb__update_task
+allowed-tools: Skill
 permalink: commands/dispatch
 ---
 
@@ -22,11 +22,6 @@ permalink: commands/dispatch
 Selects the next queued task and dispatches it to the appropriate background
 execution surface (polecat or subagent). Performs exactly one dispatch step and
 exits. **Does not execute the task inline** — for that, use `/pull`.
-
-## Invocation & Arguments
-
-- `/dispatch` — select the highest focus-score queued task.
-- `/dispatch <task-id>` — select the specified task (or its first queued leaf).
 
 ## Execution
 
@@ -38,7 +33,3 @@ exactly as provided:
 If no arguments are given, run:
 
 `Skill(skill="task-lifecycle", args="dispatch")`
-
-The skill owns the shared Select + Gates spine (premise gate, freshness
-pre-check) and the routing/halt behaviour. See
-[[../skills/task-lifecycle/SKILL.md]].

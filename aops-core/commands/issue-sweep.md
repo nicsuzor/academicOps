@@ -24,22 +24,6 @@ permalink: commands/issue-sweep
 
 Triages GitHub issues by delegating to the `survey` skill in `sweep` mode. Triages ≤ 20 issues per cycle.
 
-## Invocation & Arguments
-
-- `/issue-sweep` — run one undirected cycle of 20 issues.
-- `/issue-sweep <issue#>` or `"<focus phrase>"` — directed cycle: prioritize this issue/focus and its root-cause cluster first, then scan general backlog.
-- `/issue-sweep --batch <N>` — override batch size.
-- `/issue-sweep --dry-run` — output classification plan without executing modifications or writing logs.
-
-## Execution Rules
-
-- **Autonomous Actions**: Consolidate and close duplicate issues, group related issues into fix-epics, file single tasks, and queue fix-epics in the PKB.
-- **Escalation Gates**: Gate only on ambiguous classifications or when human input is required.
-- **Prohibitions**:
-  - Do not run tasks or fix code.
-  - Do not open PRs or merge to `main`.
-  - Do not run destructive, irreversible actions.
-
 ## Dispatch
 
 Delegate the sweep execution to the Junior coordinator agent:

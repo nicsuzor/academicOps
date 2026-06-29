@@ -1157,7 +1157,7 @@ def build_aops_core(
             raise
 
     # 5. Commands (Gemini only for now as they use .toml)
-    if platform == "gemini":
+    if platform in ("gemini", "antigravity"):
         commands_dist = content_dir / "commands"
         convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
         if convert_script.exists():

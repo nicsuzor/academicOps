@@ -14,7 +14,7 @@ needs_task: false
 mode: execute
 domain:
   - operations
-allowed-tools: Task, Bash, Read, Grep, Edit, Write, Skill, AskUserQuestion, mcp__plugin_aops-core_pkb__get_task, mcp__plugin_aops-core_pkb__get_task_children, mcp__plugin_aops-core_pkb__list_tasks, mcp__plugin_aops-core_pkb__update_task
+allowed-tools: Skill
 permalink: commands/pull
 ---
 
@@ -24,11 +24,6 @@ Selects the next queued task and **runs it in the current interactive session**:
 claim → execute → verify → complete. Because this is interactive, you may ask the
 user questions whenever a decision is genuinely theirs. To hand work to a
 background worker instead, use `/dispatch`.
-
-## Invocation & Arguments
-
-- `/pull` — claim the highest focus-score queued task and run it.
-- `/pull <task-id>` — claim the specified task (or its first queued leaf).
 
 ## Execution
 
@@ -40,10 +35,6 @@ exactly as provided:
 If no arguments are given, run:
 
 `Skill(skill="task-lifecycle", args="execute")`
-
-The skill owns the shared Select + Gates spine (premise gate, freshness
-pre-check) and the inline claim/execute/verify/complete lifecycle. See
-[[../skills/task-lifecycle/SKILL.md]].
 
 <!-- cowork:only -->
 
