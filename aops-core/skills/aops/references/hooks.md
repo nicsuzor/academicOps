@@ -130,7 +130,7 @@ Exit 2 ignores stdout entirely. For other hook types, always exit 0.
 
 ### Stop/SubagentStop Behavior
 
-The Stop hook enforces block/warn behaviors for final-turn verifications. On modern environments (e.g., Claude Code >= 2.1.191), `additionalContext` is supported without forcing a block (warn mode), allowing silent context injection.
+The Stop hook enforces block/warn behaviors for final-turn verifications. On modern environments (e.g., Claude Code >= 2.1.191), `additionalContext` is supported without forcing a block (warn mode), allowing context injection. Note this is **not silent** — on Stop the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line (PTY-confirmed on 2.1.195, task aops-c0363bf8). There is no agent-only Stop channel; for user-silent injection, relocate the reminder to the next `UserPromptSubmit`.
 
 | Field                | `decision: "block"`              | `decision: "approve"` |
 | -------------------- | -------------------------------- | --------------------- |
