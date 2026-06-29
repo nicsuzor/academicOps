@@ -8,6 +8,16 @@ triggers:
   - "research pipeline"
   - "empirical data"
   - "research data analysis"
+  - "research project"
+  - "methodology"
+  - "research question"
+  - "data collection"
+  - "empirical analysis"
+  - "dry run"
+  - "research methodology"
+  - "empirical research"
+  - "methodological integrity"
+  - "pilot study"
 modifies_files: true
 needs_task: true
 mode: execution
@@ -33,9 +43,12 @@ Support academic research data analysis through technology-agnostic principles: 
 
 - **Data immutability** — source datasets, ground-truth labels, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
 - **Research questions drive design** — methods serve the question; restate the question, confirm the method fits it, and refuse convenience shortcuts that compromise validity. A result that doesn't answer the question is worthless however technically sound.
+- **Methodological justification** — ensure all model, variable, and sample choices are justified by the research design, not by computational convenience. Do not drop variables, models, or conditions, or simplify experimental designs unless there is a clear methodological justification. Preserve all theoretically meaningful distinctions.
+- **Dry run / pilot verification** — before full-scale execution, run a qualitative pilot audit. Evaluate representative samples of actual outputs for content substance, completeness across all conditions, edge-case behavior, and face validity. Do not declare a dry run successful based on error-free execution or aggregate statistics alone.
 - **Reproducibility & versioning** — every transformation is version-controlled, testable by re-running, and separated from display (never compute in the display layer).
 - **Methodological transparency** — name the assumptions and limitations a result rests on; flag uncertainty rather than smoothing it over.
 - **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
+- **Report as argument** — structure research reports as cohesive arguments where every chapter, section, and visualization directly supports a specific claim. Ground all reported metrics in their practical and theoretical implications. Collaborate section-by-section with the user to refine narrative framing.
 
 (The interactive research head **Ida** carries this same disposition inline in her persona — `aops-core/agents/ida.md`. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
 
