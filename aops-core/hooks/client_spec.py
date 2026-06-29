@@ -200,11 +200,14 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     ("claude", Event.USER_PROMPT): ChannelSpec(True, True, True),
     ("claude", Event.POST_TOOL): ChannelSpec(False, True, True),
     ("claude", Event.SESSION_START): ChannelSpec(False, True, True),
-    # Stop additionalContext-without-block CONFIRMED on 2.1.191 (mem-4ab6cc0b):
-    # delivery works without blocking. The legacy "Stop rejects hookSpecificOutput"
-    # (2.1.158) is STALE. NB: delivery != enforcement — a non-blocking nudge can be
-    # ignored, so block-mode gates (handover) still need can_block.
-    ("claude", Event.STOP): ChannelSpec(True, True, True, notes="2.1.191 mem-4ab6cc0b"),
+    # Stop additionalContext-without-block CONFIRMED on 2.1.191, re-confirmed
+    # 2.1.195 (mem-4ab6cc0b; task aops-c0363bf8, PTY-probed): delivery works
+    # without blocking. The legacy "Stop rejects hookSpecificOutput" (2.1.158)
+    # is STALE. user_message=True: the delivered field ALSO renders to the user
+    # as "Stop hook feedback:" — there is NO agent-only Stop channel. NB:
+    # delivery != enforcement — a non-blocking nudge can be ignored, so
+    # block-mode gates (handover) still need can_block.
+    ("claude", Event.STOP): ChannelSpec(True, True, True, notes="2.1.195 mem-4ab6cc0b"),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
     # ---- Gemini CLI ----
     ("gemini", Event.PRE_TOOL): ChannelSpec(True, True, True),
