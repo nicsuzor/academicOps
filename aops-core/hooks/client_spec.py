@@ -204,10 +204,17 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     # 2.1.195 (mem-4ab6cc0b; task aops-c0363bf8, PTY-probed): delivery works
     # without blocking. The legacy "Stop rejects hookSpecificOutput" (2.1.158)
     # is STALE. user_message=True: the delivered field ALSO renders to the user
-    # as "Stop hook feedback:" — there is NO agent-only Stop channel. NB:
-    # delivery != enforcement — a non-blocking nudge can be ignored, so
-    # block-mode gates (handover) still need can_block.
-    ("claude", Event.STOP): ChannelSpec(True, True, True, notes="2.1.195 mem-4ab6cc0b"),
+    # as "Stop hook feedback:" — there is NO user-SILENT agent-only Stop channel.
+    # BUT the asyncRewake Stop hook (config asyncRewake:true + rewakeMessage +
+    # rewakeSummary; fires on exit 2) DOES give the Ephemeral->agent disposition:
+    # full body -> agent <system-reminder>, user sees only a one-line <summary>
+    # (decompiled + PTY-proven 5x, 2026-06-29, kb-fcc2b95c). NB delivery !=
+    # compulsion: the woken agent weighs it as advisory (did not reliably act),
+    # so block-mode gates (handover) still need can_block. See ENFORCEMENT-MAP
+    # §1.1 caveat + RCA #2014.
+    ("claude", Event.STOP): ChannelSpec(
+        True, True, True, notes="2.1.195 mem-4ab6cc0b; asyncRewake=quiet-summary path"
+    ),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
     # ---- Gemini CLI ----
     ("gemini", Event.PRE_TOOL): ChannelSpec(True, True, True),
