@@ -405,6 +405,13 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         new_hooks = []
                         for hook in value:
                             new_hook = dict(hook)
+                            # asyncRewake (config asyncRewake/rewakeMessage/
+                            # rewakeSummary) is the Claude-only Stop quiet-split
+                            # channel — strip it so it never leaks into the Gemini
+                            # hooks.json (Gemini has no asyncRewake; its Stop split
+                            # would be a separate capability).
+                            for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+                                new_hook.pop(_k, None)
                             if "command" in new_hook:
                                 # Replace Claude variable with Gemini variable
                                 cmd = new_hook["command"]
@@ -464,6 +471,10 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
     def _transform_hook(hook: dict, output_event: str) -> dict:
         """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
         new_hook = dict(hook)
+        # asyncRewake is the Claude-only Stop quiet-split channel — strip it so it
+        # never leaks into the agy hooks.json (agy rejects unknown fields).
+        for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+            new_hook.pop(_k, None)
         if "command" in new_hook:
             cmd = new_hook["command"]
             # agy runs PreToolUse/PostToolUse/Pre|PostInvocation hooks with the
