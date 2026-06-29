@@ -636,6 +636,27 @@ def _find_real_transcript(run_session_dir: Path | None) -> Path | None:
     """
     if run_session_dir is None or not run_session_dir.is_dir():
         return None
+
+    # agy (Antigravity CLI v1.0.13+) writes its transcript to a per-run brain
+    # dir: ``<uuid>/.system_generated/logs/transcript_full.jsonl`` (or
+    # ``transcript.jsonl``), captured under ``<run_session_dir>/agy-brain/`` by
+    # the bind-mount/extract in _build_docker_cmd. Return the ``<uuid>`` DIR (not
+    # the file) so the caller's ``parse_session_file`` dispatches to
+    # ``_parse_antigravity_brain``. Checked first because the generic ``*.jsonl``
+    # glob below would otherwise return the raw transcript file, which the parser
+    # treats as a Claude/Gemini transcript and mis-parses. Prefer the newest
+    # brain dir by mtime when several runs share a session dir.
+    agy_brain_dirs = {
+        # tfile = <uuid>/.system_generated/logs/transcript*.jsonl
+        # → brain dir <uuid> is three parents up.
+        tfile.parent.parent.parent
+        for fname in ("transcript_full.jsonl", "transcript.jsonl")
+        for tfile in run_session_dir.rglob(f".system_generated/logs/{fname}")
+        if tfile.parent.name == "logs" and tfile.parent.parent.name == ".system_generated"
+    }
+    if agy_brain_dirs:
+        return max(agy_brain_dirs, key=lambda d: d.stat().st_mtime)
+
     candidates: list[Path] = []
     for p in run_session_dir.rglob("*.jsonl"):
         if p.name.startswith("polecat-session"):
@@ -1803,6 +1824,20 @@ def _build_docker_cmd(
         agy_log_host.parent.mkdir(parents=True, exist_ok=True)
         agy_log_host.touch(exist_ok=True)
         cmd.extend(["-v", f"{agy_log_host}:{container_home}/.gemini/antigravity-cli/cli.log"])
+
+    # agy (Antigravity CLI v1.0.13+) writes its real transcript to a per-run
+    # "brain" dir at a FIXED path OUTSIDE the session_dir mount:
+    # ~/.gemini/antigravity-cli/brain/<uuid>/.system_generated/logs/transcript*.jsonl
+    # — it no longer writes the old session-*.json under .gemini/tmp/.../chats/.
+    # Bind-mount the brain/ parent into the host session_dir so the dynamic
+    # <uuid> dir is captured; _find_real_transcript returns that <uuid> dir and
+    # transcript_parser._parse_antigravity_brain reads the jsonl. Mirrors the
+    # cli.log persistence above (live bind mount survives a mid-run crash);
+    # remote daemons copy it out via extract_paths at the call site.
+    if persist_agy_log and session_dir is not None and not _is_remote_daemon():
+        agy_brain_host = (session_dir / "agy-brain").resolve()
+        agy_brain_host.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{agy_brain_host}:{container_home}/.gemini/antigravity-cli/brain"])
 
     # The container NEVER reads polecat.yaml. The host is the SSoT: it resolved
     # the config above and injects the few values the container actually needs
@@ -4532,6 +4567,16 @@ def crew(
                                 "/home/worker/.gemini/antigravity-cli/cli.log",
                                 session_dir / "agy-cli.log",
                                 "file",
+                            )
+                        )
+                        # agy v1.0.13+ transcript lives in the per-run brain dir
+                        # (see the bind-mount comment in _build_docker_cmd). Copy
+                        # the brain/ tree out so _find_real_transcript locates the
+                        # <uuid> dir and the parser reads transcript*.jsonl.
+                        extract.append(
+                            (
+                                "/home/worker/.gemini/antigravity-cli/brain/.",
+                                session_dir / "agy-brain",
                             )
                         )
             else:
