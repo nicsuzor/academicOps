@@ -190,6 +190,19 @@ class ChannelSpec:
     user_message: bool
     notes: str = ""
     provisional: bool = False
+    # The "quiet split" disposition (ENFORCEMENT-MAP §1.1 Ephemeral→agent target):
+    # can this (client, event) deliver the FULL instruction body to the AGENT while
+    # the USER sees ONLY a one-line summary? On Claude Stop this is the asyncRewake
+    # path (config asyncRewake:true + rewakeMessage/rewakeSummary; hook exits 2):
+    # body → agent <system-reminder>, user → ⏺ <rewakeSummary> one-liner.
+    # PTY-PROVEN live on 2.1.195 (stop-asyncrewake-split: user_saw_body=False,
+    # user_saw_summary=True, agent_ctx_body=True). CAVEAT — delivery ≠ compulsion:
+    # asyncRewake wakes the agent but treats the body as advisory it weighs, so it
+    # is NOT a hard block. It is the quiet ADVISORY Stop path (ida-style), not a
+    # substitute for decision:block. It is CONFIG-level (build registers the hook),
+    # NOT router-stdout-emitted; the one-line user summary is UNAVOIDABLE (no
+    # user-silent Stop exists). False elsewhere = no proven split channel.
+    agent_full_user_summary: bool = False
 
 
 # Key: (client, internal_event). Confirmed from live docs + the conformance
@@ -213,7 +226,11 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     # so block-mode gates (handover) still need can_block. See ENFORCEMENT-MAP
     # §1.1 caveat + RCA #2014.
     ("claude", Event.STOP): ChannelSpec(
-        True, True, True, notes="2.1.195 mem-4ab6cc0b; asyncRewake=quiet-summary path"
+        True,
+        True,
+        True,
+        notes="2.1.195 mem-4ab6cc0b; asyncRewake=quiet-summary path (PTY-proven)",
+        agent_full_user_summary=True,
     ),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
     # ---- Gemini CLI ----

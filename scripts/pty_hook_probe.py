@@ -98,7 +98,18 @@ from pathlib import Path
 
 # CLIENT-rendered hook-notice line: user_saw asserted only when sentinel
 # lands here. Immune to model echo of the sentinel in a reply line.
-_BANNER_RE = re.compile(r"hook feedback|hook error|\bsays:|denied|permission|hook.*block", re.I)
+# The trailing bullet / ``task-notification`` alternatives catch the asyncRewake
+# USER summary line, which the 2.1.195 TUI renders as a notification bullet
+# (``● <rewakeSummary>`` — U+25CF BLACK CIRCLE as captured by tmux capture-pane;
+# also U+23FA ``⏺`` in some renders), NOT as a ``Stop hook feedback:`` banner.
+# EMPIRICALLY CONFIRMED 2026-06-29: the live pane showed ``● SENTINELB``. Without
+# these alternatives the harness was structurally BLIND to the asyncRewake
+# quiet-summary surface (the gap this probe type measures): a sentinel placed in
+# rewakeSummary and rendered to the user was scored user_saw=False (false neg).
+_BANNER_RE = re.compile(
+    r"hook feedback|hook error|\bsays:|denied|permission|hook.*block|[●⏺]|task-notification",
+    re.I,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 FIXTURE = REPO / "tests" / "hooks" / "fixtures" / "pty_capabilities.json"
@@ -177,6 +188,17 @@ class Probe:
     fire_once: bool = True
     table_cell: str = ""
     gate_mode: str = ""  # "block" | "noblock" | "" — for matrix display
+
+    # asyncRewake probe type (Claude Stop only). When set, the probe registers
+    # the Stop hook with the CONFIG-LEVEL ``asyncRewake:true`` (+ rewakeMessage /
+    # rewakeSummary) shape and the hook EXITS 2 (not 0) emitting ``rewake_body``
+    # on stdout. This is the ONLY Claude path that splits the Stop audience:
+    # the full body (SENT_A) reaches the AGENT as a ``<system-reminder>`` while
+    # the USER sees ONLY the one-line ``⏺ <rewakeSummary>`` (SENT_B). ``output``
+    # is ignored for these probes.
+    async_rewake: bool = False
+    rewake_body: str = ""  # full instruction body → agent (carries SENT_A)
+    rewake_summary: str = ""  # one-line user summary (carries SENT_B); "" → omit (default line)
 
     # agy-specific:
     # unmeasurable — synthetic agy shape that agy 1.0.13 ignores (requires
@@ -263,6 +285,53 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
             claim_agent_saw_a=True,
             gate_mode="noblock",
             table_cell="Stop advisory WARN · additionalContext",
+        )
+    )
+    # 2a. asyncRewake — the SPLIT-AUDIENCE Stop path (config asyncRewake:true +
+    # rewakeMessage/rewakeSummary; hook exits 2). Full body (A) → agent
+    # <system-reminder>; one-line summary (B) → user only. This is the channel
+    # that makes ENFORCEMENT-MAP §1.1's "Ephemeral→agent / one-line-to-user"
+    # disposition achievable on Claude. PASS: user_saw_a=False (body hidden),
+    # user_saw_b=True (⏺ summary), agent_ctx_a=True (body delivered).
+    P.append(
+        Probe(
+            "stop-asyncrewake-split",
+            "claude",
+            "Stop",
+            {},  # output unused for asyncRewake probes
+            NEUTRAL_PROMPT,
+            "asyncRewake: full body (A) → agent system-reminder; summary (B) → user "
+            "ONLY (⏺ line). The quiet full-to-agent / one-line-to-user Stop split.",
+            claim_user_saw_a=False,
+            claim_user_saw_b=True,
+            claim_agent_saw_a=True,
+            gate_mode="noblock",
+            table_cell="Stop quiet · asyncRewake (body→agent, summary→user)",
+            async_rewake=True,
+            rewake_body="SENTINELA full agent instructions body",
+            rewake_summary="SENTINELB",
+        )
+    )
+    # 2b. asyncRewake with DEFAULT summary (omit rewakeSummary). Proves the user
+    # ALWAYS sees a one-line notice (the literal default "Stop hook feedback")
+    # even when no custom summary is set — i.e. the user line is UNAVOIDABLE
+    # (never a fully user-silent Stop), while the body (A) still stays agent-only.
+    P.append(
+        Probe(
+            "stop-asyncrewake-default",
+            "claude",
+            "Stop",
+            {},
+            NEUTRAL_PROMPT,
+            "asyncRewake default summary: user sees the unavoidable default notice; "
+            "body (A) stays agent-only (proves no user-silent Stop, body still hidden).",
+            claim_user_saw_a=False,
+            claim_agent_saw_a=True,
+            gate_mode="noblock",
+            table_cell="Stop quiet · asyncRewake default summary",
+            async_rewake=True,
+            rewake_body="SENTINELA full agent instructions body",
+            rewake_summary="",  # omit → default "Stop hook feedback" line
         )
     )
     # 3. systemMessage banner only
@@ -856,6 +925,24 @@ def _write_probe_hook(path: Path, output: dict, fire_once: bool) -> None:
     path.chmod(0o755)
 
 
+def _write_async_rewake_hook(path: Path, body_text: str, fire_once: bool) -> None:
+    """Write an asyncRewake Stop hook: emit ``body_text`` on stdout and EXIT 2.
+
+    On Claude 2.1.195 a Stop hook registered with ``asyncRewake:true`` that
+    exits 2 delivers its stdout/stderr to the AGENT (appended after the config
+    ``rewakeMessage`` prefix, inside a ``<system-reminder>``) while the USER sees
+    ONLY the config ``rewakeSummary`` one-liner. The fire-once guard exits 0 on
+    the second Stop so the agent can actually terminate (asyncRewake wakes the
+    agent on exit 2; without the guard the wake would re-fire indefinitely).
+    """
+    if fire_once:
+        guard = 'FLAG="$(dirname "$0")/.fired"\nif [ -f "$FLAG" ]; then exit 0; fi\ntouch "$FLAG"\n'
+    else:
+        guard = ""
+    path.write_text(f"#!/bin/bash\n{guard}cat <<'PROBE_EOF'\n{body_text}\nPROBE_EOF\nexit 2\n")
+    path.chmod(0o755)
+
+
 def _wait_for(session: str, needles: list[str], timeout: float, settle: float = 0.0) -> bool:
     """Poll pane until ANY needle appears; returns True if found within timeout."""
     deadline = time.time() + timeout
@@ -1118,6 +1205,84 @@ def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR091
             f"agy-live: U(neutral) A={res.user_saw_a} B={res.user_saw_b}; "
             f"C(report-echo) A={res.agent_ctx_a} B={res.agent_ctx_b}; "
             f"attempts={','.join(attempts)}"
+        )
+        return res
+
+    # -----------------------------------------------------------------------
+    # Claude asyncRewake probes: config-level asyncRewake:true + exit-2 hook.
+    # The split-audience Stop path — full body → agent <system-reminder>,
+    # one-line rewakeSummary → user. Measured independently from the synthetic
+    # JSON-output probes because the mechanism is CONFIG + exit code, not stdout.
+    # -----------------------------------------------------------------------
+    if probe.async_rewake:
+        (workspace / ".claude").mkdir(parents=True, exist_ok=True)
+        (workspace / "canary.txt").write_text(CANARY + "\n")
+
+        body_text = probe.rewake_body.replace("SENTINELA", SENT_A).replace("SENTINELB", SENT_B)
+        summary = probe.rewake_summary.replace("SENTINELA", SENT_A).replace("SENTINELB", SENT_B)
+
+        hook = workspace / "probe_hook.sh"
+        _write_async_rewake_hook(hook, body_text, probe.fire_once)
+
+        hook_entry: dict = {
+            "type": "command",
+            "command": f"bash {hook}",
+            "asyncRewake": True,
+            # Neutral prefix (NO sentinel) so SENT_A presence isolates the BODY.
+            "rewakeMessage": "PROBE rewake:",
+        }
+        if summary:
+            hook_entry["rewakeSummary"] = summary
+        settings = {"hooks": {probe.wire_event: [{"hooks": [hook_entry]}]}}
+        (workspace / ".claude" / "settings.json").write_text(json.dumps(settings))
+
+        MAX_ATTEMPTS = 3
+        early_pane = late_pane = transcript = ""
+        attempts = []
+        for n in range(1, MAX_ATTEMPTS + 1):
+            (workspace / ".fired").unlink(missing_ok=True)
+            status, early_pane, late_pane = _drive_once(workspace, session, probe)
+            transcript = _transcript_text(workspace)
+            attempts.append(f"a{n}:{status}{'+tx' if transcript else '+notx'}")
+            if status == "ok" and transcript:
+                break
+            time.sleep(2.0)
+
+        res.transcript_found = bool(transcript)
+        early_a, _, _ = _user_saw(early_pane, SENT_A)
+        early_b, _, _ = _user_saw(early_pane, SENT_B)
+        late_a, _, amb_a = _user_saw(late_pane, SENT_A)
+        late_b, _, amb_b = _user_saw(late_pane, SENT_B)
+        res.early_user_saw_a = early_a
+        res.early_user_saw_b = early_b
+        # SENT_A = BODY (must NOT reach user); SENT_B = summary (must reach user).
+        res.user_saw_a = early_a or late_a
+        res.user_saw_b = early_b or late_b
+        res.agent_ctx_a, res.in_transcript_a = _agent_signals(transcript, SENT_A)
+        res.agent_ctx_b, res.in_transcript_b = _agent_signals(transcript, SENT_B)
+        res.agent_ctx_authoritative = True  # Stop: agent-context signal is authoritative
+
+        caveats = [
+            "asyncRewake probe: SENT_A rides the hook BODY (config rewakeMessage prefix + "
+            "stdout) delivered to the agent <system-reminder>; SENT_B rides the config "
+            "rewakeSummary one-liner. PASS = user_saw_a False (body hidden) + user_saw_b "
+            "True (summary shown as ⏺ line) + agent_ctx_a True (body reached agent).",
+        ]
+        if amb_a or amb_b:
+            caveats.append("echo-ambiguous: sentinel in pane but not on a banner line")
+        if not transcript:
+            caveats.append("no transcript after retries — run did not complete; signals unreliable")
+        res.measurement_caveats = caveats
+        lines = [
+            ln
+            for ln in (early_pane + "\n" + late_pane).splitlines()
+            if SENT_A in ln or SENT_B in ln or "⏺" in ln or "Stop hook" in ln
+        ]
+        res.pane_excerpt = "\n".join(list(dict.fromkeys(lines))[-6:])
+        res.note = (
+            f"asyncRewake USER body(A)={res.user_saw_a} summary(B)={res.user_saw_b}; "
+            f"AGENT body(A)={res.agent_ctx_a} in_tx(A)={res.in_transcript_a}; "
+            f"transcript={'found' if transcript else 'MISSING'}; attempts={','.join(attempts)}"
         )
         return res
 

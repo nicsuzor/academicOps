@@ -23,7 +23,7 @@
       "unmeasurable": false,
       "uses_real_hooks": false,
       "note": "USER [earlyA=True earlyB=False lateA=True lateB=False] \u2192 A=True B=False; AGENT ctx A=True B=False; in_transcript A=True B=False; transcript=found; attempts=a1:ok+tx",
-      "pane_excerpt": "  \u23bf \u00a0Stop hook error: SENTINELA continue then stop\n                                                                                                                                                                                  Stop hook error occurred \u00b7 ctrl+o to see",
+      "pane_excerpt": "  \u23bf \u00a0Stop hook error: SENTINELA continue then stop\n                                                                                                                                                                                              Stop hook error occurred \u00b7 ctrl+o to see",
       "claim_user_saw_a": true,
       "claim_agent_saw_a": true,
       "claim_user_saw_b": null,
@@ -828,6 +828,62 @@
       "claim_agent_saw_a": null,
       "claim_user_saw_b": true,
       "table_cell": "Stop banner \u00b7 stopReason only (isolation probe)"
+    },
+    {
+      "label": "stop-asyncrewake-split",
+      "client": "claude",
+      "wire_event": "Stop",
+      "hypothesis": "asyncRewake: full body (A) \u2192 agent system-reminder; summary (B) \u2192 user ONLY (\u23fa line). The quiet full-to-agent / one-line-to-user Stop split.",
+      "gate_mode": "noblock",
+      "user_saw_a": false,
+      "user_saw_b": true,
+      "early_user_saw_a": false,
+      "early_user_saw_b": true,
+      "agent_ctx_a": true,
+      "agent_ctx_b": true,
+      "in_transcript_a": true,
+      "in_transcript_b": true,
+      "transcript_found": true,
+      "agent_ctx_authoritative": true,
+      "measurement_caveats": [
+        "asyncRewake probe: SENT_A rides the hook BODY (config rewakeMessage prefix + stdout) delivered to the agent <system-reminder>; SENT_B rides the config rewakeSummary one-liner. PASS = user_saw_a False (body hidden) + user_saw_b True (summary shown as \u23fa line) + agent_ctx_a True (body reached agent)."
+      ],
+      "unmeasurable": false,
+      "uses_real_hooks": false,
+      "note": "asyncRewake USER body(A)=False summary(B)=True; AGENT body(A)=True in_tx(A)=True; transcript=found; attempts=a1:ok+tx",
+      "pane_excerpt": "\u25cf SENTINELB",
+      "claim_user_saw_a": false,
+      "claim_agent_saw_a": true,
+      "claim_user_saw_b": true,
+      "table_cell": "Stop quiet \u00b7 asyncRewake (body\u2192agent, summary\u2192user)"
+    },
+    {
+      "label": "stop-asyncrewake-default",
+      "client": "claude",
+      "wire_event": "Stop",
+      "hypothesis": "asyncRewake default summary: user sees the unavoidable default notice; body (A) stays agent-only (proves no user-silent Stop, body still hidden).",
+      "gate_mode": "noblock",
+      "user_saw_a": false,
+      "user_saw_b": false,
+      "early_user_saw_a": false,
+      "early_user_saw_b": false,
+      "agent_ctx_a": true,
+      "agent_ctx_b": false,
+      "in_transcript_a": true,
+      "in_transcript_b": false,
+      "transcript_found": true,
+      "agent_ctx_authoritative": true,
+      "measurement_caveats": [
+        "asyncRewake probe: SENT_A rides the hook BODY (config rewakeMessage prefix + stdout) delivered to the agent <system-reminder>; SENT_B rides the config rewakeSummary one-liner. PASS = user_saw_a False (body hidden) + user_saw_b True (summary shown as \u23fa line) + agent_ctx_a True (body reached agent)."
+      ],
+      "unmeasurable": false,
+      "uses_real_hooks": false,
+      "note": "asyncRewake USER body(A)=False summary(B)=False; AGENT body(A)=True in_tx(A)=True; transcript=found; attempts=a1:ok+tx",
+      "pane_excerpt": "\u25cf Stop hook feedback",
+      "claim_user_saw_a": false,
+      "claim_agent_saw_a": true,
+      "claim_user_saw_b": null,
+      "table_cell": "Stop quiet \u00b7 asyncRewake default summary"
     }
   ]
 }
