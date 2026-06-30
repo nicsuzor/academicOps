@@ -22,7 +22,7 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from build_utils import (
+    from build_utils import (  # pyright: ignore[reportMissingImports]
         convert_mcp_to_gemini,
         get_git_commit_sha,
         safe_copy,

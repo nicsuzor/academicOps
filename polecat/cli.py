@@ -3491,7 +3491,7 @@ def checkout(ctx, task_id, caller, branch):
 
     # Claim the task if not already in progress
     try:
-        from lib.task_model import TaskStatus
+        from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
         if task.status in (
             getattr(TaskStatus, "QUEUED", None),

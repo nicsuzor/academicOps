@@ -136,7 +136,7 @@ def finish_cmd(
     # draft PR + follow-up task and must NOT be reset by the auto-retry loop.
     _TERMINAL_STATUSES = ("done", "review", "merge_ready", "cancelled", "partial")
     try:
-        from lib.task_model import TaskStatus
+        from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
         terminal_or_pr_statuses = tuple(
             s
@@ -248,7 +248,7 @@ def finish_cmd(
                     + "- If the worker failed silently, check transcript and retry\n"
                 )
                 try:
-                    from lib.task_model import TaskStatus
+                    from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
                     task.status = TaskStatus.REVIEW
                     manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
@@ -315,7 +315,9 @@ def finish_cmd(
                         + "- If the worker failed silently, check transcript and retry\n"
                     )
                     try:
-                        from lib.task_model import TaskStatus
+                        from lib.task_model import (
+                            TaskStatus,  # pyright: ignore[reportMissingImports]
+                        )
 
                         task.status = TaskStatus.REVIEW.value
                         manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
@@ -347,7 +349,7 @@ def finish_cmd(
                 + "- If the worker failed silently, check transcript and retry\n"
             )
             try:
-                from lib.task_model import TaskStatus
+                from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
                 task.status = TaskStatus.REVIEW.value
                 manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
@@ -475,7 +477,9 @@ def finish_cmd(
                     print("  Task will be marked for review.", file=sys.stderr)
                     task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto shared branch {branch_name}.\n"
                     try:
-                        from lib.task_model import TaskStatus
+                        from lib.task_model import (
+                            TaskStatus,  # pyright: ignore[reportMissingImports]
+                        )
 
                         task.status = TaskStatus.REVIEW.value
                     except ImportError:
@@ -530,7 +534,9 @@ def finish_cmd(
                         # Don't exit - let it fall through to mark as review
                         task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto {base_branch}.\n"
                         try:
-                            from lib.task_model import TaskStatus
+                            from lib.task_model import (
+                                TaskStatus,  # pyright: ignore[reportMissingImports]
+                            )
 
                             task.status = TaskStatus.REVIEW.value
                         except ImportError:
@@ -827,7 +833,7 @@ def finish_cmd(
         else:
             # merge_ready fallback path if release_task is unavailable.
             try:
-                from lib.task_model import TaskStatus
+                from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
                 task.status = TaskStatus.MERGE_READY.value
                 manager.storage.save_task(task)  # pyright: ignore[reportOptionalMemberAccess]
