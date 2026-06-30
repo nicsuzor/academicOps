@@ -333,11 +333,7 @@ def generate_aops_core_pyproject(
     """
     if aops_root is None:
         aops_root = SCRIPT_DIR.parent
-    if platform == "cowork":
-        src_pyproject = aops_root / "aops-cowork" / "pyproject.toml"
-        missing_hint = "aops-cowork is a real composed package; its pyproject.toml must be tracked"
-    else:
-        src_pyproject = aops_root / "aops-core" / "pyproject.toml"
+        src_pyproject = aops_root / "templates" / "aops-core.pyproject.toml"
         missing_hint = "cannot build aops-core without it (epic-267fe017)"
     if not src_pyproject.exists():
         raise FileNotFoundError(
@@ -865,9 +861,7 @@ def build_aops_core(
     # agy, and the real aops-cowork/pyproject.toml (lib-only) for cowork. uv.lock
     # is NOT tracked — it is generated here per-platform. `uv sync --frozen` at
     # runtime then installs exactly what the manifest declared, no drift.
-    pyproject_source = (
-        "aops-cowork/pyproject.toml" if platform == "cowork" else "aops-core/pyproject.toml"
-    )
+    pyproject_source = "templates/aops-core.pyproject.toml"
     pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)
