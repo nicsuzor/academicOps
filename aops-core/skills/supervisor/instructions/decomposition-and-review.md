@@ -150,7 +150,7 @@ Supervisor invokes reviewer agents and synthesizes their feedback before human a
 
 | Reviewer          | Role                                                        | Mandatory                                 | Model  |
 | ----------------- | ----------------------------------------------------------- | ----------------------------------------- | ------ |
-| RBG (enforcer)    | Authority check: is task within granted scope?              | Yes                                       | —      |
+| RBG (rbg)         | Authority check: is task within granted scope?              | Yes                                       | —      |
 | Pauli             | Pedantic review: assumptions, logical errors, missing cases | Yes                                       | opus   |
 | Domain specialist | Subject matter expertise                                    | If task.tags intersect specialist.domains | varies |
 
@@ -402,7 +402,7 @@ Share rbg's concern back with pauli (or vice versa) and ask whether they MAINTAI
 **Pauli Position** (after debate):
 [Their final position]
 
-**Enforcer Position** (after debate):
+**RBG Position** (after debate):
 [Their final position]
 
 ### Core Tension

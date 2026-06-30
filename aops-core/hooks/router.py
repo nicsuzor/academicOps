@@ -135,8 +135,8 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
-    - ◇ N  enforcer countdown active
-    - ◇    enforcer overdue (past threshold)
+    - ◇ N  RBG countdown active
+    - ◇    RBG overdue (past threshold)
     - ≡    handover complete (gate OPEN + handover invoked)
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
@@ -145,15 +145,15 @@ def format_gate_status_icons(state: SessionState) -> str:
 
     parts: list[str] = []
 
-    # Enforcer: countdown or overdue
-    enforcer = state.gates.get("enforcer")
-    if enforcer:
-        enforcer_gate = GateRegistry.get_gate("enforcer")
-        if enforcer_gate and enforcer_gate.config.countdown:
-            threshold = enforcer_gate.config.countdown.threshold
-            start_before = enforcer_gate.config.countdown.start_before
+    # RBG: countdown or overdue
+    rbg = state.gates.get("rbg")
+    if rbg:
+        rbg_gate = GateRegistry.get_gate("rbg")
+        if rbg_gate and rbg_gate.config.countdown:
+            threshold = rbg_gate.config.countdown.threshold
+            start_before = rbg_gate.config.countdown.start_before
             countdown_start = threshold - start_before
-            ops = enforcer.ops_since_open
+            ops = rbg.ops_since_open
             if ops >= threshold:
                 parts.append("◇")
             elif ops >= countdown_start:
@@ -333,7 +333,7 @@ class HookRouter:
         # "args":{...}},"workspacePaths":[...]}` (#1800; verified against the live
         # hook log for session 6d3d5783). The earlier double-nested
         # `raw_input.raw_input.toolCall` lookup never matched, so ctx.tool_name was
-        # None on every agy tool event, defeating sentinel/enforcer/handover
+        # None on every agy tool event, defeating sentinel/rbg/handover
         # tool-name matching. Prefer the root-level object; keep the nested form as
         # a defensive fallback for any wrapper that re-nests the payload.
         if not tool_name:
@@ -903,7 +903,7 @@ class HookRouter:
         # Set decision based on verdict
         if result.verdict == "deny":
             out.decision = "deny"
-            # Recovery payload (e.g. enforcer instructions) MUST go to
+            # Recovery payload (e.g. RBG instructions) MUST go to
             # hookSpecificOutput.additionalContext — `reason` is user-visible
             # only and the model never sees it. Mirrors the Claude side, where
             # context_injection lands on hookSpecificOutput.additionalContext.
@@ -950,7 +950,7 @@ class HookRouter:
             # enforcement: a non-blocking nudge can be disregarded by the model
             # (mem-4ab6cc0b), so block-mode gates keep decision="block".
             spec = client_spec.channel_spec("claude", "Stop")
-            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+            agent_ctx_without_block = bool(spec and spec.agent_without_block)
 
             ctx_inj = result.context_injection
             sys_msg = result.system_message
@@ -1072,7 +1072,7 @@ class HookRouter:
         silent-drop regression in aops-27004ffd: the Claude/Gemini schema's
         ``decision`` / ``metadata`` / ``systemMessage`` are all *unknown* fields
         to ``exa.hooks_pb``, so routing agy through ``output_for_gemini`` made the
-        harness discard every verdict (including enforcer DENYs) while the router
+        harness discard every verdict (including RBG DENYs) while the router
         exited 0. This formatter therefore emits ONLY the fields each ``*Result``
         defines — and never ``metadata``.
 

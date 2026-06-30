@@ -80,7 +80,7 @@ def __getattr__(name: str):
 
 
 # Known variants (used for parsing)
-VARIANTS = {"-full", "-abridged", "-hooks", "-client", "-enforcer"}
+VARIANTS = {"-full", "-abridged", "-hooks", "-client", "-rbg"}
 
 
 @dataclass

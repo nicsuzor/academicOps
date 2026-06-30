@@ -13,14 +13,14 @@ from typing import TYPE_CHECKING
 
 __all__ = [
     # Gate modes (PEP 562 lazy attrs)
-    "ENFORCER_GATE_MODE",
+    "RBG_GATE_MODE",
     "HANDOVER_GATE_MODE",
     "QA_GATE_MODE",
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "SENTINEL_GATE_MODE",
     "RBG_REVIEW_GATE_MODE",
-    "ENFORCER_TOOL_CALL_THRESHOLD",
+    "RBG_TOOL_CALL_THRESHOLD",
     "RBG_REVIEW_DEGRADE_THRESHOLD",
     # Polecat-vs-interactive posture axis
     "is_polecat_surface",
@@ -32,14 +32,14 @@ __all__ = [
 if TYPE_CHECKING:
     # Declared here so type checkers see precise types for PEP 562 lazy attrs.
     # At runtime these names come from __getattr__ below.
-    ENFORCER_GATE_MODE: str
+    RBG_GATE_MODE: str
     HANDOVER_GATE_MODE: str
     QA_GATE_MODE: str
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
     SENTINEL_GATE_MODE: str
     RBG_REVIEW_GATE_MODE: str
-    ENFORCER_TOOL_CALL_THRESHOLD: int
+    RBG_TOOL_CALL_THRESHOLD: int
     RBG_REVIEW_DEGRADE_THRESHOLD: int
 
 
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
 #   Gemini CLI:  the slash command is injected as `# /foo — ...`.
 #
 # A BARE leading slash is deliberately NOT matched: real user prompts can be
-# bare file paths (e.g. "/home/nic/.../session-enforcer.md"), which must still
+# bare file paths (e.g. "/home/nic/.../session-rbg.md"), which must still
 # re-arm the gate. Matching `^/` would silently disarm the honesty/handover/qa
 # gates on any path-only prompt. The `<command-name>` tag and the Gemini `# /`
 # form are unambiguous; a bare path is not.
@@ -120,12 +120,12 @@ def is_polecat_surface() -> bool:
 # a code default there silently masks an unconfigured surface — exactly how a
 # non-polecat host session used to fall through to a hard BLOCK (#1978). The
 # entries that REMAIN are deliberate fail-safes (SENTINEL/RBG-review are real
-# DENYs, Nic directive) or non-posture advisories (QA/ENFORCER/HYDRATION) —
+# DENYs, Nic directive) or non-posture advisories (QA/RBG/HYDRATION) —
 # do NOT remove them (spec mem-438429c5 §5.3 SCOPE FENCE).
 
 _GATE_MODE_DEFAULTS = {
     "QA_GATE_MODE": "warn",
-    "ENFORCER_GATE_MODE": "warn",
+    "RBG_GATE_MODE": "warn",
     "HYDRATION_GATE_MODE": "off",
     # Sentinel defaults to block — this is a safety gate protecting user
     # environment files from destructive ops, not just an advisory.
@@ -194,7 +194,7 @@ def resolve_posture_gate(name: str) -> str:
     )
 
 
-_ENFORCER_THRESHOLD_DEFAULT = 50
+_RBG_THRESHOLD_DEFAULT = 50
 # Consecutive Stop-DENYs from the rbg-review gate in one turn before it degrades
 # to WARN-and-allow (loud, not silent). Matches the 5-block router-level safety
 # override; the escape-hatch is failure-degradation only, never a normal bypass.
@@ -206,14 +206,14 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
         return resolve_posture_gate(name)
     if name in _GATE_MODE_DEFAULTS:
         return os.environ.get(name, _GATE_MODE_DEFAULTS[name])
-    if name == "ENFORCER_TOOL_CALL_THRESHOLD":
-        raw = os.environ.get("ENFORCER_TOOL_CALL_THRESHOLD")
+    if name == "RBG_TOOL_CALL_THRESHOLD":
+        raw = os.environ.get("RBG_TOOL_CALL_THRESHOLD")
         if raw is None:
-            return _ENFORCER_THRESHOLD_DEFAULT
+            return _RBG_THRESHOLD_DEFAULT
         try:
             return int(raw)
         except ValueError:
-            return _ENFORCER_THRESHOLD_DEFAULT
+            return _RBG_THRESHOLD_DEFAULT
     if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
         raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
         if raw is None:

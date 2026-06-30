@@ -994,7 +994,7 @@ def _get_session_id(session_path: Path) -> str:
     return session_id
 
 
-# GHA agents (rbg, merge-prep, enforcer-review, fix, review, …) inject their
+# GHA agents (rbg, merge-prep, rbg-review, fix, review, …) inject their
 # own ``name: <slug>`` frontmatter at the head of the very first user prompt.
 # Extracting that slug recovers the workflow identity even when we're seeing
 # the jsonl long after the action ran (no artifact name available).
@@ -1008,7 +1008,7 @@ def _infer_agent_from_entries(entries: list) -> str | None:
     """Heuristically identify which agent/workflow drove a session.
 
     Extracts the ``name:`` slug from the agent frontmatter in the first user prompt
-    (e.g. ``name: rbg``, ``name: merge-prep``, ``name: enforcer-review``).
+    (e.g. ``name: rbg``, ``name: merge-prep``, ``name: rbg-review``).
     """
 
     def _entry_text(entry) -> str:

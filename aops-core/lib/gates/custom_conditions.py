@@ -91,8 +91,8 @@ def check_custom_condition(
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
 
     if name == "not_mid_edit":
-        # Defer enforcer block while agent has an in-progress todo item.
-        # The enforcer trigger on TodoWrite PostToolUse keeps this metric
+        # Defer RBG block while agent has an in-progress todo item.
+        # The RBG trigger on TodoWrite PostToolUse keeps this metric
         # up to date. False (condition not met) when mid-edit, deferring the
         # block until the agent has finished its current sub-task. (#319)
         return not state.metrics.get("has_in_progress_todo", False)
