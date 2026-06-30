@@ -333,8 +333,9 @@ def generate_aops_core_pyproject(
     """
     if aops_root is None:
         aops_root = SCRIPT_DIR.parent
-        src_pyproject = aops_root / "templates" / "aops-core.pyproject.toml"
-        missing_hint = "cannot build aops-core without it (epic-267fe017)"
+
+    src_pyproject = aops_root / "templates" / "aops-core.pyproject.toml"
+    missing_hint = "cannot build aops-core without it (epic-267fe017)"
     if not src_pyproject.exists():
         raise FileNotFoundError(
             f"Required source manifest {src_pyproject} not found — {missing_hint}"
