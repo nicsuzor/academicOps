@@ -8,6 +8,8 @@ tags: [framework, schema, insights, metrics, transcript]
 
 # Session Insights Metrics Schema
 
+<!-- NS I think these are called 'summaries', not 'insights' -->
+
 Reference schema for session insights JSON files written by `aops-core/scripts/transcript.py` and validated by `validate_insights_schema` in `aops-core/lib/insights_generator.py`. Files live under `summaries/YYYY-MM/` in the rotated layout.
 
 ## Required Fields

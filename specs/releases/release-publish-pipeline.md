@@ -14,6 +14,8 @@ tags:
   - docker
 ---
 
+<!-- NS this is local development for aops; move it and other similar specs out of the specs that the _plugins_ use and put them in a separate dev practices directory. -->
+
 # Release & Publish Pipeline — merge → tag → artifacts
 
 > Status: **operative-target**. This is the single owner-approvable contract for the

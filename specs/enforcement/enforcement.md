@@ -10,6 +10,8 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 # Enforcement Architecture
 
+<!-- NS search through and remove all these comment blocks that explain 'spec' vs 'state' in all files. The 'type' field in the header is sufficient. -->
+
 > **Spec, not state.** This file is the **design statement** for how the
 > aops framework enforces its rules: the regulatory pyramid that frames
 > all enforcement choices, the escalation discipline, the PR
@@ -101,6 +103,8 @@ Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-me
 ## §4 Pyramid view (escalation)
 
 **Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (always-on context injection, voluntary skill invocation, lifecycle hints) tapering to a sharp apex of rare severe responses (LLM-mediated review, branch protection, detached cross-incident review of accumulated reports). The narrower the level, the more reluctantly invoked.
+
+<!-- NS this isn't right; the pyramid itself is just a way to conceptualise rules; rules are enforced by systems supported by full specs (what this calls 'legislative') and enforced at runtime by various 'executive' agents. I think the initial confusion may have come from the prohibition in /learn that agents shouldn't directly change rules mid-session. -->
 
 **Executive vs legislative.** The pyramid is **executive only** — it lists the mechanisms that act on agent behaviour. Axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)) and heuristics are **legislative**: they declare what the rules are. The rules don't enforce themselves; they are _enforced by_ mechanisms across multiple pyramid tiers. Promoting a rule into `AXIOMS.md` raises its _weight_ in the L1 always-on injection mechanism — axiom status is content-weighting, not pyramid placement. (Weight comes from being a first-class axiom, not from any ordinal number; axioms are keyed by slug, see §4.0.) Looking up "what enforces `exercise-authority`?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
 

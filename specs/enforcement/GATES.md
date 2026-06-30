@@ -40,11 +40,7 @@ Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConf
 
 ---
 
-## Lifecycle, merge-vs-block & visibility
-
-> **Moved to SSoT.** The master table for gate modes, triggers, and client variations (warn-vs-block) is now in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
-
-### Gate Events Timeline
+## Lifecycle and Gate Events Timeline
 
 ```mermaid
 timeline
@@ -67,20 +63,11 @@ timeline
 
 ## Config plumbing
 
-Every gate above resolves its mode through the same path. Read this section once; the per-gate sections below only call out keys, not the resolution.
+Every gate receives its configuration via environment vars pass in to the agent's context.
 
-### Where polecat.yaml lives
+`gate_config.py` reads gate modes from **environment variables** at runtime, with hardcoded fallback defaults. For polecats nd crew containers, the polecat launcher is the intermediary that reads `polecat.yaml` and sets these env vars:
 
-- **Host**: `$AOPS_SESSIONS/polecat.yaml` (default), or `$AOPS_POLECAT_CONFIG` if set explicitly.
-- **Polecat container**: staged in by polecat at launch; `$AOPS_POLECAT_CONFIG` points at the staged copy.
-- **Example / schema**: `polecat/defaults/polecat.yaml.example`.
-- **Loader**: [`lib/polecat_config.py:load_polecat_config()`](lib/polecat_config.py).
-
-For polecat sessions, `polecat.yaml` is the primary configuration source — the polecat launcher reads it and stages the resolved gate modes as environment variables into the container. For direct CLI sessions (no polecat), the plugin's built-in defaults apply; override individual gates via environment variables in your shell or per-directory CLI settings. See the repo README § Gates for user-facing configuration instructions.
-
-### Resolution path
-
-`gate_config.py` reads gate modes from **environment variables** at runtime, with hardcoded fallback defaults. The polecat launcher is the intermediary that reads `polecat.yaml` and sets these env vars:
+<!-- NS who needs this level of detail? -->
 
 ```
 ┌─ Polecat-launched sessions ─────────────────────────────────────────┐
@@ -305,6 +292,8 @@ See [`forensics-details.md`](../aops-core/skills/aops/references/forensics-detai
 ---
 
 ## `rbg-review` gate
+
+<!-- NS each of these have full specs. Don't suplicate those here, just keep a BRIEF tl;dr in a table -->
 
 > **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. The enforcer every-N cadence (sentinel/enforcer gate) is the in-session mechanism; this gate adds only the final backstop: it **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict. The trigger is **structural** (Stop event + armed flag + session type), **not** a content/NLP/keyword sniff — the qualitative judgment ("did this session comply with the axioms?") is rbg's, never a rig's. Defined in [`lib/gates/definitions.py`](../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`).
 

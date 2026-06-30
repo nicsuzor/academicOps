@@ -8,6 +8,8 @@ depends_on: [enforcement]
 tags: [framework, agent-behavior, guardrails, enforcement, enforcer]
 ---
 
+<!-- NS: This file should be deleted and everything unique merged into the RBG spec. But we shouldn't keep the ultra-specific failure modes. It's enough to say that RBG enforces global axioms and project local rules, because those will change over time. So we should just explain how RBG is invoked and what she does (noting that she can be invoked many different ways, including on a PR review pipeline, on a tool counter hook, or as a session stop gate. -->
+
 # Ultra Vires Enforcer
 
 > **Spec, not state.** This file is the **design rationale** for the enforcer agent + PreToolUse gate (why ultra vires matters, failure categories, invocation points, output format). For the **operative runtime catalogue** of the enforcer gate (configuration paths, verification commands, debug procedures, custodiet→enforcer rename mapping) see [`specs/GATES.md#enforcer-gate`](../../specs/GATES.md#enforcer-gate). For the operative enforcement-pyramid register, see `specs/ENFORCEMENT-MAP.md`.

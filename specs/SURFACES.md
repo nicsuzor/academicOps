@@ -2,6 +2,8 @@
 
 > Canonical reference for where Claude Code and Gemini CLI run across this framework, what each surface can and can't do, and the load-bearing operational facts that bite when wrong.
 
+<!-- NS Some of this is user-specific and shouldn't be in this repo -->
+
 ## Audience and scope
 
 **Primary audience**: orchestrator agents (`jr` / `junior`, `james`) deciding _where to send work_ or _whether a given thing is supposed to function here_. Also: future-Nic debugging cross-surface issues.

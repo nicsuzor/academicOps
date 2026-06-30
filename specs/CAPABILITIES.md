@@ -4,6 +4,8 @@ This document catalogs the operational capabilities, artifacts, and artifact con
 
 ## Transcripts
 
+<!-- NS this should be in a separate observability spec -->
+
 The framework records every LLM prompt as an individual transcript file, rather than one monolithic transcript per session.
 
 **Naming Convention:**

@@ -7,6 +7,8 @@ modified: 2026-05-20
 
 # Framework Constraints
 
+<!-- NS move to project dev instructions -->
+
 Hard rules for aops framework internals. Enforced by pre-commit hooks where possible, by agents otherwise.
 
 | Check                    | Script                              | Rule(s)                | Tier       | Behaviour                                                    |

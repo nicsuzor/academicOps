@@ -10,10 +10,6 @@ tags: []
 
 # Hook Router
 
-> **Spec, not state.** This file is the **design rationale** for the hook router (why it exists, how outputs are consolidated, plugin-scoping implications). For the **operative catalogue of which gates fire via this router** and how to verify each one, see [`specs/GATES.md`](../../specs/GATES.md). For hook infrastructure reference (router architecture, hook I/O schemas, MCP wiring) see [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md).
-
-## Giving Effect
-
 - [[hooks/router.py]] - Single entry point that dispatches to registered sub-hooks
 - [[hooks/hooks.json]] - Hook registration configuration
 - [[hooks/gate_registry.py]] - Gate registration and configuration
@@ -34,24 +30,6 @@ The gates.py gate locking / unlocking is really buggy. we've spent way too much 
 
 When gates block tool execution, the feedback mechanism differs by client. We have a translation layer that converts our aggregated hook result to gemini-cli / claude code expected formats.
 
-### Why Router instead of individual exit codes?
-
-**Problem**: Claude Code reports "success" for each hook that exits 0. With 4 hooks per SessionStart, the agent sees:
-
-```
-SessionStart:startup hook success: Success (×4)
-UserPromptSubmit hook success: Success (×3)
-```
-
-This noise trains agents to skim past system-reminders, causing important guidance to be ignored.
-
-**Solution**: Single router script that:
-
-1. Dispatches to registered sub-hooks internally
-2. Merges outputs (additionalContext concatenated, permissions aggregated)
-3. Returns single consolidated response
-4. Returns worst exit code (any failure = overall failure)
-
 ### Output Consolidation Rules
 
 | Field                | Merge Strategy                           |
@@ -63,66 +41,19 @@ This noise trains agents to skim past system-reminders, causing important guidan
 | `suppressOutput`     | OR logic (any true = true)               |
 | exit code            | MAX (worst wins: 2 > 1 > 0)              |
 
-## Plugin-Scoped Hooks
-
-**Critical**: Claude Code hooks are **plugin-scoped**. Hooks defined in a plugin only fire for tools and events from that same plugin.
-
-### Implications
-
-| Scenario                                              | Hooks Fire? |
-| ----------------------------------------------------- | ----------- |
-| MCP tool in plugin A, hooks defined in plugin A       | ✓ Yes       |
-| MCP tool in plugin A, hooks defined in plugin B       | ✗ No        |
-| Built-in tool (Bash, Read, etc.), hooks in any plugin | ✓ Yes       |
-
-### Example: Task Manager
-
-The `pkb` MCP server must be defined in **aops-core** (where hooks are defined), not aops-tools. Otherwise, PreToolUse/PostToolUse hooks won't fire for task operations.
-
-```
-# Correct: task_manager in aops-core/.mcp.json
-aops-core/
-├── .mcp.json          # defines task_manager
-├── hooks/hooks.json   # defines PreToolUse, PostToolUse
-└── hooks/task_binding.py  # fires for task_manager calls ✓
-
-# Wrong: task_manager in aops-tools/.mcp.json
-aops-tools/
-├── .mcp.json          # defines task_manager
-└── (no hooks)         # task_binding.py never fires ✗
-```
-
-### Debugging Hook Scope Issues
-
-If hooks aren't firing for an MCP tool:
-
-1. Check which plugin defines the MCP server (`.mcp.json`)
-2. Check which plugin defines the hooks (`hooks/hooks.json`)
-3. Ensure they're the **same plugin**
-
 ## Session Scope
 
 Enforcement hooks (gates, compliance checks, context injection) are **session-scoped**: they apply to every execution context that has its own session ID and `SessionStart` event. Inline subagents spawned via the `Agent` tool run within the parent session and share its session ID — enforcement is skipped to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally regardless of session type.
 
 ### Session taxonomy
 
-| Session type          | How spawned                           | Own session ID?  | Hooks fire?                   | Gates apply?           |
-| --------------------- | ------------------------------------- | ---------------- | ----------------------------- | ---------------------- |
-| Interactive           | User starts CLI                       | Yes              | Yes                           | Yes                    |
-| Background job        | `claude --background` / CC job system | Yes              | Yes                           | Yes                    |
-| Polecat               | Polecat CLI dispatch                  | Yes              | Yes                           | Yes (per polecat.yaml) |
-| GHA workflow          | GitHub Actions                        | Yes              | Yes                           | Yes (per polecat.yaml) |
-| Inline Agent subagent | Parent uses `Agent` tool              | No — parent's ID | Fire (platform can't prevent) | **No** — skipped       |
-
-### Detection mechanism
-
-Claude Code v2.1.69+ (2026-03-05) includes `agent_id` and `agent_type` in hook payloads for subagent-originated tool calls. Absence of these fields indicates the main agent. `is_subagent_session()` uses this as its primary detection method; heuristic fallbacks (short hex session IDs, env vars, transcript path patterns) remain for Gemini CLI, which does not provide equivalent fields.
-
-### Implementation pointers
-
-- `is_subagent_session()` in `lib/hook_utils.py` — multi-method detection heuristic
-- `ctx.is_subagent` skip in `hooks/router.py` — gates and context injection bypassed for subagent sessions
-- `COMPLIANCE_SUBAGENT_TYPES` bypass in `hooks/gate_config.py` — compliance subagent dispatches classified as infrastructure to avoid gate self-blocking
+| Session type          | How spawned                           | Own session ID?  | Hooks fire?                   | Gates apply?                                                                       |
+| --------------------- | ------------------------------------- | ---------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| Interactive           | User starts CLI                       | Yes              | Yes                           | Yes                                                                                |
+| Background job        | `claude --background` / CC job system | Yes              | Yes                           | Yes                                                                                |
+| Polecat               | Polecat CLI dispatch                  | Yes              | Yes                           | Yes (per polecat.yaml)                                                             |
+| GHA workflow          | GitHub Actions                        | Yes              | Yes                           | Yes (per polecat.yaml)                                                             |
+| Inline Agent subagent | Parent uses `Agent` tool              | No — parent's ID | Fire (platform can't prevent) | **No** — skipped, because subagents can't call nested subagents to clear the gate. |
 
 ## User Expectations
 
