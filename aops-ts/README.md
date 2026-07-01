@@ -82,7 +82,7 @@ Config (env):
 
 | Var                 | Required | Meaning                                                                                                    |
 | ------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host[:path]` on the tailnet, e.g. `nic@services-new:/data/aops-sessions/incoming/`. A missing `:path` defaults to `aops-sessions/incoming/` (relative to the remote user's home). |
+| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host[:path]` on the tailnet, e.g. `nic@services-new:/data/sessions/`. The `:path` is the **base** directory (see layout below); a missing `:path` defaults to `src/sessions/` (relative to the remote user's home). |
 | `AOPS_TS_SSH_CMD`   | no       | remote-shell override; defaults to `tailscale ssh` (else `ssh`). Set to `ssh` for key-based auth to a plain host. |
 | `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the plain-ssh path, e.g. `-o StrictHostKeyChecking=accept-new`                       |
 | `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                    |
@@ -91,8 +91,16 @@ It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
 producing the same redacted markdown + summary JSON the local pipeline commits to
 `$AOPS_SESSIONS` — then streams the staging dir to `AOPS_TS_SYNC_DEST` with
 tar-over-`tailscale ssh` (the remote only needs `tar`; `rsync` is not required).
+Under the destination base directory the payload lands as:
+
+| Subdir         | Contents                                          |
+| -------------- | ------------------------------------------------- |
+| `transcripts/` | redacted markdown (full + abridged), from `transcript.py` |
+| `summaries/`   | session summary JSON, from `transcript.py`         |
+| `incoming/`    | **raw JSONL** — fallback only, see below            |
+
 If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
-JSONL**, which is **unredacted** — so only sync to a trusted tailnet host you
-control. Auth is via **Tailscale SSH** (no ssh keys) when the destination runs
-the Tailscale SSH server with an ACL permitting this node; otherwise set
-`AOPS_TS_SSH_CMD=ssh` and provide your own key. It always exits 0.
+JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted
+tailnet host you control. Auth is via **Tailscale SSH** (no ssh keys) when the
+destination runs the Tailscale SSH server with an ACL permitting this node;
+otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It always exits 0.

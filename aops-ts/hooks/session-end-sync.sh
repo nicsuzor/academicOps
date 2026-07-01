@@ -22,9 +22,12 @@
 #
 # Config (env):
 #   AOPS_TS_SYNC_DEST  [user@]host[:path] on the tailnet (REQUIRED), e.g.
-#                      "nic@services-new:/data/aops-sessions/incoming/".
-#                      A missing :path defaults to "aops-sessions/incoming/"
-#                      (relative to the remote user's home).
+#                      "nic@services-new:/data/sessions/". A missing :path
+#                      defaults to "src/sessions/" (relative to the remote home).
+#                      Under that base the payload lands as:
+#                        <base>/transcripts/  redacted markdown (transcript.py)
+#                        <base>/summaries/    summary JSON      (transcript.py)
+#                        <base>/incoming/     raw JSONL         (fallback only)
 #   AOPS_TS_SSH_CMD    remote-shell override (optional); defaults to
 #                      "tailscale ssh" when tailscale is present, else "ssh".
 #                      Set e.g. to "ssh" to use key-based auth to a plain host.
@@ -104,8 +107,8 @@ else
   # Fallback: ship the raw JSONL. NOTE: raw transcripts are UNREDACTED — only do
   # this to a trusted tailnet host you control.
   echo "[aops-ts] transcript.py unavailable/failed; shipping RAW (unredacted) JSONL"
-  mkdir -p "$STAGE/transcripts/raw"
-  cp "$tp" "$STAGE/transcripts/raw/${sid:-session}.jsonl"
+  mkdir -p "$STAGE/incoming"
+  cp "$tp" "$STAGE/incoming/${sid:-session}.jsonl"
 fi
 
 # --- push everything to the tailnet host ---
@@ -114,7 +117,7 @@ case "$AOPS_TS_SYNC_DEST" in
   *:*) REMOTE_HS="${AOPS_TS_SYNC_DEST%%:*}"; REMOTE_PATH="${AOPS_TS_SYNC_DEST#*:}";;
   *)   REMOTE_HS="$AOPS_TS_SYNC_DEST";       REMOTE_PATH="";;
 esac
-[ -n "$REMOTE_PATH" ] || REMOTE_PATH="aops-sessions/incoming/"
+[ -n "$REMOTE_PATH" ] || REMOTE_PATH="src/sessions/"
 
 # Remote shell: keyless `tailscale ssh` by default (tailnet-authenticated), or a
 # caller-supplied command / plain ssh. Left unquoted below so a two-word command
