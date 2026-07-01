@@ -74,11 +74,11 @@ def _seed_enforcer_deny(monkeypatch, state_dir, session_id: str) -> None:
     compliance DENY — the safety-critical verdict the agy harness silently drops.
     """
     monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("RBG_GATE_MODE", "block")
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     state = SessionState.create(session_id, client_type="agy")
-    state.gates["enforcer"].status = GateStatus.OPEN
-    state.gates["enforcer"].ops_since_open = 100
+    state.gates["rbg"].status = GateStatus.OPEN
+    state.gates["rbg"].ops_since_open = 100
     state.save()
 
 

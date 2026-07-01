@@ -234,8 +234,8 @@ class TestSubagentGateBypass:
         """
         session_id, state = mock_session
 
-        state.gates["enforcer"].ops_since_open = 100
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 100
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -256,8 +256,8 @@ class TestSubagentGateBypass:
         """Main session (is_subagent=False) must still be subject to gate policies."""
         session_id, state = mock_session
 
-        state.gates["enforcer"].ops_since_open = 100
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 100
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -400,8 +400,8 @@ class TestEvaluateTriggersMethod:
         session_id, state = mock_session
 
         # Set up high ops so policies WOULD fire
-        state.gates["enforcer"].ops_since_open = 100
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 100
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -422,8 +422,8 @@ class TestEvaluateTriggersMethod:
         """check() should evaluate BOTH triggers AND policies (contrast with evaluate_triggers)."""
         session_id, state = mock_session
 
-        state.gates["enforcer"].ops_since_open = 100
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 100
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -466,7 +466,7 @@ class TestReadOnlyToolExclusion:
         gate = GenericGate(config)
         session_id, state = mock_session
 
-        state.gates["enforcer_excl"] = state.gates["enforcer"].model_copy()
+        state.gates["enforcer_excl"] = state.get_gate("enforcer").model_copy()
         state.gates["enforcer_excl"].ops_since_open = 100
         state.gates["enforcer_excl"].status = GateStatus.OPEN
 
@@ -503,8 +503,8 @@ class TestSubagentStartHandler:
         session_id, state = mock_session
 
         # Enforcer trigger matches SubagentStart with subagent_type=enforcer
-        state.gates["enforcer"].ops_since_open = 50
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 50
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -524,7 +524,7 @@ class TestSubagentStartHandler:
             router.execute_hooks(ctx)
 
         # Trigger should have fired and reset ops counter
-        assert state.gates["enforcer"].ops_since_open == 0
+        assert state.get_gate("enforcer").ops_since_open == 0
 
     def test_on_subagent_start_method_exists(self):
         """GenericGate must have on_subagent_start method."""
@@ -536,8 +536,8 @@ class TestSubagentStartHandler:
         """on_subagent_start must evaluate triggers (same as on_subagent_stop)."""
         session_id, state = mock_session
 
-        state.gates["enforcer"].ops_since_open = 50
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = 50
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -551,7 +551,7 @@ class TestSubagentStartHandler:
         result = gate.on_subagent_start(ctx, state)
 
         # Trigger should fire and reset ops
-        assert state.gates["enforcer"].ops_since_open == 0
+        assert state.get_gate("enforcer").ops_since_open == 0
         assert result is not None
 
 
@@ -567,8 +567,8 @@ class TestSubagentPostToolUseBypass:
         session_id, state = mock_session
 
         initial_ops = 10
-        state.gates["enforcer"].ops_since_open = initial_ops
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = initial_ops
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -585,7 +585,7 @@ class TestSubagentPostToolUseBypass:
 
         # Subagent sessions return None — ops unchanged
         assert result is None
-        assert state.gates["enforcer"].ops_since_open == initial_ops
+        assert state.get_gate("enforcer").ops_since_open == initial_ops
 
     def test_non_compliance_subagent_post_tool_use_also_unchanged(
         self, mock_session, test_registry
@@ -594,8 +594,8 @@ class TestSubagentPostToolUseBypass:
         session_id, state = mock_session
 
         initial_ops = 10
-        state.gates["enforcer"].ops_since_open = initial_ops
-        state.gates["enforcer"].status = GateStatus.OPEN
+        state.get_gate("enforcer").ops_since_open = initial_ops
+        state.get_gate("enforcer").status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id=session_id,
@@ -612,7 +612,7 @@ class TestSubagentPostToolUseBypass:
 
         # Subagent sessions return None — ops unchanged
         assert result is None
-        assert state.gates["enforcer"].ops_since_open == initial_ops
+        assert state.get_gate("enforcer").ops_since_open == initial_ops
 
 
 class TestSubagentStartStopIsNotSubagent:

@@ -225,7 +225,7 @@ class TestGeminiToolCoverage:
         assert (
             get_tool_category("some_future_spawn_tool", {"agent_name": "rbg"}) == "infrastructure"
         )
-        assert get_tool_category("some_future_spawn_tool", {"name": "enforcer"}) == "infrastructure"
+        assert get_tool_category("some_future_spawn_tool", {"name": "rbg"}) == "infrastructure"
 
     def test_structural_escape_hatch_does_not_trigger_for_non_compliance_agents(self):
         """(c-neg) tool_input with a non-compliance agent name does NOT escape to infrastructure."""
