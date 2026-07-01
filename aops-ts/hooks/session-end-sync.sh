@@ -21,10 +21,11 @@
 # setup script, alongside the Tailscale install.)
 #
 # Config (env):
-#   AOPS_TS_SYNC_DEST  [user@]host[:path] on the tailnet (REQUIRED), e.g.
-#                      "nic@services-new:/data/sessions/". A missing :path
-#                      defaults to "src/sessions/" (relative to the remote home).
-#                      Under that base the payload lands as:
+#   AOPS_TS_SYNC_DEST  [user@]host:path on the tailnet (REQUIRED), e.g.
+#                      "nic@services-new:src/sessions/". Both host AND path are
+#                      required — a malformed dest (no host, or no ":path") is a
+#                      hard error (exit 1), never a silent default. `path` is the
+#                      base directory; the payload lands under it as:
 #                        <base>/transcripts/  redacted markdown (transcript.py)
 #                        <base>/summaries/    summary JSON      (transcript.py)
 #                        <base>/incoming/     raw JSONL         (fallback only)
@@ -50,6 +51,16 @@ if ! { command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1;
   echo "[aops-ts] tailnet not up; cannot reach $AOPS_TS_SYNC_DEST; skipping session sync."
   exit 0
 fi
+
+# Parse & validate the destination up front — [user@]host:path, both parts
+# REQUIRED. A malformed dest is an operator misconfiguration: fail fast and loud
+# (exit 1) before doing any work, never guess a default landing directory.
+case "$AOPS_TS_SYNC_DEST" in
+  *:*) REMOTE_HS="${AOPS_TS_SYNC_DEST%%:*}"; REMOTE_PATH="${AOPS_TS_SYNC_DEST#*:}";;
+  *)   echo "[aops-ts] FATAL: AOPS_TS_SYNC_DEST ('$AOPS_TS_SYNC_DEST') has no ':path'; expected [user@]host:path. Aborting session sync."; exit 1;;
+esac
+[ -n "$REMOTE_HS" ]   || { echo "[aops-ts] FATAL: AOPS_TS_SYNC_DEST ('$AOPS_TS_SYNC_DEST') has an empty host; expected [user@]host:path. Aborting session sync."; exit 1; }
+[ -n "$REMOTE_PATH" ] || { echo "[aops-ts] FATAL: AOPS_TS_SYNC_DEST ('$AOPS_TS_SYNC_DEST') has an empty path; expected [user@]host:path. Aborting session sync."; exit 1; }
 
 # --- resolve this session's transcript JSONL from the SessionEnd payload (stdin) ---
 payload="$(cat 2>/dev/null || true)"
@@ -111,15 +122,7 @@ else
   cp "$tp" "$STAGE/incoming/${sid:-session}.jsonl"
 fi
 
-# --- push everything to the tailnet host ---
-# Parse [user@]host[:path]; a missing :path defaults to a home-relative dir.
-case "$AOPS_TS_SYNC_DEST" in
-  *:*) REMOTE_HS="${AOPS_TS_SYNC_DEST%%:*}"; REMOTE_PATH="${AOPS_TS_SYNC_DEST#*:}";;
-  *)   REMOTE_HS="$AOPS_TS_SYNC_DEST";       REMOTE_PATH="";;
-esac
-[ -n "$REMOTE_HS" ] || { echo "[aops-ts] AOPS_TS_SYNC_DEST ('$AOPS_TS_SYNC_DEST') has no host; skipping session sync."; exit 0; }
-[ -n "$REMOTE_PATH" ] || REMOTE_PATH="src/sessions/"
-
+# --- push everything to the tailnet host (REMOTE_HS/REMOTE_PATH parsed above) ---
 # Remote shell: keyless `tailscale ssh` by default (tailnet-authenticated). When
 # AOPS_TS_SSH_CMD is set it is used verbatim (a full override — bake any ssh
 # options into it); otherwise the auto-selected plain-ssh fallback carries

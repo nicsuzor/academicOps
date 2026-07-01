@@ -80,11 +80,14 @@ a tailnet host. It no-ops (exit 0) unless **all** of these hold:
 - the tailnet is up (`tailscale status` succeeds)
 - `tar` and `ssh` are on `PATH`
 
+Once it is acting, a **malformed** `AOPS_TS_SYNC_DEST` (no host, or no `:path`) is
+a hard error (exit 1) — it fails fast and loud rather than guessing a default.
+
 Config (env):
 
 | Var                 | Required | Meaning                                                                                                    |
 | ------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host[:path]` on the tailnet, e.g. `nic@services-new:/data/sessions/`. The `:path` is the **base** directory (see layout below); a missing `:path` defaults to `src/sessions/` (relative to the remote user's home). |
+| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host:path` on the tailnet, e.g. `nic@services-new:src/sessions/`. **Both** host and `path` are required — `path` is the **base** directory (see layout below). A malformed dest (no host, or no `:path`) is a hard error (exit 1), not a silent default. |
 | `AOPS_TS_SSH_CMD`   | no       | remote-shell override, used **verbatim** (a full override — bake any ssh options into it). Defaults to `tailscale ssh` when tailscale is present, else the plain-ssh fallback. Set e.g. to `ssh -i ~/key -o StrictHostKeyChecking=accept-new` for key-based auth to a plain host. |
 | `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set. |
 | `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                    |
@@ -105,4 +108,6 @@ If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
 JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted
 tailnet host you control. Auth is via **Tailscale SSH** (no ssh keys) when the
 destination runs the Tailscale SSH server with an ACL permitting this node;
-otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It always exits 0.
+otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It exits 0 on every
+legitimate skip (not remote, no dest, tailnet down, missing tools) and only
+exits non-zero on a malformed destination.
