@@ -92,10 +92,10 @@ def _body_leaked_into(user_text: str | None, context_body: str) -> bool:
 # ---------------------------------------------------------------------------
 
 _TEMPLATE_VARS: dict[str, dict[str, object]] = {
-    "enforcer.policy_context": {"temp_path": "/tmp/enforcer-ctx.md", "ops_since_open": 50},
+    "rbg.policy_context": {"temp_path": "/tmp/rbg-ctx.md", "ops_since_open": 50},
     "qa.policy_context": {"temp_path": "/tmp/qa-gate.md"},
     "rbg_review.policy_context": {"temp_path": "/tmp/rbg-review.md"},
-    "enforcer.policy_message": {"ops_since_open": 50},
+    "rbg.policy_message": {"ops_since_open": 50},
 }
 
 
@@ -350,7 +350,7 @@ class TestEnforcerVerifiedSameKey:
     constitutes an instruction-text leak."""
 
     def test_enforcer_verified_template_is_short_status_not_instruction(self):
-        body = _render("enforcer.verified")
+        body = _render("rbg.verified")
         norm = _norm(body)
         # The template is a short status line, not a full instruction block.
         assert norm == "◇ Compliance verified.", (
@@ -360,7 +360,7 @@ class TestEnforcerVerifiedSameKey:
     def test_enforcer_verified_routes_same_body_to_both_channels(self, router):
         # Mirror the transition: both system_message and context_injection are
         # the SAME rendered body (no marker — transitions don't wrap).
-        body = _render("enforcer.verified")
+        body = _render("rbg.verified")
         canonical = CanonicalHookOutput(
             verdict="allow", system_message=body, context_injection=body
         )
@@ -451,11 +451,11 @@ class TestRealPipelineEnforcerLeak:
 
     @pytest.mark.parametrize("mode", ["warn", "block"])
     def test_real_enforcer_policy_context_absent_from_user(self, router, monkeypatch, mode):
-        set_gate_modes(monkeypatch, enforcer=mode)
+        set_gate_modes(monkeypatch, rbg=mode)
         reinit_gates_with_defaults()
 
-        state = make_gate_trigger_state("enforcer")
-        ctx = make_gate_trigger_context("enforcer")
+        state = make_gate_trigger_state("rbg")
+        ctx = make_gate_trigger_context("rbg")
 
         result = router._dispatch_gates(ctx, state)
         if result is None:

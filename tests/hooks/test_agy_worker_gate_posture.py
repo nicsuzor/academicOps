@@ -63,11 +63,11 @@ def _run_agy_router(
 def _seed_enforcer_deny(monkeypatch, state_dir: Path, session_id: str) -> None:
     """Seed on-disk state so a PreToolUse on session_id produces an enforcer DENY."""
     monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("RBG_GATE_MODE", "block")
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     state = SessionState.create(session_id, client_type="agy")
-    state.gates["enforcer"].status = GateStatus.OPEN
-    state.gates["enforcer"].ops_since_open = 100
+    state.gates["rbg"].status = GateStatus.OPEN
+    state.gates["rbg"].ops_since_open = 100
     state.save()
 
 
@@ -100,7 +100,7 @@ def test_pretooluse_allow_when_agy_client_set(monkeypatch, tmp_path):
         "PreToolUse",
         extra_env={
             "AOPS_SESSION_STATE_DIR": str(tmp_path),
-            "ENFORCER_GATE_MODE": "block",
+            "RBG_GATE_MODE": "block",
             "AOPS_AGY_CLIENT": "1",  # polecat-launched agy worker
         },
     )
@@ -128,7 +128,7 @@ def test_pretooluse_deny_without_agy_client(monkeypatch, tmp_path):
         "PreToolUse",
         extra_env={
             "AOPS_SESSION_STATE_DIR": str(tmp_path),
-            "ENFORCER_GATE_MODE": "block",
+            "RBG_GATE_MODE": "block",
             # AOPS_AGY_CLIENT intentionally absent — normal (non-worker) agy
         },
     )
@@ -146,11 +146,11 @@ def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
     """
     sid = "agy-warn-enforcer-allow"
     monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "warn")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("RBG_GATE_MODE", "warn")
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     state = SessionState.create(sid, client_type="agy")
-    state.gates["enforcer"].status = GateStatus.OPEN
-    state.gates["enforcer"].ops_since_open = 100
+    state.gates["rbg"].status = GateStatus.OPEN
+    state.gates["rbg"].ops_since_open = 100
     state.save()
 
     output, stderr = _run_agy_router(
@@ -158,7 +158,7 @@ def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
         "PreToolUse",
         extra_env={
             "AOPS_SESSION_STATE_DIR": str(tmp_path),
-            "ENFORCER_GATE_MODE": "warn",
+            "RBG_GATE_MODE": "warn",
         },
     )
 

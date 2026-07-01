@@ -43,8 +43,8 @@ def _state_with_enforcer_overdue():
     """Session state with the enforcer gate past its block threshold."""
     state = SessionState.create("ws7-engine-test", client_type="claude")
     state.main_agent.current_task = "task-x"  # so the gate is "armed"
-    state.gates["enforcer"].status = GateStatus.OPEN
-    state.gates["enforcer"].ops_since_open = 999
+    state.gates["rbg"].status = GateStatus.OPEN
+    state.gates["rbg"].ops_since_open = 999
     return state
 
 
@@ -62,7 +62,7 @@ def _verdict(result):
 def test_enforcer_blocks_write_at_threshold(monkeypatch):
     """Control: an overdue enforcer DOES deny an ordinary write tool."""
     monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    gate = GenericGate(_CONFIGS["enforcer"])
+    gate = GenericGate(_CONFIGS["rbg"])
     result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
     assert _verdict(result) == "deny"
 
@@ -74,7 +74,7 @@ def test_enforcer_does_not_block_askuserquestion(monkeypatch):
     must NOT fire, because AskUserQuestion is on the never-block list.
     """
     monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
-    gate = GenericGate(_CONFIGS["enforcer"])
+    gate = GenericGate(_CONFIGS["rbg"])
     result = gate.check(_ctx("AskUserQuestion"), _state_with_enforcer_overdue())
     assert _verdict(result) != "deny", (
         "AskUserQuestion must never be denied by a gate (never-block, #1451)"

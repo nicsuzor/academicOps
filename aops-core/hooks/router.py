@@ -950,7 +950,7 @@ class HookRouter:
             # enforcement: a non-blocking nudge can be disregarded by the model
             # (mem-4ab6cc0b), so block-mode gates keep decision="block".
             spec = client_spec.channel_spec("claude", "Stop")
-            agent_ctx_without_block = bool(spec and spec.agent_without_block)
+            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
 
             ctx_inj = result.context_injection
             sys_msg = result.system_message

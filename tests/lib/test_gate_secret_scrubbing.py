@@ -48,7 +48,7 @@ def test_create_audit_file_scrubs_secrets(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
 
     # Invoke custom action helper that builds the enforcer gate file
-    gate_path = create_audit_file("test-session-secrets", "enforcer", ctx)
+    gate_path = create_audit_file("test-session-secrets", "rbg", ctx)
 
     assert gate_path.exists()
 
