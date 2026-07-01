@@ -315,7 +315,7 @@ def finish_cmd(
                         + "- If the worker failed silently, check transcript and retry\n"
                     )
                     try:
-                        from lib.task_model import (
+                        from lib.task_model import (  # pyright: ignore[reportMissingImports]
                             TaskStatus,  # pyright: ignore[reportMissingImports]
                         )
 
@@ -477,7 +477,7 @@ def finish_cmd(
                     print("  Task will be marked for review.", file=sys.stderr)
                     task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto shared branch {branch_name}.\n"
                     try:
-                        from lib.task_model import (
+                        from lib.task_model import (  # pyright: ignore[reportMissingImports]
                             TaskStatus,  # pyright: ignore[reportMissingImports]
                         )
 
@@ -534,7 +534,7 @@ def finish_cmd(
                         # Don't exit - let it fall through to mark as review
                         task.body += f"\n\n## ⚠️ Rebase Failed\nConflicts detected during rebase onto {base_branch}.\n"
                         try:
-                            from lib.task_model import (
+                            from lib.task_model import (  # pyright: ignore[reportMissingImports]
                                 TaskStatus,  # pyright: ignore[reportMissingImports]
                             )
 

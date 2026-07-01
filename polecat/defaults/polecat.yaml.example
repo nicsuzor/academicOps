@@ -60,10 +60,10 @@ session_defaults:
   gates:
     handover: block
     qa: warn
-    enforcer: warn
+    rbg: warn
     hydration: off
     ida: warn
-    enforcer_threshold: 50
+    rbg_threshold: 50
 
 # ---------------------------------------------------------------------------
 # POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).

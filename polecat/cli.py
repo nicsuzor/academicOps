@@ -466,10 +466,10 @@ def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-
     gates = session_cfg.gates
     env["HANDOVER_GATE_MODE"] = gates.handover
     env["QA_GATE_MODE"] = gates.qa
-    env["ENFORCER_GATE_MODE"] = gates.enforcer
+    env["RBG_GATE_MODE"] = gates.rbg
     env["HYDRATION_GATE_MODE"] = gates.hydration
     env["IDA_GATE_MODE"] = gates.ida
-    env["ENFORCER_TOOL_CALL_THRESHOLD"] = str(gates.enforcer_threshold)
+    env["RBG_TOOL_CALL_THRESHOLD"] = str(gates.rbg_threshold)
 
 
 def _coerce_set_value(raw: str) -> object:
