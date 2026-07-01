@@ -2,7 +2,7 @@
 name: learn
 type: command
 category: instruction
-description: Thin shortcut — delegates to the survey skill in retro mode. Surveys recent transcripts, classifies issues, files GitHub bug reports.
+description: Thin shortcut — delegates to the triage skill in retro mode. Triages recent transcripts, classifies issues, files GitHub bug reports.
 triggers:
   - "learn"
   - "retro"
@@ -23,7 +23,7 @@ permalink: commands/learn
 
 # /learn — Analyze Session Transcripts & Apply Immediate Fixes
 
-Reviews recent session transcripts through a framework-development lens, identifies problems, files GitHub issues for root-cause analysis, and applies immediate fixes. Delegates to the `survey` skill in `retro` mode.
+Reviews recent session transcripts through a framework-development lens, identifies problems, files GitHub issues for root-cause analysis, and applies immediate fixes. Delegates to the `triage` skill in `retro` mode.
 
 ## Privacy & Forensic Issue Rules
 
@@ -33,7 +33,7 @@ Reviews recent session transcripts through a framework-development lens, identif
 
 ## Immediate Fixes Policy (Fix AND File)
 
-You may apply immediate codebase fixes (for minor tweaks or framework-caused defects) AND you must still file the tracking GitHub issue. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the immediate problem now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/survey/SKILL.md](skills/survey/SKILL.md#mode-retro) for details.
+You may apply immediate codebase fixes (for minor tweaks or framework-caused defects) AND you must still file the tracking GitHub issue. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the immediate problem now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/triage/SKILL.md](skills/triage/SKILL.md#mode-retro) for details.
 
 ## Invocation Styles
 
@@ -50,5 +50,5 @@ You may apply immediate codebase fixes (for minor tweaks or framework-caused def
 
 2. **Dispatch Pauli**:
    - Delegate the retro execution to the **Pauli** coordinator agent:
-     `Agent(subagent_type='pauli', prompt='Run survey skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
+     `Agent(subagent_type='pauli', prompt='Run triage skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
    - You MUST explicitly pass the target session ID or transcript path in the prompt to Pauli. Same-session review by a fresh subagent (like `pauli` dispatched within the session) is explicitly allowed.

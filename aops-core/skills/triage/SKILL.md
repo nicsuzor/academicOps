@@ -1,9 +1,10 @@
 ---
-name: survey
+name: triage
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
+description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
 triggers:
+  - "triage"
   - "survey"
   - "retro"
   - "transcript review"
@@ -20,7 +21,6 @@ domain:
   - quality-assurance
   - operations
 allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__task_search
-owner: pauli
 version: 1.0.0
 tags:
   - retro
@@ -30,9 +30,9 @@ tags:
   - consolidation
 ---
 
-# /survey — Unified Survey Skill
+# /triage — Unified Triage Skill
 
-Survey a corpus, classify findings, and dispatch outputs according to the selected mode.
+Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
 
 | Mode    | Corpus                              | Primary output                 |
 | ------- | ----------------------------------- | ------------------------------ |
@@ -122,7 +122,7 @@ Produce a review in this exact format. Keep text concise:
 - If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
 - If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
 - Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
-- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #survey-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-surveying the same transcript.
+- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #triage-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-triaging the same transcript.
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).

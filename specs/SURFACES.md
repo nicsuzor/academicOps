@@ -2,7 +2,7 @@
 
 > Canonical reference for where Claude Code and Gemini CLI run across this framework, what each surface can and can't do, and the load-bearing operational facts that bite when wrong.
 >
-> Personal ops detail — exact host/mount paths, bootstrap-script quirks, and retired-surface history — is tracked in Nic's personal ops PKB (the `surfaces` doc), not in this shared repo. This file covers the general capability matrix only.
+> Personal ops detail — exact host/mount paths and bootstrap-script quirks — is tracked in Nic's personal ops PKB (the `surfaces` doc), not in this shared repo. This file covers the general capability matrix only.
 
 ## Audience and scope
 
@@ -35,15 +35,13 @@
 | GHA runner              | `anthropics/claude-code-action@v1`                     | Transient (per job)                                                 | Agent prompt from `.github/agents/*.md` (no plugin)                                           | Workflow `env:` block only                                                  | Repo-scoped, ephemeral                                   | Nothing                                       |
 | Jules                   | Jules (Google)                                         | Google-side session, async                                          | Opaque (Google infra)                                                                         | N/A — no host hooks                                                         | Google-sandboxed, async                                  | Nothing                                       |
 
-> A prior surface — Mac Cowork sandbox dispatching to WSL via `ssh wsl` — was retired 2026-05-19. Historical detail lives in Nic's personal ops PKB, not in this repo.
-
 ---
 
 ## Surfaces
 
 ### WSL crew container
 
-The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree; there is no Mac → WSL SSH hop. (A prior Mac-Cowork-via-SSH model was retired 2026-05-19; history lives in the personal ops PKB, not here.)
+The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree; there is no Mac → WSL SSH hop.
 
 - **Engine**: Claude Code (interactive), running inside a long-running `polecat crew` container on WSL.
 - **Persistence**: The crew worktree at `/workspace` is persistent (mounted from the WSL host). The container itself is ephemeral — anything outside `/workspace` should be treated as wiped between sessions.
@@ -287,19 +285,13 @@ For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls
 
 ---
 
-## Retired surfaces
-
-Historical write-ups of retired surfaces (e.g. the pre-2026-05-19 Mac-Cowork-via-SSH orchestrator model, replaced by "WSL crew container" above) are tracked in Nic's personal ops PKB, not in this shared repo.
-
----
-
 ## How to update this doc
 
 1. **Per-row updates only.** When a surface's behaviour changes, edit only that surface's section + relevant rows in the TL;DR matrix. Don't restructure to add one fact.
 2. **New surface arrives** (e.g. remote docker host worker per polecat v2 plan): add a new section in the same shape; add a row to the TL;DR matrix; cross-reference the polecat-system spec.
 3. **A trap is discovered**: add it to that surface's "Known traps" _and_ (if it spans surfaces) the Cross-cutting notes section.
 4. **Cleanup lands** (e.g. hook env propagation fixed): zero out the `⚠` cells; move resolved traps to a brief "Resolved" appendix or just delete.
-5. **A surface is retired**: remove its live section and TL;DR row; note the retirement (date + reason) in Nic's personal ops PKB, not in this repo. Leave a one-line pointer under "Retired surfaces" above.
+5. **A surface is retired**: remove its live section and TL;DR row entirely; note the retirement (date + reason) in Nic's personal ops PKB, not in this repo.
 6. **PKB pointer**: a thin `surfaces` PKB doc exists whose only job is vector-search discoverability — its content is just "canonical at `specs/SURFACES.md`" plus a paragraph excerpt. When this doc's framing changes (audience, scope), update the PKB pointer to match.
 
 ---

@@ -150,7 +150,7 @@ Skills are Claude Code / Gemini CLI extensions that know how to do specific thin
 | `/dogfood`          | Delegated instruction testing — commissions contextless execution, observes friction |
 | `/strategic-review` | Multi-agent adversarial review of a document, plan, or pull request                  |
 | `/supervisor`       | Delegate-and-verify supervision loop, from a single epic to a portfolio release      |
-| `/survey`           | Corpus survey — retro (transcripts), trend (longitudinal), sweep (issue triage)      |
+| `/triage`           | Corpus triage — retro (transcripts), trend (longitudinal), sweep (issue triage)      |
 | `/verify`           | Judgment-based QA against the spec's fitness rubric                                  |
 
 **Domain skills** (fungible — retire when better external tools exist):

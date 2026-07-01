@@ -34,7 +34,6 @@ domain:
   - operations
   - knowledge-management
 model: opus
-owner: pauli
 version: 0.1.0
 permalink: skills-planner
 ---

@@ -15,7 +15,6 @@ mode: execution
 domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
-owner: pauli
 version: 5.4.0
 permalink: skills-daily
 ---

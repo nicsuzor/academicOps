@@ -457,7 +457,7 @@ gh label create "triage:stale"          --color "cccccc" --description "Open >7d
 gh label create "triage:auto-mergeable" --color "0e8a16" --description "Bot-authored, CI green, safe to auto-merge"     --force
 gh label create "triage:needs-judgment" --color "fbca04" --description "Human-authored, needs review judgment"          --force
 
-# Issue-sweep dispositions (consumed by aops-core/skills/survey, sweep mode)
+# Issue-sweep dispositions (consumed by aops-core/skills/triage, sweep mode)
 gh label create "triaged-stale"   --color "ededed" --description "Sweep: closed as stale"            --force
 gh label create "triaged-duplicate" --color "ededed" --description "Sweep: merged into canonical"     --force
 gh label create "triaged-evidence-bump" --color "ededed" --description "Sweep: evidence added to canonical" --force
@@ -465,7 +465,7 @@ gh label create "triaged-single"  --color "ededed" --description "Sweep: filed a
 gh label create "triaged-epic"    --color "ededed" --description "Sweep: filed as fix-epic"         --force
 gh label create "triaged-defer"   --color "ededed" --description "Sweep: deferred; revisit-by date set" --force
 
-# Criticality (used by survey + sweep when filing/triaging issues)
+# Criticality (used by triage + sweep when filing/triaging issues)
 gh label create "criticality:critical" --color "b60205" --description "Production-blocking or data-integrity risk" --force
 gh label create "criticality:high"     --color "d93f0b" --description "Material impact on workflows"               --force
 gh label create "criticality:medium"   --color "fbca04" --description "Noticeable but contained"                   --force
