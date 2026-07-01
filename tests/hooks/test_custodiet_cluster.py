@@ -63,10 +63,10 @@ def _reinit_gates(monkeypatch, tmp_path):
 
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
     monkeypatch.setenv("QA_GATE_MODE", "block")
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
+    monkeypatch.setenv("RBG_GATE_MODE", "block")
     monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
     monkeypatch.setenv("IDA_GATE_MODE", "warn")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
 
     if "hooks.gate_config" in sys.modules:
         # sys.modules["hooks.gate_config"]._reset_gate_mode_cache()
@@ -171,11 +171,11 @@ class TestMidEditDeferral:
     """Enforcer must not block when agent has an in-progress todo item."""
 
     def _state_at_threshold(self, has_in_progress: bool = False) -> SessionState:
-        from hooks.gate_config import ENFORCER_TOOL_CALL_THRESHOLD
+        from hooks.gate_config import RBG_TOOL_CALL_THRESHOLD
 
         state = _make_state()
-        state.gates["enforcer"].ops_since_open = ENFORCER_TOOL_CALL_THRESHOLD
-        state.gates["enforcer"].metrics["has_in_progress_todo"] = has_in_progress
+        state.gates["rbg"].ops_since_open = RBG_TOOL_CALL_THRESHOLD
+        state.gates["rbg"].metrics["has_in_progress_todo"] = has_in_progress
         return state
 
     def test_blocks_without_in_progress_todo(self, router):
@@ -218,12 +218,12 @@ class TestMidEditDeferral:
 
         router._dispatch_gates(ctx, state)
 
-        assert state.gates["enforcer"].metrics.get("has_in_progress_todo") is True
+        assert state.gates["rbg"].metrics.get("has_in_progress_todo") is True
 
     def test_todowrite_trigger_clears_flag_when_no_in_progress(self, router):
         """PostToolUse on TodoWrite with all completed clears the metric."""
         state = _make_state()
-        state.gates["enforcer"].metrics["has_in_progress_todo"] = True
+        state.gates["rbg"].metrics["has_in_progress_todo"] = True
 
         todos = [
             {"content": "Step 1", "status": "completed"},
@@ -237,7 +237,7 @@ class TestMidEditDeferral:
 
         router._dispatch_gates(ctx, state)
 
-        assert state.gates["enforcer"].metrics.get("has_in_progress_todo") is False
+        assert state.gates["rbg"].metrics.get("has_in_progress_todo") is False
 
 
 # ===========================================================================
@@ -507,12 +507,12 @@ class TestAuditWindowAndDirective:
     is prepended to the rbg review payload."""
 
     def test_window_is_enforcer_threshold_plus_two(self, monkeypatch):
-        """_audit_window_turns() == ENFORCER_TOOL_CALL_THRESHOLD + 2."""
+        """_audit_window_turns() == RBG_TOOL_CALL_THRESHOLD + 2."""
         import importlib
 
         from lib.gates import custom_actions
 
-        monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "30")
+        monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "30")
         importlib.reload(sys.modules["hooks.gate_config"])
         assert custom_actions._audit_window_turns() == 32
 

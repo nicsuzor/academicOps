@@ -236,7 +236,7 @@ def test_regex_hook_event_matching():
         hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="enforcer"
     )
 
-    enforcer_config = next(g for g in GATE_CONFIGS if g.name == "enforcer")
+    enforcer_config = next(g for g in GATE_CONFIGS if g.name == "rbg")
     gate = GenericGate(enforcer_config)
 
     # Matches
