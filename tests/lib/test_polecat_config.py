@@ -25,10 +25,10 @@ CANONICAL_YAML = dedent(
       gates:
         handover: warn
         qa: warn
-        enforcer: warn
+        rbg: warn
         hydration: off
         ida: warn
-        enforcer_threshold: 50
+        rbg_threshold: 15
     crew_defaults:
       hooks_enabled: false
     run_defaults: {}
@@ -66,7 +66,7 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert cfg.session_defaults.debug is False
     assert cfg.session_defaults.gates.handover == "warn"
     assert cfg.session_defaults.gates.hydration == "off"
-    assert cfg.session_defaults.gates.enforcer_threshold == 50
+    assert cfg.session_defaults.gates.rbg_threshold == 15
     assert cfg.docker.image == "ghcr.io/nicsuzor/aops-crew"
     assert cfg.external_agents["github"].enabled is True
     assert cfg.external_agents["jules"].enabled is False
@@ -196,10 +196,10 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
               gates:
                 handover: warn
                 qa: warn
-                enforcer: warn
+                rbg: warn
                 hydration: off
                 ida: warn
-                enforcer_threshold: 50
+                rbg_threshold: 15
             crew_defaults: {}
             run_defaults: {}
             # docker missing

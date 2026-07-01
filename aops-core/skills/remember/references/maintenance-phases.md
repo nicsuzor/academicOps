@@ -53,6 +53,14 @@ Agent(
 
 The PKB MCP bulk/merge tools (`batch_update`, `batch_reparent`, `batch_merge`, and `merge_node`) default to `dry_run=true`. To actually mutate the knowledge graph or execute the write operations, the agent MUST explicitly specify `dry_run=false` in the tool input. Calling these tools with the default parameter or omitting `dry_run` will result in a preview/simulation only and will not modify data.
 
+### Large-Graph Tool-Output Discipline
+
+On a mature graph (thousands of tasks) several PKB read tools return outputs exceeding the agent's context-token limit and spill to a temp file instead of returning inline. Observed offenders on a 4,786-task graph: `find_duplicates` (~140 KB), `list_tasks` with `format="json"`, any unfiltered list. When this happens you lose a turn and the data is no longer in context. Every phase that lists or scans:
+
+1. **Prefer compact output.** `list_tasks` → default `format="markdown"` + a `status`/`project` filter; reach for `format="json"` only when you need a specific field, then cap `limit` hard.
+2. **Never pull a full large result into your own context to analyse it.** Pick the cheapest channel that fits: structured/mechanical work (counting, filtering, pulling fields, grouping) → process the spilled file with code (`python`/`jq` over the saved path); a 100–200 KB JSON file is a one-script job and does NOT need a sub-agent. Whole-file *semantic* judgment (which clusters are real dups, reading prose) → delegate to a sub-agent that reads in chunks and returns only the compact verdict. Either way the orchestrator never loads the raw blob.
+3. **A spill is a signal, not an error** — the slice is too broad. Narrow the filter, script it, or delegate; don't retry the same call.
+
 ### Halt Surfacing (Anti-Silent-Failure)
 
 Sub-agents are instructed to emit a literal `HALT:` line and the missing tool name when a required tool is unavailable, rather than fabricating output. The parent orchestrator MUST:
@@ -218,12 +226,22 @@ Pauli paces the work. Defaults are guide-rails, not hard limits.
 
 Before structural work, fix the data. Three activities, run in order. Each is bounded per cycle.
 
-### Activity 1: Deduplication (mechanical, autonomous)
+### Activity 1: Deduplication (judgment-assisted, not mechanical)
 
-1. Run `find_duplicates(mode="both")` to get clusters by title + semantic similarity.
-2. For high-confidence clusters: merge autonomously via `batch_merge` (passing `dry_run=false` to execute).
-3. For ambiguous clusters: log in cycle summary for human review. Don't merge.
-4. Batch limit: up to 50 merges per cycle.
+`find_duplicates` clusters are **candidates, not verdicts**. The only fully reliable gate is member-count; every other decision is made by **reading the member titles**, not trusting a score. The tool emits one cluster-level `similarity_scores: {title, semantic}` (no per-member score), and the score can lie: a degenerate 717-member cluster once self-reported `title: 1.0` despite unrelated titles, while genuine merge pairs routinely score *low* on title (0.0–0.4). **When score and titles disagree, trust the titles.** The judgment is always "are these the same work item, possibly restated?" — answered by reading.
+
+1. `find_duplicates(mode="both")` (cluster surfaced on title OR semantic). If it spills, extract the structured fields with code — no sub-agent (see [Large-Graph Tool-Output Discipline](#large-graph-tool-output-discipline)). Per cluster get: canonical id, member ids, member titles, member count, cluster-level scores.
+2. **Ignore non-clusters** (<2 distinct members, or canonical id also in the merge set = self-reference).
+3. **The primary degeneracy catch is heterogeneous titles — at ANY member count.** Members describing visibly different work are NOT a duplicate set, even at 3 members / confidence 1.0; reading titles is the catch, the score won't save you. **Member-count is a blast-radius bound, not the degeneracy detector.** Quarantine clusters >8 members (tunable), separating two reasons:
+   - **quarantined (degenerate)** — heterogeneous titles / catch-all anchored on one broad epic. Tool artifact; summary line only.
+   - **quarantined (large, possibly-genuine)** — >8 members but titles mutually homogeneous: a real large dup set too big to merge unattended. Do NOT bury it in a summary line — surface as an actual flagged task ("Review N-way duplicate set: <shared title>") so it survives unattended mode.
+4. **Disposition each remaining cluster by reading titles** (bodies where titles mislead):
+   - **AUTO-MERGE** — ≤8 members, all the same work item restated, not a people/contacts cluster. Two guards: body-glance for date-prefixed / §-numbered / "Summary" / "Plan" / "Review" titles (the four false-positive classes reverted 2026-05-18, `mem-2da7b476`); and sanity-check the canonical, which is sometimes the narrower/derivative node — override to keep the survivor with the most context.
+   - **REJECT** — different people/orgs spuriously matched.
+   - **FLAG** — ambiguous: real overlap, plausibly different scope or sequential steps.
+   - **PARTIAL** — some members match, others don't: flag the coherent pair(s) for pairwise review, don't merge the whole cluster.
+5. Execute AUTO-MERGE: `batch_merge(canonical, merge_ids, dry_run=false)`. Batch limit 50 **clusters**/cycle. Content is never deleted on merge; **revert recipe**: `update_task(id=<merged-dup>, updates={superseded_by: null})` (source `mem-2da7b476`).
+6. Cycle-summary buckets (every cluster lands in exactly one): auto-merged / quarantined-degenerate / quarantined-large-genuine / rejected-non-duplicate / flagged-ambiguous / partial-pairwise-flag, with counts. (Operationalises AC#1 of fix-epic `aops-f4d34b89`; supersedes the looser threshold rule in `mem-2da7b476`.)
 
 ### Activity 2: Staleness Verification (evidence-based)
 
@@ -276,6 +294,10 @@ Resolution:
 - **No match** → log to ambiguous queue in artefact, surface in next `/daily`. Never invent a task.
 
 PRs only — **no `git log` scanning**. Idempotent. Cursor advances only after writes succeed. Phase no-ops when PKB MCP unavailable (CI guard).
+
+**Missing state files are not a silent no-op.** Activity 4a depends on `$ACA_DATA/state/{tracked-repos,close-loop-cursor,pr-state}.json`. If any are **absent** (distinct from "PKB unavailable"), the sweep can be dead for weeks while only the 4a-bis backstop catches merges. On a missing state file, emit an explicit cycle-summary line — `Activity 4a skipped — state files absent: <names>` — and ensure 4a-bis (the `merge_ready`/`review` scan) still runs as the backstop. Do not report 4a as "complete / no-op" when it never had inputs.
+
+**Never force a close past legitimate open children.** When a PR is confirmed MERGED but `complete_task` rejects because the parent has open child tasks, do **not** pass `recursive=true` to force it — open children may be legitimate post-merge follow-up, not residue, and cascade-closing destroys real pending work. Surface the parent as `merge-confirmed but close-blocked by open child <id>` and let it complete naturally once the child resolves. (Applies equally to the 4a-bis `merge_ready` reverify below.)
 
 Artefact written to `$ACA_DATA/state/pr-state.json`.
 

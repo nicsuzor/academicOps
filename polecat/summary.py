@@ -105,7 +105,7 @@ def summary(ctx, since, project):
     def _ready(proj=project):
         if manager.storage is not None:
             try:
-                from lib.task_model import (
+                from lib.task_model import (  # pyright: ignore[reportMissingImports]
                     TaskStatus,  # pyright: ignore[reportMissingImports]  # noqa: F401, F811
                 )
 
