@@ -449,10 +449,10 @@ def _resolve_session_config(
 _GATE_ENV_VARS = (
     "HANDOVER_GATE_MODE",
     "QA_GATE_MODE",
-    "ENFORCER_GATE_MODE",
+    "RBG_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "IDA_GATE_MODE",
-    "ENFORCER_TOOL_CALL_THRESHOLD",
+    "RBG_TOOL_CALL_THRESHOLD",
 )
 
 
