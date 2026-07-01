@@ -4,18 +4,31 @@
 # This is the observability companion to the bring-up hook: cloud/web sessions
 # have no durable filesystem and no inbound access, so a session's transcript
 # dies with the container unless it is pushed out. This hook runs aops-core's
-# transcript.py over this session's JSONL and rsyncs the result to a host on the
+# transcript.py over this session's JSONL and ships the result to a host on the
 # tailnet (the same tailnet the bring-up hook joins).
 #
-# Opt-in on three conditions; if ANY is unmet it no-ops (exit 0):
+# Opt-in on four conditions; if ANY is unmet it no-ops (exit 0):
 #   1. remote/cloud session   — CLAUDE_CODE_REMOTE=true
 #   2. a destination is set   — AOPS_TS_SYNC_DEST
 #   3. the tailnet is up      — `tailscale status` succeeds
+#   4. a transport exists     — `tar` + `ssh` on PATH
+#
+# Transport: tar-over-ssh, preferring `tailscale ssh` — which authenticates via
+# the tailnet (NO ssh keys needed) as long as the destination runs the Tailscale
+# SSH server with an ACL permitting this node. `rsync` is NOT required; the
+# remote only needs `tar`. (`tailscale ssh` is a thin wrapper around the system
+# `ssh` binary, so openssh-client must be installed — do it in your environment
+# setup script, alongside the Tailscale install.)
 #
 # Config (env):
-#   AOPS_TS_SYNC_DEST  rsync/ssh destination on the tailnet (REQUIRED), e.g.
-#                      "nic@services-new:/data/aops-sessions/incoming/"
-#   AOPS_TS_SSH_OPTS   extra ssh options (optional), e.g.
+#   AOPS_TS_SYNC_DEST  [user@]host[:path] on the tailnet (REQUIRED), e.g.
+#                      "nic@services-new:/data/aops-sessions/incoming/".
+#                      A missing :path defaults to "aops-sessions/incoming/"
+#                      (relative to the remote user's home).
+#   AOPS_TS_SSH_CMD    remote-shell override (optional); defaults to
+#                      "tailscale ssh" when tailscale is present, else "ssh".
+#                      Set e.g. to "ssh" to use key-based auth to a plain host.
+#   AOPS_TS_SSH_OPTS   extra ssh options for the plain-ssh path (optional), e.g.
 #                      "-o StrictHostKeyChecking=accept-new"
 #   AOPS_SRC_DIR       aops-core source dir (optional; else the plugin cache is used)
 #
@@ -28,7 +41,8 @@ exec 1>&2   # keep stdout empty; SessionEnd stdout is not for the model
 
 [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] || exit 0
 [ -n "${AOPS_TS_SYNC_DEST:-}" ] || { echo "[aops-ts] AOPS_TS_SYNC_DEST unset; skipping session sync."; exit 0; }
-command -v rsync >/dev/null 2>&1 || { echo "[aops-ts] rsync not installed; skipping session sync."; exit 0; }
+command -v tar >/dev/null 2>&1 || { echo "[aops-ts] tar not installed; skipping session sync."; exit 0; }
+command -v ssh >/dev/null 2>&1 || { echo "[aops-ts] ssh (openssh-client) not installed — install it in your environment setup script; skipping session sync."; exit 0; }
 if ! { command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1; }; then
   echo "[aops-ts] tailnet not up; cannot reach $AOPS_TS_SYNC_DEST; skipping session sync."
   exit 0
@@ -95,13 +109,33 @@ else
 fi
 
 # --- push everything to the tailnet host ---
-# shellcheck disable=SC2086
-if rsync -az --no-perms --no-owner --no-group --exclude 'transcript.log' \
-     -e "ssh -o BatchMode=yes -o ConnectTimeout=10 ${AOPS_TS_SSH_OPTS:-}" \
-     "$STAGE"/ "$AOPS_TS_SYNC_DEST"; then
-  echo "[aops-ts] session synced to $AOPS_TS_SYNC_DEST"
+# Parse [user@]host[:path]; a missing :path defaults to a home-relative dir.
+case "$AOPS_TS_SYNC_DEST" in
+  *:*) REMOTE_HS="${AOPS_TS_SYNC_DEST%%:*}"; REMOTE_PATH="${AOPS_TS_SYNC_DEST#*:}";;
+  *)   REMOTE_HS="$AOPS_TS_SYNC_DEST";       REMOTE_PATH="";;
+esac
+[ -n "$REMOTE_PATH" ] || REMOTE_PATH="aops-sessions/incoming/"
+
+# Remote shell: keyless `tailscale ssh` by default (tailnet-authenticated), or a
+# caller-supplied command / plain ssh. Left unquoted below so a two-word command
+# ("tailscale ssh") word-splits into argv — matching the old `-e` convention.
+if [ -n "${AOPS_TS_SSH_CMD:-}" ]; then
+  RSH="$AOPS_TS_SSH_CMD"
+elif command -v tailscale >/dev/null 2>&1; then
+  RSH="tailscale ssh"
 else
-  echo "[aops-ts] rsync to $AOPS_TS_SYNC_DEST failed (check ssh auth / dest path / tailnet ACL)"
+  RSH="ssh -o BatchMode=yes -o ConnectTimeout=10 ${AOPS_TS_SSH_OPTS:-}"
+fi
+
+# tar-over-ssh: stream the staging tree through the remote shell and unpack it.
+# The remote needs only `tar`; no rsync on either side. transcript.log is local
+# diagnostics, so it is excluded from the payload.
+# shellcheck disable=SC2086
+if tar czf - --exclude='transcript.log' -C "$STAGE" . \
+     | $RSH "$REMOTE_HS" "mkdir -p \"$REMOTE_PATH\" && tar xzf - -C \"$REMOTE_PATH\""; then
+  echo "[aops-ts] session synced to $REMOTE_HS:$REMOTE_PATH"
+else
+  echo "[aops-ts] transfer to $REMOTE_HS:$REMOTE_PATH failed (check Tailscale SSH ACL / dest path / tailnet reachability)"
 fi
 
 exit 0
