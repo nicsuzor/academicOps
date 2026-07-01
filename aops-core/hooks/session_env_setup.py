@@ -136,6 +136,34 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
     except Exception as e:
         messages.append(_warn(f"autoMode: check failed ({e})"))
 
+    # Gate posture summary — one compact line of every gate's resolved mode,
+    # for operators and logs (academicOps aops-42f07ffb). Read-only: resolves
+    # each *_GATE_MODE through gate_config's own env-var lookup (os.environ.get
+    # with the built-in default); no change to gate-resolution logic. The row
+    # rides the system_message, which log_hook_event persists to the JSONL hook
+    # log — so it appears in both the user's session output and the logs.
+    gate_modes: dict[str, str] | None = None
+    try:
+        from hooks import gate_config
+
+        _gate_mode_vars = [
+            "IDA_GATE_MODE",
+            "HANDOVER_GATE_MODE",
+            "QA_GATE_MODE",
+            "RBG_GATE_MODE",
+            "RBG_REVIEW_GATE_MODE",
+            "HYDRATION_GATE_MODE",
+            "SENTINEL_GATE_MODE",
+        ]
+        gate_modes = {
+            name[: -len("_GATE_MODE")].lower(): getattr(gate_config, name)
+            for name in _gate_mode_vars
+        }
+        gate_summary = " ".join(f"{k}={v}" for k, v in gate_modes.items())
+        messages.append(_ok(f"Gates: {gate_summary}"))
+    except Exception as e:
+        messages.append(_warn(f"Gates: resolution failed ({e})"))
+
     # 1. Persist Session ID
     # AOPS_SESSION_ID is the canonical, vendor-neutral session-id env var
     # used by skills, agents, and the gate engine. Set here for Claude Code;
@@ -383,6 +411,7 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
         system_message="\n".join(messages),
         metadata={
             "source": "session_env_setup",
+            "gate_modes": gate_modes,
             "persisted_vars": persist,
             "deferred_shell_lines": shell_lines,
             "provision_ok": (provision_report.ok if provision_report else None),
