@@ -342,7 +342,6 @@ def main():
             f.write("| Agent | Priority | Required Action |\n")
             f.write("| :--- | :--- | :--- |\n")
             f.write("| `james.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
-            f.write("| `junior.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
             f.write("| `marsha.md` | P1 | Add `skills:` and `subagents:` allowlists. |\n")
             f.write("| `pauli.md` | P1 | Add `skills:` allowlist. |\n")
             f.write(
@@ -361,9 +360,8 @@ def main():
             f.write("## Tool Authority (Drift Remediation)\n\n")
             f.write("Based on `specs/audit/AGENT-TOOLS.md`:\n\n")
             f.write(
-                "- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).\n"
+                "- **Edit Tool**: confirm any `❌ Drifted` row in the Exclusive Tools table above is intentional or narrow the drifted agent's tool grant.\n"
             )
-            f.write("- **Edit Tool**: Evaluate if `junior.md` needs `Edit`.\n")
 
     # 3. Generate Tool Matrix
     # Gather all tools and their owners

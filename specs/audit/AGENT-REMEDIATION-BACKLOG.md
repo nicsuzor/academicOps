@@ -7,7 +7,6 @@ This backlog lists the actions required to bring all agents and skills into full
 | Agent       | Priority | Required Action                                        |
 | :---------- | :------- | :----------------------------------------------------- |
 | `james.md`  | P1       | Add `skills:` and `subagents:` allowlists.             |
-| `junior.md` | P1       | Add `skills:` and `subagents:` allowlists.             |
 | `marsha.md` | P1       | Add `skills:` and `subagents:` allowlists.             |
 | `pauli.md`  | P1       | Add `skills:` allowlist.                               |
 | `rbg.md`    | P2       | Add `skills: []` and `subagents: []` for explicitness. |
@@ -26,5 +25,4 @@ This backlog lists the actions required to bring all agents and skills into full
 
 Based on `specs/audit/AGENT-TOOLS.md`:
 
-- **Exclusivity Enforcement**: Remove destructive PKB tools from `junior.md` (should be exclusive to `pauli`).
-- **Edit Tool**: Evaluate if `junior.md` needs `Edit`.
+- **Edit Tool**: `ida.md` now shares `Edit` with `rbg.md` (flagged `❌ Drifted` in the matrix) — confirm this is intentional or narrow `ida`'s tool grant.
