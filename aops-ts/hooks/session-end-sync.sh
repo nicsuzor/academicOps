@@ -117,11 +117,14 @@ case "$AOPS_TS_SYNC_DEST" in
   *:*) REMOTE_HS="${AOPS_TS_SYNC_DEST%%:*}"; REMOTE_PATH="${AOPS_TS_SYNC_DEST#*:}";;
   *)   REMOTE_HS="$AOPS_TS_SYNC_DEST";       REMOTE_PATH="";;
 esac
+[ -n "$REMOTE_HS" ] || { echo "[aops-ts] AOPS_TS_SYNC_DEST ('$AOPS_TS_SYNC_DEST') has no host; skipping session sync."; exit 0; }
 [ -n "$REMOTE_PATH" ] || REMOTE_PATH="src/sessions/"
 
-# Remote shell: keyless `tailscale ssh` by default (tailnet-authenticated), or a
-# caller-supplied command / plain ssh. Left unquoted below so a two-word command
-# ("tailscale ssh") word-splits into argv — matching the old `-e` convention.
+# Remote shell: keyless `tailscale ssh` by default (tailnet-authenticated). When
+# AOPS_TS_SSH_CMD is set it is used verbatim (a full override — bake any ssh
+# options into it); otherwise the auto-selected plain-ssh fallback carries
+# AOPS_TS_SSH_OPTS. Left unquoted below so a two-word command ("tailscale ssh")
+# word-splits into argv — matching the old `-e` convention.
 if [ -n "${AOPS_TS_SSH_CMD:-}" ]; then
   RSH="$AOPS_TS_SSH_CMD"
 elif command -v tailscale >/dev/null 2>&1; then
@@ -130,12 +133,18 @@ else
   RSH="ssh -o BatchMode=yes -o ConnectTimeout=10 ${AOPS_TS_SSH_OPTS:-}"
 fi
 
+# Single-quote REMOTE_PATH for safe interpolation into the remote shell command:
+# wrap in single quotes and escape any embedded single quote as '\''. This makes
+# spaces/metacharacters inert and closes the remote-command-injection vector for
+# an operator-supplied path.
+REMOTE_PATH_Q="'$(printf '%s' "$REMOTE_PATH" | sed "s/'/'\\\\''/g")'"
+
 # tar-over-ssh: stream the staging tree through the remote shell and unpack it.
 # The remote needs only `tar`; no rsync on either side. transcript.log is local
 # diagnostics, so it is excluded from the payload.
 # shellcheck disable=SC2086
 if tar czf - --exclude='transcript.log' -C "$STAGE" . \
-     | $RSH "$REMOTE_HS" "mkdir -p \"$REMOTE_PATH\" && tar xzf - -C \"$REMOTE_PATH\""; then
+     | $RSH "$REMOTE_HS" "mkdir -p $REMOTE_PATH_Q && tar xzf - -C $REMOTE_PATH_Q"; then
   echo "[aops-ts] session synced to $REMOTE_HS:$REMOTE_PATH"
 else
   echo "[aops-ts] transfer to $REMOTE_HS:$REMOTE_PATH failed (check Tailscale SSH ACL / dest path / tailnet reachability)"

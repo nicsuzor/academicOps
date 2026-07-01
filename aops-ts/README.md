@@ -41,9 +41,11 @@ must ship as a repo/plugin hook.
    variable for the remote environment.
 
    The `SessionEnd` sync also needs `tar` and `ssh` (openssh-client) on `PATH` —
-   `tailscale ssh` wraps the system `ssh`. Install them in your setup script too:
+   `tailscale ssh` wraps the system `ssh`. `tar` ships in virtually every base
+   image; `ssh` usually needs installing. On a minimal image install both:
 
    ```bash
+   command -v tar >/dev/null 2>&1 || (apt-get update && apt-get install -y tar)
    command -v ssh >/dev/null 2>&1 || (apt-get update && apt-get install -y openssh-client)
    ```
 
@@ -83,8 +85,8 @@ Config (env):
 | Var                 | Required | Meaning                                                                                                    |
 | ------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
 | `AOPS_TS_SYNC_DEST` | yes      | `[user@]host[:path]` on the tailnet, e.g. `nic@services-new:/data/sessions/`. The `:path` is the **base** directory (see layout below); a missing `:path` defaults to `src/sessions/` (relative to the remote user's home). |
-| `AOPS_TS_SSH_CMD`   | no       | remote-shell override; defaults to `tailscale ssh` (else `ssh`). Set to `ssh` for key-based auth to a plain host. |
-| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the plain-ssh path, e.g. `-o StrictHostKeyChecking=accept-new`                       |
+| `AOPS_TS_SSH_CMD`   | no       | remote-shell override, used **verbatim** (a full override — bake any ssh options into it). Defaults to `tailscale ssh` when tailscale is present, else the plain-ssh fallback. Set e.g. to `ssh -i ~/key -o StrictHostKeyChecking=accept-new` for key-based auth to a plain host. |
+| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set. |
 | `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                    |
 
 It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
