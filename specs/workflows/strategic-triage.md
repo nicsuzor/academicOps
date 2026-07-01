@@ -6,7 +6,7 @@ status: inbox
 tier: workflow
 created: 2026-03-09
 depends_on:
-  - effectual-planning-agent
+  - pauli
   - sleep-cycle
 tags:
   - spec
@@ -21,7 +21,7 @@ tags:
 
 _No implementation yet. This spec defines a scheduled agent that detects structural patterns in the task graph — blocking chains, convergence points, last-domino situations — and surfaces 3-5 strategic recommendations per cycle. It operationalises the effectual planner's Mode 3 (Prioritisation), with the structural analysis done unsupervised and qualitative judgment (assumption testing, information value) applied in evaluation._
 
-- [[specs/effectual-planning-agent.md]] — upstream: strategic planning philosophy, information-value prioritisation
+- [[specs/agents/pauli.md]] — upstream: strategic planning philosophy, information-value prioritisation
 - [[specs/sleep-cycle.md]] — sibling: runs on the same cron infrastructure, consolidates knowledge (this spec consolidates _intent_)
 - [[aops-core/workflows/decompose.md]] — downstream: when a ripe epic needs breaking down
 - [[specs/research-decomposition.md]] — downstream: domain-specific decomposition for research tasks
@@ -272,7 +272,7 @@ Phase 1 implementation: manual invocation only (`/triage`). Validate the selecti
 
 ## Related
 
-- [[specs/effectual-planning-agent.md]] — upstream: strategic planning philosophy
+- [[specs/agents/pauli.md]] — upstream: strategic planning philosophy
 - [[specs/sleep-cycle.md]] — sibling scheduled agent (knowledge consolidation)
 - [[specs/research-decomposition.md]] — domain-specific decomposition
 - [[aops-core/workflows/decompose.md]] — general decomposition workflow

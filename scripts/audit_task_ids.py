@@ -20,7 +20,7 @@ def get_graph():
     sys.path.append(str(repo_root / "polecat"))
 
     try:
-        from pkb_bridge import _get_client
+        from pkb_bridge import _get_client  # pyright: ignore[reportMissingImports]
 
         client = _get_client()
         return client.call_tool("graph_json", {})

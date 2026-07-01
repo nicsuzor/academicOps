@@ -1,6 +1,6 @@
 ---
-name: enforcer-context
-title: Enforcer Context Template
+name: rbg-context
+title: RBG Context Template
 category: template
 description: |
   Template written to temp file for rbg compliance subagent.

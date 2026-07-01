@@ -149,8 +149,8 @@ If leaving multiple distinct follow-up threads, append:
 ```markdown
 ### Thread Pickup: what next?
 
-- **Thread A**: <action for next session>
-- **Thread B**: <action / dependency>
+- **Thread A** — `/pull <task-id>` (<short title>): <one-line action / why it's next>
+- **Thread B** — `/pull <task-id>` (<short title>): <one-line action / dependency>
 ```
 
 #### 8. Exit

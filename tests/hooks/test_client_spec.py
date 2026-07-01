@@ -133,6 +133,24 @@ class TestChannelTable:
         assert spec.agent_context_without_block is True
         assert spec.can_block is True  # delivery != enforcement; block still available
 
+    def test_claude_stop_has_asyncrewake_quiet_split(self):
+        # PTY-proven 2026-06-29 (stop-asyncrewake-split, 2.1.195): full body →
+        # agent <system-reminder>, one-line summary → user only. The quiet
+        # full-to-agent / one-line-to-user disposition (ENFORCEMENT-MAP §1.1).
+        spec = cs.channel_spec("claude", "Stop")
+        assert spec.agent_full_user_summary is True
+        # Quiet-split is NOT a hard block (delivery != compulsion) — block stays
+        # available via the separate decision:block path.
+        assert spec.can_block is True
+
+    def test_quiet_split_is_claude_stop_only(self):
+        # No proven agent-full/user-summary split elsewhere: PreToolUse (advisory
+        # rides additionalContext, already U-silent) and agy (no user channel) do
+        # NOT have it. Guards against over-claiming the disposition.
+        assert cs.channel_spec("claude", "PreToolUse").agent_full_user_summary is False
+        assert cs.channel_spec("agy", "Stop").agent_full_user_summary is False
+        assert cs.channel_spec("gemini", "Stop").agent_full_user_summary is False
+
     def test_agy_pretooluse_has_no_free_agent_channel(self):
         spec = cs.channel_spec("agy", "PreToolUse")
         assert spec.agent_context_without_block is False

@@ -22,7 +22,7 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from build_utils import (
+    from build_utils import (  # pyright: ignore[reportMissingImports]
         convert_mcp_to_gemini,
         get_git_commit_sha,
         safe_copy,
@@ -333,12 +333,9 @@ def generate_aops_core_pyproject(
     """
     if aops_root is None:
         aops_root = SCRIPT_DIR.parent
-    if platform == "cowork":
-        src_pyproject = aops_root / "aops-cowork" / "pyproject.toml"
-        missing_hint = "aops-cowork is a real composed package; its pyproject.toml must be tracked"
-    else:
-        src_pyproject = aops_root / "aops-core" / "pyproject.toml"
-        missing_hint = "cannot build aops-core without it (epic-267fe017)"
+
+    src_pyproject = aops_root / "templates" / "aops-core.pyproject.toml"
+    missing_hint = "cannot build aops-core without it (epic-267fe017)"
     if not src_pyproject.exists():
         raise FileNotFoundError(
             f"Required source manifest {src_pyproject} not found — {missing_hint}"
@@ -405,6 +402,13 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         new_hooks = []
                         for hook in value:
                             new_hook = dict(hook)
+                            # asyncRewake (config asyncRewake/rewakeMessage/
+                            # rewakeSummary) is the Claude-only Stop quiet-split
+                            # channel — strip it so it never leaks into the Gemini
+                            # hooks.json (Gemini has no asyncRewake; its Stop split
+                            # would be a separate capability).
+                            for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+                                new_hook.pop(_k, None)
                             if "command" in new_hook:
                                 # Replace Claude variable with Gemini variable
                                 cmd = new_hook["command"]
@@ -464,6 +468,10 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
     def _transform_hook(hook: dict, output_event: str) -> dict:
         """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
         new_hook = dict(hook)
+        # asyncRewake is the Claude-only Stop quiet-split channel — strip it so it
+        # never leaks into the agy hooks.json (agy rejects unknown fields).
+        for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+            new_hook.pop(_k, None)
         if "command" in new_hook:
             cmd = new_hook["command"]
             # agy runs PreToolUse/PostToolUse/Pre|PostInvocation hooks with the
@@ -854,9 +862,7 @@ def build_aops_core(
     # agy, and the real aops-cowork/pyproject.toml (lib-only) for cowork. uv.lock
     # is NOT tracked — it is generated here per-platform. `uv sync --frozen` at
     # runtime then installs exactly what the manifest declared, no drift.
-    pyproject_source = (
-        "aops-cowork/pyproject.toml" if platform == "cowork" else "aops-core/pyproject.toml"
-    )
+    pyproject_source = "templates/aops-core.pyproject.toml"
     pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
     pyproject_path = content_dir / "pyproject.toml"
     pyproject_path.write_text(pyproject_content)

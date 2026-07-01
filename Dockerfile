@@ -259,6 +259,17 @@ COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-settings.json /ho
 # triggers onboarding even when the token is set.
 COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-config.json /home/worker/.claude.json
 
+# Seed agy's (Antigravity CLI) onboarding-complete marker so headless/crew
+# workers skip its interactive first-run wizard (theme picker → migration →
+# Terms-of-Service / data-collection consent). agy v1.0.13 introduced this
+# wizard and gates it on ~/.gemini/antigravity-cli/cache/onboarding.json; the
+# autonomous worker (interactive `agy -i`) cannot complete the TUI and never
+# reaches a prompt (regression aops-d9cc656a, verified 2026-06-29). This is the
+# agy analog of the Claude `hasCompletedOnboarding` seed above. Pre-create the
+# cache dir so BuildKit doesn't auto-create it 0644 (non-traversable).
+RUN umask 000 && mkdir -p /home/worker/.gemini/antigravity-cli/cache
+COPY --chown=worker:worker --chmod=666 polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 polecat/entrypoint.sh /home/worker/entrypoint.sh
 

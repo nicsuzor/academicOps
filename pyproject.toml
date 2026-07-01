@@ -134,9 +134,9 @@ reportExplicitAny = false
 reportImplicitStringConcatenation = false
 reportUnreachable = false
 # Ignore missing imports for third-party packages without stubs
-reportMissingImports = false
-reportMissingTypeStubs = false
-reportMissingModuleSource = false
+reportMissingImports = true
+reportMissingTypeStubs = true
+reportMissingModuleSource = true
 
 # Pre-existing issues tracked for incremental remediation — match pre-deletion baseline
 reportMissingTypeArgument = false

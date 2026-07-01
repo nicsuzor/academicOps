@@ -17,7 +17,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.append(str(SCRIPT_DIR / "lib"))
 
 try:
-    from build_utils import (
+    from build_utils import (  # pyright: ignore[reportMissingImports]
         check_installed_plugin_version,
         emit_version_mismatch_warning,
         get_git_commit_sha,

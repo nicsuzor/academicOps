@@ -335,15 +335,15 @@ class SessionState(BaseModel):
 # --- Utility Functions ---
 
 
-def set_enforcer_block(session_id: str, reason: str) -> None:
-    """Set enforcer block on a session.
+def set_rbg_block(session_id: str, reason: str) -> None:
+    """Set rbg block on a session.
 
     This is used by external scripts (compliance_block.py) to block
     session when policy violations are detected.
     """
     state = SessionState.load(session_id)
-    gate = state.get_gate("enforcer")
+    gate = state.get_gate("rbg")
     gate.blocked = True
     gate.block_reason = reason
-    state.gates["enforcer"] = gate
+    state.gates["rbg"] = gate
     state.save()

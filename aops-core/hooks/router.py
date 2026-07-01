@@ -135,8 +135,8 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
-    - ◇ N  enforcer countdown active
-    - ◇    enforcer overdue (past threshold)
+    - ◇ N  RBG countdown active
+    - ◇    RBG overdue (past threshold)
     - ≡    handover complete (gate OPEN + handover invoked)
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
@@ -145,15 +145,15 @@ def format_gate_status_icons(state: SessionState) -> str:
 
     parts: list[str] = []
 
-    # Enforcer: countdown or overdue
-    enforcer = state.gates.get("enforcer")
-    if enforcer:
-        enforcer_gate = GateRegistry.get_gate("enforcer")
-        if enforcer_gate and enforcer_gate.config.countdown:
-            threshold = enforcer_gate.config.countdown.threshold
-            start_before = enforcer_gate.config.countdown.start_before
+    # RBG: countdown or overdue
+    rbg = state.gates.get("rbg")
+    if rbg:
+        rbg_gate = GateRegistry.get_gate("rbg")
+        if rbg_gate and rbg_gate.config.countdown:
+            threshold = rbg_gate.config.countdown.threshold
+            start_before = rbg_gate.config.countdown.start_before
             countdown_start = threshold - start_before
-            ops = enforcer.ops_since_open
+            ops = rbg.ops_since_open
             if ops >= threshold:
                 parts.append("◇")
             elif ops >= countdown_start:
@@ -333,7 +333,7 @@ class HookRouter:
         # "args":{...}},"workspacePaths":[...]}` (#1800; verified against the live
         # hook log for session 6d3d5783). The earlier double-nested
         # `raw_input.raw_input.toolCall` lookup never matched, so ctx.tool_name was
-        # None on every agy tool event, defeating sentinel/enforcer/handover
+        # None on every agy tool event, defeating sentinel/rbg/handover
         # tool-name matching. Prefer the root-level object; keep the nested form as
         # a defensive fallback for any wrapper that re-nests the payload.
         if not tool_name:
@@ -768,16 +768,33 @@ class HookRouter:
         messages = []
         context_injections = []
         final_verdict = GateVerdict.ALLOW
+        # Track the advisory `ida` warn body and which gates actually contributed,
+        # so the asyncRewake quiet-split below can fire ONLY when ida·reminder is
+        # the sole Stop advisory (ENFORCEMENT-MAP §1.1). See metadata wiring after
+        # the loop — mixed Stop turns keep the status-quo additionalContext path.
+        ida_warn_body: str | None = None
+        contributing_gates: list[str] = []
 
         for gate in GateRegistry.get_all_gates():
             try:
                 result = self._call_gate_method(gate, ctx, state)
 
                 if result:
+                    contributed = False
                     if result.system_message:
                         messages.append(result.system_message)
+                        contributed = True
                     if result.context_injection:
                         context_injections.append(result.context_injection)
+                        contributed = True
+                    if contributed:
+                        contributing_gates.append(gate.name)
+                    if (
+                        gate.name == "ida"
+                        and result.verdict == GateVerdict.WARN
+                        and result.context_injection
+                    ):
+                        ida_warn_body = result.context_injection
 
                     # Verdict precedence: DENY > WARN > ALLOW
                     if result.verdict == GateVerdict.DENY:
@@ -792,11 +809,30 @@ class HookRouter:
                 print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
 
+        # asyncRewake quiet-split (ENFORCEMENT-MAP §1.1 `ida·reminder`): when the
+        # advisory ida warn is the SOLE Stop contributor and nothing blocks, the
+        # full ida-reminder body is delivered to the AGENT via the Claude Stop
+        # asyncRewake hook (body → agent <system-reminder>; one-line config
+        # rewakeSummary → user). The router signals this by stashing the body in
+        # metadata; main() emits it on stdout + exit 2 (the asyncRewake channel),
+        # gated on the SSoT capability cell client_spec.agent_full_user_summary.
+        # Strictly scoped: any other contributing gate (qa/handover advisory) or a
+        # DENY verdict falls through to the status-quo renderer untouched.
+        metadata: dict[str, Any] = {}
+        if (
+            ctx.hook_event in ("Stop", "SessionEnd")
+            and final_verdict == GateVerdict.WARN
+            and ida_warn_body is not None
+            and contributing_gates == ["ida"]
+        ):
+            metadata["ida_async_rewake_body"] = ida_warn_body
+
         if messages or context_injections or final_verdict != GateVerdict.ALLOW:
             return GateResult(
                 verdict=final_verdict,
                 system_message="\n".join(messages) if messages else None,
                 context_injection="\n\n".join(context_injections) if context_injections else None,
+                metadata=metadata,
             )
         return None
 
@@ -867,7 +903,7 @@ class HookRouter:
         # Set decision based on verdict
         if result.verdict == "deny":
             out.decision = "deny"
-            # Recovery payload (e.g. enforcer instructions) MUST go to
+            # Recovery payload (e.g. RBG instructions) MUST go to
             # hookSpecificOutput.additionalContext — `reason` is user-visible
             # only and the model never sees it. Mirrors the Claude side, where
             # context_injection lands on hookSpecificOutput.additionalContext.
@@ -914,7 +950,7 @@ class HookRouter:
             # enforcement: a non-blocking nudge can be disregarded by the model
             # (mem-4ab6cc0b), so block-mode gates keep decision="block".
             spec = client_spec.channel_spec("claude", "Stop")
-            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+            agent_ctx_without_block = bool(spec and spec.agent_without_block)
 
             ctx_inj = result.context_injection
             sys_msg = result.system_message
@@ -1002,6 +1038,32 @@ class HookRouter:
 
         return output
 
+    def async_rewake_body_for(self, result: CanonicalHookOutput, event: str) -> str | None:
+        """Body to emit via the Claude Stop ``asyncRewake`` quiet-split, or None.
+
+        ONLY the advisory ``ida·reminder`` rides this channel (ENFORCEMENT-MAP
+        §1.1): the full ida-reminder body is delivered to the AGENT as a
+        ``<system-reminder>`` (config ``rewakeMessage`` prefix + this stdout
+        body) while the USER sees only the one-line config ``rewakeSummary``.
+        ``_dispatch_gates`` already proved ida is the SOLE Stop contributor and
+        no gate blocked before stashing ``ida_async_rewake_body``.
+
+        Gated on the SSoT capability cell
+        ``client_spec.channel_spec("claude","Stop").agent_full_user_summary`` so
+        a client that lacks the proven split never takes this branch. NB
+        asyncRewake DELIVERS but does not COMPEL — it is never a substitute for a
+        hard ``decision:block``; block-mode Stop gates keep the JSON path.
+        """
+        if event not in ("Stop", "SessionEnd"):
+            return None
+        body = result.metadata.get("ida_async_rewake_body")
+        if not body:
+            return None
+        spec = client_spec.channel_spec("claude", "Stop")
+        if not (spec and spec.agent_full_user_summary):
+            return None
+        return body
+
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
 
@@ -1010,7 +1072,7 @@ class HookRouter:
         silent-drop regression in aops-27004ffd: the Claude/Gemini schema's
         ``decision`` / ``metadata`` / ``systemMessage`` are all *unknown* fields
         to ``exa.hooks_pb``, so routing agy through ``output_for_gemini`` made the
-        harness discard every verdict (including enforcer DENYs) while the router
+        harness discard every verdict (including RBG DENYs) while the router
         exited 0. This formatter therefore emits ONLY the fields each ``*Result``
         defines — and never ``metadata``.
 
@@ -1169,6 +1231,21 @@ def main():
             output = router.output_for_gemini(result, ctx.hook_event)
             print(output.model_dump_json(exclude_none=True))
         else:
+            # asyncRewake quiet-split path (Claude Stop, ENFORCEMENT-MAP §1.1
+            # `ida·reminder`): emit the full ida-reminder body on stdout and EXIT
+            # 2. The Stop hook is registered with `asyncRewake:true` +
+            # `rewakeMessage`/`rewakeSummary` (aops-core/hooks/hooks.json), so the
+            # body reaches the agent as a <system-reminder> while the user sees
+            # only the one-line summary. No JSON is printed on this path — the
+            # exit-2 body IS the wire payload. The ida gate is fire-once per turn
+            # (CLOSED→OPEN on Stop), so the next Stop produces no warn, the router
+            # exits 0, and the agent terminates normally — asyncRewake re-wakes
+            # cannot trap the session.
+            rewake_body = router.async_rewake_body_for(result, ctx.hook_event)
+            if rewake_body is not None:
+                sys.stdout.write(rewake_body if rewake_body.endswith("\n") else rewake_body + "\n")
+                sys.stdout.flush()
+                sys.exit(2)
             output = router.output_for_claude(result, ctx.hook_event)
             print(output.model_dump_json(exclude_none=True))
     except Exception as e:

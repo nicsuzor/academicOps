@@ -1,9 +1,9 @@
 ---
-name: enforcer-countdown
-title: Enforcer Countdown Warning
+name: rbg-countdown
+title: RBG Countdown Warning
 category: template
 description: |
-  Countdown warning shown before enforcer threshold is reached.
+  Countdown warning shown before rbg threshold is reached.
   Variables: {remaining}, {temp_path}
 ---
 

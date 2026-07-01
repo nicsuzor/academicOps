@@ -8,7 +8,7 @@ Testing the four layers of session infrastructure. For each layer, verify it fir
 - MCP & PKB: semantic search, task metadata indexed, Rust server responsive
 - PreToolUse: hydration gate blocks write operations; user sees why (both channels)
 - PKB write: task creation unblocks gates
-- RBG enforcer: invoke periodic compliance enforcer per instructions
+- RBG rbg: invoke periodic compliance rbg per instructions
 - Skills: invoke /plan, /aops, /remember
 - Subagents: dispatch junior or marsha; verify context passing
 - Polecats: dispatch local workers (gemini and claude) via uv run

@@ -51,7 +51,7 @@ Use this technique when:
 - You need exact format compliance (no preamble, no elaboration)
 - Other emphasis techniques haven't achieved sufficient compliance
 
-Example (enforcer agent):
+Example (rbg agent):
 
 ```
 **CRITICAL: Your output is parsed programmatically.** The calling hook extracts
@@ -113,7 +113,7 @@ Rungs 1–4 are the strength axis already captured by 1a–1c plus the "Prompt S
 
 **Spec Location**: [brain PKB (project: aops) | task body | N/A]
 
-**Escalation**: [auto | critic | enforcer | human]
+**Escalation**: [auto | critic | rbg | human]
 ```
 
 **Escalation Matrix**:
@@ -138,14 +138,14 @@ Rungs 1–4 are the strength axis already captured by 1a–1c plus the "Prompt S
 
 - `/learn` command requires this format before framework edits
 - PreToolUse hook can validate format presence for framework file edits
-- Critic/enforcer receive the justification block as input
+- Critic/rbg receive the justification block as input
 
 **Fails when**:
 
 - Agent fabricates "Rules Loaded" without actually reading
 - Format becomes boilerplate (agent copy-pastes without reasoning)
 
-**Mitigation**: Enforcer can spot-check that claimed principles are actually relevant to the change.
+**Mitigation**: RBG can spot-check that claimed principles are actually relevant to the change.
 
 ## When Each Mechanism Works
 

@@ -32,10 +32,10 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
         gates:
             handover: warn|block|off
             qa: warn|block|off
-            enforcer: warn|block|off
+            rbg: warn|block|off
+            rbg_threshold: int
             hydration: warn|block|off
             ida: warn|block|off            # Ida B. Wells reminder gate
-            enforcer_threshold: int
     crew_defaults: {...}                          # overlay for `polecat crew`
     run_defaults:  {...}                          # overlay for `polecat run`
     docker:
@@ -70,10 +70,10 @@ _GATE_MODES = frozenset({"warn", "block", "off"})
 class GatesConfig:
     handover: str
     qa: str
-    enforcer: str
+    rbg: str
     hydration: str
     ida: str
-    enforcer_threshold: int
+    rbg_threshold: int
 
 
 @dataclass(frozen=True)
@@ -204,7 +204,7 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
     are validated); False when loading the YAML (all keys required).
     """
     out: dict[str, Any] = {}
-    for name in ("handover", "qa", "enforcer", "hydration", "ida"):
+    for name in ("handover", "qa", "rbg", "hydration", "ida"):
         if name in raw:
             raw_value = raw[name]
             # YAML 1.1 parses bare `off` / `on` as booleans. Translate False→"off"
@@ -226,24 +226,24 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
             out[name] = value
         elif not allow_partial:
             raise ValueError(f"missing required gates.{name}")
-    if "enforcer_threshold" in raw:
-        val = raw["enforcer_threshold"]
+    if "rbg_threshold" in raw:
+        val = raw["rbg_threshold"]
         try:
-            out["enforcer_threshold"] = int(val)
+            out["rbg_threshold"] = int(val)
         except (ValueError, TypeError) as exc:
             raise RuntimeError(
-                f"polecat config: gates.enforcer_threshold must be an integer"
+                f"polecat config: gates.rbg_threshold must be an integer"
                 f" (got {type(val).__name__}: {val!r})"
             ) from exc
     elif not allow_partial:
-        raise ValueError("missing required gates.enforcer_threshold")
+        raise ValueError("missing required gates.rbg_threshold")
     unknown = set(raw) - {
         "handover",
         "qa",
-        "enforcer",
+        "rbg",
         "hydration",
         "ida",
-        "enforcer_threshold",
+        "rbg_threshold",
     }
     if unknown:
         raise ValueError(f"unknown gates keys: {sorted(unknown)}")

@@ -21,16 +21,14 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 ## At a glance
 
-| Gate         | What it catches                                         | Fires on                              | Default | Stateful?   |
-| ------------ | ------------------------------------------------------- | ------------------------------------- | ------- | ----------- |
-| `sentinel`   | Destructive ops on protected env paths                  | PreToolUse (stateless)                | `block` | stateless   |
-| `enforcer`   | Periodic compliance / ultra-vires drift                 | PreToolUse @ threshold                | `warn`  | counter     |
-| `rbg-review` | Final rbg axiom audit before a task-bound session exits | Stop while CLOSED (polecat/crew only) | `block` | open/closed |
-| `qa`         | "Done" claimed without verification                     | Stop while CLOSED                     | `warn`  | open/closed |
-| `handover`   | Exit without commit / task update / reflection          | Stop while CLOSED                     | `warn`  | open/closed |
-| `ida`        | Honesty / criterion-substitution at Stop                | Stop (once/turn)                      | `warn`  | open/closed |
-
-The `Default` column above is the built-in / interactive default; `handover` (and the inert/armed split on `rbg-review`) shift on the polecat surface. For the full open/close lifecycle, the warn-vs-block contrast, and who sees each firing, see [Lifecycle, merge-vs-block & visibility](#lifecycle-merge-vs-block--visibility) immediately below.
+| Gate       | What it catches                                         | Fires on   | Close trigger           | Open trigger       |
+| ---------- | ------------------------------------------------------- | ---------- | ----------------------- | ------------------ |
+| `sentinel` | Destructive ops on protected env paths                  | PreToolUse | always                  |                    |
+| `rbg`      | Periodic compliance / ultra-vires drift                 | PreToolUse | tool calls >= threshold | call RBG           |
+| `rbg`      | Final rbg axiom audit before a task-bound session exits | Stop       | claim_task              | call RBG           |
+| `qa`       | "Done" claimed without verification                     | Stop       | claim_task              | Skill(verify)      |
+| `handover` | Exit without commit / task update / reflection          | Stop       | claim_task              | Skill(End Session) |
+| `ida`      | Honesty / criterion-substitution at Stop                | Stop       | User prompt             | Max once per turn  |
 
 Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/hook-router.md` § Session Scope](enforcement/hook-router.md#session-scope).
 
@@ -97,7 +95,7 @@ For polecat sessions, `polecat.yaml` is the primary configuration source — the
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
               *_GATE_MODE env vars in the process environment
-              (ENFORCER_GATE_MODE, QA_GATE_MODE, etc.)
+              (RBG_GATE_MODE, QA_GATE_MODE, etc.)
                               ↓
 ┌─ All sessions (polecat or direct CLI) ──────────────────────────────┐
 │                                                                     │
@@ -152,10 +150,10 @@ python -c '
 import os, sys
 sys.path.insert(0, "/path/to/aops-core")
 from hooks.gate_config import (
-    ENFORCER_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE,
+    RBG_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE,
     HYDRATION_GATE_MODE, IDA_GATE_MODE, ENFORCER_TOOL_CALL_THRESHOLD,
 )
-print(f"enforcer={ENFORCER_GATE_MODE} threshold={ENFORCER_TOOL_CALL_THRESHOLD}")
+print(f"enforcer={RBG_GATE_MODE} threshold={ENFORCER_TOOL_CALL_THRESHOLD}")
 print(f"qa={QA_GATE_MODE} handover={HANDOVER_GATE_MODE}")
 print(f"ida={IDA_GATE_MODE} hydration={HYDRATION_GATE_MODE}")
 '
@@ -255,9 +253,9 @@ The periodic-compliance gate. Counts write operations since the last rbg audit; 
 | Concern                  | Path                                                                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[0]`)                                                              |
-| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`ENFORCER_TOOL_CALL_THRESHOLD`, `ENFORCER_GATE_MODE`)                               |
+| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`ENFORCER_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                    |
 | Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                 |
-| Templates                | `aops-core/hooks/templates/enforcer-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`  |
+| Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`       |
 | Compliance subagent      | `aops-core/agents/rbg.md` (only `rbg.md` is shipped; the regex also accepts a subagent named `enforcer` if installed) |
 
 Subagent dispatches that look like `Agent(subagent_type="enforcer")` or `Agent(subagent_type="rbg")` reset the counter via the gate's trigger.
@@ -296,7 +294,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 
 | Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                                                    |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mode silently `off`                                          | `python -c "from hooks.gate_config import ENFORCER_GATE_MODE; print(ENFORCER_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                   |
+| Mode silently `off`                                          | `python -c "from hooks.gate_config import RBG_GATE_MODE; print(RBG_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                             |
 | `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap above.                                                                                                           |
 | Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                                          |
 | Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress` (issue #319).                                                                                                                       |
@@ -400,7 +398,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `handover` gate
 
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). **Posture gate**: `warn` (merge) on the interactive surface, `block` on polecat — resolved via `resolve_posture_gate()`. Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle, merge-vs-block & visibility](#lifecycle-merge-vs-block--visibility). Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
+> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle, merge-vs-block & visibility](#lifecycle-merge-vs-block--visibility). Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
 
 ### What is it
 
@@ -465,7 +463,7 @@ The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and 
 
 **Why fire-once.** Regardless of channel, the agent should see the honesty checklist **once per turn** and self-correct — not be nagged on every retried Stop. The lifecycle delivers exactly that: CLOSED → fires on first Stop → OPEN, re-arms on the next UserPromptSubmit.
 
-**Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the **current target (CC ≥2.1.191)** a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (agent-only; the turn proceeds). On **legacy CC 2.1.158** the Stop event rejected `hookSpecificOutput`/`additionalContext`, so the only agent-visible channel was `decision: "block"` + `reason` (also user-visible) and a warn had to upgrade to a block purely to deliver — which is why this gate was historically described as "block-once." That upgrade is now retired on 2.1.191. _(The inline code comment at `definitions.py:581-583` still states the legacy "no additionalContext on Stop" assumption — stale; the live behaviour is whatever `channel_spec("claude","Stop").agent_context_without_block` says.)_
+**Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the **current target (CC ≥2.1.191, re-confirmed 2.1.195)** a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (the turn proceeds). Note this is _not_ user-silent: on Stop the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line — no _user-silent_ (zero user output) Stop channel exists. The quiet alternative is the `asyncRewake` Stop hook (full body to agent `<system-reminder>`, one-line `<summary>` to user; decompiled + PTY-proven 5×, [[kb-fcc2b95c]], RCA #2014) — delivery only, not compulsion. (PTY-confirmed, task aops-c0363bf8.) On **legacy CC 2.1.158** the Stop event rejected `hookSpecificOutput`/`additionalContext`, so the only agent-visible channel was `decision: "block"` + `reason` (also user-visible) and a warn had to upgrade to a block purely to deliver — which is why this gate was historically described as "block-once." That upgrade is now retired on 2.1.191. _(The inline code comment at `definitions.py:581-583` still states the legacy "no additionalContext on Stop" assumption — stale; the live behaviour is whatever `channel_spec("claude","Stop").agent_context_without_block` says.)_
 
 ### Where it lives
 

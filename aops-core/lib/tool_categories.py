@@ -44,10 +44,6 @@ from lib import tool_registry
 
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
-        # enforcer — Haiku-class narrow compliance agent (periodic gate review).
-        "enforcer",
-        "aops-core:enforcer",
-        "aops_core_enforcer",
         # rbg (The Judge) — sonnet-class ad-hoc axiom review.
         "rbg",
         "aops-core:rbg",
@@ -89,7 +85,6 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     # as spawn tools at all (previously unknown -> defaulted to ``write``).
     "invoke_subagent": ((), False),
     # Gemini: bare agent tools (Strategy 2)
-    "aops_core_enforcer": ((), False),
     "aops_core_rbg": ((), False),
     "aops_core_marsha": ((), False),
 }
@@ -200,7 +195,7 @@ def _generate_pkb_variants() -> dict[str, set[str]]:
 # Categorize TOOL NAMES by their side effects. This determines which gates
 # must pass before the tool can be used.
 #
-# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (enforcer, etc.)
+# IMPORTANT: Only TOOL NAMES go here. Agent/skill names (rbg, etc.)
 # are subagent_type values, not tool names. They belong in
 # COMPLIANCE_SUBAGENT_TYPES above.
 #
@@ -230,7 +225,7 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "mcp__plugin_aops-core_memory__store_memory",
     },
     # Spawn: tools that invoke subagents or skills.
-    # Always allowed if the target subagent is a compliance agent (enforcer, etc).
+    # Always allowed if the target subagent is a compliance agent (rbg, etc).
     "spawn": {
         "Agent",  # Claude Code: spawn subagent (current tool name)
         "Task",  # Claude Code: spawn subagent (legacy/alias)
@@ -244,12 +239,11 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "TaskList",
         "aops_core_rbg",
         "aops_core_marsha",
-        "aops_core_enforcer",
         "aops_core_qa",
         "aops_core_audit",
         "aops_core_butler",
     },
-    # Read-only tools: no side effects. Exempt from enforcer gate.
+    # Read-only tools: no side effects. Exempt from rbg gate.
     "read_only": {
         # --- Claude Code built-in ---
         "Read",
@@ -390,7 +384,7 @@ del _category, _variants
 # names across Claude, Gemini, and agy — including the agy RUNTIME vocabulary
 # (view_file, run_command, write_to_file, replace_file_content, invoke_subagent,
 # manage_task, …) that was previously unknown here, so agy tool calls fell through
-# to the conservative ``write`` default and broke spawn/enforcer/sentinel matching.
+# to the conservative ``write`` default and broke spawn/rbg/sentinel matching.
 # Server-specific MCP sets (Outlook, Zotero, Playwright, …) stay defined above; the
 # registry only owns the cross-client core. The merge is additive and must never
 # DISAGREE with an existing entry (asserted by tests/hooks/test_tool_registry.py).
@@ -459,8 +453,8 @@ def get_tool_category(tool_name: str, tool_input: dict[str, Any] | None = None) 
 
     # 2. Compliance agent spawns (Agent/Task + compliance subagent_type, or tool_name
     # is the compliance agent name directly) are infrastructure.
-    # This ensures dispatching the enforcer is never blocked by any gate,
-    # including the enforcer's own ops-threshold policy.
+    # This ensures dispatching the rbg is never blocked by any gate,
+    # including the rbg's own ops-threshold policy.
     extracted_st, _ = extract_subagent_type(tool_name, tool_input)
     if extracted_st and extracted_st in COMPLIANCE_SUBAGENT_TYPES:
         return "infrastructure"
@@ -503,7 +497,7 @@ def extract_subagent_type(
 
     Two extraction strategies:
     1. Direct match: tool_name IS the agent name (e.g. Gemini reports
-       tool_name="enforcer" rather than "delegate_to_agent").
+       tool_name="rbg" rather than "delegate_to_agent").
        Matched against COMPLIANCE_SUBAGENT_TYPES.
     2. SPAWN_TOOLS table: tool_name is a spawning tool (e.g. "Agent",
        "delegate_to_agent") and the agent name is in tool_input.

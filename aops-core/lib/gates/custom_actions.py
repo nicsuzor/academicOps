@@ -12,18 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 def _audit_window_turns() -> int:
-    """The single context window = enforcer cadence (n) + 2 overlap turns.
+    """The single context window = RBG cadence (n) + 2 overlap turns.
 
-    n is the enforcer ops-counter threshold that triggers the compliance gate
-    (ENFORCER_TOOL_CALL_THRESHOLD). rbg fires every n tool-calls, so an n+2
+    n is the RBG ops-counter threshold that triggers the compliance gate
+    (RBG_TOOL_CALL_THRESHOLD). RBG fires every n tool-calls, so an n+2
     window overlaps the previous window by 2 turns and a clean sliding window
     covers every turn at full detail without a full-session re-send
-    (aops-5bc65f76). Both the enforcer (PreToolUse) and rbg-review (Stop)
+    (aops-5bc65f76). Both the RBG (PreToolUse) and rbg-review (Stop)
     dispatches share this one window.
     """
-    from hooks.gate_config import ENFORCER_TOOL_CALL_THRESHOLD
+    from hooks.gate_config import RBG_TOOL_CALL_THRESHOLD
 
-    return ENFORCER_TOOL_CALL_THRESHOLD + 2
+    return RBG_TOOL_CALL_THRESHOLD + 2
 
 
 def _bound_task_directive(task_id: str | None) -> str:
@@ -70,9 +70,9 @@ def create_audit_file(
 ) -> Path:
     """Create rich audit file for gate using TemplateRegistry.
 
-    Both the enforcer (PreToolUse cadence) and the rbg-review (Stop) dispatch
+    Both the RBG (PreToolUse cadence) and the rbg-review (Stop) dispatch
     now share ONE windowed context builder — ``build_audit_session_context``
-    capped to the last n+2 turns (n = enforcer cadence; aops-5bc65f76). The
+    capped to the last n+2 turns (n = RBG cadence; aops-5bc65f76). The
     rbg-review payload additionally prepends the bound task's initial directive
     (when ``bound_task_id`` is set) so rbg can verify the session stayed
     on-target and within authority.
@@ -115,7 +115,7 @@ def create_audit_file(
                 exc_info=True,
             )
 
-        if gate == "enforcer" and entries:
+        if gate == "rbg" and entries:
             from lib.session_reader import _extract_recent_skill, load_skill_scope
 
             try:
@@ -165,7 +165,7 @@ def create_audit_file(
         # Coverage sentinel: must be the last line of the rendered file so that
         # a truncated read is detectable. The rbg auditor requires this via
         # `tail -3` (aops-e4e90f31, #1976).
-        if content and gate == "enforcer":
+        if content and gate == "rbg":
             import re
 
             # Extract turn count from session_context if possible, fallback to ?
@@ -242,7 +242,7 @@ def execute_custom_action(
         if not reuse:
             temp_path = create_audit_file(
                 ctx.session_id,
-                "enforcer",
+                "rbg",
                 ctx,
                 bound_task_id=session_state.main_agent.current_task,
             )
@@ -252,7 +252,7 @@ def execute_custom_action(
                 state.metrics["transcript_parse_pos"] = tf.stat().st_size if tf.exists() else -1
 
         registry = TemplateRegistry.instance()
-        instruction = registry.render("enforcer.instruction", {"temp_path": str(temp_path)})
+        instruction = registry.render("rbg.instruction", {"temp_path": str(temp_path)})
 
         return GateResult.allow(
             system_message=f"Compliance report ready: {temp_path}",

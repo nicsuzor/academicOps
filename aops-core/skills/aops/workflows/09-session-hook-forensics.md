@@ -53,7 +53,7 @@ for l in sys.stdin:
    Always use `transcript.py` on the CC session JSONL for a readable conversation log. Transcripts include hook verdicts and system_messages (merged by `transcript_parser.py:_map_hook_jsonl_to_entry_data`). For exact raw values or when transcript rendering is truncated, use raw hook JSONL directly.
 
 3. **Check Gate Behavior**
-   - **Enforcer/RBG gate**: Grep for `SubagentStart`/`SubagentStop` with `enforcer` or `rbg` subagent type. Each pair = one compliance check. See [[forensics-details]] for commands.
+   - **RBG/RBG gate**: Grep for `SubagentStart`/`SubagentStop` with `rbg` or `rbg` subagent type. Each pair = one compliance check. See [[forensics-details]] for commands.
    - **Stop/Handover gate**: Grep for `"hook_event":"Stop"` and check `output.verdict`. Look for the 4-deny-then-auto-approve pattern.
    - **PreToolUse blocks**: Grep for `"verdict":"deny"` to find any tool calls that were rejected.
 
@@ -62,7 +62,7 @@ for l in sys.stdin:
 
 5. **Identify the Pattern**
    Common patterns (see [[forensics-details]] for details):
-   - Enforcer dispatching repeatedly in long sessions (normal)
+   - RBG dispatching repeatedly in long sessions (normal)
    - 4 Stop denies then auto-approve (agent ignoring or unable to comply)
    - Zero Gemini hook JSONL (open question as of 2026-04-09)
    - Operations count ≠ turn count (50 ops ≈ 11 turns)
@@ -78,8 +78,8 @@ for l in sys.stdin:
 
 - **`PostToolUse` crashes**: Gate updates failing after a tool completes.
 - **`verdict == "deny"`**: Explicitly blocked tool uses or session stops.
-- **Gate status markers**: `◇` (enforcer countdown), `💧` (hydration), `≡` (gate status).
-- **`SubagentStart`/`SubagentStop` with enforcer/rbg**: Compliance gate check cycle.
+- **Gate status markers**: `◇` (rbg countdown), `💧` (hydration), `≡` (gate status).
+- **`SubagentStart`/`SubagentStop` with rbg/rbg**: Compliance gate check cycle.
 - **4 consecutive Stop denies**: Safety override pattern — investigate what happened between denies.
 
 **ALWAYS generate transcript first** — raw JSONL is difficult to interpret for the conversation side. But for hook/gate behavior, read the hook JSONL directly.

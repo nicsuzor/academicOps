@@ -1,9 +1,9 @@
 ---
-name: enforcer-policy-message
-title: Enforcer Policy Short Message
+name: rbg-policy-message
+title: RBG Policy Short Message
 category: template
 description: |
-  Short user-facing message when enforcer gate blocks a tool call.
+  Short user-facing message when rbg gate blocks a tool call.
   Variables: {ops_since_open} - number of ops since last compliance check
 ---
 

@@ -265,7 +265,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
 
     _TaskIndex = None
     try:
-        from lib.task_index import TaskIndex as _TaskIndex
+        from lib.task_index import TaskIndex as _TaskIndex  # pyright: ignore[reportMissingImports]
     except ImportError:
         pass
 
@@ -279,7 +279,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
     # List tasks
     if manager.storage is not None:
         try:
-            from lib.task_model import TaskStatus
+            from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
             candidates = manager.storage.list_tasks(status=TaskStatus.IN_PROGRESS, project=project)
         except ImportError:
@@ -335,7 +335,7 @@ def reset_stalled(ctx, project, hours, dry_run, force):
             task.assignee = None
             if manager.storage is not None:
                 try:
-                    from lib.task_model import TaskStatus
+                    from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
                     _status_attr = getattr(
                         TaskStatus, "QUEUED", getattr(TaskStatus, "ACTIVE", None)
