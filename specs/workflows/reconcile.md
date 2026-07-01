@@ -7,7 +7,7 @@ status: ready
 created: 2026-05-13
 updated: 2026-05-13
 tags: [spec, workflow, reconcile, github, pkb, closure-loop]
-related: [[daily-briefing-bundle]], [[feedback-loops]], [[pr-pipeline]], [[work-management]]
+related: [[feedback-loops]], [[pr-pipeline]], [[work-management]]
 supersedes: academicOps PR #985 (closed)
 ---
 

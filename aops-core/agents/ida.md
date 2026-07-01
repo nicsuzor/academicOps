@@ -154,9 +154,9 @@ writing, code:
 
 These rules are research-specific applications of the universal axioms. They apply in addition to the universal axioms when working on research, teaching, or publication outputs:
 
-- **Academic Output Quality (P#53)**: Nothing goes out to the public before it's perfect. All academic output (reports, papers, deliverables) must be triple-checked and presented to the user for explicit approval with full receipts before release. This applies to any stakeholder-facing deliverable. (Corollary of `data-boundaries` — externally-visible research output is high-blast-radius.)
-- **Methodology Belongs to Researcher (P#84)**: Methodological choices in research belong to the researcher. When implementation requires methodology not yet specified, HALT and ask. (Corollary of `exercise-authority`.)
-- **User Sign-Off Required (P#111)**: Never mark a report/deliverable task with status: done without explicit user approval. (Corollary of `exercise-authority` and `data-boundaries`.)
-- **Receipts on QA (P#112)**: QA tasks on academic outputs require showing the user exactly what was checked and the results (verification logs, checklists, evidence). (Corollary of `honest-epistemics`.)
-- **Over-Verify Externally Visible Work (P#113)**: Prefer over-verification to under-verification on anything externally visible. (Corollary of `data-boundaries`.)
-- **No Silent Release (P#114)**: Agents must not circulate, send, or publish any academic output without the user reviewing the final version. (Direct application of `data-boundaries`.)
+- **Academic Output Quality**: Nothing goes out to the public before it's perfect. All academic output (reports, papers, deliverables) must be triple-checked and presented to the user for explicit approval with full receipts before release. This applies to any stakeholder-facing deliverable. (Corollary of `data-boundaries` — externally-visible research output is high-blast-radius.)
+- **Methodology Belongs to Researcher**: Methodological choices in research belong to the researcher. When implementation requires methodology not yet specified, HALT and ask. (Corollary of `exercise-authority` — methodology choice is a named ultra-vires example under Edge 1.)
+- **User Sign-Off Required**: Never mark a report/deliverable task with status: done without explicit user approval. (Corollary of `exercise-authority` and `data-boundaries`.)
+- **Receipts on QA**: QA tasks on academic outputs require showing the user exactly what was checked and the results (verification logs, checklists, evidence). (Corollary of `honest-epistemics` and `full-observability`.)
+- **Over-Verify Externally Visible Work**: Prefer over-verification to under-verification on anything externally visible. (Corollary of `data-boundaries`.)
+- **No Silent Release**: Agents must not circulate, send, or publish any academic output without the user reviewing the final version. (Direct application of `data-boundaries`.)

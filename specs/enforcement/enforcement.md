@@ -10,27 +10,12 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 # Enforcement Architecture
 
-<!-- NS search through and remove all these comment blocks that explain 'spec' vs 'state' in all files. The 'type' field in the header is sufficient. -->
-
-> **Spec, not state.** This file is the **design statement** for how the
-> aops framework enforces its rules: the regulatory pyramid that frames
-> all enforcement choices, the escalation discipline, the PR
-> cost-benefit requirements, the worked `exercise-authority` example, the user-facing
-> witness → judge separation, and the evidence loop that drives all
-> enforcement change. The **operative state register** — every
-> mechanism currently in play, its pyramid position, and the axiom-keyed
-> rule registry — lives in
-> [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md).
-> `rbg` blocks on the map's currency via P#65.
-
 **Purpose.** Enforcement is **responsive, proportionate, and evidence-driven**: most work happens cheaply and constantly at the base of the pyramid; heavier measures escalate only when lower layers produce evidence they are insufficient.
 
 **Sibling documents.**
 
 - **`specs/ENFORCEMENT-MAP.md`** — **operative state register** (canonical SSoT). Pyramid-position assignments, every runtime hook / pre-commit hook / gate / PR-pipeline agent, plus the axiom-keyed cross-reference. When to reach for it: "what is currently catching X" or "what does it cost."
 - **`specs/enforcement/enforcement.md`** (this file) — design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is; PR cost-benefit framing.
-- **`specs/enforcement/enforcement-mechanisms.md`** — per-mechanism reference catalogue keyed to the L0–L11 pipeline view (companion design-narrative spec). When to reach for it: schema-shaped details for a single mechanism.
-- **`specs/enforcement/ultra-vires-enforcer.md`** — design doc for the `enforcer` agent + PreToolUse gate.
 - **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `specs/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
 - **`specs/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
 
@@ -98,15 +83,13 @@ flowchart TD
 
 Edges show control-flow in the common path (top to bottom) and the three most common failure-to-evidence arcs (dotted). The evidence loop closes back to L0 because the _output_ of the loop is spec/axiom/template changes, which propagate forward through the whole pipeline from its start.
 
-Full catalogue of mechanisms per layer: **see [`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** (companion). For the operative register, see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md).
+Full catalogue of mechanisms per layer: **see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)** — the operative rule -> mechanism register (the former companion catalogue, `enforcement-mechanisms.md`, was folded into it during the 2026-07 simplification pass).
 
 ## §4 Pyramid view (escalation)
 
 **Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (always-on context injection, voluntary skill invocation, lifecycle hints) tapering to a sharp apex of rare severe responses (LLM-mediated review, branch protection, detached cross-incident review of accumulated reports). The narrower the level, the more reluctantly invoked.
 
-<!-- NS this isn't right; the pyramid itself is just a way to conceptualise rules; rules are enforced by systems supported by full specs (what this calls 'legislative') and enforced at runtime by various 'executive' agents. I think the initial confusion may have come from the prohibition in /learn that agents shouldn't directly change rules mid-session. -->
-
-**Executive vs legislative.** The pyramid is **executive only** — it lists the mechanisms that act on agent behaviour. Axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)) and heuristics are **legislative**: they declare what the rules are. The rules don't enforce themselves; they are _enforced by_ mechanisms across multiple pyramid tiers. Promoting a rule into `AXIOMS.md` raises its _weight_ in the L1 always-on injection mechanism — axiom status is content-weighting, not pyramid placement. (Weight comes from being a first-class axiom, not from any ordinal number; axioms are keyed by slug, see §4.0.) Looking up "what enforces `exercise-authority`?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
+**Executive vs legislative.** The pyramid itself is neither — it is just a way to **conceptualise rules by escalation cost**, nothing more. The executive/legislative split sits one level down, in what the pyramid organises: **legislative** rules are declared in specs — axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)), heuristics, and the full specs backing each system; **executive** mechanisms are the runtime agents and gates (rbg, enforcer, qa, hooks) that actually enforce those rules at whichever pyramid tier they sit. Neither layer enforces itself: a rule does nothing until an executive mechanism acts on it, and an agent has no standing to rewrite a rule mid-session (that's the `/learn` constraint on witnesses, not a property of the pyramid). Promoting a rule into `AXIOMS.md` raises its _weight_ in the L1 always-on injection mechanism — axiom status is content-weighting, not pyramid placement. (Weight comes from being a first-class axiom, not from any ordinal number; axioms are keyed by slug, see §4.0.) Looking up "what enforces `exercise-authority`?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
 
 **Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
 
@@ -123,29 +106,12 @@ The legislative layer has its own form discipline. These principles govern how [
 
 Mechanisms are placed in tiers based on **frequency of activation × invasiveness when active** — not on where they sit in the pipeline.
 
-**Coercion and cost are orthogonal.** Tier placement reads off _invasiveness_
-(how hard a mechanism forces) — but invasiveness is not cost, and the two must not be
-conflated. Some of the most coercive mechanisms are the most expensive to keep running,
-and some of the least coercive are the most expensive per fire. Two rungs make this
-concrete and must never sit at the cheap default bottom on a coercion reading alone:
+**Coercion and cost are orthogonal.** Invasiveness (how hard a mechanism forces) is not cost (what it takes to keep running) — conflating them misplaces two rungs specifically:
 
-- **The auto-mode classifier (pyramid L5)** is _low coercion_ (advisory-capable) yet
-  _high cost_: a Sonnet inference + latency on every fire, with **theatre** as its
-  dominant failure mode if used broadly. It is a **narrow reserved, measurement-gated**
-  rung — seed a rule only where the judgment is genuinely qualitative (a deterministic
-  gate would be _wrong_) AND the caught failure justifies paying LLM judgment per call.
-  It is **PreToolUse / per-action**; end-of-turn reflection nudges belong at the Stop-hook
-  (**ida**, L2), not here — routing an end-of-turn check through the per-action classifier
-  pays per-action cost for an end-of-turn question.
-- **The least-privilege chokepoint / funnel (pyramid L4)** is _high coercion_
-  (architecturally unforgeable — deny `pkb_add` to all agents, grant only to the agent
-  that must invoke `/planner`) yet carries a _high recurring cost_: a coordination tax on
-  every gated call, a throughput bottleneck, and relocation of assurance onto the
-  chokepoint agent. It is a **last-resort** rung — deploy only after instruction →
-  deterministic gate → post-hoc ultra-vires enforcer have demonstrably failed.
+- **Auto-mode classifier (L5)**: low coercion (advisory-capable) but high cost — an LLM inference on every fire, with **theatre** as its dominant failure mode. Narrow, measurement-gated: seed a rule only where judgment is genuinely qualitative and the caught failure justifies per-call LLM cost. It's PreToolUse/per-action; end-of-turn nudges belong at the Stop-hook (**ida**, L2) instead.
+- **Least-privilege chokepoint/funnel (L4)**: high coercion (architecturally unforgeable — deny by default, grant only to the one agent that must act) but high recurring cost — a coordination tax on every gated call, a throughput bottleneck, and relocated assurance. Last-resort: deploy only after instruction → deterministic gate → post-hoc enforcer have demonstrably failed.
 
-The CBA (§4.1 item 4) therefore costs _both_ axes: per-invocation cost **and**
-failure-mode cost (theatre, bottleneck, relocated assurance). Escalation is never free.
+The CBA (§4.1 item 4) therefore costs _both_ axes — per-invocation cost and failure-mode cost (theatre, bottleneck, relocated assurance). Escalation is never free.
 
 | Tier       | Definition                                                             | Mechanisms (with pipeline layer cross-reference)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -157,18 +123,10 @@ failure-mode cost (theatre, bottleneck, relocated assurance). Escalation is neve
 
 **Escalation rules.**
 
-- **Escalate up** when the evidence loop (§5) shows a base-tier mechanism is being bypassed or ignored with reproducible consequences. A finding that "a base-tier mechanism is insufficient" REQUIRES showing the instruction was clear, salient, **correctly placed** (at the surface and lifecycle point where the failure occurred), and **propagated** to every surface that hit the failure — and was still ignored. A quiet, mislocated, or unpropagated instruction is **not** evidence the instruction tier is exhausted; it is evidence the within-tier spectrum (see [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum") was never walked. Escalating to a heavier mechanism class on the basis of an unpropagated or mislocated instruction creates a permanent gate against a failure the prompt tier never actually attempted to catch — and bakes in maintenance cost for a problem still solvable in prose.
-- **Bias hard against new hard gates.** Each hard gate (L5+ / tip) is permanent
-  maintenance, a new failure surface, and an instrument the framework cannot easily
-  retire. The burden on add/escalate proposals into the tip is correspondingly heavier
-  than for instruction-tier changes: not just §4.1 CBA evidence, but explicit
-  demonstration that rungs 5 (relocation), 6 (propagation), and 7 (structured) of the
-  within-class spectrum were tried. **The least-privilege chokepoint / funnel (pyramid L4)
-  is a last-resort rung specifically** — its coercion is unforgeable but its recurring
-  coordination cost is permanent, so it is reached only after instruction → deterministic
-  gate → post-hoc enforcer have demonstrably failed (see ENFORCEMENT-MAP "Cost axis").
-- **De-escalate down** when evidence shows a tip-tier measure has been unnecessary for a full feedback cycle — a middle-tier warn or base-tier reminder may be sufficient.
-- **Never guess.** If there is no evidence one way or the other, the current placement holds. Changes are made from §5 evidence, not from authorial intuition.
+- **Escalate up** only when the evidence loop (§5) shows a base-tier mechanism is being bypassed with reproducible consequences — and only after confirming the instruction was clear, salient, correctly placed, and propagated to every surface that hit the failure. A quiet, mislocated, or unpropagated instruction is **not** evidence the tier is exhausted; it's evidence the within-tier spectrum (see [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum") was never walked.
+- **Bias hard against new hard gates.** Each hard gate (L5+/tip) is permanent maintenance and a new failure surface. Add/escalate proposals into the tip need §4.1 CBA evidence plus explicit demonstration that rungs 5 (relocation), 6 (propagation), and 7 (structured) of the within-class spectrum were tried — the L4 chokepoint especially (see above).
+- **De-escalate down** when evidence shows a tip-tier measure has been unnecessary for a full feedback cycle — a middle-tier warn or base-tier reminder may suffice.
+- **Never guess.** With no evidence either way, the current placement holds — changes come from §5 evidence, not authorial intuition.
 
 ### §4.1 PR requirements for enforcement changes
 
@@ -253,11 +211,9 @@ Periodically — when the issue queue feels heavy, or on a cadence the user sets
 3. Surfaces the proposed cycle to the user (`AskUserQuestion` gates on each disposition group). The user approves, edits, or defers.
 4. On `y`: files fix-epics or single tasks, stamps labels, logs the cycle. Fix-epics stay `queued` until the user dispatches them via `/supervisor`.
 
-The sweep agent will not propose **adding or escalating** a rule from one incident — a new gate, a new axiom, a position-bump (e.g. L1→L3), a new hook firing surface. Add-or-escalate proposals need ≥3 cited recurrences plus the CBA evidence in §4.1 (named cheaper position tried, ongoing cost, reversibility).
+The sweep agent will not propose **adding or escalating** a rule from one incident (a new gate, axiom, position-bump, or hook surface) — that needs ≥3 cited recurrences plus the §4.1 CBA evidence (cheaper position tried, ongoing cost, reversibility). This bar does NOT apply to **fixes** within an existing surface at the same position (a misrouting skill, a broken hook, an incomplete gate) — one clear forensic incident is sufficient for `fix-epic` or `single-task`. Nor does it apply to **directed architectural changes** the user has explicitly authorised: the user's authorisation substitutes for the recurrence count, not for the pyramid reasoning.
 
-This bar does NOT apply to **fixes** within an existing enforcement surface at the same position — a skill that does the wrong thing, an agent prompt that misroutes, a hook with broken logic, a gate whose verdict table is incomplete. A clear forensic incident is sufficient evidence for `fix-epic` or `single-task`; sweep dispatches the fix without waiting for two more incidents. The same rule covers **directed architectural changes** the user has explicitly authorised: one incident plus user direction is sufficient — the user's authorisation substitutes for the recurrence count, not for the pyramid reasoning.
-
-What gets deferred for pattern is the _add-or-escalate_ case: proposals to grow the enforcement surface from a single witness report. Single incidents that are bugs get fixed; single incidents that are escalation proposals get logged and either closed or deferred.
+So: single incidents that are bugs get fixed immediately; single incidents that are escalation proposals get logged and deferred pending pattern.
 
 #### Why the split
 
@@ -272,55 +228,36 @@ Recency is bias. The agent that just lived through a failure proposes fixes shap
 
 ### §5.2 Implementation status
 
-Each step names its inputs, outputs, implementation status, and location.
+| Step                               | Status                               | Detail                                                                                                                                                                                                             |
+| ---------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Failure detection               | Implemented (aggregation partial)    | Signals from any pipeline layer: RBG findings, QA/marsha fails, /retro observations, user reports, post-merge regressions, /sleep staleness findings, hook log patterns. Aggregated ad-hoc, not a single pipeline. |
+| 2. `/learn` files anonymised issue | Implemented                          | Skill at `aops-core/commands/learn.md`. Anonymisation mandatory; RCA schema enforced; dedup by search-first. Labels: `bug`, `criticality:<level>`, plus layer tags.                                                |
+| 3. Evidence accumulation           | Implemented (GitHub issues as store) | Issues cluster around patterns; volume × criticality informs priority. No separate database.                                                                                                                       |
+| 4. `/aops` pattern detection       | Aspirational — principal known gap   | Periodic read of issue labels/bodies/close-status, detect recurring failure modes, map to pyramid layers. Not mechanically implemented.                                                                            |
+| 5. Recommendation generation       | Aspirational                         | `/aops` proposes an adjustment — layer, mechanism, escalate/de-escalate, spec/axiom/hook change. Not implemented.                                                                                                  |
+| 6. Human decision + implementation | Implemented (normal task flow)       | User approves; an agent implements via `/q` → decomposition → execution; spec/code/axiom updated through PR pipeline.                                                                                              |
+| 7. Closing the loop                | Partially implemented                | Issues referenced by the implementing PR close automatically; [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) row update is still manual.                                                             |
 
-**Step 1 — Failure detection.** _(Implemented at sources; aggregation partial.)_ Signals originate at any pipeline layer: RBG findings, QA / marsha fails, /retro observations, user-reported problems, post-merge regressions, /sleep staleness findings, hook log patterns. Currently aggregated through ad-hoc agent invocation, not a single pipeline.
-
-**Step 2 — `/learn` files anonymised GitHub issue.** _(Implemented.)_ Skill at `aops-core/commands/learn.md`. Anonymisation is mandatory; root-cause-analysis schema is enforced in issue body; deduplication by search-first. Repo is the framework repo. Labels: `bug`, `criticality:<level>`, plus layer-specific tags (e.g. `framework`, `enforcement`, `axiom`).
-
-**Step 3 — Evidence accumulation.** _(Implemented via GitHub issues as durable store.)_ Issues cluster around patterns; volume × criticality informs priority. No separate database — the issue list is the evidence base.
-
-**Step 4 — `/aops` pattern detection.** _(Aspirational — principal known gap.)_ Intended behaviour: periodic read of issue labels / bodies / close-status, detection of recurring failure modes, mapping to pyramid layers where intervention needs to change. Not yet mechanically implemented.
-
-**Step 5 — Recommendation generation.** _(Aspirational.)_ Intended behaviour: `/aops` produces a proposed enforcement adjustment — which layer, which mechanism, escalate or de-escalate, what spec/axiom/hook change. Not yet implemented.
-
-**Step 6 — Human decision + implementation.** _(Implemented as the normal task flow.)_ User approves the change; an agent implements it via the usual `/q` → decomposition → execution route; spec / code / axiom is updated through PR pipeline.
-
-**Step 7 — Closing the loop.** _(Partially implemented.)_ Issues referenced by the implementing PR close automatically; [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) (operative state) updates to reflect the new intervention. The _automatic_ row update is not yet wired — done manually in the PR.
-
-**Principal gap.** Steps 4–5 are the unbuilt piece. Failure evidence is captured reliably (Step 2) and implementation flow exists (Step 6), but the _recommendation_ connecting them is aspirational. A follow-up task should scope what `/aops` needs to do.
+**Principal gap.** Steps 4–5 are the unbuilt piece: evidence capture (2) and implementation (6) both work, but the recommendation connecting them is aspirational.
 
 ## §6 Per-mechanism reference
 
-See **[`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md)** for the per-mechanism design-narrative catalogue (keyed to the L0–L11 pipeline view). For the operative register, see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Each mechanism is documented with a fixed schema:
+Operative rule <-> mechanism register: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Per-gate TL;DR / config / verify / debug detail: [`specs/GATES.md`](../GATES.md). PR/merge pipeline contract: [`pr-pipeline.md`](../workflows/pr-pipeline.md).
 
-```
-### <Mechanism name>
-- **Pipeline layer**: L<n>
-- **Pyramid tier**: base | middle | tip
-- **Trigger**: <event or condition>
-- **Purpose**: <one sentence>
-- **Location**: <file:line or module path>
-- **Scope**: polecat | crew | interactive | GHA | all
-- **Status**: active | warn-only | planned | disabled
-```
+### Output consolidation across gates
 
-Tier-spanning mechanisms (e.g. `/dump` handover: middle when the handover gate is open, tip when it blocks Stop) carry both tiers in the **Pyramid tier** field with a conditional clause.
+When multiple gates fire on the same hook event, the router merges their outputs into one response using field-specific rules:
 
-### Runtime gates lifecycle
+| Field                | Merge strategy                           |
+| -------------------- | ---------------------------------------- |
+| `additionalContext`  | Concatenate with `\n\n---\n\n` separator |
+| `systemMessage`      | Concatenate with `\n`                    |
+| `permissionDecision` | **deny > ask > allow** (strictest wins)  |
+| `continue`           | AND logic (any false = false)            |
+| `suppressOutput`     | OR logic (any true = true)               |
+| exit code            | MAX (worst wins: 2 > 1 > 0)              |
 
-Each gate is a state machine driven by hook events. Forensic detail → [`specs/GATES.md`](../GATES.md).
-
-| Gate     | Starts | Closes when                              | Opens when                                       | Policy event           | Policy action                     |
-| -------- | ------ | ---------------------------------------- | ------------------------------------------------ | ---------------------- | --------------------------------- |
-| enforcer | OPEN   | after n turns (counter-based)            | Calling `enforcer`/`rbg` subagent resets counter | PreToolUse @ threshold | Block non-read/infra tools        |
-| qa       | OPEN   | Write tool used, or task → `in_progress` | `marsha`/`qa`/`verify` subagent completes        | Stop while CLOSED      | Block/warn; demand verifier       |
-| handover | OPEN   | Write tool used, or task → `in_progress` | `/end_session`, `/dump`, or `handover` skill     | Stop while CLOSED      | Block/warn; demand handover       |
-| ida      | CLOSED | n/a (always armed)                       | First Stop in turn (fire-once)                   | Stop while CLOSED      | Inject "show your proof" advisory |
-
-### Mechanism catalogues
-
-The per-mechanism catalogue — runtime hooks, pre-commit hooks, bridge guards, `CORE.md` directives, scheduled jobs, and PR-pipeline agents — lives in **[`enforcement-mechanisms.md`](enforcement-mechanisms.md)** (one fixed-schema block per mechanism, organised by pipeline layer). The current-state **rule ↔ mechanism linking**, the **hook injection trace**, and the **pyramid-position register** are in **[`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)**. Per-gate forensic detail (config / verify / debug) → **[`specs/GATES.md`](../GATES.md)**. The PR/merge pipeline's canonical contract → **[`pr-pipeline.md`](../workflows/pr-pipeline.md)**. These were previously duplicated here; the tables now live in those homes so this design statement and the catalogue cannot drift apart.
+This is what makes "least invasion first" (§10) actually hold at the wire level: a lighter gate's `allow` can never mask a heavier gate's `deny`.
 
 ## §7 Scope limits
 
@@ -342,21 +279,11 @@ The framework's agent-based enforcement (rbg, enforcer, qa / marsha, pauli, jame
 
 ### §7.3 Session scope
 
-Enforcement is **session-scoped**: every execution context with its own session ID and `SessionStart` event (interactive CLI, background jobs, polecats, GHA workflows) receives the full gate and context-injection stack. Inline subagents spawned via the `Agent` tool share the parent's session ID — gates and context injection are skipped (`ctx.is_subagent` checks in `hooks/router.py`) to avoid double-enforcement and recursive loops. Observability (logging, telemetry) fires unconditionally.
-
-This is policy, not a gap. Claude Code v2.1.69+ (2026-03-05) includes `agent_id` and `agent_type` in hook payloads for subagent-originated tool calls; `is_subagent_session()` in `lib/hook_utils.py` uses these as its primary detection method. Heuristic fallbacks remain for Gemini CLI, which does not provide equivalent fields.
-
-Full session taxonomy and implementation pointers: [`specs/enforcement/hook-router.md` § Session Scope](hook-router.md#session-scope).
+Which session types get the full gate/context-injection stack, and how inline subagents are excluded to avoid double-enforcement: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) §1.
 
 ## §8 Gate mode environment variables & Operator impact
 
-| Variable              | Default | Values                 | Controls                  |
-| :-------------------- | :------ | :--------------------- | :------------------------ |
-| `ENFORCER_GATE_MODE`  | `block` | `warn`, `block`        | Periodic compliance audit |
-| `HYDRATION_GATE_MODE` | `off`   | `off`, `warn`, `block` | Hydration before work     |
-| `QA_GATE_MODE`        | `block` | `warn`, `block`        | QA verification           |
-| `HANDOVER_GATE_MODE`  | `warn`  | `warn`, `block`        | Reflection before exit    |
-| `IDA_GATE_MODE`       | `warn`  | `warn`, `block`        | Honesty/proof reminder    |
+Per-gate `*_GATE_MODE` env vars, defaults, and resolution mechanics (including the polecat/crew overlay): [`specs/GATES.md`](../GATES.md) § Config plumbing.
 
 ## §9 Workflow composition (Phase 3 placeholder)
 
@@ -425,9 +352,7 @@ Conclusions require `actual_state`. Anything less is a claim, not a finding.
 
 **Related**
 
-- **Operative state register (SSoT)**: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) — pyramid-position assignments + every mechanism row. `rbg` blocks on it (P#65).
-- [`specs/enforcement/enforcement-mechanisms.md`](enforcement-mechanisms.md) — per-mechanism design-narrative catalogue (companion to this file).
-- [`specs/enforcement/ultra-vires-enforcer.md`](ultra-vires-enforcer.md) — enforcer agent + gate internal design.
-- [`specs/enforcement/enforcement-map.md`](enforcement-map.md) — redirect stub (superseded 2026-05-20 by `specs/ENFORCEMENT-MAP.md`).
+See **Sibling documents** at the top of this file for the enforcement-cluster files (`ENFORCEMENT-MAP.md`, `enforcement-map.md`, `GATES.md`). Additionally:
+
 - [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md) — universal axioms (read only by `rbg`).
 - [`.agents/rules/HEURISTICS.md`](../../.agents/rules/HEURISTICS.md) — advisory heuristics.

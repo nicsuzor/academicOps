@@ -1,27 +1,27 @@
 # Agent Compliance Matrix
 
-Generated on Mon Jun 15 12:45:33 UTC 2026 from `scripts/audit_agent_compliance.py`.
+Generated on Wed Jul 1 08:18:13 AM UTC 2026 from `scripts/audit_agent_compliance.py`.
 
 ## Agents
 
-| Agent                               | Schema OK | Naming OK | Referential OK | Skills Declared    | Subagents Declared    | Notes |
-| :---------------------------------- | :-------- | :-------- | :------------- | :----------------- | :-------------------- | :---- |
-| aops-core/agents/james.md           | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
-| aops-core/agents/junior.md          | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
-| aops-core/agents/marsha.md          | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
-| aops-core/agents/pauli.md           | ✅        | ✅        | ✅             | ❌ Missing skills: | ✅                    |       |
-| aops-core/agents/rbg.md             | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
-| .github/agents/enforcer.agent.md    | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
-| .github/agents/mechanic.agent.md    | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
-| .github/agents/pr-reviewer.agent.md | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
-| .github/agents/qa.agent.md          | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| Agent                                           | Schema OK | Naming OK | Referential OK | Skills Declared    | Subagents Declared    | Notes |
+| :---------------------------------------------- | :-------- | :-------- | :------------- | :----------------- | :-------------------- | :---- |
+| aops-core/agents/ida.md                         | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
+| aops-core/agents/james.md                       | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
+| aops-core/agents/marsha.md                      | ✅        | ✅        | ✅             | ❌ Missing skills: | ❌ Missing subagents: |       |
+| aops-core/agents/pauli.md                       | ✅        | ✅        | ✅             | ❌ Missing skills: | ✅                    |       |
+| aops-core/agents/rbg.md                         | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| .github/agents/enforcer.agent.md                | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| .github/agents/mechanic.agent.md                | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| .github/agents/pr-reviewer.agent.md             | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| .github/agents/pre-admission-responder.agent.md | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
+| .github/agents/qa.agent.md                      | ✅        | ✅        | ✅             | ✅                 | ✅                    |       |
 
 ## Skills (allowed-tools check)
 
 | Skill                                      | Conformance              |
 | :----------------------------------------- | :----------------------- |
 | aops-core/skills/aops/SKILL.md             | ❌ Missing allowed-tools |
-| aops-core/skills/cowork-sync/SKILL.md      | ❌ Missing allowed-tools |
 | aops-core/skills/craft/SKILL.md            | ✅                       |
 | aops-core/skills/daily/SKILL.md            | ✅                       |
 | aops-core/skills/design-rubric/SKILL.md    | ❌ Missing allowed-tools |
@@ -34,4 +34,5 @@ Generated on Mon Jun 15 12:45:33 UTC 2026 from `scripts/audit_agent_compliance.p
 | aops-core/skills/strategic-review/SKILL.md | ✅                       |
 | aops-core/skills/supervisor/SKILL.md       | ❌ Missing allowed-tools |
 | aops-core/skills/survey/SKILL.md           | ✅                       |
+| aops-core/skills/task-lifecycle/SKILL.md   | ❌ Missing allowed-tools |
 | aops-core/skills/verify/SKILL.md           | ✅                       |

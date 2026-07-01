@@ -387,6 +387,10 @@ def main():
         )
 
         f.write("## Exclusive Tools\n\n")
+        # markdownlint's MD060 table-column-style check disagrees with this
+        # generator's own compact padding on emoji-containing cells (a pre-existing
+        # tooling mismatch, not a content defect) -- suppress it for this table.
+        f.write("<!-- markdownlint-disable MD060 -->\n\n")
         f.write("| Tool | Intended Owner | Current Users | Status |\n")
         f.write("| :--- | :--- | :--- | :--- |\n")
         for pattern, owner in EXCLUSIVE_INTENT.items():
@@ -416,6 +420,8 @@ def main():
                 for a in all_agents:
                     row.append("✅" if a in tool_to_agents[t] else "")
                 f.write("| " + " | ".join(row) + " |\n")
+
+        f.write("\n<!-- markdownlint-enable MD060 -->\n")
 
 
 if __name__ == "__main__":

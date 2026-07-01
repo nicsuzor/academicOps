@@ -17,24 +17,31 @@ Per `specs/agent-authority.md`. Rows: every agent file in scope. Columns: spec d
 
 ## Core Agents (`aops-core/agents/`)
 
+<!-- markdownlint-disable MD060 -- emoji-width miscount vs dprint's aligned-table output, pre-existing -->
+
 | Agent      | Canonical names | Schema fields | skills declared            | subagents declared | MCP scoping | Notes                                                                                         |
 | ---------- | --------------- | ------------- | -------------------------- | ------------------ | ----------- | --------------------------------------------------------------------------------------------- |
 | `enforcer` | ✅              | ✅            | ✅ (`[]`)                  | ✅ (`[]`)          | —           | ⚠️ **Transitional.** To become a build artifact derived from `rbg` (see spec §Derived Agents). |
+| `ida`      | ✅              | ✅            | ✅                         | ✅ (`[]`)          | ✅          | —                                                                                             |
 | `james`    | ✅              | ✅            | ✅ (`[strategic-review]`)  | ✅ (`["*"]`)       | —           | Wildcard subagents per user decision (orchestrator gate is open).                             |
 | `jr`       | ✅              | ✅            | ✅ (`["*"]`)               | ✅ (`["*"]`)       | ✅          | Intentionally underspecified — any skill / any subagent.                                      |
 | `marsha`   | ✅              | ✅            | ✅ (`[qa]`)                | ✅ (`[]`)          | ✅          | —                                                                                             |
 | `pauli`    | ✅              | ✅            | ✅ (`[remember, planner]`) | ✅ (`[]`)          | ✅          | Retains full frontmatter surface (permissionMode, maxTurns, effort, background, isolation).   |
 | `rbg`      | ✅              | ✅            | ✅ (`[]`)                  | ✅ (`[]`)          | —           | Granted Edit+Write (may fix mechanical violations directly). Verdict-format prose removed.    |
 
+<!-- markdownlint-enable MD060 -->
+
 ## GitHub Action Agents (`.github/agents/`)
 
 These grant tools via the invoking workflow's `claude_args`; the frontmatter surface is minimal by design (see spec §GitHub Action Agents). Left as-is per user decision.
 
-| Agent         | Frontmatter present    | Notes                           |
-| ------------- | ---------------------- | ------------------------------- |
-| `mechanic`    | ✅ (name, description) | Phase 5 rename of `merge-prep`. |
-| `pr-reviewer` | ✅ (name, description) | No change required.             |
-| `qa`          | ✅ (name, description) | No change required.             |
+| Agent                     | Frontmatter present    | Notes                           |
+| ------------------------- | ---------------------- | ------------------------------- |
+| `mechanic`                | ✅ (name, description) | Phase 5 rename of `merge-prep`. |
+| `pre-admission-responder` | ✅ (name, description) | No change required.             |
+| `qa`                      | ✅ (name, description) | No change required.             |
+
+`pr-reviewer` was removed as dead code (fully superseded by the `enforcer` + `mechanic` two-stage pipeline) during the 2026-07 documentation simplification pass.
 
 ## Plugin Agents
 

@@ -63,11 +63,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
-- **Quality Gate**: Stop and alert the user if the transcript is:
-  - _Absent_: No matching markdown file — but first confirm the month-shard dir (`$AOPS_SESSIONS/transcripts/YYYY-MM/`) exists and is non-empty. A zero-hit glob in a wrong or missing directory is a lookup error, not an absent transcript.
-  - _Truncated_: File stops mid-turn or is drastically smaller than the raw JSONL line count.
-  - _Stripped_: Tool calls/results are missing from a `-full.md` file.
-- On any gate failure, name the failed condition and stop. Never silently fall back to the raw `.jsonl` — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
+- **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
@@ -91,7 +87,7 @@ When the transcript shows an artifact whose **premise** a sharp principal would 
 - The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
 - Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
 
-This makes the reviewer's miss visible and attributed — the compounding fix for floor-optimisation (#1585): a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it.
+This makes the reviewer's miss visible and attributed: a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it rather than compounding silently across future reviews.
 
 ### 2b. Pyramid discipline — when a retro fix shapes how an agent behaves
 
@@ -147,7 +143,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/CAPABILITIES.md §Session Summaries` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/summaries-schema.md` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 

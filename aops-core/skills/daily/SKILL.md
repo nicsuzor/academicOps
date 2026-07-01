@@ -69,53 +69,22 @@ Render its verbatim consequence text; drop it from the Status deadline list to a
 
 ### Two statuses, two fates — do not conflate them
 
-This sweep touches two statuses that look adjacent but mean opposite things. Getting this wrong is the live failure this step exists to prevent (#1863): a human-decision task with no PR gets enumerated as "parked PR backlog", reconciled against a PR that does not exist, left unchanged every run, and silently falls off the radar.
+- **`status: merge_ready` = parked on a PR.** Under review — PR open, awaiting CI, review, or iteration ([[taxonomy#status-values-and-transitions]] is the SSoT for the full protocol). The PR is the source of truth for whether it can close.
+- **`status: review` = parked on a human.** Actionable work waiting on Nic's (or an agent's) judgment, not on a merge ([[taxonomy#status-values-and-transitions]]). Most `status: review` tasks have no PR at all — reading notes, design decisions, "needs Nic's direction" items.
 
-- **`status: merge_ready` = parked on a PR.** Canonically "under review — PR open, awaiting CI, review, or iteration" ([[taxonomy#status-values-and-transitions]] is the SSoT for the full protocol). The PR is the source of truth for whether it can close. This is the **PR-reconcile set**: resolve its PR and act on the live state.
-- **`status: review` = parked on a human.** Canonically "mid-flight human block — requires judgment/direction before work can proceed" ([[taxonomy#status-values-and-transitions]]). It is **actionable work waiting on Nic (or an agent), not on a merge.** Most `status: review` tasks have **no PR at all** (academic reading notes, design decisions, validation-protocol calls, "needs Nic's direction" items). A `status: review` task is closed by a _decision_, never by an auto-reconcile.
-
-The rule that follows from this: **never auto-close a `review` task, and never let a no-PR `review` task be treated as parked backlog and disappear.** It is awaiting attention — surface it every run.
+**Never auto-close a `review` task.** Its close is always a decision, never a PR match — even a PR showing MERGED is evidence, not authority. Surface every `review` task under "Needs your call" every run; it must never silently disappear as if it were parked PR backlog.
 
 ### Task completion sweep (required every run)
 
-Run two passes with different intents. Resolve PRs against **live GitHub**, not a pre-baked feed — `pr-state.json`'s `recent_merged` is a recent-window snapshot; a task whose PR merged outside that window never matches and stays silently parked. The canonical reconcile contract is `[[workflows-reconcile]]` — structured fields drive the match, live `gh` confirms the state.
+Resolve PRs against **live GitHub**, not the pre-baked `pr-state.json` feed — its `recent_merged` is a recent-window snapshot and misses older merges. The canonical reconcile contract is `[[workflows-reconcile]]`: structured fields (`pr_url`, else `branch`, else a repo-qualified PR number) drive the match, `gh` confirms the state.
 
-**Pass A — `merge_ready` (PR-reconcile, may auto-close):**
+For each `merge_ready` task: resolve its PR and check the live state. MERGED closes the task (`mcp__pkb__complete_task`, citing the PR URL and merge time as evidence). OPEN leaves it parked. CLOSED-without-merge, or unresolvable to a concrete `<repo>#<number>`, is surfaced under "Needs your call" instead of auto-closed.
 
-1. **Fetch the parked-on-PR set.** Call `mcp__pkb__list_tasks(status="merge_ready")`. Collect every result — do not spot-check or keyword-search a subset.
+For each `review` task: resolve any linked PR the same way, but its state is evidence only, never grounds for a close — surface it regardless, with its title and one-line ask. A `review` item with no actionable ask at all (e.g. a reading note that was never really a task) is surfaced as mis-statused so Nic can re-file or drop it.
 
-2. **Resolve each task's PR from its structured fields** (no prose parsing — the `[[workflows-reconcile]]` "guaranteed structured" surface). For each task, in order:
-   - `pr_url` frontmatter (e.g. `https://github.com/org/repo/pull/1859`) — the authoritative source; gives both repo (`org/repo`) and PR number.
-   - `branch` frontmatter — resolve via `gh pr list --repo <repo> --head <branch> --state all --json number,state` when no `pr_url`.
-   - A pure-integer tag (e.g. `1858`) — a PR number, but ambiguous without a repo; only usable once you know the task's repo (its `project`/repo field). Treat a bare number with no repo as unresolved.
-   - **A `merge_ready` task that resolves to no concrete `<repo>#<number>` is itself anomalous** — `merge_ready` asserts a PR exists. Leave it unchanged and surface it under "Needs your call" as `merge_ready-without-PR` (a worker likely set the status without opening a PR). Do not auto-close.
+**Guards, both passes:** never close on doubt (an unresolved condition flagged in the task body beats a MERGED PR); never cascade-close a parent whose children are still open; never touch academic, peer-review, or Nic-decision items — these are always surfaced, never auto-closed.
 
-3. **Check live PR state per task.** For each resolved `<repo>#<number>`, run `gh pr view <number> --repo <repo> --json state,mergedAt,url`. Do this per task — one cheap call each, correct regardless of when the PR merged. Batch them in a single Bash loop if you like; do not substitute the feed's `recent_merged` list.
-
-4. **Act on the live state:**
-   - **MERGED** → the task's own deliverable shipped: call `mcp__pkb__complete_task` with the PR URL and `mergedAt` in the evidence. No human confirmation needed — **except** the guards below.
-   - **OPEN** → genuinely in-flight; leave parked (correctly `merge_ready`).
-   - **CLOSED (not merged)** → the PR was rejected or abandoned; do NOT auto-close the task. Surface under "Needs your call" (refile-or-drop decision).
-   - **No PR / not found** → handled in step 2 (surface as `merge_ready-without-PR`).
-
-**Pass B — `review` (human-block, never auto-close):**
-
-1. **Fetch the parked-on-human set.** Call `mcp__pkb__list_tasks(status="review")`. These are awaiting a decision, not a merge — none of them auto-closes here.
-
-2. **A `review` task closes only on the decision, never on a PR auto-match.** For each task:
-   - **Has a `pr_url` / resolvable PR** (the legitimate overlap: a PR is open _and_ the task also needs Nic's judgment, e.g. a doctrine PR awaiting his call): resolve and check live state exactly as Pass A step 3, but **the live state never auto-closes it.** If MERGED, surface under "Needs your call" as "PR merged — confirm the decision and close" (the merge is evidence, not authority). If OPEN/CLOSED, surface with that state noted. The human still owns the close.
-   - **No PR** (the common case — reading notes, design calls, "needs Nic's direction"): this is actionable work waiting on attention. Surface it under "Needs your call" as `awaiting-your-decision`, with its title and one-line ask. **Do not leave it silent and do not call it parked.** Re-surfacing it every run is the whole point — it must not fall off the radar.
-
-3. **If a `review` task is plainly mis-statused** (e.g. `node_type: reference`/`review` reading-note or paper record that was never a task and carries no actionable ask), surface it once under "Needs your call" as `mis-statused — should leave the review queue` so Nic can re-file or drop it. Do not silently mutate it.
-
-**Guards (both passes — never violate, apply before any close):**
-
-- **Never close on doubt.** If the task body flags an unresolved condition (e.g. "an unauthorised edit must be stripped before merge", a pending live-host verification the worker cannot perform), surface under "Needs your call" even when the PR shows MERGED.
-- **Never close a parent/epic that has open children.** Before closing, confirm the task is a leaf (or all its children are already `done`/`cancelled`). A merged parent PR with genuine open follow-up children is surfaced, not closed — do NOT cascade-close real downstream work. (A pure scope-note child the PR delivered may be closed recursively; a real independent follow-up task may not.)
-- **Never auto-close a `review` task.** `review` means a human is the gate (see "Two statuses" above). The most a sweep does to a `review` task is _surface_ it — auto-close belongs to Pass A (`merge_ready`) only.
-- **Never touch academic / peer-review / Nic-decision items.** Tasks that are inherently the user's call (peer reviews, funding assessments, design decisions awaiting his judgment) are surfaced, never auto-closed, regardless of any linked PR.
-
-**Report.** In the daily note (Work Log or "What Needs Attention"): `N tasks auto-closed against merged PRs (merge_ready); P review tasks awaiting your decision (re-surfaced); M surfaced for your call (closed-without-merge / merge_ready-without-PR / mis-statused / epic-with-open-children).` The `review` count is reported as work-awaiting-you, never folded into a "parked" total.
+**Report** in the daily note: tasks auto-closed against merged PRs, `review` tasks re-surfaced awaiting a decision, tasks surfaced for a call.
 
 ### Cross-linking (when a session maps to a task)
 

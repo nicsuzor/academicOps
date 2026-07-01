@@ -1,16 +1,60 @@
 ---
 type: spec
-title: Session Insights Metrics Schema
+title: Session Summaries Metrics Schema
 status: ready
 tier: 4
-tags: [framework, schema, insights, metrics, transcript]
+tags: [framework, schema, summaries, metrics, transcript]
 ---
 
-# Session Insights Metrics Schema
+# Session Summaries Metrics Schema
 
-<!-- NS I think these are called 'summaries', not 'insights' -->
+Reference schema for session summaries JSON files written by `aops-core/scripts/transcript.py` and validated by `validate_insights_schema` in `aops-core/lib/insights_generator.py`. Files live under `summaries/YYYY-MM/` in the rotated layout.
 
-Reference schema for session insights JSON files written by `aops-core/scripts/transcript.py` and validated by `validate_insights_schema` in `aops-core/lib/insights_generator.py`. Files live under `summaries/YYYY-MM/` in the rotated layout.
+## How to Query
+
+The framework produces one structured JSON summary per session at:
+
+```
+$AOPS_SESSIONS/summaries/YYYY-MM/<session_id>.json
+```
+
+**This is the canonical first stop for prompt mining and command-usage analysis.** Use it before touching raw transcript files.
+
+### Primary field — `timeline_events`
+
+Each summary contains a `timeline_events` list of `{timestamp, type, description, system_injected}` objects. Filter to `type == "user_prompt"` to get verbatim user turns. `initial_prompt` captures turn 1 only — most command invocations (e.g. `/learn`) happen mid-session and are only visible via `timeline_events`.
+
+**Two equivalent paths to genuine human prompts — pick one:**
+
+1. **Read the top-level `user_prompts` array** — `[{timestamp, text}]`, pre-filtered to `system_injected=false` and secrets-redacted at write time. Simplest path for most use cases.
+2. **Filter `timeline_events`** to `type == "user_prompt"` AND `system_injected == false`. Works across ALL clients (polecat, sdk, claude-code, claude-desktop) — do **not** filter by client name, as that drops genuine human `/learn` invocations inside polecat/sdk sessions.
+
+`system_injected=true` marks machine-authored turns (task-notification, loaded_context, polecat worker dispatch, skill bodies) using purely syntactic prefix matching — no NLP.
+
+### Other useful fields
+
+| Field                                                                    | Description                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `user_prompts`                                                           | `[{timestamp, text}]` — pre-filtered genuine human turns, redacted |
+| `initial_prompt`                                                         | First user turn only (misses mid-session invocations)              |
+| `user_prompt_count`                                                      | Count of genuine user turns (`system_injected=false`)              |
+| `client`                                                                 | e.g. `claude-code`, `claude-desktop`, `polecat`, `sdk`             |
+| `surface`                                                                | e.g. `interactive`, `polecat`, `gha`                               |
+| `session_type`                                                           | Session type classifier                                            |
+| `summary`, `accomplishments`, `friction_points`, `framework_reflections` | Session narrative fields                                           |
+| `task_id`                                                                | Associated task, if any                                            |
+
+### When to use vs raw transcripts
+
+| Task                                                              | Source                                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| Mine what the user typed — prompts, `/command` invocations        | **Summaries JSON** (`timeline_events[type="user_prompt"]`) |
+| Count command usage or extract patterns from user turns           | **Summaries JSON** first                                   |
+| Derive structured understanding of sessions (trends, topics)      | **Summaries JSON** first                                   |
+| Extract agent reasoning, tool calls, or full conversation context | Raw transcripts (`$AOPS_SESSIONS/transcripts/YYYY-MM/`)    |
+| Summaries JSON absent or insufficient for the task                | Raw transcripts as **fallback only**                       |
+
+**Raw transcripts are the last-resort fallback.** `$AOPS_SESSIONS/transcripts/YYYY-MM/*-{abridged,full}.md` (~5–6k files/month). Naïve `grep -r` hits thousands of files (incidental agent mentions, skill bodies, injected task-notifications) and requires parsing multiple user-turn marker formats — expensive and error-prone.
 
 ## Required Fields
 
@@ -191,4 +235,4 @@ Present only when the session was a Gemini CLI session. Sourced from a sidecar `
 
 ## Backward Compatibility
 
-All fields introduced in CC 2.1+ (`attribution`, `stop_reasons`, `thinking_turns`, `git_branches`, `permission_modes`, `session_kind`, `user_type`, `entrypoint`, `client_version`, `token_metrics.totals.server_tool_use`, `token_metrics.totals.service_tier`) are omitted from the JSON when the source data is absent. Consumers must treat these fields as optional. Older insights files (pre-CC 2.1) are fully valid without them.
+All fields introduced in CC 2.1+ (`attribution`, `stop_reasons`, `thinking_turns`, `git_branches`, `permission_modes`, `session_kind`, `user_type`, `entrypoint`, `client_version`, `token_metrics.totals.server_tool_use`, `token_metrics.totals.service_tier`) are omitted from the JSON when the source data is absent. Consumers must treat these fields as optional. Older summary files (pre-CC 2.1) are fully valid without them.

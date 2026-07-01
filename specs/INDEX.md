@@ -35,8 +35,7 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[rbg]] — RBG agent specification
 - [[marsha]] — Marsha agent specification
 - [[james]] — James agent specification
-- [[agent-authority]] — Permissions and skill delegation envelope
-- [[agent-permissions]] — Tool allowlists per agent
+- [[agent-authority]] — Permissions and skill delegation envelope (frontmatter schema, four-axis permissions model, tool allowlists)
 - [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
 - [[agent-compliance-matrix]] — Audit state against authority spec
 - [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
@@ -48,21 +47,15 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 
 The big-W "what to do and in what order" specs. Workflow engine, decomposition, review, PR pipeline, audits, daily briefing, feedback loops.
 
-- [[workflow-system-spec]] — The workflow engine
-- [[workflow-constraints]] — What workflows can and can't do
 - [[framework-workflow-expectations]] — How framework workflows differ from project workflows
 - [[non-interactive-c1dda99b]] — Headless / CI workflows
 - [[research-decomposition]] — Decomposing research outputs
-- [[mcp-decomposition-tools]] — Decomposition primitives in PKB MCP
-- [[strategic-triage]] — Where strategic work routing happens
 - [[conceptual-review-workflow]] — Reviewing concept documents
 - [[pr-pipeline]] — PR pipeline (operative SSoT — two-stage, review-approval-gated, convergent; conflict resolution via the mechanic on admission, §3.11)
-- [[audit-protocol]] — Framework audit standard
-- [[daily-briefing-bundle]] — `/daily` skill bundle
-- [[60-importance-escalation|workflows/daily/60-importance-escalation]] — Importance-to-visibility escalation model
-- [[session-digest]] — Scheduled cheap-model intra-day narrative digest (draft — feeds dashboard US-D3, /daily, /learn)
 - [[feedback-loops]] — Where the framework learns from itself
 - [[reconcile]] — GH ↔ PKB close-the-loop reconciliation (agent-invoked)
+
+(`workflow-system-spec`, `workflow-constraints`, `mcp-decomposition-tools`, `strategic-triage`, `audit-protocol`, `daily-briefing-bundle`, `session-digest`, and the `workflows/daily/*` draft bundle were removed in the 2026-07 documentation simplification pass — each described a `bd`-CLI-era mechanism, a sibling PKB/dashboard repo's infrastructure, or an unlanded draft with no live implementation in this repo. See git history if the design intent is needed.)
 
 ### [[sessions]] — Session lifecycle
 
@@ -72,7 +65,7 @@ How an agent session starts, hands over, sleeps, and gets its prompt. Plus the Y
 - [[session-handover-yaml]] — Concrete YAML format (from mem)
 - [[session-naming-convention]] — Naming schema
 - [[session-start-injection]] — What gets injected at session start
-- [[session-insights-metrics-schema]] — Metrics extracted per session
+- [[summaries-schema|specs/summaries-schema.md]] — Metrics extracted per session
 - [[session-insights-prompt]] — Prompt that drives that extraction
 
 - [[prompt-hydration]] — Just-in-time context loading
@@ -83,11 +76,10 @@ How an agent session starts, hands over, sleeps, and gets its prompt. Plus the Y
 The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
-- [[enforcement-mechanisms]] — Concrete mechanisms per layer
 - [[ENFORCEMENT-MAP]] — Axiom × mechanism map, gate lifecycle, pyramid positions (L0–L7)
 - [[enforcement-aops-recommender]] — The aops-recommender pattern
-- [[hook-router]] — Hook dispatching
-- [[ultra-vires-enforcer]] — Authority envelope checker
+
+(`enforcement-mechanisms`, `hook-router`, and `ultra-vires-enforcer` were retired during the 2026-07 simplification pass — each was a near-duplicate of `ENFORCEMENT-MAP.md`/`GATES.md`/`specs/agents/rbg.md`, which now hold the operative content.)
 
 ### [[pkb]] — Knowledge base core
 

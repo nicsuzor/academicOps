@@ -47,49 +47,111 @@ An automation framework for academic work, built as a Claude Code / Gemini CLI p
 
 The framework improves as a side-effect of doing normal work. When agents hit friction, they file it via `/learn`. Findings become tasks. Tasks get prioritised. Instructions get better. The system compounds.
 
-## Four layers
+## Five parts
 
-### 1. Task management (the foundation)
+Strip away the tooling and academicOps reduces to five things, each holding up the one after it.
 
-Hierarchical task graph with semantic search, powered by a Rust MCP server (`pkb-search`). Everything flows through it — task capture, knowledge storage, memory, context recovery.
+### 1. PKB — task and knowledge server
 
-Tasks are stored as markdown files within the `data/tasks/` directory of your knowledge base (`$ACA_DATA`). The workflow typically follows: `inbox/` -> `active/` -> `completed/` -> `archived/`.
+A hierarchical task graph with semantic search, served by a Rust MCP server (`pkb-search`). Everything flows through it: task capture, knowledge storage, memory, context recovery.
+
+Tasks are markdown files under `data/tasks/` in your knowledge base (`$ACA_DATA`): `inbox/` → `active/` → `completed/` → `archived/`.
 
 ```
 PROJECT  →  EPIC  →  TASK  →  ACTION
 ```
 
-Goals are linked to projects via the `goals: []` metadata field (many-to-many), not via the tree hierarchy.
+Goals link to projects via the `goals: []` metadata field (many-to-many), not the tree hierarchy.
 
-### 2. Skills (how work gets done)
+| Type          | Storage                             | Purpose                              |
+| ------------- | ----------------------------------- | ------------------------------------ |
+| **Knowledge** | `$ACA_DATA` markdown + vector index | Searchable knowledge base            |
+| **Tasks**     | PKB task graph                      | Work tracking with dependencies      |
+| **Memory**    | PKB memories                        | Generalizable patterns and learnings |
 
-Skills are Claude Code / Gemini CLI extensions that know how to do specific things.
+`$ACA_DATA` is the personal knowledge base — human-readable markdown in git, with the PKB server providing semantic search over vector embeddings.
 
-**Core skills** (non-fungible — framework operations):
+### 2. Axioms — rules that must never be breached
 
-| Skill                | Purpose                                              |
-| -------------------- | ---------------------------------------------------- |
-| `/plan`              | Effectual planning, decomposition, graph maintenance |
-| `/aops`              | Institutional memory, framework coordination         |
-| `/daily`             | Daily notes, briefing, progress sync                 |
-| `/pull` `/q` `/dump` | Task queue lifecycle                                 |
-| `/remember`          | Persist knowledge to PKB                             |
-| `/sleep`             | Periodic consolidation, graph maintenance            |
-| `/email`             | Email triage and task capture                        |
+A small, fixed set of universal rules bind every agent, on every surface, with no ad-hoc exceptions: `halt-on-failure`, `honest-epistemics`, `data-boundaries`, `evidence-immutable`, `full-observability`, and a dozen more — each targeting a _class_ of failure, never a single instance. The full set, with the reasoning behind each, is the actual law: [`.agents/rules/AXIOMS.md`](.agents/rules/AXIOMS.md).
 
-**Quality skills** (the QA pipeline — from instruction design through verification to post-hoc review):
+Axioms describe what must never happen. They don't enforce themselves — that's part 3.
 
-| Skill            | When to use                                                                |
-| ---------------- | -------------------------------------------------------------------------- |
-| `/craft`         | Before deploying instructions — reviews for shallow-execution defects      |
-| `/design-rubric` | Before building user-facing work — designs fitness criteria on the spec    |
-| `/dogfood`       | Testing instructions — delegates to a contextless agent, observes friction |
-| `/verify`        | After work is done — judgment-based QA against the spec's fitness rubric   |
-| `/learn`         | After a session — forensic transcript review, files GitHub issues          |
-| `/issue-sweep`   | Periodically — triages open issues, creates fix-epics                      |
-| `/trend-review`  | Periodically — longitudinal analysis across many sessions                  |
+### 3. Enforcement — hooks, gates, and your own rules
 
-The quality skills form a pipeline: `/craft` ensures instructions are excellent before agents execute them. `/design-rubric` ensures specs define what excellence looks like for users. `/dogfood` tests instructions against a real contextless agent. `/verify` checks the delivered artifact. `/learn` reviews transcripts after the fact and files issues. `/issue-sweep` triages those issues into fix-epics.
+Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
+
+- **SessionStart**: loads principles, pulls latest state
+- **PreToolUse gates**: hydration, enforcer (periodic compliance), destructive-command block
+- **PostToolUse**: boundary detection, warn-tier checks, autocommit
+- **Stop gates**: QA and handover discipline before a session ends
+- **Transcript capture**: every session recorded for reflection
+
+The gates riding those hooks:
+
+| Gate         | What it catches                                           | Default                                                   |
+| ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
+| `sentinel`   | Destructive ops on protected env paths                    | `block`                                                   |
+| `enforcer`   | Scope drift / compliance, every N write ops               | `warn`                                                    |
+| `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
+| `qa`         | Claiming "done" without running verification              | `warn`                                                    |
+| `handover`   | Exiting without committing, updating tasks, or reflecting | `warn` interactive / `block` polecat                      |
+| `ida`        | Honesty / criterion-substitution check before stopping    | `warn`                                                    |
+
+(`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
+
+The same ladder continues past the session, into GitHub:
+
+```
+PR opened → lint + typecheck + tests → agent review → merge prep → human approval → merge
+```
+
+And it isn't limited to the framework's own axioms — a project extends it under its own `.agents/` directory:
+
+- **`.agents/rules/`** — project-specific rules loaded as binding constraints
+- **`.agents/workflows/`** — project-specific workflows supplementing the global index
+- **`.agents/INDEX.md`** — plain-text index of project documentation, to aid discovery
+
+For the full gate catalogue (state machines, triggers, debugging), see [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md). For the rule → mechanism → trigger register across every surface, see [`specs/ENFORCEMENT-MAP.md`](specs/ENFORCEMENT-MAP.md).
+
+### 4. Polecat — work dispatch
+
+Polecat spins up ephemeral, containerized agents against a specific PKB task — the mechanism behind `/dispatch`, `/pull`, and autonomous background workers. Before a container starts, the polecat launcher resolves gate posture for that session type — `run_defaults` for autonomous workers, `crew_defaults` for interactive crews — from `$AOPS_SESSIONS/polecat.yaml` (schema: [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example)) and stages it into the container; direct CLI sessions skip this and use the plugin's built-in gate defaults instead.
+
+Polecat ships as a console-script entry point in this package — see [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
+
+### 5. Full observability — recorded, end to end
+
+Every material action — file edits, tool calls, gate verdicts, subagent dispatches — leaves a trace an auditor can read: session transcripts, hooks JSONL logs, git commits, PRs. Nothing counts as done unless a third party could reconstruct the path from input to output. This is the `full-observability` axiom, held up by the same enforcement mechanisms as everything else in this list — not a bolt-on feature.
+
+## Skills (how work gets done)
+
+Skills are Claude Code / Gemini CLI extensions that know how to do specific things, split into two groups because a researcher installing this plugin mostly needs the first for their own work, while the second runs the framework's own self-improvement loop.
+
+**User-facing core** (the commands a researcher actually reaches for in their own work):
+
+| Skill          | Purpose                                                         |
+| -------------- | --------------------------------------------------------------- |
+| `/daily`       | Daily notes, briefing, progress sync                            |
+| `/dump`        | Emergency session bail — fast handover, no commit/PR/reflection |
+| `/end-session` | Canonical session close — commit, push, PR, handover            |
+| `/plan` `/q`   | Effectual planning, decomposition, and task capture             |
+| `/project`     | Scaffold a research project repo with smart defaults            |
+| `/remember`    | Persist knowledge to PKB                                        |
+| `/pull`        | Claim the next queued task and run it inline                    |
+
+**Framework governance** (installed, but not marketed as researcher-facing daily tools — governs the framework's own quality and development process):
+
+| Skill               | Purpose                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `/aops`             | Institutional memory, framework coordination                                         |
+| `/craft`            | Reviews instructions for shallow-execution defects before deployment                 |
+| `/design-rubric`    | Designs fitness criteria on the spec, before user-facing work is built               |
+| `/dogfood`          | Delegated instruction testing — commissions contextless execution, observes friction |
+| `/strategic-review` | Multi-agent adversarial review of a document, plan, or pull request                  |
+| `/supervisor`       | Delegate-and-verify supervision loop, from a single epic to a portfolio release      |
+| `/survey`           | Corpus survey — retro (transcripts), trend (longitudinal), sweep (issue triage)      |
+| `/verify`           | Judgment-based QA against the spec's fitness rubric                                  |
 
 **Domain skills** (fungible — retire when better external tools exist):
 
@@ -100,62 +162,40 @@ The quality skills form a pipeline: `/craft` ensures instructions are excellent 
 | `/extract` | General extraction and ingestion (incl. doc-to-md) |
 | `/diagram` | Diagrams — Mermaid or Excalidraw (`style` param)   |
 
-### 3. Session infrastructure (hooks)
+## Design principles
 
-Hooks make every session framework-aware without manual setup:
+1. **Qualitative over quantitative** — evaluate fitness-for-purpose, not compliance with templates
+2. **Delegate agency** — specify WHAT and WHY, not HOW
+3. **Fail-fast** — no defaults, no silent failures
+4. **Minimal** — fight bloat. A working simple system beats an elegant complex one
+5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
+6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
+7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
+8. **Don't over-fit to one incident** — the evidence base for a framework change is _recurrence_, not the salience of the most recent failure. `/learn` files the forensic facts of an incident; a separate, detached pass (`/issue-sweep`) later weighs accumulated reports and decides whether a rule change is warranted. A single salient incident shouldn't drive a framework change that doesn't generalise.
 
-- **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, enforcer (periodic compliance), custodiet (workflow discipline), policy enforcer (destructive-command block)
-- **PostToolUse**: orchestrator-boundary detection (brain only), warn-tier checks, autocommit
-- **Stop gates**: QA + handover discipline before session ends
-- **Transcript capture**: records sessions for reflection
-- **Cross-device sync**: git-based, runs on cron
+## Installation
 
-Each runtime mechanism, its hook event, scope, and cost-ladder tier is tracked in [specs/ENFORCEMENT-MAP.md](specs/ENFORCEMENT-MAP.md) — the operative SSoT for enforcement. Mechanisms move down the cost ladder (L0–L7) when evidence shows they were over-broad, and up when evidence shows lower tiers failing (Design Principle #6). For the design rationale (pipeline view, pyramid view, evidence loop) see [specs/enforcement/enforcement.md](specs/enforcement/enforcement.md).
+Distribution repository: https://github.com/nicsuzor/academicOps
 
-### 4. Async quality assurance (GitHub)
+**Requirements**:
 
-GitHub is the coordination layer. PRs run through automated review before human approval.
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) or [Gemini CLI](https://github.com/google/gemini-cli)
+- GitHub CLI (`gh`) for artifact retrieval
+- Docker (optional, for sandboxing/testing)
 
-```
-PR opened → lint + typecheck + tests → agent review → merge prep → human approval → merge
-```
-
-## Features × Targets
-
-| Feature Category           |   Claude CLI    |  Desktop Code   |     Cowork      |   Gemini CLI    |   Antigravity   |     Polecat     |    MCP-only     |
-| :------------------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| **Skills: core (13)**      | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
-| **Skills: cowork ext (5)** | ? (unverified)  | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  |
-| **Skills: tools-only**     | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
-| **Slash commands**         | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✗ (unverified)  |
-| **Named agents**           | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  |
-| **Hooks (lifecycle)**      | ✅ (unverified) | ✅ (unverified) | ✗ (unverified)  | ✅ (unverified) | ✗ (unverified)  | ✗ (unverified)  | ✗ (unverified)  |
-| **Gates / classifiers**    | ✅ (unverified) | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  |
-| **MCP: PKB**               | ✅ (unverified) | ⚠ (unverified)  | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) |
-| **MCP: Outlook (omcp)**    | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
-| **MCP: Zotero (zotmcp)**   | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
-| **MCP: Discord**           | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  | ✅ (unverified) |
-| **MCP: computer-use**      | ✅ (unverified) | ✅ (unverified) | ✅ (unverified) | ? (unverified)  | ? (unverified)  | ? (unverified)  | ? (unverified)  |
-| **Background jobs**        | ✗ (unverified)  | ✗ (unverified)  | ? (unverified)  | ✗ (unverified)  | ? (unverified)  | ✅ (unverified) | ✗ (unverified)  |
-
-**Legend**: ✅ Supported · ⚠ Partial · ✗ N/A · ? Unknown · (unverified) status: unverified
-
-### Per-target install
-
-#### Claude Code CLI
+**Quick Install** (`@dist` pins the published distribution branch):
 
 ```bash
-# Placeholder for T2
+command claude plugin marketplace add nicsuzor/academicOps@dist
 ```
 
-#### Claude Desktop Code
+_(For Gemini users)_:
 
 ```bash
-# Placeholder for T3
+command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
 ```
 
-#### Claude Code Cowork
+### Cowork
 
 Cowork runs **two plugins**: `aops-core` supplies the shared hook stack, agents,
 and core skills; `aops-cowork` is a thin **additive, skills-only** layer on top
@@ -182,73 +222,6 @@ make install-cowork        # local dev: builds + installs aops-coworklocal
 > Install aops-core **first** so Cowork picks up the hook stack; aops-cowork then
 > only adds Cowork-specific skills. Because aops-cowork bundles no hooks, the
 > lifecycle hooks fire exactly once (from aops-core) — no duplication.
-
-#### Gemini CLI
-
-```bash
-# Placeholder for T5
-```
-
-#### Antigravity
-
-```bash
-# Placeholder for T6
-```
-
-#### Polecat / GHA workers
-
-```bash
-# Placeholder for T7
-```
-
-#### Standalone MCP-only
-
-```bash
-# Placeholder for T8
-```
-
-## Design principles
-
-1. **Qualitative over quantitative** — evaluate fitness-for-purpose, not compliance with templates
-2. **Delegate agency** — specify WHAT and WHY, not HOW
-3. **Fail-fast** — no defaults, no silent failures
-4. **Minimal** — fight bloat. A working simple system beats an elegant complex one
-5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
-6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
-7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
-8. **Don't over-fit to one incident** — the evidence base for a framework change is _recurrence_, not the salience of the most recent failure. `/learn` files the forensic facts of an incident; a separate, detached pass (`/issue-sweep`) later weighs accumulated reports and decides whether a rule change is warranted. A single salient incident shouldn't drive a framework change that doesn't generalise.
-
-## Memory architecture
-
-| Type          | Storage                             | Purpose                              |
-| ------------- | ----------------------------------- | ------------------------------------ |
-| **Knowledge** | `$ACA_DATA` markdown + vector index | Searchable knowledge base            |
-| **Tasks**     | PKB task graph                      | Work tracking with dependencies      |
-| **Memory**    | PKB memories                        | Generalizable patterns and learnings |
-
-`$ACA_DATA` is the personal knowledge base — human-readable markdown in git, with a Rust MCP server providing semantic search over vector embeddings.
-
-## Installation
-
-Distribution repository: https://github.com/nicsuzor/academicOps
-
-**Requirements**:
-
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) or [Gemini CLI](https://github.com/google/gemini-cli)
-- GitHub CLI (`gh`) for artifact retrieval
-- Docker (optional, for sandboxing/testing)
-
-**Quick Install** (`@dist` pins the published distribution branch):
-
-```bash
-command claude plugin marketplace add nicsuzor/academicOps@dist
-```
-
-_(For Gemini users)_:
-
-```bash
-command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
-```
 
 ## Configuration
 
@@ -277,17 +250,7 @@ paths:
 
 ### Gates (quality checks)
 
-Gates are runtime quality checks that fire during sessions. They catch common failure modes — exiting without committing, claiming "done" without verification, scope drift in long sessions.
-
-| Gate        | What it catches                                             | Default |
-| ----------- | ----------------------------------------------------------- | ------- |
-| `ida`       | Honesty / criterion-substitution check before stopping      | `warn`  |
-| `handover`  | Exiting without committing, updating tasks, or reflecting   | `warn`  |
-| `qa`        | Claiming "done" without running verification                | `warn`  |
-| `enforcer`  | Scope drift / compliance in long-running sessions           | `warn`  |
-| `hydration` | Context injection on user prompts (reserved, not yet gated) | `off`   |
-
-Each gate runs in one of three modes: **`warn`** (reminds the agent but doesn't block), **`block`** (stops the agent until the condition is met), or **`off`** (disabled).
+Gates are the runtime quality checks introduced in [Five parts → Enforcement](#3-enforcement--hooks-gates-and-your-own-rules) above. Each gate runs in one of three modes: **`warn`** (reminds the agent but doesn't block), **`block`** (stops the agent until the condition is met), or **`off`** (disabled). This section covers how to change a gate's mode for your own sessions.
 
 #### How to configure gates
 
@@ -327,36 +290,6 @@ export ENFORCER_GATE_MODE=block     # stricter compliance checking
 
 The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `ENFORCER_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `ENFORCER_TOOL_CALL_THRESHOLD`.
 
-3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See GATES.md for technical details.
+3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 
-For the detailed gate reference (state machines, triggers, debugging), see [`aops-core/GATES.md`](aops-core/GATES.md).
-
-## Development setup
-
-```bash
-git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
-uv sync                    # install dependencies
-make install-hooks         # activate pre-commit hooks
-```
-
-Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
-
-Run `./scripts/format.sh` manually before committing if pre-commit hooks aren't firing.
-
-## Testing and release
-
-```bash
-uv run pytest                              # fast unit tests (default, CI)
-make build                                 # build Docker image
-uv run pytest -m slow -n 0 --timeout=300   # container e2e + live session tests
-```
-
-Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `dev`.
-
-## Project configuration
-
-Projects customise the framework by adding files to a `.agents/` directory:
-
-- **`.agents/rules/`** — Project-specific rules loaded as binding constraints
-- **`.agents/workflows/`** — Project-specific workflows supplementing the global index
-- **`.agents/INDEX.md`** — Plain-text index of project documentation to aid discovery of project knowledge
+For the detailed gate reference (state machines, triggers, debugging), see [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md).

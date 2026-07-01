@@ -4,7 +4,7 @@ title: Orchestrator Boundary — CLI Agent as Dispositor
 type: spec
 status: inbox
 tier: core
-depends_on: [workflow-constraints, enforcement]
+depends_on: [enforcement]
 tags: [spec, orchestration, enforcement, polecat, dispositor]
 created: 2026-04-18
 ---
@@ -15,7 +15,6 @@ created: 2026-04-18
 
 ## Giving Effect
 
-- [[specs/workflow-constraints.md]] — Dispositor pattern (Part 2) — existing partial spec
 - [[aops-core/skills/aops/SKILL.md]] — "Coordinator, not executor" instruction (current Level 2)
 - [[aops-core/lib/gates/definitions.py]] — Gate definitions to extend
 - [[polecat/defaults/claude-settings.json]] — Worker sandbox constraints
@@ -105,5 +104,5 @@ The orchestrator cannot be safely locked until:
 
 ## Related Design Decisions
 
-- The dispositor pattern (Part 2 of [[specs/workflow-constraints.md]]) defines the conceptual boundary; this spec makes it operational.
+- The dispositor pattern defined the conceptual boundary this spec makes operational (its source, `specs/workflows/workflow-constraints.md`, was retired as a pre-skills-architecture design doc during the 2026-07 simplification pass -- see git history for the original Part 2 detail).
 - Task graduation gate ([[#task-graduation-spec]]) is a prerequisite: the orchestrator needs confidence that only properly-planned tasks enter the ready queue.

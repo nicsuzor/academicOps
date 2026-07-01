@@ -1,8 +1,8 @@
 # Execution Surfaces
 
 > Canonical reference for where Claude Code and Gemini CLI run across this framework, what each surface can and can't do, and the load-bearing operational facts that bite when wrong.
-
-<!-- NS Some of this is user-specific and shouldn't be in this repo -->
+>
+> Personal ops detail — exact host/mount paths, bootstrap-script quirks, and retired-surface history — is tracked in Nic's personal ops PKB (the `surfaces` doc), not in this shared repo. This file covers the general capability matrix only.
 
 ## Audience and scope
 
@@ -35,7 +35,7 @@
 | GHA runner              | `anthropics/claude-code-action@v1`                     | Transient (per job)                                                 | Agent prompt from `.github/agents/*.md` (no plugin)                                           | Workflow `env:` block only                                                  | Repo-scoped, ephemeral                                   | Nothing                                       |
 | Jules                   | Jules (Google)                                         | Google-side session, async                                          | Opaque (Google infra)                                                                         | N/A — no host hooks                                                         | Google-sandboxed, async                                  | Nothing                                       |
 
-> Retired surface — Mac Cowork sandbox dispatching to WSL via `ssh wsl` — is preserved at the end of this doc under "Retired surfaces" (2026-05-19). Do not consult it for current architecture.
+> A prior surface — Mac Cowork sandbox dispatching to WSL via `ssh wsl` — was retired 2026-05-19. Historical detail lives in Nic's personal ops PKB, not in this repo.
 
 ---
 
@@ -43,23 +43,22 @@
 
 ### WSL crew container
 
-The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree. There is no Mac → WSL SSH hop: this container _is_ the runtime that the orchestrator agent (junior) speaks from. The Mac Cowork → SSH-into-WSL model that preceded this is retired as of 2026-05-19 after the SSH-key incident (see "Retired surfaces" below).
+The orchestrator's current daily-driver surface. Claude Code runs **directly inside a `polecat crew` Docker container on WSL** — the same Docker host environment that runs polecats. `/workspace` is the mounted persistent working tree; there is no Mac → WSL SSH hop. (A prior Mac-Cowork-via-SSH model was retired 2026-05-19; history lives in the personal ops PKB, not here.)
 
 - **Engine**: Claude Code (interactive), running inside a long-running `polecat crew` container on WSL.
-- **Persistence**: The crew worktree at `/workspace` is persistent (mounted from the WSL host). The container itself is ephemeral — anything outside `/workspace` should be treated as wiped between sessions. State that must survive lives in `/workspace` (this repo), in `~/junior/` (mounted), or in the PKB.
+- **Persistence**: The crew worktree at `/workspace` is persistent (mounted from the WSL host). The container itself is ephemeral — anything outside `/workspace` should be treated as wiped between sessions.
 - **Plugin source**: `aops-core` (and `aops-tools`) baked into the crew Docker image at build time — `claude plugin install …@academicOps` installs into `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` (the published plugin dirs live under `dist/` on `main`). No marketplace involvement at runtime; no local-install override mechanic. Plugin version is pinned at image build until the image is rebuilt.
-- **Hook env propagation**: The container receives env at launch (the pre-resolved `*_GATE_MODE` vars, `AOPS_POLECAT_CONTAINER=1`, `POLECAT_CREW_NAME`, `$AOPS_SESSIONS`, `$AOPS_POLECAT_CONFIG`, etc.) directly from the polecat launcher. There is **no `launchctl` / `.zshenv` hop** — the cross-surface env-stripping bug that bites Mac surfaces does not apply here. The launcher (`polecat/cli.py` + `lib/polecat_config.py`) reads `polecat.yaml` and resolves `for_mode("crew")` ON THE HOST at dispatch; the container's `gate_config.py` reads only the resulting `*_GATE_MODE` env vars, never `polecat.yaml` (aops-b368109a).
+- **Hook env propagation**: The container receives env at launch (the pre-resolved `*_GATE_MODE` vars, `AOPS_POLECAT_CONTAINER=1`, `POLECAT_CREW_NAME`, `$AOPS_SESSIONS`, `$AOPS_POLECAT_CONFIG`, etc.) directly from the polecat launcher. There is **no `launchctl` / `.zshenv` hop** — the cross-surface env-stripping bug that bites Mac surfaces does not apply here. The launcher (`polecat/cli.py` + `lib/polecat_config.py`) reads `polecat.yaml` and resolves `for_mode("crew")` ON THE HOST at dispatch; the container's `gate_config.py` reads only the resulting `*_GATE_MODE` env vars, never `polecat.yaml`.
 - **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`) via Tailscale from the container — load via `ToolSearch select:mcp__plugin_aops-core_pkb__*` since they are deferred. Other MCPs depend on the crew launch config; verify per-session.
 - **Gates active**: Per `polecat.yaml crew_defaults` overlay + `gates.*`.
-- **Worker dispatch**: Direct — invoke polecat via `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py <subcommand> ...`. Can launch Jules via `pkb task | jules new --repo`. Can launch GHA via `gh workflow run`. No SSH hop required; no `ssh wsl` aliases.
-- **Canonical polecat invocation** (from `~/junior/.agents/CORE.md`): always use the direct `uv` form — `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py run -t <task-id> -p <project> --model <name>`. Do **not** use the `polecat` / `pc` shell aliases — they live in interactive zsh only and load a different env. Polecat must self-configure from `polecat.yaml`.
+- **Worker dispatch**: Direct — invoke polecat via `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py <subcommand> ...`. Can launch Jules via `pkb task | jules new --repo`. Can launch GHA via `gh workflow run`. No SSH hop required.
 - **Editing the canonical aops repo**: Do not edit `$AOPS` (`~/src/academicOps`) directly from this orchestrator container. Framework-file edits go through the PKB-task → polecat-worker → PR loop. Stealth edits from the orchestrator bypass review.
 - **Known traps**:
-  - **Mount scope is narrow but not single-folder**: `/workspace` is the persistent working tree; `~/junior/` is mounted; `~/src/academicOps` and `~/brain` are reachable to support framework operations and task inspection. Other container paths are ephemeral.
-  - **Obsolete bootstrap**: `~/junior/bootstrap.sh` is left over from the retired Mac → SSH → WSL model; do not run it.
   - **PKB indexing lag** — `create_task` returns before the task is searchable; confirm with `get_task` before dispatching a polecat that needs to find it.
-  - **Background-subagent file outputs are invisible to Nic** — if you delegate, summarise inline. Filenames are traceability, not deliverables.
+  - **Background-subagent file outputs are easy to miss** — if you delegate, summarise inline. Filenames are traceability, not deliverables.
 - **Trust posture**: Full user trust — runs as the orchestrator, can take destructive actions with user approval.
+
+> Exact bind-mount paths, bootstrap-script quirks, and dotfile/alias setup for this surface are tracked in the personal ops PKB, not here.
 
 ---
 
@@ -74,10 +73,7 @@ Native Claude Code installation on a developer machine (laptop, WSL, services-ne
 - **MCPs available**: Same set as the WSL crew container plus host-shell access. Specific MCP set depends on host's `settings.json` `mcpServers` block.
 - **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, `ida` / `handover` / `enforcer` (formerly `custodiet`) / `qa` active per `polecat.yaml gates.*` — see [`GATES.md`](GATES.md) for the runtime catalogue.
 - **Worker dispatch**: Direct — can launch `pc run`, `pc crew`, `jules`, GHA workflows. The intended primary dispatcher surface alongside the WSL crew container.
-- **Known traps**:
-  - Hook env stripping (see above and cross-cutting).
-  - **Stale plugin cache directories** — multiple `0.3.23-dev.*` versions in `~/.claude/plugins/cache/academicOps/aops-core/`; Claude.app uses most recent but doesn't garbage-collect old ones.
-  - **`AOPS_BOT_GH_TOKEN` leakage risk** — token sits in plaintext in `settings.json`. Anything dumping `env` to logs leaks it.
+- **Known traps**: Hook env stripping (see above and "Cross-cutting notes" below) is the material trap here. Host-local housekeeping quirks (stale plugin-cache dirs, secret hygiene in `settings.json`) are tracked in the personal ops PKB, not here.
 - **Trust posture**: Full user trust.
 
 ---
@@ -289,41 +285,11 @@ For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls
 - **Per-worker failure-modes consolidated table** — per-surface "Known traps" sections above cover this distributed; consider whether a consolidated table earns its keep.
 - jeeves residue: epic-4234682b Step 7 and Step 9 both say `JulesWorker` after rename — collapse or rename one.
 
-> _Resolved 2026-05-20 (via [aops-e6a80f83]):_ the Cowork-vs-CORE.md contradiction in the Cowork row, and the Cowork mount-scope contradiction, are both resolved by retiring the Mac-Cowork-via-SSH surface and rewriting this doc's primary orchestrator row as "WSL crew container" per `junior/.agents/CORE.md`. The retired surface is preserved in "Retired surfaces" below.
-
 ---
 
 ## Retired surfaces
 
-Surfaces preserved here for historical traceability. **None of the entries below describe current architecture.** Anything an orchestrator agent needs to decide where to dispatch work today should come from the live "Surfaces" section above.
-
-### Cowork sandbox (Mac Claude.app, dispatching to WSL via `ssh wsl`) — retired 2026-05-19
-
-**Reason for retirement**: SSH-key incident on 2026-05-19. The cross-surface SSH dispatch model (Mac Claude.app orchestrator → `ssh wsl 'polecat run …'`) was retired in favour of running the orchestrator directly inside a `polecat crew` container on WSL (see "WSL crew container" in the live surfaces section). The replacement removes the SSH hop entirely.
-
-**Historical description** (do not treat as current):
-
-The Claude.app-hosted orchestrator environment Nic used as his daily driver for cross-machine coordination work, prior to the 2026-05-19 architecture change.
-
-- **Engine**: Claude Code (Anthropic Claude.app)
-- **Persistence**: Ephemeral VM. `~/.ssh/`, `~/.bashrc`, anything outside `~/junior/` was wiped between sessions. Persistence lived in `~/junior/` (mounted from host) or in the PKB.
-- **Plugin source & override behaviour**: Claude.app's plugin loader did not load aops-core from the marketplace, so the cowork-plugin had to be installed _locally_. When the local install happened, Claude.app overwrote whatever marketplace version was present.
-- **Hook env propagation**: ⚠ partial. `settings.json` `env` block reached the agent's Bash tool but NOT hook subprocesses. Gates that read `$AOPS_SESSIONS` (e.g. via `gate_config.py`) crashed on import. PreToolUse path did fire (custodiet worked); Stop/SessionEnd path crashed silently.
-- **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`), Slack (Anthropic Slack MCP), Chrome (`mcp__Claude_in_Chrome__*`), computer-use (`mcp__computer-use__*`), playwright, outlook, zot, hass, scheduled-tasks, ccd-session-mgmt, mcp-registry, claude-preview. **Not** present: direct shell access to polecat host (needed `ssh wsl`).
-- **Gates active**: PreToolUse / custodiet fired; ida / handover / hydration crashed on env.
-- **Computer-use tier**:
-  - Browsers (Safari/Chrome/Firefox/Arc): **read** — screenshots OK, clicks/typing blocked.
-  - Terminals + IDEs (Terminal/iTerm/VS Code/JetBrains): **click** — left-click OK, typing/right-click/modifiers/drag blocked.
-  - Everything else: **full**.
-- **Worker dispatch**: Could launch polecats on WSL via `ssh wsl 'polecat run …'`. Could launch Jules via `pkb task | jules new --repo`. Could launch GHA via `gh workflow run`. Could not launch host-side Claude Code sessions directly (Cowork → host was one-way SSH).
-- **Known traps (historic)**:
-  - **Hook env stripping** — `settings.json` `env` block did not reach hooks; gates reading `$AOPS_SESSIONS` crashed on import.
-  - **Plugin override mechanic** — re-installing locally overwrote the marketplace version.
-  - **Mount scope contradiction** — CORE.md stated "only `~/junior` is mounted" but `~/src/academicOps`, `~/brain`, `~/.aops/` were also reachable in practice. Resolved by retirement (the contradiction is moot now that the surface itself is retired).
-  - **PKB indexing lag** — `create_task` returned before the task was searchable.
-- **Trust posture**: Full user trust — ran as the orchestrator, could take destructive actions with user approval.
-
-**What replaced it**: see "WSL crew container" in the live surfaces section above. The orchestrator now runs as an interactive `polecat crew` session on WSL, with `/workspace` as the persistent working tree. The SSH hop is gone.
+Historical write-ups of retired surfaces (e.g. the pre-2026-05-19 Mac-Cowork-via-SSH orchestrator model, replaced by "WSL crew container" above) are tracked in Nic's personal ops PKB, not in this shared repo.
 
 ---
 
@@ -333,7 +299,7 @@ The Claude.app-hosted orchestrator environment Nic used as his daily driver for 
 2. **New surface arrives** (e.g. remote docker host worker per polecat v2 plan): add a new section in the same shape; add a row to the TL;DR matrix; cross-reference the polecat-system spec.
 3. **A trap is discovered**: add it to that surface's "Known traps" _and_ (if it spans surfaces) the Cross-cutting notes section.
 4. **Cleanup lands** (e.g. hook env propagation fixed): zero out the `⚠` cells; move resolved traps to a brief "Resolved" appendix or just delete.
-5. **A surface is retired**: move its section to "Retired surfaces" with a retirement date and reason; preserve content for traceability. Do not delete history.
+5. **A surface is retired**: remove its live section and TL;DR row; note the retirement (date + reason) in Nic's personal ops PKB, not in this repo. Leave a one-line pointer under "Retired surfaces" above.
 6. **PKB pointer**: a thin `surfaces` PKB doc exists whose only job is vector-search discoverability — its content is just "canonical at `specs/SURFACES.md`" plus a paragraph excerpt. When this doc's framing changes (audience, scope), update the PKB pointer to match.
 
 ---
@@ -343,6 +309,5 @@ The Claude.app-hosted orchestrator environment Nic used as his daily driver for 
 - `polecat-system` PKB spec — deep lifecycle, refinery, dispatch internals
 - `execution-environments` PKB doc — older GHA-vs-local framing (subsumed here; consider deprecating)
 - `infrastructure` PKB doc — machines, services, named agents, repos
-- `~/junior/.agents/CORE.md` — WSL-crew-container-specific orientation (the in-surface CLAUDE.md for this orchestrator surface; source of truth for the 2026-05-19 architecture change)
+- `~/junior/.agents/CORE.md` — WSL-crew-container-specific orientation (the in-surface CLAUDE.md for this orchestrator surface)
 - [aops-2b8dd7a7] — the SSoT epic this doc is one deliverable of
-- [aops-e6a80f83] — the Phase A2 task that reconciled the Cowork → WSL-crew rewrite (2026-05-20)

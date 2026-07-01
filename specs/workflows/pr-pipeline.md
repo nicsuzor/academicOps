@@ -22,7 +22,7 @@ tags:
 > `pr-pipeline.md` (v1, the merge-prep model) and `pr-pipeline-v2.md` (the two-stage
 > convergent model) into one target-state contract; both predecessors are retired into
 > this file. The **release/publish** half (merge → tag → artifacts) lives in
-> [[release-publish-pipeline]] and is cross-referenced here, never duplicated.
+> [RELEASING.md](../../RELEASING.md) and is cross-referenced here, never duplicated.
 >
 > **Honesty discipline (load-bearing).** This is a _target-state_ spec. Every claim is
 > flagged **LIVE** (verified on `origin/dev` and/or the live GitHub ruleset today) or
@@ -1327,14 +1327,14 @@ Each phase is independently shippable and leaves the pipeline working.
    `Mechanic-By:` counts over the first ~20 admitted PRs.
 3. **`target_sha` channel.** The `target_url` query-param hack (§10) is ugly but
    parsimonious; revisit only if a downstream consumer needs to query target-sha cleanly.
-4. **Advisory-finding tracking (open, owned by [[release-publish-pipeline]] §8.3).** Fatal
+4. **Advisory-finding tracking (open, owned by [RELEASING.md](../../RELEASING.md) §8.3).** Fatal
    findings are tracked (F6); non-fatal `COMMENT`-level reviews and "Deferred" triage rows
    have no machine mechanism ensuring closure. Undecided whether to require a PKB task id on
    every non-"Fixed" triage row. Recorded as a candidate, not adopted.
 
 ## 13. Cross-references
 
-- [[release-publish-pipeline]] — the **release/publish** half (merge → tag → artifacts +
+- [RELEASING.md](../../RELEASING.md) — the **release/publish** half (merge → tag → artifacts +
   version-sync). It owns topology, release-please, `build-extension.yml`, Docker, and the
   uv.lock discipline; it cross-references **this** spec for all merge-gate detail and must
   not duplicate it.

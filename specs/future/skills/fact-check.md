@@ -72,12 +72,16 @@ For each claim:
 
 ### Phase 4: Classify Results
 
+<!-- markdownlint-disable MD060 -- emoji-width miscount vs dprint's aligned-table output, pre-existing -->
+
 | Status                       | Meaning                               | Format                                 |
 | ---------------------------- | ------------------------------------- | -------------------------------------- |
 | ✅ **Verified**              | Claim matches authoritative source    | Cite source with link/page             |
 | ⚠️ **Clarification needed**   | Source exists but details differ      | Note discrepancy                       |
 | 🔍 **Unverifiable**          | No authoritative source accessible    | Note what was searched                 |
 | 📝 **Professional judgment** | Opinion/assessment, not factual claim | Note this is not a verification target |
+
+<!-- markdownlint-enable MD060 -->
 
 ### Phase 5: Compile Report
 

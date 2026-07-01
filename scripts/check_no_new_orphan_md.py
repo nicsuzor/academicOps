@@ -19,7 +19,7 @@ plugin (aops-core, aops-tools, ...) symmetrically:
 - specs/**/*.md                      specifications and architecture
 - .agents/**/*.md                    project-local rules + status
 - .github/**/*.md                    GitHub-surface docs
-- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md  at repo root only
+- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md, CONTRIBUTING.md, RELEASING.md  at repo root only
 
 The point: agents must place new markdown in a canonical home, or the
 content belongs in the task body / parent epic / PKB instead.
@@ -52,7 +52,14 @@ ALLOWED_PATTERNS = [
     ".github/**/*.md",
 ]
 
-ALLOWED_ROOT_FILES = {"README.md", "CHANGELOG.md", "GEMINI.md", "INSTALL.md"}
+ALLOWED_ROOT_FILES = {
+    "README.md",
+    "CHANGELOG.md",
+    "GEMINI.md",
+    "INSTALL.md",
+    "CONTRIBUTING.md",
+    "RELEASING.md",
+}
 
 
 def _to_regex(pattern: str) -> re.Pattern[str]:
@@ -130,7 +137,7 @@ def main(argv: list[str]) -> int:
         "  - aops-*/workflows/**/*.md  specs/**/*.md\n"
         "  - aops-*/commands/**/*.md   .agents/**/*.md\n"
         "  - aops-*/hooks/**/*.md      .github/**/*.md\n"
-        "  - aops-*/<UPPERCASE>.md     README.md / CHANGELOG.md (root)\n"
+        "  - aops-*/<UPPERCASE>.md     README/CHANGELOG/CONTRIBUTING/RELEASING.md (root)\n"
         "\n"
         "If this addition is legitimate, surface it to the user; once\n"
         "authorised in-session, R8.1's in-session-authorisation carve-out\n"

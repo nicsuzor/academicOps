@@ -1,11 +1,10 @@
 ---
 title: Review dispatch topology — how a James panel is launched
 status: ready
+type: spec
 ---
 
 # Review dispatch topology — how a James panel is launched
-
-<!-- NS this should be a separate review skill spec. -->
 
 > Canonical reference for **where** a multi-perspective review (James + rbg + pauli + marsha)
 > is dispatched from, and **why** dispatching James as a leaf subagent silently collapses a

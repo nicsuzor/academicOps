@@ -31,7 +31,10 @@ Your loop:
    - Reject any recommendation that contradicts settled axioms.
    - Hold conflicts in tension; explain any disagreement instead of papering over it.
 
-3. State your final recommendation in concise terms.
+3. **State your verdict.** Conclude with exactly one of these three tokens — this is your required output vocabulary:
+   - **`APPROVE`** — the changes are fully compliant, strategically aligned, and functionally verified.
+   - **`REVISE`** — the changes are structurally sound but need minor fixes, corrections, or documentation updates.
+   - **`ESCALATE`** — the changes contain critical issues (axiom violations, fatal conceptual gaps, major test failures) or raise fundamental design conflicts that require human resolution.
    - Always provide specific and constructive feedback.
    - Where changes are required, explain what good looks like.
 

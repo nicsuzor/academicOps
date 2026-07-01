@@ -28,6 +28,20 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 
 **Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact).
 
+**Specs describe the shipped system, not this repo's own process.** A spec's audience is a dev or auditor extending or auditing academicOps-as-installed — the software's behavior once installed and running. It is not about how this repository itself is built, tested, released, or contributed to.
+
+That's contributor practice, and it lives in the conventional top-level files a dev already knows to look for, not in `specs/`:
+
+- `CONTRIBUTING.md` — dev setup, testing, PR workflow.
+- `RELEASING.md` — the release/publish pipeline.
+- Already-correctly-placed co-located docs, e.g. [`aops-core/BUILD.md`](../../aops-core/BUILD.md), whose opening line draws exactly this distinction: "end-users want `INSTALL.md`... this doc is for developers changing the build."
+
+If a doc's reader is "someone building, testing, or releasing this repo" rather than "someone running or auditing the shipped system," it isn't a spec — even when it sits next to specs and looks the same shape.
+
+**One fact, one file.** Before adding a fact to a spec, check whether an already-mapped file — a state doc, another spec, a rule — owns it already. This generalises the enforcement-map-currency principle in [RULES.md](../../.agents/rules/RULES.md#enforcement-map-currency): a fact should have exactly one authoritative home, and every other mention should reference that home rather than restate it.
+
+If an already-mapped file owns it, extend or link that file instead of duplicating the fact here. A second copy of the same fact isn't a clarification — it's a duplication liability that drifts the moment one copy is edited and the other isn't.
+
 ## State — the SSoT for what the system IS right now
 
 Read by both agents (at runtime, for lookups) and devs (at design time, when changing the system). **One canonical location per slice.**

@@ -4,7 +4,7 @@ title: Agent Definition Content Boundary
 type: spec
 status: draft
 tier: core
-depends_on: [agent-authority, agent-permissions]
+depends_on: [agent-authority]
 tags: [spec, agents, content-discipline, governance]
 created: 2026-06-08
 ---
@@ -13,7 +13,7 @@ created: 2026-06-08
 
 **Status**: Draft. Audit use tracked under `aops-35e31b8c`.
 
-**Companion specs**: [[agent-authority]] (`specs/agents/agent-authority.md`) — frontmatter schema, skill delegation, non-transit rule. [[agent-permissions]] (`specs/agents/agent-permissions.md`) — four-axis permissions model. Read all three together for the complete agent specification layer. This spec does not restate their content; it governs what else goes — or stays out — of the agent body.
+**Companion spec**: [[agent-authority]] (`specs/agents/agent-authority.md`) — frontmatter schema, skill delegation, non-transit rule, and the four-axis permissions model (tools / mcpServers / bashScopes / fileAccess; see [Permissions Model](agent-authority.md#permissions-model)). This spec does not restate that content; it governs what else goes — or stays out — of the agent body.
 
 ## Purpose
 
@@ -75,7 +75,7 @@ An agent definition may reference a skill by name. It must not reproduce the ski
 
 Reference material, convention definitions, "how it works" explanations, methodology descriptions, and rationale prose have no place in agent instruction files.
 
-This applies even when the documentation is accurate and useful. Its cost is incurred on every invocation whether the agent needs it or not. Documentation belongs in `specs/`, `README.md`, `.agents/CAPABILITIES.md`, or PKB documents.
+This applies even when the documentation is accurate and useful. Its cost is incurred on every invocation whether the agent needs it or not. Documentation belongs in `specs/`, `README.md`, or PKB documents.
 
 This is an **explicit exception to the project's documentation-as-code principle**: agent instruction files are not code artefacts where documentation belongs alongside logic. They are runtime-loaded instruction surfaces. Every byte is a budget line.
 
@@ -113,7 +113,7 @@ A passage that would only affect the agent's behaviour on rare or hypothetical t
 
 ## Frontmatter
 
-Permissions, model, tools, skills allowlists, and sub-agent allowlists live in frontmatter only. The body does not redeclare them in prose. See [[agent-authority]] and [[agent-permissions]] for the complete frontmatter schema.
+Permissions, model, tools, skills allowlists, and sub-agent allowlists live in frontmatter only. The body does not redeclare them in prose. See [[agent-authority]] for the complete frontmatter schema.
 
 ## Relation to Skills
 
@@ -142,8 +142,7 @@ A passage that fails any of these tests is a content violation. Violations are e
 
 ## Cross-References
 
-- [[agent-authority]] (`specs/agents/agent-authority.md`) — Frontmatter schema, skill delegation, sub-agent spawning, non-transit rule.
-- [[agent-permissions]] (`specs/agents/agent-permissions.md`) — Four-axis permissions model; what goes in frontmatter for tools, bash scopes, file access.
+- [[agent-authority]] (`specs/agents/agent-authority.md`) — Frontmatter schema, skill delegation, sub-agent spawning, non-transit rule, and the four-axis permissions model (what goes in frontmatter for tools, bash scopes, file access).
 - `aops-35e31b8c` — Audit task: apply this spec to all agent files.
 - `aops-9de50bad` — Superseded by this spec. The "no documentation in agent instructions" rule is now codified here.
 - `aops-0bc1d9c5` — Sibling spec: skill content discipline (parallel document for skills, not agents).
@@ -151,6 +150,6 @@ A passage that fails any of these tests is a content violation. Violations are e
 ## Non-Goals
 
 - **Skill content discipline.** That is covered by [[aops-0bc1d9c5]]. This spec is agent-side only.
-- **Frontmatter schema correctness.** Covered by [[agent-authority]] and [[agent-permissions]].
+- **Frontmatter schema correctness.** Covered by [[agent-authority]].
 - **Agent behaviour at runtime.** This spec governs what is written in the file, not what the agent does once running.
 - **Cross-agent routing policy.** Covered by orchestrator specs and `specs/agents/supervisor.md`.

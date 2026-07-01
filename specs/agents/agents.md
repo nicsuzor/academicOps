@@ -4,7 +4,7 @@ title: Agent Ecosystem Specification
 type: spec
 status: ready
 tier: core
-depends_on: [agent-authority, agent-permissions, agent-definition-content]
+depends_on: [agent-authority, agent-definition-content]
 tags: [spec, agents, overview, architecture]
 created: 2026-06-29
 ---
@@ -78,7 +78,6 @@ Specialized agent variants exist for automation and non-interactive workflows:
 
 ## Governance Specs
 
-- [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, and the non-transit rule.
-- [[agent-permissions]] (`specs/agents/agent-permissions.md`): Defines the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess).
+- [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, the non-transit rule, and the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess — see [Permissions Model](agent-authority.md#permissions-model)).
 - [[agent-definition-content]] (`specs/agents/agent-definition-content.md`): Governs what is permitted in runtime agent definition files.
 - [[agent-compliance-matrix]] (`specs/agents/agent-compliance-matrix.md`): Audits the compliance status of each agent file against specifications.
