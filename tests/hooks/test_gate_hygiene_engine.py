@@ -61,7 +61,7 @@ def _verdict(result):
 
 def test_enforcer_blocks_write_at_threshold(monkeypatch):
     """Control: an overdue enforcer DOES deny an ordinary write tool."""
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
+    monkeypatch.setenv("RBG_GATE_MODE", "block")
     gate = GenericGate(_CONFIGS["rbg"])
     result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
     assert _verdict(result) == "deny"
@@ -73,7 +73,7 @@ def test_enforcer_does_not_block_askuserquestion(monkeypatch):
     Same overdue state as the control above; only the tool changed. The deny
     must NOT fire, because AskUserQuestion is on the never-block list.
     """
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "block")
+    monkeypatch.setenv("RBG_GATE_MODE", "block")
     gate = GenericGate(_CONFIGS["rbg"])
     result = gate.check(_ctx("AskUserQuestion"), _state_with_enforcer_overdue())
     assert _verdict(result) != "deny", (
