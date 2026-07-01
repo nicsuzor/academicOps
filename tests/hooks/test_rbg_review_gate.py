@@ -58,7 +58,7 @@ def router(monkeypatch):
     monkeypatch.setenv("IDA_GATE_MODE", "off")
     monkeypatch.setenv("QA_GATE_MODE", "off")
     monkeypatch.setenv("HANDOVER_GATE_MODE", "off")
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "off")
+    monkeypatch.setenv("RBG_GATE_MODE", "off")
     _reinit_gates()
     monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
     return HookRouter()

@@ -77,10 +77,10 @@ def _reinit_gates(monkeypatch):
     """Stamp deterministic gate modes and reinitialise the registry."""
     monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
     monkeypatch.setenv("QA_GATE_MODE", "warn")
-    monkeypatch.setenv("ENFORCER_GATE_MODE", "warn")
+    monkeypatch.setenv("RBG_GATE_MODE", "warn")
     monkeypatch.setenv("HYDRATION_GATE_MODE", "off")
     monkeypatch.setenv("IDA_GATE_MODE", "off")
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", "50")
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     monkeypatch.setenv("SENTINEL_GATE_MODE", "block")
 
     if "hooks.gate_config" in sys.modules:
