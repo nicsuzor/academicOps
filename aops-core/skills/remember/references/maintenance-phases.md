@@ -16,13 +16,13 @@ The maintenance cycle is an **agent session**, not a script. A Claude agent is l
 
 ### Sub-Agent Dispatch (Phases 2, 4, and Quality Review)
 
-The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `junior` sub-agents. The junior agent profile exposes the necessary filesystem and shell access to discover transcripts, mark them as mined, and inspect git state.
+The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `general-purpose` sub-agents. These are dispatched purely for their tool profile, via the explicit `tools` argument below (not for a specific persona's disposition) — the filesystem and shell access needed to discover transcripts, mark them as mined, and inspect git state.
 
 When dispatching, ALWAYS pass the explicit `tools` argument to ensure the sub-agent gets the exact knowledge-work toolset it needs. Example invocation:
 
 ```
 Agent(
-  subagent_type='junior',
+  subagent_type='general-purpose',
   prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read

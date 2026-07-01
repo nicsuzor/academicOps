@@ -9,7 +9,7 @@ type: spec
 > Canonical reference for **where** a multi-perspective review (James + rbg + pauli + marsha)
 > is dispatched from, and **why** dispatching James as a leaf subagent silently collapses a
 > four-perspective review into a one-agent one. Consumed by `aops-core:strategic-review` and the
-> `james` persona; the orchestrator (`junior`/`james`) reads this before commissioning a panel.
+> `james` persona; the orchestrator (`ida`/`james`) reads this before commissioning a panel.
 
 ## TL;DR
 

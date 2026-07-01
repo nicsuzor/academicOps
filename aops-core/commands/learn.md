@@ -49,6 +49,6 @@ You may apply immediate codebase fixes (for minor tweaks or framework-caused def
    - **No Random Fallback**: You must NEVER dispatch Pauli without specifying the target session or transcript, and Pauli must never select a random transcript. If no session context, ID, or path can be resolved, halt and report an error.
 
 2. **Dispatch Pauli**:
-   - Delegate the retro execution to the **Pauli** coordinator agent (not junior):
+   - Delegate the retro execution to the **Pauli** coordinator agent:
      `Agent(subagent_type='pauli', prompt='Run survey skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
    - You MUST explicitly pass the target session ID or transcript path in the prompt to Pauli. Same-session review by a fresh subagent (like `pauli` dispatched within the session) is explicitly allowed.

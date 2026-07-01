@@ -7,11 +7,12 @@ skill context (e.g., testing philosophy for test-writing tasks).
 """
 
 # Protocol sentinel emitted by workers when a PKB verb is missing.
-# Defined here so both the worker-prompt inclusion test and the junior.md
-# load-bearing test reference the same named constant rather than hardcoding
-# prose tokens independently (AXIOMS#judgment-non-delegable). This string is
-# the auditable transcript marker — changing it requires updating both the
-# instruction and any grep-based post-hoc audit tooling.
+# Defined here so both the worker-prompt inclusion test and the CORE.md
+# load-bearing test (tests/test_plugin_structure.py::TestCoreMdPkbHalt)
+# reference the same named constant rather than hardcoding prose tokens
+# independently (AXIOMS#judgment-non-delegable). This string is the auditable
+# transcript marker — changing it requires updating both the instruction and
+# any grep-based post-hoc audit tooling.
 PKB_HALT_SENTINEL = "[ATTN] PKB verb missing"
 
 # PKB-HALT floor injected into every worker brief (task aops-0203b9cb).

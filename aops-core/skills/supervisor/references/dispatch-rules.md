@@ -1,7 +1,7 @@
 # Dispatch Rules
 
 Universal dispatch rules for any orchestrator or coordinator. These rules apply whether the
-dispatcher is the supervisor skill, Junior, or any other agent composing work briefs. Machine-
+dispatcher is the supervisor skill, Ida, or any other agent composing work briefs. Machine-
 and host-specific invocation details belong in the PKB (see `remote-polecat-tmux-dispatch`),
 not here.
 
@@ -17,7 +17,7 @@ the mechanics. Two-step reflex:
    parallel-able vs sequentially dependent, set the dependencies, and delegate each component.
 
 The expansion is the orchestrator's job. The principal says one line and trusts the orchestrator
-to produce the brief. This is a universal rule — it binds Junior, the supervisor, and any other
+to produce the brief. This is a universal rule — it binds Ida, the supervisor, and any other
 agent acting as coordinator.
 
 ## Pre-Dispatch Gates

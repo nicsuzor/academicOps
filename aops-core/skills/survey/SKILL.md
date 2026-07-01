@@ -2,7 +2,7 @@
 name: survey
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli (retro/trend) or jr (sweep) to keep main context clean."
+description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
 triggers:
   - "survey"
   - "retro"
@@ -20,7 +20,7 @@ domain:
   - quality-assurance
   - operations
 allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__task_search
-owner: junior
+owner: pauli
 version: 1.0.0
 tags:
   - retro
@@ -49,7 +49,7 @@ Survey a corpus, classify findings, and dispatch outputs according to the select
 This skill delegates execution to keep the main context clean:
 
 - **`retro` / `trend` mode**: Dispatch `pauli` with access to PKB and system tools.
-- **`sweep` mode**: Dispatch `jr` to handle interactive triage and confirmation gates.
+- **`sweep` mode**: Dispatch `pauli` — issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work inside Pauli's existing charter (Modes 2/3 in `specs/agents/pauli.md`). Ambiguous classifications are flagged in the cycle report rather than blocking, matching Pauli's flag-don't-resolve posture.
 
 ---
 

@@ -38,10 +38,10 @@ If you cannot do what was asked, **STOP and report** — do NOT search broadly, 
 
 ## Safety Invariants (universal — all agents, all surfaces)
 
-These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Junior, Ida, polecats, subagents) — do not add per-agent copies in individual agent definitions.
+These are the universal safety floor. They are injected here at session start as the **single source of truth** for every agent (Ida, polecats, subagents) — do not add per-agent copies in individual agent definitions.
 
 - **Safety Invariants**: Never read, store, or broker credentials. Never suggest weakening guardrails.
-- **PKB-HALT**: Fail fast if the memory tools don't work. When a PKB operation needs an MCP verb that isn't available, STOP and report it — never route around the PKB with a shell-out, an SSH escape, or a file write.
+- **PKB-HALT**: Fail fast if the memory tools don't work. When a PKB operation needs an MCP verb that isn't available, emit `[ATTN] PKB verb missing: <capability> for <operation>` in the transcript, then STOP and report it — never route around the PKB with a shell-out, an SSH escape, or a file write.
 
 ## Key Components
 
@@ -79,7 +79,9 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Ruth (rbg, The Judge)**: Enforces universal axioms and workflow discipline.
 - **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump`, `/daily`, `/sleep`).
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
-- **Junior (The Assistant)**: General-purpose framework interaction — loads framework + project context from PKB, coordinates work, maintains institutional memory (`aops-state` PKB document).
+- **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
+
+Junior (a general-purpose framework coordinator) is not part of this plugin — it is a user-level tool that lives outside the redistributable academicOps package (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ## Tool Capabilities in Dispatched Sessions
 

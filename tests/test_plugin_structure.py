@@ -10,7 +10,8 @@ import pytest
 
 from polecat.prompt_template import PKB_HALT_SENTINEL
 
-PLUGIN_ROOT = Path(__file__).parent.parent / "aops-core"
+REPO_ROOT = Path(__file__).parent.parent
+PLUGIN_ROOT = REPO_ROOT / "aops-core"
 
 
 class TestNoProjectInferenceByPrefix:
@@ -46,29 +47,40 @@ class TestNoProjectInferenceByPrefix:
         )
 
 
-class TestJuniorMdPkbHalt:
-    """junior.md must contain the PKB-HALT sentinel so it binds for junior-type
-    sessions (load-bearing constraint from aops-0203b9cb).
+class TestCoreMdPkbHalt:
+    """.agents/CORE.md must contain the PKB-HALT sentinel so it binds for every
+    interactive/in-repo agent surface (load-bearing constraint from aops-0203b9cb).
+
+    Supersedes the retired ``TestJuniorMdPkbHalt`` (2026-07-01): that test
+    asserted the sentinel on `aops-core/agents/junior.md`, which was retired
+    from this plugin during the 2026-07 simplification pass (Junior moved into
+    userspace, out of the redistributable package — see
+    specs/agents/interactive-coworking.md's revision note). Per the settled
+    doctrine in that same file, PKB-HALT is meant to live as ONE injected copy
+    in the session-start SSoT (`.agents/CORE.md`), not duplicated per-agent —
+    so the replacement assertion targets CORE.md directly rather than the
+    plugin's remaining head agent (`aops-core/agents/ida.md`), which correctly
+    carries no per-agent copy.
 
     Asserts inclusion of PKB_HALT_SENTINEL (from polecat.prompt_template), not
     hardcoded prose tokens — the sentinel is the protocol-specified transcript
-    marker that enables post-hoc audit.  Whether the surrounding wording does
+    marker that enables post-hoc audit. Whether the surrounding wording does
     its job is owned by review and the runtime verification task aops-f00c699f,
     not by a string-match here (AXIOMS#judgment-non-delegable).
 
     This test is designed to FAIL if the PKB-HALT instruction is removed or
-    silently dropped from junior.md — that is the property a load-bearing test
-    must have.  Routing around the PKB MCP is a security incident
+    silently dropped from CORE.md — that is the property a load-bearing test
+    must have. Routing around the PKB MCP is a security incident
     (aops-18572bc0 §5); removing this instruction is a security regression,
     not a refactor.
     """
 
-    def test_junior_md_pkb_gap_section_is_load_bearing(self) -> None:
-        junior_md = PLUGIN_ROOT / "agents" / "junior.md"
-        assert junior_md.exists(), f"junior.md not found at {junior_md}"
-        text = junior_md.read_text()
+    def test_core_md_pkb_halt_sentinel_is_load_bearing(self) -> None:
+        core_md = REPO_ROOT / ".agents" / "CORE.md"
+        assert core_md.exists(), f"CORE.md not found at {core_md}"
+        text = core_md.read_text()
         assert PKB_HALT_SENTINEL in text, (
-            f"junior.md must contain the PKB-HALT sentinel ({PKB_HALT_SENTINEL!r}). "
+            f"CORE.md must contain the PKB-HALT sentinel ({PKB_HALT_SENTINEL!r}). "
             "Removing this instruction is a security regression — "
             "routing around the PKB MCP is a security incident (aops-18572bc0 §5)."
         )

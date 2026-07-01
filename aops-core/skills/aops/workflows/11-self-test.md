@@ -10,7 +10,7 @@ Testing the four layers of session infrastructure. For each layer, verify it fir
 - PKB write: task creation unblocks gates
 - RBG rbg: invoke periodic compliance rbg per instructions
 - Skills: invoke /plan, /aops, /remember
-- Subagents: dispatch junior or marsha; verify context passing
+- Subagents: dispatch ida or marsha; verify context passing
 - Polecats: dispatch local workers (gemini and claude) via uv run
 - Stop Gates: stop prevented before handover; permitted after
 - Handover: /dump provides useful instructions; execute them all
@@ -46,7 +46,7 @@ Walk layers in order; stop at first failure:
 
 **§3 Environment sanity** (if §2 failed) — UID resolution, fast-path artifacts, plugin install path vs. expected path.
 
-**§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:junior')`. Verify visible output, not just return.
+**§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:ida')`. Verify visible output, not just return.
 
 **§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-core_pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 

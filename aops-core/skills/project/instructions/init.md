@@ -122,8 +122,10 @@ session launched in the repo picks it up automatically (the top-level
 This file is **git-tracked** (it carries the shared agent default, so it must
 travel with the repo — see the `.gitignore` note below); machine-local
 overrides go in `.claude/settings.local.json`, which stays gitignored. For a
-non-research tool/library project, omit the `"agent"` key (those default to
-Junior).
+non-research tool/library project, omit the `"agent"` key — the session uses
+Claude Code's baseline default rather than a named academicOps head persona.
+(Junior, a general-purpose coordinator, is a personal userspace tool outside
+this plugin, not something project scaffolding can default sessions to.)
 
 ### `README.md`
 

@@ -4,7 +4,6 @@ depends_on:
 - rbg
 - orchestrator-boundary
 - enforcement
-- plugin-architecture
 - polecat-system
 id: aops-e8335053
 modified: '2026-04-27T22:35:43+00:00'
@@ -307,11 +306,12 @@ L5 is the hard edge. A declaration cannot re-open a path that an L5 hook blocks.
 ## Relation to Other Specs
 
 - **`specs/agents/rbg.md`** — RBG reads the declared authority from this spec's frontmatter and flags deviations in session narratives.
-- **`specs/future/skill-delegation.md`** — Refines invocation mechanics (Skill / Agent / direct prompt), nested delegation, context-passing contract, and orchestrator spawn matrices on top of this authority envelope.
 - **`specs/agents/orchestrator-boundary.md`** — The CLI orchestrator's allow/deny tables are one specific instance of a declared authority envelope.
 - **`specs/enforcement/enforcement.md`** — Frontmatter is an L3 (structural) control; the lint is L4 (detection); hooks remain L5 (hard block).
-- **`specs/plugins/plugin-architecture.md`** — Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
 - **`specs/agents/polecat-system.md`** — Enforces `fileAccess` and `bashScopes` at the worktree boundary for remote agent tasks.
+
+Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`. Invocation mechanics (Skill / Agent / direct prompt), nested delegation, and context-passing are covered inline above, not in a separate spec — the standalone `plugin-architecture` and `skill-delegation` drafts were retired during the 2026-07 simplification pass as unlanded, no-live-implementation specs.
+
 - **`task-1939d819`** — Persona/knowledge/authority unification. This spec supplies the _authority_ layer; `task-1939d819` owns persona and knowledge.
 - **`task-4a6eb501`** — Orchestrator boundary enforcement. Consumes the `subagents` allowlist, `bashScopes`, and `tools` declared here.
 - **`task-b5fec0b5`** — Framework structure formalisation. This spec is one of the structural artifacts it catalogues; that task also owns migrating existing agent files to comply with it.

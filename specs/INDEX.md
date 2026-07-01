@@ -26,10 +26,9 @@ Consolidated from:
 
 ### [[agents]] — Identity, authority, roles
 
-Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, Ruth, James, Marsha, Jr — plus the planner, supervisor, polecats, and the orchestrator boundary.
+Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, Ruth, James, Marsha, Ida — plus the planner, supervisor, polecats, and the orchestrator boundary.
 
 - [[agents]] — Agent ecosystem overview
-- [[junior]] — Junior agent specification
 - [[ida]] — Ida agent specification
 - [[pauli]] — Pauli agent specification
 - [[rbg]] — RBG agent specification
@@ -77,9 +76,8 @@ The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
 - [[ENFORCEMENT-MAP]] — Axiom × mechanism map, gate lifecycle, pyramid positions (L0–L7)
-- [[enforcement-aops-recommender]] — The aops-recommender pattern
 
-(`enforcement-mechanisms`, `hook-router`, and `ultra-vires-enforcer` were retired during the 2026-07 simplification pass — each was a near-duplicate of `ENFORCEMENT-MAP.md`/`GATES.md`/`specs/agents/rbg.md`, which now hold the operative content.)
+(`enforcement-mechanisms`, `hook-router`, `ultra-vires-enforcer`, and `enforcement-aops-recommender` were retired during the 2026-07 simplification pass — each was a near-duplicate of `ENFORCEMENT-MAP.md`/`GATES.md`/`specs/agents/rbg.md`, which now hold the operative content.)
 
 ### [[pkb]] — Knowledge base core
 
@@ -122,12 +120,9 @@ How the framework reports on itself and how agents debug it.
 - [[observability]] — Lower-level component observability
 - [[evidence-driven-debugging]] — Debugging discipline
 
-### [[plugins]] — Plugin system + skill delegation
+### Plugin system + skill delegation
 
-How third-party capability is plugged in, and how skills delegate to other skills.
-
-- [[plugin-architecture]] — Plugin model
-- [[skill-delegation]] — Skill-invokes-skill semantics
+Plugin agent schema and Skill/Agent invocation semantics are covered inline by [[agent-authority]]; the standalone `plugin-architecture` and `skill-delegation` drafts were retired during the 2026-07 simplification pass as unlanded specs with no live implementation.
 
 ### [[meta]] — Audits over the spec set itself
 

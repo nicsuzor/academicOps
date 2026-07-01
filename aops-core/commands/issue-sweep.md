@@ -42,5 +42,5 @@ Triages GitHub issues by delegating to the `survey` skill in `sweep` mode. Triag
 
 ## Dispatch
 
-Delegate the sweep execution to the Junior coordinator agent:
-`Agent(subagent_type='junior', prompt='Run survey skill in sweep mode with [user arguments/focus]')`
+Delegate the sweep execution to Pauli (issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work inside Pauli's existing charter — see `specs/agents/pauli.md`):
+`Agent(subagent_type='pauli', prompt='Run survey skill in sweep mode with [user arguments/focus]')`

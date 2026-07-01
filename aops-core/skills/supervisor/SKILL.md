@@ -6,7 +6,7 @@ description: >
   work — at every scale: one epic, a release spanning many epics (portfolio),
   or conversational orchestration of background workers (`/goal` "don't get
   involved yourself, make sure it gets done", `/dogfood`). Stateless tick driven
-  by `/loop`; cross-tick state lives in the task body. Junior MUST invoke this
+  by `/loop`; cross-tick state lives in the task body. Ida MUST invoke this
   skill for supervision; never hand-roll it inline.
 triggers:
   - "supervise"
@@ -40,7 +40,7 @@ discipline below — not by row counters.
 
 ## When to Invoke (mandatory)
 
-Junior and any orchestrator **MUST run supervision through this skill** — never hand-rolled in
+Ida and any orchestrator **MUST run supervision through this skill** — never hand-rolled in
 the main conversation — whenever delegating work and verifying it gets done. This includes
 `/goal` "delegate this, don't get involved yourself, make sure it actually gets done", `/dogfood`
 runs, and any delegate-and-verify loop over background workers. "I'm just the conversational

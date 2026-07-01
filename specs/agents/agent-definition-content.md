@@ -57,7 +57,7 @@ When an agent produces structured output (verdicts, reports, scored findings), t
 
 ### 4. Routing table (orchestrators only)
 
-Orchestrator-class agents (james, junior, supervisor) hold a routing table mapping task types to agents and skills. This is identity-adjacent: it declares the orchestrator's scope of awareness. It belongs in the agent file.
+Orchestrator-class agents (james, supervisor) hold a routing table mapping task types to agents and skills. This is identity-adjacent: it declares the orchestrator's scope of awareness. It belongs in the agent file.
 
 The table must be a table — not prose. And it must be the table only — not a narrative explanation of why each route was chosen, not documentation of the agents being routed to.
 
