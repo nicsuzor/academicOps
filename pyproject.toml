@@ -170,7 +170,7 @@ reportUnusedImport = false
 env = [
   "HANDOVER_GATE_MODE=deny",
   "QA_GATE_MODE=warn",
-  "ENFORCER_GATE_MODE=deny",
+  "RBG_GATE_MODE=deny",
   "HYDRATION_GATE_MODE=off",
 ]
 testpaths = ["tests", "aops-core/tests"]
