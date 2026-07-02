@@ -16,8 +16,8 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 - **`specs/ENFORCEMENT-MAP.md`** — **operative state register** (canonical SSoT). Pyramid-position assignments, every runtime hook / pre-commit hook / gate / PR-pipeline agent, plus the axiom-keyed cross-reference. When to reach for it: "what is currently catching X" or "what does it cost."
 - **`specs/enforcement/enforcement.md`** (this file) — design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is; PR cost-benefit framing.
-- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `specs/ENFORCEMENT-MAP.md` (superseded 2026-05-20).
-- **`specs/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
+- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `specs/ENFORCEMENT-MAP.md`.
+- **`specs/enforcement/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
 
 ## Two views of the same mechanisms
 
@@ -83,7 +83,7 @@ flowchart TD
 
 Edges show control-flow in the common path (top to bottom) and the three most common failure-to-evidence arcs (dotted). The evidence loop closes back to L0 because the _output_ of the loop is spec/axiom/template changes, which propagate forward through the whole pipeline from its start.
 
-Full catalogue of mechanisms per layer: **see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)** — the operative rule -> mechanism register (the former companion catalogue, `enforcement-mechanisms.md`, was folded into it during the 2026-07 simplification pass).
+Full catalogue of mechanisms per layer: **see [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)** — the operative rule -> mechanism register.
 
 ## §4 Pyramid view (escalation)
 
@@ -158,12 +158,12 @@ Reviewers should WARN on missing CBA, BLOCK on missing items 1, 4, or 5.
 
 The decision to **promote `exercise-authority` into an axiom** (vs leaving the rule as scattered surface-text instructions) was an explicit cost-benefit decision. Axiom status raises the rule's **weight inside the L1 always-on inject mechanism**; it does not move the enforcement to a different tier. (The weight comes from the rule becoming a first-class axiom, not from any number — axioms are keyed by slug, see §4.0.)
 
-- **Friction**: 9+ over-deference recurrences across 6 agent surfaces (issue #195 thread, issue #950, plus fresh /retro evidence from 2026-05-11 sessions).
-- **Cheaper position attempted first**: surface-text L1 fixes (per-skill CORE.md / butler.md / planner). Tried 9 times across the #195 history. Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
+- **Friction**: recurring over-deference across multiple agent surfaces, evidenced by repeated /retro findings.
+- **Cheaper position attempted first**: surface-text L1 fixes (per-skill CORE.md / butler.md / planner). Each attempt reached one more surface; the next session hit a surface the patch hadn't reached.
 - **Why axiom-promotion justified**: per-surface L1 surface-text fixes did not beat the trained "seek confirmation" reflex. Moving the rule into always-on AXIOMS.md (still L1 — same mechanism class) makes it cross-cutting in a way no per-surface edit could match. Promotion to a first-class axiom is the weight-raising act.
 - **Forward cost**: ~100 lines permanent in always-on AXIOMS.md, prompt-cached. Surface citations remain L1 (≤10 lines each).
-- **Future fixes** against any of `exercise-authority`'s three edges should land at the cheapest sufficient position — usually L1 surface-text propagation, not new axioms. Minting a new axiom against the same root would repeat the failure mode this PR resolved.
-- **Reversibility / acceptance criterion**: zero FM-1 through FM-7 recurrences (the `exercise-authority` failure-mode tells) across the next 5 /retro reviews. If the criterion fails, the documented contingency is L6 (pre-Stop LLM hook), per `note-23e58353`.
+- **Future fixes** against any of `exercise-authority`'s edges should land at the cheapest sufficient position — usually L1 surface-text propagation, not new axioms. Minting a new axiom against the same root would repeat the failure mode this fix resolved.
+- **Reversibility / acceptance criterion**: zero recurrences of the `exercise-authority` failure-mode tells across the next 5 /retro reviews. If the criterion fails, the documented contingency is escalation to L6 (pre-Stop LLM hook).
 
 This serves as the template for axiom-weight escalation: the CBA must look like this, with named prior attempts and explicit reversibility. The axiom is the rule; the pyramid tiers are the mechanisms enforcing it — confusing the two leads to inflating the axiom count rather than thickening the enforcement footprint.
 
@@ -242,7 +242,7 @@ Recency is bias. The agent that just lived through a failure proposes fixes shap
 
 ## §6 Per-mechanism reference
 
-Operative rule <-> mechanism register: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Per-gate TL;DR / config / verify / debug detail: [`specs/GATES.md`](../GATES.md). PR/merge pipeline contract: [`pr-pipeline.md`](../workflows/pr-pipeline.md).
+Operative rule <-> mechanism register: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Per-gate TL;DR / config / verify / debug detail: [`specs/GATES.md`](GATES.md). PR/merge pipeline contract: [`pr-pipeline.md`](../workflows/pr-pipeline.md).
 
 ### Output consolidation across gates
 
@@ -283,7 +283,7 @@ Which session types get the full gate/context-injection stack, and how inline su
 
 ## §8 Gate mode environment variables & Operator impact
 
-Per-gate `*_GATE_MODE` env vars, defaults, and resolution mechanics (including the polecat/crew overlay): [`specs/GATES.md`](../GATES.md) § Config plumbing.
+Per-gate `*_GATE_MODE` env vars, defaults, and resolution mechanics (including the polecat/crew overlay): [`specs/GATES.md`](GATES.md) § Config plumbing.
 
 ## §9 Workflow composition (Phase 3 placeholder)
 

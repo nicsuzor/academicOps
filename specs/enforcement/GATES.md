@@ -15,8 +15,8 @@ description: SSoT for every gate the framework runs at session time — what eac
 **What is NOT here.**
 
 - **Pyramid-position assignments, axiom mapping, escalation rules** — see the enforcement map (repo-level SSoT for the L0–L7 regulatory pyramid; `rbg` blocks on it via P#65).
-- **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](../aops-core/skills/aops/references/hooks.md).
-- **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](../aops-core/skills/aops/references/forensics-details.md).
+- **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md).
+- **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md).
 - **Design rationale (why the gate system is shaped this way)** — see [`specs/enforcement/enforcement.md`](enforcement.md) and [`specs/agents/rbg.md`](../agents/rbg.md).
 
 ## At a glance
@@ -30,7 +30,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `handover` | Exit without commit / task update / reflection          | Stop       | claim_task              | Skill(End Session) |
 | `ida`      | Honesty / criterion-substitution at Stop                | Stop       | User prompt             | Max once per turn  |
 
-Schema lives in [`lib/polecat_config.py`](lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/enforcement.md` §7.3 Session Scope](enforcement.md).
+Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/enforcement.md` §7.3 Session Scope](enforcement.md).
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
@@ -63,13 +63,13 @@ timeline
 
 ## Config plumbing
 
-Every gate's mode resolves from a `*_GATE_MODE` environment variable, read lazily by [`hooks/gate_config.py`](../aops-core/hooks/gate_config.py) with hardcoded fallback defaults. For polecat/crew containers, the polecat launcher reads `polecat.yaml`, applies the crew/run overlay, and stages the resolved env vars into the container before the session starts — the source repo never resolves modes itself at runtime. See `gate_config.py` for the full variable list, defaults, and the `__getattr__`/`_reset_gate_mode_cache()` resolution mechanics.
+Every gate's mode resolves from a `*_GATE_MODE` environment variable, read lazily by [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py) with hardcoded fallback defaults. For polecat/crew containers, the polecat launcher reads `polecat.yaml`, applies the crew/run overlay, and stages the resolved env vars into the container before the session starts — the source repo never resolves modes itself at runtime. See `gate_config.py` for the full variable list, defaults, and the `__getattr__`/`_reset_gate_mode_cache()` resolution mechanics.
 
 For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher sets the env vars, so `gate_config.py` falls back to its built-in defaults: all gates `warn`, hydration `off`, threshold 50. To override, set the env vars in your shell profile or per-directory CLI settings.
 
 ### Session-type overlays (polecat sessions)
 
-The overlay applied on top of `session_defaults` is selected by the **dispatch subcommand** (`polecat crew` vs `polecat run`), resolved on the host AT DISPATCH by `polecat/cli.py` / `lib/polecat_config.py`. The container never self-identifies with a session-type label — it receives the already-resolved `*_GATE_MODE` env vars (aops-b368109a, which removed `POLECAT_SESSION_TYPE`):
+The overlay applied on top of `session_defaults` is selected by the **dispatch subcommand** (`polecat crew` vs `polecat run`), resolved on the host AT DISPATCH by `polecat/cli.py` / `lib/polecat_config.py`. The container never self-identifies with a session-type label — it receives the already-resolved `*_GATE_MODE` env vars:
 
 | Dispatch       | Overlay applied to defaults                                       | Surfaces                                        |
 | -------------- | ----------------------------------------------------------------- | ----------------------------------------------- |
@@ -83,7 +83,7 @@ For direct CLI sessions, polecat is not involved and the hook code reads env var
 
 The aops-core plugin (and therefore the gates code) runs from a versioned cache directory at runtime, not directly from the source repo on the host:
 
-- **Claude Code on host**: `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` — Claude.app picks the most recent versioned dir; **does not garbage-collect older ones**. Stale dirs are a known trap (see [`SURFACES.md`](SURFACES.md) → "Claude Code CLI on host" → Known traps).
+- **Claude Code on host**: `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` — Claude.app picks the most recent versioned dir; **does not garbage-collect older ones**. Stale dirs are a known trap (see [`SURFACES.md`](../SURFACES.md) → "Claude Code CLI on host" → Known traps).
 - **WSL crew container / polecat run**: `dist/aops-claude/` baked into the Docker image at build time. Pinned at image build until the image is rebuilt.
 - **GHA runner**: agent prompt from `.github/agents/*.md`; no plugin runtime — gates do not fire.
 
@@ -91,7 +91,7 @@ To verify the cached copy matches source: `diff -ru ~/src/academicOps/aops-core/
 
 ### Hook env stripping (cross-cutting trap)
 
-On Claude Code CLI on host (Mac, WSL host shell): the `env` block in CLI settings does **not** reliably propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). Gate-mode env vars set there may not reach the hooks. For direct CLI sessions, set gate env vars in your shell profile (`~/.zshenv`, `~/.bashrc`) instead, so they are in the process environment before Claude Code launches. See [`SURFACES.md`](SURFACES.md) → "Claude Code CLI on host" → Known traps for the full trace.
+On Claude Code CLI on host (Mac, WSL host shell): the `env` block in CLI settings does **not** reliably propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). Gate-mode env vars set there may not reach the hooks. For direct CLI sessions, set gate env vars in your shell profile (`~/.zshenv`, `~/.bashrc`) instead, so they are in the process environment before Claude Code launches. See [`SURFACES.md`](../SURFACES.md) → "Claude Code CLI on host" → Known traps for the full trace.
 
 The WSL crew container and polecat-launched sessions receive env directly from the polecat launcher; no `launchctl`/`.zshenv` hop, so this trap does not apply there.
 
@@ -117,11 +117,11 @@ If this fails, `polecat.yaml` is missing/unreadable or `$AOPS_SESSIONS` is unset
 
 ## `sentinel` gate
 
-> **TL;DR.** Stateless PreToolUse gate that blocks destructive operations targeting protected user-environment paths before they execute. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py). Mode key: `gates.sentinel` / env var `SENTINEL_GATE_MODE` (default: `block`). Parity: [`aops-core/policies/deny-extension-writes.toml`](../aops-core/policies/deny-extension-writes.toml) mirrors these rules for Gemini CLI.
+> **TL;DR.** Stateless PreToolUse gate that blocks destructive operations targeting protected user-environment paths before they execute. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.sentinel` / env var `SENTINEL_GATE_MODE` (default: `block`). Parity: [`aops-core/policies/deny-extension-writes.toml`](../../aops-core/policies/deny-extension-writes.toml) mirrors these rules for Gemini CLI.
 
 ### What is it
 
-A safety gate that intercepts destructive operations on protected user-environment paths before they execute. Origin: GitHub issue #106 — an agent deleted a working Gemini extension installation without evidence it was broken.
+A safety gate that intercepts destructive operations on protected user-environment paths before they execute — guarding against an agent deleting or modifying a live extension, plugin, or configuration file without evidence it was broken.
 
 **Class of failure caught.** Accidental deletion or modification of live extension, plugin, and configuration files that the framework depends on. Unlike advisory gates (warn once), this gate defaults to `block` because environment damage can be difficult to recover from.
 
@@ -149,11 +149,11 @@ Destructive verbs: `rm`, `mv`, `rmdir`, `unlink`, `truncate`
 
 ### Where it lives
 
-- **Gate config**: [`lib/gates/definitions.py`](../aops-core/lib/gates/definitions.py) — `GateConfig(name="sentinel", ...)`
-- **Custom condition**: [`lib/gates/custom_conditions.py`](../aops-core/lib/gates/custom_conditions.py) — `is_destructive_env_op`
-- **Mode default**: [`hooks/gate_config.py`](../aops-core/hooks/gate_config.py) — `SENTINEL_GATE_MODE = "block"`
+- **Gate config**: [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) — `GateConfig(name="sentinel", ...)`
+- **Custom condition**: [`lib/gates/custom_conditions.py`](../../aops-core/lib/gates/custom_conditions.py) — `is_destructive_env_op`
+- **Mode default**: [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py) — `SENTINEL_GATE_MODE = "block"`
 - **Templates**: `hooks/templates/sentinel-policy-{message,context}.md`
-- **Gemini parity**: [`aops-core/policies/deny-extension-writes.toml`](../aops-core/policies/deny-extension-writes.toml)
+- **Gemini parity**: [`aops-core/policies/deny-extension-writes.toml`](../../aops-core/policies/deny-extension-writes.toml)
 - **Tests**: `tests/hooks/test_sentinel_gate.py`
 
 ### Configuration
@@ -192,7 +192,7 @@ If the sentinel fires unexpectedly, check:
 
 ## `enforcer` gate
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.enforcer`.
+> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.enforcer`.
 
 ### What is it
 
@@ -249,16 +249,16 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 | Mode silently `off`                                          | `python -c "from hooks.gate_config import RBG_GATE_MODE; print(RBG_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                             |
 | `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap above.                                                                                                           |
 | Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                                          |
-| Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress` (issue #319).                                                                                                                       |
+| Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress`.                                                                                                                                    |
 | Subagent dispatch doesn't reset counter                      | Trigger regex: `^(aops[-_]core[:_])?(enforcer\|rbg)$` on `(PreToolUse\|SubagentStart\|SubagentStop)`. `aops-core:enforcer` and `enforcer` match; `aops_core_enforcer` does not. If dispatch was never emitted, check that the policy reached threshold (`not_mid_edit` may have deferred it). |
 
-See [`forensics-details.md`](../aops-core/skills/aops/references/forensics-details.md#enforcer--rbg-gate) for the JSONL-level forensics procedure that complements these.
+See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md#rbg--rbg-gate) for the JSONL-level forensics procedure that complements these.
 
 ---
 
 ## `rbg-review` gate
 
-> **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. It **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict; the trigger is structural (Stop event + armed flag + session type), never a content/keyword sniff. Defined in [`lib/gates/definitions.py`](../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
+> **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. It **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict; the trigger is structural (Stop event + armed flag + session type), never a content/keyword sniff. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
 
 ### Where it lives
 
@@ -307,7 +307,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `qa` gate
 
-> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
+> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
 
 ### What is it
 
@@ -355,11 +355,11 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `handover` gate
 
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
+> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
 
 ### What is it
 
-The exit-discipline gate. Starts OPEN (short interactive chats don't require handover). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when the `/end-session` (canonical) or `/dump` (emergency) skill completes — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that post-handover operations (git push, release_task, etc.) don't re-close it. On Stop, the policy blocks once per turn while the gate is CLOSED (fire-once + re-arm-on-UPS lifecycle). This is a **posture gate**: interactive → `warn` (advisory merged once via `additionalContext`, the turn proceeds — the "soft handover" of PR #1992); polecat → `block` (the Stop is held until handover runs). Warn-vs-block delivery and audience are the shared Stop-gate mechanics — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
+The exit-discipline gate. Starts OPEN (short interactive chats don't require handover). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when the `/end-session` (canonical) or `/dump` (emergency) skill completes — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that post-handover operations (git push, release_task, etc.) don't re-close it. On Stop, the policy blocks once per turn while the gate is CLOSED (fire-once + re-arm-on-UPS lifecycle). This is a **posture gate**: interactive → `warn` (advisory merged once via `additionalContext`, the turn proceeds — a "soft handover"); polecat → `block` (the Stop is held until handover runs). Warn-vs-block delivery and audience are the shared Stop-gate mechanics — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
 
 **Class of failure caught.** Uncommitted changes lost at exit, task left without a status update, no framework reflection captured.
 
@@ -379,8 +379,8 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
 - **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$"` with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
 - **Re-arm trigger**: `UserPromptSubmit` (polecat/crew only) → clears sticky latch, then fires re-arm trigger → CLOSED. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
-- **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`, set by aops-c67313ef), the gate auto-approves to prevent deadlock.
-- **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump (issue aops-2283a8b0).
+- **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
+- **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
 
 ### How to verify it's firing
 
@@ -404,23 +404,23 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | uniq -c
 | 4–5 denies pattern (safety override)         | Normal once. Repeated across sessions = agent isn't completing handover before retrying Stop. Read the CC session JSONL between denies to see what the agent did.                                                   |
 | Gate closed on a `git status` after handover | The Bash-as-read carve-out depends on `handover.sticky` OR no bound task. If both are false the carve-out is off — that's by design while work is in progress.                                                      |
 
-See [`forensics-details.md`](../aops-core/skills/aops/references/forensics-details.md#stop--handover-gate) for the JSONL-level forensics procedure.
+See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md#stop--handover-gate) for the JSONL-level forensics procedure.
 
 ---
 
 ## `ida` gate
 
-> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
+> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
 
 ### What is it
 
 The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification. Gate opens after the first block so retried Stops pass; re-arms on UserPromptSubmit.
 
-**Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering. Targets the issues catalogued in the gate definition's docstring (#621, #563, #380, #430, #359, #798, #549, #624, #317, #100, #376, #437, #391, #416, #335, #932, #822, #714).
+**Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering.
 
 **Why fire-once.** Regardless of channel, the agent should see the honesty checklist **once per turn** and self-correct — not be nagged on every retried Stop. The lifecycle delivers exactly that: CLOSED → fires on first Stop → OPEN, re-arms on the next UserPromptSubmit.
 
-**Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the **current target (CC ≥2.1.191, re-confirmed 2.1.195)** a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (the turn proceeds). Note this is _not_ user-silent: on Stop the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line — no _user-silent_ (zero user output) Stop channel exists. The quiet alternative is the `asyncRewake` Stop hook (full body to agent `<system-reminder>`, one-line `<summary>` to user; decompiled + PTY-proven 5×, [[kb-fcc2b95c]], RCA #2014) — delivery only, not compulsion. (PTY-confirmed, task aops-c0363bf8.) On **legacy CC 2.1.158** the Stop event rejected `hookSpecificOutput`/`additionalContext`, so the only agent-visible channel was `decision: "block"` + `reason` (also user-visible) and a warn had to upgrade to a block purely to deliver — which is why this gate was historically described as "block-once." That upgrade is now retired on 2.1.191. _(The inline code comment at `definitions.py:581-583` still states the legacy "no additionalContext on Stop" assumption — stale; the live behaviour is whatever `channel_spec("claude","Stop").agent_context_without_block` says.)_
+**Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the current Claude Code target a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (the turn proceeds); this is not user-silent — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line. The quiet alternative is the `asyncRewake` Stop hook (full body to agent `<system-reminder>`, one-line `<summary>` to user) — delivery only, not compulsion. Wire-mechanics and per-client-version detail live in [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md), not here.
 
 ### Where it lives
 
@@ -454,12 +454,12 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 
 ### How to debug when it isn't
 
-| Failure mode                                          | Diagnostic                                                                                                                                                                                                                                                                                       |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Mode silently `off`                                   | `python -c "from hooks.gate_config import IDA_GATE_MODE; print(IDA_GATE_MODE)"` — confirm the resolved value.                                                                                                                                                                                    |
-| Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                  |
-| Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                            |
-| Mode `warn` but no visible reminder in agent context  | Cross-check `output_for_claude` behaviour: when verdict is `warn` and no other gate set a system_message, the reminder is copied into `stopReason` + `systemMessage` (router.py near "WARN inertia #338"). If neither field is set in the JSONL output, the merge logic dropped it — file a bug. |
+| Failure mode                                          | Diagnostic                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Mode silently `off`                                   | `python -c "from hooks.gate_config import IDA_GATE_MODE; print(IDA_GATE_MODE)"` — confirm the resolved value.                                                                                                                                                                                          |
+| Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                        |
+| Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                                  |
+| Mode `warn` but no visible reminder in agent context  | Cross-check `output_for_claude` behaviour: when verdict is `warn` and no other gate set a system_message, the reminder is copied into `stopReason` + `systemMessage` (`router.py`, the "WARN inertia" fallback). If neither field is set in the JSONL output, the merge logic dropped it — file a bug. |
 
 ---
 
@@ -494,14 +494,14 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 ### Authoritative on adjacent slices
 
 - Enforcement map (repo-level) — operative register: L0–L7 regulatory pyramid (Ayres & Braithwaite 1992), axiom × mechanism cross-reference, PR-pipeline agents. `rbg` blocks on it via P#65.
-- [`aops-core/skills/aops/references/hooks.md`](../aops-core/skills/aops/references/hooks.md) — hook router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences.
-- [`aops-core/skills/aops/references/forensics-details.md`](../aops-core/skills/aops/references/forensics-details.md) — JSONL log schema, per-gate forensics procedures, polecat-session identification.
+- [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md) — hook router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences.
+- [`aops-core/skills/aops/references/forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md) — JSONL log schema, per-gate forensics procedures, polecat-session identification.
 - `polecat/defaults/polecat.yaml.example` (repo-level) — config schema + master environment-variable inventory.
 
 ### Design rationale (specs)
 
 - [`specs/enforcement/enforcement.md`](enforcement.md) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop.
-- [`specs/agents/rbg.md`](../agents/rbg.md) — the "ultra vires" scope distinction and the enforcer agent's invocation points (absorbed from the retired `ultra-vires-enforcer.md` spec during the 2026-07 simplification pass).
+- [`specs/agents/rbg.md`](../agents/rbg.md) — the "ultra vires" scope distinction and the enforcer agent's invocation points.
 
 ### Source
 
@@ -517,4 +517,4 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 
 ### Doc shape
 
-This file is a state-category SSoT per the doc-taxonomy spec (brain PKB). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for the Phase C subsystem consolidations (epic `aops-2b8dd7a7`).
+This file is a state-category SSoT per the doc-taxonomy spec (brain PKB). The per-gate "TL;DR → where → config → verify → debug" shape is reusable for other runtime-subsystem state docs.
