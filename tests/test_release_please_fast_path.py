@@ -101,3 +101,11 @@ def test_deploy_step_gates_stable_releases_on_production_environment():
     env = job.get("environment", "")
     assert "production" in env, env
     assert "contains(github.ref_name, '-')" in env, env  # prereleases skip the gate
+
+
+def test_deploy_concurrency_queues_instead_of_cancelling_pending_approval():
+    """A run paused on the `production` reviewer is still "in progress"; a fast-path
+    release burst must queue behind it, not cancel it — cancel-in-progress: true
+    silently dropped the pending approval the moment the next tag landed."""
+    concurrency = yaml.safe_load(BUILD.read_text())["concurrency"]
+    assert concurrency["cancel-in-progress"] is False, concurrency
