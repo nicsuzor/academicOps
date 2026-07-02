@@ -74,6 +74,7 @@ The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
 - [[ENFORCEMENT-MAP]] — Axiom × mechanism map, gate lifecycle, pyramid positions (L0–L7)
+- [[premise-gate-spec|specs/enforcement/premise-gate.md]] — The premise gate design statement (first executive surface for `judgment-non-delegable`; pairs with the operative instruction file in the remember skill and the review-time twin)
 
 (`enforcement-mechanisms`, `hook-router`, `ultra-vires-enforcer`, and `enforcement-aops-recommender` were retired during the 2026-07 simplification pass — each was a near-duplicate of `ENFORCEMENT-MAP.md`/`GATES.md`/`specs/agents/rbg.md`, which now hold the operative content.)
 
