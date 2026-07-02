@@ -34,6 +34,14 @@ jobs:
   build-and-deploy:
     name: Build extensions and publish release assets
     runs-on: ubuntu-latest
+    # SINGLE human approval for the whole release (pr-pipeline.md §3.13). The release
+    # PR now auto-merges on green Lint+Pytest with no PR-level gate, so the one
+    # human decision moved here — to the actual publish. A STABLE `vX.Y.Z` deploy
+    # (created automatically by release-please) waits on the `production` environment
+    # reviewer before it ships to the `dist` branch / Docker `:latest`. Prerelease
+    # tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they contain a '-') are hand-pushed via
+    # `make prerelease` — that deliberate push IS the approval, so they skip the gate.
+    environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}
     permissions:
       contents: write
       packages: write   # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)

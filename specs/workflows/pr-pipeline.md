@@ -789,6 +789,58 @@ fire the normal `pull_request` pipeline, so Stage-2 re-verification (§3.5), pas
 > does not re-dispatch every tick; a human push or re-resolution (new SHA) re-enters the sweep.
 > The §3.6 exhaustion handler bounds repeated mechanic passes within a single admission.
 
+### 3.13 Release-please fast path — mechanical checks only, one approval at deploy — **LIVE**
+
+Release-please PRs (head ref `release-please--*`) are **not** subject to the agent
+pipeline. They are bot-generated, deterministic artifacts — a version bump, a
+regenerated `CHANGELOG`, and `uv.lock` — produced by `release-please.yml` from the
+merged conventional-commit history. There is nothing for rbg (enforcer) or marsha
+(qa) to judge: the content is mechanically derived, not authored. Subjecting them to
+the full triage/admission machinery was pure friction (the symptom that motivated
+this path: release PRs stalling behind an unrelated buried approval and repeated
+agent runs).
+
+**What runs.** Only the mechanical gates — `Lint` and `Pytest` (and the informational,
+non-required `Type Check`). These are the real signal on a release PR: does the tree
+still lint and do the tests still pass at the bumped version.
+
+**What is skipped.** `enforcer`, `qa`, `review-attestation`, `alignment-queue`, the
+pre-admission responder, and the Stage-2 mechanic all carry a
+`!startsWith(github.event.pull_request.head.ref, 'release-please')` guard (or cascade
+off the skipped reviewers). No agent runner is burned on a release PR.
+
+**How the required checks are satisfied.** The branch-protection ruleset (§7) requires
+`enforcer-status`, `qa-status`, `review-attestation`, and `admit-status` for **every**
+PR to `dev`, and a GitHub ruleset cannot conditionally drop required checks by head
+ref. So the `release-autogreen` job (in `pr-pipeline.yml`) posts all four as `success`
+the moment `Lint` **and** `Pytest` are genuinely green on HEAD, then arms auto-merge
+(`--squash --delete-branch`). `review-attestation` is posted with the §10 `target_sha`
+in its `target_url` so the auto-attestation is auditable against the head SHA. The job
+requires `AOPS_BOT_GH_TOKEN` (the default token cannot satisfy a ruleset-trusted
+required check, §4.7) and is same-repo only, mirroring `initialize`.
+
+**The single human approval lives at deploy, not on the PR.** The maintainer asked for
+exactly one approval, at the deployment. So the release PR itself has **no** human gate
+— it merges automatically on green mechanical checks — and the one approval is the
+`production` GitHub Environment on `build-extension.yml`'s `build-and-deploy` job. A
+**stable** `vX.Y.Z` deploy (the tag release-please creates automatically on the next
+`push: dev`) waits on the environment reviewer before publishing to the `dist` branch
+and Docker `:latest`. **Prerelease** tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they contain a
+`-`) are hand-pushed via `make prerelease`, so that deliberate push *is* the approval
+and they skip the gate (`environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}`).
+
+> **Trade-off, recorded deliberately.** This is a scoped exception to the repository's
+> "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR merges
+> to `dev` with no per-PR human click. It is safe because (a) the content is
+> deterministic bot output, not authored change, and (b) the human decision is not
+> removed but **relocated** to the publish step — nothing ships to users until the
+> `production` environment is approved. The retired `production` gate on the *PR
+> pipeline* `gate` job (and the dead copy on `agent-enforcer.yml`) blocked even
+> Lint/Pytest behind a buried "Review deployments → Approve" and duplicated the human
+> gate; it is gone. This exception applies ONLY to `release-please--*` head refs; every
+> other PR to `dev` still runs the full agent pipeline and the `admit-status` human
+> gate unchanged.
+
 ## 4. Per-agent contract (locked)
 
 Every agent in the pipeline — enforcer, qa, mechanic, alignment, and any future agent —
