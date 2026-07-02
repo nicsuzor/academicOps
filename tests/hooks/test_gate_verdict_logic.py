@@ -20,8 +20,8 @@ from tests.hooks.gate_helpers import (
 # --- Gate mode override parameterisation ---
 
 _GATE_MODE_CASES = [
-    ("enforcer", "warn", GateVerdict.WARN),
-    ("enforcer", "block", GateVerdict.DENY),
+    ("rbg", "warn", GateVerdict.WARN),
+    ("rbg", "block", GateVerdict.DENY),
     ("qa", "warn", GateVerdict.WARN),
     ("qa", "block", GateVerdict.DENY),
     ("handover", "warn", GateVerdict.WARN),
