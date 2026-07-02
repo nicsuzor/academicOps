@@ -2,39 +2,44 @@
 id: agents-e4ca3ecd
 title: Supervisor Architecture
 type: spec
-description: Unified specification for task supervision — epic-level orchestration and iterative burst processing
+description: What the supervisor is, when it's invoked, and its contract
 status: ready
 tier: polecat
 depends_on: [polecat-system]
-supersedes: [polecat-supervision, polecat-swarms, worker-hypervisor]
 tags: [spec, polecat, architecture, supervisor]
 created: 2026-03-11
-implements:
-  - supervisor skill
-  - burst-supervisor skill
-  - polecat/supervisor_loop.py
-  - polecat/swarm.py
-  - polecat/engineer.py
 ---
 
 # Supervisor Architecture
 
-Unified specification for task supervision. All orchestration patterns — parallel swarm, iterative burst, and the deprecated hypervisor — are instances of one abstraction: **a supervisor that creates or selects tasks, dispatches them to workers, and evaluates results.**
+The supervisor is the framework's delegate-and-verify process: a stateless tick that
+selects or creates work, dispatches it to workers, evaluates the results, and persists
+state for the next tick. It operates at every scale — a single epic, a multi-epic
+release, or conversational orchestration of background workers — using the same
+discipline at each.
 
-## Giving Effect
+## User Story
 
-- [[polecat/supervisor_loop.py]] — LLM-driven parallel dispatch (swarm mode)
-- [[polecat/swarm.py]] — Multiprocessing worker pool
-- [[polecat/engineer.py]] — Refinery merge queue processor
-- [[polecat/manager.py]] — Worktree lifecycle, atomic task claiming
-- [[skills/supervisor/SKILL.md]] — Epic-level orchestration skill (orient→act→checkpoint loop)
-- [[skills/burst-supervisor/SKILL.md]] — Iterative long-running orchestration skill (burst mode)
-- [[WORKERS.md]] — Worker registry (types, capabilities, selection rules)
-- [[LIFECYCLE-HOOKS.md]] — Trigger hooks (queue-drain, stale-check, post-finish)
+As an orchestrator (human or agent) with work to get done by other agents, I want a
+single process I invoke rather than hand-roll, so that every delegated task is proven
+before I trust it — not just claimed complete.
 
-## Core Abstraction
+## When It's Invoked
 
-Every supervisor instance has four concerns:
+Any orchestrator that delegates work and must verify it gets done invokes the
+`supervisor` skill — never hand-rolled inline. This covers:
+
+- Epic-level orchestration (one PKB epic, state in the epic body)
+- Portfolio/release supervision (many epics, state in the release task body)
+- Conversational orchestration of background workers (e.g. "don't get involved
+  yourself, make sure it gets done")
+
+The supervisor is driven tick-by-tick by `/loop`; cross-tick state lives entirely in
+the task body, so any instance can resume from where a prior one left off.
+
+## Contract
+
+Every supervisor tick performs the same four concerns:
 
 | Concern      | What it does                                 | Who decides           |
 | ------------ | -------------------------------------------- | --------------------- |
@@ -43,294 +48,37 @@ Every supervisor instance has four concerns:
 | **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment)  |
 | **Persist**  | Record state for recovery across invocations | Task body (PKB)       |
 
-The two modes differ in how they combine these concerns:
-
-```
-SWARM MODE                          BURST MODE
-(parallel, fire-and-forget)         (iterative, evaluate-and-revise)
-
-Select N tasks from queue           Select N items from workflow queue
-    │                                   │
-    ▼                                   ▼
-Dispatch all in parallel            Dispatch batch via polecat
-    │                                   │
-    ▼                                   ▼
-Workers autonomous                  Workers autonomous
-    │                                   │
-    ▼                                   ▼
-PR pipeline evaluates               Supervisor evaluates results
-    │                                   │
-    ▼                                   ▼
-GitHub merges                       Accept / Revise / Escalate
-    │                                   │
-Done.                               Persist state → next burst
-```
-
-## When to Use Which
-
-| Situation                                   | Mode           | Entry point                          |
-| ------------------------------------------- | -------------- | ------------------------------------ |
-| Queue of independent tasks, drain fast      | Supervisor     | `/supervisor` skill                  |
-| Decomposed epic, parallel subtasks          | Supervisor     | `/supervisor` skill                  |
-| Process N items iteratively with evaluation | Burst          | `/burst-supervisor` skill            |
-| Long-running workflow across sessions       | Burst          | `/burst-supervisor` + `/loop`        |
-| One-off task, run it yourself inline        | Neither        | `/pull` (claim + run interactively)  |
-| One-off task, hand to a background worker   | Neither        | `/dispatch` or `polecat run -t <id>` |
-| Batch file processing (non-task)            | Atomic locking | See "Atomic Locking" appendix        |
-
-**Rules of thumb:**
-
-- If you own an epic from decomposition through integration → supervisor
-- If you need to read and evaluate each result before dispatching more → burst
-- If the work spans days or weeks → supervisor or burst (state recovery across sessions)
-- If you want maximum throughput for independent tasks → supervisor with parallel `polecat run` dispatch
-
-## Three Verbs: Pull, Dispatch, Supervise
-
-The queue-to-execution surface exposes three verbs that share one **Select +
-Gates** spine (premise gate + freshness pre-check), implemented once in the
-`task-lifecycle` skill and consumed by the command layer:
-
-| Verb              | Where work runs                      | Loops?                         | Entry point                      |
-| ----------------- | ------------------------------------ | ------------------------------ | -------------------------------- |
-| **`/pull`**       | **Inline**, this interactive session | No — one task                  | `task-lifecycle` (execute mode)  |
-| **`/dispatch`**   | Background worker (polecat/subagent) | No — one dispatch step         | `task-lifecycle` (dispatch mode) |
-| **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` | `supervisor` skill               |
-
-- `/pull` and `/dispatch` differ only in their tail: `/pull` claims the task and
-  runs it here (with licence to ask the user questions); `/dispatch` routes it to
-  a worker and halts. Both run the same selection and gates first.
-- `/dispatch` is a thin one-shot slice of `/supervisor`'s Dispatch phase.
-- **Self-arming**: a `/supervisor` invoked interactively schedules its own next
-  tick (`ScheduleWakeup`) when work remains and it is not at a terminal state, so
-  one invocation visibly keeps going without the user manually wiring `/loop`. It
-  stops self-arming at the terminal state. See
-  `aops-core/skills/supervisor/SKILL.md` § "Self-Arming the Loop".
-
-## Shared Infrastructure
-
-Both modes build on the same polecat infrastructure. No mode has its own dispatch code — everything goes through `polecat run`.
-
-### Worker Dispatch
-
-All worker dispatch uses a single mechanism:
-
-```bash
-# Claude worker
-polecat run -t <task-id> -p <project> -c <caller>
-
-# Gemini worker
-polecat run -t <task-id> -p <project> -c <caller> -g
-```
-
-This provides:
-
-- **Worktree isolation**: Each worker gets `$POLECAT_HOME/polecat/<task-id>/`
-- **Atomic claiming**: File-locking prevents duplicate claims
-- **Agent invocation**: Claude or Gemini, with full task context
-- **Auto-finish**: On exit 0, pushes branch and marks `merge_ready`
-- **Transcript capture**: `$AOPS_SESSIONS/polecats/<task-id>.jsonl`
-
-Workers never call `gemini -p` or `claude -p` directly.
-
-### Task Queue
-
-Both modes read from the same PKB task queue. Tasks are eligible for dispatch when:
-
-- `status` is `queued`
-- `assignee` is `polecat` or `bot`
-- All `depends_on` are satisfied
-- Task is a leaf (no children)
-
-### Merge Pipeline
-
-Worker output flows through the same merge pipeline regardless of mode:
-
-1. Worker finishes → `polecat finish` → branch pushed, task `merge_ready`
-2. PR created on GitHub (branch name: `polecat/<task-id>`)
-3. PR review pipeline runs (enforcer, QA, Claude review)
-4. GitHub auto-merge on approval
-5. Task marked `done` on merge (GitHub Action)
-
-### Worker Registry
-
-Both modes read [[WORKERS.md]] for worker types, capabilities, selection rules, and capacity limits. Modify that file to change dispatch behavior without editing specs or skills.
-
-## Swarm Mode
-
-### Architecture
-
-The swarm drains a task queue in parallel. Workers claim tasks independently — the supervisor's job is to select the batch and choose runners, then walk away.
-
-```
-┌──────────────┐     ┌──────────────────────────┐     ┌───────────┐
-│  Task Queue  │────►│  Swarm (N workers)        │────►│  GitHub   │
-│  (PKB)       │     │  Each: claim→work→PR      │     │  PRs      │
-└──────────────┘     └──────────────────────────┘     └───────────┘
-                                                            │
-                                                            ▼
-                                                      ┌───────────┐
-                                                      │  Merge    │
-                                                      │  Pipeline │
-                                                      └───────────┘
-```
-
-### Entry Points
-
-| Entry point                           | What it does                                             |
-| ------------------------------------- | -------------------------------------------------------- |
-| `polecat run -t <id> -p <project>`    | Dispatch single task to Claude worker                    |
-| `polecat run -t <id> -p <project> -g` | Dispatch single task to Gemini worker                    |
-| `/supervisor` skill                   | Epic-level orchestration: orient → act → checkpoint loop |
-
-### Lifecycle (supervisor skill)
-
-See [[skills/supervisor/SKILL.md]] for the orient→act→checkpoint loop:
-
-1. **Orient**: Read epic, verify child statuses, decide what to do next
-2. **Decompose**: Break large tasks into PR-sized subtasks
-3. **Dispatch**: Individual tasks via `polecat run -t <id>`
-4. **Monitor**: Check PKB task statuses and GitHub PRs
-5. **React**: Handle failures, conflicts, scope changes
-6. **Integrate**: Verify, merge, sync
-7. **Complete**: Update epic, capture knowledge, file follow-ups
-
-**Key property**: The supervisor stays responsible for the epic — it checks progress on each invocation, not fire-and-forget. All state lives in the epic task file body.
-
-### State
-
-The supervisor stores all state in the epic task file body as structured
-markdown (work items table, pending decisions, dispatch log). No external
-state files. This enables preemptible async execution — the supervisor can
-be stopped at any time and a new instance recovers from the task file.
-
-See [[supervision-loop]] for the state format.
-
-### Conflict Avoidance
-
-- **Atomic claiming**: `manager.py:claim_next_task()` with file locking
-- **Worktree isolation**: Each worker in separate `$POLECAT_HOME/polecat/<task-id>/`
-- **Selective dispatch**: Supervisor chooses which tasks to dispatch individually, avoiding unintended claiming
-
-## Burst Mode
-
-### Architecture
-
-The burst supervisor processes a workflow's queue iteratively across multiple invocations. Each burst: check results, evaluate, dispatch, persist, halt.
-
-```
-┌──────────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Tracking Task   │────►│  Burst N     │────►│  Workers     │
-│  (state in PKB)  │     │  Evaluate    │     │  via polecat │
-│                  │◄────│  Dispatch    │     │              │
-│  Queue + Log     │     │  Persist     │     └──────────────┘
-└──────────────────┘     └──────────────┘
-        │
-        ▼ (next invocation)
-┌──────────────┐
-│  Burst N+1   │
-│  ...         │
-└──────────────┘
-```
-
-### Entry Points
-
-| Entry point                            | What it does                          |
-| -------------------------------------- | ------------------------------------- |
-| `/burst-supervisor init <description>` | Initialize new supervisor with queue  |
-| `/burst-supervisor <tracking-task-id>` | Resume: evaluate + dispatch + persist |
-| `/loop 30m /burst-supervisor <id>`     | Recurring bursts every 30 minutes     |
-
-### State Schema
-
-State lives in the tracking task body (PKB), not in external files. Designed in [[aops-f22cf622]].
-
-**Important**: PKB strips unrecognized frontmatter fields. Supervisor state MUST live in a YAML code block in the task body, not in frontmatter.
-
-**Body YAML code block** (structured, machine-readable):
-
-- `queue[]` — per-item status, worker task reference, attempts
-- `active_dispatches[]` — tasks currently being worked on
-- `config` — burst size, max attempts, worker type, review mode
-- `plan` — aggregate counters
-
-**Body prose** (human-readable, append-only):
-
-- Mission statement
-- Workflow config (queue source, worker instructions, evaluation criteria)
-- Progress log (one section per burst)
-- Decision log
-- Escalations
-
-Any agent can resume by reading the tracking task. No filesystem state needed.
-
-### Evaluation
-
-The supervisor agent evaluates worker output using its own judgment — no code, no regex, no scoring functions. See [[skills/burst-supervisor/SKILL.md]] Phase 2a for the full evaluation protocol.
-
-Three outcomes:
-
-- **Accept**: Work meets criteria. Move on.
-- **Revise**: Specific problems found. Create new worker task with feedback.
-- **Fail**: Fundamental issues or retry budget exhausted. Escalate to human.
-
-Evaluation criteria are written in plain language in the tracking task body, specific to the workflow.
-
-### Concurrency
-
-Single-agent-at-a-time (advisory). If `last_burst` < 5 minutes ago with active dispatches, warn and halt.
-
-## Refinery (Merge Queue)
-
-The Refinery processes `merge_ready` tasks regardless of which mode produced them.
-
-### Implementation
-
-`polecat/engineer.py` — the `Engineer` class:
-
-1. **Scan**: Find oldest `merge_ready` task
-2. **Claim merge slot**: Lock task for processing (one at a time)
-3. **Verify**: Fetch, check for unpushed commits
-4. **Merge**: Squash merge to main
-5. **Test**: Run `uv run pytest`
-6. **Push**: Push to origin, delete branch
-7. **Complete**: Task `done`, nuke worktree
-
-### Failure Handling
-
-On merge failure:
-
-- Task status: `merge_ready` → `review`
-- Refinery Report appended to task body with timestamp and error
-- Categorized: conflicts, tests_failed, dirty_worktree, other
-- Returns to human intervention
-
-### Merge Criteria
-
-Auto-merge (no engineer review):
-
-- Tests pass on branch
-- No merge conflicts
-- Low complexity (per [[WORKERS.md]] routing)
-
-Engineer review triggered by:
-
-- Higher complexity tasks
-- Critical path tags (per [[WORKERS.md]])
-- Random sampling
-- Merge conflicts
-
-## Configuration Separation
-
-| Concern            | Spec (this document)     | WORKERS.md (soft config)               |
-| ------------------ | ------------------------ | -------------------------------------- |
-| Dispatch mechanism | `polecat run` always     | Runner selection rules                 |
-| Worker types       | Architecture, lifecycle  | Names, capabilities, cost/speed        |
-| Selection          | Decision tree structure  | Tag lists, complexity mappings         |
-| Review routing     | Trigger logic            | Which complexity values trigger review |
-| Monitoring         | Stall detection protocol | Heartbeat intervals, thresholds        |
-
-To customize for a different deployment, modify WORKERS.md only.
+Evaluation yields one of three outcomes: **Accept** (meets criteria, move on),
+**Revise** (specific problems found, create a new worker task with feedback), or
+**Fail** (fundamental issues or retry budget exhausted, escalate to a human).
+
+The supervisor stays responsible for the work until it reaches a terminal state — it
+checks progress on every tick, it does not fire-and-forget.
+
+## Relationship to `/pull` and `/dispatch`
+
+`/pull`, `/dispatch`, and `/supervisor` are three verbs over the same queue, differing
+in where work runs and whether they loop:
+
+| Verb              | Where work runs                      | Loops?                         |
+| ----------------- | ------------------------------------ | ------------------------------ |
+| **`/pull`**       | Inline, this interactive session     | No — one task                  |
+| **`/dispatch`**   | Background worker (polecat/subagent) | No — one dispatch step         |
+| **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` |
+
+`/pull` and `/dispatch` share one Select+Gates spine, implemented once in the
+`task-lifecycle` skill: `/pull` claims the task and runs it inline (with licence to
+ask the user questions); `/dispatch` routes it to a worker and halts.
+
+The supervisor does **not** call `task-lifecycle`. Its own Dispatch phase applies the
+same premise and pre-flight gates independently, then adds the proof, ledger, and
+escalation discipline that spans multiple ticks — `task-lifecycle` has no concept of
+"across ticks." `/dispatch` is a thin one-shot slice of a single supervisor dispatch
+step.
+
+A `/supervisor` invoked interactively schedules its own next tick when work remains
+and it is not at a terminal state, so one invocation visibly keeps going without the
+user manually wiring `/loop`. It stops self-arming at the terminal state.
 
 ## Status Lifecycle
 
@@ -341,46 +89,15 @@ queued → in_progress → merge_ready → done
                 └→ blocked (dependency, failure)
 ```
 
-See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]] for canonical status definitions. The supervisor uses the canonical set without extensions.
-
-## Appendix: Atomic Locking (Non-Task Batches)
-
-For batch file processing that doesn't use the PKB task queue (e.g., processing 500 markdown files), the atomic locking pattern from the deprecated hypervisor remains useful:
-
-```python
-def claim_item(item_id: str) -> bool:
-    lock_dir = Path(f"/tmp/batch/locks/{item_id}")
-    try:
-        lock_dir.mkdir(exist_ok=False)  # Atomic on POSIX
-        return True
-    except FileExistsError:
-        return False
-```
-
-Use this only for non-task operations where PKB task tracking is overkill. For anything that should be tracked as a task, use the PKB queue with polecat's atomic claiming.
-
-## Appendix: Migration from Deprecated Patterns
-
-### supervisor_loop.py State
-
-`supervisor_loop.py` currently persists round history to `$POLECAT_HOME/supervisor-state-<project>.json`. This remains appropriate for swarm mode (ephemeral rounds). For long-running workflows requiring per-item tracking, use burst mode with task-body state instead.
-
-No migration needed — the two state patterns serve different use cases.
-
-### Hypervisor Skill
-
-The `/hypervisor` skill is deprecated for task orchestration. `polecat run` with worktree isolation provides API-based claiming and auto-restart — all improvements over the shared-worktree model.
-
-The atomic locking pattern (above) is the only surviving element, retained for non-task batch operations.
-
-### Worker-Hypervisor Spec
-
-`specs/worker-hypervisor.md` is superseded by this document. Its empirical findings (2026-01-22) confirmed that parallel spawning works but shared worktrees cause conflicts — exactly the problem polecat worktrees solved.
+See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
+for canonical status definitions. The supervisor uses the canonical set without
+extensions.
 
 ## Related
 
-- [[specs/polecat-system.md]] — Foundation: worktrees, bare mirrors, task claiming
-- [[skills/supervisor/SKILL.md]] — Epic-level orchestration skill (orient→act→checkpoint loop)
-- [[skills/burst-supervisor/SKILL.md]] — Burst mode skill (iterative dispatch + evaluation)
-- [[WORKERS.md]] — Worker registry (soft config)
-- [[LIFECYCLE-HOOKS.md]] — Trigger hooks
+- [[specs/polecat-system.md]] — Worktrees, bare mirrors, task claiming that the
+  supervisor dispatches onto
+- `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
+  checkpoint loop, proof discipline, evaluation protocol)
+- `aops-core/skills/task-lifecycle/SKILL.md` — The Select+Gates spine shared by
+  `/pull` and `/dispatch`

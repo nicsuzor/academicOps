@@ -79,4 +79,4 @@ Specialized agent variants exist for automation and non-interactive workflows:
 
 - [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, the non-transit rule, and the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess — see [Permissions Model](agent-authority.md#permissions-model)).
 - [[agent-definition-content]] (`specs/agents/agent-definition-content.md`): Governs what is permitted in runtime agent definition files.
-- [[agent-compliance-matrix]] (`specs/agents/agent-compliance-matrix.md`): Audits the compliance status of each agent file against specifications.
+- `specs/audit/AGENT-COMPLIANCE-MATRIX.md`: Generated audit snapshot of each agent file's compliance against this schema.

@@ -11,9 +11,9 @@ created: 2026-06-26
 
 # Interactive Co-Working — settled doctrine
 
-**Status**: Settled (Nic, 2026-06-26). Full design-dialogue and provenance trail: [[mem-438429c5]] (consolidates [[mem-47da1659]], [[mem-d241b0c2]], [[mem-f164fc68]], [[note-36c15a69]]; mechanism note [[mem-e7b976da]]). Git history preserves the deliberation in full; this note states only the settled outcome.
+**Status**: Settled. Full design-dialogue and provenance trail: [[mem-438429c5]]. Git history preserves the deliberation in full; this note states only the settled outcome.
 
-**Revision (2026-07-01)**: Junior — one of the two head agents this doctrine was originally written against — has moved into userspace, out of this plugin (it is now a user-level tool; see `specs/SURFACES.md`'s `~/junior` SDK launcher). Ida is now the plugin's sole head personality. The doctrine below is unchanged in substance — it was always a rule about _how any head agent must be shaped_, not a rule specific to having exactly two — updated only to stop naming Junior as a currently-shipped example.
+Junior, one of the two head agents this doctrine was originally written against, has since moved into userspace as a user-level tool outside this plugin (see `specs/SURFACES.md`'s `~/junior` SDK launcher). Ida is now the plugin's sole head personality. The doctrine is a rule about _how any head agent must be shaped_, not a rule specific to having exactly two, so it is unchanged in substance.
 
 ## Doctrine
 
