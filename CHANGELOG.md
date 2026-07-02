@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.47](https://github.com/nicsuzor/academicOps/compare/v0.3.46...v0.3.47) (2026-07-02)
+
+
+### Code Refactoring
+
+* **pipeline:** consolidate PR admission logic to prevent process drift ([#2053](https://github.com/nicsuzor/academicOps/issues/2053)) ([04d0bb9](https://github.com/nicsuzor/academicOps/commit/04d0bb97d6977e883335ad4037cc7e17300b270f))
+
 ## [0.3.46](https://github.com/nicsuzor/academicOps/compare/v0.3.45...v0.3.46) (2026-07-02)
 
 
