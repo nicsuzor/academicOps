@@ -104,9 +104,9 @@ import os, sys
 sys.path.insert(0, "/path/to/aops-core")
 from hooks.gate_config import (
     RBG_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE,
-    HYDRATION_GATE_MODE, IDA_GATE_MODE, ENFORCER_TOOL_CALL_THRESHOLD,
+    HYDRATION_GATE_MODE, IDA_GATE_MODE, RBG_TOOL_CALL_THRESHOLD,
 )
-print(f"enforcer={RBG_GATE_MODE} threshold={ENFORCER_TOOL_CALL_THRESHOLD}")
+print(f"enforcer={RBG_GATE_MODE} threshold={RBG_TOOL_CALL_THRESHOLD}")
 print(f"qa={QA_GATE_MODE} handover={HANDOVER_GATE_MODE}")
 print(f"ida={IDA_GATE_MODE} hydration={HYDRATION_GATE_MODE}")
 '
@@ -205,8 +205,8 @@ The periodic-compliance gate. Counts write operations since the last rbg audit; 
 
 | Concern                  | Path                                                                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="enforcer", ...)`)                                             |
-| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`ENFORCER_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                    |
+| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg", ...)` — the code object keeps the historical `rbg` name, mode key `gates.enforcer`)     |
+| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`RBG_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                         |
 | Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                 |
 | Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`       |
 | Compliance subagent      | `aops-core/agents/rbg.md` (only `rbg.md` is shipped; the regex also accepts a subagent named `enforcer` if installed) |

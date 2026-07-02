@@ -172,11 +172,13 @@ All three verbs run on this one spine — **Select → Gates → (Dispatch | Exe
 - **`/pull`** runs the spine in `execute` mode (claim + run inline).
 - **`/dispatch`** runs the spine in `dispatch` mode (route to a surface, halt).
 - **`/supervisor`** is the multi-tick **delegate-and-verify** process. Its
-  Dispatch phase **invokes this skill's `dispatch` mode** for the select + gate +
-  route step rather than re-implementing it — then layers on top the discipline
-  that is genuinely its own and has no meaning here: the pauli pre-flight
-  confirmation summary and critic gate ([[../supervisor/instructions/worker-dispatch.md]]),
-  proof, the ledger, evaluation, and escalation **across ticks**.
+  Dispatch phase **follows this skill's §§1–2 Select + Gates spine** as the single
+  source of truth — applying the same gates rather than restating them — but does
+  **not** invoke `dispatch` mode wholesale (that routes and halts). It then layers
+  on top the discipline that is genuinely its own and has no meaning here: the
+  pauli pre-flight confirmation summary and critic gate
+  ([[../supervisor/instructions/worker-dispatch.md]]), proof, the ledger,
+  evaluation, and escalation **across ticks**.
 
 The rule is one-way: this skill knows nothing about ticks or ledgers; the
 supervisor knows this skill owns Select + Gates + routing and does not restate

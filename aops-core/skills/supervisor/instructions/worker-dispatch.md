@@ -6,20 +6,22 @@ The dispatch mechanics that govern epic progression.
 
 ## Mandatory Pre-Dispatch Gates
 
-### 0. Select + Gates spine (owned by `task-lifecycle` — invoke it, do not re-implement)
+### 0. Select + Gates spine (owned by `task-lifecycle` — follow it, do not re-implement)
 
 The **Select → Gates** spine is authored once in [[../../task-lifecycle/SKILL.md]]
-(§1 Select, §2 Gates: the premise gate plus the freshness / stale-leftover
-pre-check). The supervisor's Dispatch phase **runs that spine** — invoke
-`Skill(task-lifecycle, "dispatch: <task-id>")` (dispatch mode) for the select +
-gate + route step — rather than restating the gates here. The premise gate inside
-it is the same two-judge clearance owned by [[../../remember/references/premise-gate.md]]
+§§1–2 (§1 Select, §2 Gates: the premise gate plus the freshness / stale-leftover
+pre-check). That file is the single source of truth — **apply those gates as
+written there; do not restate or re-implement them here.** The premise gate is the
+same two-judge clearance owned by [[../../remember/references/premise-gate.md]]
 §2 (`rbg` + `pauli`, CLEAR/BOUNCE). If it hard-refuses, additionally append
 `dispatch_halt` to Pattern Memory before exiting.
 
-On top of that shared spine the supervisor layers the pre-dispatch discipline
-below — the pauli pre-flight confirmation, existing-PR check, and critic gate —
-which have no counterpart in `task-lifecycle` and are the supervisor's own.
+Do **not** invoke `task-lifecycle`'s _dispatch mode_ wholesale from here: that mode
+also routes and halts, which would bypass the supervisor-only pre-dispatch
+discipline below and the tick loop. The supervisor runs the shared §§1–2 gates,
+**then** layers on the pre-dispatch gates that have no counterpart in
+`task-lifecycle` and are its own — the pauli pre-flight confirmation, existing-PR
+check, and critic gate — before dispatching through its own surfaces.
 
 ### Pre-flight Confirmation Summary
 

@@ -25,10 +25,12 @@ agent acting as coordinator.
 All dispatches run through the pre-dispatch gates in
 [[../instructions/worker-dispatch#mandatory-pre-dispatch-gates]]:
 
-0. **Select + Gates spine** (owned by `task-lifecycle`; runs first): invoke
-   `task-lifecycle` dispatch mode for select + premise gate + freshness — see
-   [[../../task-lifecycle/SKILL.md]] §1–§2 (premise-gate procedure:
-   [[../../remember/references/premise-gate.md]] §2). Do not re-implement it.
+0. **Select + Gates spine** (owned by `task-lifecycle`; runs first): follow the
+   `task-lifecycle` §§1–2 Select+Gates spine (select + premise gate + freshness)
+   as the single source of truth — see [[../../task-lifecycle/SKILL.md]] §1–§2
+   (premise-gate procedure: [[../../remember/references/premise-gate.md]] §2). Do
+   not re-implement it, and do not invoke its dispatch mode wholesale (that routes
+   and halts, bypassing the supervisor-only gates below).
 1. **Pre-flight Confirmation Summary** (Code/Edit or Design/Spec/Research variant): 5-row table
    validating task ID, source repo, project field, chain position, and sanctioned mechanism.
 2. **Existing PR check**: Is a PR already linked to this task?
