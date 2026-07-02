@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.46](https://github.com/nicsuzor/academicOps/compare/v0.3.45...v0.3.46) (2026-07-02)
+
+
+### Features
+
+* **pipeline:** release-please fast path — merge on green lint+pytest, one approval at deploy ([#2051](https://github.com/nicsuzor/academicOps/issues/2051)) ([292e082](https://github.com/nicsuzor/academicOps/commit/292e0825b37557d06b43da8f22d68ecd9c4102e3))
+
+
+### Bug Fixes
+
+* rewrite aops-core-scoped MCP tool names for the cowork build ([#2050](https://github.com/nicsuzor/academicOps/issues/2050)) ([33f3f9a](https://github.com/nicsuzor/academicOps/commit/33f3f9a8b16cfd26ca0b908d4eb18ed8dcd5c3ef))
+
 ## [0.3.45](https://github.com/nicsuzor/academicOps/compare/v0.3.44...v0.3.45) (2026-07-02)
 
 
