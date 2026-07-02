@@ -1277,10 +1277,15 @@ class HookRouter:
                     raise ValueError(
                         f"agy PreToolUse does not support context_injection (advisory: {context!r})"
                     )
-            elif context:
-                raise ValueError(
-                    f"agy PreToolUse allow/warn does not support context_injection (advisory: {context!r})"
-                )
+            else:
+                if context:
+                    raise ValueError(
+                        f"agy PreToolUse allow/warn does not support context_injection (advisory: {context!r})"
+                    )
+                # allowTool has no field for short_reason; translate_agy's allow
+                # branch can't emit it, so clear it here rather than logging a
+                # `resolved.reason` that never actually reaches the wire.
+                reason = None
         elif event == "PostToolUse":
             if reason or context:
                 raise ValueError("agy PostToolUse does not support any fields.")
@@ -1453,6 +1458,7 @@ def main():
             # cannot trap the session.
             body = resolved.raw_body  # guaranteed non-empty: async_rewake_body_for() only
             # returns a truthy body, and that's the only place channel is set to this value.
+            assert body is not None
             sys.stdout.write(body if body.endswith("\n") else body + "\n")
             sys.stdout.flush()
             sys.exit(2)
