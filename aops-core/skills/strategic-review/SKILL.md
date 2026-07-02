@@ -33,12 +33,6 @@ perspectives and return **one reconciled verdict**. Owned by **james** (reconcil
 **you, the invoking agent, own the orchestration**: you deploy the reviewers yourself, because a
 subagent cannot spawn its own subagents. James is called only at the end, to reconcile.
 
-## Modes
-
-- **Default** — full review: deploy `rbg` + `pauli` + `marsha` in parallel, then `@james` reconciles.
-- **`--critic`** — solo `pauli`: one fast adversarial critique, no reconciliation. For a pre-hoc
-  sanity check on a plan or proposal before work starts.
-
 ## Inputs
 
 - **The artifact**: a file path, a PKB id, pasted text, or a pull request (an `owner/repo#N` ref or URL).
@@ -68,10 +62,7 @@ this fan-out must happen here, at the top level.
 - **pauli** — strategic critique: the premise test, then the _"is this in the right place, or a
   workaround for a root cause that belongs elsewhere?"_ architectural-fit lens (the 10 cognitive
   moves). **Always runs.** Discipline and the worked specimen live in [[references/premise-test.md]].
-- **marsha** — runtime / verification QA. Runs **whenever code or executable behaviour changed**;
-  skip for pure-prose artifacts.
-
-**Every reviewer brief carries the epistemic-humility constraint below** ([§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result)): a reviewer may not issue a "this is false / failed / was a misstep" verdict about a real-world event, intent, or state it cannot directly observe — it downgrades to an ADVISORY primary-source flag instead.
+- **marsha** — runtime / verification QA. Runs **on any outputs** to check quality meets our standards.
 
 ### 3. Reconcile via @james
 
@@ -90,8 +81,6 @@ Agent(subagent_type="aops-core:james",
       prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
 
-**Reconciliation must not harden inference into fact.** Unverifiable claims carry through as **ADVISORY (needs primary-source confirmation)** — the QA seal must not launder a guess into a confident negative. See [§ Epistemic humility](#epistemic-humility--absence-of-evidence-is-not-a-negative-result).
-
 ### 4. Act on the verdict — only if asked
 
 - **No flag (default)**: return james's verdict and table to the caller. Change nothing.
@@ -105,14 +94,6 @@ Agent(subagent_type="aops-core:james",
 Whatever the flags, **never silently exit**: if a write-back action fails, report it and print the
 full verdict to chat.
 
----
-
 ## Epistemic humility — absence of evidence is not a negative result
 
 Missing evidence licenses _"not supported by the available evidence"_ — never _"false / failed / did not happen."_ A negative verdict requires a held falsifier the reviewer actually holds; where ground truth is unobservable (intent, off-record events, room dynamics), downgrade to **ADVISORY (needs primary-source confirmation)**. Silence in a record is not failure. Apply the same discount symmetrically to flattering and unflattering claims alike. (Source incident: #1891.)
-
-## `--critic` mode
-
-Deploy **pauli alone** for a fast pre-hoc critique (premise test + the 10 cognitive moves). No
-parallel roster, no james reconciliation. Return pauli's verdict directly to the caller. Use this
-to pressure-test a plan or proposal _before_ committing effort to it.
