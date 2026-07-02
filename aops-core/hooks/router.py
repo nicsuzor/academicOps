@@ -74,6 +74,24 @@ DEBUG_LOG_DIR = Path("/tmp")
 # other events causes the entire payload to be rejected.
 _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
 
+# Pause detection (Claude Code 2.1.145+ `background_tasks` / `session_crons`).
+# A session that yields while waiting on backgrounded work is NOT claiming
+# "done", so its exit gates (rbg-review/qa/handover/ida) are suppressed — see
+# _dispatch_gates and specs/ENFORCEMENT-MAP.md.
+#
+# Both sets are ALLOWLISTS so the gate fails SAFE (fires) on anything unknown —
+# suppressing a compliance chokepoint on an unrecognized value is the dangerous
+# direction. `shell` tasks run inline and do NOT wake the session, so they are
+# deliberately excluded from the waking set. Enumerated against real captured
+# hook payloads (8107 background_tasks items across 8650 Stop payloads): the
+# only observed types were {shell, subagent, workflow} and the only observed
+# status was "running" — Claude Code prunes terminal tasks before emitting the
+# array. Requiring an active status guards the latent fail-open where a
+# completed/failed task lingers and silently disarms the exit gates. When a new
+# waking type or active status is genuinely observed in the wild, add it here.
+_WAKING_TASK_TYPES = {"subagent", "workflow", "monitor"}
+_ACTIVE_TASK_STATUSES = {"running"}
+
 
 def _clean_advisory(text: str | None) -> str | None:
     """None-safe whitespace trim for advisory / reason text.
@@ -462,6 +480,40 @@ class HookRouter:
         provider = session_naming.get_provider_name(client_type=client_type)
         task_id = os.environ.get("AOPS_TASK_ID")
 
+        # 10b. Pause detection (Claude Code 2.1.145+). A session is "paused" —
+        # yielding while it waits to be woken — if it has any pending cron, or a
+        # waking background task in an active state. `.get(..., [])` degrades to
+        # False on older Claude Code and on agy/Gemini (which carry neither
+        # field), so this is a no-op there. See _WAKING_TASK_TYPES /
+        # _ACTIVE_TASK_STATUSES for the fail-safe allowlist rationale.
+        background_tasks = raw_input.get(
+            "background_tasks", []
+        )  # allow-fallback: optional Claude Code 2.1.145+ field
+        session_crons = raw_input.get(
+            "session_crons", []
+        )  # allow-fallback: optional Claude Code 2.1.145+ field
+        # Coerce a malformed (non-list) value to [] so a bad optional field can
+        # never crash the Stop hot-path — is_paused stays False (gates fire).
+        if not isinstance(background_tasks, list):
+            background_tasks = []
+        if not isinstance(session_crons, list):
+            session_crons = []
+        is_paused = False
+        if session_crons:
+            is_paused = True
+        else:
+            for task in background_tasks:
+                # Skip malformed items defensively — a non-dict entry must never
+                # crash the Stop hot-path nor silently suppress a compliance gate.
+                if not isinstance(task, dict):
+                    continue
+                if (
+                    task.get("type") in _WAKING_TASK_TYPES
+                    and task.get("status") in _ACTIVE_TASK_STATUSES
+                ):
+                    is_paused = True
+                    break
+
         # 11. Build Context and POP processed fields from raw_input
         # We pop now so the remainder in ctx.raw_input is "extra" data
         processed_fields = [
@@ -487,6 +539,8 @@ class HookRouter:
             "isSidechain",
             "subagent_type",
             "agent_type",
+            "background_tasks",
+            "session_crons",
         ]
         slug = raw_input.get("slug")
         cwd = raw_input.get("cwd")
@@ -503,6 +557,9 @@ class HookRouter:
             client_type=client_type,
             is_subagent=is_subagent,
             subagent_type=subagent_type,
+            background_tasks=background_tasks,
+            session_crons=session_crons,
+            is_paused=is_paused,
             # Metadata (aops-d9ba7159)
             machine=machine,
             provider=provider,
@@ -750,6 +807,16 @@ class HookRouter:
         # AfterAgent) set this flag after an earlier block; re-blocking would
         # loop until the runtime's own cap kills the session.
         if ctx.hook_event in ("Stop", "SessionEnd") and ctx.raw_input.get("stop_hook_active"):
+            return None
+
+        # Don't nag a session that stopped only because it is PAUSED — yielding
+        # while it waits on a backgrounded subagent/workflow/monitor or a cron to
+        # wake it (is_paused, computed in normalize_input). It isn't claiming
+        # "done", so the exit gates (rbg-review/qa/handover/ida) shouldn't fire.
+        # A genuine stop (no waking background work) still triggers them.
+        # NOTE: this suppresses ALL Stop/SessionEnd gates while paused — kept in
+        # sync with specs/ENFORCEMENT-MAP.md.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.is_paused:
             return None
 
         # Ensure subagent_type is populated for trigger evaluation.

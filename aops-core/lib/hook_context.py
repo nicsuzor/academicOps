@@ -61,5 +61,22 @@ class HookContext(BaseModel):
 
     subagent_type: str | None = None
 
+    # Background Work arrays (Claude Code 2.1.145+). Absent on older Claude Code
+    # and on agy/Gemini (verified: 0 occurrences across 4238 agy hook payloads),
+    # where they default empty and is_paused stays False — a safe no-op.
+    background_tasks: list[Any] = Field(
+        default_factory=list,
+        description="Claude Code background tasks (subagent/workflow/monitor/shell) for this session.",
+    )
+    session_crons: list[Any] = Field(
+        default_factory=list,
+        description="Claude Code scheduled crons the session is waiting to be woken by.",
+    )
+    is_paused: bool = Field(
+        default=False,
+        description="Session is yielding while it waits on a waking background task or a cron "
+        "(not claiming 'done'); exit gates are suppressed when True.",
+    )
+
     # Raw Input (for fallback/passthrough)
     raw_input: dict[str, Any] = Field(default_factory=dict)
