@@ -36,7 +36,6 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[james]] — James agent specification
 - [[agent-authority]] — Permissions and skill delegation envelope (frontmatter schema, four-axis permissions model, tool allowlists)
 - [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
-- [[agent-compliance-matrix]] — Audit state against authority spec
 - [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
 - [[orchestrator-boundary]] — CLI orchestrator authority boundary
 - [[polecat-system]] — Distributed worker dispatch
@@ -145,4 +144,3 @@ Future state design — separated to keep the active spec tree from being pollut
 - [[TAXONOMY]] — Canonical taxonomy (lives in academicOps, not brain)
 - [[KNOWLEDGE.md]] — PKB system principles
 - [[densify]] — Workflow that progressively wikilinks the PKB (spec under [[workflows]])
-- [[CONNECTIVITY]] — component↔spec connectivity join + orphan analysis

@@ -17,6 +17,6 @@
 - **`specs/audit/AGENT-REMEDIATION-BACKLOG.md`**: Backlog of required fixes to bring agents and skills into full compliance with authority specs
 - **`scripts/audit_agent_compliance.py`**: Generator script for agent compliance and tool matrices
 - **`specs/meta/doc-taxonomy.md`**: Documentation typology — five classes of document (instructions, specs, state, audit-artifact, docs), their audiences, and canonical file paths
-- **`specs/GATES.md`**: Runtime gate catalogue and forensic reference — what each gate is, where it lives, how to configure/verify/debug it
+- **`specs/enforcement/GATES.md`**: Runtime gate catalogue and forensic reference — what each gate is, where it lives, how to configure/verify/debug it
 - **`specs/SURFACES.md`**: Execution surfaces — where Claude Code and Gemini CLI run, what each surface can do, operational facts
 - **`specs/summaries-schema.md`**: Schema for the already-extracted session-summaries corpus — timeline_events (user prompts, tool calls, events per session), token metrics, reflections. Query this corpus under $AOPS_SESSIONS/summaries/ instead of re-deriving from raw transcripts
