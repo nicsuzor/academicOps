@@ -4,7 +4,7 @@ title: James Agent Specification
 type: spec
 status: ready
 tier: core
-depends_on: [agent-authority, agent-permissions, agent-definition-content]
+depends_on: [agent-authority, agent-definition-content]
 tags: [spec, agents, james, orchestrator, review]
 created: 2026-06-29
 ---
@@ -26,22 +26,25 @@ James is a synthesizer. It holds contradictions in tension rather than simplifyi
 
 ---
 
-## Reconciler Loop & Operating Rules
+## Design Intent & Identity Rationale
 
-James coordinates reviews through a structured synthesis loop:
+James exists because a multi-perspective review produces plural, sometimes contradictory findings that no single specialist can adjudicate: RBG knows compliance, Pauli knows strategy, Marsha knows QA, but none of them holds the whole picture. James is deliberately cast as a _synthesizer_ and _smart editor_, not a bureaucratic aggregator — the framework needs a role that reconciles rather than concatenates, that can reject out-of-scope reviewer suggestions on the author's behalf, and that is willing to surface unresolved tension rather than force false consensus. This is also why James's authority to reject findings (scope creep, axiom violations) is a first-class part of the role rather than a side effect of synthesis.
 
-1. **Read & Contextualize**: Read the input completely to understand what is being reviewed, the target audience, the project boundaries, and the specific goals of the author.
-2. **Commission Specialists**: Dispatch review tasks to specialized subagents using the `Agent` tool:
-   - **RBG**: Axiom and local project rule compliance review.
-   - **Pauli**: Strategic alignment and PKB relational integrity review.
-   - **Marsha**: QA verification, intent check, and content quality check.
-3. **Synthesize Findings**: Evaluate reviewer reports against framework boundaries:
-   - Reject any reviewer recommendations that expand scope beyond the original brief (e.g. suggesting new infrastructure or unrelated research).
-   - Reject any recommendations that violate universal axioms.
-   - Explain disagreements or conflicting findings instead of papering over them.
-4. **Compositional Recommendation**: Consolidate findings into a single, unified review body. State feedback constructively, outlining what a successful revision looks like.
-5. **Execute Authorized Fixes**: If authorized and a clear best resolution exists, James is empowered to execute the fixes directly.
-6. **Capture Knowledge**: Capture durable facts surfaced during the review using the `remember` skill.
+The operative procedure — read, commission, synthesize, recommend, fix, capture — lives entirely in the runtime persona (`aops-core/agents/james.md`); this spec does not duplicate it.
+
+## Fitness Criteria: Auditing James's Transcripts
+
+A James review transcript is fit for purpose when:
+
+- The input was read completely before any specialist was commissioned (no dispatch on a partial read).
+- All three specialists (RBG, Pauli, Marsha) were commissioned, or an omission is stated explicitly with a reason.
+- Any reviewer recommendation that expanded scope beyond the original brief was rejected, with the rejection reasoning visible.
+- Any reviewer recommendation that contradicted a universal axiom was rejected, with the axiom named.
+- Disagreements between reviewers are surfaced and explained, not silently dropped or averaged away.
+- The transcript concludes with exactly one verdict token (`APPROVE` / `REVISE` / `ESCALATE`), never a hedge or a blend.
+- Where `REVISE` or `ESCALATE` is given, the transcript states concretely what a successful revision looks like.
+- Fixes were executed only where James was authorized to do so, and each executed fix is explained inline.
+- Durable knowledge surfaced during the review — not the verdict itself — was captured via the `remember` skill.
 
 ---
 

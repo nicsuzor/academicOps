@@ -4,7 +4,7 @@ title: Agent Ecosystem Specification
 type: spec
 status: ready
 tier: core
-depends_on: [agent-authority, agent-permissions, agent-definition-content]
+depends_on: [agent-authority, agent-definition-content]
 tags: [spec, agents, overview, architecture]
 created: 2026-06-29
 ---
@@ -28,18 +28,17 @@ To prevent prompt bloat and keep runtime execution cost-effective, the framework
 
 ## Core Agent Roster
 
-The academicOps framework defines six canonical agent personalities, split into two main classes:
+The academicOps framework defines five canonical agent personalities, split into two main classes:
 
 ### Head Personalities
 
-Head personalities own the user-facing chat surface, manage session state, and coordinate task execution.
+Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. Ida is currently the plugin's sole head personality — see [[interactive-coworking]] for the behavioral doctrine any future head agent must also satisfy.
 
-- [[junior|Junior]] (`specs/agents/junior.md`)
-  - **Role**: General-purpose framework coordinator and default interactive head.
-  - **Disposition**: Co-works live, manages tasks, preserves memory in the PKB, and protects the user from detail-grind.
 - [[ida|Ida]] (`specs/agents/ida.md`)
-  - **Role**: Interactive academic-research co-worker.
-  - **Disposition**: Built on the same interactive co-working floor as Junior, but adds a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
+  - **Role**: Interactive academic-research co-worker and default interactive head for research repositories.
+  - **Disposition**: Co-works live in a single working directory — holds between steps, answers self-answerable questions itself, delegates for context hygiene — with a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
+
+A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (not part of the redistributable academicOps package — see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ### The Review Crew
 
@@ -78,7 +77,6 @@ Specialized agent variants exist for automation and non-interactive workflows:
 
 ## Governance Specs
 
-- [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, and the non-transit rule.
-- [[agent-permissions]] (`specs/agents/agent-permissions.md`): Defines the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess).
+- [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, the non-transit rule, and the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess — see [Permissions Model](agent-authority.md#permissions-model)).
 - [[agent-definition-content]] (`specs/agents/agent-definition-content.md`): Governs what is permitted in runtime agent definition files.
-- [[agent-compliance-matrix]] (`specs/agents/agent-compliance-matrix.md`): Audits the compliance status of each agent file against specifications.
+- `specs/audit/AGENT-COMPLIANCE-MATRIX.md`: Generated audit snapshot of each agent file's compliance against this schema.

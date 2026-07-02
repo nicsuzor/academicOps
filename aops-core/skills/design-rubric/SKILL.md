@@ -17,7 +17,6 @@ mode: conversational
 domain:
   - quality-assurance
   - design
-owner: pauli
 version: 0.1.0
 permalink: skills-design-rubric
 ---

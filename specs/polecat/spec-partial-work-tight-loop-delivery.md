@@ -18,7 +18,7 @@ tags:
 
 # Spec contract: Partial-work / decentralised tight-loop delivery doctrine
 
-**Graph anchor:** [[spec-partial-work]] (PKB node). **Epic:** [[aops-2e5105f5]]. **Stage-1 stories:** [[note-2b773bde]]. **Recon (file map):** [[note-0e871b87]]. **Reconciled specs:** [[note-36c15a69]], [[spec-64352eac-planner-pre-dispatch-decomposition-gate]].
+**Graph anchor:** [[spec-partial-work]] (PKB node). **Epic:** [[aops-2e5105f5]]. **Stage-1 stories:** [[note-2b773bde]]. **Recon (file map):** [[note-0e871b87]]. **Reconciled specs:** [[note-36c15a69]] (the companion roadmap-tracker note, `spec-64352eac-planner-pre-dispatch-decomposition-gate.md`, was a planning artifact retired during the 2026-07 simplification pass -- see git history).
 
 **Revision log:** Stage 2 authored (pauli). Stage 3 independent review ([[aops-7f8b5920]]) returned REVISE. **Stage 4 (this file) closes the two FAILs + two seam-tightenings and resolves the §5 fork to NARROW** per Nic's working-default authorization (via junior). Honest about residual risk in §8.
 
@@ -36,7 +36,7 @@ This is **not** a licence to ship broken work behind a "draft" label. The whole 
 
 - **EXTENDS [[note-36c15a69]]** (supervision architecture). Adds a fourth terminal shape, `partial`, to the autonomous trust gate. **Inherits every locked invariant unchanged:** the single `APPROVED`-on-SHA merge trigger (note-36c15a69 §"Decisions locked"), per-repo merge policy (the policy table), clean-build "green", per-SHA reviewer attestation. `partial` never satisfies any of these — it is _by construction_ not-merge-ready (§4).
 - **NARROWS feature-dev's "No partial success"** (`aops-core/skills/aops/references/feature-dev-details.md` L34/L211/L278). That rule scopes to **a single claimed leaf**: _the claimed unit_ works completely or doesn't ship. It does **not** forbid cutting a large brief into a smaller whole leaf and shipping that. The in-place edit to feature-dev-details.md (Stage 5 chunk) must state this scoping explicitly — the rule is narrowed where it lives, not contradicted at a distance.
-- **The pre-dispatch decomposition gate** (`aops-core/skills/planner/SKILL.md` L210-238; `decompose.md` steps 14-16; spec [[spec-64352eac-planner-pre-dispatch-decomposition-gate]]) is **live, default, mandatory**. Its collision with "thin briefs, worker plans" is resolved to **NARROW** in §5 (was a DECISION:Nic fork; now decided, reversibly).
+- **The pre-dispatch decomposition gate** (`aops-core/skills/planner/SKILL.md`; `decompose.md` steps 14-16) is **live, default, mandatory**. Its collision with "thin briefs, worker plans" is resolved to **NARROW** in §5 (was a DECISION:Nic fork; now decided, reversibly).
 
 ## 3. Q1 — the discriminator (partial vs broken-ship)
 

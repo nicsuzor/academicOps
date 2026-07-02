@@ -296,7 +296,7 @@ Primary interface. Updated by `/daily` skill:
 
 ### Alternative: `/decisions` Command
 
-<!-- NS: let's just have one CLI -- merge this and polecat and task together into 'task' -->
+**Rejected.** Nic: "let's just have one CLI -- merge this and polecat and task together into 'task'." Rather than adding a new command surface here, the polecat CLI and this workflow's task-selection surface are to be consolidated into a single `task` CLI. Tracked as `aops-3eced714`.
 
 ```bash
 aops decisions                    # List all pending

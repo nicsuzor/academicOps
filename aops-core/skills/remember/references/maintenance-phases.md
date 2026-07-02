@@ -16,13 +16,13 @@ The maintenance cycle is an **agent session**, not a script. A Claude agent is l
 
 ### Sub-Agent Dispatch (Phases 2, 4, and Quality Review)
 
-The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `junior` sub-agents. The junior agent profile exposes the necessary filesystem and shell access to discover transcripts, mark them as mined, and inspect git state.
+The parent sleep orchestrator may delegate Phase 2 (Transcript Mining), Phase 4 (Knowledge Consolidation), and the PKB Quality Review to parallel `general-purpose` sub-agents. These are dispatched purely for their tool profile, via the explicit `tools` argument below (not for a specific persona's disposition) — the filesystem and shell access needed to discover transcripts, mark them as mined, and inspect git state.
 
 When dispatching, ALWAYS pass the explicit `tools` argument to ensure the sub-agent gets the exact knowledge-work toolset it needs. Example invocation:
 
 ```
 Agent(
-  subagent_type='junior',
+  subagent_type='general-purpose',
   prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
@@ -58,7 +58,7 @@ The PKB MCP bulk/merge tools (`batch_update`, `batch_reparent`, `batch_merge`, a
 On a mature graph (thousands of tasks) several PKB read tools return outputs exceeding the agent's context-token limit and spill to a temp file instead of returning inline. Observed offenders on a 4,786-task graph: `find_duplicates` (~140 KB), `list_tasks` with `format="json"`, any unfiltered list. When this happens you lose a turn and the data is no longer in context. Every phase that lists or scans:
 
 1. **Prefer compact output.** `list_tasks` → default `format="markdown"` + a `status`/`project` filter; reach for `format="json"` only when you need a specific field, then cap `limit` hard.
-2. **Never pull a full large result into your own context to analyse it.** Pick the cheapest channel that fits: structured/mechanical work (counting, filtering, pulling fields, grouping) → process the spilled file with code (`python`/`jq` over the saved path); a 100–200 KB JSON file is a one-script job and does NOT need a sub-agent. Whole-file *semantic* judgment (which clusters are real dups, reading prose) → delegate to a sub-agent that reads in chunks and returns only the compact verdict. Either way the orchestrator never loads the raw blob.
+2. **Never pull a full large result into your own context to analyse it.** Pick the cheapest channel that fits: structured/mechanical work (counting, filtering, pulling fields, grouping) → process the spilled file with code (`python`/`jq` over the saved path); a 100–200 KB JSON file is a one-script job and does NOT need a sub-agent. Whole-file _semantic_ judgment (which clusters are real dups, reading prose) → delegate to a sub-agent that reads in chunks and returns only the compact verdict. Either way the orchestrator never loads the raw blob.
 3. **A spill is a signal, not an error** — the slice is too broad. Narrow the filter, script it, or delegate; don't retry the same call.
 
 ### Halt Surfacing (Anti-Silent-Failure)
@@ -150,7 +150,7 @@ Extract insights from session transcripts that agents may not have saved during 
 **Input**: Session transcripts in `$AOPS_SESSIONS/` (Markdown files), including synced GHA sessions in `$AOPS_SESSIONS/github/`.
 **Output**: Updates to canonical topic notes (preferred); new canonical notes where the topic lacks one; rarely, a linked narrow note for genuinely topic-less observations.
 
-> **If the mining goal is to extract user prompts or command invocations** (e.g. what `/learn` was called with, prompt frequency, skill usage patterns), use the **structured summaries corpus** instead of reading transcript markdown files. Path: `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. See `specs/CAPABILITIES.md §Session Summaries` for full reference. Raw transcript files are the fallback for content not present in summaries (agent reasoning, tool calls, full context).
+> **If the mining goal is to extract user prompts or command invocations** (e.g. what `/learn` was called with, prompt frequency, skill usage patterns), use the **structured summaries corpus** instead of reading transcript markdown files. Path: `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. See `specs/summaries-schema.md` for full reference. Raw transcript files are the fallback for content not present in summaries (agent reasoning, tool calls, full context).
 
 ### Process
 
@@ -228,7 +228,7 @@ Before structural work, fix the data. Three activities, run in order. Each is bo
 
 ### Activity 1: Deduplication (judgment-assisted, not mechanical)
 
-`find_duplicates` clusters are **candidates, not verdicts**. The only fully reliable gate is member-count; every other decision is made by **reading the member titles**, not trusting a score. The tool emits one cluster-level `similarity_scores: {title, semantic}` (no per-member score), and the score can lie: a degenerate 717-member cluster once self-reported `title: 1.0` despite unrelated titles, while genuine merge pairs routinely score *low* on title (0.0–0.4). **When score and titles disagree, trust the titles.** The judgment is always "are these the same work item, possibly restated?" — answered by reading.
+`find_duplicates` clusters are **candidates, not verdicts**. The only fully reliable gate is member-count; every other decision is made by **reading the member titles**, not trusting a score. The tool emits one cluster-level `similarity_scores: {title, semantic}` (no per-member score), and the score can lie: a degenerate 717-member cluster once self-reported `title: 1.0` despite unrelated titles, while genuine merge pairs routinely score _low_ on title (0.0–0.4). **When score and titles disagree, trust the titles.** The judgment is always "are these the same work item, possibly restated?" — answered by reading.
 
 1. `find_duplicates(mode="both")` (cluster surfaced on title OR semantic). If it spills, extract the structured fields with code — no sub-agent (see [Large-Graph Tool-Output Discipline](#large-graph-tool-output-discipline)). Per cluster get: canonical id, member ids, member titles, member count, cluster-level scores.
 2. **Ignore non-clusters** (<2 distinct members, or canonical id also in the merge set = self-reference).
