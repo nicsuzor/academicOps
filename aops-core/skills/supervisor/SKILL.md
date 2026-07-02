@@ -48,10 +48,9 @@ orchestrator" is **not** an exemption.
 
 The **Select → Gates** spine — task selection, the premise gate, and the freshness /
 stale-leftover pre-check — is owned by the [[../task-lifecycle/SKILL.md]] skill (§§1–2).
-The supervisor's Dispatch phase **follows** that spine as the single source of truth —
-applying its gates, not re-implementing them (and not invoking its dispatch mode
-wholesale, which routes and halts) — then adds the pre-flight confirmation, proof,
-ledger, evaluation, and escalation discipline that span ticks and are the supervisor's own.
+The supervisor's Dispatch phase reuses that spine, then adds the pre-flight confirmation,
+proof, ledger, evaluation, and escalation discipline that span ticks and are the
+supervisor's own.
 
 For universal dispatch rules (expand terse instructions, pre-dispatch gates, surface variants):
 see [[references/dispatch-rules]] and [[instructions/worker-dispatch]].

@@ -106,10 +106,9 @@ All three verbs share **one** Select+Gates spine, implemented once in the
 `task-lifecycle` skill: `/pull` claims the task and runs it inline (with licence to
 ask the user questions); `/dispatch` routes it to a worker and halts.
 
-The supervisor's Dispatch phase **follows that same spine** (`task-lifecycle`
+The supervisor's Dispatch phase **reuses that same spine** (`task-lifecycle`
 §§1–2) for task selection, the premise gate, and the freshness pre-check — it does
-not re-implement them (nor invoke `task-lifecycle`'s dispatch mode wholesale, which
-routes and halts), so there is exactly one description of that behaviour.
+not re-implement them, so there is exactly one description of that behaviour.
 On top of the spine the supervisor adds the discipline that is genuinely its own and
 has no meaning in `task-lifecycle`: the pauli pre-flight confirmation and critic gate,
 proof, the ledger, evaluation, and escalation **across ticks** (`task-lifecycle` has

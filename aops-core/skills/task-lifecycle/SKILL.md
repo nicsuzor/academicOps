@@ -133,10 +133,11 @@ Record and exit:
   binding file.
 - **Halt after dispatching.**
 
-For the full dispatch contract (pre-flight summary, compose-then-dispatch
-separation, surface templates) see
-[[../supervisor/references/dispatch-rules.md]] and
-[[../supervisor/instructions/worker-dispatch.md]].
+For surface mechanics (dispatch reflex, surface templates, compose-then-dispatch
+separation) see the surface-neutral [[../supervisor/references/dispatch-rules.md]].
+(The supervisor's richer, tick-scoped dispatch — pauli pre-flight, critic gate —
+lives in [[../supervisor/instructions/worker-dispatch.md]] and builds on this spine;
+the generic `/dispatch` tail here does not need it.)
 
 ## 3b. Mode: `execute` — claim and run inline (interactive)
 
@@ -172,14 +173,12 @@ All three verbs run on this one spine — **Select → Gates → (Dispatch | Exe
 - **`/pull`** runs the spine in `execute` mode (claim + run inline).
 - **`/dispatch`** runs the spine in `dispatch` mode (route to a surface, halt).
 - **`/supervisor`** is the multi-tick **delegate-and-verify** process. Its
-  Dispatch phase **follows this skill's §§1–2 Select + Gates spine** as the single
-  source of truth — applying the same gates rather than restating them — but does
-  **not** invoke `dispatch` mode wholesale (that routes and halts). It then layers
-  on top the discipline that is genuinely its own and has no meaning here: the
-  pauli pre-flight confirmation summary and critic gate
-  ([[../supervisor/instructions/worker-dispatch.md]]), proof, the ledger,
+  Dispatch phase reuses this skill's §§1–2 **Select + Gates** spine (the shared,
+  author-once part above), then layers on the discipline that is genuinely its own
+  and has no meaning here: the pauli pre-flight confirmation summary and critic
+  gate ([[../supervisor/instructions/worker-dispatch.md]]), proof, the ledger,
   evaluation, and escalation **across ticks**.
 
-The rule is one-way: this skill knows nothing about ticks or ledgers; the
-supervisor knows this skill owns Select + Gates + routing and does not restate
-them.
+The dependency is one-way: §§1–2 (Select + Gates) is the shared spine every verb
+reuses; each verb's own tail (routing, or the supervisor's tick discipline) builds
+on it and is never referenced back by the spine.
