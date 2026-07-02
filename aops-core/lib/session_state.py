@@ -163,9 +163,11 @@ class SessionState(BaseModel):
         # dispatcher injects — NOT a self-identifying session-type label
         # (aops-b368109a). A polecat container is marked by
         # AOPS_POLECAT_CONTAINER; crew is further distinguished by the
-        # crew-name signal the crew dispatcher sets. ``session_type`` remains a
-        # derived, in-session value used for gate posture and transcript
-        # metadata; it is no longer handed in as a policy label.
+        # crew-name signal the crew dispatcher sets. ``session_type`` is
+        # descriptive only (transcript metadata, forensics) — it no longer
+        # drives gate behaviour. Per-surface gate posture is controlled
+        # exclusively via *_GATE_MODE env vars (polecat.yaml), never by
+        # branching on this value in code.
         stype = "interactive"
         if os.environ.get("AOPS_POLECAT_CONTAINER") == "1":
             stype = "crew" if os.environ.get("POLECAT_CREW_NAME") else "polecat"
@@ -182,12 +184,10 @@ class SessionState(BaseModel):
             client_type=client_type,
         )
 
-        # Initialize gate states from gate config definitions
+        # Initialize gate states from gate config definitions. Every gate
+        # starts at the SAME initial_status regardless of session type.
         for gate_config in GATE_CONFIGS:
-            initial = gate_config.initial_status_by_session_type.get(
-                stype, gate_config.initial_status
-            )
-            instance.gates[gate_config.name] = GateState(status=initial)
+            instance.gates[gate_config.name] = GateState(status=gate_config.initial_status)
 
         return instance
 
