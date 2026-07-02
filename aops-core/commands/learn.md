@@ -29,17 +29,17 @@ Reviews recent session transcripts through a framework-development lens, identif
 
 - **Privacy**: Anonymize all findings. No real names, emails, student details, or raw session dumps in GitHub issues.
 - **RCA Rigor (The Issue Report)**: This is a routine division of labor — you file the forensic facts, a separate detached pass later decides whether a framework change is warranted. So the filed GitHub issue stays focused on forensic findings (incident facts, structural shape, and concrete impact). Don't bake speculative remediations into the issue report itself; keep it factual so it serves as high-quality evidence. (And don't over-fit: one salient incident isn't reason enough for a big framework change that doesn't generalise — that call belongs to the cross-incident pass.)
-- **No Fixing Inhibition**: Keeping the _issue report_ forensic does NOT inhibit you from fixing the live codebase immediately. You are expected to fix the live problem whenever permitted or instructed.
+- **No Fixing Inhibition**: Keeping the _issue report_ forensic does NOT inhibit you from fixing the reviewed session's own mistakes immediately. It does NOT extend to changing the framework's future behavior — that's the issue's job to surface, never this pass's job to implement.
 
 ## Immediate Fixes Policy (Fix AND File)
 
-You may apply immediate codebase fixes (for minor tweaks or framework-caused defects) AND you must still file the tracking GitHub issue. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the immediate problem now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/triage/SKILL.md](skills/triage/SKILL.md#mode-retro) for details.
+You may fix the reviewed session's own mistakes immediately (a wrong file it wrote, a broken reference it left, a task it mis-filed, a mechanical bug it hit) AND you must still file the tracking GitHub issue. This never extends to editing the framework's rules, gates, hooks, or agent instructions to change future behavior — that's a framework change, always out of scope here, regardless of how minor or well-scoped to the one incident it looks. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the reviewed session's mistake now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/triage/SKILL.md](skills/triage/SKILL.md#mode-retro) for the exact scope boundary.
 
 ## Invocation Styles
 
 - `/learn` — Review the current session/transcript (auto-detect the current session context/ID and pass it).
 - `/learn <path>` or `/learn <session-id>` — Review the specified transcript/session.
-- `/learn that last task should have been xyz` — Dual action: fix the target behavior immediately AND file the tracking RCA issue in the background.
+- `/learn that last task should have been xyz` — Dual action: fix the reviewed session's own mistake immediately AND file the tracking RCA issue in the background.
 
 ## Workflow
 
