@@ -117,6 +117,20 @@ def _process_cowork_markers(text: str, platform: str) -> str:
     return _COWORK_BLOCK_RE.sub("\n\n", text)
 
 
+# aops-core and aops-cowork both register the same MCP servers (e.g. "pkb",
+# see aops-core/mcp.json.template) — but Claude Code namespaces plugin-provided
+# tools by the INSTALLED plugin name, so the identical server produces
+# `mcp__plugin_aops-core_pkb__*` under the aops-core plugin but
+# `mcp__plugin_aops-cowork_pkb__*` under aops-cowork. Agent/skill/spec source
+# is authored once against the aops-core name; the cowork dist needs every
+# occurrence rewritten so declared tool references (frontmatter `tools:`
+# lists included) match a real runtime tool instead of silently matching
+# none — the agent has no way to discover a tool whose declared name doesn't
+# exist under any namespace it can see.
+_AOPS_CORE_MCP_PREFIX = "mcp__plugin_aops-core_"
+_AOPS_COWORK_MCP_PREFIX = "mcp__plugin_aops-cowork_"
+
+
 def _git_build_metadata(aops_root: Path) -> str:
     """SemVer build metadata (`+g<sha>[.dirty]`) for the current HEAD, or ''.
 
@@ -851,6 +865,25 @@ def build_aops_core(
     if cowork_processed:
         verb = "kept" if platform == "cowork" else "stripped"
         print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
+
+    # 1a-cowork-mcp. Rewrite the aops-core-scoped MCP tool-name prefix to the
+    # aops-cowork one across every copied .md file (agent frontmatter `tools:`
+    # lists included — those were written as plain text in the loop above, not
+    # through transform_agent_for_platform, so they still carry the aops-core
+    # name and need this pass same as everything else).
+    if platform == "cowork":
+        mcp_prefix_rewritten = 0
+        for md_file in content_dir.rglob("*.md"):
+            original = md_file.read_text()
+            if _AOPS_CORE_MCP_PREFIX not in original:
+                continue
+            md_file.write_text(original.replace(_AOPS_CORE_MCP_PREFIX, _AOPS_COWORK_MCP_PREFIX))
+            mcp_prefix_rewritten += 1
+        if mcp_prefix_rewritten:
+            print(
+                f"  ✓ Rewrote aops-core→aops-cowork MCP tool-name prefix in "
+                f"{mcp_prefix_rewritten} .md file(s)"
+            )
 
     # 1b. Stamp the tracked source pyproject (the in-tree SSoT for shipped deps)
     # with the build version and write it into the dist payload, then lock against
