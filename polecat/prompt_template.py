@@ -6,21 +6,7 @@ the worktree is ready. Hydration runs normally to provide relevant
 skill context (e.g., testing philosophy for test-writing tasks).
 """
 
-# Protocol sentinel emitted by workers when a PKB verb is missing.
-# Defined here so both the worker-prompt inclusion test and the CORE.md
-# load-bearing test (tests/test_plugin_structure.py::TestCoreMdPkbHalt)
-# reference the same named constant rather than hardcoding prose tokens
-# independently (AXIOMS#judgment-non-delegable). This string is the auditable
-# transcript marker — changing it requires updating both the instruction and
-# any grep-based post-hoc audit tooling.
-PKB_HALT_SENTINEL = "[ATTN] PKB verb missing"
-
-# PKB-HALT floor injected into every worker brief (task aops-0203b9cb).
-# A named constant so tests assert *inclusion* without freezing prose at the
-# token level (AXIOMS#judgment-non-delegable). Whether the wording does its
-# job is owned by the runtime verification task aops-f00c699f, not by a
-# string-match here. The prohibition must NOT be weakened or softened —
-# routing around the PKB MCP is a security incident (aops-18572bc0 §5).
+# PKB-HALT floor injected into every polecat worker prompt.
 PKB_HALT_FLOOR = """\
 **PKB-HALT floor**: If a PKB operation is needed, check your available tool \
 list by *capability* — search the knowledge base, get or create or update \
