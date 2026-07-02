@@ -62,15 +62,18 @@ These gates bind **every** path that pulls a task out of the `queued` set —
 to refuse a bad task _before_ compute is spent, whether that compute is an
 inline run or a dispatched worker.
 
-### 2a. Premise gate (hard refuse — agent judgment, not a string check)
+### 2a. Premise gate (hard refuse — two-judge clearance)
 
-Apply the **premise gate** to the selected candidate leaf task: read the body and
-judge whether it carries a genuine premise assessment; if it does not, hard-refuse
-— do not spend compute — and bounce the task back to the promoter. This is the
-last spend-stopper before either mode acts on the task.
+Apply the **premise gate** to the selected candidate leaf task: (1) ensure the
+task carries a legible, real premise sentence — record one from the task's intent
+if a hand-queued task left none, or bounce if it is too vague to state; (2) clear
+it through `/strategic-review --premise <task>`, which runs `rbg` (axiom/rig) and
+`pauli` (worth/shape) as judges. Any BOUNCE → hard-refuse, do not spend compute,
+bounce the task back to the promoter. This is the last spend-stopper before either
+mode acts on the task.
 
-The full procedure — what counts as a genuine judgment, why this is a
-read-and-judge call and **never** a regex/field/heading presence-check
+The full procedure — ensuring the premise is legible, why the judgment is deployed
+to two agents and **never** reduced to a regex/field/heading presence-check
 (`judgment-non-delegable`), and the exact bounce-back mechanics — is owned by
 [[../remember/references/premise-gate.md]] §2. Follow it there; do not restate it
 here.

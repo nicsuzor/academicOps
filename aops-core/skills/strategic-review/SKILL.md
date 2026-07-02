@@ -38,6 +38,11 @@ subagent cannot spawn its own subagents. James is called only at the end, to rec
 - **Default** — full review: deploy `rbg` + `pauli` + `marsha` in parallel, then `@james` reconciles.
 - **`--critic`** — solo `pauli`: one fast adversarial critique, no reconciliation. For a pre-hoc
   sanity check on a plan or proposal before work starts.
+- **`--premise`** — pre-dispatch premise clearance: deploy `rbg` + `pauli` in parallel on a **task**
+  (not a diff or transcript), each briefed with the task body and asked to return **CLEAR** or
+  **BOUNCE `<reason>`**. No marsha, no james. Both must CLEAR to dispatch; any BOUNCE refuses it.
+  This is the clearance `/pull`, `/dispatch`, and `/supervisor` dispatch run before spending compute
+  — see [§ `--premise` mode](#--premise-mode--pre-dispatch-premise-clearance).
 
 ## Inputs
 
@@ -116,3 +121,32 @@ Missing evidence licenses _"not supported by the available evidence"_ — never 
 Deploy **pauli alone** for a fast pre-hoc critique (premise test + the 10 cognitive moves). No
 parallel roster, no james reconciliation. Return pauli's verdict directly to the caller. Use this
 to pressure-test a plan or proposal _before_ committing effort to it.
+
+## `--premise` mode — pre-dispatch premise clearance
+
+The pre-dispatch premise gate, expressed as a two-judge clearance rather than a bespoke solo read.
+Called by the dispatch spine — `/pull`, `/dispatch`, and the `/supervisor` dispatch step — before
+any queued task is dispatched (wired in [[../remember/references/premise-gate.md]] §2). It is the
+same two judges the default review deploys, scoped down to a task and a binary verdict.
+
+**Input:** a queued **task** (id or body). No diff, no transcript — nothing is built yet, so the
+artifact under judgment is the task itself.
+
+1. **Deploy `rbg` + `pauli` in parallel** — a single message, two concurrent `Agent` calls. Brief
+   **each** with the **task body only** and one instruction: _judge this task's premise and return
+   **CLEAR** or **BOUNCE `<one-line reason>`**._ Do **not** pass a session transcript or a diff.
+   - **rbg** — does the task's premise violate an axiom? Chiefly `judgment-non-delegable` (is it a
+     deterministic rig standing in for a call a smart agent would just make?) and `exercise-authority`
+     Edge 3. Apply the axioms to the task as written.
+   - **pauli** — is the premise worth doing and rightly shaped? The premise test + arch-fit lens
+     ([[references/premise-test.md]]), read against the task. A fluent-but-ungrounded new-mechanism
+     premise (no sign current state was established) is a BOUNCE, not a CLEAR.
+     Both read the **task body**, not just its premise sentence — a premise that oversells the task is
+     caught because the judge sees the task it claims to describe.
+2. **Both CLEAR → dispatch.** **Any BOUNCE → refuse:** do not dispatch, do not spend compute; return
+   the task to the promoter with the bouncing reviewer's reason.
+3. **No james reconciliation** — two independent CLEAR/BOUNCE verdicts, AND-gated (a BOUNCE always
+   wins). The point is a cheap binary spend-stopper, not a synthesised report.
+
+Return the two verdicts (and any bounce reason) to the caller. This mode never writes anything back
+itself — the dispatch spine that called it owns the refuse-and-bounce action.

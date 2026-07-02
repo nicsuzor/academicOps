@@ -8,7 +8,7 @@ The dispatch mechanics that govern epic progression.
 
 ### 0. Premise Gate (hard refuse — runs first, before any pre-flight row)
 
-Apply the premise gate to the selected task before any pre-flight row — full procedure, HARD RULE, and honest scope are owned by [[../../remember/references/premise-gate.md]] §2. If it hard-refuses, additionally append `dispatch_halt` to Pattern Memory before exiting.
+Apply the premise gate to the selected task before any pre-flight row: ensure a legible premise is recorded, then clear it through `/strategic-review --premise <task>` (`rbg` + `pauli`, CLEAR/BOUNCE). Full procedure and bounce mechanics are owned by [[../../remember/references/premise-gate.md]] §2. If it hard-refuses, additionally append `dispatch_halt` to Pattern Memory before exiting.
 
 ### Pre-flight Confirmation Summary
 
