@@ -13,6 +13,7 @@ __all__ = [
     "GeminiHookSpecificOutput",
     "GeminiHookOutput",
     "CanonicalHookOutput",
+    "ResolvedDecision",
 ]
 
 
@@ -154,4 +155,39 @@ class CanonicalHookOutput(BaseModel):
     system_message: str | None = None
     verdict: Literal["allow", "deny", "ask", "warn"] | None = "allow"
     context_injection: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# --- Resolved Decision (post-policy, pre-translation) ---
+
+
+class ResolvedDecision(BaseModel):
+    """Client-agnostic outcome of ``resolve_policy()`` — the LAST point at which
+    a hook event's fate can still change.
+
+    All verdict-changing policy (Stop channel routing warn->block upgrade /
+    warn->approve-with-context, advisory whitespace cleanup, the general-event
+    warn->allow collapse, the asyncRewake channel choice, agy's ask->block
+    collapse, and the per-client/event validity checks) lives in
+    ``resolve_policy_for_*``, which produces exactly one of these. Everything
+    downstream (``translate_*``) is a pure, deterministic field-mapper with no
+    further decisions — so logging a ``ResolvedDecision`` right after it is
+    produced IS logging what will actually be sent, in one shared shape
+    regardless of client.
+
+    ``wire_decision`` uses a client-agnostic vocabulary ("allow"/"block"/"ask")
+    distinct from ``CanonicalHookOutput.verdict`` on purpose: the gate's true
+    verdict (e.g. "warn") and the wire decision a specific client channel had to
+    use to deliver it (e.g. "block", when a client has no non-blocking delivery
+    channel) are different concepts. Conflating them would corrupt anything
+    downstream that reads ``verdict`` as the gate's real call (metrics,
+    transcript parsing).
+    """
+
+    channel: Literal["json", "asyncRewake_stdout"] = "json"
+    wire_decision: Literal["allow", "block", "ask"] | None = None
+    banner: str | None = None  # always-surfaced short text (systemMessage/stopReason)
+    reason: str | None = None  # explicit reason/denyReason text, set when wire_decision needs one
+    context: str | None = None  # agent-only advisory (additionalContext / injectSteps)
+    raw_body: str | None = None  # body for the asyncRewake_stdout channel
     metadata: dict[str, Any] = Field(default_factory=dict)

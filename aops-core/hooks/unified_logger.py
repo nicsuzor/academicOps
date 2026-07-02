@@ -19,7 +19,7 @@ from lib.hook_context import HookContext
 from lib.session_paths import get_hook_log_path
 
 from hooks.internal_models import HookLogEntry
-from hooks.schemas import CanonicalHookOutput
+from hooks.schemas import CanonicalHookOutput, ResolvedDecision
 
 # Set up logging
 logging.basicConfig(
@@ -36,11 +36,21 @@ def _json_serializer(obj: Any) -> str:
 def log_hook_event(
     ctx: HookContext,
     output: CanonicalHookOutput | None = None,
+    resolved: ResolvedDecision | None = None,
     exit_code: int = 0,
     error: str | None = None,
 ) -> None:
     """
     Log a hook event to the per-session hooks log file.
+
+    ``output`` is the gate layer's internal ``CanonicalHookOutput`` (the true
+    gate verdict). ``resolved`` is the ``ResolvedDecision`` produced by
+    ``resolve_policy()`` AFTER all verdict-changing policy has run — logging
+    both together means the entry shows both "what the gates decided" and
+    "what will actually be sent to the client", with nothing lost in between.
+    Callers are responsible for wrapping this call in its own try/except: a
+    logging failure must never be the reason a hook fails to deliver its real
+    payload to the client.
     """
     session_id = ctx.session_id
     # Fail-safe: empty session_id = skip (don't crash hook)
@@ -76,6 +86,7 @@ def log_hook_event(
         logged_at=datetime.now().astimezone().replace(microsecond=0).isoformat(),
         exit_code=exit_code,
         output=output.model_dump() if output else None,
+        resolved=resolved.model_dump() if resolved else None,
         **ctx.model_dump(exclude={"session_id"}),
     )
 
