@@ -563,46 +563,83 @@ GATE_CONFIGS = [
     # --- Ida ---
     # Named for Ida B. Wells — investigative journalist who built her career
     # on documented evidence ("turn the light of truth upon them"). Honesty
-    # reminder with per-turn lifecycle: fires once per UPS→Stop cycle, then
-    # opens so retried Stops in the same turn are not re-blocked. Re-arms on
-    # the next UserPromptSubmit. Targets criterion substitution, narrative-as-
-    # proof, fabricated diagnostics, skipped verification, positive-framing
+    # reminder, armed (CLOSED) from session start, that fires at most once per
+    # "episode" (see below) on Stop. Targets criterion substitution, narrative-
+    # as-proof, fabricated diagnostics, skipped verification, positive-framing
     # bias, unverified keystone assumptions, and subagent-output laundering
     # (issues #621, #563, #380, #430, #359, #798, #549, #624, #317, #100,
     # #376, #437, #391, #416, #335, #932, #822, #714). Mode resolved from
     # polecat.yaml gates.ida — set to "off" to disable.
     #
-    # Lifecycle: armed (CLOSED) → fires on Stop → opens → re-armed on UPS.
+    # --- Retry safeguard: stop_hook_active, not self-managed OPEN ---
+    # Historically this gate prevented re-firing on a retried Stop (e.g. the
+    # agent immediately retrying Stop after a block) by flipping its OWN
+    # GateStatus CLOSED->OPEN the moment it fired, then re-arming CLOSED only
+    # on the next UserPromptSubmit. That state flip is now GONE. Instead,
+    # `is_ida_block_mode` / `is_ida_warn_mode` (custom_conditions.py) check
+    # `raw_input.stop_hook_active` directly and refuse to fire when it is
+    # true — the flag Claude Code (and Gemini CLI's AfterAgent) set on a
+    # Stop/SessionEnd event that fires because an EARLIER Stop hook already
+    # blocked/woke the agent this turn. This is a MORE PRECISE version of the
+    # same safeguard: it is driven by what the runtime says actually happened,
+    # not by an assumption ("a Stop occurred, so the next one must be a
+    # retry") that doesn't hold once the AskUserQuestion trigger re-closes the
+    # gate mid-turn (see Design note below). It is also redundant-by-design
+    # with the router's PRE-EXISTING global bypass (router.py _dispatch_gates,
+    # ~line 748: any Stop/SessionEnd with stop_hook_active=true never reaches
+    # ANY gate) — that bypass already fully covers "the agent retries Stop
+    # immediately after a block" for every caller that goes through
+    # `_dispatch_gates`. Checking it again here makes the invariant hold for
+    # callers that evaluate this gate directly (bypassing that early return),
+    # and makes it independently testable at the gate level (see
+    # test_gate_lifecycle.py::TestIdaPerTurnLifecycle).
     #
-    # Warn mode (default): block-once per turn. Advisory delivered as
-    # context_injection so it reaches the agent via the warn+ctx_inj upgrade
-    # path in output_for_claude(). Gate opens on first Stop (fire-once trigger)
-    # so subsequent Stops in the same turn pass. Re-arms on UserPromptSubmit.
-    # Claude Code's Stop schema does not support hookSpecificOutput, so
-    # context_injection via decision=block+reason is the only agent-visible
-    # channel — non-blocking advisory injection on Stop does not exist.
-    #
-    # Block mode: same context_injection path, same fire-once lifecycle.
+    # --- Design note: what happens to the AskUserQuestion mid-turn re-close
+    # (Component B) now that nothing sets the gate OPEN? ---
+    # The AskUserQuestion trigger below still fires (Component C: it always
+    # injects the capability-verification advisory) and still carries
+    # `target_status=GateStatus.CLOSED` (Component B), but that transition is
+    # now a structural no-op: the ONLY thing that used to move this gate to
+    # OPEN was the trigger just removed, so GateStatus can no longer leave
+    # CLOSED via this gate's own machinery, and current_status=CLOSED is no
+    # longer part of the Stop policies' firing condition (removed — it would
+    # be vacuously true forever). Component B's re-close is DELIBERATELY KEPT
+    # anyway rather than deleted, for two reasons: (1) it is what the
+    # AskUserQuestion tests (test_ida_askuserquestion_gate.py) exercise and
+    # what the agy-auth-halt incident (#1751) fix shipped, so leaving the
+    # trigger shape intact keeps that history legible and costs nothing; (2)
+    # whether a LATER, genuine Stop after an AskUserQuestion detour re-fires
+    # ida now depends entirely on whether the runtime clears
+    # `stop_hook_active` by the time that later Stop happens — and that is
+    # governed by the SAME router-level global bypass that already gated the
+    # immediate-retry case, not by anything this gate's own bookkeeping could
+    # ever override (the router's check runs before ANY gate, including this
+    # one, is even consulted). In other words: this gate's internal
+    # GateStatus never had the power to make the router deliver a Stop event
+    # to it in the first place — only the runtime's own stop_hook_active
+    # value decides that. Removing the self-flip does not change what
+    # actually happens on the wire; it removes bookkeeping that could not
+    # have been load-bearing for that outcome. The empirical granularity of
+    # `stop_hook_active` (whether it resets after an AskUserQuestion detour
+    # with real intervening work, vs. staying true for the rest of the
+    # runtime-forced continuation) could not be pinned down with certainty
+    # during this change — see the PR description for what was checked.
     GateConfig(
         name="ida",
         description="Reminds the agent to show proof for assertions before stopping.",
         initial_status=GateStatus.CLOSED,  # Armed from session start
         triggers=[
-            # On Stop (when armed/CLOSED): open gate so policy doesn't fire
-            # again in the same turn (e.g. if agent retries Stop after block).
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="Stop",
-                    current_status=GateStatus.CLOSED,
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN),
-            ),
             # On UserPromptSubmit: re-arm gate for the next turn cycle.
             # Slash-command turns (skill invocations such as /end-session,
             # /dump, /remember) are excluded: a finishing/meta skill that runs
             # after an honesty reflection owns its own format and must not arm
             # a second redundant ida reflection on the Stop that follows it
             # (prompt_exclude_patterns suppresses the close — never opens).
+            # NOTE: with the Stop CLOSED->OPEN trigger removed (see design
+            # note above), this re-arm is now a structural no-op — the gate
+            # is always CLOSED by the time UPS fires — but it is kept because
+            # it is cheap, documents the intended per-turn cycle, and costs
+            # nothing to leave in place.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
@@ -616,12 +653,13 @@ GATE_CONFIGS = [
             # is reminded to verify live before asserting a blocker ("only you
             # can", "I can't run X", "needs auth"). Fires mid-turn at the moment
             # the blocker is manufactured — the only moment that catches the
-            # agy-auth-halt incident class (issue #1751).
+            # agy-auth-halt incident class (issue #1751). This is the part of
+            # this trigger that is NOT affected by the stop_hook_active change.
             #
             # Component B: re-close the gate (CLOSED is a no-op when already
-            # CLOSED; re-closes when OPEN after a prior Stop fire-once). This
-            # gives: block-once → allow-retry → re-close-on-AskUserQuestion →
-            # re-block-on-next-Stop.
+            # CLOSED — see design note above for why OPEN is now unreachable
+            # via this gate's own Stop handling, making this transition a
+            # kept-not-deleted no-op rather than an active re-arm).
             #
             # Delivery: triggers use GateResult.allow + context_injection, so
             # this is advisory-inject only — AskUserQuestion is never denied.
@@ -651,10 +689,13 @@ GATE_CONFIGS = [
             # The short user-facing line is inline (the former ida-policy-message.md
             # template was deleted when ida·reminder moved to the asyncRewake
             # quiet-split — block mode keeps its visible reason, warn mode does not).
+            # `is_ida_block_mode` (custom_conditions.py) is the sole firing gate:
+            # mode active AND raw_input.stop_hook_active is not true — see the
+            # retry-safeguard design note above (current_status is no longer
+            # checked here; GateStatus for `ida` no longer drives Stop firing).
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
-                    current_status=GateStatus.CLOSED,
                     custom_check="is_ida_block_mode",
                 ),
                 verdict=GateVerdict.DENY,
@@ -667,13 +708,12 @@ GATE_CONFIGS = [
             # <system-reminder>, one-line config rewakeSummary → user); other
             # clients fall back to the warn+context_injection path in
             # output_for_claude()/output_for_*(). No message_key: the user no
-            # longer sees a separate ida banner. Gate opens on first Stop
-            # (fire-once trigger above) so subsequent Stops in the same turn are
-            # not re-blocked. Re-arms on UPS.
+            # longer sees a separate ida banner. `is_ida_warn_mode` gates
+            # firing on mode + stop_hook_active exactly like the block policy
+            # above.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
-                    current_status=GateStatus.CLOSED,
                     custom_check="is_ida_warn_mode",
                 ),
                 verdict=GateVerdict.WARN,

@@ -53,7 +53,13 @@ class TestHandoverGateOpens:
 
 
 class TestIdaPerTurnLifecycle:
-    """IDA gate per-turn lifecycle: armed → fires → opens → re-armed on UPS."""
+    """IDA gate per-turn lifecycle: armed (CLOSED) from session start, fires on
+    Stop, stays CLOSED. Re-fire suppression for a runtime-forced retry comes
+    from `raw_input.stop_hook_active` (checked by `is_ida_block_mode` /
+    `is_ida_warn_mode` in custom_conditions.py), NOT from a self-managed
+    CLOSED->OPEN flip — see the design note on the `ida` GateConfig in
+    definitions.py for the full rationale and the AskUserQuestion interaction.
+    """
 
     def test_ida_starts_closed(self, monkeypatch):
         set_gate_modes(monkeypatch, ida="warn")
@@ -65,20 +71,27 @@ class TestIdaPerTurnLifecycle:
             "IDA gate must start CLOSED (armed) so it fires on the first Stop"
         )
 
-    def test_ida_opens_after_firing_on_stop(self, router, monkeypatch):
+    def test_ida_stays_closed_after_firing_on_stop(self, router, monkeypatch):
         set_gate_modes(monkeypatch, ida="warn")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("ida")
         ctx = make_gate_trigger_context("ida")
 
-        router._dispatch_gates(ctx, state)
+        result = router._dispatch_gates(ctx, state)
 
-        assert state.gates["ida"].status == GateStatus.OPEN, (
-            "IDA gate must be OPEN after firing (so retried Stops aren't blocked)"
+        assert result is not None and result.verdict == GateVerdict.WARN
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "IDA no longer self-manages OPEN/CLOSED to prevent re-firing — it "
+            "stays CLOSED (armed) after firing. raw_input.stop_hook_active is "
+            "what suppresses a retried Stop now, not gate status."
         )
 
-    def test_ida_does_not_fire_twice_same_turn(self, router, monkeypatch):
+    def test_ida_does_not_fire_on_stop_hook_active_retry(self, router, monkeypatch):
+        """A second Stop carrying stop_hook_active=True — the runtime's own
+        signal that this Stop is a forced retry after an earlier block/wake —
+        must not re-fire ida, even though the gate is still CLOSED (armed) and
+        nothing about ida's own state changed between the two calls."""
         set_gate_modes(monkeypatch, ida="warn")
         reinit_gates_with_defaults()
 
@@ -87,45 +100,86 @@ class TestIdaPerTurnLifecycle:
 
         first_result = router._dispatch_gates(stop_ctx, state)
         assert first_result is not None and first_result.verdict == GateVerdict.WARN
-        assert state.gates["ida"].status == GateStatus.OPEN
+        assert state.gates["ida"].status == GateStatus.CLOSED
 
-        router._dispatch_gates(stop_ctx, state)
-        assert state.gates["ida"].status == GateStatus.OPEN, (
-            "IDA gate must remain OPEN on a second Stop in the same turn"
+        retry_ctx = HookContext(
+            session_id="test-gate-mode",
+            client_type="claude",
+            hook_event="Stop",
+            raw_input={"stop_hook_active": True},
+        )
+        second_result = router._dispatch_gates(retry_ctx, state)
+        assert second_result is None, (
+            "IDA gate must not re-fire when raw_input.stop_hook_active=True "
+            f"signals this Stop is a runtime-forced retry. Got {second_result!r}"
+        )
+
+    def test_ida_gate_itself_suppresses_stop_hook_active(self, monkeypatch):
+        """The gate's OWN Stop policy — not just the router's separate global
+        stop_hook_active bypass (test_qa_gate_close_trigger.py::
+        test_stop_hook_active_bypasses_all_gates, which short-circuits BEFORE
+        any gate is consulted) — must itself refuse to fire when
+        stop_hook_active=True. Calls GenericGate.on_stop() directly, bypassing
+        router._dispatch_gates's early return entirely, to prove the invariant
+        lives in the gate/policy layer and holds for any caller (e.g.
+        GenericGate.evaluate_triggers(), or a future caller that dispatches
+        gates without the router's pre-check)."""
+        set_gate_modes(monkeypatch, ida="warn")
+        reinit_gates_with_defaults()
+
+        ida_gate = GateRegistry.get_gate("ida")
+        assert ida_gate is not None
+        state = make_gate_trigger_state("ida")
+        ctx = HookContext(
+            session_id="test-gate-mode",
+            client_type="claude",
+            hook_event="Stop",
+            raw_input={"stop_hook_active": True},
+        )
+
+        result = ida_gate.on_stop(ctx, state)
+
+        verdict = getattr(result, "verdict", None)
+        verdict_value = getattr(verdict, "value", verdict) if verdict else None
+        assert verdict_value not in ("deny", "warn"), (
+            "ida gate's own Stop policy must not fire when stop_hook_active=True, "
+            f"independent of the router's global bypass. Got {result!r}"
         )
 
     def test_ida_rearms_on_user_prompt_submit(self, router, monkeypatch):
+        """UPS re-arm trigger still closes an OPEN gate. Since nothing in
+        ida's own Stop handling sets OPEN any more, this models the state
+        an external re-arm point (e.g. AskUserQuestion's Component B) would
+        leave behind, and verifies the UPS trigger still closes it."""
         set_gate_modes(monkeypatch, ida="warn")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("ida")
-        stop_ctx = make_gate_trigger_context("ida")
+        state.gates["ida"].status = GateStatus.OPEN
         ups_ctx = HookContext(
             session_id="test-gate-mode",
             hook_event="UserPromptSubmit",
             raw_input={"prompt": "continue working"},
         )
 
-        router._dispatch_gates(stop_ctx, state)
-        assert state.gates["ida"].status == GateStatus.OPEN
-
         router._dispatch_gates(ups_ctx, state)
         assert state.gates["ida"].status == GateStatus.CLOSED, (
             "IDA gate must be re-armed (CLOSED) on UserPromptSubmit"
         )
 
-    def test_ida_block_mode_opens_after_firing(self, router, monkeypatch):
+    def test_ida_block_mode_fires_and_stays_closed(self, router, monkeypatch):
         set_gate_modes(monkeypatch, ida="block")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("ida")
         ctx = make_gate_trigger_context("ida")
 
-        router._dispatch_gates(ctx, state)
+        result = router._dispatch_gates(ctx, state)
 
-        assert state.gates["ida"].status == GateStatus.OPEN, (
-            "IDA gate must open after firing in block mode so a retried Stop "
-            "is not blocked again in the same turn"
+        assert result is not None and result.verdict == GateVerdict.DENY
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "IDA block mode also relies on stop_hook_active, not a self-managed "
+            "OPEN flip, to prevent re-firing on a retried Stop"
         )
 
 
@@ -271,13 +325,17 @@ class TestStopDenyMaxFireDowngrade:
             raw_input={"prompt": "continue"},
         )
 
-        # Turn 1: IDA fires block, gate opens (fire-once)
+        # Turn 1: IDA fires block. GateStatus stays CLOSED (no self-managed
+        # OPEN flip any more — re-fire suppression is raw_input.stop_hook_active,
+        # not gate status); the UPS between turns below is what keeps this test
+        # modeling separate turns rather than an immediate same-turn retry.
         r1 = router._dispatch_gates(stop_ctx, state)
         assert r1 is not None and r1.verdict == GateVerdict.DENY, (
             f"Turn 1 should be DENY, got {r1.verdict.value if r1 else None}"
         )
-        assert state.gates["ida"].status == GateStatus.OPEN
-        # Re-arm for turn 2
+        assert state.gates["ida"].status == GateStatus.CLOSED
+        # Re-arm for turn 2 (no-op on status, kept for realism/documentation —
+        # see the `ida` GateConfig design note in definitions.py)
         router._dispatch_gates(ups_ctx, state)
 
         # Turn 2: IDA fires block again

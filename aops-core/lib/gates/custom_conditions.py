@@ -108,21 +108,37 @@ def check_custom_condition(
         return IDA_GATE_MODE in ("warn", "block", "deny")
 
     if name == "is_ida_block_mode":
-        # IDA gate policy: active only when IDA_GATE_MODE is blocking.
-        # Separating block vs warn into distinct policies lets each choose
-        # appropriate message channels (context_key vs message_key) so
-        # warn mode doesn't inadvertently upgrade Stop to decision=block.
+        # IDA gate policy: active only when IDA_GATE_MODE is blocking AND this
+        # Stop is not a runtime-flagged retry. `stop_hook_active` is the flag
+        # Claude Code (and Gemini CLI's AfterAgent) set on a Stop/SessionEnd
+        # event that fires because an EARLIER Stop hook already blocked/woke
+        # the agent this turn — checking it here is the gate's OWN copy of the
+        # router's global retry bypass (router.py _dispatch_gates, ~line 748),
+        # so the "don't re-fire on an immediate retry" invariant holds even for
+        # a caller that evaluates this gate directly (bypassing the router's
+        # early return — e.g. GenericGate.evaluate_triggers() or a direct
+        # gate.on_stop() call). This REPLACES the gate's former self-managed
+        # CLOSED->OPEN-on-Stop trigger as the retry safeguard — see the `ida`
+        # GateConfig docstring in definitions.py for the full design note,
+        # including why the AskUserQuestion mid-turn re-close (Component B) is
+        # kept even though it no longer drives this check.
         from hooks.gate_config import IDA_GATE_MODE
 
+        if ctx.raw_input.get("stop_hook_active"):
+            return False
         return IDA_GATE_MODE in ("block", "deny")
 
     if name == "is_ida_warn_mode":
-        # IDA gate policy: active only when IDA_GATE_MODE is warn.
+        # IDA gate policy: active only when IDA_GATE_MODE is warn AND this Stop
+        # is not a runtime-flagged retry. See is_ida_block_mode above for the
+        # stop_hook_active rationale (identical logic, warn-mode policy).
         # Warn mode delivers the advisory via system_message only (user-visible)
         # rather than context_injection, so output_for_claude does not upgrade
         # the WARN verdict to decision=block for the Stop hook.
         from hooks.gate_config import IDA_GATE_MODE
 
+        if ctx.raw_input.get("stop_hook_active"):
+            return False
         return IDA_GATE_MODE == "warn"
 
     if name == "is_qa_block_mode":

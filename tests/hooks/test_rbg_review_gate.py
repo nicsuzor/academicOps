@@ -303,10 +303,13 @@ def test_rbg_review_defers_ida_without_breaking_it(router, monkeypatch):
     r = router._dispatch_gates(_ctx("Stop"), state)
     assert r.verdict == GateVerdict.DENY
     assert state.gates["ida"].status == GateStatus.CLOSED
-    # rbg runs -> clears; next Stop, ida fires its advisory and opens.
+    # rbg runs -> clears; next Stop, ida fires its advisory. GateStatus stays
+    # CLOSED (no self-managed OPEN flip any more — see the `ida` GateConfig
+    # design note in definitions.py); the WARN verdict is what proves it fired.
     router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-core:rbg"), state)
-    router._dispatch_gates(_ctx("Stop"), state)
-    assert state.gates["ida"].status == GateStatus.OPEN
+    r2 = router._dispatch_gates(_ctx("Stop"), state)
+    assert r2 is not None and r2.verdict == GateVerdict.WARN
+    assert state.gates["ida"].status == GateStatus.CLOSED
 
 
 def test_interactive_ida_still_fires_without_rbg_review(router, monkeypatch):
@@ -318,7 +321,8 @@ def test_interactive_ida_still_fires_without_rbg_review(router, monkeypatch):
     assert state.gates["ida"].status == GateStatus.CLOSED
     assert state.gates["rbg-review"].status == GateStatus.OPEN  # inert
     r = router._dispatch_gates(_ctx("Stop"), state)
-    # rbg-review is OPEN/inert; ida fires its advisory (WARN) and opens.
+    # rbg-review is OPEN/inert; ida fires its advisory (WARN). GateStatus
+    # stays CLOSED — re-fire suppression is stop_hook_active, not gate status.
     assert r is not None
     assert r.verdict == GateVerdict.WARN
-    assert state.gates["ida"].status == GateStatus.OPEN
+    assert state.gates["ida"].status == GateStatus.CLOSED

@@ -410,17 +410,17 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `ida` gate
 
-> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
+> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Armed (`CLOSED`) from session start in **every** session type; fires on Stop while armed, but NOT when `raw_input.stop_hook_active` is true (the runtime's own signal that this Stop is a forced retry of an earlier block/wake — see below). Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
 
 <!-- NS: the hook specific stuff should be in the respective gate/agent spec, not here -->
 
 ### What is it
 
-The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification. Gate opens after the first block so retried Stops pass; re-arms on UserPromptSubmit.
+The pre-Stop honesty reminder. On a Stop where the gate is armed and this isn't a runtime-flagged retry, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification.
 
 **Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering.
 
-**Why fire-once.** Regardless of channel, the agent should see the honesty checklist **once per turn** and self-correct — not be nagged on every retried Stop. The lifecycle delivers exactly that: CLOSED → fires on first Stop → OPEN, re-arms on the next UserPromptSubmit.
+**Why not re-fire on retry.** Regardless of channel, the agent should see the honesty checklist once per genuine stop attempt and self-correct — not be nagged on every hook-forced retry of the SAME attempt. `is_ida_block_mode`/`is_ida_warn_mode` (`custom_conditions.py`) check `raw_input.stop_hook_active` — the flag Claude Code (and Gemini CLI's AfterAgent) set when a Stop/SessionEnd fires because an earlier Stop hook already blocked/woke the agent this turn — and refuse to fire when it's true. This replaced an earlier design where the gate flipped its own GateStatus CLOSED→OPEN on first fire and re-armed only on the next UserPromptSubmit; see the design note on the `ida` `GateConfig` in `definitions.py` for the full rationale, including the interaction with the AskUserQuestion mid-turn trigger below.
 
 **Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the current Claude Code target a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (the turn proceeds); this is not user-silent — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line. The quiet alternative is the `asyncRewake` Stop hook (full body to agent `<system-reminder>`, one-line `<summary>` to user) — delivery only, not compulsion. Wire-mechanics and per-client-version detail live in [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md), not here.
 
@@ -437,8 +437,8 @@ Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `route
 ### How it's configured
 
 - **Mode key**: `gates.ida` (`warn` | `block` | `off`).
-- **Triggers**: (1) Stop while CLOSED → OPEN (fire-once); (2) UserPromptSubmit → CLOSED (re-arm), **excluding slash-command turns** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`). A skill invocation (`/end-session`, `/dump`, `/remember`, or any `/command`) owns its own finishing format, so it must not re-arm the honesty gate — otherwise a slash command typed after a reflection has already fired arms a second, redundant reflection on the next Stop. Suppresses the close only — it never opens the gate, so a first-turn slash command (gate still CLOSED from session start) still reflects. (3) `PreToolUse`/`AskUserQuestion` → **re-close** + inject advisory (`definitions.py:637-647`) — asking the user a question re-arms the reminder for the answer turn.
-- **Stop policies**: `hook_event="Stop"`, `current_status=CLOSED` — a DENY policy (`is_ida_block_mode`) and a WARN policy (`is_ida_warn_mode`), both injecting `context_key="ida.reminder"`. Which one delivers, and to whom, is the shared Stop-gate behaviour — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
+- **Triggers**: (1) UserPromptSubmit → CLOSED (re-arm), **excluding slash-command turns** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`). A skill invocation (`/end-session`, `/dump`, `/remember`, or any `/command`) owns its own finishing format, so it must not re-arm the honesty gate — otherwise a slash command typed after a reflection has already fired arms a second, redundant reflection on the next Stop. Suppresses the close only — it never opens the gate, so a first-turn slash command (gate still CLOSED from session start) still reflects. (2) `PreToolUse`/`AskUserQuestion` → inject advisory (`definitions.py`) — asking the user a question always nudges the agent to verify a capability claim before treating it as a blocker; the trigger also carries a `target_status=CLOSED` re-close, kept for documentation/history even though nothing in this gate's own Stop handling can leave the gate OPEN any more (see the `ida` `GateConfig` design note).
+- **Stop policies**: `hook_event="Stop"` — a DENY policy (`is_ida_block_mode`) and a WARN policy (`is_ida_warn_mode`), both injecting `context_key="ida.reminder"`. Both custom checks gate on mode AND `not raw_input.stop_hook_active` — GateStatus/`current_status` is no longer part of the firing condition. Which policy delivers, and to whom, is the shared Stop-gate behaviour — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
 - **Default-everywhere**: `polecat.yaml.example` ships `ida: warn`. `BUILTIN_GATES` (used when no polecat.yaml is found) also sets `ida: warn`.
 
 ### How to verify it's firing
@@ -452,7 +452,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> \
 grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq -c
 ```
 
-**Healthy fire** (mode `warn`): first Stop per turn produces `output.verdict="warn"` with `output.context_injection` containing the ida-reminder template text ("Before stopping: for each claim..."). `output_for_claude` upgrades `warn + context_injection` to `decision: "block"` + `reason` so the advisory reaches the agent. Gate then opens (fire-once trigger), so subsequent Stops in the same turn produce no verdict. Re-arms on next UserPromptSubmit.
+**Healthy fire** (mode `warn`): a Stop with `stop_hook_active` falsy produces `output.verdict="warn"` with `output.context_injection` containing the ida-reminder template text ("Before stopping: for each claim..."). `output_for_claude` upgrades `warn + context_injection` to `decision: "block"` + `reason` so the advisory reaches the agent. A subsequent Stop that carries `stop_hook_active: true` (the runtime's own forced-retry signal) produces no verdict — GateStatus itself stays CLOSED throughout; it is `stop_hook_active`, not gate state, that suppresses the retry.
 
 ### How to debug when it isn't
 

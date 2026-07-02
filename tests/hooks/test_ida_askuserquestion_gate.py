@@ -55,12 +55,19 @@ def _auq_pretool_ctx(session_id: str = "test-ida-auq") -> HookContext:
     )
 
 
-def _stop_ctx(session_id: str = "test-ida-auq") -> HookContext:
-    """Stop context (IDA fires here)."""
+def _stop_ctx(session_id: str = "test-ida-auq", *, stop_hook_active: bool = False) -> HookContext:
+    """Stop context (IDA fires here).
+
+    ``stop_hook_active`` models the runtime's own retry signal (Claude Code /
+    Gemini CLI set this true on a Stop that fires because an earlier Stop hook
+    already blocked/woke the agent this turn) — pass True to simulate an
+    immediate retry of a just-fired Stop.
+    """
     return HookContext(
         session_id=session_id,
         client_type="claude",
         hook_event="Stop",
+        raw_input={"stop_hook_active": True} if stop_hook_active else {},
     )
 
 
@@ -227,13 +234,21 @@ class TestIdaAskUserQuestionReClose:
         )
 
     def test_b_state_machine_full_lifecycle(self, router, monkeypatch):
-        """Full B state machine: block-once → allow-retry → re-close-on-AUQ → re-block-Stop.
+        """Full B lifecycle: block-once → suppressed-retry → AUQ advisory → re-fire.
 
-        Sequence:
-          1. Stop (gate CLOSED) → IDA fires WARN, gate opens (fire-once)
-          2. Stop again (gate OPEN) → IDA does NOT fire (gate already open)
-          3. AskUserQuestion PreToolUse (gate OPEN) → gate re-closes + inject advisory
-          4. Stop (gate re-CLOSED) → IDA fires WARN again
+        Sequence (updated for the stop_hook_active-based retry safeguard —
+        see the `ida` GateConfig design note in definitions.py):
+          1. Stop (gate CLOSED, stop_hook_active=False) → IDA fires WARN.
+             GateStatus stays CLOSED — there is no more self-managed OPEN flip.
+          2. Stop again with stop_hook_active=True (the runtime's own signal
+             that this is an immediate retry of step 1) → IDA does NOT fire.
+          3. AskUserQuestion PreToolUse → advisory injected (Component C);
+             gate status re-close (Component B) is a documented no-op now
+             (nothing sets it OPEN any more), kept for the reasons in the
+             GateConfig design note.
+          4. A later, genuinely fresh Stop (stop_hook_active=False again —
+             modelling that real intervening work happened, e.g. answering
+             the question) → IDA fires WARN again.
         """
         set_gate_modes(monkeypatch, ida="warn")
         reinit_gates_with_defaults()
@@ -242,40 +257,44 @@ class TestIdaAskUserQuestionReClose:
         state = make_gate_trigger_state("ida")
         assert state.gates["ida"].status == GateStatus.CLOSED, "precondition: gate starts CLOSED"
 
-        # Step 1: Stop fires → gate opens
+        # Step 1: Stop fires. GateStatus stays CLOSED (no self-managed flip).
         stop_ctx = _stop_ctx(session_id)
         result1 = router._dispatch_gates(stop_ctx, state)
         assert result1 is not None and result1.verdict == GateVerdict.WARN, (
             f"Step 1: Stop must WARN when IDA CLOSED. Got {result1!r}"
         )
-        assert state.gates["ida"].status == GateStatus.OPEN, (
-            "Step 1: gate must OPEN after Stop fire-once"
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "Step 1: gate stays CLOSED after firing — no more self-managed OPEN"
         )
 
-        # Step 2: Stop again → gate is OPEN, no fire
-        result2 = router._dispatch_gates(stop_ctx, state)
-        if result2 is not None:
-            verdict2 = getattr(result2.verdict, "value", result2.verdict)
-            assert verdict2 not in ("deny", "warn"), (
-                f"Step 2: IDA must not fire on second Stop (gate OPEN). Got {result2!r}"
-            )
-        assert state.gates["ida"].status == GateStatus.OPEN, "Step 2: gate must remain OPEN"
+        # Step 2: Immediate retry (stop_hook_active=True) → no fire.
+        retry_ctx = _stop_ctx(session_id, stop_hook_active=True)
+        result2 = router._dispatch_gates(retry_ctx, state)
+        assert result2 is None, (
+            f"Step 2: IDA must not fire when stop_hook_active=True. Got {result2!r}"
+        )
+        assert state.gates["ida"].status == GateStatus.CLOSED, "Step 2: gate stays CLOSED"
 
-        # Step 3: AskUserQuestion → re-close gate + inject advisory
+        # Step 3: AskUserQuestion → inject advisory (Component C). The status
+        # re-close (Component B) is a no-op here (already CLOSED) — kept
+        # because it costs nothing and remains meaningful if GateStatus is
+        # ever OPEN for another reason (see GateConfig design note).
         auq_ctx = _auq_pretool_ctx(session_id)
         result3 = router._dispatch_gates(auq_ctx, state)
         assert state.gates["ida"].status == GateStatus.CLOSED, (
-            "Step 3: AskUserQuestion must re-close IDA gate"
+            "Step 3: AskUserQuestion re-close is a no-op — gate was already CLOSED"
         )
         assert result3 is not None and result3.context_injection, (
             "Step 3: AskUserQuestion must inject advisory"
         )
 
-        # Step 4: Stop again (gate re-CLOSED) → IDA fires again
-        result4 = router._dispatch_gates(stop_ctx, state)
+        # Step 4: a later, genuinely fresh Stop (stop_hook_active=False again,
+        # modelling that real work happened since step 2) → IDA fires again.
+        fresh_ctx = _stop_ctx(session_id)
+        result4 = router._dispatch_gates(fresh_ctx, state)
         assert result4 is not None and result4.verdict == GateVerdict.WARN, (
-            f"Step 4: Stop must WARN again after re-close. Got {result4!r}"
+            f"Step 4: Stop must WARN again once stop_hook_active clears. Got {result4!r}"
         )
-        assert state.gates["ida"].status == GateStatus.OPEN, (
-            "Step 4: gate must OPEN after re-firing"
+        assert state.gates["ida"].status == GateStatus.CLOSED, (
+            "Step 4: gate stays CLOSED after firing"
         )
