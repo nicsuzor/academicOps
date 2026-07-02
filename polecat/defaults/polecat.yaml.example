@@ -57,12 +57,18 @@ session_defaults:
   # Gate enforcement modes. Each value MUST be one of warn | block | off.
   # handover: block — a session that did real work must hand over before Stop
   # (read-only sessions are exempt automatically). /end-session and /dump unlock it.
+  # rbg_review: block — dispatched (polecat/crew) sessions must run a final rbg
+  # axiom audit before exit. The code-level fallback (used only when NO
+  # polecat.yaml applies at all, e.g. an ad hoc direct-CLI session) is "off" —
+  # this is the ONLY lever for that distinction; the gate engine itself no
+  # longer branches on session type.
   gates:
     handover: block
     qa: warn
     rbg: warn
     hydration: off
     ida: warn
+    rbg_review: block
     rbg_threshold: 50
 
 # ---------------------------------------------------------------------------
@@ -406,7 +412,8 @@ crew_names:
 # ─── Removed (do not set; covered by the YAML above) ───────────────────────
 #
 #   HANDOVER_GATE_MODE, QA_GATE_MODE, ENFORCER_GATE_MODE,
-#   HYDRATION_GATE_MODE, IDA_GATE_MODE   →  use `gates:` above.
+#   HYDRATION_GATE_MODE, IDA_GATE_MODE, RBG_REVIEW_GATE_MODE
+#                                          →  use `gates:` above.
 #   ENFORCER_TOOL_CALL_THRESHOLD          →  use `gates.enforcer_threshold`.
 #   ENFORCER_DISABLED                     →  use `gates.enforcer: off`.
 #   POLECAT_SESSION_TYPE                  →  removed (aops-b368109a). The

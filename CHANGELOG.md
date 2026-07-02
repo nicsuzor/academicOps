@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.50](https://github.com/nicsuzor/academicOps/compare/v0.3.49...v0.3.50) (2026-07-02)
+
+
+### Bug Fixes
+
+* **hooks:** bypass Stop gates when session is paused (supersedes [#1998](https://github.com/nicsuzor/academicOps/issues/1998)) ([#2065](https://github.com/nicsuzor/academicOps/issues/2065)) ([138d0ca](https://github.com/nicsuzor/academicOps/commit/138d0caa3c69bc30d800760b8e5924f170feb34d))
+* **pipeline:** stop the production deploy gate from cancelling pending approvals ([c395370](https://github.com/nicsuzor/academicOps/commit/c39537081b652d677c2c0f30272973cba0b8c1ac))
+
 ## [0.3.49](https://github.com/nicsuzor/academicOps/compare/v0.3.48...v0.3.49) (2026-07-02)
 
 
