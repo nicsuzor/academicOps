@@ -58,7 +58,7 @@ timeline
         qa : Checks for task verification
         handover : Checks for commit/reflection
         ida : Honesty reflection (once per turn)
-        rbg-review : Final axiom audit (polecat/crew only)
+        rbg-review : Final axiom audit (armed everywhere; mode gates whether it bites)
 ```
 
 ## Config plumbing
@@ -77,7 +77,7 @@ The overlay applied on top of `session_defaults` is selected by the **dispatch s
 | `polecat run`  | `polecat.yaml:run_defaults`                                       | `polecat run` autonomous workers                |
 | direct CLI     | No overlay — built-in defaults in `gate_config.py` apply directly | Direct CLI sessions (not polecat-launched)      |
 
-For direct CLI sessions, polecat is not involved and the hook code reads env vars directly with its own defaults. Separately, the container is marked with `AOPS_POLECAT_CONTAINER=1` (a resolved operational signal, not a policy selector); `SessionState` derives its `session_type` (`crew` if `POLECAT_CREW_NAME` is also set, else `polecat`) from it, which the handover gate's triggers/initial-status consult. Gate **modes** are never inferred from this — they arrive pre-resolved.
+For direct CLI sessions, polecat is not involved and the hook code reads env vars directly with its own defaults. Separately, the container is marked with `AOPS_POLECAT_CONTAINER=1` (a resolved operational signal, not a policy selector); `SessionState` derives its `session_type` (`crew` if `POLECAT_CREW_NAME` is also set, else `polecat`) from it. This value is descriptive only (transcript metadata, forensics) — **no gate trigger, policy, or initial-status anywhere consults it**. Every gate has exactly one `initial_status` and one set of triggers, identical for every session type; per-surface differences exist ONLY because a different `*_GATE_MODE` value is in effect for that surface (via `polecat.yaml` or, for a direct CLI session, its own `.claude/settings.json`/shell profile). Gate **modes** are never inferred from `session_type` — they arrive pre-resolved.
 
 ### Plugin cache lifecycle
 
@@ -258,7 +258,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `rbg-review` gate
 
-> **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. It **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict; the trigger is structural (Stop event + armed flag + session type), never a content/keyword sniff. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
+> **TL;DR.** End-of-session axiom-audit backstop. Armed `CLOSED` from session start for **every** session type — there is no code branch on session type anywhere in this gate. It **DENIES the exit Stop** until the `rbg` subagent has run and returned a verdict, but ONLY when `RBG_REVIEW_GATE_MODE` is `block`/`warn`; the trigger is structural (Stop event + armed flag), never a content/keyword sniff. Per-surface scoping is entirely a config knob: the built-in code default is `off` (an ad hoc CLI session with no `polecat.yaml` eats no per-turn rbg delay, even though the gate still mechanically arms/re-arms), while dispatched surfaces (`polecat run` / `polecat crew`) opt in via `polecat.yaml` `session_defaults.gates.rbg_review: block`. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (built-in default `off`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
 
 ### Where it lives
 
@@ -275,9 +275,9 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ### How it's configured
 
-- **Mode key**: `gates.rbg_review` / `RBG_REVIEW_GATE_MODE`. `block` (default) | `warn` | `off`.
-- **Arm/re-arm**: `CLOSED` from session start for polecat/crew, re-arming `CLOSED` on every real `UserPromptSubmit` (session-type-filtered). Ad hoc interactive sessions start `OPEN` and never re-arm — the Stop policy never fires there.
-- **Block**: while `CLOSED`, the Stop policy returns `DENY` and injects the rbg-dispatch instruction (`prepare_rbg_review` builds the session-review file). No fire-once trigger (unlike qa/handover/ida) — stays `CLOSED` across repeated Stops until rbg actually runs.
+- **Mode key**: `gates.rbg_review` / `RBG_REVIEW_GATE_MODE`. `block` | `warn` | `off` (built-in code default `off`; set explicitly to `block` in `polecat.yaml` for dispatched surfaces — see `polecat.yaml.example`).
+- **Arm/re-arm**: `CLOSED` from session start for **every** session type, re-arming `CLOSED` on every real `UserPromptSubmit` — no session-type filter. When mode is `off`, this arming is inert: `is_rbg_review_block_mode`/`is_rbg_review_warn_mode` never match `off`, so no DENY/WARN is ever produced regardless of gate status.
+- **Block**: while `CLOSED` and mode is `block`/`warn`, the Stop policy returns `DENY`/`WARN` and injects the rbg-dispatch instruction (`prepare_rbg_review` builds the session-review file). No fire-once trigger (unlike qa/handover/ida) — stays `CLOSED` across repeated Stops until rbg actually runs.
 - **Clear trigger**: `rbg` subagent run (`SubagentStart`/`SubagentStop`/`PostToolUse` matching `^(aops[-_]core[:_])?rbg$`) → `OPEN`, resets the escape-hatch counter, `sticky_until=["UserPromptSubmit"]`.
 - **Escape-hatch threshold**: `RBG_REVIEW_DEGRADE_THRESHOLD` (default 5) consecutive Stop blocks in one turn degrades `DENY` → `WARN`-and-allow (`rbg_review.degraded` message) — failure-degradation only, not a normal bypass. Independent of the router-level 5-blocks-in-2-min safety override.
 - **Precedence**: registered ahead of `qa`/`handover`/`ida` in `GATE_CONFIGS`, so its `DENY` is delivered first; once cleared, the later Stop gates evaluate normally (ida is deferred, not consumed, while this gate denies).
@@ -296,12 +296,12 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ### How to debug when it isn't
 
-| Failure mode                                | Diagnostic                                                                                                                                       |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Gate never blocks in an interactive session | By design — ad hoc interactive sessions start `OPEN` and never re-arm. Confirm `session_type` in the session state file.                         |
-| Stop loops repeatedly without clearing      | Check whether the escape-hatch fired: after 5 consecutive blocks in a turn the gate degrades to `warn`-and-allow and logs `rbg_review.degraded`. |
-| `rbg` run doesn't clear the gate            | Confirm the dispatched `subagent_type` matches `^(aops[-_]core[:_])?rbg$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                       |
-| Mode silently `off`                         | `python -c "from hooks.gate_config import RBG_REVIEW_GATE_MODE; print(RBG_REVIEW_GATE_MODE)"`.                                                   |
+| Failure mode                                | Diagnostic                                                                                                                                                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Gate never blocks in an interactive session | By design — the built-in `RBG_REVIEW_GATE_MODE` default is `off` for any surface without an explicit `polecat.yaml` override. Confirm the resolved mode, not `session_type` (the gate no longer reads it).                     |
+| Stop loops repeatedly without clearing      | Check whether the escape-hatch fired: after 5 consecutive blocks in a turn the gate degrades to `warn`-and-allow and logs `rbg_review.degraded`.                                                                               |
+| `rbg` run doesn't clear the gate            | Confirm the dispatched `subagent_type` matches `^(aops[-_]core[:_])?rbg$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                                                                                                     |
+| Mode silently `off`                         | `python -c "from hooks.gate_config import RBG_REVIEW_GATE_MODE; print(RBG_REVIEW_GATE_MODE)"`. If a dispatched surface should enforce this, confirm `polecat.yaml` sets `gates.rbg_review: block` — the code default is `off`. |
 
 ---
 
@@ -378,7 +378,7 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 - **Mode key**: `gates.handover` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
 - **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$"` with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
-- **Re-arm trigger**: `UserPromptSubmit` (polecat/crew only) → clears sticky latch, then fires re-arm trigger → CLOSED. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
+- **Re-arm trigger**: `UserPromptSubmit` (every session type — no session-type filter) → clears sticky latch, then fires re-arm trigger → CLOSED. Re-arming CLOSED is harmless for a session that never did any work: the block/warn policies independently exempt `session_did_work=False` regardless of gate status. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
 - **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
 - **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
 
