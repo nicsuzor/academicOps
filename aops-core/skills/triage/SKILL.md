@@ -1,9 +1,10 @@
 ---
-name: survey
+name: triage
 type: skill
 category: instruction
-description: "Survey a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli (retro/trend) or jr (sweep) to keep main context clean."
+description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
 triggers:
+  - "triage"
   - "survey"
   - "retro"
   - "transcript review"
@@ -20,7 +21,6 @@ domain:
   - quality-assurance
   - operations
 allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__task_search
-owner: junior
 version: 1.0.0
 tags:
   - retro
@@ -30,9 +30,9 @@ tags:
   - consolidation
 ---
 
-# /survey — Unified Survey Skill
+# /triage — Unified Triage Skill
 
-Survey a corpus, classify findings, and dispatch outputs according to the selected mode.
+Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
 
 | Mode    | Corpus                              | Primary output                 |
 | ------- | ----------------------------------- | ------------------------------ |
@@ -49,7 +49,7 @@ Survey a corpus, classify findings, and dispatch outputs according to the select
 This skill delegates execution to keep the main context clean:
 
 - **`retro` / `trend` mode**: Dispatch `pauli` with access to PKB and system tools.
-- **`sweep` mode**: Dispatch `jr` to handle interactive triage and confirmation gates.
+- **`sweep` mode**: Dispatch `pauli` — issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work inside Pauli's existing charter (Modes 2/3 in `specs/agents/pauli.md`). Ambiguous classifications are flagged in the cycle report rather than blocking, matching Pauli's flag-don't-resolve posture.
 
 ---
 
@@ -63,11 +63,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
-- **Quality Gate**: Stop and alert the user if the transcript is:
-  - _Absent_: No matching markdown file — but first confirm the month-shard dir (`$AOPS_SESSIONS/transcripts/YYYY-MM/`) exists and is non-empty. A zero-hit glob in a wrong or missing directory is a lookup error, not an absent transcript.
-  - _Truncated_: File stops mid-turn or is drastically smaller than the raw JSONL line count.
-  - _Stripped_: Tool calls/results are missing from a `-full.md` file.
-- On any gate failure, name the failed condition and stop. Never silently fall back to the raw `.jsonl` — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
+- **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
@@ -91,7 +87,7 @@ When the transcript shows an artifact whose **premise** a sharp principal would 
 - The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
 - Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
 
-This makes the reviewer's miss visible and attributed — the compounding fix for floor-optimisation (#1585): a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it.
+This makes the reviewer's miss visible and attributed: a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it rather than compounding silently across future reviews.
 
 ### 2b. Pyramid discipline — when a retro fix shapes how an agent behaves
 
@@ -126,7 +122,7 @@ Produce a review in this exact format. Keep text concise:
 - If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
 - If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
 - Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
-- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #survey-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-surveying the same transcript.
+- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #triage-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-triaging the same transcript.
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
@@ -147,7 +143,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/CAPABILITIES.md §Session Summaries` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/summaries-schema.md` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 

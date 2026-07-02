@@ -70,12 +70,12 @@ A deterministic rig fails this test whether it makes the final call **or merely 
 
 ## 4. Honest scope — the backstop half of a pair
 
-This review-time test and the source-level premise gate (`premise-gate.md`) are a **pair**, and only the pair is surface-agnostic. The source gate binds the coordinated spend path (`/pull` / `/dispatch` / `/supervisor`); it cannot see a human who hand-codes and opens a PR directly. This test is the catch for exactly those premises — **every PR hits review regardless of how it was created.** When a bad premise nonetheless passes review, `/learn` retro (`survey/SKILL.md` §2a) scores the miss **against the approving reviewer/surface**, not just the author — making the slipped-through premise a logged, attributed miss. Do not overclaim either half alone.
+This review-time test and the source-level premise gate (`premise-gate.md`) are a **pair**, and only the pair is surface-agnostic. The source gate binds the coordinated spend path (`/pull` / `/dispatch` / `/supervisor`); it cannot see a human who hand-codes and opens a PR directly. This test is the catch for exactly those premises — **every PR hits review regardless of how it was created.** When a bad premise nonetheless passes review, `/learn` retro (`triage/SKILL.md` §2a) scores the miss **against the approving reviewer/surface**, not just the author — making the slipped-through premise a logged, attributed miss. Do not overclaim either half alone.
 
 ## Referenced by
 
 - [[../../verify/SKILL.md]] — forced step-0 Premise Test before the QA diff read
 - [[../SKILL.md]] — forced step-0 Premise Test in the arch-fit lens
-- [[../../survey/SKILL.md]] — `/learn` retro §2a, bad-premise-approval recurrence scoring
+- [[../../triage/SKILL.md]] — `/learn` retro §2a, bad-premise-approval recurrence scoring
 - `premise-gate.md` (sibling PR #1733) — the source-level counterpart at `→ queued`; upgrade to a wikilink once both land on `dev`
 - [[../../../../specs/ENFORCEMENT-MAP.md]] — `judgment-non-delegable` enforcement row

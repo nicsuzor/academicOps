@@ -31,3 +31,12 @@ _When applying:_ ask first **"does this diff change the regulatory surface — w
 
 - Any change to an agent instruction, skill, or documentation file MUST comply with the rules set out in `specs/meta/doc-taxonomy.md`.
 - NO CRUFT: All prose must be concise and adapted for the target audience.
+
+## Framework Pre-commit Checks — hooks enforce where possible, agents enforce otherwise {#framework-pre-commit-checks}
+
+These are hard rules for aops framework internals. Enforced by pre-commit hooks where possible; where a hook can't reach (advisory-only checks), the acting agent is responsible for compliance instead.
+
+| Check                    | Script                              | Rule(s)                | Tier       | Behaviour                                                    |
+| ------------------------ | ----------------------------------- | ---------------------- | ---------- | ------------------------------------------------------------ |
+| `check-orphan-files`     | `scripts/check_orphan_files.py`     | (wikilink orphans)     | `advisory` | Exits 0; reports files with no incoming wikilinks            |
+| `check-skill-line-count` | `scripts/check_skill_line_count.py` | (SKILL.md ≤ 500 lines) | `advisory` | Exits 1 when any SKILL.md exceeds 500 lines; lists offenders |

@@ -85,12 +85,12 @@ a hard error (exit 1) — it fails fast and loud rather than guessing a default.
 
 Config (env):
 
-| Var                 | Required | Meaning                                                                                                    |
-| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host:path` on the tailnet, e.g. `nic@services-new:src/sessions/`. **Both** host and `path` are required — `path` is the **base** directory (see layout below). A malformed dest (no host, or no `:path`) is a hard error (exit 1), not a silent default. |
+| Var                 | Required | Meaning                                                                                                                                                                                                                                                                           |
+| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host:path` on the tailnet, e.g. `nic@services-new:src/sessions/`. **Both** host and `path` are required — `path` is the **base** directory (see layout below). A malformed dest (no host, or no `:path`) is a hard error (exit 1), not a silent default.                  |
 | `AOPS_TS_SSH_CMD`   | no       | remote-shell override, used **verbatim** (a full override — bake any ssh options into it). Defaults to `tailscale ssh` when tailscale is present, else the plain-ssh fallback. Set e.g. to `ssh -i ~/key -o StrictHostKeyChecking=accept-new` for key-based auth to a plain host. |
-| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set. |
-| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                    |
+| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set.                                                                 |
+| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                                                                                                                                                                                          |
 
 It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
 producing the same redacted markdown + summary JSON the local pipeline commits to
@@ -98,11 +98,11 @@ producing the same redacted markdown + summary JSON the local pipeline commits t
 tar-over-`tailscale ssh` (the remote only needs `tar`; `rsync` is not required).
 Under the destination base directory the payload lands as:
 
-| Subdir         | Contents                                          |
-| -------------- | ------------------------------------------------- |
+| Subdir         | Contents                                                  |
+| -------------- | --------------------------------------------------------- |
 | `transcripts/` | redacted markdown (full + abridged), from `transcript.py` |
-| `summaries/`   | session summary JSON, from `transcript.py`         |
-| `incoming/`    | **raw JSONL** — fallback only, see below            |
+| `summaries/`   | session summary JSON, from `transcript.py`                |
+| `incoming/`    | **raw JSONL** — fallback only, see below                  |
 
 If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
 JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted

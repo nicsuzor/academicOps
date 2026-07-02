@@ -1,7 +1,7 @@
 # Dispatch Rules
 
 Universal dispatch rules for any orchestrator or coordinator. These rules apply whether the
-dispatcher is the supervisor skill, Junior, or any other agent composing work briefs. Machine-
+dispatcher is the supervisor skill, Ida, or any other agent composing work briefs. Machine-
 and host-specific invocation details belong in the PKB (see `remote-polecat-tmux-dispatch`),
 not here.
 
@@ -17,7 +17,7 @@ the mechanics. Two-step reflex:
    parallel-able vs sequentially dependent, set the dependencies, and delegate each component.
 
 The expansion is the orchestrator's job. The principal says one line and trusts the orchestrator
-to produce the brief. This is a universal rule — it binds Junior, the supervisor, and any other
+to produce the brief. This is a universal rule — it binds Ida, the supervisor, and any other
 agent acting as coordinator.
 
 ## Pre-Dispatch Gates
@@ -25,8 +25,8 @@ agent acting as coordinator.
 All dispatches run through the pre-dispatch gates in
 [[../instructions/worker-dispatch#mandatory-pre-dispatch-gates]]:
 
-0. **Premise Gate** (hard refuse, runs first): Confirm the task body carries a genuine premise
-   judgment before spending any compute.
+0. **Premise Gate** (hard refuse, runs first): see
+   [[../../remember/references/premise-gate.md]] §2.
 1. **Pre-flight Confirmation Summary** (Code/Edit or Design/Spec/Research variant): 5-row table
    validating task ID, source repo, project field, chain position, and sanctioned mechanism.
 2. **Existing PR check**: Is a PR already linked to this task?

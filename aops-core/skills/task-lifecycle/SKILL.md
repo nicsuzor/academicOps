@@ -79,14 +79,9 @@ here.
 
 For the selected candidate leaf task:
 
-- **Path Resolution Check**: Read the task body and title and identify the
-  file/directory paths it points an executor at — the ones a worker would open or
-  edit (e.g. backtick- or quote-delimited tokens naming a real file: a known repo
-  top-level segment like `commands/`, `specs/`, `tests/`, `.agents/`,
-  `.github/`, or a token carrying a file extension). Use judgment, not a blanket
-  slash-match: skip prose mentions, tool names
-  (`mcp__plugin_aops-core_pkb__list_tasks`), and code identifiers (`focus_score`)
-  — they are not the brief's working paths. Then, only if the task names a
+- **Path Resolution Check**: Read the task body and title and identify the paths
+  the brief is actually asking you to act on, distinguishing them from paths
+  merely mentioned in passing or as examples. Then, only if the task names a
   `project`/repo you have checked out in this session, verify each identified
   path resolves there (`Read`/`ls`); if no relevant checkout is available, skip
   this check rather than warn on a path you cannot verify.
@@ -112,7 +107,7 @@ For the selected candidate leaf task:
 Performs exactly one dispatch step and exits. **Do not execute the task inline.**
 
 - **Specialist Subagent**: If the task or parent has an assignee matching a known
-  specialist (`marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `rbg`,
+  specialist (`marsha`, `rbg`, `pauli`, `james`, `ida`, `qa`, `rbg`,
   `polecat`), dispatch using `subagent_type="[name]"`.
 - **Polecat**: For repo-scoped, PR-shippable code/docs/tests without a named
   specialist, dispatch to a polecat.
@@ -165,8 +160,11 @@ hard-to-reverse step. Do not dispatch to a background worker.
 
 ## Relationship to `/supervisor`
 
-`/supervisor` is the multi-tick **delegate-and-verify** process; its Dispatch
-phase shares the Select + Gates spine above but always routes to workers (never
-inline) and adds proof, ledger, and escalation across ticks. `/dispatch` is a
-thin one-shot slice of that dispatch step; `/pull` is the inline counterpart for
-work you do yourself, here and now.
+This skill is invoked only by `/pull` (execute mode) and `/dispatch` (dispatch
+mode) — `/supervisor` does not call it. `/supervisor` is the multi-tick
+**delegate-and-verify** process; its own Dispatch phase applies the same premise
+and pre-flight gates independently (see
+[[../supervisor/instructions/worker-dispatch.md]]), then adds proof, ledger, and
+escalation across ticks. `/dispatch` is a thin one-shot slice of a single
+dispatch step; `/pull` is the inline counterpart for work you do yourself, here
+and now.

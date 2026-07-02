@@ -88,7 +88,7 @@ parallelise — in _opposite_ directions:
 **Dispatch constraint.** Fan-out is a privilege of a top-level / lead session. If this
 skill is itself running inside a leaf sub-agent, it **cannot** fan out a verifier panel —
 fall back to the serial hat-switch, or escalate to the caller that a panel needs a
-top-level session (see `specs/review-dispatch-topology.md`).
+top-level session.
 
 ## The five-stage loop
 

@@ -8,7 +8,7 @@ tier: observability
 depends_on: []
 tags: [spec, observability, architecture]
 created: 2026-01-24
-related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]], [[observability.md]], [[session-naming-convention.md]]
+related: [[enforcement]], [[session-insights-prompt]], [[observability.md]], [[session-naming-convention.md]]
 ---
 
 # Framework Observability Architecture
@@ -17,7 +17,7 @@ related: [[workflow-system-spec]], [[enforcement]], [[session-insights-prompt]],
 
 - [[aops-core/skills/session-insights/SKILL.md]] - Skill for generating session insights from transcripts
 - [[specs/session-insights-prompt.md]] - Prompt template for session analysis
-- [[specs/session-insights-metrics-schema.md]] - Schema for metrics extraction
+- [[specs/summaries-schema.md]] - Schema for metrics extraction
 - [[aops-core/hooks/unified_logger.py]] - Centralized logging for observability
 - [[polecat/observability.py]] - Polecat-specific observability
 - [[aops-core/commands/learn.md]] - `/learn` command for capturing framework observations and improvements
@@ -137,6 +137,37 @@ These observables create an audit trail that humans and agents can analyze.
 │  Humans analyze and decide what changes to make.                        │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Transcripts
+
+The framework records every LLM prompt as an individual transcript file, rather than one monolithic transcript per session.
+
+### Naming Convention
+
+```text
+{date}-{time}-{session_id}-{shortform}-[task-{short_task_id}-]{slug}{-variant}.{ext}
+```
+
+- `date`: `YYYYMMDD` format.
+- `time`: `HHMM` format.
+- `session_id`: 8-character hash identifying the overarching session.
+- `shortform`: Identifying context constructed from available identifiers (e.g., crew, repo, and provider like `claude` or `gemini`), joined by hyphens.
+- `task_prefix`: Optional `task-XXXXXXXX-` prefix prepended to the slug when the session is associated with a task ID.
+- `slug`: A short slug derived from the specific prompt content, making each file unique per interaction within the session.
+- `variant`: Usually `-full` or `-abridged` (empty for some artifact types).
+
+### Finding the Current Transcript
+
+Because transcripts are per-prompt, asking to find "the current transcript" requires identifying the most recently modified file for a given `session_id`.
+
+**Recipe to find the most recent full transcript for a session:**
+
+```bash
+# Transcripts are sharded into yyyy-mm/ subdirs after rotation; recent ones stay at top level.
+find $AOPS_SESSIONS/transcripts -name "*-${session_id}-*-full.md" -printf '%T@ %p\n' | sort -rn | head -n 1 | cut -d' ' -f2-
+```
+
+_(Substitute `${session_id}` with your actual 8-character session ID.)_
 
 ## Observable Types
 
@@ -319,7 +350,6 @@ Users can test the observability system by:
 
 ## Related Documents
 
-- [[workflow-system-spec]] - How workflows are selected and composed
 - [[enforcement]] - How rules are enforced via hooks
 - [[session-insights-prompt]] - Full schema for insights JSON
 - [[feedback-loops]] - How observations become improvements

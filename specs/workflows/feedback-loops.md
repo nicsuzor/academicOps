@@ -8,7 +8,7 @@ tier: observability
 depends_on: [framework-observability]
 tags: [spec, observability, feedback, architecture]
 created: 2026-01-24
-related: [[framework-observability]], [[enforcement]], [[workflow-system-spec]]
+related: [[framework-observability]], [[enforcement]]
 ---
 
 # Framework Feedback Loops
@@ -309,6 +309,5 @@ The `audit` skill ensures the framework remains healthy by:
 
 - [[framework-observability]] - What we observe and how
 - [[enforcement]] - Enforcement mechanism details
-- [[workflow-system-spec]] - Workflow selection and composition
 - [[commands/learn]] - The /learn command reference
 - `specs/ENFORCEMENT-MAP.md` - Current enforcement rules (operative SSoT; redirect stub at `specs/enforcement/enforcement-map.md`)

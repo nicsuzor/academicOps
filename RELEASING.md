@@ -1,19 +1,3 @@
----
-id: release-publish-pipeline
-title: "Release & Publish Pipeline"
-type: spec
-created: 2026-06-09T00:00:00.000000000+00:00
-modified: 2026-06-09T00:00:00.000000000+00:00
-permalink: release-publish-pipeline
-status: operative-target
-tags:
-  - workflow
-  - release
-  - publish
-  - versioning
-  - docker
----
-
 # Release & Publish Pipeline — merge → tag → artifacts
 
 > Status: **operative-target**. This is the single owner-approvable contract for the

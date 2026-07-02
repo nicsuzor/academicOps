@@ -39,10 +39,6 @@ Framework instructions should be no more detailed than required. Brevity reduces
 - **Check**: Does the `focus_score` increase daily for tasks with a `due` date (via the `urgency` component)?
 - **Violation**: Filtering for `status: ready` before computing focus_score, causing deadlines to be hidden.
 
-## Feedback Loops For Uncertainty (P#45)
-
-When the solution is unknown, don't guess — set up a feedback loop. Make minimal intervention, wait for evidence, revise hypothesis.
-
 ## Read-Then-Write Memory (P#52)
 
 Before generating insights, search existing knowledge. Memory is read-then-write, never write-only.
@@ -66,10 +62,6 @@ Related files MUST link to each other. Orphan files break navigation.
 ## File Category Classification (P#56)
 
 Every file has exactly one category (spec, ref, docs, script, instruction, template, state).
-
-## Never Bypass Locks Without User Direction (P#57)
-
-Agents must NOT remove or bypass lock files without explicit user authorization. When encountering locks, HALT and ask.
 
 ## Enforcement Changes Require enforcement-map.md Update (P#65)
 
@@ -201,8 +193,6 @@ When an agent observes unexpected behavior — a tool firing unexpectedly, a fil
 
 **Why this gap matters**: P#104 and P#116 together push agents toward action and away from unnecessary clarification. This creates pressure to classify ambiguous observations as bugs rather than design questions. P#117 is the counterweight: act on clear choices, but surface ambiguous system observations before encoding interpretations as fact.
 
-**Derivation**: Emerged from a session process failure (2026-03-17).
-
 <a id="P119"></a>
 
 ## Bound Subagent Scope Before Dispatch (P#119)
@@ -224,7 +214,7 @@ Before spawning an Explore subagent or any research-oriented subagent, the main 
 - If the user's prompt already contains the information needed (error messages, file paths, function names), do NOT spawn a subagent to re-discover that information
 - When the answer is evident from context, act directly — exploration is not a prerequisite for action
 
-**Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient. Addresses systematic over-exploration documented in #356.
+**Derivation**: Extends P#58 (Indices Before Exploration) from search strategy to subagent dispatch. P#58 says prefer indices over filesystem searches; P#119 says prefer direct action over subagent research when context is sufficient.
 
 <a id="P123"></a>
 
@@ -250,9 +240,3 @@ Trust an agent to read errors and recover instead of pre-paying the diagnostic c
 
 - Golden-path-first: Dispatch on the happy path; pay diagnostic costs in the react phase only when reality demands it.
 - Remove format prescription that forces agents into mechanical rituals or symptom-level outputs rather than structural analysis.
-
-**Derivation**:
-
-- Parent Epic: [[aops-5430c4c1]]
-- [[aops-76525b02]] (`/supervisor` rewrite): Replaced multi-gate preflight environment probes with golden-path-first dispatch, trusting the agent to recover if execution fails.
-- [[aops-5e2f018f]] (`/learn` rewrite): Removed the rigid output format, trusting the agent to surface structural causes rather than just symptom-level findings.

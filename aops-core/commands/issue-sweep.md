@@ -2,7 +2,7 @@
 name: issue-sweep
 type: command
 category: instruction
-description: Thin shortcut — delegates to the survey skill in sweep mode. Autonomous GitHub issue triage that shrinks the backlog (consolidates/closes duplicates, aggregates related issues) — one cycle per invocation.
+description: Thin shortcut — delegates to the triage skill in sweep mode. Autonomous GitHub issue triage that shrinks the backlog (consolidates/closes duplicates, aggregates related issues) — one cycle per invocation.
 triggers:
   - "issue sweep"
   - "sweep issues"
@@ -22,7 +22,7 @@ permalink: commands/issue-sweep
 
 # /issue-sweep — Triage Backlog Issues
 
-Triages GitHub issues by delegating to the `survey` skill in `sweep` mode. Triages ≤ 20 issues per cycle.
+Triages GitHub issues by delegating to the `triage` skill in `sweep` mode. Triages ≤ 20 issues per cycle.
 
 ## Invocation & Arguments
 
@@ -42,5 +42,5 @@ Triages GitHub issues by delegating to the `survey` skill in `sweep` mode. Triag
 
 ## Dispatch
 
-Delegate the sweep execution to the Junior coordinator agent:
-`Agent(subagent_type='junior', prompt='Run survey skill in sweep mode with [user arguments/focus]')`
+Delegate the sweep execution to Pauli (issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work inside Pauli's existing charter — see `specs/agents/pauli.md`):
+`Agent(subagent_type='pauli', prompt='Run triage skill in sweep mode with [user arguments/focus]')`
