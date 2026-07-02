@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.49](https://github.com/nicsuzor/academicOps/compare/v0.3.48...v0.3.49) (2026-07-02)
+
+
+### Bug Fixes
+
+* **hooks:** log the resolved wire decision, not pre-translation state ([#2057](https://github.com/nicsuzor/academicOps/issues/2057)) ([956ee09](https://github.com/nicsuzor/academicOps/commit/956ee09330f1b2534c5f42079010cde3a0ac5eb3))
+
 ## [0.3.48](https://github.com/nicsuzor/academicOps/compare/v0.3.47...v0.3.48) (2026-07-02)
 
 
