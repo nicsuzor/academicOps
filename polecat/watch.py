@@ -79,7 +79,7 @@ def watch(ctx, interval, stall_threshold, project):
 
     _use_legacy = False
     try:
-        from lib.task_model import TaskStatus
+        from lib.task_model import TaskStatus  # pyright: ignore[reportMissingImports]
 
         _use_legacy = True
     except ImportError:

@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("enforcer.policy_message", {})
+    content = registry.render("rbg.policy_message", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -39,9 +39,9 @@ class TemplateSpec:
     """Specification for a gate template.
 
     Attributes:
-        name: Unique identifier, e.g., "enforcer.policy_message"
+        name: Unique identifier, e.g., "rbg.policy_message"
         category: What kind of template (user message, context, subagent)
-        filename: Template file name, e.g., "enforcer-policy-message.md"
+        filename: Template file name, e.g., "rbg-policy-message.md"
         required_vars: Variables that MUST be provided to render
         optional_vars: Variables that MAY be provided (default to empty string)
         description: Human-readable purpose
@@ -90,18 +90,17 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Static UPS nudge to search the PKB before relying on memory (T0)",
         env_override="PKB_NUDGE_TEMPLATE",
     ),
-    # --- Enforcer gate ---
-    "enforcer.context": TemplateSpec(
-        name="enforcer.context",
+    # --- RBG gate ---
+    "rbg.context": TemplateSpec(
+        name="rbg.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="enforcer-context.md",
+        filename="rbg-context.md",
         required_vars=(
             "session_context",
             "tool_name",
         ),
         optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
-        description="Full context for enforcer compliance check",
-        env_override="ENFORCER_CONTEXT_TEMPLATE",
+        description="Full context for RBG compliance check",
     ),
     "qa.context": TemplateSpec(
         name="qa.context",
@@ -114,52 +113,51 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         optional_vars=("session_id", "gate_name"),
         description="Session context for QA verification before exit",
     ),
-    "enforcer.verified": TemplateSpec(
-        name="enforcer.verified",
+    "rbg.verified": TemplateSpec(
+        name="rbg.verified",
         category=TemplateCategory.USER_MESSAGE,
-        filename="enforcer-verified.md",
+        filename="rbg-verified.md",
         required_vars=(),
-        description="Status message when enforcer compliance check passes",
+        description="Status message when RBG compliance check passes",
     ),
-    "enforcer.policy_message": TemplateSpec(
-        name="enforcer.policy_message",
+    "rbg.policy_message": TemplateSpec(
+        name="rbg.policy_message",
         category=TemplateCategory.USER_MESSAGE,
-        filename="enforcer-policy-message.md",
+        filename="rbg-policy-message.md",
         required_vars=(),
         optional_vars=("ops_since_open",),
-        description="Short message when enforcer gate blocks a tool call",
+        description="Short message when RBG gate blocks a tool call",
     ),
-    "enforcer.policy_context": TemplateSpec(
-        name="enforcer.policy_context",
+    "rbg.policy_context": TemplateSpec(
+        name="rbg.policy_context",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="enforcer-policy-context.md",
+        filename="rbg-policy-context.md",
         required_vars=("temp_path",),
         optional_vars=("ops_since_open",),
-        description="Full context injection when enforcer gate blocks",
-        env_override="ENFORCER_POLICY_CONTEXT_TEMPLATE",
+        description="Full context injection when RBG gate blocks",
     ),
-    "enforcer.countdown": TemplateSpec(
-        name="enforcer.countdown",
+    "rbg.countdown": TemplateSpec(
+        name="rbg.countdown",
         category=TemplateCategory.USER_MESSAGE,
-        filename="enforcer-countdown.md",
+        filename="rbg-countdown.md",
         required_vars=("remaining", "temp_path"),
         optional_vars=("threshold", "current", "gate_name"),
-        description="Countdown warning before enforcer threshold",
+        description="Countdown warning before RBG threshold",
     ),
-    "enforcer.instruction": TemplateSpec(
-        name="enforcer.instruction",
+    "rbg.instruction": TemplateSpec(
+        name="rbg.instruction",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="enforcer-instruction.md",
+        filename="rbg-instruction.md",
         required_vars=("temp_path",),
-        description="Instruction to invoke enforcer agent",
-        env_override="ENFORCER_INSTRUCTION_TEMPLATE",
+        description="Instruction to invoke RBG agent",
+        env_override="RBG_INSTRUCTION_TEMPLATE",
     ),
-    "enforcer.audit": TemplateSpec(
-        name="enforcer.audit",
+    "rbg.audit": TemplateSpec(
+        name="rbg.audit",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="enforcer-audit.md",
+        filename="rbg-audit.md",
         required_vars=("session_id", "gate_name", "tool_name"),
-        description="Audit context for enforcer gate",
+        description="Audit context for RBG gate",
     ),
     # --- QA gate: trigger and policy messages ---
     "qa.complete": TemplateSpec(
@@ -238,13 +236,9 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Agent-facing honesty check injected into context on Stop",
     ),
-    "ida.policy_message": TemplateSpec(
-        name="ida.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="ida-policy-message.md",
-        required_vars=(),
-        description="Short user-facing message when Ida gate fires on Stop",
-    ),
+    # ida.policy_message (ida-policy-message.md) removed when ida·reminder moved
+    # to the asyncRewake quiet-split: warn mode shows no separate user banner, and
+    # block mode carries its short line inline (gates/definitions.py).
     "ida.askuserquestion_reminder": TemplateSpec(
         name="ida.askuserquestion_reminder",
         category=TemplateCategory.CONTEXT_INJECTION,
@@ -256,37 +250,40 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
     "rbg_review.context": TemplateSpec(
         name="rbg_review.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="rbg-review-context.md",
+        filename="rbg-context.md",
         required_vars=("session_context", "tool_name"),
-        description="Turn record written to the temp file the rbg-review subagent reads",
+        optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
+        description="Turn record written to the temp file the RBG subagent reads",
     ),
     "rbg_review.policy_message": TemplateSpec(
         name="rbg_review.policy_message",
         category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-review-policy-message.md",
+        filename="rbg-policy-message.md",
         required_vars=(),
-        description="Short user-facing message when the rbg-review gate blocks Stop",
+        optional_vars=("ops_since_open",),
+        description="Short user-facing message when the RBG gate blocks Stop",
     ),
     "rbg_review.policy_context": TemplateSpec(
         name="rbg_review.policy_context",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="rbg-review-policy-context.md",
+        filename="rbg-policy-context.md",
         required_vars=("temp_path",),
-        description="Context injection instructing the agent to dispatch rbg before Stop",
+        optional_vars=("ops_since_open",),
+        description="Context injection instructing the agent to dispatch RBG before Stop",
     ),
     "rbg_review.complete": TemplateSpec(
         name="rbg_review.complete",
         category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-review-complete.md",
+        filename="rbg-verified.md",
         required_vars=(),
-        description="Status message when rbg has run and the rbg-review gate clears",
+        description="Status message when RBG has run and the RBG gate clears",
     ),
     "rbg_review.degraded": TemplateSpec(
         name="rbg_review.degraded",
         category=TemplateCategory.USER_MESSAGE,
         filename="rbg-review-degraded.md",
         required_vars=("threshold",),
-        description="Loud escape-hatch message when rbg-review degrades to WARN-and-allow",
+        description="Loud escape-hatch message when RBG degrades to WARN-and-allow",
     ),
 }
 

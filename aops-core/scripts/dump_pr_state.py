@@ -136,7 +136,7 @@ def apply_triage(pr: dict, repo_path: Path):
     # when it gives up — loop-ceiling exhaustion (it also requests the
     # maintainer as reviewer) or an agent crash it cannot self-recover. Either
     # is a genuine "needs a human" event. Transient red CI and merge conflicts
-    # on their own are the pipeline's NORMAL working state — the enforcer/qa/
+    # on their own are the pipeline's NORMAL working state — the rbg/qa/
     # mechanic churn on them — so they stay pipeline-owned, NOT escalate. The
     # state lives on a StatusContext rollup entry (context/state), distinct
     # from CheckRun build/lint failures (name/conclusion).

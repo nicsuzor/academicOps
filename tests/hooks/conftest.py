@@ -19,7 +19,7 @@ def _deterministic_gate_modes(monkeypatch):
         monkeypatch,
         handover="warn",
         qa="block",
-        enforcer="block",
+        rbg="block",
         hydration="off",
     )
     reinit_gates_with_defaults()

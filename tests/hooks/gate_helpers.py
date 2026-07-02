@@ -105,11 +105,11 @@ def set_gate_modes(
     *,
     handover: str = "warn",
     qa: str = "block",
-    enforcer: str = "block",
+    rbg: str = "block",
     hydration: str = "off",
     ida: str = "off",
     rbg_review: str = "off",
-    enforcer_threshold: int = 50,
+    rbg_threshold: int = 50,
 ) -> None:
     """Stamp the requested gate modes onto the environment.
 
@@ -120,11 +120,11 @@ def set_gate_modes(
     """
     monkeypatch.setenv("HANDOVER_GATE_MODE", handover)
     monkeypatch.setenv("QA_GATE_MODE", qa)
-    monkeypatch.setenv("ENFORCER_GATE_MODE", enforcer)
+    monkeypatch.setenv("RBG_GATE_MODE", rbg)
     monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
     monkeypatch.setenv("IDA_GATE_MODE", ida)
     monkeypatch.setenv("RBG_REVIEW_GATE_MODE", rbg_review)
-    monkeypatch.setenv("ENFORCER_TOOL_CALL_THRESHOLD", str(enforcer_threshold))
+    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", str(rbg_threshold))
 
 
 def make_session_state(scenario: dict) -> SessionState:
@@ -168,17 +168,17 @@ def make_context(scenario: dict) -> HookContext:
 def make_gate_trigger_state(gate_name: str) -> SessionState:
     """Create a SessionState that causes the named gate's policy to fire.
 
-    - enforcer: ops_since_open at threshold
+    - rbg: ops_since_open at threshold
     - qa / handover / ida: gate CLOSED so Stop-event policy fires
 
     For the handover gate, session_did_work is set to True so the policy
     condition (which exempts read-only sessions) is satisfied (aops-16a15a05).
     """
     state = SessionState.create("test-gate-mode", client_type="claude")
-    if gate_name == "enforcer":
-        from hooks.gate_config import ENFORCER_TOOL_CALL_THRESHOLD
+    if gate_name == "rbg":
+        from hooks.gate_config import RBG_TOOL_CALL_THRESHOLD
 
-        state.gates["enforcer"].ops_since_open = ENFORCER_TOOL_CALL_THRESHOLD
+        state.gates["rbg"].ops_since_open = RBG_TOOL_CALL_THRESHOLD
     elif gate_name in ("qa", "handover", "ida"):
         if gate_name not in state.gates:
             state.gates[gate_name] = GateState(status=GateStatus.CLOSED)
@@ -196,10 +196,10 @@ def make_gate_trigger_state(gate_name: str) -> SessionState:
 def make_gate_trigger_context(gate_name: str) -> HookContext:
     """Create a HookContext that triggers the named gate's policy.
 
-    - enforcer: PreToolUse on Agent (spawn tool, not excluded)
+    - rbg: PreToolUse on Agent (spawn tool, not excluded)
     - qa / handover / ida: Stop event
     """
-    if gate_name == "enforcer":
+    if gate_name == "rbg":
         return HookContext(
             session_id="test-gate-mode",
             client_type="claude",
@@ -234,6 +234,28 @@ def run_router_claude(input_data: dict, timeout: int = 30) -> tuple[dict, str]:
     if result.stdout.strip():
         output = json.loads(result.stdout)
     return output, result.stderr
+
+
+def run_router_claude_raw(input_data: dict, timeout: int = 30) -> tuple[str, int, str]:
+    """Run router in Claude Code mode, returning (stdout, returncode, stderr) RAW.
+
+    The asyncRewake quiet-split path (Claude Stop, ENFORCEMENT-MAP §1.1
+    `ida·reminder`) emits the ida-reminder body as PLAIN TEXT on stdout and exits
+    2 — there is no JSON to parse. Use this when the router may take that path;
+    ``run_router_claude`` (JSON) raises JSONDecodeError on a plain body.
+    """
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(AOPS_CORE)
+    result = subprocess.run(
+        [sys.executable, str(ROUTER_PATH), "--client", "claude"],
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+        cwd=str(AOPS_CORE),
+    )
+    return result.stdout, result.returncode, result.stderr
 
 
 def run_router_gemini(input_data: dict, event: str, timeout: int = 30) -> tuple[dict, str]:

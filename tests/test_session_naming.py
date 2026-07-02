@@ -419,11 +419,9 @@ class TestParseSessionFilename:
         assert parsed.slug == "fix-lint"
 
     def test_gate_variant(self):
-        parsed = parse_session_filename(
-            "20260411-1430-a1b2c3d4-academicops-claude-session-enforcer.md"
-        )
+        parsed = parse_session_filename("20260411-1430-a1b2c3d4-academicops-claude-session-rbg.md")
         assert parsed is not None
-        assert parsed.variant == "-enforcer"
+        assert parsed.variant == "-rbg"
         assert parsed.slug == "session"
 
     def test_with_directory_prefix(self):

@@ -22,7 +22,7 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from build_utils import (
+    from build_utils import (  # pyright: ignore[reportMissingImports]
         convert_mcp_to_gemini,
         get_git_commit_sha,
         safe_copy,
@@ -302,9 +302,10 @@ def get_project_version(aops_root: Path) -> str:
 
 
 # The shipped aops-core hook deps are declared in the TRACKED source file
-# aops-core/pyproject.toml (epic-267fe017). The build reads that file and stamps
-# the version (+ trims hooks for cowork); there is no longer an inline pyproject
-# string literal here that could drift from the real file.
+# templates/aops-core.pyproject.toml (epic-267fe017). The build reads that file
+# and stamps the version; there is no longer an inline pyproject string literal
+# here that could drift from the real file. Not called for platform=="cowork" —
+# that build ships no pyproject.toml/uv.lock at all (see build_aops_core).
 AOPS_CORE_PYPROJECT_PLACEHOLDER_VERSION = "0.0.0"
 
 # Matches the `version = "..."` line under [project] (placeholder in source).
@@ -316,29 +317,22 @@ def generate_aops_core_pyproject(
 ) -> str:
     """Return the shipped pyproject.toml content with the build version stamped in.
 
-    Each platform reads its own tracked source manifest — the single source of
-    truth for that surface's shipped runtime deps — and substitutes the
-    placeholder version with the real build version.
+    All platforms that ship a pyproject.toml (``claude`` / ``gemini`` /
+    ``antigravity``) read the same tracked source manifest,
+    ``templates/aops-core.pyproject.toml`` (ships ``lib`` + ``hooks``), and get
+    the placeholder version substituted with the real build version.
 
-    - ``claude`` / ``gemini`` / ``antigravity`` read ``aops-core/pyproject.toml``
-      (ships ``lib`` + ``hooks``).
-    - ``cowork`` reads ``aops-cowork/pyproject.toml``. aops-cowork is a REAL
-      composed package (see build_aops_core): it carries its own committed
-      manifest, already lib-only because the cowork build ships NO hooks (the
-      shared aops-core hook stack serves the Cowork surface when aops-core is
-      installed from the dist marketplace — task aops-04075740 / mem-fe29111a).
-      Listing a ``hooks`` package that isn't on disk would break
-      ``uv sync --frozen`` at runtime, so the committed cowork manifest declares
-      ``packages = ["lib"]`` directly rather than having it trimmed here.
+    Not called for ``cowork`` — that build ships NO hooks (the shared aops-core
+    hook stack serves the Cowork surface when aops-core is installed from the
+    dist marketplace — task aops-04075740 / mem-fe29111a) and has no Python
+    deps of its own, so ``build_aops_core`` skips generating a pyproject.toml
+    (and the matching uv.lock) for it entirely rather than trimming one down.
     """
     if aops_root is None:
         aops_root = SCRIPT_DIR.parent
-    if platform == "cowork":
-        src_pyproject = aops_root / "aops-cowork" / "pyproject.toml"
-        missing_hint = "aops-cowork is a real composed package; its pyproject.toml must be tracked"
-    else:
-        src_pyproject = aops_root / "aops-core" / "pyproject.toml"
-        missing_hint = "cannot build aops-core without it (epic-267fe017)"
+
+    src_pyproject = aops_root / "templates" / "aops-core.pyproject.toml"
+    missing_hint = "cannot build aops-core without it (epic-267fe017)"
     if not src_pyproject.exists():
         raise FileNotFoundError(
             f"Required source manifest {src_pyproject} not found — {missing_hint}"
@@ -405,6 +399,13 @@ def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
                         new_hooks = []
                         for hook in value:
                             new_hook = dict(hook)
+                            # asyncRewake (config asyncRewake/rewakeMessage/
+                            # rewakeSummary) is the Claude-only Stop quiet-split
+                            # channel — strip it so it never leaks into the Gemini
+                            # hooks.json (Gemini has no asyncRewake; its Stop split
+                            # would be a separate capability).
+                            for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+                                new_hook.pop(_k, None)
                             if "command" in new_hook:
                                 # Replace Claude variable with Gemini variable
                                 cmd = new_hook["command"]
@@ -464,6 +465,10 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
     def _transform_hook(hook: dict, output_event: str) -> dict:
         """Rewrite a single command hook for agy (path, client flag, event arg, timeout)."""
         new_hook = dict(hook)
+        # asyncRewake is the Claude-only Stop quiet-split channel — strip it so it
+        # never leaks into the agy hooks.json (agy rejects unknown fields).
+        for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
+            new_hook.pop(_k, None)
         if "command" in new_hook:
             cmd = new_hook["command"]
             # agy runs PreToolUse/PostToolUse/Pre|PostInvocation hooks with the
@@ -849,21 +854,26 @@ def build_aops_core(
 
     # 1b. Stamp the tracked source pyproject (the in-tree SSoT for shipped deps)
     # with the build version and write it into the dist payload, then lock against
-    # that stamped copy so pyproject.toml and uv.lock ship in lockstep. The source
-    # is per-platform: aops-core/pyproject.toml (epic-267fe017) for claude/gemini/
-    # agy, and the real aops-cowork/pyproject.toml (lib-only) for cowork. uv.lock
+    # that stamped copy so pyproject.toml and uv.lock ship in lockstep. `uv.lock`
     # is NOT tracked — it is generated here per-platform. `uv sync --frozen` at
     # runtime then installs exactly what the manifest declared, no drift.
-    pyproject_source = (
-        "aops-cowork/pyproject.toml" if platform == "cowork" else "aops-core/pyproject.toml"
-    )
-    pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
-    pyproject_path = content_dir / "pyproject.toml"
-    pyproject_path.write_text(pyproject_content)
-    print(f"  ✓ Stamped pyproject.toml (v{version}) from {pyproject_source}")
+    #
+    # The cowork build ships neither a pyproject.toml nor a uv.lock: it has no
+    # hooks/ (see the skip above) and no Python dependencies of its own — the
+    # aops-core install co-located in the Cowork marketplace supplies the shared
+    # hook stack and its dependencies. Declaring a manifest here would just be
+    # dead packaging metadata for a package with nothing to install.
+    if platform != "cowork":
+        pyproject_source = "templates/aops-core.pyproject.toml"
+        pyproject_content = generate_aops_core_pyproject(version, platform, aops_root)
+        pyproject_path = content_dir / "pyproject.toml"
+        pyproject_path.write_text(pyproject_content)
+        print(f"  ✓ Stamped pyproject.toml (v{version}) from {pyproject_source}")
 
-    subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
-    print("  ✓ Regenerated uv.lock from pyproject.toml")
+        subprocess.run(["uv", "lock"], cwd=content_dir, check=True)
+        print("  ✓ Regenerated uv.lock from pyproject.toml")
+    else:
+        print("  - Skipped pyproject.toml/uv.lock for cowork (no deps of its own)")
 
     # 1b. Copy root-level scripts
     scripts_src = aops_root / "scripts"

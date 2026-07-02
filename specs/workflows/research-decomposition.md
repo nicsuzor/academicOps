@@ -2,13 +2,13 @@
 created: 2026-02-28
 depends_on:
 - conceptual-review-workflow
-- effectual-planning-agent
+- pauli
 - mcp-decomposition-tools
 id: workflows-8f0b0787
 modified: 2026-05-17T00:40:26.340717030+00:00
 related:
 - conceptual-review-workflow
-- effectual-planning-agent
+- pauli
 - mcp-decomposition-tools
 - non-interactive-agent-workflow-spec
 - polecat-swarms
@@ -31,7 +31,7 @@ type: spec
 _No implementation yet. This spec defines research-specific decomposition as a domain application of several upstream specs:_
 
 - [[specs/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
-- [[specs/effectual-planning-agent.md]] -- strategic planning; this spec specialises it for research projects
+- [[specs/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
 - [[specs/mcp-decomposition-tools.md]] -- task graph tools (reused)
 - [[aops-core/skills/planning/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
 
@@ -100,7 +100,7 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ### Effectual Planning Agent
 
-The effectual planner (see `specs/effectual-planning-agent.md`) provides the strategic framework: fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning. It receives fragments of information incrementally, organises them into a semantic web, and proposes high-value next steps based on information value across the network.
+The effectual planner (see `specs/agents/pauli.md`) provides the strategic framework: fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning. It receives fragments of information incrementally, organises them into a semantic web, and proposes high-value next steps based on information value across the network.
 
 This spec does NOT replace the effectual planner. Instead, it provides three things the planner uses when the domain is research:
 
@@ -464,7 +464,7 @@ verify: "Verify: platform governance study objectives met"
 ## Related
 
 - [[specs/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
-- [[specs/effectual-planning-agent.md]] -- upstream strategic planning; this spec specialises it for research
+- [[specs/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
 - [[specs/mcp-decomposition-tools.md]] -- task graph tools; reused for structured output
 - [[specs/non-interactive-agent-workflow-spec.md]] -- lifecycle management for non-interactive agent execution
 - [[specs/polecat-swarms.md]] -- execution layer; consumes decomposed task graphs

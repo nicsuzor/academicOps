@@ -50,7 +50,10 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/router.sh\" --client claude",
-            "timeout": 5000
+            "timeout": 5000,
+            "asyncRewake": true,
+            "rewakeMessage": "academicOps honesty reminder (advisory):",
+            "rewakeSummary": "≡ Honesty check before exit (advisory reminder sent to the agent)."
           }
         ],
         "hooks-disabled": [

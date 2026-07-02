@@ -24,7 +24,7 @@ search "aops bot deployment registry".
 
 - **Light** — `claude.yml` (@claude handler) + `pr-review.yml`. Small/low-activity
   repos. Secret: `CLAUDE_CODE_OAUTH_TOKEN` (via `claude setup-github`).
-- **Full** — adds `pr-pipeline.yml`/`pr-review-pipeline.yml`, `agent-enforcer.yml`,
+- **Full** — adds `pr-pipeline.yml`/`pr-review-pipeline.yml`, `agent-rbg.yml`,
   `agent-merge-prep.yml`, `merge-prep-cron.yml`, and `.github/agents/*` prompts.
   Active repos. Also needs `AOPS_BOT_GH_TOKEN` (PAT for pushes).
 
@@ -43,7 +43,7 @@ TARGET=~/src/<target-repo>
 mkdir -p "$TARGET/.github/workflows" "$TARGET/.github/agents"
 cp "$AOPS/.github/workflows/claude.yml" "$TARGET/.github/workflows/"   # Light: this only
 # Full: also copy pipeline workflows + agent prompts:
-cp "$AOPS"/.github/agents/{pr-reviewer,qa,enforcer}.agent.md "$TARGET/.github/agents/"
+cp "$AOPS"/.github/agents/{pr-reviewer,qa,rbg}.agent.md "$TARGET/.github/agents/"
 ```
 
 Pipeline workflows are tuned for academicOps CI — adapt per target: lint/test
@@ -83,11 +83,11 @@ deployment in the PKB deployment registry (search "aops bot deployment registry"
 
 ## Install scripts
 
-| Script                                      | What it does                                                                   |
-| ------------------------------------------- | ------------------------------------------------------------------------------ |
-| `scripts/install-pr-reviewer.sh <path>`     | Copies pr-reviewer agent + workflow, sets secrets                              |
-| `scripts/install-async-qa-agents.sh <path>` | Copies hydrator-reviewer + enforcer-reviewer agents + async-qa-review workflow |
-| `scripts/install-brain-workflows.sh`        | Installs PKB consolidation workflows to brain repo                             |
+| Script                                      | What it does                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------- |
+| `scripts/install-pr-reviewer.sh <path>`     | Copies pr-reviewer agent + workflow, sets secrets                         |
+| `scripts/install-async-qa-agents.sh <path>` | Copies hydrator-reviewer + rbg-reviewer agents + async-qa-review workflow |
+| `scripts/install-brain-workflows.sh`        | Installs PKB consolidation workflows to brain repo                        |
 
 `install-pr-reviewer.sh` references `pr-review.yml` (may be renamed — verify source paths first). This procedure is authoritative.
 

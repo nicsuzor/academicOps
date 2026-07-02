@@ -112,7 +112,7 @@ For the selected candidate leaf task:
 Performs exactly one dispatch step and exits. **Do not execute the task inline.**
 
 - **Specialist Subagent**: If the task or parent has an assignee matching a known
-  specialist (`marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `enforcer`,
+  specialist (`marsha`, `rbg`, `pauli`, `james`, `junior`, `qa`, `rbg`,
   `polecat`), dispatch using `subagent_type="[name]"`.
 - **Polecat**: For repo-scoped, PR-shippable code/docs/tests without a named
   specialist, dispatch to a polecat.

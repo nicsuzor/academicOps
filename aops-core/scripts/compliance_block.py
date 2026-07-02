@@ -17,7 +17,7 @@ from pathlib import Path
 aops_core_path = Path(__file__).parent.parent
 sys.path.insert(0, str(aops_core_path))
 
-from lib.session_state import set_enforcer_block
+from lib.session_state import set_rbg_block
 
 
 def main() -> int:
@@ -28,7 +28,7 @@ def main() -> int:
     session_id = sys.argv[1]
     reason = sys.argv[2]
 
-    set_enforcer_block(session_id, reason)
+    set_rbg_block(session_id, reason)
     print(f"Block set for session {session_id}")
     return 0
 

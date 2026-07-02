@@ -115,7 +115,7 @@ The supervisor's job ends when the single PR (for cohesive epics) or the individ
 | Layer                             | Owns                                                                                                 | Surface                   |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------- |
 | **Supervisor (synchronous, you)** | Decompose → dispatch → halt at `merge_ready` once the single PR is promoted (or individual PRs open) | One report per epic       |
-| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom enforcer, agent merge-prep                                 | PR labels + status checks |
+| **GHA pipeline (async)**          | The existing PR pipeline: CI, lint, axiom rbg, agent merge-prep                                      | PR labels + status checks |
 
 The supervisor does NOT poll GitHub Actions, does NOT wait for CI, does NOT chase reviewers. Once the single promoted PR is verified, produce the final summary and halt.
 
@@ -127,7 +127,7 @@ Set the epic to `merge_ready` once:
 - **Standalone Tasks**: Every child task has an open individual PR.
 - Any blocked/escalated subtasks are recorded in the task body with clear reasons.
 
-The existing GHA pipeline (pr-pipeline.yml, agent-enforcer.yml, agent-merge-prep.yml, summary-and-merge.yml) handles CI, axiom enforcement, merge prep, and the GitHub Environment approval gate. Review agents (rbg, pauli, marsha) may be invoked on the PR by callers separately.
+The existing GHA pipeline (pr-pipeline.yml, agent-rbg.yml, agent-merge-prep.yml, summary-and-merge.yml) handles CI, axiom enforcement, merge prep, and the GitHub Environment approval gate. Review agents (rbg, pauli, marsha) may be invoked on the PR by callers separately.
 
 ### Final-summary template (one report per epic)
 

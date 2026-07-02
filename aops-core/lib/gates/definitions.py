@@ -1,8 +1,8 @@
 from hooks.gate_config import (
-    ENFORCER_GATE_MODE,
-    ENFORCER_TOOL_CALL_THRESHOLD,
+    RBG_GATE_MODE,
     RBG_REVIEW_DEGRADE_THRESHOLD,
     RBG_REVIEW_GATE_MODE,  # noqa: F401  (referenced via custom_check, kept for discoverability)
+    RBG_TOOL_CALL_THRESHOLD,
     SENTINEL_GATE_MODE,
     SLASH_COMMAND_PROMPT_PATTERNS,
 )
@@ -39,11 +39,11 @@ from lib.gate_types import (
 # The order and its rationale (highest precedence first):
 #   sentinel    — PreToolUse destructive-op safety block; protects the user's
 #                 environment, never advisory. Highest-stakes forcing function.
-#   enforcer    — periodic compliance self-check (PreToolUse threshold block).
+#   RBG    — periodic compliance self-check (PreToolUse threshold block).
 #   rbg-review  — end-of-session rbg axiom audit, scoped to task-bound
 #                 (polecat/crew) sessions only. Armed CLOSED for polecat/crew,
 #                 OPEN (inert) for ad hoc interactive — so interactive users do
-#                 NOT eat a per-turn rbg delay. The enforcer every-N cadence is
+#                 NOT eat a per-turn rbg delay. The RBG every-N cadence is
 #                 the in-session mechanism; this gate adds only the final
 #                 backstop before a task-bound session exits. Placed ahead of
 #                 qa/handover/ida so its DENY + rbg-dispatch instruction is the
@@ -93,31 +93,31 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- Enforcer ---
+    # --- RBG ---
     GateConfig(
-        name="enforcer",
+        name="rbg",
         description="Enforces periodic compliance checks.",
         initial_status=GateStatus.OPEN,
         countdown=CountdownConfig(
             start_before=7,
-            threshold=ENFORCER_TOOL_CALL_THRESHOLD,
-            message_key="enforcer.countdown",
+            threshold=RBG_TOOL_CALL_THRESHOLD,
+            message_key="rbg.countdown",
         ),
         triggers=[
-            # Enforcer check -> Reset
+            # RBG check -> Reset
             # PreToolUse is included so the trigger fires (resetting the counter)
-            # BEFORE the policy evaluates. Without it, Agent(enforcer) is itself
+            # BEFORE the policy evaluates. Without it, Agent(rbg) is itself
             # blocked when ops >= threshold (deadlock: can't dispatch the agent
             # that would reset the counter).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops[-_]core[:_])?(enforcer|rbg)$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
-                    system_message_key="enforcer.verified",
-                    context_key="enforcer.verified",
+                    system_message_key="rbg.verified",
+                    context_key="rbg.verified",
                 ),
             ),
             # Track in-progress todo state (for mid-edit phase detection, #319)
@@ -137,24 +137,24 @@ GATE_CONFIGS = [
             GatePolicy(
                 condition=GateCondition(
                     hook_event="PreToolUse",
-                    min_ops_since_open=ENFORCER_TOOL_CALL_THRESHOLD,
+                    min_ops_since_open=RBG_TOOL_CALL_THRESHOLD,
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                     custom_check="not_mid_edit",
                 ),
-                verdict=normalize_verdict(ENFORCER_GATE_MODE),
-                message_key="enforcer.policy_message",
-                context_key="enforcer.policy_context",
+                verdict=normalize_verdict(RBG_GATE_MODE),
+                message_key="rbg.policy_message",
+                context_key="rbg.policy_context",
                 custom_action="prepare_compliance_report",
             ),
         ],
     ),
-    # --- RBG-review (end-of-session rbg audit, task-bound sessions only) ---
+    # --- rbg-review (end-of-session rbg audit, task-bound sessions only) ---
     # Directive (Nic, 2026-06-24, epic-f490bb11 — rework of the original
     # block-every-stop #1928): the heavy independent rbg axiom audit is a
     # Tier-2 backstop that must fire ONCE before a TASK-BOUND (polecat/crew)
     # session exits — NOT on every armed Stop, and NOT in ad hoc interactive
     # discussions where the user would notice the per-turn rbg delay. The
-    # enforcer every-N cadence (sentinel/enforcer gate, left untouched) remains
+    # rbg every-N cadence (rbg gate, left untouched) remains
     # the in-session mechanism; this gate adds only the final exit backstop.
     #
     # SCOPING (per-surface, mirrors the handover gate):
@@ -648,6 +648,9 @@ GATE_CONFIGS = [
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
+            # The short user-facing line is inline (the former ida-policy-message.md
+            # template was deleted when ida·reminder moved to the asyncRewake
+            # quiet-split — block mode keeps its visible reason, warn mode does not).
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -655,13 +658,18 @@ GATE_CONFIGS = [
                     custom_check="is_ida_block_mode",
                 ),
                 verdict=GateVerdict.DENY,
-                message_key="ida.policy_message",
+                message_template="≡ Honesty check before exit.",
                 context_key="ida.reminder",
             ),
-            # Warn mode: block-once — advisory injected into agent context via
-            # the warn+context_injection upgrade path in output_for_claude().
-            # Gate opens on first Stop (fire-once trigger above) so subsequent
-            # Stops in the same turn are not re-blocked. Re-arms on UPS.
+            # Warn mode: block-once advisory. On Claude Stop the full ida-reminder
+            # body is delivered to the agent via the asyncRewake quiet-split
+            # (router.async_rewake_body_for → exit 2; body → agent
+            # <system-reminder>, one-line config rewakeSummary → user); other
+            # clients fall back to the warn+context_injection path in
+            # output_for_claude()/output_for_*(). No message_key: the user no
+            # longer sees a separate ida banner. Gate opens on first Stop
+            # (fire-once trigger above) so subsequent Stops in the same turn are
+            # not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -669,7 +677,6 @@ GATE_CONFIGS = [
                     custom_check="is_ida_warn_mode",
                 ),
                 verdict=GateVerdict.WARN,
-                message_key="ida.policy_message",
                 context_key="ida.reminder",
             ),
         ],

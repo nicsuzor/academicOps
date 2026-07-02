@@ -133,6 +133,69 @@ class TestAgyCliLogPersistence:
         assert not any(self._CONTAINER_LOG in v for v in self._volumes(docker_cmd.cmd))
 
 
+class TestAgyBrainPersistence:
+    """agy v1.0.13+ writes its real transcript to a per-run brain dir
+    (~/.gemini/antigravity-cli/brain/<uuid>/.system_generated/logs/transcript*.jsonl),
+    OUTSIDE the session mount — it no longer writes session-*.json. Bind-mount
+    the brain/ parent into the host session_dir so the transcript is captured
+    (aops-acdb9295). Gated by the same persist_agy_log flag as the cli.log mount.
+    """
+
+    _CONTAINER_BRAIN = "/home/worker/.gemini/antigravity-cli/brain"
+
+    def _volumes(self, cmd):
+        return [cmd[i + 1] for i, x in enumerate(cmd) if x == "-v"]
+
+    def test_brain_bind_mounted_when_enabled(self, tmp_path):
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=False):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["agy"],
+                is_interactive=False,
+                session_dir=session_dir,
+                persist_agy_log=True,
+            )
+        host_brain = (session_dir / "agy-brain").resolve()
+        expected = f"{host_brain}:{self._CONTAINER_BRAIN}"
+        assert expected in self._volumes(docker_cmd.cmd)
+        # Host dir must pre-exist so Docker bind-mounts a dir agy can write into.
+        assert host_brain.is_dir()
+
+    def test_brain_not_mounted_by_default(self, tmp_path):
+        """Pure gemini runs (persist_agy_log defaults False) get no brain mount."""
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=False):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["gemini"],
+                is_interactive=False,
+                session_dir=session_dir,
+            )
+        assert not any(self._CONTAINER_BRAIN in v for v in self._volumes(docker_cmd.cmd))
+        assert not (session_dir / "agy-brain").exists()
+
+    def test_brain_not_bind_mounted_on_remote_daemon(self, tmp_path):
+        """Remote daemons can't bind-mount; the brain tree is copied out at the
+        call site instead. _build_docker_cmd must add no bind mount."""
+        session_dir = tmp_path / "polecats" / "task-x" / "aops"
+        with patch("cli._is_remote_daemon", return_value=True):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="gemini",
+                work_dir=Path("/tmp/worktree"),
+                env={},
+                agent_cmd=["agy"],
+                is_interactive=False,
+                session_dir=session_dir,
+                persist_agy_log=True,
+            )
+        assert not any(self._CONTAINER_BRAIN in v for v in self._volumes(docker_cmd.cmd))
+
+
 class TestClaudeAuthEnvOnly:
     """Claude auth must be env-var only: no `.claude.json`/`.credentials.json`/
     `settings.json` staging from the host. See aops-06ab3ee0."""
