@@ -13,7 +13,8 @@ without importing upward from `hooks/`.
 PKB op coverage:
     `_PKB_OPERATIONS` is the single source of truth for which PKB MCP
     operations exist. The full set of prefixed variants
-    (`mcp__pkb__<op>`, `mcp__plugin_aops-core_pkb__<op>`, `mcp__pbk__<op>`,
+    (`mcp__pkb__<op>`, `mcp__plugin_aops-core_pkb__<op>`,
+    `mcp__plugin_aops-cowork_pkb__<op>`, `mcp__pbk__<op>`,
     `mcp_pkb_<op>`, `mcp_pbk_<op>`, `pkb__<op>`, and bare `<op>`) is
     generated mechanically at module load and injected into the
     `infrastructure` set. This eliminates the previous divergence between
@@ -159,7 +160,8 @@ _PKB_OPERATIONS: dict[str, str] = {
 # (e.g. future versioned plugin prefixes).
 _PKB_PREFIX_VARIANTS: tuple[str, ...] = (
     "mcp__pkb__",  # Claude Code short form
-    "mcp__plugin_aops-core_pkb__",  # Claude Code full plugin prefix
+    "mcp__plugin_aops-core_pkb__",  # Claude Code full plugin prefix (aops-core build)
+    "mcp__plugin_aops-cowork_pkb__",  # Claude Code full plugin prefix (aops-cowork build)
     "mcp__pbk__",  # Gemini typo variant (double underscore)
     "mcp_pkb_",  # Gemini single-underscore form
     "mcp_pbk_",  # Gemini single-underscore typo variant
@@ -169,11 +171,16 @@ _PKB_PREFIX_VARIANTS: tuple[str, ...] = (
 
 # Regex to match any PKB MCP prefix variant and extract the operation name.
 # Used as fallback for unknown prefix variants (e.g. versioned plugin prefixes
-# not enumerated in _PKB_PREFIX_VARIANTS).
+# not enumerated in _PKB_PREFIX_VARIANTS). The plugin-name segment uses
+# [\w.-]+ (not [\w.]+) because plugin names are hyphenated (aops-core,
+# aops-cowork, ...) — a class without "-" silently fails to match any of them
+# and falls through to the conservative "write" default instead of
+# "infrastructure" (found via a hyphenated name, aops-cowork, that had no
+# hardcoded literal the way aops-core did).
 _PKB_PREFIX_RE = re.compile(
     r"^(?:"
-    r"mcp__(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)__"  # Claude double-underscore
-    r"|mcp_(?:plugin_(?:aops-core_|[\w.]+_))?(?:pkb|pbk)_"  # Gemini single-underscore
+    r"mcp__(?:plugin_[\w.-]+_)?(?:pkb|pbk)__"  # Claude double-underscore
+    r"|mcp_(?:plugin_[\w.-]+_)?(?:pkb|pbk)_"  # Gemini single-underscore
     r"|pkb__"  # bare double-underscore
     r")(.+)$"
 )
