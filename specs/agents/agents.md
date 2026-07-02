@@ -4,41 +4,36 @@ title: Agent Ecosystem Specification
 type: spec
 status: ready
 tier: core
-depends_on: [agent-authority, agent-definition-content]
+depends_on: [agent-authority]
 tags: [spec, agents, overview, architecture]
 created: 2026-06-29
 ---
 
 # Agent Ecosystem Specification
 
-This specification defines the academicOps agent ecosystem, detailing the distinct roles, personas, capabilities, and boundaries of the framework's named agent personalities.
+This specification defines the academicOps agent ecosystem: the distinct roles, personas, and boundaries of the framework's named agent personalities.
 
 ## Structural Separation
 
-To prevent prompt bloat and keep runtime execution cost-effective, the framework strictly separates agent documentation from runtime instructions:
+The framework strictly separates agent documentation from runtime instructions:
 
 1. **Runtime Agent Definitions** (`aops-core/agents/*.md` and `.github/agents/*.md`)
-   - Written in YAML frontmatter and markdown.
    - Loaded by the agent harness at execution time as the system prompt.
-   - Bounded strictly by [[agent-definition-content]]: they contain only identity/role statements, standing behavioral rules, verdict schemas, and routing tables. No procedural skill matter, no documentation, no design history.
-2. **Agent Specifications / Acceptance Contracts** (`specs/agents/*.md`)
-   - The authoritative specifications and design documentation for each agent personality.
-   - Serve as the **fitness rubrics** and **acceptance contracts** that the runtime definitions are evaluated against.
-   - Enforce qualitative acceptance criteria (ACs), tone guidelines, and failure modes. Read by QA reviewers (like Marsha) to evaluate session transcripts and audit agent behavior.
+   - Contain only identity/role statements, standing behavioral rules, verdict schemas, and routing tables — no procedural skill matter, documentation, or design history. This content boundary is enforced by the `/craft` skill.
+2. **Agent Specifications** (`specs/agents/*.md`)
+   - The acceptance contracts each agent is evaluated against: role, disposition, and fitness criteria for auditing the agent's own transcripts.
 
 ## Core Agent Roster
 
-The academicOps framework defines five canonical agent personalities, split into two main classes:
-
 ### Head Personalities
 
-Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. Ida is currently the plugin's sole head personality — see [[interactive-coworking]] for the behavioral doctrine any future head agent must also satisfy.
+Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. They are self-contained, not subclassed. Ida is currently the plugin's sole head personality.
 
 - [[ida|Ida]] (`specs/agents/ida.md`)
   - **Role**: Interactive academic-research co-worker and default interactive head for research repositories.
   - **Disposition**: Co-works live in a single working directory — holds between steps, answers self-answerable questions itself, delegates for context hygiene — with a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
 
-A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (not part of the redistributable academicOps package — see `specs/SURFACES.md`'s `~/junior` SDK launcher).
+A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ### The Review Crew
 
@@ -49,7 +44,7 @@ Review crew agents are stateless, specialized subagents commissioned by orchestr
   - **Disposition**: Traverses atomic PKB curation to macro-level effectual strategy. Pauli is the **sole graph-shaper** (owns `/planner` epic decomposition and prioritization).
 - [[rbg|RBG]] (`specs/agents/rbg.md`)
   - **Role**: The Judge (Axiom Compliance Reviewer).
-  - **Disposition**: Applies universal axioms and project-local rules with qualitative judgment rather than mechanical token matching.
+  - **Disposition**: Applies universal axioms and project-local rules with qualitative judgment rather than mechanical token matching. Also serves the PR pipeline: the GHA `enforcer` check runs the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and may push mechanical fixes.
 - [[marsha|Marsha]] (`specs/agents/marsha.md`)
   - **Role**: The QA Reviewer (Runtime Verifier).
   - **Disposition**: Assumes everything is broken until proven. Executes code, traces data, and verifies live runtime outcomes.
@@ -57,26 +52,17 @@ Review crew agents are stateless, specialized subagents commissioned by orchestr
   - **Role**: The Orchestrator (Multi-Agent Review Coordinator).
   - **Disposition**: Commissions RBG, Pauli, and Marsha, synthesizes their findings, and compositionally resolves APPROVE/REVISE/ESCALATE recommendations.
 
----
+## CI Agents
 
-## Sibling & CI Agents
+GitHub Action workers (`.github/agents/`) handle non-interactive PR-pipeline work:
 
-Specialized agent variants exist for automation and non-interactive workflows:
+- **`enforcer`**: the rbg persona in a PR-context wrapper (see RBG above).
+- **`mechanic`**: branch/merge preparation and mechanical git alignment.
+- **`pr-reviewer`**: automated initial assessment of incoming pull requests.
+- **`qa`**: automated regression tests and linting gates in CI.
+- **`pre-admission-responder`**: validates incoming contributions before PR admission.
 
-- `enforcer`
-  - A compact, Haiku-class variant of RBG.
-  - Used in periodic GitHub Actions gates to check axiom compliance on PRs.
-  - Derived automatically as a build artifact from the canonical `rbg` specification.
-- GitHub Action Workers (`.github/agents/`)
-  - **`mechanic`**: Handles branch/merge preparation and mechanical git alignment.
-  - **`pr-reviewer`**: Automated initial assessment of incoming pull requests.
-  - **`qa`**: Runs automated regression tests and linting gates in CI.
-  - **`pre-admission-responder`**: Validates incoming contributions against basic requirements before PR admission.
+## Governance
 
----
-
-## Governance Specs
-
-- [[agent-authority]] (`specs/agents/agent-authority.md`): Defines the frontmatter schema, skill delegation, tool naming conventions, the non-transit rule, and the four-axis permissions model (tools, mcpServers, bashScopes, fileAccess — see [Permissions Model](agent-authority.md#permissions-model)).
-- [[agent-definition-content]] (`specs/agents/agent-definition-content.md`): Governs what is permitted in runtime agent definition files.
-- `specs/audit/AGENT-COMPLIANCE-MATRIX.md`: Generated audit snapshot of each agent file's compliance against this schema.
+- [[agent-authority]] (`specs/agents/agent-authority.md`): Frontmatter schema, skill delegation, tool naming conventions, the non-transit rule, and the four-axis permissions model.
+- `specs/audit/AGENT-COMPLIANCE-MATRIX.md`: Generated audit snapshot of each agent file's compliance against that schema.

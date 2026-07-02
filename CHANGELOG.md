@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.3.45](https://github.com/nicsuzor/academicOps/compare/v0.3.44...v0.3.45) (2026-07-02)
+
+
+### Features
+
+* **pipeline:** conflict-admission sweep — actually drive the mechanic onto conflicting PRs ([#2008](https://github.com/nicsuzor/academicOps/issues/2008)) ([54b32a7](https://github.com/nicsuzor/academicOps/commit/54b32a7c710b4bf7346784c52aa3374a26ec9f0d))
+* **pipeline:** sticky in-principle admission, codeowner review request, force-review hatch, clearer attestation ([#2010](https://github.com/nicsuzor/academicOps/issues/2010)) ([5c542b3](https://github.com/nicsuzor/academicOps/commit/5c542b341527955b82ae4784bc62bf930bf6c98a))
+* **specs:** aggregate agent specs and add agents overview ([#2026](https://github.com/nicsuzor/academicOps/issues/2026)) ([33db681](https://github.com/nicsuzor/academicOps/commit/33db68114281dc6d06337f6e4b0ebf27a910b7cb))
+
+
+### Bug Fixes
+
+* **aops-ts:** make SessionEnd transcript sync actually work on the tailnet ([#2033](https://github.com/nicsuzor/academicOps/issues/2033)) ([f7b7e61](https://github.com/nicsuzor/academicOps/commit/f7b7e6142c8465ce346e33e46076d7e6f7e1552c))
+* complete enforcer→rbg rename, restore green Pytest on dev ([#2036](https://github.com/nicsuzor/academicOps/issues/2036)) ([bd86229](https://github.com/nicsuzor/academicOps/commit/bd86229451e77f78b7ac53b4b3882df998ad9c06))
+* **daily:** enforce correct placement of audit-complete sentinel ([#1979](https://github.com/nicsuzor/academicOps/issues/1979)) ([81b3266](https://github.com/nicsuzor/academicOps/commit/81b3266c240a41e0de202c8958fa4e7f70c8b23d))
+* **end-session:** handover follow-ups/threads must be pullable task-ids, not prose ([#2016](https://github.com/nicsuzor/academicOps/issues/2016)) ([#2017](https://github.com/nicsuzor/academicOps/issues/2017)) ([370df1e](https://github.com/nicsuzor/academicOps/commit/370df1ee74eea7161db86026abe69c5bc6419cd5))
+* **pipeline:** admit conflicting PRs and resolve conflicts via mechanic on admission ([#2006](https://github.com/nicsuzor/academicOps/issues/2006)) ([39e81d2](https://github.com/nicsuzor/academicOps/commit/39e81d26f710df6bfd5dfc3d4c600fcd3ffc7630))
+* **polecat:** seed agy onboarding marker so workers skip first-run wizard (aops-d9cc656a) ([#2025](https://github.com/nicsuzor/academicOps/issues/2025)) ([babe50e](https://github.com/nicsuzor/academicOps/commit/babe50e98a7afaa18e255f508e2eecc11e4d0664))
+* resolve broken imports after moving scripts ([d8b208a](https://github.com/nicsuzor/academicOps/commit/d8b208a7bf37280949f2881aeb11e5758d69ac39))
+* resolve remaining multi-line broken imports ([accada9](https://github.com/nicsuzor/academicOps/commit/accada9a2a3f47b868bf038b187085539a88fdd7))
+* restore dropped enforcement map row for single-PR cohesion rule ([#2004](https://github.com/nicsuzor/academicOps/issues/2004)) ([d48a3d9](https://github.com/nicsuzor/academicOps/commit/d48a3d937865f857c4272a8f2668ec467f004271))
+* **test:** de-time-bomb session-anchor tests (hard-coded date aged out of window) ([#2007](https://github.com/nicsuzor/academicOps/issues/2007)) ([bdad8cd](https://github.com/nicsuzor/academicOps/commit/bdad8cdc85b08d8bcde3a376c51c94b6d3ca8393))
+
+
+### Code Refactoring
+
+* convert commands to thin wrappers and support agy CLI ([#2024](https://github.com/nicsuzor/academicOps/issues/2024)) ([e6fe2ef](https://github.com/nicsuzor/academicOps/commit/e6fe2ef11b145055314fb467894978e4d3a09f9b))
+
+
+### Documentation
+
+* radically simplify specs, agent personas, skills, and top-level docs ([#2035](https://github.com/nicsuzor/academicOps/issues/2035)) ([07e3962](https://github.com/nicsuzor/academicOps/commit/07e3962294d0d022e67f995f5846a1b6aa23cfac))
+
+
+### Build System
+
+* fix UnboundLocalError in generate_aops_core_pyproject ([c026381](https://github.com/nicsuzor/academicOps/commit/c026381801ca0480142437ee5987c329422416f5))
+
+
+### Miscellaneous
+
+* **gates:** collapse enforcer gate into rbg and rbg-review ([12ada1b](https://github.com/nicsuzor/academicOps/commit/12ada1b2111c87c1ab85a955cfc0188e4e18ef68))
+
 ## [0.3.44](https://github.com/nicsuzor/academicOps/compare/v0.3.43...v0.3.44) (2026-06-28)
 
 ### Features

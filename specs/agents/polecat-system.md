@@ -10,266 +10,101 @@ tags: [spec, polecat, architecture]
 
 # Polecat System: Ephemeral Agent Workspaces
 
+The polecat system gives every dispatched task its own isolated, disposable git
+workspace so many agents can work concurrently without touching each other or the
+user's development checkouts. It builds on top of the PKB task system: tasks are the
+queue; polecat is the workspace and execution surface.
+
 ## Giving Effect
 
-- [[polecat/cli.py]] - CLI tool (`polecat start`, `polecat finish`, `polecat merge`, etc.)
-- [[polecat/manager.py]] - Core library for worktree lifecycle (`claim_next_task`, `setup_worktree`, `nuke_worktree`)
-- [[polecat/engineer.py]] - Refinery: merge queue processing and test validation
-- [[polecat/validation.py]] - Pre-merge validation checks
-- [[polecat/github.py]] - GitHub integration for branch/PR management
-- [[polecat/observability.py]] - Metrics and logging for polecat operations
-- [[commands/pull.md]] - `/pull` command that claims and executes tasks in polecat worktrees
+- [[polecat/cli.py]] — CLI (`polecat run`, `polecat start`, `polecat finish`, …)
+- [[polecat/manager.py]] — workspace lifecycle (mirrors, clones, claiming, nuking)
+- [[polecat/finalize.py]] — `finish`: push, PR creation, status transition
+- [[polecat/pkb_bridge.py]] — task reads/writes against the PKB MCP server
+- [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
+- [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
+  transcript stubs
+- `aops-core/skills/task-lifecycle/SKILL.md` — `/pull` and `/dispatch`, which route
+  work onto this surface
 
-The Polecat System is a mechanism for highly concurrent, isolated agent work using **git worktrees**. It allows multiple agents to work on different tasks simultaneously without interfering with each other or the main repository.
+## Guarantees
 
-This system is inspired by the "Gas Town" architecture but adapted for the `academicOps` environment using the existing `task` infrastructure.
+1. **Isolation.** Each task runs in its own full clone under
+   `$POLECAT_HOME/worktrees/<task-id>`, spawned from a bare mirror (or the registered
+   repo path if no mirror exists) with `origin` re-pointed at the real remote.
+   Nothing an agent does is visible in the user's dev checkout until merged.
+2. **Concurrency.** Workspace creation is lock-protected; branch-per-task naming
+   (`polecat/<task-id>` by default) prevents collisions across parallel workers.
+3. **Atomic claiming.** Claiming a `queued`/`ready` task sets it `in_progress` with
+   an assignee and verifies the claim stuck — two claimants cannot both win.
+4. **Verified merge.** `finish` pushes the branch and files a GitHub PR; merging
+   happens through PR review and CI, never by polecat writing to main. Failing CI
+   checks or finish failures kick the task back (`in_progress` / `review`) instead
+   of merging.
+5. **Observability.** Every run updates the task record (status, assignee, PR URL)
+   and appends lifecycle events to `$POLECAT_HOME/transcripts/<task-id>.jsonl`, so a
+   supervisor can see where any run — including a crashed one — got to.
+6. **Cleanup.** `nuke` removes the workspace and branch; unpushed work is protected
+   unless explicitly forced.
 
-```mermaid
-flowchart TD
-    subgraph POLECAT["Polecat Lifecycle"]
-        P1[Claim Task] --> P2[Create Worktree]
-        P2 --> P3[Work in Isolation]
-        P3 --> P4[Push Branch]
-        P4 --> P5[Nuke Worktree]
-    end
-
-    subgraph REPO["Repo Structure"]
-        R1[~/src/repo] -->|Spawns| R2[$POLECAT_HOME/polecat/task-id]
-        R2 -.->|Links back| R1
-    end
-
-    subgraph MERGE["Refinery (Future)"]
-        M1[Scan for Ready Branches] --> M2[Merge to Main]
-        M2 --> M3[Close Task]
-    end
-
-    P1 -.->|task ready| T[Task DB]
-    P5 -.->|task complete| T
-```
-
-## Core Concept: The "Kennel"
-
-Instead of creating temporary clones inside the main repo (which confuses IDEs), we use a centralized directory:
-
-- **Location:** `$POLECAT_HOME/polecat/`
-- **Structure:** `$POLECAT_HOME/polecat/<task-id>/`
-- **Mechanism:** `git worktree` linked to bare mirror repositories.
-
-### Bare Mirror Architecture
-
-Worktrees are spawned from **bare mirror clones** stored in `$POLECAT_HOME/polecat/.repos/`, not from your active development repos in `~/src/`. This provides:
-
-- **Isolation**: Complete decoupling from your dev environment
-- **Concurrency**: Bare repos handle unlimited concurrent worktrees
-- **Clean state**: Each spawn starts from origin, not local uncommitted changes
+## Layout
 
 ```
-$POLECAT_HOME/polecat/
-├── .repos/                    # Hidden bare mirror repos
-│   ├── aops.git               # bare clone of academicOps
-│   ├── buttermilk.git         # bare clone of buttermilk
-│   └── writing.git            # bare clone of writing
-├── crew/                      # Persistent crew worktrees
-└── task-abc123/               # worktree spawned from .repos/aops.git
+$POLECAT_HOME/                 # resolved via lib.paths (env var or polecat_home: config)
+├── .repos/<project>.git       # bare mirrors, synced from origin (never from local checkouts)
+├── worktrees/<task-id>/       # ephemeral per-task clones
+├── crew/<name>/               # persistent named workspaces for interactive crew sessions
+├── transcripts/<task-id>.jsonl # lifecycle events per run
+└── local.yaml                 # machine-local path overrides
 ```
 
-**Setup:** Run `polecat init` once to create bare mirrors for all registered projects.
+The project registry lives in `$AOPS_SESSIONS/polecat.yaml` (projects, aliases, crew
+names, operational config), with per-machine paths overridable in
+`$POLECAT_HOME/local.yaml`.
 
-### Mirror Sync Behavior
+## Task Status Lifecycle
 
-**Automatic safe sync on spawn**: When creating a new worktree, the system automatically runs a safe sync (`git fetch --all` without `--prune`) to pull the latest commits. This is non-fatal - if the sync fails (e.g., offline), the worktree creation continues using the existing mirror state, with a warning.
-
-**Manual sync with `polecat sync`**: This command runs `git fetch --all --prune` which removes stale refs. **Warning**: Running `polecat sync` while worktrees are active may cause issues if it prunes refs that active worktrees depend on. Prefer to run `polecat sync` only when no polecats are running.
-
-**Freshness check**: On worktree creation, the system compares the mirror's main branch to the local repo's main branch. If the mirror is stale (commits behind), a warning is logged but creation proceeds.
-
-## Components
-
-### 1. Polecat Manager (`manager.py`)
-
-A Python library that handles the lifecycle:
-
-- **`claim_next_task(caller, project)`**:
-  - Finds the highest priority `queued` task.
-  - Atomically locks it and updates status to `in_progress`.
-  - Assigns it to the caller (e.g., `nic`, `bot`).
-- **`setup_worktree(task)`**:
-  - Performs a safe sync of the mirror (if used) before creating the worktree.
-  - Checks mirror freshness and warns if stale.
-  - Identifies the correct parent repo (e.g., `academicOps`, `buttermilk`).
-  - Creates a `git worktree` at `$POLECAT_HOME/polecat/<task-id>`.
-  - Creates a feature branch `polecat/<task-id>` from `main`.
-- **`nuke_worktree(task_id)`**:
-  - Force-removes the worktree.
-  - Deletes the local branch.
-
-### 2. CLI Tool (`polecat/cli.py`)
-
-The unified interface for worktree management and merging:
-
-```bash
-# One-time setup: create bare mirrors for all projects
-polecat init
-
-# Refresh mirrors with latest from origin (WARNING: uses --prune, run only when no polecats active)
-polecat sync
-
-# Start working on the next priority task
-polecat start --caller nic --project aops
-
-# Checkout a specific task by ID
-polecat checkout <task-id>
-
-# List active polecats
-polecat list
-
-# Mark work complete and ready for merge
-polecat finish [--no-push] [--nuke]
-
-# Clean up worktree (without marking ready)
-polecat nuke <task-id>
-
-# Run the Refinery: merge all merge_ready tasks to main
-polecat merge
-
-# Full automation: claim → run agent → finish
-polecat run -p aops
-```
-
-#### The `finish` Command
-
-The `finish` command is the critical transition that marks a task as **ready to merge**:
-
-1. **Validates** uncommitted changes (warns if dirty)
-2. **Pushes** the current branch to origin
-3. **Updates** task status from `in_progress` → `merge_ready`
-4. **Optionally** nukes the worktree with `--nuke`
-
-This explicit command ensures workers intentionally signal completion rather than accidentally triggering merge through cleanup.
-
-#### The `merge` Command
-
-The `merge` command runs the Refinery to process all tasks in `merge_ready` status:
-
-1. **Scans** for tasks with `status: merge_ready`
-2. **Fetches** and squash-merges each polecat branch to main
-3. **Runs tests** after merge
-4. **Marks** task as `done` on success
-5. **Cleans up** the branch and worktree
-
-On failure, the task status is set to `review` for manual intervention.
-
-#### The `run` Command
-
-The `run` command automates the polecat setup cycle:
-
-1. **Claims** the next ready task (or a specific task with `-t`, or fetches a GitHub issue with `--issue`).
-2. **Creates** the worktree.
-3. **Builds a self-contained prompt** from the task body, metadata, and resolved soft-dependencies via `polecat.prompt_template.build_polecat_prompt`. The agent receives the full task context directly — no separate `/pull` invocation.
-4. **Runs the agent** (`claude` by default; `--gemini` selects the Gemini CLI) inside a Docker container against the worktree. Headless by default (`-p <prompt> --max-turns <budget>`); `-i` drops to interactive.
-5. **On success (exit code 0)**: auto-finishes by default — pushes the branch, marks the task `merge_ready`, and nukes the worktree. Disable with `--no-auto-finish` if the agent should leave the worktree in place.
-6. **On failure**: leaves the worktree intact and prints recovery instructions. OOM (exit 137) is detected and surfaced with platform-specific remediation.
-
-```bash
-polecat run -p aops                  # Claim next ready task from aops
-polecat run -t task-123              # Run a specific task
-polecat run --issue owner/repo#42    # Run a GitHub issue
-polecat run -p aops --no-auto-finish # Skip auto-finish on success
-```
-
-Turn budget is derived from the task's `effort` field (XS=40, S=70, M=100, L=150).
-
-> **v2 in progress** — the dispatch path is being refactored from a single 5343-line `cli.py` into an Executor + Provisioner protocol that supports remote docker hosts and jules workers. See [[plans/aops-core-james-agent-aops-core-aops-un-golden-rivest.md]] for the migration plan. Steps land as independent PRs; this section will be updated as new workers and provisioners come online.
-
-## Workflow
-
-1. **Start:** `polecat start` claims a task (e.g., `osb-c36de7ec`).
-2. **Context Switch:** The user/agent `cd`s to `/home/nic/polecats/osb-c36de7ec`.
-3. **Work:** Code changes are made, tested, and committed in this isolated environment.
-4. **Finish:** `polecat finish` pushes the branch and marks the task as `merge_ready`.
-5. **Cleanup:** `polecat nuke` removes the worktree directory.
-6. **Merge:** The Refinery scans `merge_ready` tasks, merges them to `main`, and marks them `done`.
-
-### Task Status Lifecycle
+Polecat uses the canonical PKB statuses (see
+[[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
 
 ```
-active → in_progress → merge_ready → done
-         (claimed)     (finish)      (merged)
-                    ↘ review (on failure)
+queued → in_progress → merge_ready → done   (PR merged)
+              │              ↘ review        (needs human judgment)
+              ↘ partial                      (honest partial stop: draft PR + follow-up task)
 ```
 
-- **active**: Task is ready to be claimed by a worker
-- **in_progress**: Worker is actively working on the task
-- **merge_ready**: Work is complete, branch pushed, ready for automated merge
-- **review**: Merge failed, requires human intervention
-- **done**: Merged to main, branch cleaned up
+## CLI Surfaces
 
-## Repository Mapping
-
-Since worktrees depend on a parent repo, the system maps projects to paths:
-
-| Project      | Repository Path     |
-| ------------ | ------------------- |
-| `aops`       | `~/src/academicOps` |
-| `buttermilk` | `~/src/buttermilk`  |
-| `writing`    | `~/writing`         |
-
-## Integration with Task System
-
-This system builds _on top_ of the existing Task MCP:
-
-- It consumes tasks via the internal `TaskStorage.get_ready_tasks()` method.
-- It updates tasks via `update_task` (status/assignee) MCP tool.
-- It does NOT replace the task database; it just provides the **workspace** for executing them.
-
-## Refinery System
-
-The Refinery completes the lifecycle by merging completed work back into the main repository.
-
-### Refinery Components
-
-1. **Engineer (`polecat/engineer.py`)**:
-   - **`scan_and_merge()`**: Finds tasks with status `merge_ready`.
-   - **`process_merge(task)`**:
-     1. Locates the repo using `PolecatManager.get_repo_path`.
-     2. Fetches `origin` to find the `polecat/<task-id>` branch.
-     3. Checks out `main` and pulls latest.
-     4. **Squash Merges** the feature branch (dry run to check conflicts).
-     5. **Runs Tests** (default: `uv run pytest`).
-     6. Commits and pushes to `main`.
-     7. Deletes the feature branch (local & remote).
-     8. Updates task status to `done`.
-     9. **Nukes** the local worktree via `PolecatManager`.
-
-2. **CLI (unified with polecat)**:
-   ```bash
-   # Run a single pass of the merge queue
-   polecat merge
-   ```
-
-### Kickback & Recovery Workflow
-
-If a merge fails (due to conflicts or failing tests), the Refinery implements a "Kickback" logic:
-
-1. **Status Change**: The task status is set to `review`.
-2. **Annotation**: A `🏭 Refinery Report` is appended to the task body, containing the error log and timestamp.
-3. **Manual/LLM Intervention**: An interactive agent picks up `review` tasks, fixes the code, and sets status back to `merge_ready` to retry.
+- `polecat run` — full cycle: claim (or `-t <id>` / `--issue`) → clone workspace →
+  build self-contained prompt from the task → run the agent in a container →
+  auto-`finish` on success; on failure, leave the workspace intact with recovery
+  instructions.
+- `polecat start` / `polecat checkout <id>` / `polecat resume <id>` — claim or
+  re-enter a task workspace without running an agent.
+- `polecat finish` — push, file/update the PR, set `merge_ready` (`--partial` for a
+  draft-PR honest stop).
+- `polecat nuke <target>` — destroy a workspace and its branch.
+- `polecat crew` — persistent named interactive workspace (branch `crew/<name>`).
+- `polecat swarm` / `polecat watch` / `polecat summary` — run, monitor, and
+  summarise parallel workers.
+- `polecat init` / `polecat sync` — create and refresh bare mirrors and working
+  repos; mirrors are also safe-synced automatically before each workspace spawn.
+- `polecat list` / `list-crew` / `reset-stalled` / `ping-pkb` / `setup` — inventory
+  and maintenance.
 
 ## User Expectations
 
-The Polecat System is the foundational workspace for autonomous agent work. Users and agents can expect the following behaviors:
-
-1. **Worktree Isolation**: Every task claimed via `polecat start` or `polecat run` operates in a dedicated, isolated git worktree at `$POLECAT_HOME/polecat/<task-id>`.
-   - **Test**: Changes made in a polecat worktree are not visible in the main development repository (e.g., `~/src/academicOps`) until they are explicitly merged.
-2. **Concurrency**: Multiple agents can work on different tasks in parallel without branch name collisions or file locking issues.
-   - **Test**: Two separate `polecat start` commands for different tasks succeed and create two distinct worktrees and branches.
-3. **Atomic Task Claiming**: The system prevents race conditions where two agents attempt to work on the same task simultaneously.
-   - **Test**: If two processes call `claim_next_task` for the same task, only one succeeds; the other either picks the next task or returns `None`.
-4. **Automatic Branch Management**: Starting a task automatically creates a feature branch named `polecat/<task-id>` from the latest state of the main branch.
-   - **Test**: Running `git branch -vv` inside a new polecat worktree shows the correct branch name and its upstream set to `origin/polecat/<task-id>`.
-5. **Verified Merging (Refinery)**: The `polecat merge` command only integrates work that passes the project's automated test suite.
-   - **Test**: A task in `merge_ready` status with failing tests is moved to `review` status with an error report, and is NOT merged into `main`.
-6. **Clean Exit**: Completing a task with `polecat finish --nuke` or `polecat nuke` removes the worktree and cleans up local resources.
-   - **Test**: After `polecat nuke <task-id>`, the directory `$POLECAT_HOME/polecat/<task-id>` no longer exists.
-7. **Mirror Freshness**: Worktrees are spawned from a local bare mirror that is automatically synced (best-effort) on creation.
-   - **Test**: `polecat start` logs a warning if the local mirror is stale compared to the main development repository, but still completes the setup.
+1. **Workspace isolation** — Test: changes in a polecat workspace are not visible in
+   the registered dev repo until merged via PR.
+2. **Concurrency** — Test: two `polecat start` invocations for different tasks
+   produce two distinct workspaces and branches.
+3. **Atomic claiming** — Test: two processes claiming the same task — one wins; the
+   other picks the next task or gets none.
+4. **Branch management** — Test: a new task workspace is on `polecat/<task-id>`
+   (unless the task or config specifies a shared branch).
+5. **Verified merge** — Test: a `merge_ready` task's work lands on main only through
+   its PR; finish failures set `review`, failing CI checks set `in_progress`.
+6. **Clean exit** — Test: after `polecat nuke <task-id>`,
+   `$POLECAT_HOME/worktrees/<task-id>` no longer exists.
+7. **Mirror freshness** — Test: workspace spawn safe-syncs the mirror from origin
+   first; a sync failure warns and proceeds rather than blocking offline work.

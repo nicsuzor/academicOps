@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from lib.session_state import SessionState
+
 # Get the script path
 SCRIPT_PATH = Path(__file__).parents[2] / "aops-core" / "scripts" / "compliance_block.py"
 
@@ -69,8 +71,6 @@ class TestEnforcerBlockIntegration:
 
     def test_block_is_persisted_to_session_state(self, tmp_path: Path) -> None:
         """Verify the block is written to session state file."""
-        import json
-
         state_dir = tmp_path / "claude-session"
         state_dir.mkdir()
 
@@ -98,8 +98,9 @@ class TestEnforcerBlockIntegration:
             f"Expected 1 session file, found {len(session_files)}: {session_files}"
         )
 
-        # Read and verify the state directly
-        state = json.loads(session_files[0].read_text())
-        # <!-- NS: these tests need to be refactored for the new pydantic objects. -->
-        assert state["gates"]["rbg"]["blocked"] is True
-        assert state["gates"]["rbg"]["block_reason"] == "Policy violation reason"
+        # Parse via the pydantic model so the test validates the real schema
+        # and fails loudly if SessionState/GateState drift.
+        state = SessionState.model_validate_json(session_files[0].read_text())
+        rbg_gate = state.gates["rbg"]
+        assert rbg_gate.blocked is True
+        assert rbg_gate.block_reason == "Policy violation reason"
