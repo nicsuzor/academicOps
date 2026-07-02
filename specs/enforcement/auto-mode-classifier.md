@@ -10,6 +10,8 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 
 # Auto-Mode Classifier — the framework's judgment gate at the per-action boundary
 
+<!-- NS: go through and remove all these 'spec not state' messages and make sure specs are compliant with our documentation standards. -->
+
 > **Spec, not state.** This file is the design statement for what the Claude
 > Code auto-mode classifier is _for_: the policy that decides which rules
 > belong in it and the cost model that shapes how those rules must be

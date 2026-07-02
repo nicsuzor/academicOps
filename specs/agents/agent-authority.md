@@ -22,6 +22,8 @@ type: spec
 
 # Agent Authority — Permissions and Skill Delegation
 
+<!-- NS: revise this spec, make sure it conforms to our standards -->
+
 **Operative state**: `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each agent holds. This spec defines the schema — fields, canonical tool naming, the four permissions axes, and skill/sub-agent delegation rules; the per-agent files are the binding declarations against it.
 
 **Audit-artifact**: `specs/audit/AGENT-TOOLS.md` is a mechanical dump generated from per-agent frontmatter for at-a-glance comparison. It is not writeable — drift is reported by it, not declared in it.

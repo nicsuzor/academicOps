@@ -10,6 +10,8 @@ tags: [spec, polecat, architecture, supervisor]
 created: 2026-03-11
 ---
 
+<!-- NS: this definitely doesn't belong in specs/agents/ -->
+
 # Supervisor Architecture
 
 The supervisor is the framework's delegate-and-verify process: a stateless tick that
@@ -77,12 +79,12 @@ the task body, so any instance can resume from where a prior one left off.
 
 Every supervisor tick performs the same four concerns:
 
-| Concern      | What it does                                 | Who decides           |
-| ------------ | -------------------------------------------- | --------------------- |
-| **Select**   | Choose which tasks to work on next           | Agent (LLM judgment)  |
-| **Dispatch** | Send tasks to workers (routing rules above)  | Polecat or subagent   |
-| **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment)  |
-| **Persist**  | Record state for recovery across invocations | Task body (PKB)       |
+| Concern      | What it does                                 | Who decides          |
+| ------------ | -------------------------------------------- | -------------------- |
+| **Select**   | Choose which tasks to work on next           | Agent (LLM judgment) |
+| **Dispatch** | Send tasks to workers (routing rules above)  | Polecat or subagent  |
+| **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment) |
+| **Persist**  | Record state for recovery across invocations | Task body (PKB)      |
 
 Evaluation yields one of three outcomes: **Accept** (meets criteria, move on),
 **Revise** (specific problems found, create a new worker task with feedback), or
