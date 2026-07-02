@@ -20,11 +20,45 @@ discipline at each.
 
 ## User Story
 
-<!-- NS: rewrite as a real user story. what i really want is the agent to know when to delegate to a local subagent and when to send off as a polecat. i also want a guarantee of full observability. -->
+As a researcher delegating work to agents, I want a single supervision process I
+invoke — never hand-rolled — that decides for me when a piece of work should run as a
+quick local subagent in my session and when it should be dispatched as a polecat
+(isolated workspace, background, full lifecycle), and that guarantees every delegated
+piece of work leaves a trace I can inspect — a task record, a transcript, and a
+recorded verdict — so that work is proven before it is trusted and nothing is ever
+fire-and-forgotten.
 
-As an orchestrator (human or agent) with work to get done by other agents, I want a
-single process I invoke rather than hand-roll, so that every delegated task is proven
-before I trust it — not just claimed complete.
+## Routing: Local Subagent vs Polecat
+
+The orchestrator chooses the execution surface; the user does not have to specify.
+Routing keys on:
+
+- **Named specialist**: a task (or parent) assigned to a known specialist (`marsha`,
+  `rbg`, `pauli`, …) goes to that subagent.
+- **Isolation and mutation**: repo-scoped work that mutates files and must ship as
+  its own branch + PR goes to a **polecat**.
+- **Findings returned inline**: research or synthesis whose output the current
+  conversation needs goes to a **local subagent**.
+- **User in the loop**: work needing the user's answers runs inline via `/pull`,
+  never on a background surface.
+- **Not dispatchable**: missing inputs or blockers → record a block note and defer.
+
+This routing is implemented in the `task-lifecycle` skill's dispatch mode. Weighing
+expected duration/effort in the routing decision is a target requirement, not yet
+implemented.
+
+## Observability Guarantee
+
+Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
+
+- **Task record**: every dispatch is recorded on a PKB task (status, assignee,
+  dispatch note, PR URL where applicable).
+- **Transcript**: the worker's run is retained and locatable (polecat lifecycle
+  events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
+  `$AOPS_SESSIONS`). Where a surface does not yet persist transcripts automatically,
+  this is a target requirement, not yet enforced.
+- **Verdict**: the supervisor's evaluation outcome is recorded on the task or epic
+  ledger, so any later reader can see what was accepted and why.
 
 ## When It's Invoked
 
@@ -46,7 +80,7 @@ Every supervisor tick performs the same four concerns:
 | Concern      | What it does                                 | Who decides           |
 | ------------ | -------------------------------------------- | --------------------- |
 | **Select**   | Choose which tasks to work on next           | Agent (LLM judgment)  |
-| **Dispatch** | Send tasks to workers                        | `polecat run -t <id>` |
+| **Dispatch** | Send tasks to workers (routing rules above)  | Polecat or subagent   |
 | **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment)  |
 | **Persist**  | Record state for recovery across invocations | Task body (PKB)       |
 
@@ -85,10 +119,10 @@ user manually wiring `/loop`. It stops self-arming at the terminal state.
 ## Status Lifecycle
 
 ```
-queued → in_progress → merge_ready → done
+queued → in_progress → merge_ready → done (PR merged)
                 │              │
-                │              └→ review (engineer review or merge failed)
-                └→ blocked (dependency, failure)
+                │              └→ review (needs human judgment; finish/merge failed)
+                └→ blocked (external dependency)
 ```
 
 See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
@@ -97,8 +131,8 @@ extensions.
 
 ## Related
 
-- [[specs/polecat-system.md]] — Worktrees, bare mirrors, task claiming that the
-  supervisor dispatches onto
+- [[specs/polecat-system.md]] — Isolated task workspaces, atomic claiming, and
+  PR-based merge that the supervisor dispatches onto
 - `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
   checkpoint loop, proof discipline, evaluation protocol)
 - `aops-core/skills/task-lifecycle/SKILL.md` — The Select+Gates spine shared by
