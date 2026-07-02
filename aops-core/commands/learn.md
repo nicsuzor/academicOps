@@ -31,24 +31,9 @@ Reviews recent session transcripts through a framework-development lens, identif
 - **RCA Rigor (The Issue Report)**: This is a routine division of labor — you file the forensic facts, a separate detached pass later decides whether a framework change is warranted. So the filed GitHub issue stays focused on forensic findings (incident facts, structural shape, and concrete impact). Don't bake speculative remediations into the issue report itself; keep it factual so it serves as high-quality evidence. (And don't over-fit: one salient incident isn't reason enough for a big framework change that doesn't generalise — that call belongs to the cross-incident pass.)
 - **No Fixing Inhibition**: Keeping the _issue report_ forensic does NOT inhibit you from fixing the live codebase immediately. You are expected to fix the live problem whenever permitted or instructed.
 
-## Immediate Fixes Policy (Fix AND File)
-
-You may apply immediate codebase fixes (for minor tweaks or framework-caused defects) AND you must still file the tracking GitHub issue. Invocations like `/learn that last task should have been xyz` trigger a dual action: fix the immediate problem now, and file the RCA issue in the background. Refer to the canonical retro mode protocol in [skills/triage/SKILL.md](skills/triage/SKILL.md#mode-retro) for details.
-
-## Invocation Styles
-
-- `/learn` — Review the current session/transcript (auto-detect the current session context/ID and pass it).
-- `/learn <path>` or `/learn <session-id>` — Review the specified transcript/session.
-- `/learn that last task should have been xyz` — Dual action: fix the target behavior immediately AND file the tracking RCA issue in the background.
-
 ## Workflow
 
-1. **Resolve Session Context**:
-   - If a specific `<path>` or `<session-id>` is provided, use that.
-   - If no explicit path or session ID is provided, locate the current session ID or the active transcript path for the current conversation.
-   - **No Random Fallback**: You must NEVER dispatch Pauli without specifying the target session or transcript, and Pauli must never select a random transcript. If no session context, ID, or path can be resolved, halt and report an error.
+Delegate the retro execution to the **Pauli** coordinator agent:
+`Agent(subagent_type='pauli', prompt='Run triage skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
 
-2. **Dispatch Pauli**:
-   - Delegate the retro execution to the **Pauli** coordinator agent:
-     `Agent(subagent_type='pauli', prompt='Run triage skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
-   - You MUST explicitly pass the target session ID or transcript path in the prompt to Pauli. Same-session review by a fresh subagent (like `pauli` dispatched within the session) is explicitly allowed.
+If no explicit path or session ID is provided, locate the current session ID or active transcript path for the current conversation and pass it.
