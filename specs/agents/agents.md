@@ -63,6 +63,8 @@ Review crew agents are stateless, specialized subagents commissioned by orchestr
 
 Specialized agent variants exist for automation and non-interactive workflows:
 
+<!-- NS: no longer true? -->
+
 - `enforcer`
   - A compact, Haiku-class variant of RBG.
   - Used in periodic GitHub Actions gates to check axiom compliance on PRs.

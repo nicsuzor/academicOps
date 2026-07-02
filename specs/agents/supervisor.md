@@ -20,6 +20,8 @@ discipline at each.
 
 ## User Story
 
+<!-- NS: rewrite as a real user story. what i really want is the agent to know when to delegate to a local subagent and when to send off as a polecat. i also want a guarantee of full observability. -->
+
 As an orchestrator (human or agent) with work to get done by other agents, I want a
 single process I invoke rather than hand-roll, so that every delegated task is proven
 before I trust it — not just claimed complete.

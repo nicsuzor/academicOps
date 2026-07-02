@@ -49,6 +49,8 @@ flowchart TD
 
 ## Core Concept: The "Kennel"
 
+<!-- NS this is not at all accurate i dont think? -->
+
 Instead of creating temporary clones inside the main repo (which confuses IDEs), we use a centralized directory:
 
 - **Location:** `$POLECAT_HOME/polecat/`

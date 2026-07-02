@@ -9,6 +9,8 @@ tags: [spec, agents, content-discipline, governance]
 created: 2026-06-08
 ---
 
+<!-- NS: this should be in the /craft local skill. -->
+
 # Agent Definition Content Boundary
 
 **Status**: Draft. Audit use tracked under `aops-35e31b8c`.
