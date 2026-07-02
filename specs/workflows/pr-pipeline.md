@@ -3,7 +3,7 @@ id: pr-pipeline
 title: "PR Pipeline"
 type: spec
 created: 2026-05-15T02:07:45.675923357+00:00
-modified: 2026-06-09T00:00:00.000000000+00:00
+modified: 2026-07-02T00:00:00.000000000+00:00
 alias:
   - "pr-pipeline-v2"
 permalink: pr-pipeline
@@ -45,6 +45,7 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                                                                                                                                                                                                                                                       | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                                                                                    |
 | QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                                                                                                                                                                                                                                               | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                                                                                 |
 | The human gate: a maintainer's PR **review approval**; `admit-on-review.yml` (`on: pull_request_review`) authorises, sets `admit-status`, arms auto-merge, dispatches the mechanic's first pass                                                                                                                                                                                                                   | **LIVE**      | `admit-on-review.yml` + `scripts/ci/admit-on-review.sh` + `tests/test_admit_on_review.py`                                                                                                        |
+| **Shared admission-grant + authorization primitives** (§5.1, anti-drift): `scripts/ci/admit-pr.sh` (grant admission) + `scripts/ci/reviewer-authz.sh` (write-class-or-allowlisted check) — the same two files are called by every admission origin (`admit-on-review.yml`, `conflict-admission-sweep.yml`), so the policy and the mechanical write can't drift independently per path                             | **LIVE**      | `scripts/ci/admit-pr.sh` + `scripts/ci/reviewer-authz.sh`; `tests/test_admit_pr.py` + `tests/test_reviewer_authz.py` + `tests/test_conflict_admission_sweep.py`                                  |
 | **Request-changes response path** (§3.10): a write-class maintainer's CHANGES_REQUESTED review dispatches the mechanic in `review-response` mode — comment-scoped, no admission, no auto-merge, CHANGES_REQUESTED stands until human re-reviews                                                                                                                                                                   | **LIVE**      | `admit-on-review.yml` `authorize-changes` + `mechanic-review-response` jobs; `agent-mechanic.yml` `mode: review-response`; `mechanic.agent.md` review-response section                           |
 | **RETIRED human gate:** `pr-fix-loop` GitHub Environment + in-pipeline `admit` job that parked on it                                                                                                                                                                                                                                                                                                              | **RETIRED**   | retired 2026-06-16 — undiscoverable approval UI + stranded mechanic dispatch (no re-trigger event), worked example PR #1858 (§3.2)                                                               |
 | Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `review-attestation`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                                                                                                                                                                         | **LIVE**      | live ruleset ID `13762049` (API-verified 2026-06-19)                                                                                                                                             |
@@ -259,12 +260,14 @@ This is handled by a small event-driven workflow, **`admit-on-review.yml`**
 
 **Approve path (admission):** On an `approved` review it: (1) checks the reviewer is
 authorised (write-class repo permission, or the explicit maintainer allowlist — the
-default-deny policy lives in `scripts/ci/admit-on-review.sh`, unit-tested in
-`tests/test_admit_on_review.py`); (2) sets the required `admit-status` to `success` on
+default-deny policy lives in `scripts/ci/reviewer-authz.sh`, shared with the other
+admission paths per §5.1, unit-tested in `tests/test_admit_on_review.py` and
+`tests/test_reviewer_authz.py`); (2) sets the required `admit-status` to `success` on
 the admitted SHA (re-read live, since the PR may have advanced since the review); (3)
-arms `gh pr merge --auto --squash --delete-branch`; and (4) dispatches the mechanic's
-**first** pass on the admitted SHA (skipping it when enforcer + qa are already green —
-auto-merge handles that, no development to do).
+arms `gh pr merge --auto --squash --delete-branch` — (2) and (3) are performed by the
+shared `scripts/ci/admit-pr.sh` (§5.1), not reimplemented in this workflow; and (4)
+dispatches the mechanic's **first** pass on the admitted SHA (skipping it when
+enforcer + qa are already green — auto-merge handles that, no development to do).
 
 **Request-changes path (comment-scoped response, §3.10):** On a `changes_requested`
 review from a write-class maintainer on a ready (non-draft) PR, `admit-on-review.yml`
@@ -764,12 +767,15 @@ GitHub platform behaviour, not a pipeline choice (community discussions
 `schedule` (a backstop for PRs already conflicting when approved), plus manual
 `workflow_dispatch`. Its `discover` job (`scripts/ci/find-conflicting-admitted-prs.sh`,
 unit-tested in `tests/test_find_conflicting_admitted_prs.py`) selects open PRs that are
-`CONFLICTING`, non-draft, same-repo, and **already approved by a write-class maintainer** (same
-authorisation as `admit-on-review.sh`), excluding any whose head SHA already carries a terminal
-`mechanic-status`. For each, the sweep **admits** it — sets the required `admit-status=success`
-and arms `--auto --squash` (the deferred equivalent of `admit-on-review.yml`'s `admit` job,
-which could not fire) — and **dispatches the mechanic** to resolve the conflict. The
-maintainer's standing approval is the admission signal; no second gesture is required.
+`CONFLICTING`, non-draft, same-repo, and **already approved by a write-class maintainer** (the
+same shared `scripts/ci/reviewer-authz.sh` authorisation as `admit-on-review.sh`, §5.1),
+excluding any whose head SHA already carries a terminal `mechanic-status`. For each, the
+sweep's `admit` job re-resolves the PR's **live** HEAD SHA (§5.1 — `discover`'s matrix is a
+snapshot from an earlier job, so the PR may have advanced in the gap) and **admits** it via
+the same shared `scripts/ci/admit-pr.sh` that `admit-on-review.yml` calls (§5.1) — setting the
+required `admit-status=success` and arming `--auto --squash` — then **dispatches the
+mechanic** to resolve the conflict. The maintainer's standing approval is the admission
+signal; no second gesture is required.
 
 **Belt-and-suspenders in `admit-on-review.yml`.** Its `decide-mechanic` job also reads
 `gh pr view --json mergeable` and dispatches the mechanic when the PR is `CONFLICTING` even
@@ -1031,6 +1037,71 @@ once).
 > Sequencing (already done): `admit-status` was added to required checks in the _same_ change
 > that dropped approvals to 0 — otherwise there would be a window where green checks alone
 > permit a manual merge that bypasses the gate. This is **LIVE** in ruleset `13762049`.
+
+### 5.1 Shared admission-grant + authorization primitives (anti-drift, normative) — **LIVE**
+
+Two admission-granting origins exist — `admit-on-review.yml`'s approve path (§3.2) and
+`conflict-admission-sweep.yml` (§3.11) — because GitHub cannot fire `pull_request_review`
+on a conflicting PR (§3.11) and so a second, deferred path is needed. Before this section
+each origin reimplemented its own copy of two mechanisms, with no test enforcing they
+stayed identical: **who may admit** (write-class-or-allowlisted) and **the mechanical act
+of admitting** (POST `admit-status=success` + arm auto-merge). A third, unrelated site
+(the `changes_requested` review-response dispatch, §3.10) also reimplemented the
+write-class check inline in workflow YAML, uncovered by any unit test. This is the
+concrete process-drift risk a two-origin admission model creates if left unfactored: a
+policy change (e.g. the allowlist, or the auto-merge invocation) requires editing 2–3
+files and hoping they stay in sync.
+
+**`scripts/ci/reviewer-authz.sh`** — sourced (not standalone-executed) by
+`scripts/ci/admit-on-review.sh`, `scripts/ci/find-conflicting-admitted-prs.sh`, and
+`admit-on-review.yml`'s `authorize-changes` job. Defines `is_authorized_reviewer LOGIN
+PERMISSION ALLOWLIST` (write-class `admin|maintain|write`, OR an explicit allowlist
+login) — the single implementation all three now call instead of independently
+reimplementing. It also owns the **single default** for the belt-and-suspenders
+`ADMIT_ALLOWLIST` (`nicsuzor`, via `: "${ADMIT_ALLOWLIST:=nicsuzor}"`, only applied when
+the sourcing script/step hasn't already set it): this collapsed what used to be 3
+independently-hardcoded copies of the same literal (2 workflow `env:` blocks + 1 script
+default) into one. Unit-tested directly in `tests/test_reviewer_authz.py`, and
+transitively by every caller's own existing test file.
+
+**`scripts/ci/admit-pr.sh`** — a standalone script performing only the mechanical
+admission act: POST the required `admit-status=success` on a caller-supplied `SHA` with a
+caller-supplied `REASON` (the description shown on the PR checks tab — each admission
+origin passes its own text so the audit trail shows which path admitted the PR), then arm
+`gh pr merge --auto --squash --delete-branch` (tolerated on failure — already-enabled or
+already-merged is not an admission failure). Fails closed if `GH_TOKEN` is unset,
+matching §4.7. Called by `admit-on-review.yml`'s `admit` job and
+`conflict-admission-sweep.yml`'s `admit` job. Unit-tested in `tests/test_admit_pr.py`
+(stubbed `gh`, asserting the exact calls made).
+
+**`admit-pr.sh` deliberately does not resolve `SHA` itself — freshness is the caller's
+responsibility.** Each origin has a different, deliberate resolution policy:
+`admit-on-review.yml` re-reads live immediately before calling (the PR may have advanced
+since the review event fired, §3.2); `conflict-admission-sweep.yml` now does the same
+(the fix below). Passing a stale SHA posts the required check to the wrong commit — a
+caller bug, not something the shared script can detect.
+
+**Fixed alongside the consolidation: a latent SHA-staleness race in
+`conflict-admission-sweep.yml`.** Its `admit` job used to trust the SHA snapshotted by
+the separate, earlier `discover` job rather than re-reading live — a PR could advance in
+the gap between the two jobs, and because `admit-status` is a **required** check,
+admitting a stale SHA risked exactly the "stranded admission" failure mode this spec has
+fought before (worked examples PR #1858 §3.2, PR #2005 §5). `admit`'s own steps now
+re-resolve the PR's live HEAD SHA (`gh pr view --json headRefOid`) immediately before
+calling `admit-pr.sh`, mirroring `admit-on-review.yml`'s existing pattern.
+
+**Deliberately NOT threaded into the `mechanic` job**, which still uses `discover`'s
+`matrix.pr.sha` snapshot, unchanged. `admit` and `mechanic` are both `strategy: matrix`
+jobs; GHA does not support correlating one matrix job's per-item outputs into another
+matrix job's corresponding item, so threading `admit`'s freshly-resolved SHA into
+`mechanic` would require merging the two jobs into one — a materially bigger structural
+change for a low-stakes consumer. `mechanic`'s `sha` input only affects its own
+**informational** `mechanic-status` posting and its SHA-based loop-skip bookkeeping
+(§4.6/§10); its actual conflict-resolution work happens on the live `ref` (branch), not a
+pinned commit, since it checks out the branch. This is a proportionate, intentional
+asymmetry — the required-check path is fully fixed, the informational-status path is
+left with a documented reason — not an oversight; do not "fix" it into a
+matrix-correlation rework without re-reading this paragraph.
 
 ## 6. Alignment (pauli) — advisory, host-side, not a gate — **PARTIALLY LIVE** (pending marker LIVE; issue queue DISABLED; host dispatch SPEC-ONLY)
 
@@ -1351,6 +1422,15 @@ Each phase is independently shippable and leaves the pipeline working.
   `initialize` carry-forward (§5) and the `check-admit → mechanic` passes 2…N are
   unchanged; the `already_admitted` output (only the parked `admit` job consumed it) is
   removed. `required_approving_review_count` stays `0`.
+- **Phase 9 — Admission anti-drift consolidation. DONE / LIVE.** Extracted the two
+  primitives independently reimplemented across the two admission origins into
+  `scripts/ci/reviewer-authz.sh` (write-class-or-allowlisted, plus the single
+  `ADMIT_ALLOWLIST` default) and `scripts/ci/admit-pr.sh` (the admit-status POST + armed
+  auto-merge), called by both `admit-on-review.yml` and `conflict-admission-sweep.yml`
+  (§5.1). Fixed alongside: a latent SHA-staleness race in
+  `conflict-admission-sweep.yml`'s `admit` job (§5.1). No behavioural change to the
+  merge-gate contract itself — `admit-status` semantics, the ruleset (§7), and the loop
+  (§3.3–§3.6) are untouched.
 
 ## 12. Open questions
 
@@ -1380,6 +1460,8 @@ Each phase is independently shippable and leaves the pipeline working.
     `stage2-admission.yml` was retired — see §3.2.)
 - `.github/workflows/{agent-merge-prep,merge-prep-cron}.yml` + `.github/agents/merge-prep.agent.md`
   — the v1 transitional fixer (RETIRED at Phase 5; behaviour inherited per §8).
+- `scripts/ci/{admit-pr,reviewer-authz}.sh` — the shared admission-grant + authorization
+  primitives called by both admission origins (§5.1).
 - `specs/ENFORCEMENT-MAP.md` — "PR-pipeline agents" rows (§4.3).
 - PR #1037 / issue #1039 — the P2 worked example (enforcer skip + approval substitution).
 - PR #1614 — the P5 worked example (no-op merge-prep on a docs PR).

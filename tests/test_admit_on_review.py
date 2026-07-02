@@ -143,6 +143,16 @@ def test_allowlist_is_per_login_not_substring():
     assert out["state"] == "skip"
 
 
+def test_unset_allowlist_defaults_to_nicsuzor():
+    # scripts/ci/reviewer-authz.sh (§5.1) supplies "nicsuzor" as the standalone
+    # default when ADMIT_ALLOWLIST isn't set at all — the single source of
+    # truth also used by find-conflicting-admitted-prs.sh and the
+    # authorize-changes job, replacing what used to be 3 independently
+    # hardcoded copies of the same literal.
+    out = run(review_state="approved", reviewer_login="nicsuzor", reviewer_permission="none")
+    assert out["state"] == "admit"
+
+
 # ── Admission-boundary re-verification (§3.1 fire-once + §5) ──────────────────
 #
 # The fire-once gate (pr-pipeline §3.1) skips enforcer/qa on pre-admission pushes,
@@ -167,6 +177,29 @@ def test_admission_refire_jobs_exist_and_target_admitted_sha():
     # The reviewers re-run against the admitted SHA, not live HEAD.
     assert jobs["admit-enforcer"]["with"]["sha"] == "${{ needs.admit.outputs.admitted_sha }}"
     assert jobs["admit-qa"]["with"]["sha"] == "${{ needs.admit.outputs.admitted_sha }}"
+
+
+def test_admit_job_output_wiring_matches_its_own_resolve_step():
+    # §5.1 split the `admit` job's single inline block into 3 steps
+    # (resolve/grant/green). Nothing else in this file pins the job's OWN
+    # outputs to its internal step IDs — a future rename of `id: resolve` or
+    # `id: green` would silently break `admitted_sha`/`reviewers_green` for
+    # every downstream consumer (admit-enforcer, admit-qa, admit-attestation,
+    # decide-mechanic, the `mechanic` job) with no test catching it. Pin it
+    # here, next to the downstream-consumer assertions above.
+    admit = _admit_jobs()["admit"]
+    assert admit["outputs"]["admitted_sha"] == "${{ steps.resolve.outputs.sha }}"
+    assert admit["outputs"]["reviewers_green"] == "${{ steps.green.outputs.reviewers_green }}"
+    step_ids = {step.get("id") for step in admit["steps"] if isinstance(step, dict)}
+    assert "resolve" in step_ids
+    assert "green" in step_ids
+    # The mechanical grant step calls the shared script, not an inline gh api/
+    # gh pr merge block (pr-pipeline.md §5.1 — shared with
+    # conflict-admission-sweep.yml's admit job).
+    bodies = " ".join(step.get("run", "") for step in admit["steps"] if isinstance(step, dict))
+    assert "bash scripts/ci/admit-pr.sh" in bodies
+    assert 'context="admit-status"' not in bodies
+    assert "gh pr merge" not in bodies
 
 
 def test_admission_refire_only_when_not_already_green():

@@ -36,14 +36,22 @@
 #                       resolve it).
 #   ADMIT_ALLOWLIST     space-separated logins that may admit regardless of the
 #                       resolved permission (belt-and-suspenders for the
-#                       maintainer). Default: empty.
+#                       maintainer). Default: "nicsuzor" (§5.1 — the single
+#                       default lives in reviewer-authz.sh, sourced below, so
+#                       it can't drift out of sync with the other admission
+#                       paths that share it).
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# is_authorized_reviewer() + the ADMIT_ALLOWLIST default (pr-pipeline.md §5.1) —
+# the single source of truth also used by find-conflicting-admitted-prs.sh and
+# admit-on-review.yml's authorize-changes job.
+source "$SCRIPT_DIR/reviewer-authz.sh"
 
 REVIEW_STATE="${REVIEW_STATE:?REVIEW_STATE is required}"
 REVIEWER_LOGIN="${REVIEWER_LOGIN:?REVIEWER_LOGIN is required}"
 REVIEWER_PERMISSION="${REVIEWER_PERMISSION:-none}"  # allow-fallback: fail closed when the workflow could not resolve a permission
-ADMIT_ALLOWLIST="${ADMIT_ALLOWLIST:-}"
 
 emit() {
   printf 'state=%s\n' "$1"
@@ -65,22 +73,9 @@ fi
 
 # (2) Authorisation: write-class repo permission, OR an explicit allowlist entry.
 # Default-deny on anything else (triage/read/none, or an unresolved permission).
-authorized="false"
-case "$REVIEWER_PERMISSION" in
-  admin | maintain | write) authorized="true" ;;
-esac
-# Read into an array rather than `for login in $ADMIT_ALLOWLIST`: `read -r -a`
-# splits on whitespace without pathname expansion, so a stray '*'/'?' in the
-# allowlist can't glob against the working directory, and the quoted iteration
-# below stays glob-safe too.
-read -r -a admit_logins <<<"$ADMIT_ALLOWLIST"
-for login in "${admit_logins[@]}"; do
-  if [[ "$login" == "$REVIEWER_LOGIN" ]]; then
-    authorized="true"
-  fi
-done
-
-if [[ "$authorized" != "true" ]]; then
+# Shared with find-conflicting-admitted-prs.sh and the authorize-changes job
+# (reviewer-authz.sh, §5.1) so this policy can't drift between admission paths.
+if ! is_authorized_reviewer "$REVIEWER_LOGIN" "$REVIEWER_PERMISSION" "$ADMIT_ALLOWLIST"; then
   emit "skip" "Approval by ${REVIEWER_LOGIN} ignored — not a maintainer (permission: ${REVIEWER_PERMISSION}). Default-deny."
   exit 0
 fi
