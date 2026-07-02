@@ -67,7 +67,7 @@ inline run or a dispatched worker.
 Apply the **premise gate** to the selected candidate leaf task: (1) ensure the
 task carries a legible, real premise sentence — record one from the task's intent
 if a hand-queued task left none, or bounce if it is too vague to state; (2) clear
-it through `/strategic-review --premise <task>`, which runs `rbg` (axiom/rig) and
+it through `/strategic-review <task>`, which runs `rbg` (axiom/rig) and
 `pauli` (worth/shape) as judges. Any BOUNCE → hard-refuse, do not spend compute,
 bounce the task back to the promoter. This is the last spend-stopper before either
 mode acts on the task.
@@ -91,6 +91,9 @@ For the selected candidate leaf task:
   - If a verified path does not resolve, print a warning naming the stale
     reference: `[WARNING] Task brief references non-existent path: <stale-path>`
     (warn, do not hard-block — the caller decides).
+
+<!-- NS: superceded tasks should just be cancelled. remove this extra field. -->
+
 - **Supersession Check**:
   - If the task has a non-empty `superseded_by` field, do not select it; print
     `[WARNING] Task <id> is superseded by <replacement-ids>` and select the next
@@ -160,6 +163,8 @@ hard-to-reverse step. Do not dispatch to a background worker.
    any follow-ups as new tasks. For a clean session close use [[../end_session/SKILL.md]].
 
 ---
+
+<!-- NS: remove this explanation, but more importantly, refactor supervisor to use this skill so that we don't have two different explanations of the same behavior. -->
 
 ## Relationship to `/supervisor`
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.48](https://github.com/nicsuzor/academicOps/compare/v0.3.47...v0.3.48) (2026-07-02)
+
+
+### Code Refactoring
+
+* **premise-gate:** two-judge pre-dispatch clearance (rbg+pauli), DRY with /strategic-review ([2604f28](https://github.com/nicsuzor/academicOps/commit/2604f28d970c8635c84217c540fa63147bf24a81))
+
 ## [0.3.47](https://github.com/nicsuzor/academicOps/compare/v0.3.46...v0.3.47) (2026-07-02)
 
 
