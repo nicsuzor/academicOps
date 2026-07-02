@@ -18,7 +18,7 @@ permalink: commands/email
 
 # /email - Email-to-Task Capture
 
-Process the email inbox to extract actionable items and FYIs, creating structured tasks/records in the PKB. Follow the **[[workflows/email-capture]]** workflow.
+Process the email inbox to extract actionable items and FYIs, creating structured tasks/records in the PKB.
 
 ## Execution
 
