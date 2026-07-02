@@ -19,70 +19,56 @@ domain:
   - quality-assurance
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent
 model: opus
-version: 0.1.0
+version: 0.2.0
 permalink: skills-craft
 ---
 
-# Instruction Craftsmanship Guidelines
+# Instruction Craftsmanship
 
-Review and audit any agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols — to eliminate shallow-execution vulnerabilities. Applies to any Claude agent system, not only this repo's framework.
+Review and audit agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols — for excellence. Applies to any Claude agent system, not only this repo's framework.
 
-## Modes of Operation
+## First Principles
 
-1. **Author Mode**: Review proposed instructions before deployment to catch execution gaps.
-2. **Audit Mode**: Analyze execution transcripts after a failure to trace it back to instruction gaps.
+Good instructions trust a capable, improving agent to exercise judgment; they do not try to mechanically pre-solve every case.
 
-## Quality Criteria: The Defect Classes
+1. **Trust the harness, not today's quirks.** Agents and their tools improve continuously. Never write an instruction to patch a specific client's current limitation, plug a gap that will close on its own, or hard-code a workaround for how one version of an agent happens to behave. If a rule is only true "for now," it does not belong in a durable instruction.
+2. **Specify the process, not the keystrokes.** State _when_ to invoke which capability and _what outcome_ proves it worked. Do not spell out sub-steps, tool flags, or branching logic a competent agent already knows how to perform (opening a PR, formatting a table, running a routine lookup). Name the judgment call, not the click-path.
+3. **One skill, one job.** An instruction set is constrained to its own pure function. Naming another skill as a delegation or dispatch target is fine; explaining, restating, or summarizing that other skill's internals, procedures, or file layout is not — that creates a hidden dependency that silently rots when the referenced skill changes shape.
+4. **Verification must be real, not performed.** "Did the step run?" is not evidence of anything. Instructions must demand direct inspection of the actual artifact — outputs, logs, diffs — with an eye for the failure that looks like success (silent errors, plausible-but-wrong data, a summary standing in for the thing itself).
+5. **Every line earns its place.** Brevity is a feature. Cut anything that does not change what the agent does: provenance ("on the 2026-06-25 session…"), incident IDs, and recipes tuned to one past failure all belong in the PR/issue/memory that records _why_ a rule exists — not in the instruction loaded every run. Write the durable principle the incident illustrates, not the incident.
 
-Ensure instructions are free of the following defects:
+These are lenses, not a checklist to tick. If instructions feel shallow but match nothing below, trust the feeling and say why — depth is verification specificity, not step count.
 
-1. **Compliance Framing**: Avoid instructions defined as "did X run?". Require outcome-based verification ("is the output correct, complete, and verified?").
-2. **Missing Artifact Chain**: Ensure all output channels (stdout, stderr, log files, JSONL transcripts, schema validations) are checked, not just the primary summary channel.
-3. **No Adversarial Checks**: Explicitly check for silent failures (e.g., zero exit code on empty/corrupt outputs, config warn-instead-of-block overrides).
-4. **Summary-as-Evidence**: Prohibit using agent summaries or claims as proof of success. Require direct inspection of actual artifacts.
-5. **Undefined Boundary Behavior**: Explicitly define fallback search spaces or escalation procedures when standard searches return no results.
-6. **Skimped Verification**: Require reading the complete output of files rather than simple grepping, keyword matching, or tail scans.
-7. **No Negative Verification**: Check for the absence of unexpected outputs (corruption, credentials leak, placeholders) in addition to the presence of expected results.
-8. **Deferred-Read Dispersion**: A rule the agent needs _at the moment of action_ lives in a second file it must go read — a "see `X.md`", a `[[link]]` to "canonical" doctrine, a "read first" pointer. An agent that already has the instructions in hand frequently will **not** make the follow-up read, so a load-bearing rule behind a pointer is a rule that often won't run. Keep the operative instruction where it executes and inline it; reserve pointers for genuinely optional depth, never for a step that is required every time. **Shorter, co-located instructions beat longer, more distributed ones in almost all cases** — when content is mandatory, fold it in and tighten rather than forking it into a referenced file (and never duplicate it across both the summary and the linked file, which is the worst of both). Audit-mode tell: the executing instruction was a pointer, and the missed rule lived one read away.
-9. **Output-Shape Without Source-and-Action (Substitution by Path of Least Resistance)**: A required step that specifies what the output should _look like_ but names no source and does not mandate the operation that produces it. An agent satisfies the described _shape_ from whatever is cheapest to hand — material already in the file, a by-product of an adjacent step, prior memory — silently dropping the real criterion (a fresh reconstruction from primary sources). For any step that is required every run, write it as a direct, numbered, imperative instruction that **names the source** ("read `<path>`/query `<tool>`") and **mandates the operation** ("you MUST open them before writing this section"), and explicitly prohibit substituting material already in the file, adjacent-step by-products, or prior memory for the mandated source-read. Diagnostic contrast (audit-mode tell): in the same skill, a sibling step that names its source and forces a live look-up executes correctly while the shape-only step gets substituted. Caveat — name the source and the action, not the keystrokes: over-specified, step-bloated instructions are their own defect.
+## Common Defect Patterns
 
-10. **Over-Fitting & Incidental Ballast (keep instructions lean)**: An always-loaded instruction carrying weight that does not change what the agent does. Two forms: (a) **provenance ballast** — a dated event ("on the 2026-06-25 session…"), or an issue/incident/memory ID cited as the reason for a rule (`#1978`, `aops-18572bc0 §5`, `mem-e7b976da`). The agent does not need to know _when_ or _why_ the rule was born to follow it. (b) **over-fitted failure recipes** — a step tuned to one specific failure ("if the PKB returns error X, emit `[ATTN]…`, then file a follow-up task, and do not shell out or SSH or write a file…") where a durable principle covers it and every future variant. Write the principle: _"fail fast if the memory tools don't work"_ beats the six-line incident-specific escape-hatch ban; _"hold between steps"_ beats _"this reconstructs the #1978 held-turn regression."_ Provenance — dates, issue/incident/memory IDs, the war story — belongs in the spec, PKB, or commit message that records _why_ the rule exists, not in the instruction loaded every turn. Every line of an agent definition or skill material should earn its place by changing behavior. Caveat: this is **not** licence to strip the operative specificity that defects 6/9 require (naming a source, mandating an operation) — cut ballast, not the source-and-action.
-11. **Slash-Command Directives**: Avoid instructing the agent to run/execute slash commands (e.g. `/command`) directly. System constraints typically forbid agents from executing slash commands. Instead, instruct them to invoke the underlying skill or subagent (e.g. "invoke the `verify` skill").
-12. **Mechanical HOW over judgment WHEN**: An instruction that spells out exact sub-steps, tool flags, or branching logic for something a competent agent harness already knows how to do (e.g. how to open a PR, resolve a merge conflict, format a markdown table, or the exact `gh` flags for a routine lookup) is over-fit to today's harness and will rot as harnesses improve. State the outcome and the judgment call the agent must make, not the keystrokes — unlike defect #9 (missing the source/operation for something that must vary every run, i.e. under-specification), this is over-specification: spelling out steps for something that doesn't vary and the harness already knows.
-13. **Cross-Skill Coupling**: A skill body that explains another skill's internal mechanics, procedure, or reference material — not merely naming it as a delegation/dispatch target — creates a hidden dependency that breaks modularity: the referencing skill silently rots when the referenced one is renamed, restructured, or removed. Each skill must be constrained to its own pure function. Invoking or delegating to another skill by name is fine; describing, summarizing, or pointing into its internals is not.
+Instances of the principles above, worth naming because they recur:
 
-These are common patterns, not an exhaustive list. If instructions feel shallow but match no named defect, trust the feeling, say so, and articulate why — and remember depth is verification specificity, not step count.
+- **Compliance framing.** "Did X run?" instead of "is the output correct, complete, and verified?" Require outcome-based checks, not process-completion checks.
+- **Evidence laundering.** Accepting an agent's summary, a partial artifact-channel check (just stdout, not logs/exit-code/schema), or a green test suite as proof — without inspecting the actual output for silent failures, corruption, or placeholders. (Principle 4.)
+- **Deferred-read dispersion.** A rule the agent needs _at the moment of action_ lives one pointer away ("see X.md") instead of inline. An agent that already has the instructions in hand frequently won't make the follow-up read. Inline mandatory content; reserve pointers for genuinely optional depth — never fork required content across a summary and a linked file.
+- **Shape without source.** A step names what the output should _look like_ but not where it comes from or what operation produces it, so the agent satisfies the shape from whatever's cheapest — recycled material, an adjacent step's by-product, memory — silently dropping the real criterion. Name the source, mandate the read, prohibit substitution — without over-specifying the keystrokes (Principle 2's over-specification is the opposite failure).
+- **Cross-skill coupling.** See Principle 3.
+- **Mechanical HOW over judgment WHEN.** See Principle 2.
+- **Over-fitting and ballast.** See Principles 1 and 5.
 
-## Construction Rule: Static-Prefix / Variable-Tail (prompt-cache prefix)
+## Construction Rule: Static Prefix, Variable Tail
 
-This rule binds any **code** that renders a template with dynamic data — a `.md` template with `{placeholder}`s, an f-string/`.format(`/`.render(` that wraps a template body around runtime values, a builder that concatenates a static preamble with session/transcript/variable content, any gate `context_key` or audit-file assembly.
+For any code that renders a template with dynamic data (an f-string, `.format()`/`.render()`, or a builder concatenating static scaffolding with session/transcript content): emit all static material first, append variable content last. Prompt caching keys on the longest identical prefix — one variable byte placed early invalidates the cacheable suffix that follows it. Where moving a placeholder to the tail would break meaning for negligible cache gain (a short single-token variable mid-sentence), leave it and say why.
 
-**Rule:** emit ALL static template material strictly FIRST, then append the variable/dynamic content LAST. Never interleave a variable into a static preamble.
+## Modes
 
-**Why:** Anthropic prompt caching keys on the longest identical PREFIX. One variable byte placed early invalidates the entire cacheable suffix that follows it. A stable static prefix with the variable payload at the tail keeps the prefix cache-hot across calls; an interleaved variable throws the cache away on every render.
+**Author** — review proposed instructions before deployment.
 
-**How to apply:**
-
-- Move instructional scaffolding, headers, role/framing, and "how to read this" guidance ahead of any `{session_context}`-style payload. The largest/most-variable field belongs at the very end.
-- If a template puts a static section AFTER the variable (e.g. an "## Your Assessment" trailer below the transcript), hoist that static section above the variable so the variable is last.
-- Honor any tail invariant: if a builder appends a terminal sentinel (e.g. an `audit-complete` marker that must be the final line), the variable that carries it must remain the file's tail — which is exactly what this rule produces.
-
-**Judgment clause:** where moving a placeholder to the tail would break meaning or readability and the cache gain is marginal (a tiny single-token variable mid-sentence in a short user-facing message), leave it and say why. Do not mangle a template mechanically to satisfy the rule. The rule earns its keep on large, reused, variable-bearing prompts.
-
-## Workflow
-
-### Author Mode Workflow
-
-1. Assess the target instructions against the defect classes.
+1. Assess against the principles and patterns above.
 2. Quote any text exhibiting a defect and write a high-depth rewrite.
-3. Output a verdict: **SHIP** (no defects), **REVISE** (defects found, edit file in-place with fixes), or **REJECT** (fundamental redesign needed).
+3. Verdict: **SHIP** (no defects), **REVISE** (edit in place with fixes), or **REJECT** (fundamental redesign needed).
 
-### Audit Mode Workflow
+**Audit** — trace an execution failure back to its instruction gap.
 
 1. Identify what the agent missed and locate the executing instruction.
-2. Classify the instruction gap under the defect classes.
-3. Edit the instruction in-place with a rewrite to prevent the failure.
+2. Classify the gap against the principles above.
+3. Edit the instruction in place to prevent recurrence — as the durable principle the failure illustrates, not a recipe tuned to this one instance (Principle 5).
 
-## Output Expectations
+## Output
 
-- Respond with structured, direct reviews or audits. Keep lists and verdicts highly concise, citing exact line differences where revisions are made.
+Structured, direct, concise. Cite exact line diffs where revisions are made.

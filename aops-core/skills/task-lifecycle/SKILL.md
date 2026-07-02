@@ -160,8 +160,11 @@ hard-to-reverse step. Do not dispatch to a background worker.
 
 ## Relationship to `/supervisor`
 
-`/supervisor` is the multi-tick **delegate-and-verify** process; its Dispatch
-phase shares the Select + Gates spine above but always routes to workers (never
-inline) and adds proof, ledger, and escalation across ticks. `/dispatch` is a
-thin one-shot slice of that dispatch step; `/pull` is the inline counterpart for
-work you do yourself, here and now.
+This skill is invoked only by `/pull` (execute mode) and `/dispatch` (dispatch
+mode) — `/supervisor` does not call it. `/supervisor` is the multi-tick
+**delegate-and-verify** process; its own Dispatch phase applies the same premise
+and pre-flight gates independently (see
+[[../supervisor/instructions/worker-dispatch.md]]), then adds proof, ledger, and
+escalation across ticks. `/dispatch` is a thin one-shot slice of a single
+dispatch step; `/pull` is the inline counterpart for work you do yourself, here
+and now.

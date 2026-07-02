@@ -8,7 +8,7 @@ The dispatch mechanics that govern epic progression.
 
 ### 0. Premise Gate (hard refuse — runs first, before any pre-flight row)
 
-Before anything else, **read the task body and judge whether it carries a genuine premise assessment** — a one-sentence, principal-voice judgment, recorded at promotion to `queued`, that this task is worth doing and rightly shaped (see [[../../remember/references/premise-gate.md]]). This is an **agent judgment made by reading**, never a regex/field/heading presence-check — a presence-check rig would itself be the deterministic-substitute-for-judgment the gate exists to stop (`judgment-non-delegable`). If the body shows no genuine premise judgment (absent, empty, a rubber-stamp like "looks fine", or a checklist instead of a judgment), **HALT — do not dispatch, do not spend compute**: append `dispatch_halt` to Pattern Memory, set the task back to `ready` / route it to the promoter with a one-line reason, and exit. The premise judgment is the spend-stopper; it is cheaper to bounce a bad premise here than after a worker has built it.
+Apply the premise gate to the selected task before any pre-flight row — full procedure, HARD RULE, and honest scope are owned by [[../../remember/references/premise-gate.md]] §2. If it hard-refuses, additionally append `dispatch_halt` to Pattern Memory before exiting.
 
 ### Pre-flight Confirmation Summary
 
