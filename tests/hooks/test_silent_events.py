@@ -52,7 +52,11 @@ class TestTaskNotificationSilent:
             assert output_json == {}, (
                 f"Expected empty output for task-notification UPS, got: {json.dumps(output_json, indent=2)}"
             )
-            mock_log.assert_called_once_with(ctx, output=canonical)
+            # execute_hooks() no longer logs internally — logging happens once,
+            # uniformly, in main() AFTER resolve_policy() runs (so the JSONL
+            # entry reflects the resolved wire decision, not just the gate's
+            # pre-translation verdict). See main()'s log_hook_event() call.
+            mock_log.assert_not_called()
 
     def test_task_notification_subprocess_returns_empty(self) -> None:
         """Task-notification via subprocess returns empty output."""

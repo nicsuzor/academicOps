@@ -57,6 +57,7 @@ try:
         ClaudeStopHookOutput,
         GeminiHookOutput,
         GeminiHookSpecificOutput,
+        ResolvedDecision,
     )
     from hooks.unified_logger import log_hook_event
 except ImportError as e:
@@ -68,6 +69,10 @@ except ImportError as e:
 # --- Configuration ---
 
 DEBUG_LOG_DIR = Path("/tmp")
+
+# Claude Code only accepts hookSpecificOutput for these events. Emitting it for
+# other events causes the entire payload to be rejected.
+_CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
 
 
 def _clean_advisory(text: str | None) -> str | None:
@@ -597,13 +602,10 @@ class HookRouter:
         """
         # Task-notification prompts are internal plumbing — not real user input.
         # Return empty output so agents aren't tricked into treating them as fresh prompts.
+        # Logging happens once, uniformly, in main() after resolve_policy() runs —
+        # not here (see resolve_policy() / log_hook_event() call in main()).
         if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
-            output = CanonicalHookOutput(verdict=None)
-            try:
-                log_hook_event(ctx, output=output)
-            except Exception as e:
-                print(f"WARNING: Failed to log task-notification hook event: {e}", file=sys.stderr)
-            return output
+            return CanonicalHookOutput(verdict=None)
 
         merged_result = CanonicalHookOutput()
 
@@ -689,12 +691,7 @@ class HookRouter:
         except Exception as e:
             print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
 
-        # Log hook event with output AFTER all gates complete
-        try:
-            log_hook_event(ctx, output=merged_result)
-        except Exception as e:
-            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
-
+        # Logging happens once, uniformly, in main() after resolve_policy() runs.
         return merged_result
 
     def _run_special_handlers(
@@ -893,153 +890,120 @@ class HookRouter:
 
         target.metadata.update(source.metadata)
 
+    # ------------------------------------------------------------------
+    # Gemini CLI
+    # ------------------------------------------------------------------
+
     def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
-        """Format for Gemini CLI."""
+        """Format for Gemini CLI. Thin wrapper: resolve policy, then translate.
+
+        Kept as a single public entry point (rather than requiring callers to
+        chain resolve+translate themselves) so existing call sites and tests
+        that invoke ``output_for_gemini(canonical, event)`` directly keep
+        working unchanged.
+        """
+        resolved = self.resolve_policy_for_gemini(result)
+        return self.translate_gemini(resolved, event)
+
+    def resolve_policy_for_gemini(self, result: CanonicalHookOutput) -> ResolvedDecision:
+        """All Gemini verdict-changing policy: deny -> block, everything else -> allow.
+
+        Gemini has no non-blocking "ask"/"deliver advisory without blocking"
+        concept on the wire, so `ask` and `warn` both collapse into `allow` here
+        — preserved exactly as the pre-refactor renderer did, not "improved".
+        """
+        is_block = result.verdict == "deny"
+        return ResolvedDecision(
+            channel="json",
+            wire_decision="block" if is_block else "allow",
+            banner=result.system_message,
+            reason=result.system_message if is_block else None,
+            context=result.context_injection,
+            metadata=result.metadata,
+        )
+
+    def translate_gemini(self, resolved: ResolvedDecision, event: str) -> GeminiHookOutput:
+        """Pure mechanical mapping from a resolved decision to Gemini's wire schema.
+
+        No policy left here — ``resolve_policy_for_gemini`` already decided
+        everything; this only renames fields into ``GeminiHookOutput``.
+        """
         out = GeminiHookOutput()
 
-        if result.system_message:
-            out.systemMessage = result.system_message
+        if resolved.banner:
+            out.systemMessage = resolved.banner
 
-        # Set decision based on verdict
-        if result.verdict == "deny":
+        if resolved.wire_decision == "block":
             out.decision = "deny"
             # Recovery payload (e.g. RBG instructions) MUST go to
             # hookSpecificOutput.additionalContext — `reason` is user-visible
             # only and the model never sees it. Mirrors the Claude side, where
             # context_injection lands on hookSpecificOutput.additionalContext.
-            if result.context_injection:
+            if resolved.context:
                 out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event, additionalContext=result.context_injection
+                    hookEventName=event, additionalContext=resolved.context
                 )
-            out.reason = result.system_message
+            out.reason = resolved.reason
         else:
             out.decision = "allow"
-            if result.context_injection:
+            if resolved.context:
                 out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event, additionalContext=result.context_injection
+                    hookEventName=event, additionalContext=resolved.context
                 )
 
-        out.metadata = result.metadata
+        out.metadata = resolved.metadata
         return out
+
+    # ------------------------------------------------------------------
+    # Claude Code
+    # ------------------------------------------------------------------
 
     def output_for_claude(
         self, result: CanonicalHookOutput, event: str
     ) -> ClaudeGeneralHookOutput | ClaudeStopHookOutput:
-        """Format for Claude Code."""
-        if event == "Stop" or event == "SessionEnd":
-            output = ClaudeStopHookOutput()
+        """Format for Claude Code. Thin wrapper: resolve policy, then translate.
 
-            # Channel routing for Stop/SessionEnd. The DECISION of whether a
-            # warn-mode advisory must block-to-deliver is POLICY, read from the
-            # SSoT channel table (client_spec) — not hardcoded here. The wire
-            # FIELD names (decision/reason vs hookSpecificOutput.additionalContext)
-            # are structural and stay in this renderer (invariant B: the
-            # block-to-deliver decision is the property that kept regressing, so
-            # it lives in exactly one place — the table cell).
-            #
-            # channel_spec("claude","Stop").agent_context_without_block:
-            #   True  (Claude Code 2.1.191, mem-4ab6cc0b, live-verified
-            #          2026-06-25) -> a warn that only needs to DELIVER advisory
-            #          rides hookSpecificOutput.additionalContext WITHOUT a block.
-            #          This RETIRES the legacy WARN->block-to-deliver upgrade.
-            #   False (legacy 2.1.158) -> no agent-only Stop channel, so a warn
-            #          carrying advisory must upgrade to decision="block"+reason
-            #          purely to deliver it.
-            #
-            # ENFORCEMENT (deny/block-mode handover) ALWAYS blocks — delivery !=
-            # enforcement: a non-blocking nudge can be disregarded by the model
-            # (mem-4ab6cc0b), so block-mode gates keep decision="block".
-            spec = client_spec.channel_spec("claude", "Stop")
-            agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+        Kept as a single public entry point so existing call sites and tests
+        that invoke ``output_for_claude(canonical, event)`` directly keep
+        working unchanged.
+        """
+        resolved = self.resolve_policy_for_claude(result, event)
+        return self.translate_claude(resolved, event)
 
-            ctx_inj = result.context_injection
-            sys_msg = result.system_message
+    def resolve_policy_for_claude(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ResolvedDecision:
+        """All Claude JSON-channel verdict-changing policy, for every event
+        Claude can receive.
 
-            # The Stop `reason` field is BOTH user-visible (Claude Code renders
-            # a blocking Stop hook's reason as a notice) and agent-visible —
-            # there is no agent-only `reason` channel. Strip the marker scaffold
-            # so the advisory reads as a clean notice rather than a raw system
-            # dump. hookSpecificOutput.additionalContext IS agent-only, so it
-            # keeps the markers intact (the gate's trust framing).
-            agent_reason = _clean_advisory(ctx_inj)
+        This ALWAYS resolves to the JSON channel — it does not know about the
+        Stop asyncRewake short-circuit (see ``async_rewake_body_for``), which is
+        a channel-selection decision main() must make BEFORE calling this, since
+        that channel has no representation in ``ClaudeStopHookOutput`` at all.
+        Keeping this method asyncRewake-unaware preserves ``output_for_claude``
+        as a pure "give me the Stop/general JSON shape" call for direct callers
+        and tests, exactly like the pre-refactor renderer.
 
-            if result.verdict == "deny":
-                # Enforcement path: must HALT the agent.
-                output.decision = "block"
-                if agent_reason:
-                    output.reason = agent_reason
-            elif result.verdict == "warn" and ctx_inj:
-                if agent_ctx_without_block:
-                    # Deliver without blocking — additionalContext reaches the
-                    # agent's context on the next turn (it keeps continuing).
-                    # The internal verdict stays "warn".
-                    output.decision = "approve"
-                    output.hookSpecificOutput = ClaudeHookSpecificOutput(
-                        hookEventName=event, additionalContext=ctx_inj
-                    )
-                else:
-                    # No agent-only channel: upgrade to block purely to deliver.
-                    output.decision = "block"
-                    output.reason = agent_reason
-            else:
-                output.decision = "approve"
-
-            # sys_msg is a short, user-facing summary (denial reason, banner).
-            # Surface via user-visible channels only. Do NOT echo ctx_inj here
-            # — that was the channel that leaked advisory text to the user
-            # transcript (aops-d10e7db6).
-            if sys_msg:
-                output.stopReason = sys_msg
-                output.systemMessage = sys_msg
-
-            return output
-
-        output = ClaudeGeneralHookOutput()
-        if result.system_message:
-            output.systemMessage = result.system_message
-
-        # Claude Code only accepts hookSpecificOutput for these events.
-        # Emitting it for other events causes the entire payload to be rejected.
-        _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostToolBatch"}
-        if event not in _CLAUDE_HSO_EVENTS:
-            if result.context_injection:
-                raise ValueError(
-                    f"Claude Code does not support context_injection (advisory) for {event}."
-                )
-            if result.verdict in ("deny", "ask"):
-                raise ValueError(f"Claude Code does not support blocking verdicts for {event}.")
-            return output
-
-        hso = ClaudeHookSpecificOutput(hookEventName=event)
-        has_hso = False
-
-        if result.verdict:
-            if result.verdict == "deny":
-                hso.permissionDecision = "deny"
-                hso.permissionDecisionReason = result.system_message
-                has_hso = True
-            elif result.verdict == "ask":
-                hso.permissionDecision = "ask"
-                hso.permissionDecisionReason = result.system_message
-                has_hso = True
-            elif result.verdict == "warn":
-                hso.permissionDecision = "allow"
-                has_hso = True
-            else:
-                hso.permissionDecision = "allow"
-                has_hso = True
-
-        if result.context_injection:
-            hso.additionalContext = result.context_injection
-            has_hso = True
-
-        if has_hso:
-            output.hookSpecificOutput = hso
-
-        return output
+        Stop/SessionEnd get the full channel-routing treatment (warn->
+        block-to-deliver upgrade, advisory cleanup — see
+        ``_resolve_policy_for_claude_stop``); every other event gets the
+        simpler HSO verdict mapping plus the event-support validity checks
+        that used to live inline in the renderer (see
+        ``_resolve_policy_for_claude_general``).
+        """
+        if event in ("Stop", "SessionEnd"):
+            return self._resolve_policy_for_claude_stop(result, event)
+        return self._resolve_policy_for_claude_general(result, event)
 
     def async_rewake_body_for(self, result: CanonicalHookOutput, event: str) -> str | None:
         """Body to emit via the Claude Stop ``asyncRewake`` quiet-split, or None.
+
+        This is a CHANNEL-SELECTION decision, made before (and independent of)
+        ``resolve_policy_for_claude`` — the asyncRewake channel is a raw stdout
+        body + exit 2, which has no representation in ``ClaudeStopHookOutput``,
+        so it cannot live inside the JSON-channel policy/translate pipeline.
+        main() calls this FIRST for Stop/SessionEnd and only falls through to
+        ``resolve_policy_for_claude`` when it returns None.
 
         ONLY the advisory ``ida·reminder`` rides this channel (ENFORCEMENT-MAP
         §1.1): the full ida-reminder body is delivered to the AGENT as a
@@ -1064,8 +1028,194 @@ class HookRouter:
             return None
         return body
 
+    def _resolve_policy_for_claude_stop(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ResolvedDecision:
+        """Stop/SessionEnd JSON-channel routing. The DECISION of whether a
+        warn-mode advisory must block-to-deliver is POLICY, read from the SSoT
+        channel table (client_spec) — not hardcoded in the renderer. See
+        ``ClaudeStopHookOutput`` docstring for the live-verification history
+        behind ``agent_context_without_block``.
+        """
+        spec = client_spec.channel_spec("claude", "Stop")
+        # channel_spec("claude","Stop").agent_context_without_block:
+        #   True  (Claude Code 2.1.191, mem-4ab6cc0b, live-verified
+        #          2026-06-25) -> a warn that only needs to DELIVER advisory
+        #          rides hookSpecificOutput.additionalContext WITHOUT a block.
+        #          This RETIRES the legacy WARN->block-to-deliver upgrade.
+        #   False (legacy 2.1.158) -> no agent-only Stop channel, so a warn
+        #          carrying advisory must upgrade to decision="block"+reason
+        #          purely to deliver it.
+        #
+        # ENFORCEMENT (deny/block-mode handover) ALWAYS blocks — delivery !=
+        # enforcement: a non-blocking nudge can be disregarded by the model
+        # (mem-4ab6cc0b), so block-mode gates keep decision="block".
+        agent_ctx_without_block = bool(spec and spec.agent_context_without_block)
+
+        ctx_inj = result.context_injection
+        sys_msg = result.system_message
+
+        # The Stop `reason` field is BOTH user-visible (Claude Code renders a
+        # blocking Stop hook's reason as a notice) and agent-visible — there is
+        # no agent-only `reason` channel. Strip whitespace so the advisory
+        # reads as a clean notice. `context` (additionalContext) is
+        # agent-only, so it keeps markers/formatting intact (the gate's trust
+        # framing).
+        agent_reason = _clean_advisory(ctx_inj)
+
+        if result.verdict == "deny":
+            # Enforcement path: must HALT the agent.
+            wire_decision = "block"
+            reason = agent_reason
+            context = None
+        elif result.verdict == "warn" and ctx_inj:
+            if agent_ctx_without_block:
+                # Deliver without blocking — additionalContext reaches the
+                # agent's context on the next turn (it keeps continuing).
+                wire_decision = "allow"
+                reason = None
+                context = ctx_inj
+            else:
+                # No agent-only channel: upgrade to block purely to deliver.
+                wire_decision = "block"
+                reason = agent_reason
+                context = None
+        else:
+            wire_decision = "allow"
+            reason = None
+            context = None
+
+        return ResolvedDecision(
+            channel="json",
+            wire_decision=wire_decision,
+            # banner is a short, user-facing summary. Surfaced via user-visible
+            # channels only. Do NOT echo ctx_inj here — that was the channel
+            # that leaked advisory text to the user transcript (aops-d10e7db6).
+            banner=sys_msg,
+            reason=reason,
+            context=context,
+            metadata=result.metadata,
+        )
+
+    def _resolve_policy_for_claude_general(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ResolvedDecision:
+        """Policy for every Claude event except Stop/SessionEnd: event-support
+        validity checks (Claude rejects hookSpecificOutput / blocking verdicts
+        outside ``_CLAUDE_HSO_EVENTS``) plus the warn->allow collapse (Claude's
+        general HSO events have no non-blocking "deliver advisory" verdict
+        distinct from allow).
+        """
+        if event not in _CLAUDE_HSO_EVENTS:
+            if result.context_injection:
+                raise ValueError(
+                    f"Claude Code does not support context_injection (advisory) for {event}."
+                )
+            if result.verdict in ("deny", "ask"):
+                raise ValueError(f"Claude Code does not support blocking verdicts for {event}.")
+            return ResolvedDecision(
+                channel="json", banner=result.system_message, metadata=result.metadata
+            )
+
+        if result.verdict is None:
+            wire_decision = None
+        elif result.verdict == "deny":
+            wire_decision = "block"
+        elif result.verdict == "ask":
+            wire_decision = "ask"
+        else:  # "allow" or "warn" — warn collapses to allow
+            wire_decision = "allow"
+
+        reason = result.system_message if wire_decision in ("block", "ask") else None
+
+        return ResolvedDecision(
+            channel="json",
+            wire_decision=wire_decision,
+            banner=result.system_message,
+            reason=reason,
+            context=result.context_injection,
+            metadata=result.metadata,
+        )
+
+    def translate_claude(
+        self, resolved: ResolvedDecision, event: str
+    ) -> ClaudeGeneralHookOutput | ClaudeStopHookOutput:
+        """Pure mechanical mapping from a resolved decision to Claude's wire
+        schema. No policy left here — every branch is a fixed, deterministic
+        field-name/shape mapping. See ``resolve_policy_for_claude`` for the
+        decisions that produced ``resolved``.
+        """
+        if event in ("Stop", "SessionEnd"):
+            return self._translate_claude_stop(resolved, event)
+        return self._translate_claude_general(resolved, event)
+
+    def _translate_claude_stop(
+        self, resolved: ResolvedDecision, event: str
+    ) -> ClaudeStopHookOutput:
+        output = ClaudeStopHookOutput()
+
+        if resolved.wire_decision == "block":
+            output.decision = "block"
+            if resolved.reason:
+                output.reason = resolved.reason
+        elif resolved.context:
+            output.decision = "approve"
+            output.hookSpecificOutput = ClaudeHookSpecificOutput(
+                hookEventName=event, additionalContext=resolved.context
+            )
+        else:
+            output.decision = "approve"
+
+        if resolved.banner:
+            output.stopReason = resolved.banner
+            output.systemMessage = resolved.banner
+
+        return output
+
+    def _translate_claude_general(
+        self, resolved: ResolvedDecision, event: str
+    ) -> ClaudeGeneralHookOutput:
+        output = ClaudeGeneralHookOutput()
+        if resolved.banner:
+            output.systemMessage = resolved.banner
+
+        if event not in _CLAUDE_HSO_EVENTS:
+            return output
+
+        hso = ClaudeHookSpecificOutput(hookEventName=event)
+        has_hso = False
+
+        if resolved.wire_decision == "block":
+            hso.permissionDecision = "deny"
+            hso.permissionDecisionReason = resolved.reason
+            has_hso = True
+        elif resolved.wire_decision == "ask":
+            hso.permissionDecision = "ask"
+            hso.permissionDecisionReason = resolved.reason
+            has_hso = True
+        elif resolved.wire_decision == "allow":
+            hso.permissionDecision = "allow"
+            has_hso = True
+
+        if resolved.context:
+            hso.additionalContext = resolved.context
+            has_hso = True
+
+        if has_hso:
+            output.hookSpecificOutput = hso
+
+        return output
+
+    # ------------------------------------------------------------------
+    # agy (Antigravity)
+    # ------------------------------------------------------------------
+
     def output_for_agy(self, result: CanonicalHookOutput, event: str) -> dict[str, Any]:
         """Translate the internal verdict to an ``exa.hooks_pb.*Result`` protojson dict.
+
+        Thin wrapper: resolve policy, then translate. Kept as a single public
+        entry point so existing call sites and tests that invoke
+        ``output_for_agy(canonical, event)`` directly keep working unchanged.
 
         agy/Antigravity parses hook stdout as **protojson** against the per-event
         ``*Result`` message and rejects on the FIRST unknown field. That is the
@@ -1073,8 +1223,8 @@ class HookRouter:
         ``decision`` / ``metadata`` / ``systemMessage`` are all *unknown* fields
         to ``exa.hooks_pb``, so routing agy through ``output_for_gemini`` made the
         harness discard every verdict (including RBG DENYs) while the router
-        exited 0. This formatter therefore emits ONLY the fields each ``*Result``
-        defines — and never ``metadata``.
+        exited 0. ``translate_agy`` therefore emits ONLY the fields each
+        ``*Result`` defines — and never ``metadata``.
 
         ``event`` is the ORIGINAL agy event name (``PreToolUse``, ``PostToolUse``,
         ``PreInvocation``, ``PostInvocation``, ``Stop``) — NOT the router's
@@ -1098,73 +1248,103 @@ class HookRouter:
             emitted. The advisory is still delivered via ``injectSteps`` on the
             result types that support it.
         """
-        verdict = result.verdict
+        resolved = self.resolve_policy_for_agy(result, event)
+        return self.translate_agy(resolved, event)
+
+    def resolve_policy_for_agy(self, result: CanonicalHookOutput, event: str) -> ResolvedDecision:
+        """agy verdict-changing policy: ``ask`` collapses into ``block`` (headless
+        — agy can't prompt for confirmation), advisory/reason text is
+        whitespace-cleaned, and each event's content-support validity is
+        checked HERE (client+event-aware policy, not mechanical translation) so
+        ``translate_agy`` never needs to raise.
+        """
         # "ask" cannot prompt in a headless agy run, so the safe, enforcing
         # interpretation of a gate that wanted to stop-and-confirm is to block.
-        is_block = verdict in ("deny", "ask")
-        advisory = _clean_advisory(result.context_injection)
-        short_reason = _clean_advisory(result.system_message)
+        wire_decision = "block" if result.verdict in ("deny", "ask") else "allow"
+        context = _clean_advisory(result.context_injection)
+        reason = _clean_advisory(result.system_message)
 
         if event == "PreToolUse":
             # PreToolHookResult only supports allowTool and denyReason.
             # denyReason corresponds strictly to short_reason (system_message).
             # It DOES NOT support advisory (context_injection).
-            if is_block:
-                if not short_reason:
+            if wire_decision == "block":
+                if not reason:
                     raise ValueError(
-                        f"agy PreToolUse deny requires short_reason. (Got advisory: {advisory!r})"
+                        f"agy PreToolUse deny requires short_reason. (Got advisory: {context!r})"
                     )
-                if advisory:
+                if context:
                     raise ValueError(
-                        f"agy PreToolUse does not support context_injection (advisory: {advisory!r})"
+                        f"agy PreToolUse does not support context_injection (advisory: {context!r})"
                     )
-                return {
-                    "allowTool": False,
-                    "denyReason": short_reason,
-                }
-            if advisory:
+            else:
+                if context:
+                    raise ValueError(
+                        f"agy PreToolUse allow/warn does not support context_injection (advisory: {context!r})"
+                    )
+                # allowTool has no field for short_reason; translate_agy's allow
+                # branch can't emit it, so clear it here rather than logging a
+                # `resolved.reason` that never actually reaches the wire.
+                reason = None
+        elif event == "PostToolUse":
+            if reason or context:
+                raise ValueError("agy PostToolUse does not support any fields.")
+        elif event in ("PreInvocation", "PostInvocation"):
+            pass  # both reason and context are supported, folded into injectSteps by translate_agy
+        elif event == "Stop":
+            # StopHookResult {decision, reason}. reason is strictly the system_message.
+            if context:
                 raise ValueError(
-                    f"agy PreToolUse allow/warn does not support context_injection (advisory: {advisory!r})"
+                    f"agy Stop does not support context_injection (advisory: {context!r})"
                 )
+            if wire_decision == "block" and not reason:
+                raise ValueError("agy Stop block requires a system_message (short_reason).")
+        else:
+            # Unknown / unmapped event: only the empty object validates against
+            # any *Result without triggering an unknown-field rejection.
+            if reason or context:
+                raise ValueError(f"agy does not support any fields for unmapped event {event}.")
+
+        return ResolvedDecision(
+            channel="json",
+            wire_decision=wire_decision,
+            reason=reason,
+            context=context,
+            metadata=result.metadata,
+        )
+
+    def translate_agy(self, resolved: ResolvedDecision, event: str) -> dict[str, Any]:
+        """Pure mechanical mapping from a resolved decision to agy's per-event
+        protojson shape. No validation left here — ``resolve_policy_for_agy``
+        already proved the content fits this event's ``*Result`` shape.
+        """
+        is_block = resolved.wire_decision == "block"
+        reason = resolved.reason
+        context = resolved.context
+
+        if event == "PreToolUse":
+            if is_block:
+                return {"allowTool": False, "denyReason": reason}
             return {"allowTool": True}
 
         if event == "PostToolUse":
-            if short_reason or advisory:
-                raise ValueError("agy PostToolUse does not support any fields.")
             return {}
 
-        if event == "PreInvocation":
+        if event in ("PreInvocation", "PostInvocation"):
             steps = []
-            if short_reason:
-                steps.append({"ephemeralMessage": short_reason})
-            if advisory:
-                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
-                steps.append({"ephemeralMessage": hidden_advisory})
-            return {"injectSteps": steps} if steps else {}
-
-        if event == "PostInvocation":
-            steps = []
-            if short_reason:
-                steps.append({"ephemeralMessage": short_reason})
-            if advisory:
-                hidden_advisory = f"<details><summary>System Advisory (Agent Context)</summary>\n\n{advisory}\n</details>"
+            if reason:
+                steps.append({"ephemeralMessage": reason})
+            if context:
+                hidden_advisory = (
+                    "<details><summary>System Advisory (Agent Context)</summary>\n\n"
+                    f"{context}\n</details>"
+                )
                 steps.append({"ephemeralMessage": hidden_advisory})
             return {"injectSteps": steps} if steps else {}
 
         if event == "Stop":
-            # StopHookResult {decision, reason}. reason is strictly the system_message.
-            if advisory:
-                raise ValueError(
-                    f"agy Stop does not support context_injection (advisory: {advisory!r})"
-                )
-            if is_block and not short_reason:
-                raise ValueError("agy Stop block requires a system_message (short_reason).")
-            return {"reason": short_reason} if short_reason else {}
+            return {"reason": reason} if reason else {}
 
-        # Unknown / unmapped event: the empty object validates against any
-        # *Result and never triggers an unknown-field rejection.
-        if short_reason or advisory:
-            raise ValueError(f"agy does not support any fields for unmapped event {event}.")
         return {}
 
 
@@ -1215,22 +1395,57 @@ def main():
 
     # Pipeline
     ctx = None
+    result = None
     try:
         ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
         result = router.execute_hooks(ctx)
 
-        # Output (JSON conversion happens only here)
+        # agy keys its protojson *Result on the ORIGINAL agy event name
+        # (PreInvocation/PostInvocation/Stop map many-to-one onto the router's
+        # internal mapped name), so it needs the pre-mapping name; Claude and
+        # Gemini use the internal mapped name.
+        agy_event = gemini_event or raw_event_name or ctx.hook_event
+        render_event = agy_event if client_type == "agy" else ctx.hook_event
+
+        # resolve_policy() is the LAST point at which a hook event's fate can
+        # still change: Stop channel routing, advisory cleanup, the
+        # general-event warn->allow collapse, the asyncRewake channel choice,
+        # agy's ask->block collapse, and per-client/event validity checks all
+        # run here. Everything after this is pure, deterministic field-mapping
+        # (translate_*) — so logging the resolved decision right after this
+        # point IS logging what will actually be sent, in one shared shape
+        # regardless of client.
         if client_type == "agy":
-            # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
-            # first unknown field — it does NOT speak Gemini's hook dialect (the
-            # silent-drop bug 4c73f02a introduced; aops-27004ffd). Format against the
-            # ORIGINAL agy event name, not the internal mapped ctx.hook_event.
-            agy_event = gemini_event or raw_event_name or ctx.hook_event
-            print(json.dumps(router.output_for_agy(result, agy_event)))
+            resolved = router.resolve_policy_for_agy(result, render_event)
         elif client_type == "gemini":
-            output = router.output_for_gemini(result, ctx.hook_event)
-            print(output.model_dump_json(exclude_none=True))
+            resolved = router.resolve_policy_for_gemini(result)
         else:
+            # asyncRewake is a channel-selection decision made BEFORE the
+            # JSON-channel policy — that channel has no representation in
+            # ClaudeStopHookOutput, so resolve_policy_for_claude never sees it
+            # (see async_rewake_body_for docstring).
+            rewake_body = router.async_rewake_body_for(result, render_event)
+            if rewake_body is not None:
+                resolved = ResolvedDecision(
+                    channel="asyncRewake_stdout",
+                    wire_decision="allow",
+                    raw_body=rewake_body,
+                    metadata=result.metadata,
+                )
+            else:
+                resolved = router.resolve_policy_for_claude(result, render_event)
+
+        exit_code = 2 if resolved.channel == "asyncRewake_stdout" else 0
+
+        # Logging must never be the reason a hook fails to deliver its real
+        # payload to the client — a logging failure is caught and warned here,
+        # not allowed to propagate up to the crash handler below.
+        try:
+            log_hook_event(ctx, output=result, resolved=resolved, exit_code=exit_code)
+        except Exception as e:
+            print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
+
+        if resolved.channel == "asyncRewake_stdout":
             # asyncRewake quiet-split path (Claude Stop, ENFORCEMENT-MAP §1.1
             # `ida·reminder`): emit the full ida-reminder body on stdout and EXIT
             # 2. The Stop hook is registered with `asyncRewake:true` +
@@ -1241,12 +1456,24 @@ def main():
             # (CLOSED→OPEN on Stop), so the next Stop produces no warn, the router
             # exits 0, and the agent terminates normally — asyncRewake re-wakes
             # cannot trap the session.
-            rewake_body = router.async_rewake_body_for(result, ctx.hook_event)
-            if rewake_body is not None:
-                sys.stdout.write(rewake_body if rewake_body.endswith("\n") else rewake_body + "\n")
-                sys.stdout.flush()
-                sys.exit(2)
-            output = router.output_for_claude(result, ctx.hook_event)
+            body = resolved.raw_body  # guaranteed non-empty: async_rewake_body_for() only
+            # returns a truthy body, and that's the only place channel is set to this value.
+            assert body is not None
+            sys.stdout.write(body if body.endswith("\n") else body + "\n")
+            sys.stdout.flush()
+            sys.exit(2)
+
+        # Output (JSON conversion happens only here — translate_* is pure)
+        if client_type == "agy":
+            # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
+            # first unknown field — it does NOT speak Gemini's hook dialect (the
+            # silent-drop bug 4c73f02a introduced; aops-27004ffd).
+            print(json.dumps(router.translate_agy(resolved, render_event)))
+        elif client_type == "gemini":
+            output = router.translate_gemini(resolved, render_event)
+            print(output.model_dump_json(exclude_none=True))
+        else:
+            output = router.translate_claude(resolved, render_event)
             print(output.model_dump_json(exclude_none=True))
     except Exception as e:
         import traceback
@@ -1268,9 +1495,18 @@ def main():
             )
 
         try:
-            from hooks.unified_logger import log_hook_event
-
-            log_hook_event(ctx, exit_code=1, error=error_msg)
+            # `log_hook_event` is already imported at module scope (top of
+            # file) — re-importing it locally here would shadow that name for
+            # this ENTIRE function (Python scopes a name assigned anywhere in a
+            # function, including a local `import`, to the whole function
+            # body), breaking the earlier module-level call in the try block
+            # above with an UnboundLocalError.
+            #
+            # `result` (the gate's true CanonicalHookOutput) is included when
+            # available — e.g. gate execution succeeded but resolve_policy/
+            # translation failed — so a crash entry still shows what the gates
+            # decided, not just that something broke.
+            log_hook_event(ctx, output=result, exit_code=1, error=error_msg)
         except Exception as log_err:
             print(f"WARNING: Failed to log crashed hook event: {log_err}", file=sys.stderr)
 

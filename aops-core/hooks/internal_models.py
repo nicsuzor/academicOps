@@ -51,4 +51,5 @@ class HookLogEntry(HookContext):
     logged_at: str
     exit_code: int = 0
     output: dict[str, Any] | None = None
+    resolved: dict[str, Any] | None = None
     raw_input: dict[str, Any] = Field(default_factory=dict)
