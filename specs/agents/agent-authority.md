@@ -1,28 +1,15 @@
 ---
-created: 2026-04-21
-depends_on:
-- rbg
-- enforcement
-- polecat-system
-id: aops-e8335053
-modified: '2026-04-27T22:35:43+00:00'
-status: inbox
-tags:
-- agent-authority
-- agents
-- framework
-- governance
-- permissions
-- skill-delegation
-- spec
-tier: core
+id: agent-authority-spec
 title: Agent Authority — Permissions and Skill Delegation
 type: spec
+status: ready
+tier: core
+depends_on: [rbg, enforcement, polecat-system]
+tags: [spec, agents, agent-authority, governance, permissions, skill-delegation, framework]
+created: 2026-04-21
 ---
 
 # Agent Authority — Permissions and Skill Delegation
-
-<!-- NS: revise this spec, make sure it conforms to our standards -->
 
 **Operative state**: `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each agent holds. This spec defines the schema — fields, canonical tool naming, the four permissions axes, and skill/sub-agent delegation rules; the per-agent files are the binding declarations against it.
 
@@ -141,7 +128,7 @@ fileAccess:
     - "!specs/archived/**"   # deny override; beats the grant above
 ```
 
-A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; hooks (`policy_enforcer.py`) and the polecat sandbox (`specs/polecat-system.md`) enforce it at the sharp edge.
+A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; hooks (`policy_enforcer.py`) and the polecat sandbox (`specs/polecat/polecat-system.md`) enforce it at the sharp edge.
 
 ## Skill Delegation
 
@@ -214,7 +201,7 @@ L5 is the hard edge — a declaration cannot re-open a path an L5 hook blocks. A
 
 **Funnel/chokepoint pattern** (last resort only): deny a capability to all agents and grant it to exactly one that must invoke a specific skill (e.g. pauli via `/planner`). Architecturally unforgeable but imposes a coordination tax on every gated call — deploy only after cheaper rungs (instruction → deterministic gate → post-hoc enforcer) demonstrably fail.
 
-Related: **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, hooks are L5); **`specs/agents/polecat-system.md`** (enforces `fileAccess`/`bashScopes` at the worktree boundary). Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
+Related: **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, hooks are L5); **`specs/polecat/polecat-system.md`** (enforces `fileAccess`/`bashScopes` at the worktree boundary). Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
 
 ## Non-Goals
 

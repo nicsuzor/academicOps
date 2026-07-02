@@ -118,7 +118,7 @@ Read-only projections. Do not write local JSON tracking files.
 | Phase          | Subagent | Execution                                                                   |
 | :------------- | :------- | :-------------------------------------------------------------------------- |
 | **Orient**     | (none)   | Read task body and ledger; judge whether to advance or halt; select phase.  |
-| **Decompose**  | pauli    | Propose subtasks; run RBG axiomcheck. Set `superseded_by` on retired tasks. |
+| **Decompose**  | pauli    | Propose subtasks; run RBG axiomcheck. Cancel retired tasks (`status: cancelled`) with a `supersedes` edge on the replacements. |
 | **Review**     | (none)   | Halt; await human promotion to `queued`.                                    |
 | **Dispatch**   | pauli    | Preflight brief, execute dispatch or chain compose/dispatch.                |
 | **Pre-verify** | pauli    | Assemble minimal brief (artifact, goal, spec link).                         |

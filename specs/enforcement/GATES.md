@@ -18,6 +18,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 - **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md).
 - **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md).
 - **Design rationale (why the gate system is shaped this way)** — see [`specs/enforcement/enforcement.md`](enforcement.md) and [`specs/agents/rbg.md`](../agents/rbg.md).
+- **Per-gate design rationale (why a given gate exists, the class of failure it defends against)** — lives in the respective agent spec: `ida` → [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate); `enforcer` and `rbg-review` → [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends); gates without an agent spec → [`specs/enforcement/enforcement.md`](enforcement.md). GATES.md holds the operational state (what / where / config / verify / debug).
 
 ## At a glance
 
@@ -192,19 +193,19 @@ If the sentinel fires unexpectedly, check:
 
 ## `enforcer` gate
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.enforcer`.
+> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.enforcer`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
 ### What is it
 
 The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.enforcer_threshold` (default 50), the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
 
-**Class of failure caught.** Ultra-vires drift, scope creep, unaudited long-running sessions, axiom violations the agent didn't self-catch. Enforces a periodic compliance check rather than blocking individual actions.
+**Design rationale + class of failure caught.** Live in the [rbg spec](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
 ### Where it lives
 
 | Concern                  | Path                                                                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[0]`)                                                              |
+| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="enforcer", ...)`)                                             |
 | Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`ENFORCER_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                    |
 | Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                 |
 | Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`       |
@@ -258,7 +259,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `rbg-review` gate
 
-> **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. It **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict; the trigger is structural (Stop event + armed flag + session type), never a content/keyword sniff. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
+> **TL;DR.** End-of-session axiom-audit backstop, scoped to **task-bound (polecat/crew)** sessions only. Armed `CLOSED` for polecat/crew; `OPEN` (inert) for ad hoc interactive — so interactive users do **not** eat a per-turn rbg delay. It **DENIES the exit Stop** of a task-bound session until the `rbg` subagent has run and returned a verdict; the trigger is structural (Stop event + armed flag + session type), never a content/keyword sniff. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (default `block`). Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
 ### Where it lives
 
@@ -307,7 +308,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `qa` gate
 
-> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[1]`). Mode key: `gates.qa`.
+> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.qa`.
 
 ### What is it
 
@@ -319,7 +320,7 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 
 | Concern           | Path                                                                                                 |
 | ----------------- | ---------------------------------------------------------------------------------------------------- |
-| Gate definition   | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[1]`)                                             |
+| Gate definition   | `aops-core/lib/gates/definitions.py` (`GateConfig(name="qa", ...)`)                                  |
 | Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                                        |
 | Custom conditions | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`) |
 | Templates         | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md`                   |
@@ -355,7 +356,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `handover` gate
 
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[2]`). Mode key: `gates.handover`.
+> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.handover`.
 
 ### What is it
 
@@ -367,7 +368,7 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 
 | Concern               | Path                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
-| Gate definition       | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[2]`)                                               |
+| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                              |
 | Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                           |
 | Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md` |
 | Skills that reopen it | `aops-core/skills/end_session/SKILL.md`, `aops-core/skills/dump/SKILL.md`                              |
@@ -410,25 +411,19 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `ida` gate
 
-> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GATE_CONFIGS[3]`). Mode key: `gates.ida`.
-
-<!-- NS: the hook specific stuff should be in the respective gate/agent spec, not here -->
+> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.ida`.
 
 ### What is it
 
 The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification. Gate opens after the first block so retried Stops pass; re-arms on UserPromptSubmit.
 
-**Class of failure caught.** Criterion substitution, narrative-as-proof, fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, subagent-output laundering.
-
-**Why fire-once.** Regardless of channel, the agent should see the honesty checklist **once per turn** and self-correct — not be nagged on every retried Stop. The lifecycle delivers exactly that: CLOSED → fires on first Stop → OPEN, re-arms on the next UserPromptSubmit.
-
-**Delivery channel (harness-dependent).** _How_ the once-per-turn advisory reaches the agent is governed by the SSoT channel table, not by this gate — see [Enforcement Map](../ENFORCEMENT-MAP.md). On the current Claude Code target a `warn` rides `hookSpecificOutput.additionalContext` **without blocking** (the turn proceeds); this is not user-silent — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line. The quiet alternative is the `asyncRewake` Stop hook (full body to agent `<system-reminder>`, one-line `<summary>` to user) — delivery only, not compulsion. Wire-mechanics and per-client-version detail live in [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md), not here.
+**Design rationale + class-of-failure caught** (criterion substitution, narrative-as-proof, skipped verification, subagent-output laundering, why fire-once, delivery-channel philosophy) live in the [ida spec](../agents/ida.md#honesty-at-stop--the-ida-gate).
 
 ### Where it lives
 
 | Concern         | Path                                                     |
 | --------------- | -------------------------------------------------------- |
-| Gate definition | `aops-core/lib/gates/definitions.py` (`GATE_CONFIGS[3]`) |
+| Gate definition | `aops-core/lib/gates/definitions.py` (`GateConfig(name="ida", ...)`) |
 | Template        | `aops-core/hooks/templates/ida-reminder.md`              |
 | Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)       |
 
@@ -437,7 +432,7 @@ Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `route
 ### How it's configured
 
 - **Mode key**: `gates.ida` (`warn` | `block` | `off`).
-- **Triggers**: (1) Stop while CLOSED → OPEN (fire-once); (2) UserPromptSubmit → CLOSED (re-arm), **excluding slash-command turns** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`). A skill invocation (`/end-session`, `/dump`, `/remember`, or any `/command`) owns its own finishing format, so it must not re-arm the honesty gate — otherwise a slash command typed after a reflection has already fired arms a second, redundant reflection on the next Stop. Suppresses the close only — it never opens the gate, so a first-turn slash command (gate still CLOSED from session start) still reflects. (3) `PreToolUse`/`AskUserQuestion` → **re-close** + inject advisory (`definitions.py:637-647`) — asking the user a question re-arms the reminder for the answer turn.
+- **Triggers**: (1) Stop while CLOSED → OPEN (fire-once); (2) UserPromptSubmit → CLOSED (re-arm), **excluding slash-command turns** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`). A skill invocation (`/end-session`, `/dump`, `/remember`, or any `/command`) owns its own finishing format, so it must not re-arm the honesty gate — otherwise a slash command typed after a reflection has already fired arms a second, redundant reflection on the next Stop. Suppresses the close only — it never opens the gate, so a first-turn slash command (gate still CLOSED from session start) still reflects. (3) `PreToolUse`/`AskUserQuestion` → **re-close** + inject advisory — asking the user a question re-arms the reminder for the answer turn.
 - **Stop policies**: `hook_event="Stop"`, `current_status=CLOSED` — a DENY policy (`is_ida_block_mode`) and a WARN policy (`is_ida_warn_mode`), both injecting `context_key="ida.reminder"`. Which one delivers, and to whom, is the shared Stop-gate behaviour — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
 - **Default-everywhere**: `polecat.yaml.example` ships `ida: warn`. `BUILTIN_GATES` (used when no polecat.yaml is found) also sets `ida: warn`.
 

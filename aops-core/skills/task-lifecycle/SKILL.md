@@ -92,12 +92,12 @@ For the selected candidate leaf task:
     reference: `[WARNING] Task brief references non-existent path: <stale-path>`
     (warn, do not hard-block — the caller decides).
 
-<!-- NS: superceded tasks should just be cancelled. remove this extra field. -->
-
-- **Supersession Check**:
-  - If the task has a non-empty `superseded_by` field, do not select it; print
-    `[WARNING] Task <id> is superseded by <replacement-ids>` and select the next
-    candidate.
+- **Stale-leftover check**: A superseded or dropped task is not selectable
+  because it is already out of the dispatchable set — supersession or a drop
+  decision moves the task to a terminal status (`done` / `cancelled`), so the
+  `queued`-only selection in §1 never surfaces it. No separate field check is
+  needed here. What the select step *cannot* see is a leftover from a completed
+  decomposition:
   - If the task has a parent, retrieve the parent's children (siblings) via
     `mcp__plugin_aops-core_pkb__get_task_children`. If **all** siblings are
     already `done` (a heuristic, not proof — parallel siblings legitimately
@@ -164,15 +164,20 @@ hard-to-reverse step. Do not dispatch to a background worker.
 
 ---
 
-<!-- NS: remove this explanation, but more importantly, refactor supervisor to use this skill so that we don't have two different explanations of the same behavior. -->
+## Relationship to `/pull`, `/dispatch`, and `/supervisor`
 
-## Relationship to `/supervisor`
+All three verbs run on this one spine — **Select → Gates → (Dispatch | Execute)**
+— which lives here and is authored once:
 
-This skill is invoked only by `/pull` (execute mode) and `/dispatch` (dispatch
-mode) — `/supervisor` does not call it. `/supervisor` is the multi-tick
-**delegate-and-verify** process; its own Dispatch phase applies the same premise
-and pre-flight gates independently (see
-[[../supervisor/instructions/worker-dispatch.md]]), then adds proof, ledger, and
-escalation across ticks. `/dispatch` is a thin one-shot slice of a single
-dispatch step; `/pull` is the inline counterpart for work you do yourself, here
-and now.
+- **`/pull`** runs the spine in `execute` mode (claim + run inline).
+- **`/dispatch`** runs the spine in `dispatch` mode (route to a surface, halt).
+- **`/supervisor`** is the multi-tick **delegate-and-verify** process. Its
+  Dispatch phase **invokes this skill's `dispatch` mode** for the select + gate +
+  route step rather than re-implementing it — then layers on top the discipline
+  that is genuinely its own and has no meaning here: the pauli pre-flight
+  confirmation summary and critic gate ([[../supervisor/instructions/worker-dispatch.md]]),
+  proof, the ledger, evaluation, and escalation **across ticks**.
+
+The rule is one-way: this skill knows nothing about ticks or ledgers; the
+supervisor knows this skill owns Select + Gates + routing and does not restate
+them.

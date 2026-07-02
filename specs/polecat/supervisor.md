@@ -1,5 +1,5 @@
 ---
-id: agents-e4ca3ecd
+id: supervisor-spec
 title: Supervisor Architecture
 type: spec
 description: What the supervisor is, when it's invoked, and its contract
@@ -9,8 +9,6 @@ depends_on: [polecat-system]
 tags: [spec, polecat, architecture, supervisor]
 created: 2026-03-11
 ---
-
-<!-- NS: this definitely doesn't belong in specs/agents/ -->
 
 # Supervisor Architecture
 
@@ -104,15 +102,18 @@ in where work runs and whether they loop:
 | **`/dispatch`**   | Background worker (polecat/subagent) | No — one dispatch step         |
 | **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` |
 
-`/pull` and `/dispatch` share one Select+Gates spine, implemented once in the
+All three verbs share **one** Select+Gates spine, implemented once in the
 `task-lifecycle` skill: `/pull` claims the task and runs it inline (with licence to
 ask the user questions); `/dispatch` routes it to a worker and halts.
 
-The supervisor does **not** call `task-lifecycle`. Its own Dispatch phase applies the
-same premise and pre-flight gates independently, then adds the proof, ledger, and
-escalation discipline that spans multiple ticks — `task-lifecycle` has no concept of
-"across ticks." `/dispatch` is a thin one-shot slice of a single supervisor dispatch
-step.
+The supervisor's Dispatch phase **invokes that same spine** (`task-lifecycle`
+dispatch mode) for task selection, the premise gate, and the freshness pre-check —
+it does not re-implement them, so there is exactly one description of that behaviour.
+On top of the spine the supervisor adds the discipline that is genuinely its own and
+has no meaning in `task-lifecycle`: the pauli pre-flight confirmation and critic gate,
+proof, the ledger, evaluation, and escalation **across ticks** (`task-lifecycle` has
+no concept of "across ticks"). `/dispatch` is a thin one-shot slice of a single
+supervisor dispatch step.
 
 A `/supervisor` invoked interactively schedules its own next tick when work remains
 and it is not at a terminal state, so one invocation visibly keeps going without the
@@ -133,7 +134,7 @@ extensions.
 
 ## Related
 
-- [[specs/polecat-system.md]] — Isolated task workspaces, atomic claiming, and
+- [[specs/polecat/polecat-system.md]] — Isolated task workspaces, atomic claiming, and
   PR-based merge that the supervisor dispatches onto
 - `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
   checkpoint loop, proof discipline, evaluation protocol)
