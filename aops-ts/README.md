@@ -7,9 +7,10 @@ Opt-in Tailscale bring-up + transcript egress for academicOps remote/cloud sessi
 - A **`SessionStart`** hook that runs `tailscale up` so tailnet-only services —
   most importantly the **PKB MCP server** at `*.ts.net` — resolve inside a remote
   session (e.g. Claude Code on the web).
-- A **`SessionEnd`** hook that parses the session transcript and rsyncs it to a
-  tailnet host, so cloud sessions (which have no durable filesystem and no
-  inbound access) don't lose their transcript when the container is reclaimed.
+- A **`SessionEnd`** hook that parses the session transcript and ships it to a
+  tailnet host (tar-over-`tailscale ssh`), so cloud sessions (which have no
+  durable filesystem and no inbound access) don't lose their transcript when the
+  container is reclaimed.
 
 It is deliberately **separate from `aops-core`** so joining the tailnet is an
 explicit choice. Installing `aops-core` never brings up Tailscale on its own;
@@ -39,6 +40,15 @@ must ship as a repo/plugin hook.
 2. **`TS_AUTHKEY` available at session time.** Provision it as an environment
    variable for the remote environment.
 
+   The `SessionEnd` sync also needs `tar` and `ssh` (openssh-client) on `PATH` —
+   `tailscale ssh` wraps the system `ssh`. `tar` ships in virtually every base
+   image; `ssh` usually needs installing. On a minimal image install both:
+
+   ```bash
+   command -v tar >/dev/null 2>&1 || (apt-get update && apt-get install -y tar)
+   command -v ssh >/dev/null 2>&1 || (apt-get update && apt-get install -y openssh-client)
+   ```
+
 3. **`aops-ts` enabled.** Install the plugin in environments that should join
    the tailnet:
 
@@ -66,22 +76,38 @@ The `SessionEnd` hook (`session-end-sync.sh`) ships this session's transcript to
 a tailnet host. It no-ops (exit 0) unless **all** of these hold:
 
 - `CLAUDE_CODE_REMOTE=true`
-- `AOPS_TS_SYNC_DEST` is set (the rsync/ssh destination)
+- `AOPS_TS_SYNC_DEST` is set (the destination)
 - the tailnet is up (`tailscale status` succeeds)
-- `rsync` is on `PATH`
+- `tar` and `ssh` are on `PATH`
+
+Once it is acting, a **malformed** `AOPS_TS_SYNC_DEST` (no host, or no `:path`) is
+a hard error (exit 1) — it fails fast and loud rather than guessing a default.
 
 Config (env):
 
-| Var                 | Required | Meaning                                                                              |
-| ------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `AOPS_TS_SYNC_DEST` | yes      | rsync/ssh dest on the tailnet, e.g. `nic@services-new:/data/aops-sessions/incoming/` |
-| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options, e.g. `-o StrictHostKeyChecking=accept-new`                        |
-| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                             |
+| Var                 | Required | Meaning                                                                                                    |
+| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host:path` on the tailnet, e.g. `nic@services-new:src/sessions/`. **Both** host and `path` are required — `path` is the **base** directory (see layout below). A malformed dest (no host, or no `:path`) is a hard error (exit 1), not a silent default. |
+| `AOPS_TS_SSH_CMD`   | no       | remote-shell override, used **verbatim** (a full override — bake any ssh options into it). Defaults to `tailscale ssh` when tailscale is present, else the plain-ssh fallback. Set e.g. to `ssh -i ~/key -o StrictHostKeyChecking=accept-new` for key-based auth to a plain host. |
+| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set. |
+| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                    |
 
 It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
 producing the same redacted markdown + summary JSON the local pipeline commits to
-`$AOPS_SESSIONS` — then `rsync`s the staging dir to `AOPS_TS_SYNC_DEST` over ssh.
+`$AOPS_SESSIONS` — then streams the staging dir to `AOPS_TS_SYNC_DEST` with
+tar-over-`tailscale ssh` (the remote only needs `tar`; `rsync` is not required).
+Under the destination base directory the payload lands as:
+
+| Subdir         | Contents                                          |
+| -------------- | ------------------------------------------------- |
+| `transcripts/` | redacted markdown (full + abridged), from `transcript.py` |
+| `summaries/`   | session summary JSON, from `transcript.py`         |
+| `incoming/`    | **raw JSONL** — fallback only, see below            |
+
 If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
-JSONL**, which is **unredacted** — so only sync to a trusted tailnet host you
-control. SSH auth is your environment's responsibility (an ssh key, or Tailscale
-SSH with an ACL permitting this node). It always exits 0.
+JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted
+tailnet host you control. Auth is via **Tailscale SSH** (no ssh keys) when the
+destination runs the Tailscale SSH server with an ACL permitting this node;
+otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It exits 0 on every
+legitimate skip (not remote, no dest, tailnet down, missing tools) and only
+exits non-zero on a malformed destination.
