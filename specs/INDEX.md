@@ -26,7 +26,7 @@ Consolidated from:
 
 ### [[agents]] — Identity, authority, roles
 
-Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, Ruth, James, Marsha, Ida — plus the planner, supervisor, polecats, and the orchestrator boundary.
+Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, RBG, James, Marsha, Ida — plus the planner, supervisor, and polecats.
 
 - [[agents]] — Agent ecosystem overview
 - [[ida]] — Ida agent specification
@@ -35,11 +35,10 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[marsha]] — Marsha agent specification
 - [[james]] — James agent specification
 - [[agent-authority]] — Permissions and skill delegation envelope (frontmatter schema, four-axis permissions model, tool allowlists)
-- [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
 - [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
-- [[orchestrator-boundary]] — CLI orchestrator authority boundary
 - [[polecat-system]] — Distributed worker dispatch
-- [[interactive-coworking]] — Polecat↔interactive axis, thin Ida sibling, hook-router separation
+
+(The content boundary for agent identity files — skill matter & docs out — is enforced by the `/craft` skill; the standalone `agent-definition-content` spec, along with `orchestrator-boundary` and `interactive-coworking`, was retired in the 2026-07 simplification pass.)
 
 ### [[workflows]] — Multi-step processes
 
