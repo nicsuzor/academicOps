@@ -71,9 +71,11 @@ jobs:
 
   # ─── Admit each candidate — set admit-status + arm auto-merge ───────────────
   # The maintainer's standing approval is the admission decision (it just could
-  # not fire `admit-on-review.yml` while the PR was conflicting). Mirror that
-  # workflow's `admit` job: required `admit-status=success` on HEAD + armed
-  # auto-merge. The mechanic (next job) then makes the PR actually mergeable.
+  # not fire `admit-on-review.yml` while the PR was conflicting). Mirrors that
+  # workflow's `admit` job by calling the SAME shared script
+  # (scripts/ci/admit-pr.sh, pr-pipeline.md §5.1) — required `admit-status=success`
+  # + armed auto-merge can't drift between the two admission paths. The mechanic
+  # (next job) then makes the PR actually mergeable.
   admit:
     name: Admit conflicting PR
     needs: [discover]
@@ -93,27 +95,39 @@ jobs:
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       REPO: ${{ github.repository }}
     steps:
-      - name: Set admit-status and arm auto-merge
+      - uses: actions/checkout@v4
+      # §5.1 SHA-staleness fix: `discover`'s matrix.pr.sha is a snapshot from a
+      # separate, earlier job — the PR could have advanced in the gap between
+      # `discover` and `admit`. admit-status is a REQUIRED check, so (unlike
+      # `mechanic` below) it must land on the TRUE current HEAD, not a stale
+      # one — mirroring admit-on-review.yml's own live re-read for the same
+      # reason (a PR may have advanced since the triggering event fired).
+      - name: Resolve live HEAD SHA
+        id: resolve
         run: |
           set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot admit PR." >&2
-            exit 1
-          fi
-          PR_NUMBER="${{ matrix.pr.number }}"
-          HEAD_SHA="${{ matrix.pr.sha }}"
-          echo "Admitting conflicting PR #$PR_NUMBER at HEAD $HEAD_SHA (maintainer approval is on record)"
-
-          gh api "repos/$REPO/statuses/$HEAD_SHA" \
-            -f state="success" \
-            -f context="admit-status" \
-            -f description="Admitted by standing maintainer approval (conflict-admission sweep, §3.11)" \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
-            || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
+          HEAD_SHA=$(gh pr view "${{ matrix.pr.number }}" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Resolved live HEAD for PR #${{ matrix.pr.number }}: $HEAD_SHA (discover snapshot was ${{ matrix.pr.sha }})"
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - name: Grant admission
+        run: bash scripts/ci/admit-pr.sh
+        env:
+          PR_NUMBER: ${{ matrix.pr.number }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          REASON: "Admitted by standing maintainer approval (conflict-admission sweep, §3.11)"
 
   # ─── Dispatch the mechanic to resolve each conflict ────────────────────────
+  # Deliberately still uses matrix.pr.sha (the discover-time snapshot), NOT
+  # `admit`'s freshly-resolved SHA (§5.1). Both `admit` and `mechanic` are
+  # `strategy: matrix` jobs; GHA does not support correlating one matrix job's
+  # per-item outputs into another matrix job's corresponding item, so threading
+  # `admit`'s resolved SHA here would require merging the two jobs — a bigger
+  # structural change for a low-stakes consumer. Unlike admit-status (a
+  # REQUIRED check), the `sha` input here only affects the mechanic's own
+  # INFORMATIONAL mechanic-status posting and its SHA-based loop-skip
+  # bookkeeping; its actual conflict-resolution work happens on the live `ref`
+  # (branch), not a pinned commit, so a few-seconds-stale sha input is harmless.
+  # Do not "fix" this into a matrix-correlation rework without re-reading §5.1.
   mechanic:
     name: Mechanic (conflict resolution)
     needs: [discover, admit]
