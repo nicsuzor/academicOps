@@ -129,7 +129,10 @@ fi
 # AOPS_TS_SSH_OPTS. Left unquoted below so a two-word command ("tailscale ssh")
 # word-splits into argv — matching the old `-e` convention.
 if [ -n "${AOPS_TS_SSH_CMD:-}" ]; then
-  RSH="$AOPS_TS_SSH_CMD"
+  case "$AOPS_TS_SSH_CMD" in
+    ssh|ssh\ *) RSH="$AOPS_TS_SSH_CMD -o BatchMode=yes -o ConnectTimeout=10 ${AOPS_TS_SSH_OPTS:-}" ;;
+    *)         RSH="$AOPS_TS_SSH_CMD" ;;
+  esac
 elif command -v tailscale >/dev/null 2>&1; then
   RSH="tailscale ssh"
 else
