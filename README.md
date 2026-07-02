@@ -100,6 +100,33 @@ The gates riding those hooks:
 
 (`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
 
+**How an action gets enforced, end to end:**
+
+```mermaid
+flowchart TD
+    A[Session start] --> B["Axioms + safety floor injected\n(always-on, every surface)"]
+    B --> C[Agent works: tool calls]
+    C --> D{sentinel gate\nPreToolUse}
+    D -- destructive op on\nprotected path --> DB["BLOCK\n(hard deny)"]
+    D -- clear --> E{enforcer gate\nevery N write ops}
+    E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
+    E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
+    EW --> F
+    F --> G[Agent tries to stop]
+    G --> H{rbg-review gate\npolecat/crew only}
+    H -- not yet reviewed --> HB["BLOCK exit until\nrbg axiom audit runs"]
+    H -- reviewed / n-a --> I{qa + handover + ida\ngates}
+    I -- work done, unverified\nor uncommitted --> IW["WARN interactive /\nBLOCK polecat"]
+    I -- clear --> J[Session ends]
+    J --> K[PR opened]
+    K --> L["Automated review:\nrbg (axioms) + marsha (QA)"]
+    L --> M["Advisory review:\npauli (design intent)"]
+    M --> N["Human admit approval\n+ branch protection"]
+    N --> O[Merge]
+```
+
+Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`enforcer`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+
 The same ladder continues past the session, into GitHub:
 
 ```
