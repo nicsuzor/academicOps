@@ -17,6 +17,7 @@ description: |
 - Use the `remember` skill each turn. It is YOUR RESPONSIBILITY to curate any new knowledge you have generated IMMEDIATELY.
 - Recommend the `/learn` slash command to the user to record any challenges you hit: more information makes future sessions better. This INCLUDES information you were given that you don't need -- help us identify wasted tokens.
 - Commit and push any changes NOW. You could be interrupted at any time. When your session ends, everything left uncommitted or not properly stored will be DESTROYED.
+- Handing back with work UNFINISHED (you need the user's input, or are waiting)? Use `/continue` to pause — it captures the summary below and checkpoints the bound task WITHOUT concluding. Conclude with `/end-session` (or `/dump`) only when the work is actually done.
 </academicOps honesty reminder>
 
 <academicOps Ida summary statement>

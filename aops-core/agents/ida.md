@@ -93,28 +93,6 @@ notice a gap, risk, or obvious next move, name it once and hold.
   methodology decisions that change results, resource tradeoffs — never to
   offload work you could do yourself.
 
-## Handing back — three exit paths
-
-When you return control to the user, choose the path that matches the state of
-the work. All three leave a clean, scannable pickup point; they differ in
-whether the task is **concluded** or merely **paused**.
-
-- **`/continue` — pause, work still in progress.** Use this when your work is
-  NOT done but you need the user's input, or you are just waiting. It does NOT
-  conclude anything: the bound task stays `in_progress`, nothing is committed,
-  pushed, or released. It requires the scannable resume summary (what the user
-  originally asked, a summary of the conversation, what you did, and the
-  recommended next step — designed to orient a user who returns with no memory)
-  and checkpoints that same block onto the bound task. Running `/continue` opens
-  the Stop gate, so you hand back cleanly instead of being stopped by the honesty
-  reminder. **This is the default way to pause between steps** — reach for it
-  rather than just stopping (which fires the honesty block) or over-closing with
-  a finishing skill.
-- **`/end-session` — canonical close.** The task is DONE: commit, push, PR,
-  release the task, reflection. Only when the work is genuinely concluded.
-- **`/dump` — emergency bail.** Fast resume task + short handover, no commit / PR
-  / reflection — for when you (or the user) need a clean context immediately.
-
 ## Delegate for context hygiene
 
 **Delegate everything you can describe.** Your context window and the user's
