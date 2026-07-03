@@ -23,7 +23,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 ## At a glance
 
 | Gate       | What it catches                                         | Fires on   | Close trigger           | Open trigger       |
-| ---------- | ------------------------------------------------------- | ---------- | ------------------------ | ------------------- |
+| ---------- | --------------------------------------------------------- | ------------ | ------------------------- | --------------------- |
 | `sentinel` | Destructive ops on protected env paths                  | PreToolUse | always                  |                    |
 | `rbg`      | Periodic compliance / ultra-vires drift                 | PreToolUse | tool calls >= threshold | call RBG           |
 | `rbg`      | Final rbg axiom audit before a task-bound session exits | Stop       | claim_task              | call RBG           |
@@ -73,7 +73,7 @@ For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher
 The overlay applied on top of `session_defaults` is selected by the **dispatch subcommand** (`polecat crew` vs `polecat run`), resolved on the host AT DISPATCH by `polecat/cli.py` / `lib/polecat_config.py`. The container never self-identifies with a session-type label — it receives the already-resolved `*_GATE_MODE` env vars:
 
 | Dispatch       | Overlay applied to defaults                                       | Surfaces                                        |
-| -------------- | ------------------------------------------------------------------- | ------------------------------------------------- |
+| ---------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
 | `polecat crew` | `polecat.yaml:crew_defaults`                                      | `polecat crew` interactive multi-agent sessions |
 | `polecat run`  | `polecat.yaml:run_defaults`                                       | `polecat run` autonomous workers                |
 | direct CLI     | No overlay — built-in defaults in `gate_config.py` apply directly | Direct CLI sessions (not polecat-launched)      |
@@ -133,7 +133,7 @@ A safety gate that intercepts destructive operations on protected user-environme
 Protected paths (matched case-insensitively, tilde-expanded and absolute forms):
 
 | Path                      | Rationale                                      |
-| ------------------------- | ------------------------------------------------ |
+| --------------------------- | -------------------------------------------------- |
 | `~/.gemini/extensions/`   | Live Gemini CLI extension installations        |
 | `~/.gemini/settings.json` | Gemini CLI global configuration                |
 | `~/.claude/plugins/`      | Claude Code plugin installations               |
@@ -160,7 +160,7 @@ Destructive verbs: `rm`, `mv`, `rmdir`, `unlink`, `truncate`
 ### Configuration
 
 | Env var              | Values                 | Default | Effect                                                                                |
-| --------------------- | ----------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| ---------------------- | ------------------------- | ------- | ------------------------------------------------------------------------------------------ |
 | `SENTINEL_GATE_MODE` | `block`, `warn`, `off` | `block` | `block`: deny the tool call; `warn`: inject advisory, allow; `off`: sentinel disabled |
 
 In `polecat.yaml`:
@@ -204,7 +204,7 @@ The periodic-compliance gate. Counts write operations since the last rbg audit; 
 ### Where it lives
 
 | Concern                  | Path                                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg", ...)` — the code object keeps the historical `rbg` name, mode key `gates.enforcer`)     |
 | Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`RBG_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                         |
 | Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                 |
@@ -246,7 +246,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 ### How to debug when it isn't
 
 | Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                                                    |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Mode silently `off`                                          | `python -c "from hooks.gate_config import RBG_GATE_MODE; print(RBG_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                             |
 | `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap above.                                                                                                           |
 | Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                                          |
@@ -264,7 +264,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 ### Where it lives
 
 | Concern             | Path                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
 | Gate definition     | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg-review", ...)`)                         |
 | Mode + threshold    | `aops-core/hooks/gate_config.py` (`RBG_REVIEW_GATE_MODE`, `RBG_REVIEW_DEGRADE_THRESHOLD`)           |
 | Custom action       | `aops-core/lib/gates/custom_actions.py` (`prepare_rbg_review`)                                      |
@@ -298,7 +298,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 ### How to debug when it isn't
 
 | Failure mode                                | Diagnostic                                                                                                                                                                                                                     |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate never blocks in an interactive session | By design — the built-in `RBG_REVIEW_GATE_MODE` default is `off` for any surface without an explicit `polecat.yaml` override. Confirm the resolved mode, not `session_type` (the gate no longer reads it).                     |
 | Stop loops repeatedly without clearing      | Check whether the escape-hatch fired: after 5 consecutive blocks in a turn the gate degrades to `warn`-and-allow and logs `rbg_review.degraded`.                                                                               |
 | `rbg` run doesn't clear the gate            | Confirm the dispatched `subagent_type` matches `^(aops[-_]core[:_])?rbg$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                                                                                                     |
@@ -319,7 +319,7 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 ### Where it lives
 
 | Concern           | Path                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
 | Gate definition   | `aops-core/lib/gates/definitions.py` (`GateConfig(name="qa", ...)`)                                  |
 | Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                                        |
 | Custom conditions | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`) |
@@ -367,7 +367,7 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 ### Where it lives
 
 | Concern               | Path                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- |
 | Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                              |
 | Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                           |
 | Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md` |
@@ -422,7 +422,7 @@ The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and 
 ### Where it lives
 
 | Concern         | Path                                                     |
-| ------------------ | ----------------------------------------------------------- |
+| ------------------ | ------------------------------------------------------------ |
 | Gate definition | `aops-core/lib/gates/definitions.py` (`GateConfig(name="ida", ...)`) |
 | Template        | `aops-core/hooks/templates/ida-reminder.md`              |
 | Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)       |
@@ -452,7 +452,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 ### How to debug when it isn't
 
 | Failure mode                                          | Diagnostic                                                                                                                                                                                                                                                                                             |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Mode silently `off`                                   | `python -c "from hooks.gate_config import IDA_GATE_MODE; print(IDA_GATE_MODE)"` — confirm the resolved value.                                                                                                                                                                                          |
 | Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                        |
 | Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                                  |
@@ -469,7 +469,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 It runs unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
 
 | Concern               | Path                                                        |
-| ------------------------ | --------------------------------------------------------------- |
+| ------------------------ | ----------------------------------------------------------------- |
 | Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`) |
 | Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)    |
 | Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`)   |
