@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.56](https://github.com/nicsuzor/academicOps/compare/v0.3.55...v0.3.56) (2026-07-03)
+
+
+### Bug Fixes
+
+* **pipeline:** recover enforcer/qa verdicts when gh pr review self-collides ([#2087](https://github.com/nicsuzor/academicOps/issues/2087)) ([58513b8](https://github.com/nicsuzor/academicOps/commit/58513b84440bf50e55a57051a0410cb6ad3f21c1))
+
 ## [0.3.55](https://github.com/nicsuzor/academicOps/compare/v0.3.54...v0.3.55) (2026-07-03)
 
 
