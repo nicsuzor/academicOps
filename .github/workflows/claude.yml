@@ -25,13 +25,13 @@ jobs:
     timeout-minutes: 45
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJson('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: read
       issues: read
       id-token: write
@@ -40,7 +40,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       # For workflow_dispatch: build an explicit prompt so Claude knows the PR and task.
       # For comment-triggered events: this step is skipped; the action reads from the event.
@@ -69,6 +70,8 @@ jobs:
         id: claude
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -80,11 +83,13 @@ jobs:
           # For comment triggers: empty string → action reads instructions from the comment.
           prompt: ${{ steps.dispatch.outputs.prompt }}
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
-          claude_args: '--model sonnet'
+          # Full Bash/file access, matching the other pipeline agents
+          # (agent-mechanic.yml, agent-enforcer.yml, agent-qa.yml,
+          # agent-pre-admission-responder.yml). Without this, Claude can
+          # diagnose a stuck PR (e.g. a merge conflict) but cannot fetch,
+          # rebase, or push a fix — see PR #2048 for the failure mode this
+          # closes.
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
           show_full_output: true
 
       - name: Upload Claude session artifacts
