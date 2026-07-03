@@ -1,6 +1,6 @@
-import urllib.request
 import json
 import os
+import urllib.request
 
 token = os.environ.get("GITHUB_TOKEN")
 repo = "nicsuzor/academicOps"

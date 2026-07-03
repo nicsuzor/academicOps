@@ -1,11 +1,12 @@
-import urllib.request
 import json
 import os
 import sys
+import urllib.request
 
 token = os.environ.get("GITHUB_TOKEN")
 repo = "nicsuzor/academicOps"
 pr_num = sys.argv[1]
+
 
 def get_json(url):
     req = urllib.request.Request(url)
@@ -19,14 +20,15 @@ def get_json(url):
         print(f"Error fetching {url}: {e}")
         return None
 
+
 # Get PR to get SHA
 pr = get_json(f"https://api.github.com/repos/{repo}/pulls/{pr_num}")
-sha = pr['head']['sha']
+sha = pr["head"]["sha"]
 
 checks = get_json(f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs")
-if checks and 'check_runs' in checks:
-    for c in checks['check_runs']:
-        if c['conclusion'] == 'failure':
+if checks and "check_runs" in checks:
+    for c in checks["check_runs"]:
+        if c["conclusion"] == "failure":
             print(f"Failed: {c['name']}")
             print(f"URL: {c['html_url']}")
             print(f"Workflow ID: {c['check_suite']['id']}")

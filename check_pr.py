@@ -1,9 +1,10 @@
-import urllib.request
 import json
 import os
+import urllib.request
 
 token = os.environ.get("GITHUB_TOKEN")
 repo = "nicsuzor/academicOps"
+
 
 def get_json(url):
     req = urllib.request.Request(url)
@@ -17,18 +18,19 @@ def get_json(url):
         print(f"Error fetching {url}: {e}")
         return None
 
+
 prs = get_json(f"https://api.github.com/repos/{repo}/pulls?state=open")
 if prs:
     for pr in prs:
-        num = pr['number']
-        title = pr['title']
+        num = pr["number"]
+        title = pr["title"]
         print(f"\n--- PR #{num}: {title} ---")
 
         # Get checks
-        sha = pr['head']['sha']
+        sha = pr["head"]["sha"]
         checks = get_json(f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs")
-        if checks and 'check_runs' in checks:
-            failed_checks = [c for c in checks['check_runs'] if c['conclusion'] == 'failure']
+        if checks and "check_runs" in checks:
+            failed_checks = [c for c in checks["check_runs"] if c["conclusion"] == "failure"]
             if failed_checks:
                 print("Failed checks:")
                 for c in failed_checks:

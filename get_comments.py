@@ -1,11 +1,12 @@
-import urllib.request
 import json
 import os
 import sys
+import urllib.request
 
 token = os.environ.get("GITHUB_TOKEN")
 repo = "nicsuzor/academicOps"
 pr_num = sys.argv[1]
+
 
 def get_json(url):
     req = urllib.request.Request(url)
@@ -19,8 +20,9 @@ def get_json(url):
         print(f"Error fetching {url}: {e}")
         return None
 
+
 comments = get_json(f"https://api.github.com/repos/{repo}/issues/{pr_num}/comments")
 if comments:
     for c in comments:
         print(f"\n--- [{c['user']['login']}] ---")
-        print(c['body'])
+        print(c["body"])
