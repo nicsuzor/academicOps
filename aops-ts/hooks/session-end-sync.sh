@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-# aops-ts SessionEnd hook — ship this session's transcript to a tailnet host.
+# aops-ts SessionEnd hook — ship session transcript(s) to a tailnet host.
 #
 # This is the observability companion to the bring-up hook: cloud/web sessions
 # have no durable filesystem and no inbound access, so a session's transcript
 # dies with the container unless it is pushed out. This hook runs aops-core's
-# transcript.py over this session's JSONL and ships the result to a host on the
-# tailnet (the same tailnet the bring-up hook joins).
+# transcript.py over the ending session's JSONL and ships the result to a host
+# on the tailnet (the same tailnet the bring-up hook joins).
+#
+# Session resolution:
+#   - SessionEnd fires with a transcript_path in its stdin payload (the normal
+#     case) -> single-session mode: only that one session is (re)processed.
+#   - No usable transcript_path (e.g. a manual/standalone run) -> batch mode:
+#     transcript.py --all is invoked with no file argument, handing discovery
+#     to its own find_sessions() (every provider it knows: Claude, Gemini,
+#     Cowork, Antigravity, polecats/crew) instead of a bash-side glob that only
+#     looked under ~/.claude/projects and only picked the single newest file.
 #
 # Opt-in on four conditions; if ANY is unmet it no-ops (exit 0):
 #   1. remote/cloud session   — CLAUDE_CODE_REMOTE=true
@@ -36,8 +45,11 @@
 #                      "-o StrictHostKeyChecking=accept-new"
 #   AOPS_SRC_DIR       aops-core source dir (optional; else the plugin cache is used)
 #
-# Dependency: parsing requires aops-core (transcript.py). If aops-core cannot be
-# run, the hook falls back to shipping the RAW JSONL (unredacted — see note).
+# Dependency: parsing requires aops-core (transcript.py). In single-session mode,
+# if aops-core cannot be run, the hook falls back to shipping the RAW JSONL
+# (unredacted — see note). Batch mode has no such fallback — shipping every
+# session on disk unredacted is a materially bigger exposure than shipping one,
+# so a failed transcript.py run in batch mode just skips the sync instead.
 # Never blocks session end: always exits 0. Diagnostics → stderr.
 
 set -uo pipefail
@@ -76,10 +88,12 @@ print("tp=" + shlex.quote(tp))
 print("sid=" + shlex.quote(sid))
 ' 2>/dev/null || printf 'tp=\nsid=\n')"
 
-if [ -z "${tp:-}" ] || [ ! -f "${tp:-}" ]; then
-  tp="$(ls -t "$HOME"/.claude/projects/*/*.jsonl 2>/dev/null | head -1)"
+# A valid transcript_path from the payload selects single-session mode;
+# otherwise fall through to batch mode (transcript.py --all, see header note).
+BATCH_MODE=1
+if [ -n "${tp:-}" ] && [ -f "${tp:-}" ]; then
+  BATCH_MODE=""
 fi
-[ -n "${tp:-}" ] && [ -f "$tp" ] || { echo "[aops-ts] no transcript JSONL found; skipping session sync."; exit 0; }
 
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/aops-ts-sync.XXXXXX")" || { echo "[aops-ts] mktemp failed; skipping."; exit 0; }
 trap 'rm -rf "$STAGE"' EXIT
@@ -99,21 +113,37 @@ fi
 
 # transcript.py writes transcripts/ + summaries/ under $AOPS_SESSIONS; point that
 # at the staging dir and pass --no-sync so it never tries to git-commit/push.
+# Single-session mode names the one file that just ended; batch mode passes
+# --all and no file argument, so transcript.py's own find_sessions() discovers
+# every session across every provider it knows about.
+if [ -n "$BATCH_MODE" ]; then
+  TP_ARGS=(--all)
+else
+  TP_ARGS=("$tp")
+fi
+
 processed=""
 if [ -n "$AOPS_CORE" ]; then
   py="$AOPS_CORE/.venv/bin/python"
   if [ -x "$py" ]; then
-    AOPS_SESSIONS="$STAGE" "$py" "$AOPS_CORE/scripts/transcript.py" "$tp" --no-sync \
+    AOPS_SESSIONS="$STAGE" "$py" "$AOPS_CORE/scripts/transcript.py" "${TP_ARGS[@]}" --no-sync \
       >"$STAGE/transcript.log" 2>&1 && processed=1
   elif command -v uv >/dev/null 2>&1; then
     AOPS_SESSIONS="$STAGE" uv --directory "$AOPS_CORE" run python \
-      "$AOPS_CORE/scripts/transcript.py" "$tp" --no-sync \
+      "$AOPS_CORE/scripts/transcript.py" "${TP_ARGS[@]}" --no-sync \
       >"$STAGE/transcript.log" 2>&1 && processed=1
   fi
 fi
 
 if [ -n "$processed" ]; then
-  echo "[aops-ts] transcript.py processed session into staging dir"
+  if [ -n "$BATCH_MODE" ]; then
+    echo "[aops-ts] transcript.py processed all available sessions into staging dir"
+  else
+    echo "[aops-ts] transcript.py processed session into staging dir"
+  fi
+elif [ -n "$BATCH_MODE" ]; then
+  echo "[aops-ts] transcript.py unavailable/failed; no raw fallback in batch mode; skipping sync."
+  exit 0
 else
   # Fallback: ship the raw JSONL. NOTE: raw transcripts are UNREDACTED — only do
   # this to a trusted tailnet host you control.
