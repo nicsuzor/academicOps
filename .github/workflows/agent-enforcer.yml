@@ -344,7 +344,31 @@ jobs:
           fi
           bash "$SCRIPT" || echo "::warning::reconcile step errored (continuing)"
 
-      # Post terminal status based on the agent's PR review
+      # Compute the terminal enforcer-status decision (state/description) and
+      # whether this job should hard-fail. Extracted to a script so the
+      # committed-short-circuit fix (aops-89d55ef5; pr-pipeline.md §3.4 pt 6)
+      # is unit-tested (tests/test_enforcer_terminal_status.py) instead of
+      # living only as inline bash — the earlier version of this bug was
+      # "fixed" by closing the task without a code change, and the false-red
+      # it describes was still reproducible from this file until now.
+      #
+      # COMMITTED is checked FIRST, before any review lookup: `gh pr review`
+      # attaches to the PR's CURRENT head SHA at submission time, so when the
+      # enforcer pushes a fix mid-run (per enforcer.agent.md §3, before its
+      # §5 verdict), its review lands on the NEW sha and can never match this
+      # job's HEAD_SHA. A problem the agent fixed inline and committed must
+      # not redden this pass's status; only a problem it could not fix does.
+      - name: Compute terminal decision
+        id: decision
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: bash scripts/ci/enforcer-terminal-status.sh
+        env:
+          COMMITTED: ${{ steps.check-commit.outputs.committed }}
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          RETRY_OUTCOME: ${{ steps.review-retry.outcome }}
+
+      # Post terminal status from steps.decision (never re-derives the
+      # verdict here — see scripts/ci/enforcer-terminal-status.sh).
       - name: Post terminal status
         if: always() && steps.sha-skip.outputs.skip != 'true'
         run: |
@@ -354,66 +378,11 @@ jobs:
 
           # Only post if not already posted by the agent in a previous step, or if we need to replace pending
           if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
-            # Read the enforcer's review STATE for this SHA — structured GitHub
-            # data, no parsing of review prose. APPROVED → success;
-            # CHANGES_REQUESTED → failure; no verdict review → fail-safe failure.
-            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
-
-            if [ "$REVIEW_STATE" = "APPROVED" ]; then
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=success \
-                -f context="${AGENT_NAME}-status" \
-                -f description="Axiom-clean" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="Violations found — see review" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            # Distinguish action-infra failure from agent-completed-but-no-verdict.
-            # The retry handles transient causes (app-token-exchange 401,
-            # rate_limit_event at run start, runner hiccups) but does NOT clear
-            # deterministic failures such as the workflow-validation 401 the
-            # action raises when the calling workflow file differs from the
-            # default-branch version (the observed cause on PR #1673 SHA
-            # 6e4d0f1d). For that case the second attempt confirms the failure
-            # deterministically and we surface a clearer diagnostic than the
-            # old opaque "Agent run failed without a verdict review" line.
-            #
-            # Branch on what actually ran, not on `outcome != 'success'`:
-            #   - review-retry.outcome in {failure, cancelled}  → retry RAN and failed → "failed in both attempts"
-            #   - review-retry.outcome in {success}             → retry RAN and succeeded but posted no verdict → agent issue
-            #   - review-retry.outcome in {'', skipped}          → retry did NOT run (first-attempt or retry guard skipped)
-            # The old `outcome != 'success'` check conflated cancelled+skipped
-            # with failed and lied "failed in both attempts" when only one
-            # attempt actually ran. (aops-221211fa REVISE 2026-06-10 03:06 UTC)
-            elif [ "${{ steps.review.outcome }}" != "success" ]; then
-              RETRY_OUTCOME="${{ steps.review-retry.outcome }}"
-              case "$RETRY_OUTCOME" in
-                failure|cancelled)
-                  DESC="Enforcer action step failed in both attempts (see run logs)"
-                  ;;
-                success)
-                  DESC="Enforcer retry succeeded but posted no verdict review (see run logs)"
-                  ;;
-                *)
-                  DESC="Enforcer first attempt did not succeed (${{ steps.review.outcome }}); retry did not execute — see run logs"
-                  ;;
-              esac
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="$DESC" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            else
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="Enforcer posted no APPROVED/CHANGES_REQUESTED review" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            fi
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="${{ steps.decision.outputs.state }}" \
+              -f context="${AGENT_NAME}-status" \
+              -f description="${{ steps.decision.outputs.description }}" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
           fi
 
       - name: Final check and hard-fail
@@ -430,37 +399,11 @@ jobs:
               echo "::error::Enforcer failed: Head SHA already reviewed with violations."
               FAILED=true
             fi
-          elif [ "${{ steps.review.outcome }}" != "success" ] && [ "${{ steps.review.outcome }}" != "" ] && [ "${{ steps.review-retry.outcome }}" != "success" ]; then
-            # First attempt did not succeed. Distinguish whether the retry
-            # actually ran (so the diagnostic is honest about what happened).
-            # Cancellation (e.g. rate_limit_event) surfaces as 'cancelled', not
-            # 'failure', and the old check missed it. (aops-221211fa REVISE)
-            case "${{ steps.review-retry.outcome }}" in
-              failure|cancelled)
-                echo "::error::Enforcer failed: action step failed in both attempts. Check run logs for cause (workflow-validation 401 against default branch, rate_limit_event, app token exchange, etc.)."
-                ;;
-              *)
-                echo "::error::Enforcer failed: first attempt did not succeed (${{ steps.review.outcome }}); retry did not run. Check run logs for cause."
-                ;;
-            esac
+          elif [ "${{ steps.decision.outputs.failed }}" = "true" ]; then
+            echo "::error::Enforcer failed: ${{ steps.decision.outputs.description }}"
             FAILED=true
           else
-            # Get latest review state
-            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
-
-            if [ "$REVIEW_STATE" = "APPROVED" ]; then
-              echo "::notice::Enforcer review completed successfully (APPROVED)."
-            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
-              echo "::error::Enforcer failed: Violations found (CHANGES_REQUESTED)."
-              FAILED=true
-            elif [ -z "${{ steps.review.outcome }}" ]; then
-              echo "::error::Enforcer failed: Early pipeline failure."
-              FAILED=true
-            else
-              echo "::error::Enforcer failed: Agent finished but no verdict review (APPROVED or CHANGES_REQUESTED) was posted."
-              FAILED=true
-            fi
+            echo "::notice::Enforcer: ${{ steps.decision.outputs.description }}"
           fi
 
           if [ "$FAILED" = "true" ]; then

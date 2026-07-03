@@ -46,6 +46,8 @@ For **mechanical violations** (typos, missing required frontmatter, orphan files
 
 For **judgment calls** (design trade-offs, scope, intent): flag in the review body. Do not push.
 
+A violation you fixed yourself in this step is **resolved** — it does not count against the verdict you post in step 5. Only a violation that is still unresolved once you're done (a judgment call you flagged, or a mechanical fix you attempted but could not complete) counts as "a violation exists" there. Finding a problem and fixing it inline is success, not a reason to request changes.
+
 ### 4. Check before posting (idempotent verdict)
 
 **Check first, then act once.** Before posting, list the reviews for this exact SHA and see whether an enforcer verdict already stands:
@@ -69,7 +71,7 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
 
 ### 5. Post the PR review
 
-File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
+File your verdict using `gh pr review`. Use `--approve` when no violations **remain** — this includes the case where you found one or more, fixed every one yourself in step 3, and pushed the fix. Use `--request-changes` only when at least one violation is still unresolved after your own fixes.
 
 - **`gh pr review` prints nothing on success.** Empty output means it WORKED — do not treat silence as failure and re-run it. If you must confirm, re-list reviews (step 4) and look for your verdict; never blind-post a second time.
 - Always post a review to record your verdict, even if no violations are found — use `--approve` for APPROVE, `--request-changes` otherwise. The workflow reads the review **state** (APPROVED / CHANGES_REQUESTED), not any parsed text.

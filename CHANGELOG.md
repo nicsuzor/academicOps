@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.54](https://github.com/nicsuzor/academicOps/compare/v0.3.53...v0.3.54) (2026-07-03)
+
+
+### Bug Fixes
+
+* **learn:** scope retro's immediate-fix authority to the reviewed session, not the framework ([#2048](https://github.com/nicsuzor/academicOps/issues/2048)) ([cbe9019](https://github.com/nicsuzor/academicOps/commit/cbe9019da61e9843f44b12b4c40ec2cb06844482))
+
+## [0.3.53](https://github.com/nicsuzor/academicOps/compare/v0.3.52...v0.3.53) (2026-07-03)
+
+
+### Bug Fixes
+
+* **pipeline:** don't redden enforcer-status for findings fixed inline ([#2071](https://github.com/nicsuzor/academicOps/issues/2071)) ([860a764](https://github.com/nicsuzor/academicOps/commit/860a7645984b870f39f04e32db9efc53b6d15ba9))
+
+## [0.3.52](https://github.com/nicsuzor/academicOps/compare/v0.3.51...v0.3.52) (2026-07-03)
+
+
+### Bug Fixes
+
+* **axioms:** honest-epistemics — confident language is not a substitute for verification ([#2059](https://github.com/nicsuzor/academicOps/issues/2059)) ([b7ee5a9](https://github.com/nicsuzor/academicOps/commit/b7ee5a9286aab36f29d4cd4a8eff58c032250a9c))
+
 ## [0.3.51](https://github.com/nicsuzor/academicOps/compare/v0.3.50...v0.3.51) (2026-07-03)
 
 
