@@ -70,6 +70,19 @@ def test_script_exists_and_executable():
     assert SCRIPT.exists(), f"missing {SCRIPT}"
 
 
+def test_committed_genuinely_unset_fails_fast_rather_than_defaulting():
+    """COMMITTED must fail fast when the caller omits it entirely — not silently
+    default to "false". A wiring mistake that drops COMMITTED would otherwise
+    silently fall through to the review-match path this script exists to
+    bypass, reintroducing the exact false-red this fix removes."""
+    env = {"HEAD_SHA": SHA, "REVIEW_OUTCOME": "success", "PATH": "/usr/bin:/bin:/usr/local/bin"}
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
+    )
+    assert proc.returncode != 0
+    assert "COMMITTED" in proc.stderr
+
+
 # ── The core fix: committed short-circuits to success ───────────────────────
 
 
