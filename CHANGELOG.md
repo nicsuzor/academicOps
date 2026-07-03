@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.52](https://github.com/nicsuzor/academicOps/compare/v0.3.51...v0.3.52) (2026-07-03)
+
+
+### Bug Fixes
+
+* **axioms:** honest-epistemics — confident language is not a substitute for verification ([#2059](https://github.com/nicsuzor/academicOps/issues/2059)) ([b7ee5a9](https://github.com/nicsuzor/academicOps/commit/b7ee5a9286aab36f29d4cd4a8eff58c032250a9c))
+
 ## [0.3.51](https://github.com/nicsuzor/academicOps/compare/v0.3.50...v0.3.51) (2026-07-03)
 
 
