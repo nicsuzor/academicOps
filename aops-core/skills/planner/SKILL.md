@@ -86,7 +86,7 @@ Outcome: an epic becomes a set of concrete, independently verifiable single-sess
 - Establish concrete deliverables and observable verification criteria per subtask; replace body checklists with linked child subtasks.
 - Set each subtask's `classification` to match its real shape (never override a user-set value).
 - When subtasks must land in one PR, partition into parallel-able vs. sequential-dependency units per [[../supervisor/SKILL.md#cohesive-single-pr-epic-pattern-default]], wiring `depends_on` only where genuinely sequential.
-- Add review gates (a blocking `james review (pauli + rbg + revise)` subtask for epics; `pauli + rbg review` first and `james review` last for standalone tasks), and retire anything superseded via `superseded_by: [<new-ids>]`.
+- Add review gates (a blocking `james review (pauli + rbg + revise)` subtask for epics; `pauli + rbg review` first and `james review` last for standalone tasks), and retire anything superseded by cancelling it (`status: cancelled`) with a `supersedes` edge on the replacement(s).
 
 ### 4. Explore (`/strategy`)
 

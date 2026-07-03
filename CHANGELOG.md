@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.3.58](https://github.com/nicsuzor/academicOps/compare/v0.3.57...v0.3.58) (2026-07-03)
+
+
+### Bug Fixes
+
+* **agents:** James must merge convergent reviewer findings, not duplicate them ([#2082](https://github.com/nicsuzor/academicOps/issues/2082)) ([d807252](https://github.com/nicsuzor/academicOps/commit/d8072527fba3ddc235696bb5cf162f0632af3790))
+
+## [0.3.57](https://github.com/nicsuzor/academicOps/compare/v0.3.56...v0.3.57) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** add always() guard to mechanic dispatch job (fixes [#2084](https://github.com/nicsuzor/academicOps/issues/2084)) ([7e4b1c6](https://github.com/nicsuzor/academicOps/commit/7e4b1c6d7a7e145bd6f941783a2e6908a181c0f4))
+
+## [0.3.56](https://github.com/nicsuzor/academicOps/compare/v0.3.55...v0.3.56) (2026-07-03)
+
+
+### Bug Fixes
+
+* **pipeline:** recover enforcer/qa verdicts when gh pr review self-collides ([#2087](https://github.com/nicsuzor/academicOps/issues/2087)) ([58513b8](https://github.com/nicsuzor/academicOps/commit/58513b84440bf50e55a57051a0410cb6ad3f21c1))
+
+## [0.3.55](https://github.com/nicsuzor/academicOps/compare/v0.3.54...v0.3.55) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** grant claude.yml write access and gate it to trusted authors ([#2078](https://github.com/nicsuzor/academicOps/issues/2078)) ([9b60165](https://github.com/nicsuzor/academicOps/commit/9b6016516d6b152afc7aff9944b7006534e60b69))
+
+## [0.3.54](https://github.com/nicsuzor/academicOps/compare/v0.3.53...v0.3.54) (2026-07-03)
+
+
+### Bug Fixes
+
+* **learn:** scope retro's immediate-fix authority to the reviewed session, not the framework ([#2048](https://github.com/nicsuzor/academicOps/issues/2048)) ([cbe9019](https://github.com/nicsuzor/academicOps/commit/cbe9019da61e9843f44b12b4c40ec2cb06844482))
+
+## [0.3.53](https://github.com/nicsuzor/academicOps/compare/v0.3.52...v0.3.53) (2026-07-03)
+
+
+### Bug Fixes
+
+* **pipeline:** don't redden enforcer-status for findings fixed inline ([#2071](https://github.com/nicsuzor/academicOps/issues/2071)) ([860a764](https://github.com/nicsuzor/academicOps/commit/860a7645984b870f39f04e32db9efc53b6d15ba9))
+
+## [0.3.52](https://github.com/nicsuzor/academicOps/compare/v0.3.51...v0.3.52) (2026-07-03)
+
+
+### Bug Fixes
+
+* **axioms:** honest-epistemics — confident language is not a substitute for verification ([#2059](https://github.com/nicsuzor/academicOps/issues/2059)) ([b7ee5a9](https://github.com/nicsuzor/academicOps/commit/b7ee5a9286aab36f29d4cd4a8eff58c032250a9c))
+
+## [0.3.51](https://github.com/nicsuzor/academicOps/compare/v0.3.50...v0.3.51) (2026-07-03)
+
+
+### Bug Fixes
+
+* **gates:** remove stale POLECAT_APPROVAL_MODE, route QA mode through gate_config ([#2072](https://github.com/nicsuzor/academicOps/issues/2072)) ([af539f9](https://github.com/nicsuzor/academicOps/commit/af539f93f4e5f1f7721b9a48128e1c22366d3dd9))
+
 ## [0.3.50](https://github.com/nicsuzor/academicOps/compare/v0.3.49...v0.3.50) (2026-07-02)
 
 
