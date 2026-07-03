@@ -231,13 +231,13 @@ jobs:
         if: always() && steps.sha-skip.outputs.skip != 'true'
         run: |
           CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
-            --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state' \
+            --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state // ""' \
             2>/dev/null || echo "")
 
           # Only post if not already posted by the agent, or if we need to replace pending.
           if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
             REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state // \"\"" 2>/dev/null || echo "")
 
             # Self-review-collision fallback (mirrors agent-enforcer.yml /
             # scripts/ci/enforcer-terminal-status.sh — see that script's header
@@ -248,19 +248,15 @@ jobs:
             # PR comment instead, carrying a structured
             # `<!-- aops:self-review-fallback agent=qa sha=... verdict=... -->`
             # marker. Only checked when no formal review matched — a genuine
-            # review is always stronger evidence. Trust is scoped to comments
-            # authored by claude[bot] specifically — the same identity a
-            # genuine review would have come from.
+            # review is always stronger evidence. The recovery logic (marker
+            # format, trust scoping to claude[bot]-authored comments) is
+            # shared with the enforcer via scripts/ci/self-review-fallback.sh
+            # so the two callers can't silently diverge on it
+            # (single-source-of-truth).
             if [ -z "$REVIEW_STATE" ]; then
-              FALLBACK_MARKER="<!-- aops:self-review-fallback agent=qa sha=${HEAD_SHA} verdict="
-              FALLBACK_BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" 2>/dev/null \
-                | jq -r --arg login "claude[bot]" --arg marker "$FALLBACK_MARKER" \
-                  '[.[] | select(.user.login == $login) | select((.body // "") | contains($marker))] | last | .body // ""' \
-                || echo "")
-              case "$FALLBACK_BODY" in
-                *"verdict=APPROVED"*) REVIEW_STATE="APPROVED" ;;
-                *"verdict=CHANGES_REQUESTED"*) REVIEW_STATE="CHANGES_REQUESTED" ;;
-              esac
+              FALLBACK_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" 2>/dev/null || echo "[]")
+              source scripts/ci/self-review-fallback.sh
+              REVIEW_STATE=$(fallback_verdict_from_comments "$FALLBACK_COMMENTS" "qa" "$HEAD_SHA")
             fi
 
             if [ "$REVIEW_STATE" = "APPROVED" ]; then

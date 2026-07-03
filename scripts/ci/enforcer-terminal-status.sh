@@ -47,10 +47,11 @@
 # `<!-- aops:self-review-fallback agent=enforcer sha=... verdict=... -->`
 # marker instead. This script recovers that verdict when no formal review
 # exists, so enforcer-status resolves instead of being stuck at an
-# unrecoverable failure. Trust is scoped to comments authored by
-# `claude[bot]` specifically — the same identity a genuine review would have
-# come from; nothing new is trusted that the review path didn't already
-# trust.
+# unrecoverable failure. The recovery logic itself (marker format, trust
+# scoping to `claude[bot]`-authored comments) lives in
+# scripts/ci/self-review-fallback.sh — QA has the identical exposure and
+# sources the same function, so the two callers can't silently diverge on
+# it (single-source-of-truth; see that file's header for the full contract).
 #
 # Required env:
 #   HEAD_SHA        exact PR head SHA this job started on (the pre-commit SHA).
@@ -82,6 +83,11 @@
 #   failed       true|false — whether the calling job should exit 1
 
 set -euo pipefail
+
+# Repo-root-relative, matching this script's own invocation (agent-enforcer.yml
+# always runs it as `bash scripts/ci/enforcer-terminal-status.sh` from the
+# checked-out repo root).
+source scripts/ci/self-review-fallback.sh
 
 HEAD_SHA="${HEAD_SHA:?HEAD_SHA is required}"
 COMMITTED="${COMMITTED:?COMMITTED is required}"
@@ -133,25 +139,24 @@ case "$review_state" in
 esac
 
 # ── No formal review found: check for the self-review-collision fallback
-#    marker (see header). Only reached when the review lookup above found
-#    nothing, so this never costs an extra API call on the common path. ─────
+#    marker (see header; shared logic lives in self-review-fallback.sh so
+#    enforcer and QA can't silently diverge on it). Only reached when the
+#    review lookup above found nothing, so this never costs an extra API call
+#    on the common path. ──────────────────────────────────────────────────
 if [[ -n "${COMMENTS_JSON:-}" ]]; then
   comments="$(cat "$COMMENTS_JSON")"
 else
   comments="$(gh api "repos/${REPO:?REPO is required}/issues/${PR_NUMBER:?PR_NUMBER is required}/comments?per_page=100" 2>/dev/null || echo "[]")"
 fi
 
-fallback_marker="<!-- aops:self-review-fallback agent=enforcer sha=${HEAD_SHA} verdict="
-fallback_body="$(jq -r --arg login "claude[bot]" --arg marker "$fallback_marker" '
-  [.[] | select(.user.login == $login) | select((.body // "") | contains($marker))]
-  | last | .body // ""' <<<"$comments")"
+fallback_state="$(fallback_verdict_from_comments "$comments" "enforcer" "$HEAD_SHA")"
 
-case "$fallback_body" in
-  *"verdict=APPROVED"*)
+case "$fallback_state" in
+  APPROVED)
     emit "success" "Axiom-clean (self-review fallback — formal review blocked, see comment)" "false"
     exit 0
     ;;
-  *"verdict=CHANGES_REQUESTED"*)
+  CHANGES_REQUESTED)
     emit "failure" "Violations found — see review (self-review fallback — formal review blocked, see comment)" "true"
     exit 0
     ;;
