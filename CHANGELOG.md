@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.59](https://github.com/nicsuzor/academicOps/compare/v0.3.58...v0.3.59) (2026-07-03)
+
+
+### Features
+
+* **build:** translate agent tool names for Antigravity platform ([#2073](https://github.com/nicsuzor/academicOps/issues/2073)) ([19d1a63](https://github.com/nicsuzor/academicOps/commit/19d1a6307e314c4726416a53b7c82a8263628617))
+
 ## [0.3.58](https://github.com/nicsuzor/academicOps/compare/v0.3.57...v0.3.58) (2026-07-03)
 
 
