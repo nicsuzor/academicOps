@@ -1015,14 +1015,20 @@ does, is recover gracefully instead of deadlocking:
    This was already implicitly covered by `shared-error-handling.md`'s pre-existing
    never-fail-silently contract (the enforcer's PR #2081 fallback comment independently
    followed it correctly); this formalizes the comment's *format* so it is machine-readable.
-2. `scripts/ci/enforcer-terminal-status.sh` (enforcer) and the equivalent inline logic in
-   `agent-qa.yml` (QA) — both **LIVE**, unit-tested (`tests/test_enforcer_terminal_status.py`)
-   — check for this marker only when no formal review matched `HEAD_SHA` (a genuine review is
+2. `scripts/ci/enforcer-terminal-status.sh` (enforcer) and `agent-qa.yml`'s "Post terminal
+   status" step (QA) — both **LIVE** — check for this marker only when no formal review
+   matched `HEAD_SHA` (a genuine review is
    always stronger evidence and takes priority when both exist). Trust is scoped to comments
    authored by `claude[bot]` specifically — the same identity a genuine review would have come
    from, so this recovers no new trust the review path didn't already grant. SHA-scoping is
    exact: the marker's `sha=` field must match `HEAD_SHA` literally, so a stale fallback
-   comment from an earlier SHA is never misread as the current SHA's verdict.
+   comment from an earlier SHA is never misread as the current SHA's verdict. The marker
+   parse, trust-scoping, and SHA/agent-scoping predicate itself is factored into the single
+   shared library `scripts/ci/self-review-fallback.sh` (`fallback_verdict_from_comments`),
+   sourced by both callers so enforcer and QA cannot silently diverge on it — unit-tested in
+   `tests/test_self_review_fallback.py` (the shared predicate) and
+   `tests/test_enforcer_terminal_status.py` / `tests/test_agent_qa_terminal_status_wiring.py`
+   (each caller's real wiring against it, PR #2091).
 
 **PASS review body contract (readability).** On a PASS (APPROVED) verdict, the agent posts a
 **marker-only** review body — no reasoning block. On a REVISE (CHANGES_REQUESTED) verdict,
