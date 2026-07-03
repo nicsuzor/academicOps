@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.57](https://github.com/nicsuzor/academicOps/compare/v0.3.56...v0.3.57) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** add always() guard to mechanic dispatch job (fixes [#2084](https://github.com/nicsuzor/academicOps/issues/2084)) ([7e4b1c6](https://github.com/nicsuzor/academicOps/commit/7e4b1c6d7a7e145bd6f941783a2e6908a181c0f4))
+
 ## [0.3.56](https://github.com/nicsuzor/academicOps/compare/v0.3.55...v0.3.56) (2026-07-03)
 
 
