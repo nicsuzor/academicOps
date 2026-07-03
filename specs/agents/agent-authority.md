@@ -1,24 +1,12 @@
 ---
-created: 2026-04-21
-depends_on:
-- rbg
-- orchestrator-boundary
-- enforcement
-- polecat-system
-id: aops-e8335053
-modified: '2026-04-27T22:35:43+00:00'
-status: inbox
-tags:
-- agent-authority
-- agents
-- framework
-- governance
-- permissions
-- skill-delegation
-- spec
-tier: core
+id: agent-authority-spec
 title: Agent Authority — Permissions and Skill Delegation
 type: spec
+status: ready
+tier: core
+depends_on: [rbg, enforcement, polecat-system]
+tags: [spec, agents, agent-authority, governance, permissions, skill-delegation, framework]
+created: 2026-04-21
 ---
 
 # Agent Authority — Permissions and Skill Delegation
@@ -30,7 +18,6 @@ type: spec
 ## Giving Effect
 
 - [[rbg]] — Authority envelope this spec makes concrete
-- [[orchestrator-boundary]] — CLI orchestrator as a specific authority boundary
 - [[enforcement]] — Five-layer enforcement model; this spec feeds L3/L4
 - [[polecat-system]] — Enforces `fileAccess` and `bashScopes` at the worktree boundary
 - `aops-core/agents`, `.github/agents` — Must conform (GH Action agents: subset, see §GitHub Action Agents)
@@ -141,7 +128,7 @@ fileAccess:
     - "!specs/archived/**"   # deny override; beats the grant above
 ```
 
-A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; hooks (`policy_enforcer.py`) and the polecat sandbox (`specs/polecat-system.md`) enforce it at the sharp edge.
+A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; hooks (`policy_enforcer.py`) and the polecat sandbox (`specs/polecat/polecat-system.md`) enforce it at the sharp edge.
 
 ## Skill Delegation
 
@@ -188,7 +175,7 @@ Violations are reported as `error` (1–3, 6, 7 — schema, naming, referential,
 
 ## Derived Agents
 
-Some agents exist only as build artifacts for specific runtime targets, generated from a canonical source agent by `scripts/build.py` and never hand-edited. **`enforcer`** (derived from `rbg`) is a compact, haiku-class variant used by the periodic compliance gate on GitHub targets: the build step narrows its model to `haiku`, trims tools to `Read`, and substitutes a gate-specific invocation preamble.
+Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `aops-core/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
 
 ## GitHub Action Agents
 
@@ -214,7 +201,7 @@ L5 is the hard edge — a declaration cannot re-open a path an L5 hook blocks. A
 
 **Funnel/chokepoint pattern** (last resort only): deny a capability to all agents and grant it to exactly one that must invoke a specific skill (e.g. pauli via `/planner`). Architecturally unforgeable but imposes a coordination tax on every gated call — deploy only after cheaper rungs (instruction → deterministic gate → post-hoc enforcer) demonstrably fail.
 
-Related: **`specs/agents/orchestrator-boundary.md`** (CLI orchestrator's allow/deny tables are one instance of a declared authority envelope); **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, hooks are L5); **`specs/agents/polecat-system.md`** (enforces `fileAccess`/`bashScopes` at the worktree boundary). Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
+Related: **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, hooks are L5); **`specs/polecat/polecat-system.md`** (enforces `fileAccess`/`bashScopes` at the worktree boundary). Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
 
 ## Non-Goals
 

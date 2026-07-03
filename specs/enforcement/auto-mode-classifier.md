@@ -10,12 +10,6 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 
 # Auto-Mode Classifier — the framework's judgment gate at the per-action boundary
 
-> **Spec, not state.** This file is the design statement for what the Claude
-> Code auto-mode classifier is _for_: the policy that decides which rules
-> belong in it and the cost model that shapes how those rules must be
-> written. The **operative register** — which rules are actually installed —
-> lives in [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
-
 Claude Code's auto mode delegates tool-call approvals to a model-based
 classifier that runs before every tool call. It reads a **stripped
 transcript** (the user's messages in full, plus bare tool-call names and

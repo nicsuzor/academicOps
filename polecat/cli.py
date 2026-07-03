@@ -452,6 +452,7 @@ _GATE_ENV_VARS = (
     "RBG_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "IDA_GATE_MODE",
+    "RBG_REVIEW_GATE_MODE",
     "RBG_TOOL_CALL_THRESHOLD",
 )
 
@@ -469,6 +470,7 @@ def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-
     env["RBG_GATE_MODE"] = gates.rbg
     env["HYDRATION_GATE_MODE"] = gates.hydration
     env["IDA_GATE_MODE"] = gates.ida
+    env["RBG_REVIEW_GATE_MODE"] = gates.rbg_review
     env["RBG_TOOL_CALL_THRESHOLD"] = str(gates.rbg_threshold)
 
 
@@ -4408,11 +4410,6 @@ def crew(
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
     _apply_gate_env(env, session_cfg)
-    # Claude crew runs in plan mode; signal that to the gate engine so it
-    # skips the custodiet ops counter (the gate must not fire when rbg
-    # cannot be invoked). Suppressed for gemini / interactive shell paths.
-    if not interactive and not uses_gemini_runtime:
-        env["POLECAT_APPROVAL_MODE"] = "plan"
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]

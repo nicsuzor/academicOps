@@ -86,7 +86,7 @@ Outcome: an epic becomes a set of concrete, independently verifiable single-sess
 - Establish concrete deliverables and observable verification criteria per subtask; replace body checklists with linked child subtasks.
 - Set each subtask's `classification` to match its real shape (never override a user-set value).
 - When subtasks must land in one PR, partition into parallel-able vs. sequential-dependency units per [[../supervisor/SKILL.md#cohesive-single-pr-epic-pattern-default]], wiring `depends_on` only where genuinely sequential.
-- Add review gates (a blocking `james review (pauli + rbg + revise)` subtask for epics; `pauli + rbg review` first and `james review` last for standalone tasks), and retire anything superseded via `superseded_by: [<new-ids>]`.
+- Add review gates (a blocking `james review (pauli + rbg + revise)` subtask for epics; `pauli + rbg review` first and `james review` last for standalone tasks), and retire anything superseded by cancelling it (`status: cancelled`) with a `supersedes` edge on the replacement(s).
 
 ### 4. Explore (`/strategy`)
 
@@ -129,4 +129,4 @@ Academic/peer-review/reading-note items are never filed as `review` — that sta
 
 ### Premise judgment on promotion to `queued`
 
-When promoting a task to `queued`, record a one-sentence, principal-voice premise judgment in the task body — "as a sharp principal seeing only this task: is this worth doing, and is the shape right — or bounce it?" — or bounce it with a one-line reason. This is one open prose sentence, never a frontmatter field or checklist (why, plus the worked specimen: [[../remember/references/premise-gate.md]]). It's the dispatch-boundary counterpart to the [Decompose earn-its-keep gate](#3-decompose-planning): earn-its-keep fires at `inbox → ready`, premise fires at `→ queued`, the last moment before compute is spent. `/pull`, `/dispatch`, and `/supervisor` refuse to spend compute on a task whose body shows no genuine premise judgment.
+When promoting a task to `queued`, record a one-sentence, principal-voice premise judgment in the task body — "as a sharp principal seeing only this task: is this worth doing, and is the shape right — or bounce it?" — or bounce it with a one-line reason. This is one open prose sentence, never a frontmatter field or checklist (why, plus the worked specimen: [[../remember/references/premise-gate.md]]). It's the dispatch-boundary counterpart to the [Decompose earn-its-keep gate](#3-decompose-planning): earn-its-keep fires at `inbox → ready`. Recording the premise here is best-effort — a hand-queued task has no hook to enforce it — so the **binding** check is at dispatch, where `/pull`, `/dispatch`, and `/supervisor` ensure the premise is legible and clear it through `rbg` + `pauli` (`/strategic-review --premise`) before spending compute.

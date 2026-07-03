@@ -69,9 +69,10 @@ jobs:
       REPO: ${{ github.repository }}
       REVIEWER_LOGIN: ${{ github.event.review.user.login }}
       REVIEW_STATE: ${{ github.event.review.state }}
-      # Belt-and-suspenders: the maintainer admits even if the permission API
-      # read hiccups. Write-class permission is the primary authorisation.
-      ADMIT_ALLOWLIST: "nicsuzor"
+      # ADMIT_ALLOWLIST is intentionally NOT set here — admit-on-review.sh
+      # sources scripts/ci/reviewer-authz.sh, which supplies the single
+      # default (pr-pipeline.md §5.1) shared by every admission path. Set it
+      # here only to override the default for this call site specifically.
     steps:
       - uses: actions/checkout@v4
       - name: Resolve reviewer repository permission
@@ -100,14 +101,14 @@ jobs:
     outputs:
       # The SHA actually admitted (re-read live — the PR may have advanced since
       # the review was submitted). Re-verification + the mechanic target THIS SHA.
-      admitted_sha: ${{ steps.admit.outputs.admitted_sha }}
+      admitted_sha: ${{ steps.resolve.outputs.sha }}
       # Whether the named reviewers are ALREADY green on the admitted SHA. 'true'
       # when the PR was admitted right after its ready-review with no intervening
       # pushes — auto-merge fires immediately, no re-verification needed. 'false'
       # when pre-admission pushes advanced HEAD past the last reviewed SHA (§3.1
       # fire-once gate skipped the reviewers on those pushes), so enforcer/qa/
       # attestation are absent here and the admission boundary re-fires them below.
-      reviewers_green: ${{ steps.admit.outputs.reviewers_green }}
+      reviewers_green: ${{ steps.green.outputs.reviewers_green }}
     env:
       # Bot PAT required to write the required `admit-status` and arm auto-merge
       # (the default token cannot satisfy a required check posted as a status
@@ -116,33 +117,33 @@ jobs:
       REPO: ${{ github.repository }}
       PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
     steps:
-      - name: Set admit-status and arm auto-merge
-        id: admit
+      - uses: actions/checkout@v4
+      - name: Resolve live HEAD SHA
+        id: resolve
         run: |
           set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot admit PR." >&2
-            exit 1
-          fi
-
           # Re-read HEAD live: the PR may have advanced while/after the review
           # was submitted. Admit the CURRENT head, the honest state.
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
           echo "Admitting PR #$PR_NUMBER at HEAD $HEAD_SHA"
-          echo "admitted_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-
-          # (a) Required admit-status = success on the admitted SHA.
-          gh api "repos/$REPO/statuses/$HEAD_SHA" \
-            -f state="success" \
-            -f context="admit-status" \
-            -f description="Admitted by maintainer review approval — good idea, make it mergeable" \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-          # (b) Arm auto-merge. Fires when all required checks are green + mergeable.
-          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
-            || echo "WARNING: Could not enable auto-merge (may already be enabled, or PR already merged)"
-
-          # (c) Are the named reviewers ALREADY green on the admitted SHA? Under the
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - name: Grant admission
+        # Shared with conflict-admission-sweep.yml's admit job
+        # (scripts/ci/admit-pr.sh, pr-pipeline.md §5.1) — the required
+        # admit-status write + armed auto-merge can't drift between the two
+        # admission paths. This step's own GH_TOKEN guard (fail closed if
+        # unset) lives inside the shared script now.
+        run: bash scripts/ci/admit-pr.sh
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          REASON: "Admitted by maintainer review approval — good idea, make it mergeable"
+      - name: Check whether reviewers are already green on the admitted SHA
+        id: green
+        env:
+          HEAD_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Are the named reviewers ALREADY green on the admitted SHA? Under the
           # §3.1 fire-once gate the reviewers run on ready + at admission, NOT on
           # pre-admission pushes — so an admitted SHA that advanced past the last
           # reviewed commit has ABSENT enforcer/qa statuses here. Classify so the
@@ -340,7 +341,9 @@ jobs:
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
       REPO: ${{ github.repository }}
       REVIEWER_LOGIN: ${{ github.event.review.user.login }}
-      ADMIT_ALLOWLIST: "nicsuzor"
+      # ADMIT_ALLOWLIST is intentionally NOT set here — the decide step below
+      # sources scripts/ci/reviewer-authz.sh, which supplies the single
+      # default (pr-pipeline.md §5.1) shared by every admission path.
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - uses: actions/checkout@v4
@@ -365,16 +368,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Write-class authorization — same policy as admit-on-review.sh.
-          authorized=false
-          case "$REVIEWER_PERMISSION" in
-            admin|maintain|write) authorized=true ;;
-          esac
-          read -r -a admit_logins <<<"$ADMIT_ALLOWLIST"
-          for login in "${admit_logins[@]}"; do
-            [[ "$login" == "$REVIEWER_LOGIN" ]] && authorized=true
-          done
-          if [[ "$authorized" != "true" ]]; then
+          # Write-class authorization — shares scripts/ci/reviewer-authz.sh
+          # with admit-on-review.sh and find-conflicting-admitted-prs.sh
+          # (pr-pipeline.md §5.1) so this policy can't drift between
+          # admission paths. Sourcing also supplies the ADMIT_ALLOWLIST
+          # default when this job hasn't set one itself.
+          source scripts/ci/reviewer-authz.sh
+          if ! is_authorized_reviewer "$REVIEWER_LOGIN" "$REVIEWER_PERMISSION" "$ADMIT_ALLOWLIST"; then
             echo "Skipped: $REVIEWER_LOGIN (permission: $REVIEWER_PERMISSION) is not write-class — no dispatch"
             echo "decision=skip" >> "$GITHUB_OUTPUT"
             exit 0

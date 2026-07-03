@@ -15,9 +15,12 @@
 # way to drive the mechanic onto a conflicting PR. The maintainer's existing
 # review approval is the admission signal (no second gesture needed).
 #
-# AUTHORIZATION mirrors scripts/ci/admit-on-review.sh: a PR is "admitted" when the
-# latest review by a write-class collaborator (or an ADMIT_ALLOWLIST login) is
-# APPROVED, and no write-class reviewer's latest review is CHANGES_REQUESTED.
+# AUTHORIZATION shares scripts/ci/reviewer-authz.sh with admit-on-review.sh
+# (specs/workflows/pr-pipeline.md §5.1 — the single source of truth for
+# write-class-or-allowlisted, preventing the policy from drifting between
+# admission paths): a PR is "admitted" when the latest review by a write-class
+# collaborator (or an ADMIT_ALLOWLIST login) is APPROVED, and no write-class
+# reviewer's latest review is CHANGES_REQUESTED.
 #
 # BOUNDING. A PR is skipped when a *terminal* `mechanic-status` (success/failure)
 # already exists on its current head SHA — the mechanic has already run (and
@@ -44,9 +47,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# is_authorized_reviewer() + the ADMIT_ALLOWLIST default (pr-pipeline.md §5.1) —
+# the single source of truth also used by admit-on-review.sh and
+# admit-on-review.yml's authorize-changes job, replacing what used to be an
+# independent is_writeclass() reimplementation here.
+source "$SCRIPT_DIR/reviewer-authz.sh"
+
 REPO="${REPO:?REPO is required}"
 BASE_BRANCH="${BASE_BRANCH:-dev}"  # allow-fallback: optional; dev is the integration branch all PRs target.
-ADMIT_ALLOWLIST="${ADMIT_ALLOWLIST:-nicsuzor}"  # allow-fallback: optional belt-and-suspenders allowlist; write-class permission is the primary authorisation.
 
 # ── Fetch the open PR list (testable via PRS_JSON) ──────────────────────────
 if [[ -n "${PRS_JSON:-}" ]]; then
@@ -67,11 +76,6 @@ perm_of() {
   else
     gh api "repos/$REPO/collaborators/$login/permission" --jq '.permission' 2>/dev/null || echo "none"
   fi
-}
-
-is_writeclass() {
-  case "$1" in admin | maintain | write) return 0 ;; esac
-  return 1
 }
 
 # ── Latest mechanic-status on a SHA (live gh api, or injected for tests) ─────
@@ -114,8 +118,7 @@ while IFS= read -r pr; do
 
     wc=false
     perm=$(perm_of "$login")
-    is_writeclass "$perm" && wc=true
-    for a in $ADMIT_ALLOWLIST; do [[ "$a" == "$login" ]] && wc=true; done
+    is_authorized_reviewer "$login" "$perm" "$ADMIT_ALLOWLIST" && wc=true
     [[ "$wc" == "true" ]] || continue
 
     case "$state" in

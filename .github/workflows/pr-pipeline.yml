@@ -47,14 +47,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ─── Step 0: Gate (Approval for release-please PRs) ──────────────
+  # ─── Step 0: Gate (passthrough) ──────────────────────────────────
+  # No-op passthrough kept so downstream jobs' `needs: [gate]` edges are stable.
+  # The `production` Environment approval that USED to sit here for release-please
+  # PRs is retired: it blocked even Lint/Pytest behind a buried "Review
+  # deployments → Approve" click, and it duplicated the human gate. The single
+  # release approval now lives on the actual publish step (build-extension.yml's
+  # `production` environment, stable tags only) — so a release-please PR flows on
+  # green mechanical checks and the human approves ONCE, at deploy time. Regular
+  # PRs are unaffected (they were never gated here — the environment expression
+  # only ever resolved to 'production' for release-please head refs).
   gate:
-    name: Release Gate Approval
+    name: Gate (passthrough)
     runs-on: ubuntu-latest
-    environment: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref && startsWith(github.event.pull_request.head.ref, 'release-please')) && 'production' || '' }}
     steps:
-      - name: Acknowledge approval
-        run: echo "Environment gate approved or bypassed"
+      - name: Acknowledge
+        run: echo "Gate passthrough — release approval relocated to build-extension.yml (deploy step)."
 
   # ─── Step 0.4: Guard — no built artifacts on dev ───────────────────
   # dev is source-only. Built plugin dirs, dist/, and the GENERATED manifest
@@ -210,7 +218,9 @@ jobs:
   # parallel so a slow alignment surface never delays the merge-gate agents.
   alignment-queue:
     needs: [gate]
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Release-please PRs are not queued for alignment review (§3.13) — advisory
+    # signal only, and there is nothing strategic to align on a version bump.
+    if: github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.event.pull_request.head.ref, 'release-please')
     name: Alignment Queue
     runs-on: ubuntu-latest
     env:
@@ -269,10 +279,16 @@ jobs:
   # the bare `needs: [lint]` edge used to provide.
   enforcer:
     needs: [lint, initialize]
+    # Release-please PRs skip the agent reviewers entirely (§3.13): they are
+    # deterministic bot-generated version bumps + changelog + uv.lock — nothing
+    # for rbg/marsha to review. `release-autogreen` posts their required statuses
+    # green from the mechanical checks instead. For workflow_call / non-PR events
+    # `head.ref` is empty, so the guard is a no-op there.
     if: >-
       always() &&
       needs.lint.result == 'success' &&
       needs.lint.outputs.committed != 'true' &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please') &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'pull_request' || github.event.action != 'synchronize' || needs.initialize.outputs.admitted == 'true')
     name: Enforcer Review
@@ -296,7 +312,10 @@ jobs:
   # or `cancelled`, neither of which is a verdict on this SHA.
   qa:
     needs: [enforcer, lint]
-    if: always() && needs.lint.result == 'success' && (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    # Release-please PRs skip QA too (§3.13) — see the enforcer guard. In practice
+    # enforcer is already skipped for release PRs (so qa would skip via the
+    # result-gate below anyway), but the explicit guard keeps the intent local.
+    if: always() && needs.lint.result == 'success' && (needs.enforcer.result == 'success' || needs.enforcer.result == 'failure') && needs.lint.outputs.committed != 'true' && needs.enforcer.outputs.committed != 'true' && !startsWith(github.event.pull_request.head.ref, 'release-please') && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     name: QA Verification
     uses: ./.github/workflows/agent-qa.yml
     with:
@@ -497,7 +516,11 @@ jobs:
   review-attestation:
     name: Review Attestation
     needs: [enforcer, qa]
-    if: always() && github.event.pull_request.head.repo.full_name == github.repository && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    # Release-please PRs skip this job (§3.13): the reviewers it attests are
+    # deliberately not run, so the attestation script would fail-close on their
+    # absence. `release-autogreen` posts the required `review-attestation=success`
+    # for release PRs instead (with the §10 target_sha in its target_url).
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.event.pull_request.head.ref, 'release-please') && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     permissions:
       statuses: write
@@ -531,6 +554,70 @@ jobs:
             exit 1
           fi
           echo "::notice::$DESC"
+
+  # ─── Release-please fast path (§3.13) ────────────────────────────
+  # Release-please PRs (head ref `release-please--*`) are bot-generated,
+  # deterministic version bumps + CHANGELOG + uv.lock. There is nothing for the
+  # agent reviewers to judge, so they are skipped (guards on enforcer / qa /
+  # review-attestation / alignment-queue above). This job instead AUTO-SATISFIES
+  # the four agent/human required checks — `enforcer-status`, `qa-status`,
+  # `review-attestation`, `admit-status` — once the MECHANICAL gates (`Lint` and
+  # `Pytest`) are genuinely green on HEAD, then arms auto-merge. The result: a
+  # release PR merges on green lint+pytest with NO PR-level human step. The single
+  # human approval for the whole release lives at the deploy (build-extension.yml's
+  # `production` environment, stable tags only) — approve once, at publish time.
+  #
+  # Requires the bot PAT: the default GITHUB_TOKEN cannot post a status the ruleset
+  # trusts as a required check (§4.7). Same-repo PRs only (a fork run cannot mint
+  # the token) — mirrors the `initialize` gating.
+  release-autogreen:
+    name: Release PR auto-green
+    needs: [lint, pytest]
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release-please') &&
+      needs.lint.result == 'success' &&
+      needs.pytest.result == 'success' &&
+      needs.lint.outputs.committed != 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Post agent + admit required statuses green
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot satisfy required checks for the release PR." >&2
+            exit 1
+          fi
+          for ctx in enforcer-status qa-status admit-status; do
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="success" \
+              -f context="$ctx" \
+              -f description="Auto-satisfied for release-please PR (deterministic bump — agent review + human PR gate bypassed; §3.13)" \
+              -f target_url="$RUN_URL"
+          done
+          # review-attestation carries the §10 target_sha in its target_url so a
+          # human/audit can confirm it was posted for THIS head SHA.
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="success" \
+            -f context="review-attestation" \
+            -f description="Auto-attested for release-please PR (reviewers deliberately skipped; §3.13)" \
+            -f target_url="$RUN_URL?target_sha=$HEAD_SHA"
+      - name: Arm auto-merge
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
+            || echo "WARNING: could not enable auto-merge (may already be enabled, or PR already merged)"
 
   # ─── Read-only checks (typecheck, pytest) ────────────────────────
   # These contribute statuses but never end a pass. They only run if

@@ -1,5 +1,96 @@
 # Changelog
 
+## [0.3.51](https://github.com/nicsuzor/academicOps/compare/v0.3.50...v0.3.51) (2026-07-03)
+
+
+### Bug Fixes
+
+* **gates:** remove stale POLECAT_APPROVAL_MODE, route QA mode through gate_config ([#2072](https://github.com/nicsuzor/academicOps/issues/2072)) ([af539f9](https://github.com/nicsuzor/academicOps/commit/af539f93f4e5f1f7721b9a48128e1c22366d3dd9))
+
+## [0.3.50](https://github.com/nicsuzor/academicOps/compare/v0.3.49...v0.3.50) (2026-07-02)
+
+
+### Bug Fixes
+
+* **hooks:** bypass Stop gates when session is paused (supersedes [#1998](https://github.com/nicsuzor/academicOps/issues/1998)) ([#2065](https://github.com/nicsuzor/academicOps/issues/2065)) ([138d0ca](https://github.com/nicsuzor/academicOps/commit/138d0caa3c69bc30d800760b8e5924f170feb34d))
+* **pipeline:** stop the production deploy gate from cancelling pending approvals ([c395370](https://github.com/nicsuzor/academicOps/commit/c39537081b652d677c2c0f30272973cba0b8c1ac))
+
+## [0.3.49](https://github.com/nicsuzor/academicOps/compare/v0.3.48...v0.3.49) (2026-07-02)
+
+
+### Bug Fixes
+
+* **hooks:** log the resolved wire decision, not pre-translation state ([#2057](https://github.com/nicsuzor/academicOps/issues/2057)) ([956ee09](https://github.com/nicsuzor/academicOps/commit/956ee09330f1b2534c5f42079010cde3a0ac5eb3))
+
+## [0.3.48](https://github.com/nicsuzor/academicOps/compare/v0.3.47...v0.3.48) (2026-07-02)
+
+
+### Code Refactoring
+
+* **premise-gate:** two-judge pre-dispatch clearance (rbg+pauli), DRY with /strategic-review ([2604f28](https://github.com/nicsuzor/academicOps/commit/2604f28d970c8635c84217c540fa63147bf24a81))
+
+## [0.3.47](https://github.com/nicsuzor/academicOps/compare/v0.3.46...v0.3.47) (2026-07-02)
+
+
+### Code Refactoring
+
+* **pipeline:** consolidate PR admission logic to prevent process drift ([#2053](https://github.com/nicsuzor/academicOps/issues/2053)) ([04d0bb9](https://github.com/nicsuzor/academicOps/commit/04d0bb97d6977e883335ad4037cc7e17300b270f))
+
+## [0.3.46](https://github.com/nicsuzor/academicOps/compare/v0.3.45...v0.3.46) (2026-07-02)
+
+
+### Features
+
+* **pipeline:** release-please fast path — merge on green lint+pytest, one approval at deploy ([#2051](https://github.com/nicsuzor/academicOps/issues/2051)) ([292e082](https://github.com/nicsuzor/academicOps/commit/292e0825b37557d06b43da8f22d68ecd9c4102e3))
+
+
+### Bug Fixes
+
+* rewrite aops-core-scoped MCP tool names for the cowork build ([#2050](https://github.com/nicsuzor/academicOps/issues/2050)) ([33f3f9a](https://github.com/nicsuzor/academicOps/commit/33f3f9a8b16cfd26ca0b908d4eb18ed8dcd5c3ef))
+
+## [0.3.45](https://github.com/nicsuzor/academicOps/compare/v0.3.44...v0.3.45) (2026-07-02)
+
+
+### Features
+
+* **pipeline:** conflict-admission sweep — actually drive the mechanic onto conflicting PRs ([#2008](https://github.com/nicsuzor/academicOps/issues/2008)) ([54b32a7](https://github.com/nicsuzor/academicOps/commit/54b32a7c710b4bf7346784c52aa3374a26ec9f0d))
+* **pipeline:** sticky in-principle admission, codeowner review request, force-review hatch, clearer attestation ([#2010](https://github.com/nicsuzor/academicOps/issues/2010)) ([5c542b3](https://github.com/nicsuzor/academicOps/commit/5c542b341527955b82ae4784bc62bf930bf6c98a))
+* **specs:** aggregate agent specs and add agents overview ([#2026](https://github.com/nicsuzor/academicOps/issues/2026)) ([33db681](https://github.com/nicsuzor/academicOps/commit/33db68114281dc6d06337f6e4b0ebf27a910b7cb))
+
+
+### Bug Fixes
+
+* **aops-ts:** make SessionEnd transcript sync actually work on the tailnet ([#2033](https://github.com/nicsuzor/academicOps/issues/2033)) ([f7b7e61](https://github.com/nicsuzor/academicOps/commit/f7b7e6142c8465ce346e33e46076d7e6f7e1552c))
+* complete enforcer→rbg rename, restore green Pytest on dev ([#2036](https://github.com/nicsuzor/academicOps/issues/2036)) ([bd86229](https://github.com/nicsuzor/academicOps/commit/bd86229451e77f78b7ac53b4b3882df998ad9c06))
+* **daily:** enforce correct placement of audit-complete sentinel ([#1979](https://github.com/nicsuzor/academicOps/issues/1979)) ([81b3266](https://github.com/nicsuzor/academicOps/commit/81b3266c240a41e0de202c8958fa4e7f70c8b23d))
+* **end-session:** handover follow-ups/threads must be pullable task-ids, not prose ([#2016](https://github.com/nicsuzor/academicOps/issues/2016)) ([#2017](https://github.com/nicsuzor/academicOps/issues/2017)) ([370df1e](https://github.com/nicsuzor/academicOps/commit/370df1ee74eea7161db86026abe69c5bc6419cd5))
+* **pipeline:** admit conflicting PRs and resolve conflicts via mechanic on admission ([#2006](https://github.com/nicsuzor/academicOps/issues/2006)) ([39e81d2](https://github.com/nicsuzor/academicOps/commit/39e81d26f710df6bfd5dfc3d4c600fcd3ffc7630))
+* **polecat:** seed agy onboarding marker so workers skip first-run wizard (aops-d9cc656a) ([#2025](https://github.com/nicsuzor/academicOps/issues/2025)) ([babe50e](https://github.com/nicsuzor/academicOps/commit/babe50e98a7afaa18e255f508e2eecc11e4d0664))
+* resolve broken imports after moving scripts ([d8b208a](https://github.com/nicsuzor/academicOps/commit/d8b208a7bf37280949f2881aeb11e5758d69ac39))
+* resolve remaining multi-line broken imports ([accada9](https://github.com/nicsuzor/academicOps/commit/accada9a2a3f47b868bf038b187085539a88fdd7))
+* restore dropped enforcement map row for single-PR cohesion rule ([#2004](https://github.com/nicsuzor/academicOps/issues/2004)) ([d48a3d9](https://github.com/nicsuzor/academicOps/commit/d48a3d937865f857c4272a8f2668ec467f004271))
+* **test:** de-time-bomb session-anchor tests (hard-coded date aged out of window) ([#2007](https://github.com/nicsuzor/academicOps/issues/2007)) ([bdad8cd](https://github.com/nicsuzor/academicOps/commit/bdad8cdc85b08d8bcde3a376c51c94b6d3ca8393))
+
+
+### Code Refactoring
+
+* convert commands to thin wrappers and support agy CLI ([#2024](https://github.com/nicsuzor/academicOps/issues/2024)) ([e6fe2ef](https://github.com/nicsuzor/academicOps/commit/e6fe2ef11b145055314fb467894978e4d3a09f9b))
+
+
+### Documentation
+
+* radically simplify specs, agent personas, skills, and top-level docs ([#2035](https://github.com/nicsuzor/academicOps/issues/2035)) ([07e3962](https://github.com/nicsuzor/academicOps/commit/07e3962294d0d022e67f995f5846a1b6aa23cfac))
+
+
+### Build System
+
+* fix UnboundLocalError in generate_aops_core_pyproject ([c026381](https://github.com/nicsuzor/academicOps/commit/c026381801ca0480142437ee5987c329422416f5))
+
+
+### Miscellaneous
+
+* **gates:** collapse enforcer gate into rbg and rbg-review ([12ada1b](https://github.com/nicsuzor/academicOps/commit/12ada1b2111c87c1ab85a955cfc0188e4e18ef68))
+
 ## [0.3.44](https://github.com/nicsuzor/academicOps/compare/v0.3.43...v0.3.44) (2026-06-28)
 
 ### Features

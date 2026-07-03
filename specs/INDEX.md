@@ -26,7 +26,7 @@ Consolidated from:
 
 ### [[agents]] — Identity, authority, roles
 
-Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, Ruth, James, Marsha, Ida — plus the planner, supervisor, polecats, and the orchestrator boundary.
+Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, RBG, James, Marsha, Ida — plus the planner.
 
 - [[agents]] — Agent ecosystem overview
 - [[ida]] — Ida agent specification
@@ -35,11 +35,16 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[marsha]] — Marsha agent specification
 - [[james]] — James agent specification
 - [[agent-authority]] — Permissions and skill delegation envelope (frontmatter schema, four-axis permissions model, tool allowlists)
-- [[agent-definition-content]] — Content boundary for agent identity files (skill matter & docs out)
-- [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
-- [[orchestrator-boundary]] — CLI orchestrator authority boundary
-- [[polecat-system]] — Distributed worker dispatch
-- [[interactive-coworking]] — Polecat↔interactive axis, thin Ida sibling, hook-router separation
+
+(The content boundary for agent identity files — skill matter & docs out — is enforced by the `/craft` skill; the standalone `agent-definition-content` spec, along with `orchestrator-boundary` and `interactive-coworking`, was retired in the 2026-07 simplification pass.)
+
+### Polecat & supervision — worker dispatch and delegate-and-verify
+
+The execution and supervision architecture: how work is isolated, dispatched, and driven to a proven terminal state. These are subsystem-architecture specs, not agent-identity specs.
+
+- [[polecat-system]] — Ephemeral per-task workspaces, atomic claiming, PR-based merge
+- [[supervisor]] — Delegate-and-verify supervision (stateless tick; epic / portfolio / conversational scale)
+- [[spec-partial-work-tight-loop-delivery|Partial-work tight-loop delivery]] — Honest partial stops and tight delivery loops
 
 ### [[workflows]] — Multi-step processes
 
@@ -75,6 +80,7 @@ The five-layer enforcement model and its implementations.
 
 - [[enforcement]] — Top-level five-layer model
 - [[ENFORCEMENT-MAP]] — Axiom × mechanism map, gate lifecycle, pyramid positions (L0–L7)
+- [[premise-gate-spec|specs/enforcement/premise-gate.md]] — The premise gate design statement (first executive surface for `judgment-non-delegable`; pairs with the operative instruction file in the remember skill and the review-time twin)
 
 (`enforcement-mechanisms`, `hook-router`, `ultra-vires-enforcer`, and `enforcement-aops-recommender` were retired during the 2026-07 simplification pass — each was a near-duplicate of `ENFORCEMENT-MAP.md`/`GATES.md`/`specs/agents/rbg.md`, which now hold the operative content.)
 

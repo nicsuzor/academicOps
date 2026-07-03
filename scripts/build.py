@@ -117,6 +117,20 @@ def _process_cowork_markers(text: str, platform: str) -> str:
     return _COWORK_BLOCK_RE.sub("\n\n", text)
 
 
+# aops-core and aops-cowork both register the same MCP servers (e.g. "pkb",
+# see aops-core/mcp.json.template) — but Claude Code namespaces plugin-provided
+# tools by the INSTALLED plugin name, so the identical server produces
+# `mcp__plugin_aops-core_pkb__*` under the aops-core plugin but
+# `mcp__plugin_aops-cowork_pkb__*` under aops-cowork. Agent/skill/spec source
+# is authored once against the aops-core name; the cowork dist needs every
+# occurrence rewritten so declared tool references (frontmatter `tools:`
+# lists included) match a real runtime tool instead of silently matching
+# none — the agent has no way to discover a tool whose declared name doesn't
+# exist under any namespace it can see.
+_AOPS_CORE_MCP_PREFIX = "mcp__plugin_aops-core_"
+_AOPS_COWORK_MCP_PREFIX = "mcp__plugin_aops-cowork_"
+
+
 def _git_build_metadata(aops_root: Path) -> str:
     """SemVer build metadata (`+g<sha>[.dirty]`) for the current HEAD, or ''.
 
@@ -707,13 +721,17 @@ def build_aops_core(
     """Build the aops-core extension for a specific platform.
 
     Supported platforms: "claude", "gemini", "antigravity", "cowork".
-    The "cowork" platform is a sibling of "claude" — same plugin layout
-    (`.claude-plugin/plugin.json` + `.mcp.json`) but with cowork-only skill
-    content kept (markers stripped), the cowork-sync skill included, and a
-    distinct plugin manifest naming the artifact `aops-cowork`. Unlike "claude",
-    the cowork build ships NO hooks: aops-core (installed into Cowork from the
-    dist marketplace) supplies the one shared hook stack for both surfaces, so
-    bundling hooks here would double-fire every lifecycle hook (task-04075740).
+    The "cowork" platform is a true skills-only ADDITIVE layer on top of
+    aops-core, not a second copy of it (aops-04075740 / aops-10afe69d):
+    aops-core, installed into Cowork from the dist marketplace, already
+    supplies every shared agent/skill/command/lib file and the one shared hook
+    stack (bundling hooks here too would double-fire every lifecycle hook), so
+    the cowork build ships ONLY (a) files that opt into a Cowork-specific
+    paragraph via `<!-- cowork:only -->` markers (e.g. `commands/pull.md`,
+    `skills/end_session/SKILL.md` — markers stripped, content kept) and (b) the
+    tracked `aops-cowork/` package overlay (the `cowork-sync` skill). Same
+    plugin layout as "claude" (`.claude-plugin/plugin.json` + `.mcp.json`), with
+    a distinct manifest naming the artifact `aops-cowork`.
     """
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
@@ -741,7 +759,10 @@ def build_aops_core(
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
 
-    # 1. Copy content — everything except known exclusions
+    # EXCLUDED_FROM_COPY applies to the full-tree copy (the "else" branch below,
+    # every platform except cowork) — declared here at the top of the function
+    # body (rather than nested in the branch) so tests/test_build_file_completeness.py's
+    # AST-based check can still find it.
     EXCLUDED_FROM_COPY = {
         "pyproject.toml",  # Generated from template in 1b (version + dep list)
         "uv.lock",  # Regenerated in 1b to stay in sync with the new pyproject
@@ -750,41 +771,95 @@ def build_aops_core(
         "__pycache__",
     }
 
-    for src_item in src_dir.iterdir():
-        if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
-            continue
-        if src_item.name == "agents" and src_item.is_dir():
-            # Special handling for agents: transform frontmatter and translate tool calls
-            dst = content_dir / src_item.name
-            dst.mkdir(parents=True, exist_ok=True)
-            for agent_file in src_item.glob("*.md"):
-                content = agent_file.read_text()
-                # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                content = transform_agent_for_platform(content, transform_platform, agent_file.name)
-                # Translate tool calls in body text
-                content = translate_tool_calls(content, transform_platform)
-                (dst / agent_file.name).write_text(content)
-            print(f"  ✓ Translated and copied agents -> {dst}")
-        else:
-            safe_copy(src_item, content_dir / src_item.name)
+    # 1. Copy content.
+    #
+    # cowork is deliberately NOT a full copy of the aops-core tree: aops-core,
+    # installed alongside from the main dist marketplace, already supplies every
+    # shared agent/skill/command/lib file, so duplicating any of it here just
+    # doubles the on-disk/token footprint for no functional gain (aops-10afe69d,
+    # following on from aops-04075740's hooks removal). aops-cowork ships ONLY:
+    #  (a) files that opt in via <!-- cowork:only --> markers — e.g.
+    #      commands/pull.md and skills/end_session/SKILL.md carry a short
+    #      Cowork-specific paragraph inline in an otherwise-shared file; and
+    #  (b) the tracked aops-cowork/ package overlay (below), e.g. cowork-sync.
+    # Every other platform still gets the full tree ("everything except known
+    # exclusions").
+    if platform == "cowork":
+        # _COWORK_BLOCK_RE (not a plain substring check) so documentation that
+        # merely MENTIONS the marker syntax in prose (e.g. BUILD.md explaining
+        # the mechanism) doesn't get mistaken for a real, matched marker block.
+        marker_files = sorted(
+            p
+            for p in src_dir.rglob("*.md")
+            if not any(
+                part in BUILD_DETRITUS_NAMES or part.startswith(".")
+                for part in p.relative_to(src_dir).parts
+            )
+            and _COWORK_BLOCK_RE.search(p.read_text())
+        )
+        for marker_file in marker_files:
+            rel = marker_file.relative_to(src_dir)
+            dst = content_dir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            content = marker_file.read_text()
+            if rel.parts[0] == "agents":
+                content = transform_agent_for_platform(
+                    content, transform_platform, marker_file.name
+                )
+            content = translate_tool_calls(content, transform_platform)
+            dst.write_text(content)
+        if marker_files:
+            rel_names = [str(p.relative_to(src_dir)) for p in marker_files]
+            print(f"  ✓ Copied {len(marker_files)} cowork-marker file(s): {rel_names}")
+
+        # The pkb MCP server (.mcp.json, generated in section 4) launches via
+        # scripts/run-mcp.sh, which sources ensure-path.sh — copy just those two,
+        # not the rest of aops-core/scripts/ (hook/session-sync tooling aops-core
+        # already ships).
+        mcp_launcher_dst = content_dir / "scripts"
+        mcp_launcher_dst.mkdir(parents=True, exist_ok=True)
+        for script_name in ("run-mcp.sh", "ensure-path.sh"):
+            safe_copy(src_dir / "scripts" / script_name, mcp_launcher_dst / script_name)
+    else:
+        for src_item in src_dir.iterdir():
+            if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+                continue
+            if src_item.name == "agents" and src_item.is_dir():
+                # Special handling for agents: transform frontmatter and translate tool calls
+                dst = content_dir / src_item.name
+                dst.mkdir(parents=True, exist_ok=True)
+                for agent_file in src_item.glob("*.md"):
+                    content = agent_file.read_text()
+                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
+                    content = transform_agent_for_platform(
+                        content, transform_platform, agent_file.name
+                    )
+                    # Translate tool calls in body text
+                    content = translate_tool_calls(content, transform_platform)
+                    (dst / agent_file.name).write_text(content)
+                print(f"  ✓ Translated and copied agents -> {dst}")
+            else:
+                safe_copy(src_item, content_dir / src_item.name)
 
     # 1a-axioms. Co-ship the framework axioms INTO the plugin payload so the
     # @-imports in rbg.md / marsha.md resolve at runtime in a deployed plugin
     # (where ${CLAUDE_PLUGIN_ROOT}/../ is outside the payload). The single SSoT
-    # at .agents/rules/AXIOMS.md remains the only hand-maintained copy.
-    axioms_src_dir = aops_root / ".agents" / "rules"
-    axioms_dst_dir = content_dir / ".agents" / "rules"
-    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
-    for axiom_file in AXIOM_FILES:
-        src = axioms_src_dir / axiom_file
-        if not src.exists():
-            raise FileNotFoundError(
-                f"Required axiom file {src} not found — cannot build plugin without it"
-            )
-        dst = axioms_dst_dir / axiom_file
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        safe_copy(src, dst)
-    print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+    # at .agents/rules/AXIOMS.md remains the only hand-maintained copy. Skipped
+    # for cowork: rbg/marsha (the only @-importers) aren't shipped there.
+    if platform != "cowork":
+        axioms_src_dir = aops_root / ".agents" / "rules"
+        axioms_dst_dir = content_dir / ".agents" / "rules"
+        AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
+        for axiom_file in AXIOM_FILES:
+            src = axioms_src_dir / axiom_file
+            if not src.exists():
+                raise FileNotFoundError(
+                    f"Required axiom file {src} not found — cannot build plugin without it"
+                )
+            dst = axioms_dst_dir / axiom_file
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            safe_copy(src, dst)
+        print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
 
     # 1a-pre. Compose the real aops-cowork package on top of the aops-core base.
     # aops-cowork is a TRACKED package (aops-cowork/), not a manifest fabricated
@@ -852,6 +927,25 @@ def build_aops_core(
         verb = "kept" if platform == "cowork" else "stripped"
         print(f"  ✓ {verb.capitalize()} cowork-only blocks in {cowork_processed} .md file(s)")
 
+    # 1a-cowork-mcp. Rewrite the aops-core-scoped MCP tool-name prefix to the
+    # aops-cowork one across every copied .md file (agent frontmatter `tools:`
+    # lists included — those were written as plain text in the loop above, not
+    # through transform_agent_for_platform, so they still carry the aops-core
+    # name and need this pass same as everything else).
+    if platform == "cowork":
+        mcp_prefix_rewritten = 0
+        for md_file in content_dir.rglob("*.md"):
+            original = md_file.read_text()
+            if _AOPS_CORE_MCP_PREFIX not in original:
+                continue
+            md_file.write_text(original.replace(_AOPS_CORE_MCP_PREFIX, _AOPS_COWORK_MCP_PREFIX))
+            mcp_prefix_rewritten += 1
+        if mcp_prefix_rewritten:
+            print(
+                f"  ✓ Rewrote aops-core→aops-cowork MCP tool-name prefix in "
+                f"{mcp_prefix_rewritten} .md file(s)"
+            )
+
     # 1b. Stamp the tracked source pyproject (the in-tree SSoT for shipped deps)
     # with the build version and write it into the dist payload, then lock against
     # that stamped copy so pyproject.toml and uv.lock ship in lockstep. `uv.lock`
@@ -875,10 +969,11 @@ def build_aops_core(
     else:
         print("  - Skipped pyproject.toml/uv.lock for cowork (no deps of its own)")
 
-    # 1b. Copy root-level scripts
+    # 1b. Copy root-level framework-maintenance scripts. Not for cowork: these
+    # audit aops-core's own tree and aren't shipped there (see section 1 above).
     scripts_src = aops_root / "scripts"
     scripts_dst = content_dir / "scripts"
-    if scripts_src.exists():
+    if platform != "cowork" and scripts_src.exists():
         scripts_dst.mkdir(parents=True, exist_ok=True)
         for script_name in [
             "audit_framework_health.py",
