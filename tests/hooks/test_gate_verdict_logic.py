@@ -22,11 +22,14 @@ from tests.hooks.gate_helpers import (
 _GATE_MODE_CASES = [
     ("rbg", "warn", GateVerdict.WARN),
     ("rbg", "block", GateVerdict.DENY),
-    ("qa", "warn", GateVerdict.WARN),
+    # D1: warn mode now fires a hard-block-once DENY (not a soft WARN) so every
+    # stop gate forces one continuation. The warn-vs-block difference is the
+    # re-fire latch (warn=fire-once, block=persist), not the verdict.
+    ("qa", "warn", GateVerdict.DENY),
     ("qa", "block", GateVerdict.DENY),
-    ("handover", "warn", GateVerdict.WARN),
+    ("handover", "warn", GateVerdict.DENY),
     ("handover", "block", GateVerdict.DENY),
-    ("ida", "warn", GateVerdict.WARN),
+    ("ida", "warn", GateVerdict.DENY),
     ("ida", "block", GateVerdict.DENY),
 ]
 

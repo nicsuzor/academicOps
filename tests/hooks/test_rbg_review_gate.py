@@ -125,13 +125,16 @@ def test_mode_off_stop_never_blocks_per_turn(router, monkeypatch):
 
 
 def test_mode_warn_still_fires_advisory(router, monkeypatch):
-    """mode=warn: the gate still delivers its advisory (block-once), just not a hard DENY."""
+    """mode=warn: fires a hard-block-once (D1 — warn now DENYs to force one
+    continuation, then the warn-mode fire-once trigger opens the gate)."""
     monkeypatch.setenv("RBG_REVIEW_GATE_MODE", "warn")
     _reinit_gates()
     state = _armed_state(router)
     result = router._dispatch_gates(_ctx("Stop"), state)
     assert result is not None
-    assert result.verdict == GateVerdict.WARN
+    assert result.verdict == GateVerdict.DENY
+    # warn-mode fire-once: gate opens after firing so a retried Stop passes.
+    assert state.gates["rbg-review"].status == GateStatus.OPEN
 
 
 # --- (a) Stop DENIED when armed and rbg has not run (mode=block) ------------
@@ -280,7 +283,8 @@ def test_ida_still_fires_when_rbg_review_mode_off(router, monkeypatch):
     assert state.gates["ida"].status == GateStatus.CLOSED
     assert state.gates["rbg-review"].status == GateStatus.CLOSED  # armed but inert
     r = router._dispatch_gates(_ctx("Stop"), state)
-    # rbg-review mode=off is inert; ida fires its advisory (WARN) and opens.
+    # rbg-review mode=off is inert; ida fires its hard-block-once (D1: warn now
+    # DENYs) and opens.
     assert r is not None
-    assert r.verdict == GateVerdict.WARN
+    assert r.verdict == GateVerdict.DENY
     assert state.gates["ida"].status == GateStatus.OPEN
