@@ -19,7 +19,7 @@ if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
 from hooks.router import HookRouter  # noqa: E402
-from lib.gate_types import GateState, GateStatus, GateVerdict  # noqa: E402
+from lib.gate_types import GateState, GateStatus  # noqa: E402
 from lib.gates.registry import GateRegistry  # noqa: E402
 from lib.hook_context import HookContext  # noqa: E402
 from lib.session_state import SessionState  # noqa: E402
@@ -186,13 +186,8 @@ def test_verifier_subagent_reopens_qa_gate(router):
 # --- After verifier, Stop should allow ---
 
 
-def test_stop_allowed_after_verifier(router, monkeypatch):
-    """After verifier runs, Stop should be allowed (qa isolated: ida/handover off
-    so this asserts the qa gate specifically — ida now hard-blocks once on every
-    Stop by default, D1)."""
-    monkeypatch.setenv("IDA_GATE_MODE", "off")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "off")
-    _reinit_gates_with_defaults()
+def test_stop_allowed_after_verifier(router):
+    """After verifier runs, Stop should be allowed."""
     state = _state_with_bound_task("qa-allow-stop")
 
     # Close via task claim.
@@ -381,23 +376,17 @@ def test_ups_does_not_rearm_qa_without_task(router):
     )
 
 
-def test_stop_hook_active_is_ignored_no_special_bypass(router, monkeypatch):
-    """The old global stop_hook_active bypass was REMOVED (client-agnostic
-    redesign). A Stop carrying stop_hook_active=True is treated like any other
-    Stop — the flag no longer short-circuits gate evaluation. Uses handover block
-    (no PKB dependency) and isolates other gates so this asserts the bypass is
-    gone, not some other gate."""
-    monkeypatch.setenv("IDA_GATE_MODE", "off")
-    monkeypatch.setenv("QA_GATE_MODE", "off")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-    _reinit_gates_with_defaults()
-    state = _state_with_bound_task("hv-stop-active")
-    state.session_did_work = True
-    state.gates["handover"] = GateState(status=GateStatus.CLOSED)  # armed → would block
+def test_stop_hook_active_bypasses_all_gates(router):
+    """When stop_hook_active=True, gates must not block — prevents
+    infinite retry loops in both Claude Code and Gemini CLI."""
+    state = _state_with_bound_task("qa-stop-active")
+    # Close all gates so they would normally block.
+    state.gates["qa"] = GateState(status=GateStatus.CLOSED)
+    state.gates["handover"] = GateState(status=GateStatus.CLOSED)
 
     result = router._dispatch_gates(
         HookContext(
-            session_id="hv-stop-active",
+            session_id="qa-stop-active",
             hook_event="Stop",
             tool_name=None,
             tool_input={},
@@ -405,36 +394,4 @@ def test_stop_hook_active_is_ignored_no_special_bypass(router, monkeypatch):
         ),
         state,
     )
-    assert result is not None and result.verdict == GateVerdict.DENY, (
-        "stop_hook_active must NOT bypass gates any more — handover block still fires"
-    )
-
-
-def test_block_gate_retry_loop_is_bounded_by_deny_counter(router, monkeypatch):
-    """Client-agnostic loop safety WITHOUT the stop_hook_active bypass: a block
-    gate that is never satisfied re-DENYs each Stop-continuation within a turn,
-    but the per-gate stop_deny_count escape hatch downgrades it to WARN-and-allow
-    at the threshold (engine default 3) so the retry loop terminates. This is the
-    replacement guarantee for the deleted router bypass. Uses handover block (no
-    PKB dependency)."""
-    monkeypatch.setenv("IDA_GATE_MODE", "off")
-    monkeypatch.setenv("QA_GATE_MODE", "off")
-    monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-    _reinit_gates_with_defaults()
-    state = _state_with_bound_task("hv-loop")
-    state.session_did_work = True
-    state.gates["handover"] = GateState(status=GateStatus.CLOSED)  # armed, never satisfied
-
-    stop = HookContext(session_id="hv-loop", hook_event="Stop", tool_name=None, tool_input={})
-
-    # Simulate the runtime forcing continuation after each block (no UPS between —
-    # this is the within-turn retry loop the old bypass used to short-circuit).
-    r1 = router._dispatch_gates(stop, state)
-    assert r1 is not None and r1.verdict == GateVerdict.DENY
-    r2 = router._dispatch_gates(stop, state)
-    assert r2 is not None and r2.verdict == GateVerdict.DENY
-    r3 = router._dispatch_gates(stop, state)
-    assert r3 is not None and r3.verdict == GateVerdict.WARN, (
-        "3rd consecutive unsatisfied Stop must downgrade to WARN-and-allow so the "
-        f"loop terminates; got {r3.verdict.value if r3 else None}"
-    )
+    assert result is None, "stop_hook_active=True must bypass all gate evaluation"

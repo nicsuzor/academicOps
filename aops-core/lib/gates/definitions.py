@@ -237,18 +237,6 @@ GATE_CONFIGS = [
                     set_metrics={"stop_deny_count": 0},
                 ),
             ),
-            # Stop (when armed/CLOSED) -> Open: fire-once, WARN MODE ONLY (D1).
-            # Warn hard-blocks once then opens so the turn proceeds. Block mode
-            # has NO fire-once — it persists (re-DENYs) until rbg runs
-            # (block-until-satisfied), bounded by the stop_deny_count hatch.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="Stop",
-                    current_status=GateStatus.CLOSED,
-                    custom_check="is_rbg_review_warn_mode",
-                ),
-                transition=GateTransition(target_status=GateStatus.OPEN),
-            ),
         ],
         policies=[
             # Block mode (default): DENY Stop while CLOSED + inject the rbg
@@ -267,17 +255,15 @@ GATE_CONFIGS = [
                 message_key="rbg_review.policy_message",
                 context_key="rbg_review.policy_context",
             ),
-            # Warn mode (staged-rollout parity): fire-once HARD block (D1) via the
-            # warn-mode fire-once trigger below. DENY, not WARN — warn forces one
-            # continuation so the agent reads the dispatch instruction, then the
-            # gate opens for the rest of the turn.
+            # Warn mode (staged-rollout parity): block-once advisory via the
+            # warn+context_injection upgrade path.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_rbg_review_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 custom_action="prepare_rbg_review",
                 message_key="rbg_review.policy_message",
                 context_key="rbg_review.policy_context",
@@ -327,17 +313,12 @@ GATE_CONFIGS = [
                     sticky_until=["UserPromptSubmit"],
                 ),
             ),
-            # Stop (when armed/CLOSED) -> Open: fire-once, WARN MODE ONLY. In warn
-            # mode the gate hard-blocks once (D1) then opens so a retried Stop in
-            # the same turn passes. In BLOCK mode there is deliberately NO
-            # fire-once open — the gate persists (re-DENYs every Stop) until the
-            # verifier-ran trigger opens it (block-until-satisfied). Loop safety in
-            # block mode is the stop_deny_count escape hatch, not this trigger.
+            # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
+            # the same turn passes through without re-blocking.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="Stop",
                     current_status=GateStatus.CLOSED,
-                    custom_check="is_qa_warn_mode",
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
@@ -349,20 +330,13 @@ GATE_CONFIGS = [
             # Slash-command turns (skill invocations) are excluded: they own
             # their own finishing format, so they must not re-arm the gate
             # (prompt_exclude_patterns suppresses the close — never opens).
-            # Resets the block-mode escape-hatch counter: the loop the counter
-            # bounds is WITHIN a turn (Stop → forced-continue → Stop …); a
-            # genuine new user turn is new work and gets a fresh deny budget
-            # (mirrors rbg-review).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
                     custom_check="has_bound_task",
                     prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
                 ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    set_metrics={"stop_deny_count": 0},
-                ),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],
         policies=[
@@ -378,18 +352,17 @@ GATE_CONFIGS = [
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
             ),
-            # Warn mode: fire-once HARD block (D1) — forces one continuation so
-            # the agent reads the verification requirement, then the warn-mode
-            # fire-once trigger above opens the gate so the turn proceeds. DENY,
-            # not WARN (a WARN would render as a non-blocking advisory on Claude
-            # and would not force the continuation).
+            # Warn mode: block-once — advisory injected into agent context via
+            # the warn+context_injection upgrade path in output_for_claude().
+            # Gate opens on first Stop (fire-once trigger above) so subsequent
+            # Stops in the same turn are not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_qa_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
@@ -458,16 +431,13 @@ GATE_CONFIGS = [
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches "end_session" (canonical), "dump" (emergency),
-            # "continue" (pause/hand-back — work in progress, task NOT concluded),
-            # "handover" (legacy), and aops-core: prefixed forms. /continue opens
-            # the gate too: it delivers the honest scannable resume summary, so a
-            # legitimate pause is not blocked by the exit-discipline gate.
+            # Pattern matches "end_session" (canonical), "dump" (emergency), "handover" (legacy),
+            # and aops-core: prefixed forms.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session|continue)$",
+                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -500,16 +470,12 @@ GATE_CONFIGS = [
                     sticky_until=["UserPromptSubmit"],
                 ),
             ),
-            # Stop (when armed/CLOSED) -> Open: fire-once, WARN MODE ONLY (D1). In
-            # warn mode handover hard-blocks once then opens so the turn proceeds.
-            # In BLOCK mode there is NO fire-once — the gate persists (re-DENYs
-            # every Stop) until the handover skill runs (block-until-satisfied);
-            # loop safety is the stop_deny_count escape hatch.
+            # Stop (when armed/CLOSED) -> Open: fire-once so a retried Stop in
+            # the same turn passes through without re-blocking.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="Stop",
                     current_status=GateStatus.CLOSED,
-                    custom_check="is_handover_warn_mode",
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
@@ -524,19 +490,12 @@ GATE_CONFIGS = [
             # satisfied (prompt_exclude_patterns suppresses the close — never
             # opens). The write-tool / task-claim close triggers above still
             # fire, so a slash turn that does real work is still gated.
-            # Resets the block-mode escape-hatch counter: the loop the counter
-            # bounds is WITHIN a turn (Stop → forced-continue → Stop …); a
-            # genuine new user turn is new work and gets a fresh deny budget
-            # (mirrors rbg-review).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
                     prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
                 ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    set_metrics={"stop_deny_count": 0},
-                ),
+                transition=GateTransition(target_status=GateStatus.CLOSED),
             ),
         ],
         policies=[
@@ -553,22 +512,24 @@ GATE_CONFIGS = [
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
-            # Warn mode: fire-once HARD block (D1) — forces one continuation so
-            # the agent reads the handover requirement, then the warn-mode
-            # fire-once Stop trigger above opens the gate so the turn proceeds.
-            # DENY, not WARN (a WARN renders as a non-blocking advisory on Claude
-            # and would not force the continuation). Exempts read-only sessions.
-            # The former soft interactive rate-limiting (spec mem-438429c5
-            # §5.4-5.5, record_handover_warn_fired) is superseded: warn now
-            # behaves like every other stop gate — one forced continuation IS the
-            # nudge. Exempts read-only sessions (session_did_work=False).
+            # Warn mode (interactive soft-once): advisory delivered to the agent
+            # via additionalContext WITHOUT a block (output_for_claude's
+            # warn+agent_context_without_block path on 2.1.191), then the
+            # fire-once Stop trigger above opens the gate so the turn proceeds —
+            # soft block-once-then-release, NOT a silent warn and NOT a hard
+            # block. The hard polecat path is the separate block policy above.
+            # Lighter interactive cadence: is_handover_warn_mode rate-limits
+            # re-firing and record_handover_warn_fired stamps the fired turn so
+            # the soft nudge does not surface on every interactive work-turn
+            # (spec mem-438429c5 §5.4-5.5). Exempts read-only sessions.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_handover_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
+                custom_action="record_handover_warn_fired",
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
@@ -610,22 +571,6 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
-            ),
-            # /continue skill invoked -> Open (sticky until UPS). The /continue
-            # pause path already emits the honest, scannable resume summary this
-            # gate exists to require, so the honesty reminder must NOT also fire
-            # on the Stop that follows it. Mirrors the handover gate's skill-open
-            # trigger; matches Claude's Skill and Gemini's activate_skill.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?continue$",
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.OPEN,
-                    sticky_until=["UserPromptSubmit"],
-                ),
             ),
             # On UserPromptSubmit: re-arm gate for the next turn cycle.
             # Slash-command turns (skill invocations such as /end-session,
@@ -691,27 +636,22 @@ GATE_CONFIGS = [
                 message_template="≡ Honesty check before exit.",
                 context_key="ida.reminder",
             ),
-            # Warn mode: fire-once HARD block, delivered QUIET on Claude. Like
-            # every stop gate (D1), warn forces one continuation so the agent
-            # processes the reminder — the verdict is DENY, not WARN. On Claude
-            # the DENY is rerouted to the asyncRewake quiet-split (body → agent
-            # <system-reminder>, one-line rewakeSummary → user; see the router's
-            # ida-warn-mode metadata stash in _dispatch_gates), so the user is
-            # not shown a loud "Stop hook error" banner. Non-Claude clients fall
-            # back to the loud block: gemini decision:deny+reason (forces one
-            # retry), agy best-effort injectSteps (advisory — agy cannot compel).
-            # No message_key: warn never shows a separate user-facing ida banner.
-            # The unconditional fire-once trigger above opens the gate after this
-            # fires, so a retried Stop in the same turn is not re-blocked; re-arms
-            # on UPS. (ida has no satisfaction predicate, so block mode is also
-            # fire-once — it differs from warn only in that block is LOUD.)
+            # Warn mode: block-once advisory. On Claude Stop the full ida-reminder
+            # body is delivered to the agent via the asyncRewake quiet-split
+            # (router.async_rewake_body_for → exit 2; body → agent
+            # <system-reminder>, one-line config rewakeSummary → user); other
+            # clients fall back to the warn+context_injection path in
+            # output_for_claude()/output_for_*(). No message_key: the user no
+            # longer sees a separate ida banner. Gate opens on first Stop
+            # (fire-once trigger above) so subsequent Stops in the same turn are
+            # not re-blocked. Re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
                     current_status=GateStatus.CLOSED,
                     custom_check="is_ida_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 context_key="ida.reminder",
             ),
         ],

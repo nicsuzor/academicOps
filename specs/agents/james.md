@@ -31,7 +31,6 @@ A James review transcript is fit for purpose when:
 - Any reviewer recommendation that expanded scope beyond the original brief was rejected, with the rejection reasoning visible.
 - Any reviewer recommendation that contradicted a universal axiom was rejected, with the axiom named.
 - Disagreements between reviewers are surfaced and explained, not silently dropped or averaged away.
-- **Agreements between reviewers are merged, not duplicated.** RBG, Pauli, and Marsha review blind to each other and can independently converge on the same defect from different lenses. The synthesis carries **one** entry naming every concurring reviewer and their distinct rationale — never a separate entry per reviewer restating the same defect.
 - The transcript concludes with exactly one verdict token (`APPROVE` / `REVISE` / `ESCALATE`), never a hedge or a blend.
 - Where `REVISE` or `ESCALATE` is given, the transcript states concretely what a successful revision looks like.
 - Fixes were executed only where James was authorized to do so, and each executed fix is explained inline.

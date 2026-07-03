@@ -802,18 +802,12 @@ class HookRouter:
         ):
             return None
 
-        # NOTE: the old global `stop_hook_active` retry bypass was REMOVED here.
-        # It was Claude/Gemini-only (agy never sends the flag, so it was inert
-        # there), it short-circuited the whole gate loop BEFORE any gate ran —
-        # defeating block-until-satisfied and starving each gate's stop_deny_count
-        # escape hatch on flagged retries — and its multi-Stop granularity was
-        # never pinned down. Loop safety is now CLIENT-AGNOSTIC and gate-owned:
-        #   - warn gates fire-once (CLOSED→OPEN latch) so a retried Stop passes;
-        #   - block gates persist until a satisfaction trigger opens them, bounded
-        #     by the per-turn stop_deny_count downgrade (WARN-and-allow);
-        #   - the 5-blocks-in-2-min override below is the residual wall-clock net.
-        # See specs/enforcement/GATES.md (two-mode contract). agy cannot be
-        # hard-blocked on Stop anyway (no forced continuation → no retry loop).
+        # Never block when the runtime signals a retry sequence. Both Claude
+        # Code (stop_hook_active) and Gemini CLI (stop_hook_active in
+        # AfterAgent) set this flag after an earlier block; re-blocking would
+        # loop until the runtime's own cap kills the session.
+        if ctx.hook_event in ("Stop", "SessionEnd") and ctx.raw_input.get("stop_hook_active"):
+            return None
 
         # Don't nag a session that stopped only because it is PAUSED — yielding
         # while it waits on a backgrounded subagent/workflow/monitor or a cron to
@@ -842,7 +836,7 @@ class HookRouter:
         # so the asyncRewake quiet-split below can fire ONLY when ida·reminder is
         # the sole Stop advisory (ENFORCEMENT-MAP §1.1). See metadata wiring after
         # the loop — mixed Stop turns keep the status-quo additionalContext path.
-        ida_quiet_body: str | None = None
+        ida_warn_body: str | None = None
         contributing_gates: list[str] = []
 
         for gate in GateRegistry.get_all_gates():
@@ -859,16 +853,12 @@ class HookRouter:
                         contributed = True
                     if contributed:
                         contributing_gates.append(gate.name)
-                    # Quiet-channel signal for the ida·reminder: stash the body
-                    # when ida fires in WARN MODE, decoupled from the verdict.
-                    # ida now emits DENY in warn mode (D1: warn hard-blocks once),
-                    # so the old `verdict == WARN` key would never match — the
-                    # channel choice keys on the gate's MODE, not the verdict.
-                    if gate.name == "ida" and result.context_injection:
-                        from hooks.gate_config import IDA_GATE_MODE
-
-                        if IDA_GATE_MODE == "warn":
-                            ida_quiet_body = result.context_injection
+                    if (
+                        gate.name == "ida"
+                        and result.verdict == GateVerdict.WARN
+                        and result.context_injection
+                    ):
+                        ida_warn_body = result.context_injection
 
                     # Verdict precedence: DENY > WARN > ALLOW
                     if result.verdict == GateVerdict.DENY:
@@ -895,10 +885,11 @@ class HookRouter:
         metadata: dict[str, Any] = {}
         if (
             ctx.hook_event in ("Stop", "SessionEnd")
-            and ida_quiet_body is not None
+            and final_verdict == GateVerdict.WARN
+            and ida_warn_body is not None
             and contributing_gates == ["ida"]
         ):
-            metadata["ida_async_rewake_body"] = ida_quiet_body
+            metadata["ida_async_rewake_body"] = ida_warn_body
 
         if messages or context_injections or final_verdict != GateVerdict.ALLOW:
             return GateResult(

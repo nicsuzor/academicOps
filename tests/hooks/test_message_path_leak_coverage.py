@@ -514,12 +514,20 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        # D1: warn now fires a hard-block DENY like block, so the advisory rides
-        # the user-visible `reason` in BOTH modes at this render layer. (ida-warn
-        # is rerouted to the quiet asyncRewake channel in main(); output_for_claude
-        # — tested here — still renders the loud DENY reason, which must be tidy.)
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        user_text = output.reason
+        # block-mode advisory rides the user-visible `reason` (must be tidy);
+        # warn-mode advisory rides the agent-only `additionalContext` (markers
+        # intentionally kept) and leaves the user-visible channels clean (P4 (c),
+        # mem-4ab6cc0b). Whichever carries the advisory must be scaffold-free in
+        # the USER-VISIBLE channel.
+        if mode == "block":
+            assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+            user_text = output.reason
+        else:
+            assert output.hookSpecificOutput is not None, (
+                f"{gate_name} ({mode}): warn advisory must ride additionalContext"
+            )
+            # User-visible channels must not carry the advisory at all.
+            user_text = (output.reason or "") + (output.stopReason or "")
         assert _MARKER_OPEN not in user_text and _MARKER_CLOSE not in user_text, (
             f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into a "
             f"user-visible Stop channel: {user_text[:120]!r}"
@@ -544,10 +552,16 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        # D1: warn now fires a hard-block DENY like block, so the advisory rides
-        # the user-visible `reason` in BOTH modes at this render layer.
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        user_text = output.reason
+        # block-mode: advisory in user-visible `reason`. warn-mode: advisory in
+        # agent-only `additionalContext`; user-visible channels stay empty (P4 (c)).
+        if mode == "block":
+            assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
+            user_text = output.reason
+        else:
+            assert output.hookSpecificOutput is not None, (
+                f"{gate_name} ({mode}): warn advisory must ride additionalContext"
+            )
+            user_text = (output.reason or "") + (output.stopReason or "")
         leaked = [s for s in self._CALL_SYNTAX if s in user_text]
         assert not leaked, (
             f"{gate_name} ({mode}): raw agent-invocation syntax {leaked} leaked into a "

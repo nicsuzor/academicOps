@@ -86,10 +86,7 @@ class TestIdaPerTurnLifecycle:
         stop_ctx = make_gate_trigger_context("ida")
 
         first_result = router._dispatch_gates(stop_ctx, state)
-        # D1: warn fires a HARD block (DENY) once — the single forced continuation
-        # is the nudge. On Claude this DENY is rerouted to the quiet asyncRewake
-        # channel, but the gate-layer verdict is DENY.
-        assert first_result is not None and first_result.verdict == GateVerdict.DENY
+        assert first_result is not None and first_result.verdict == GateVerdict.WARN
         assert state.gates["ida"].status == GateStatus.OPEN
 
         router._dispatch_gates(stop_ctx, state)
@@ -304,15 +301,7 @@ class TestStopDenyMaxFireDowngrade:
         )
 
     def test_handover_block_downgrades_after_n_stops(self, router, monkeypatch):
-        """Handover block downgrades after N CONSECUTIVE Stop blocks WITHIN a turn
-        (no UPS between) so a session that cannot run handover can still exit.
-
-        The loop the escape hatch bounds is within-turn (Stop → forced-continue →
-        Stop …): block mode has no warn-fire-once, so the gate persists and
-        re-DENYs each Stop, accumulating stop_deny_count until the engine
-        downgrades to WARN-and-allow. UPS would reset the budget (new turn = new
-        work), so this test drives consecutive Stops without one.
-        """
+        """Handover block mode downgrades after N Stop blocks so Gemini can exit."""
         set_gate_modes(monkeypatch, handover="block", ida="off")
         monkeypatch.setenv("QA_GATE_MODE", "off")
         reinit_gates_with_defaults()
@@ -325,17 +314,25 @@ class TestStopDenyMaxFireDowngrade:
             session_id="test-gate-mode",
             hook_event="Stop",
         )
+        ups_ctx = HookContext(
+            session_id="test-gate-mode",
+            hook_event="UserPromptSubmit",
+            raw_input={"prompt": "continue"},
+        )
 
-        # Three consecutive Stops in the SAME turn (no UPS): counter accumulates.
+        # Turn 1 and 2: DENY
         r1 = router._dispatch_gates(stop_ctx, state)
         assert r1 is not None and r1.verdict == GateVerdict.DENY
+        router._dispatch_gates(ups_ctx, state)
+
         r2 = router._dispatch_gates(stop_ctx, state)
         assert r2 is not None and r2.verdict == GateVerdict.DENY
+        router._dispatch_gates(ups_ctx, state)
 
-        # Third Stop: downgraded to WARN-and-allow (escape hatch).
+        # Turn 3: WARN (downgraded)
         r3 = router._dispatch_gates(stop_ctx, state)
         assert r3 is not None and r3.verdict == GateVerdict.WARN, (
-            f"Handover should downgrade to WARN after 3 within-turn blocks, "
+            f"Handover should downgrade to WARN after 3 blocks, "
             f"got {r3.verdict.value if r3 else None}"
         )
 

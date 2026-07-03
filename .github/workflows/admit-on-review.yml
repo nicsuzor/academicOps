@@ -420,20 +420,7 @@ jobs:
   mechanic:
     name: Mechanic (Stage 2 — first dispatch)
     needs: [authorize, admit, decide-mechanic]
-    # always() because decide-mechanic itself only ran via its own always()
-    # override (it depends on admit-enforcer/admit-qa, which are skipped or can
-    # fail when reviewers were already green or genuinely red). Without this,
-    # GitHub Actions' implicit success() prefix on a bare `if:` inherits that
-    # transitive failure through decide-mechanic and silently skips this job
-    # even when decide-mechanic correctly computed need_mechanic=true — the
-    # exact bug that stranded PR #2073 (issue #2084). Mirrors the same
-    # always()-plus-explicit-admit-check pattern decide-mechanic and
-    # admit-attestation already use.
-    if: >-
-      always() &&
-      needs.admit.result == 'success' &&
-      needs.decide-mechanic.outputs.need_mechanic == 'true' &&
-      github.event.pull_request.draft == false
+    if: needs.decide-mechanic.outputs.need_mechanic == 'true' && github.event.pull_request.draft == false
     uses: ./.github/workflows/agent-mechanic.yml
     with:
       pr_number: ${{ needs.authorize.outputs.pr_number }}

@@ -239,30 +239,6 @@ jobs:
             REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
               --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state" 2>/dev/null || echo "")
 
-            # Self-review-collision fallback (mirrors agent-enforcer.yml /
-            # scripts/ci/enforcer-terminal-status.sh — see that script's header
-            # for the full explanation, PR #2081). `gh pr review` authenticates
-            # as claude[bot] regardless of this job's GH_TOKEN; when the PR's
-            # own author is also claude[bot], GitHub rejects the formal review
-            # as a self-review, so qa.agent.md's contract has the agent post a
-            # PR comment instead, carrying a structured
-            # `<!-- aops:self-review-fallback agent=qa sha=... verdict=... -->`
-            # marker. Only checked when no formal review matched — a genuine
-            # review is always stronger evidence. Trust is scoped to comments
-            # authored by claude[bot] specifically — the same identity a
-            # genuine review would have come from.
-            if [ -z "$REVIEW_STATE" ]; then
-              FALLBACK_MARKER="<!-- aops:self-review-fallback agent=qa sha=${HEAD_SHA} verdict="
-              FALLBACK_BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" 2>/dev/null \
-                | jq -r --arg login "claude[bot]" --arg marker "$FALLBACK_MARKER" \
-                  '[.[] | select(.user.login == $login) | select((.body // "") | contains($marker))] | last | .body // ""' \
-                || echo "")
-              case "$FALLBACK_BODY" in
-                *"verdict=APPROVED"*) REVIEW_STATE="APPROVED" ;;
-                *"verdict=CHANGES_REQUESTED"*) REVIEW_STATE="CHANGES_REQUESTED" ;;
-              esac
-            fi
-
             if [ "$REVIEW_STATE" = "APPROVED" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state=success \

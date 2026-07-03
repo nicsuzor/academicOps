@@ -143,18 +143,6 @@ gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 [What must be fixed]"
 ```
 
-### If `gh pr review` fails — self-review fallback
-
-`gh pr review` can fail outright (non-zero exit, an error printed instead of silence) — most commonly `"Can not request changes on your own pull request"` when this PR happens to be authored by the same identity your `gh pr review` calls use. That identity mismatch is an upstream identity-assignment issue, not something for you to diagnose or work around by retrying — do NOT loop on `gh pr review`, it will fail the same way every time.
-
-Post your verdict as a **PR comment** instead, with `gh pr comment`. The body must: (1) start with the same `# QA Verification` marker as always; (2) state plainly that the formal review could not be posted, quoting the actual `gh` error; (3) carry your full normal verdict content; (4) include this exact structured line, verbatim, so the workflow can recover your verdict automatically:
-
-```
-<!-- aops:self-review-fallback agent=qa sha=$HEAD_SHA verdict=APPROVED -->
-```
-
-Use `verdict=CHANGES_REQUESTED` instead when that's your actual verdict, and substitute the real `$HEAD_SHA` value — the workflow matches on it exactly, so it must be correct.
-
 ## Rules
 
 - **Credential Isolation (P#51):** Use `GH_TOKEN` from your environment.
