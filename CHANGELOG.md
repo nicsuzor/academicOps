@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.55](https://github.com/nicsuzor/academicOps/compare/v0.3.54...v0.3.55) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** grant claude.yml write access and gate it to trusted authors ([#2078](https://github.com/nicsuzor/academicOps/issues/2078)) ([9b60165](https://github.com/nicsuzor/academicOps/commit/9b6016516d6b152afc7aff9944b7006534e60b69))
+
 ## [0.3.54](https://github.com/nicsuzor/academicOps/compare/v0.3.53...v0.3.54) (2026-07-03)
 
 
