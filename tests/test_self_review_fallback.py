@@ -116,6 +116,22 @@ def test_latest_matching_comment_wins():
     assert _run(comments, "enforcer", SHA) == "APPROVED"
 
 
+def test_marker_verdict_wins_over_prose_mentioning_the_other_verdict():
+    """The body may mention the other verdict in prose (e.g. quoting a prior
+    state) without that mention being mistaken for the marker's own verdict —
+    only the value immediately following the marker governs."""
+    comment = {
+        "user": {"login": "claude[bot]"},
+        "body": (
+            "## Enforcer Review\n\n"
+            "Unlike the prior pass (verdict=APPROVED), this pass found issues.\n\n"
+            f"<!-- aops:self-review-fallback agent=enforcer sha={SHA} verdict=CHANGES_REQUESTED -->\n\n"
+            "reasoning..."
+        ),
+    }
+    assert _run([comment], "enforcer", SHA) == "CHANGES_REQUESTED"
+
+
 def test_never_exits_the_caller_pure_function():
     """A no-match call must not itself cause the caller to exit — this is a
     pure predicate, mirroring reviewer-authz.sh's contract."""

@@ -54,9 +54,16 @@ fallback_verdict_from_comments() {
     [.[] | select(.user.login == $login) | select((.body // "") | contains($marker))]
     | last | .body // ""' <<<"$comments_json")"
 
-  case "$body" in
-    *"verdict=APPROVED"*) printf 'APPROVED' ;;
-    *"verdict=CHANGES_REQUESTED"*) printf 'CHANGES_REQUESTED' ;;
+  # Read the verdict value immediately following the marker, not a substring
+  # scan of the whole comment body — a body containing both "verdict=APPROVED"
+  # and "verdict=CHANGES_REQUESTED" (e.g. quoted prior text, prose comparing
+  # states) would otherwise always match APPROVED first regardless of which
+  # one the marker itself carries.
+  local after_marker="${body##*"$marker"}"
+
+  case "$after_marker" in
+    "APPROVED"*) printf 'APPROVED' ;;
+    "CHANGES_REQUESTED"*) printf 'CHANGES_REQUESTED' ;;
     *) printf '' ;;
   esac
 }
