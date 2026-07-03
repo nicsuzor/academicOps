@@ -458,13 +458,16 @@ GATE_CONFIGS = [
             # Uses subagent_type_pattern to match skill name extracted by router
             # (router.py extracts tool_input["skill"] into ctx.subagent_type)
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
-            # Pattern matches "end_session" (canonical), "dump" (emergency), "handover" (legacy),
-            # and aops-core: prefixed forms.
+            # Pattern matches "end_session" (canonical), "dump" (emergency),
+            # "continue" (pause/hand-back — work in progress, task NOT concluded),
+            # "handover" (legacy), and aops-core: prefixed forms. /continue opens
+            # the gate too: it delivers the honest scannable resume summary, so a
+            # legitimate pause is not blocked by the exit-discipline gate.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session)$",
+                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session|continue)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -607,6 +610,22 @@ GATE_CONFIGS = [
                     current_status=GateStatus.CLOSED,
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
+            ),
+            # /continue skill invoked -> Open (sticky until UPS). The /continue
+            # pause path already emits the honest, scannable resume summary this
+            # gate exists to require, so the honesty reminder must NOT also fire
+            # on the Stop that follows it. Mirrors the handover gate's skill-open
+            # trigger; matches Claude's Skill and Gemini's activate_skill.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="PostToolUse",
+                    tool_name_pattern="^(Skill|activate_skill)$",
+                    subagent_type_pattern="^(aops-core:)?continue$",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.OPEN,
+                    sticky_until=["UserPromptSubmit"],
+                ),
             ),
             # On UserPromptSubmit: re-arm gate for the next turn cycle.
             # Slash-command turns (skill invocations such as /end-session,
