@@ -8,6 +8,8 @@ description: |
   Variables: {temp_path} - Path to temp file with full compliance context
 ---
 
+<!-- aops:enforcer-channel -->
+
 **Compliance check required.** Invoke the **RBG rbg** agent with the file path argument: `{temp_path}`
 
 Run the compliance check with this command:

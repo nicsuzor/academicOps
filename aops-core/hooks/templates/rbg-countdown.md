@@ -7,4 +7,6 @@ description: |
   Variables: {remaining}, {temp_path}
 ---
 
+<!-- aops:enforcer-channel -->
+
 ◇ {remaining} turns until compliance check required.

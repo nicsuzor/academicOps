@@ -7,4 +7,6 @@ description: |
   Variables: {ops_since_open} - number of ops since last compliance check
 ---
 
+<!-- aops:enforcer-channel -->
+
 ✕ Compliance check required ({ops_since_open} ops since last check).
