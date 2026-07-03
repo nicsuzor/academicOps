@@ -22,8 +22,6 @@ __all__ = [
     "RBG_REVIEW_GATE_MODE",
     "RBG_TOOL_CALL_THRESHOLD",
     "RBG_REVIEW_DEGRADE_THRESHOLD",
-    # Polecat-vs-interactive posture axis
-    "is_polecat_surface",
     # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
 ]
@@ -74,53 +72,24 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 ]
 
 # =============================================================================
-# POLECAT-vs-INTERACTIVE POSTURE AXIS
-# =============================================================================
-# The single structural signal that separates the two registers the framework
-# runs in: autonomous polecat (drive-to-done) vs interactive (hold between
-# steps). It is NOT a session_type classifier and NOT a launch-time
-# autonomous/interactive mode switch (both explicitly rejected — spec
-# mem-438429c5 §6). The polecat dispatcher (polecat/cli.py) marks every
-# polecat/crew container with AOPS_POLECAT_CONTAINER=1 (aops-b368109a) and
-# stages the per-surface gate posture as *_GATE_MODE env vars resolved from
-# polecat.yaml. The bare interactive host (junior/ida) carries neither, and so
-# is — by definition — NOT a polecat surface. The POSTURE gates (handover, ida)
-# resolve their block/warn/deny mode off this axis.
-
-
-def is_polecat_surface() -> bool:
-    """True iff this session runs on an autonomous polecat (or crew) surface.
-
-    The sole structural discriminator for the polecat-vs-interactive posture
-    axis. The dispatcher sets AOPS_POLECAT_CONTAINER=1 inside every polecat /
-    crew container; a bare interactive host session never has it. Posture
-    resolution keys on this to decide whether an unconfigured posture gate
-    fails loudly (polecat — misconfig) or resolves to the interactive posture
-    (non-polecat).
-    """
-    return os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
-
-
-# =============================================================================
 # GATE MODES
 # =============================================================================
-# Gate enforcement modes are read directly from environment variables. The
-# polecat launcher (polecat/cli.py) resolves the per-mode posture from
-# polecat.yaml on the host and stages the values into the container as env
-# vars. Hooks never read polecat.yaml; they only read these env vars.
+# Gate enforcement modes are read directly from environment variables — the
+# ONLY lever for per-surface gate posture. There is no code-level session-type
+# or polecat-vs-interactive branching anywhere in the gate engine (removed —
+# see aops-core/lib/gates/{engine,definitions}.py history): every gate has one
+# uniform initial_status and one uniform set of triggers for every session.
+# Whatever differs across surfaces (polecat run vs polecat crew vs an ad hoc
+# interactive CLI session) differs SOLELY because something set a different
+# *_GATE_MODE value for that surface — never because the gate code inspected
+# session_type. The polecat launcher (polecat/cli.py) resolves the per-mode
+# posture from polecat.yaml on the host and stages the values into the
+# container as env vars; a bare interactive CLI session (no polecat.yaml) can
+# still override these via its own `.claude/settings.json` env block or shell
+# profile. Hooks never read polecat.yaml directly; they only read these vars.
 #
-# When no env var is set (e.g. host orchestrator chat, fresh-install dev
-# machine), defaults below apply: warn for human-facing gates, off for
-# hydration. These match the previous BUILTIN_GATES posture.
-#
-# EXCEPTION — the POSTURE gates (HANDOVER_GATE_MODE / IDA_GATE_MODE) are NOT in
-# this dict. Their block/warn posture is DEFINED per-surface in polecat.yaml
-# and resolved by resolve_posture_gate() off the polecat-vs-interactive axis;
-# a code default there silently masks an unconfigured surface — exactly how a
-# non-polecat host session used to fall through to a hard BLOCK (#1978). The
-# entries that REMAIN are deliberate fail-safes (SENTINEL/RBG-review are real
-# DENYs, Nic directive) or non-posture advisories (QA/RBG/HYDRATION) —
-# do NOT remove them (spec mem-438429c5 §5.3 SCOPE FENCE).
+# When no env var is set at all (fresh-install dev machine, no polecat.yaml,
+# no settings.json override), the defaults below apply.
 
 _GATE_MODES = {
     "QA_GATE_MODE": "warn",
@@ -129,11 +98,13 @@ _GATE_MODES = {
     # Sentinel defaults to block — this is a safety gate protecting user
     # environment files from destructive ops, not just an advisory.
     "SENTINEL_GATE_MODE": "block",
-    # RBG-review defaults to block: the per-turn axiom review must RUN before
-    # Stop can pass (Nic's directive — guaranteed coverage). This is a real
-    # DENY, not advisory; the escape-hatch (RBG_REVIEW_DEGRADE_THRESHOLD)
-    # protects against a structurally-broken rbg dispatch trapping the session.
-    "RBG_REVIEW_GATE_MODE": "block",
+    # RBG-review defaults to OFF: with no polecat.yaml (an undispatched, ad hoc
+    # CLI session) there is no per-turn rbg delay by default. Dispatched
+    # surfaces (polecat run / polecat crew) opt IN explicitly via
+    # polecat.yaml's `gates.rbg_review: block` (session_defaults), which is
+    # the canonical way to arm this gate for task-bound work — never a code
+    # branch on session type.
+    "RBG_REVIEW_GATE_MODE": "off",
     "HANDOVER_GATE_MODE": "block",
     "IDA_GATE_MODE": "block",
 }

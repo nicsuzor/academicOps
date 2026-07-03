@@ -148,29 +148,35 @@ GATE_CONFIGS = [
             ),
         ],
     ),
-    # --- rbg-review (end-of-session rbg audit, task-bound sessions only) ---
+    # --- rbg-review (end-of-session rbg audit) ---
     # Directive (Nic, 2026-06-24, epic-f490bb11 — rework of the original
     # block-every-stop #1928): the heavy independent rbg axiom audit is a
-    # Tier-2 backstop that must fire ONCE before a TASK-BOUND (polecat/crew)
-    # session exits — NOT on every armed Stop, and NOT in ad hoc interactive
-    # discussions where the user would notice the per-turn rbg delay. The
-    # rbg every-N cadence (rbg gate, left untouched) remains
-    # the in-session mechanism; this gate adds only the final exit backstop.
+    # Tier-2 backstop that must fire ONCE before a task-bound session exits —
+    # NOT on every armed Stop, and NOT in ad hoc interactive discussions where
+    # the user would notice the per-turn rbg delay. The rbg every-N cadence
+    # (rbg gate, left untouched) remains the in-session mechanism; this gate
+    # adds only the final exit backstop.
     #
-    # SCOPING (per-surface, mirrors the handover gate):
-    #   * polecat / crew  -> armed CLOSED from session start; re-arms CLOSED on
-    #     each UserPromptSubmit, so whenever the autonomous session attempts its
-    #     Stop (its exit) the gate is armed and forces a final rbg audit.
-    #   * ad hoc interactive -> starts OPEN (inert) and NEVER re-arms (the UPS
-    #     re-arm trigger is session_type_filtered to polecat/crew). The Stop
-    #     policy never fires, so interactive users eat no per-turn rbg delay.
+    # SCOPING is env-var only (gates.rbg_review / RBG_REVIEW_GATE_MODE), NEVER
+    # a code branch on session type. The lifecycle below (arm -> block ->
+    # clear) is IDENTICAL for every session — the same initial_status, the
+    # same triggers fire on every UserPromptSubmit regardless of who's driving.
+    # What differs across surfaces is purely which MODE is in effect:
+    #   * mode=off (built-in default — an ad hoc CLI session with no
+    #     polecat.yaml): the CLOSED state is inert, since neither
+    #     is_rbg_review_block_mode nor is_rbg_review_warn_mode ever matches
+    #     "off" — no DENY/WARN is ever produced, so interactive users eat no
+    #     per-turn rbg delay even though the gate mechanically arms/re-arms.
+    #   * mode=block (dispatched polecat/crew surfaces, set explicitly via
+    #     polecat.yaml session_defaults.gates.rbg_review): while CLOSED, the
+    #     Stop policy DENIES the exit and injects the rbg-dispatch instruction.
     #
-    # Lifecycle (arm -> block -> clear), polecat/crew only:
-    #   * BLOCK: while CLOSED, the Stop policy DENIES (blocks the exit) and
-    #     injects the rbg-dispatch instruction so the agent actually runs rbg.
-    #     The TRIGGER is structural (Stop event + armed flag + session type) —
-    #     NOT a content sniff. The qualitative judgment ("did this session
-    #     comply?") is rbg's.
+    # Lifecycle (arm -> block -> clear):
+    #   * BLOCK (mode=block/warn only): while CLOSED, the Stop policy
+    #     denies/warns and injects the rbg-dispatch instruction so the agent
+    #     actually runs rbg. The TRIGGER is structural (Stop event + armed
+    #     flag) — NOT a content sniff. The qualitative judgment ("did this
+    #     session comply?") is rbg's.
     #   * CLEAR: when the rbg subagent runs (SubagentStart/Stop/PostToolUse with
     #     subagent_type ~ rbg), the gate OPENS, resets the escape-hatch deny
     #     counter, and latches sticky_until UserPromptSubmit so the rbg
@@ -193,15 +199,9 @@ GATE_CONFIGS = [
     GateConfig(
         name="rbg-review",
         description="Final rbg axiom audit before a task-bound session exits.",
-        # Ad hoc interactive sessions start OPEN (inert — no per-turn rbg delay).
-        # Polecat/crew (task-bound, autonomous) start CLOSED (armed) so the final
-        # exit Stop forces an rbg audit. Mirrors the handover gate's per-surface
-        # posture.
-        initial_status=GateStatus.OPEN,
-        initial_status_by_session_type={
-            "polecat": GateStatus.CLOSED,
-            "crew": GateStatus.CLOSED,
-        },
+        # Armed (CLOSED) from session start for EVERY session type. Whether
+        # that matters at all is entirely down to RBG_REVIEW_GATE_MODE (above).
+        initial_status=GateStatus.CLOSED,
         stop_deny_downgrade_threshold=RBG_REVIEW_DEGRADE_THRESHOLD,
         stop_deny_degraded_message_key="rbg_review.degraded",
         triggers=[
@@ -222,17 +222,15 @@ GATE_CONFIGS = [
                     sticky_until=["UserPromptSubmit"],
                 ),
             ),
-            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle,
-            # POLECAT/CREW ONLY. The engine unsticks (sticky_until includes UPS)
-            # BEFORE this trigger evaluates, so the transition to CLOSED
+            # UserPromptSubmit -> re-arm (CLOSED) for the next turn cycle, EVERY
+            # session type alike. The engine unsticks (sticky_until includes
+            # UPS) BEFORE this trigger evaluates, so the transition to CLOSED
             # proceeds. Resets the escape-hatch counter so each turn gets a
-            # fresh deny budget. Ad hoc interactive sessions are NOT re-armed
-            # here (session_type_filter) — they stay OPEN and never eat a
-            # per-turn rbg delay; only task-bound sessions get the exit backstop.
+            # fresh deny budget. Whether re-arming CLOSED produces any visible
+            # effect is entirely down to RBG_REVIEW_GATE_MODE.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
-                    session_type_filter=["polecat", "crew"],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -372,34 +370,29 @@ GATE_CONFIGS = [
         ],
     ),
     # --- Handover ---
-    # Polecat/crew sessions start CLOSED (autonomous work must always hand over).
-    # Interactive sessions start OPEN; polecat/crew start CLOSED.
-    # Polecat/crew close unconditionally on task-bind / write tool. In ALL
-    # session types (incl. interactive) a pkb claim_task or a write/edit tool
-    # also closes the gate, so an interactive session that does real work is
-    # gated until /end-session or /dump (supersedes the earlier "interactive
-    # coordinator never forces handover" carve-out for work-doing sessions).
-    # Opens when /end-session or /dump skill completes.
-    # Policy blocks Stop when CLOSED.
+    # Every session type starts OPEN and follows the SAME triggers — there is
+    # no code branch on session type anywhere in this config. A session (any
+    # surface) closes the gate the moment it does real work (task-bind / write
+    # tool / claim_task) and reopens it when /end-session or /dump completes.
+    # Whether a CLOSED gate actually holds up the exit Stop is entirely down to
+    # HANDOVER_GATE_MODE (gates.handover in polecat.yaml, or a project's
+    # .claude/settings.json for a direct CLI surface) plus the independent
+    # session_did_work exemption (read-only sessions are exempt regardless of
+    # gate status or mode — see is_handover_block_mode/is_handover_warn_mode in
+    # custom_conditions.py). Policy blocks Stop when CLOSED.
     GateConfig(
         name="handover",
         description="Requires structured session handover before exit.",
         initial_status=GateStatus.OPEN,
-        initial_status_by_session_type={
-            "polecat": GateStatus.CLOSED,
-            "crew": GateStatus.CLOSED,
-        },
         triggers=[
-            # Task bound: update_task with status=in_progress -> Close
-            # Only in polecat/crew sessions — interactive sessions (junior
-            # supervising agents) manage task state without needing handover.
-            # Also sets session_did_work so the Stop policy fires for this session.
+            # Task bound: update_task with status=in_progress -> Close, EVERY
+            # session type alike. Also sets session_did_work so the Stop policy
+            # fires for this session.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="update_task",
                     tool_input_pattern="in_progress",
-                    session_type_filter=["polecat", "crew"],
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
@@ -407,23 +400,7 @@ GATE_CONFIGS = [
                     custom_action="set_session_did_work",
                 ),
             ),
-            # Write tool used -> Close (polecat/crew only)
-            # When handover is sticky (post-skill), the engine suppresses
-            # this close transition natively.
-            # Also sets session_did_work so the Stop policy fires for this session.
-            GateTrigger(
-                condition=GateCondition(
-                    hook_event="PostToolUse",
-                    custom_check="is_write_tool",
-                    session_type_filter=["polecat", "crew"],
-                ),
-                transition=GateTransition(
-                    target_status=GateStatus.CLOSED,
-                    system_message_key=None,
-                    custom_action="set_session_did_work",
-                ),
-            ),
-            # pkb claim_task -> Close (ALL session types, incl. interactive).
+            # pkb claim_task -> Close (every session type).
             # A claimed task is real work, so the session is gated until handover.
             GateTrigger(
                 condition=GateCondition(
@@ -436,12 +413,9 @@ GATE_CONFIGS = [
                     custom_action="set_session_did_work",
                 ),
             ),
-            # Write / edit tool used -> Close (ALL session types, incl. interactive).
-            # Mirrors the polecat/crew write-tool close above but without the
-            # session_type_filter, so an interactive session that edits a file is
-            # gated until handover. is_write_tool natively treats shell tools as
-            # read-only when the gate is sticky / no task bound, so /end-session
-            # discovery commands do not re-close it.
+            # Write / edit tool used -> Close (every session type). is_write_tool
+            # natively treats shell tools as read-only when the gate is sticky /
+            # no task bound, so /end-session discovery commands do not re-close it.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -505,9 +479,11 @@ GATE_CONFIGS = [
                 ),
                 transition=GateTransition(target_status=GateStatus.OPEN),
             ),
-            # UserPromptSubmit -> re-arm for the next turn cycle (polecat/crew only).
-            # Interactive sessions never re-close via UserPromptSubmit, but do
-            # close on a pkb claim_task / write tool via the PostToolUse triggers above.
+            # UserPromptSubmit -> re-arm for the next turn cycle, EVERY session
+            # type alike. Re-arming CLOSED here is harmless for a read-only
+            # session: the block/warn policies below independently exempt
+            # session_did_work=False regardless of gate status, so a session
+            # that never wrote anything still exits cleanly.
             # Slash-command turns (skill invocations such as /end-session,
             # /dump, /remember) are excluded: a finishing/meta skill owns its
             # own handover format and must not re-close the gate it just
@@ -517,7 +493,6 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
-                    session_type_filter=["polecat", "crew"],
                     prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS,
                 ),
                 transition=GateTransition(target_status=GateStatus.CLOSED),

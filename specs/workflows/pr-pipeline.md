@@ -835,6 +835,17 @@ and Docker `:latest`. **Prerelease** tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they co
 `-`) are hand-pushed via `make prerelease`, so that deliberate push *is* the approval
 and they skip the gate (`environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}`).
 
+**The gate queues, it never silently drops.** `build-extension.yml` serializes on the
+`build-deploy` concurrency group with `cancel-in-progress: false`. A run paused on the
+`production` reviewer is still "in progress" to GitHub's concurrency machinery — with
+`cancel-in-progress: true` (the bug: **fixed 2026-07-02**), each new stable tag from a
+release-please burst cancelled the previous run's pending approval outright, so most of
+a burst's releases vanished from the queue before Nic ever saw a prompt (visually
+indistinguishable from "shipped without approval," though the cancelled runs never
+actually reached `dist`/Docker). Queueing instead means every stable tag gets its own
+turn at the gate, in order; approving the newest still ships the full accumulated tree
+of everything behind it.
+
 > **Trade-off, recorded deliberately.** This is a scoped exception to the repository's
 > "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR merges
 > to `dev` with no per-PR human click. It is safe because (a) the content is

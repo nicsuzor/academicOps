@@ -136,10 +136,15 @@ class TestHandoverReadOnlyExemption:
     """Handover gate exempts sessions that made no writes and claimed no task.
 
     AC from aops-16a15a05:
-    - Read-only polecat session: handover gate OPEN at Stop, verdict ALLOW
-    - Working polecat session: handover gate CLOSED at Stop, verdict DENY (block)
+    - Read-only session: handover gate OPEN at Stop, verdict ALLOW
+    - Working session: handover gate CLOSED at Stop, verdict DENY (block)
     - Max-fire loop-breaker: block→warn after N Stop blocks so a done session
       is not perpetually denied (Gemini watchdog fix, was aops-c5513f7f)
+
+    The "polecat" framing in these test names/helpers is legacy — the gate no
+    longer branches on session type. `_make_polecat_state` still tags the
+    session as polecat only because `HANDOVER_GATE_MODE=block` here mirrors a
+    dispatched surface's config; the assertions hold for ANY session type.
     """
 
     def _make_polecat_state(self, session_id: str) -> "SessionState":
@@ -159,8 +164,9 @@ class TestHandoverReadOnlyExemption:
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-read-only-stop")
-        # Gate starts CLOSED for polecat — but session_did_work is False
-        assert state.gates["handover"].status == GateStatus.CLOSED
+        # Gate starts OPEN (every session type alike) and nothing closed it —
+        # session_did_work is also False, so the policy is exempt either way.
+        assert state.gates["handover"].status == GateStatus.OPEN
         assert state.session_did_work is False
 
         ctx = HookContext(
@@ -298,10 +304,6 @@ class TestStopDenyMaxFireDowngrade:
         """Handover block mode downgrades after N Stop blocks so Gemini can exit."""
         set_gate_modes(monkeypatch, handover="block", ida="off")
         monkeypatch.setenv("QA_GATE_MODE", "off")
-        # The handover UPS re-arm trigger has session_type_filter=["polecat","crew"],
-        # so the test needs a polecat session to re-arm correctly between turns.
-        # session_type is derived from AOPS_POLECAT_CONTAINER (aops-b368109a).
-        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("handover")
@@ -369,10 +371,7 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
     exclusion suppresses the CLOSE only — it must never open a gate.
     """
 
-    def _polecat_state(self, monkeypatch, session_id: str) -> SessionState:
-        # session_type is derived from AOPS_POLECAT_CONTAINER at create time;
-        # the handover UPS re-arm trigger is polecat/crew-only (aops-b368109a).
-        monkeypatch.setenv("AOPS_POLECAT_CONTAINER", "1")
+    def _fresh_state(self, session_id: str) -> SessionState:
         return SessionState.create(session_id)
 
     @pytest.mark.parametrize(
@@ -439,25 +438,25 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
     def test_handover_not_rearmed_on_slash(self, router, monkeypatch):
         set_gate_modes(monkeypatch, handover="block")
         reinit_gates_with_defaults()
-        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state = self._fresh_state("test-gate-mode")
         state.gates["handover"].status = GateStatus.OPEN
 
         router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
 
         assert state.gates["handover"].status == GateStatus.OPEN, (
-            "handover must NOT re-arm on a slash-command turn in a polecat session"
+            "handover must NOT re-arm on a slash-command turn"
         )
 
     def test_handover_still_rearms_on_normal(self, router, monkeypatch):
         set_gate_modes(monkeypatch, handover="block")
         reinit_gates_with_defaults()
-        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state = self._fresh_state("test-gate-mode")
         state.gates["handover"].status = GateStatus.OPEN
 
         router._dispatch_gates(_ups(NORMAL_PROMPT), state)
 
         assert state.gates["handover"].status == GateStatus.CLOSED, (
-            "handover MUST re-arm on a normal prompt in a polecat session"
+            "handover MUST re-arm on a normal prompt"
         )
 
     def test_slash_command_never_opens_a_closed_gate(self, router, monkeypatch):
@@ -466,7 +465,7 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
         directive: 'don't take this to mean we should open any gates')."""
         set_gate_modes(monkeypatch, ida="warn", qa="block", handover="block")
         reinit_gates_with_defaults()
-        state = self._polecat_state(monkeypatch, "test-gate-mode")
+        state = self._fresh_state("test-gate-mode")
         state.main_agent.current_task = "task-xyz"
         state.session_did_work = True
         for g in ("qa", "handover", "ida"):
