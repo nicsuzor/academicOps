@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.51](https://github.com/nicsuzor/academicOps/compare/v0.3.50...v0.3.51) (2026-07-03)
+
+
+### Bug Fixes
+
+* **gates:** remove stale POLECAT_APPROVAL_MODE, route QA mode through gate_config ([#2072](https://github.com/nicsuzor/academicOps/issues/2072)) ([af539f9](https://github.com/nicsuzor/academicOps/commit/af539f93f4e5f1f7721b9a48128e1c22366d3dd9))
+
 ## [0.3.50](https://github.com/nicsuzor/academicOps/compare/v0.3.49...v0.3.50) (2026-07-02)
 
 
