@@ -166,6 +166,38 @@ def test_not_committed_no_review_but_action_succeeded_is_failure(tmp_path: Path)
     assert "no APPROVED/CHANGES_REQUESTED review" in out["description"]
 
 
+def test_not_committed_transient_gh_api_failure_degrades_to_diagnosis_not_crash(tmp_path: Path):
+    """QA-caught regression: a transient `gh api` failure on the live review
+    lookup (rate limit, app-token 401, runner hiccup) must degrade to "no
+    genuine verdict found" and fall through to the normal diagnosis — not
+    crash the script under `set -e` with zero outputs emitted, which left
+    enforcer-status stuck at pending (a required check that never resolves)."""
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text("#!/usr/bin/env bash\necho 'simulated transient gh failure' >&2\nexit 1\n")
+    fake_gh.chmod(0o755)
+    env = {
+        "HEAD_SHA": SHA,
+        "COMMITTED": "false",
+        "REVIEW_OUTCOME": "success",
+        "REPO": "o/r",
+        "PR_NUMBER": "1",
+        "PATH": f"{fake_bin}:/usr/bin:/bin",
+    }
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
+    )
+    assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
+    out: dict[str, str] = {}
+    for line in proc.stdout.splitlines():
+        if "=" in line:
+            k, v = line.split("=", 1)
+            out[k] = v
+    assert out["state"] == "failure"
+    assert out["failed"] == "true"
+
+
 def test_not_committed_both_attempts_failed_is_infra_failure(tmp_path: Path):
     out = run(
         tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="failure"
