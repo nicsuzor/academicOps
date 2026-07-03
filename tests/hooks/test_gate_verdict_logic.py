@@ -7,6 +7,7 @@ Uses fixture data for scenario-driven tests and parameterised mode overrides.
 import pytest
 
 from tests.hooks.gate_helpers import (
+    GateStatus,
     GateVerdict,
     flatten_scenarios,
     make_context,
@@ -22,11 +23,14 @@ from tests.hooks.gate_helpers import (
 _GATE_MODE_CASES = [
     ("rbg", "warn", GateVerdict.WARN),
     ("rbg", "block", GateVerdict.DENY),
-    ("qa", "warn", GateVerdict.WARN),
+    # D1: warn mode now fires a hard-block-once DENY (not a soft WARN) so every
+    # stop gate forces one continuation. The warn-vs-block difference is the
+    # re-fire latch (warn=fire-once, block=persist), not the verdict.
+    ("qa", "warn", GateVerdict.DENY),
     ("qa", "block", GateVerdict.DENY),
-    ("handover", "warn", GateVerdict.WARN),
+    ("handover", "warn", GateVerdict.DENY),
     ("handover", "block", GateVerdict.DENY),
-    ("ida", "warn", GateVerdict.WARN),
+    ("ida", "warn", GateVerdict.DENY),
     ("ida", "block", GateVerdict.DENY),
 ]
 
@@ -62,6 +66,65 @@ class TestGateModeConfigOverrides:
         assert result.verdict == expected_verdict, (
             f"{gate_name} gate with mode={mode}: "
             f"expected {expected_verdict.value}, got {result.verdict.value}"
+        )
+
+
+class TestTwoModeLatch:
+    """D1 two-mode latch (client-agnostic — pure GateStatus, no stop_hook_active).
+
+    Both modes emit DENY (verdict tested above); this pins the LATCH that
+    distinguishes them: `warn` fires once then latches the gate OPEN (fire-once),
+    while `block` keeps the gate CLOSED and re-fires every Stop until a
+    satisfaction trigger opens it (persist-until-satisfied). Uses `handover`
+    (no PKB/temp dependency) for the warn-vs-block contrast, and `ida` for the
+    fire-once-in-both-modes case (ida has no satisfaction predicate).
+    """
+
+    def test_handover_warn_fires_once_then_latches_open(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, handover="warn", qa="off", ida="off")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("handover")  # sets session_did_work
+        ctx = make_gate_trigger_context("handover")
+
+        r1 = router._dispatch_gates(ctx, state)
+        assert r1 is not None and r1.verdict == GateVerdict.DENY
+        assert state.gates["handover"].status == GateStatus.OPEN, (
+            "warn is fire-once: the gate latches OPEN after the first hard block"
+        )
+        r2 = router._dispatch_gates(ctx, state)
+        assert r2 is None or r2.verdict != GateVerdict.DENY, (
+            "warn must not re-fire on a retried Stop in the same turn"
+        )
+
+    def test_handover_block_persists_closed_and_refires(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, handover="block", qa="off", ida="off")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("handover")
+        ctx = make_gate_trigger_context("handover")
+
+        r1 = router._dispatch_gates(ctx, state)
+        assert r1 is not None and r1.verdict == GateVerdict.DENY
+        assert state.gates["handover"].status == GateStatus.CLOSED, (
+            "block persists: no fire-once, the gate stays CLOSED (block-until-satisfied)"
+        )
+        r2 = router._dispatch_gates(ctx, state)
+        assert r2 is not None and r2.verdict == GateVerdict.DENY, (
+            "block re-fires on every Stop until a satisfaction trigger opens the gate"
+        )
+
+    @pytest.mark.parametrize("mode", ["warn", "block"])
+    def test_ida_is_fire_once_in_both_modes(self, router, monkeypatch, mode):
+        # ida has no satisfaction predicate, so block == warn == fire-once
+        # (block would otherwise be an unescapable loop). Both hard-block once.
+        set_gate_modes(monkeypatch, ida=mode, qa="off", handover="off")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("ida")
+        ctx = make_gate_trigger_context("ida")
+
+        r1 = router._dispatch_gates(ctx, state)
+        assert r1 is not None and r1.verdict == GateVerdict.DENY, f"ida {mode} hard-blocks once"
+        assert state.gates["ida"].status == GateStatus.OPEN, (
+            f"ida {mode} is fire-once (latches OPEN) regardless of mode"
         )
 
 

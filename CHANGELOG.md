@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.58](https://github.com/nicsuzor/academicOps/compare/v0.3.57...v0.3.58) (2026-07-03)
+
+
+### Bug Fixes
+
+* **agents:** James must merge convergent reviewer findings, not duplicate them ([#2082](https://github.com/nicsuzor/academicOps/issues/2082)) ([d807252](https://github.com/nicsuzor/academicOps/commit/d8072527fba3ddc235696bb5cf162f0632af3790))
+
 ## [0.3.57](https://github.com/nicsuzor/academicOps/compare/v0.3.56...v0.3.57) (2026-07-03)
 
 
