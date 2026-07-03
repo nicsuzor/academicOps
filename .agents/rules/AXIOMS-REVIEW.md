@@ -21,7 +21,7 @@ One block per axiom, keyed by the same **slug** as [[AXIOMS]] (never by an ordin
 
 ## honest-epistemics
 
-- Is every non-trivial claim backed by evidence observed this session, not by reasoning ("should work," "probably")?
+- Is every non-trivial claim backed by evidence observed this session, not by reasoning ("should work," "probably")? Does confident-sounding language ("certainly," "definitely," "clearly," "almost certainly") ever stand in for a claim that was reasoned rather than observed — the same violation inverted?
 - Where uncertainty exceeded the evidence, did the agent gather more, build a feedback loop, or disclose — rather than guess?
 - Was the claim verified against the real artifact/workflow/data, or against a mock, fake, or synthetic stand-in?
 

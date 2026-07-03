@@ -6,9 +6,19 @@ The dispatch mechanics that govern epic progression.
 
 ## Mandatory Pre-Dispatch Gates
 
-### 0. Premise Gate (hard refuse — runs first, before any pre-flight row)
+### 0. Select + Gates spine (owned by `task-lifecycle` §§1–2)
 
-Apply the premise gate to the selected task before any pre-flight row: ensure a legible premise is recorded, then clear it through `/strategic-review --premise <task>` (`rbg` + `pauli`, CLEAR/BOUNCE). Full procedure and bounce mechanics are owned by [[../../remember/references/premise-gate.md]] §2. If it hard-refuses, additionally append `dispatch_halt` to Pattern Memory before exiting.
+Before the supervisor-only gates below, run the shared **Select → Gates** spine
+authored once in [[../../task-lifecycle/SKILL.md]] §§1–2 (§1 Select; §2 Gates: the
+premise gate plus the freshness / stale-leftover pre-check). Apply it as written
+there — this file does not restate it. The premise gate is the two-judge clearance
+owned by [[../../remember/references/premise-gate.md]] §2 (`rbg` + `pauli`,
+CLEAR/BOUNCE); on a hard-refuse, append `dispatch_halt` to Pattern Memory before
+exiting.
+
+The pre-dispatch gates below — the pauli pre-flight confirmation, existing-PR
+check, and critic gate — are the supervisor's own; they have no counterpart in
+`task-lifecycle` and run **after** the shared spine, before dispatch.
 
 ### Pre-flight Confirmation Summary
 

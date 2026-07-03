@@ -38,6 +38,13 @@ RBG is dispatched from three surfaces (operative detail in `specs/enforcement/GA
 2. The Stop `rbg-review` gate — a final axiom-audit backstop that must run once before a task-bound polecat/crew session exits.
 3. The PR-pipeline `enforcer-status` check (runs on PR events, or on demand via `/enforce`). The GHA enforcer is the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`); it runs Sonnet with `Bash,Read,Edit,Write` and may push mechanical fixes. The persona, not the invocation point, is the source of truth.
 
+### Gate rationale (what each surface defends)
+
+Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their *why* — the class of failure each defends against — lives here:
+
+- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a *periodic* compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
+- **`rbg-review` gate (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions precisely so ad hoc interactive users do not eat a per-turn review delay.
+
 ## Fitness Criteria (auditing RBG's own transcripts)
 
 Whoever reviews a transcript of RBG's own review work (a survey retro, a meta-review, a human spot-check) should judge it against:

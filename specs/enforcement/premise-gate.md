@@ -9,11 +9,7 @@ depends_on: []
 tags: [enforcement, premise-gate, judgment-non-delegable, framework-architecture]
 ---
 
-<!-- NS: was this retired? -->
-
 # The Premise Gate — the first executive surface for `judgment-non-delegable`
-
-> **Spec, not state.** This file is the **design statement** for the premise gate: what it is, which axiom it enforces, where it sits in the pipeline and the pyramid, and how far it binds. The step-by-step **procedure** an agent runs — what the promoter records, what the dispatcher does — lives in the operative instruction file it ships beside: [`aops-core/skills/remember/references/premise-gate.md`](../../aops-core/skills/remember/references/premise-gate.md). This spec points at that file for the procedure and does not restate it. The **operative register** row is in [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
 
 ## What the gate is
 
