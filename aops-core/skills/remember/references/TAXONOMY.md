@@ -237,7 +237,7 @@ The graph is **directed but not required to be acyclic**. Cycles are a feature f
 
 **Provenance fields, not edge types**: `inherits_from` (on `contributes_to` edges only) records which prototype an edge was materialised from. It's a one-time breadcrumb at edge creation, not a live reference — editing the prototype later does not retroactively rewrite existing edges.
 
-**On-node inverse of `supersedes`**: the `superseded_by` frontmatter field on the _retired_ task is the inverse of the `supersedes` edge — it both retires the task (out of the dispatchable set) and keeps the redirect readable on the task itself. See [Supersession and retirement](#supersession-and-retirement-superseded_by).
+**Retirement via `supersedes`**: a replaced task is retired by **cancelling it** (`status: cancelled`), and the replacement carries the `supersedes` edge ("A `supersedes` B") to record where the work went. See [Supersession and retirement](#supersession-and-retirement).
 
 ### Cycle detection policy
 
@@ -333,22 +333,17 @@ Severity belongs only on target nodes (`type: target`). Ordinary tasks, epics, a
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 
-### Supersession and retirement (`superseded_by`)
+### Supersession and retirement
 
-When a task's work is carved into sibling subtasks, moved under a successor, or otherwise replaced, the original must **leave the dispatchable set** — it must stop being a `queued`/`ready` leaf that `/pull` or `/dispatch` can select. Recording the replacement only as prose in a parent epic's Log is **not** sufficient: that redirect is invisible on the task itself, so the next select (`/pull` or `/dispatch`) picks the original carrying its now-stale (fossil) body. This is the #1584 failure: an original decomposed into siblings (two already done) stayed `queued` and was dispatched against a brief describing work already shipped.
+When a task's work is carved into sibling subtasks, moved under a successor, or otherwise replaced, the original must **leave the dispatchable set** — it must stop being a `queued`/`ready` leaf that `/pull` or `/dispatch` can select. Recording the replacement only as prose in a parent epic's Log is **not** sufficient: the next select then picks the original carrying its now-stale (fossil) body. This is the #1584 failure: an original decomposed into siblings (two already done) stayed `queued` and was dispatched against a brief describing work already shipped.
 
-The canonical mechanism is the `superseded_by` task field:
+Retire a superseded task by **cancelling it**:
 
-```yaml
-superseded_by: [<replacement-id>, …]   # ids of the tasks that now carry this work
-```
+- **Set `status: cancelled`.** A cancelled task is terminal — it no longer appears in `queued`/`ready`, so neither `/pull` nor `/dispatch` will select it. (Use `done` instead only if the original's own acceptance was genuinely met before the carve-up; the default for replaced-but-unfinished work is `cancelled`.) No extra field is needed to make the task non-dispatchable — the terminal status does it.
+- **Record the redirect on the replacement.** Add a `supersedes` edge on each replacement task ("A `supersedes` B", see [Edge Semantics](#edge-semantics-and-cycle-policy)), so the relationship is discoverable from the live side of the work.
+- **Do not rewrite the stale body.** Supersession fixes _dispatchability_, not body content; git preserves the fossil body. Cancelling the task is what makes it non-dispatchable.
 
-- **It retires the task.** Stamping `superseded_by` transitions the task out of the dispatchable set (the PKB closes it — verified at runtime: `status` → `done`), so it no longer appears in `queued` or `ready` and neither `/pull` nor `/dispatch` will select it. No separate status edit is required; setting `status: cancelled` is the equivalent when the work was dropped rather than re-homed.
-- **The redirect lives ON the task.** Because the pointer is frontmatter on the retired task, anyone (or any `/pull` / `/dispatch` descent) reading that task sees where the work went — unlike a redirect buried in an ancestor's Log.
-- **It is the on-node inverse of the `supersedes` edge** (see [Edge Semantics](#edge-semantics-and-cycle-policy)). "A `supersedes` B" (edge on the replacement) ⟺ "B `superseded_by` A" (field on the original). Use `superseded_by` when the requirement is _the original must be non-dispatchable with a readable redirect_ — placing only `supersedes` on the replacements scatters the redirect across siblings and leaves the original dispatchable. (This is distinct from the knowledge-note dedup convention in [[../SKILL.md]] §dedup, where superseded source notes are deleted rather than pointer-stamped.)
-- **Do not rewrite the stale body.** Supersession fixes _dispatchability_, not body content. The fossil body is left intact (git preserves it); the field is what makes the task non-dispatchable and the redirect discoverable.
-
-Producers that carve work out of an existing task (planner `decompose`, supervisor, sweep) MUST stamp `superseded_by` on the original in the same operation. `/pull` and `/dispatch` treat a non-empty `superseded_by` as non-selectable and surface the redirect (see [[../../task-lifecycle/SKILL.md]] §2b).
+Producers that carve work out of an existing task (planner `decompose`, supervisor, sweep) MUST cancel the original in the same operation that creates the replacements, adding a `supersedes` edge on each replacement. Because `/pull` and `/dispatch` select only `queued` leaves, a cancelled original is never selectable — no separate field check is needed at selection time (see [[../../task-lifecycle/SKILL.md]] §2b). (This is distinct from the knowledge-note dedup convention in [[../SKILL.md]] §dedup, where superseded source notes are deleted rather than retired.)
 
 ### Actionable vs. Ready
 
