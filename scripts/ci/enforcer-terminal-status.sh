@@ -88,7 +88,7 @@ fi
 if [[ -n "${REVIEWS_JSON:-}" ]]; then
   reviews="$(cat "$REVIEWS_JSON")"
 else
-  reviews="$(gh api "repos/${REPO:?REPO is required}/pulls/${PR_NUMBER:?PR_NUMBER is required}/reviews?per_page=100")"
+  reviews="$(gh api "repos/${REPO:?REPO is required}/pulls/${PR_NUMBER:?PR_NUMBER is required}/reviews?per_page=100" 2>/dev/null || echo "[]")"
 fi
 
 review_state="$(jq -r --arg sha "$HEAD_SHA" '
