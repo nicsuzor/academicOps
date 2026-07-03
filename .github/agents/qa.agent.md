@@ -16,7 +16,7 @@ environment. Read them with `$VAR` in Bash — do not hardcode values, and use
 `$PR_NUMBER` wherever the examples below write `{pr}`:
 
 | Variable         | Meaning                                     |
-| ---------------- | ------------------------------------------- |
+| ---------------- | -------------------------------------------- |
 | `$PR_NUMBER`     | PR number in `$REPO`                        |
 | `$REPO`          | `owner/repo` (e.g. `nicsuzor/academicOps`)  |
 | `$HEAD_SHA`      | Exact PR head SHA this verification targets |
@@ -51,7 +51,7 @@ Does the result match what was promised?
 Was the work done properly?
 
 | Check          | Question                                                                              |
-| -------------- | ------------------------------------------------------------------------------------- |
+| -------------- | -------------------------------------------------------------------------------------- |
 | Tests run      | If code changed, were tests executed and passing?                                     |
 | No scope drift | Does the diff match the PR description?                                               |
 | No regressions | Do existing features still work?                                                      |
@@ -64,7 +64,7 @@ Was the work done properly?
 Does the result make sense?
 
 | Check            | Question                                            |
-| ---------------- | --------------------------------------------------- |
+| ---------------- | ---------------------------------------------------- |
 | Content sensible | Does the output make logical sense?                 |
 | No placeholders  | No `{variable}`, `TODO`, `FIXME` in production code |
 | No garbage data  | Content is real, not template artifacts             |
@@ -145,15 +145,7 @@ gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 
 ### If `gh pr review` fails — self-review fallback
 
-`gh pr review` can fail outright (non-zero exit, an error printed instead of silence) — most commonly `"Can not request changes on your own pull request"` when this PR happens to be authored by the same identity your `gh pr review` calls use. That identity mismatch is an upstream identity-assignment issue, not something for you to diagnose or work around by retrying — do NOT loop on `gh pr review`, it will fail the same way every time.
-
-Post your verdict as a **PR comment** instead, with `gh pr comment`. The body must: (1) start with the same `# QA Verification` marker as always; (2) state plainly that the formal review could not be posted, quoting the actual `gh` error; (3) carry your full normal verdict content; (4) include this exact structured line, verbatim, so the workflow can recover your verdict automatically:
-
-```
-<!-- aops:self-review-fallback agent=qa sha=$HEAD_SHA verdict=APPROVED -->
-```
-
-Use `verdict=CHANGES_REQUESTED` instead when that's your actual verdict, and substitute the real `$HEAD_SHA` value — the workflow matches on it exactly, so it must be correct.
+See "Self-review identity-collision fallback" in shared-error-handling.md (above) for the full contract. Your marker is `# QA Verification`; use `agent=qa` in the structured recovery line.
 
 ## Rules
 

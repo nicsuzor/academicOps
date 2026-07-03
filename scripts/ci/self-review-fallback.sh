@@ -54,16 +54,23 @@ fallback_verdict_from_comments() {
     [.[] | select(.user.login == $login) | select((.body // "") | contains($marker))]
     | last | .body // ""' <<<"$comments_json")"
 
-  # Read the verdict value immediately following the marker, not a substring
-  # scan of the whole comment body — a body containing both "verdict=APPROVED"
-  # and "verdict=CHANGES_REQUESTED" (e.g. quoted prior text, prose comparing
-  # states) would otherwise always match APPROVED first regardless of which
-  # one the marker itself carries.
-  local after_marker="${body##*"$marker"}"
+  # Extract the verdict bound to OUR marker's own verdict= field specifically
+  # — not a body-wide substring scan. A loose `case "$body" in
+  # *"verdict=APPROVED"*)` would misfire if the body ever contains both words
+  # anywhere (e.g. a comment quoting the instructions themselves, which show
+  # both verdict values as prose): substring-presence order would always
+  # resolve to APPROVED regardless of which one the marker actually carries
+  # (Copilot review, PR #2091). Walk every occurrence of the marker prefix
+  # and keep the LAST valid one, consistent with "most recent wins" for the
+  # surrounding comment array.
+  local verdict="" rest="$body"
+  while [[ "$rest" == *"${marker}"* ]]; do
+    rest="${rest#*"${marker}"}"
+    case "$rest" in
+      "APPROVED -->"*) verdict="APPROVED" ;;
+      "CHANGES_REQUESTED -->"*) verdict="CHANGES_REQUESTED" ;;
+    esac
+  done
 
-  case "$after_marker" in
-    "APPROVED"*) printf 'APPROVED' ;;
-    "CHANGES_REQUESTED"*) printf 'CHANGES_REQUESTED' ;;
-    *) printf '' ;;
-  esac
+  printf '%s' "$verdict"
 }

@@ -116,19 +116,21 @@ def test_latest_matching_comment_wins():
     assert _run(comments, "enforcer", SHA) == "APPROVED"
 
 
-def test_marker_verdict_wins_over_prose_mentioning_the_other_verdict():
-    """The body may mention the other verdict in prose (e.g. quoting a prior
-    state) without that mention being mistaken for the marker's own verdict —
-    only the value immediately following the marker governs."""
-    comment = {
-        "user": {"login": "claude[bot]"},
-        "body": (
-            "## Enforcer Review\n\n"
-            "Unlike the prior pass (verdict=APPROVED), this pass found issues.\n\n"
-            f"<!-- aops:self-review-fallback agent=enforcer sha={SHA} verdict=CHANGES_REQUESTED -->\n\n"
-            "reasoning..."
-        ),
-    }
+def test_ambiguous_body_binds_to_the_actual_marker_not_first_substring():
+    """Copilot review finding, PR #2091: a loose body-wide scan for the bare
+    substrings "verdict=APPROVED" / "verdict=CHANGES_REQUESTED" would misfire
+    if a body contains both words anywhere (e.g. quoting the instructions,
+    which mention both verdict values as prose) — substring-presence order
+    would always resolve to APPROVED regardless of what the real marker
+    carries. Extraction must bind to the marker's own verdict= field."""
+    body = (
+        "## Enforcer Review\n\n"
+        "(Per the instructions: use verdict=APPROVED for a clean pass, "
+        "verdict=CHANGES_REQUESTED otherwise.)\n\n"
+        f"<!-- aops:self-review-fallback agent=enforcer sha={SHA} verdict=CHANGES_REQUESTED -->\n\n"
+        "Actual violation found: ..."
+    )
+    comment = {"user": {"login": "claude[bot]"}, "body": body}
     assert _run([comment], "enforcer", SHA) == "CHANGES_REQUESTED"
 
 
