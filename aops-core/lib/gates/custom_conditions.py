@@ -1,4 +1,3 @@
-import os
 import re
 
 from lib.gate_types import GateState
@@ -130,14 +129,20 @@ def check_custom_condition(
         # Separating block vs warn into distinct policies lets each choose
         # appropriate message channels (context_key vs message_key) so
         # warn mode doesn't inadvertently upgrade Stop to decision=block.
-        return os.environ.get("QA_GATE_MODE", "warn") in ("block", "deny")
+        # Posture resolves via gate_config (the polecat-vs-not posture axis),
+        # the same mechanism the other gates use — NOT a bare os.environ read.
+        from hooks.gate_config import QA_GATE_MODE
+
+        return QA_GATE_MODE in ("block", "deny")
 
     if name == "is_qa_warn_mode":
         # QA gate policy: active only when QA_GATE_MODE is warn.
         # Warn mode delivers the advisory via system_message only (user-visible)
         # rather than context_injection, so output_for_claude does not upgrade
         # the WARN verdict to decision=block for the Stop hook.
-        return os.environ.get("QA_GATE_MODE", "warn") == "warn"
+        from hooks.gate_config import QA_GATE_MODE
+
+        return QA_GATE_MODE == "warn"
 
     if name == "is_rbg_review_block_mode":
         # RBG-review gate policy: active only when RBG_REVIEW_GATE_MODE is

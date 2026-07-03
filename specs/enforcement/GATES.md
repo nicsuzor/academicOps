@@ -30,7 +30,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `handover` | Exit without commit / task update / reflection          | Stop       | claim_task              | Skill(End Session) |
 | `ida`      | Honesty / criterion-substitution at Stop                | Stop       | User prompt             | Max once per turn  |
 
-Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy**: gates only apply to sessions with their own session ID — inline Agent-tool subagents are exempt. See [`specs/enforcement/enforcement.md` §7.3 Session Scope](enforcement.md).
+Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy**: `PreToolUse`/`PostToolUse` gate evaluation is skipped entirely for subagent-attributed events (including agy workers via `AOPS_AGY_CLIENT`) — see [Subagent & worker session scope](#subagent--worker-session-scope) below.
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
@@ -112,6 +112,14 @@ print(f"ida={IDA_GATE_MODE} hydration={HYDRATION_GATE_MODE}")
 ```
 
 If this fails, `polecat.yaml` is missing/unreadable or `$AOPS_SESSIONS` is unset — the same trap that causes gates to silently fail.
+
+---
+
+## Subagent & worker session scope
+
+`_dispatch_gates` (`hooks/router.py`) skips gate evaluation entirely for any event tagged `is_subagent=True`, **except** `Stop`, `SessionEnd`, `SubagentStop`, and `UserPromptSubmit` — those still fire so session-lifecycle bookkeeping (handover/ida/rbg-review) runs even for a dispatched child. Practical effect: `sentinel` and `enforcer` are the only two `PreToolUse`-triggered gates, so neither ever evaluates against a subagent's own tool calls — there is no partial block/warn outcome, the check simply never runs. `is_subagent` is detected from several signals — explicit flag, `agent_id`/`agent_type` fields, a short-hex session ID, a `/subagents/` transcript path (`lib/hook_utils.py:is_subagent_session`).
+
+**Worker posture override (agy).** `AOPS_AGY_CLIENT=1` — set only by `polecat/cli.py` when launching a `polecat run --model antigravity` worker — forces `is_subagent=True` for that worker's entire life, even though it isn't a literal Task/Agent-dispatched child (`router.py:463`). Rationale: a headless agy worker has no human able to action an interactive compliance prompt, so it gets the same PreToolUse/PostToolUse skip as a real subagent. Net effect for the whole run: `sentinel` and `enforcer` never fire; `rbg-review`/`qa`/`handover`/`ida` (all `Stop`-triggered) still fire normally under the Polecat/Background mode. Covered by `tests/hooks/test_agy_worker_gate_posture.py`.
 
 ---
 
@@ -217,7 +225,6 @@ Subagent dispatches that look like `Agent(subagent_type="enforcer")` or `Agent(s
 - **Mode key**: `gates.enforcer` (see [Config plumbing](#config-plumbing) for resolution). `warn` | `block` | `off`.
 - **Threshold** (write ops between checks): `gates.enforcer_threshold` (default 50).
 - **Countdown window**: 7 ops before threshold (`start_before=7` in the `CountdownConfig` literal — not currently in YAML).
-- **Plan-mode bypass**: `POLECAT_APPROVAL_MODE=plan` skips counter increments entirely (see `engine.py:on_tool_use`).
 - **Tool-category exclusions**: `infrastructure`, `always_available`, `read_only` tools do not trip the policy (`TOOL_CATEGORIES` in `gate_config.py`).
 - **Mid-edit deferral**: while a TodoWrite has an `in_progress` item, the block is deferred via the `not_mid_edit` custom check (`custom_conditions.py`).
 
