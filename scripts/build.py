@@ -614,6 +614,21 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             frontmatter = validate_gemini_agent_schema(frontmatter, filename)
             new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
             return f"---\n{new_frontmatter}---{parts[2]}"
+        elif platform == "antigravity":
+            # Remap tool names for Antigravity
+            tools_list = [t.strip() for t in original_tools.split(",")]
+            filtered = []
+            AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
+            for t in tools_list:
+                if t.startswith("mcp__"):
+                    mapped = None
+                else:
+                    mapped = AGY_TOOL_NAME_MAP.get(t, t)
+                if mapped is not None:
+                    filtered.append(mapped)
+            frontmatter["tools"] = filtered
+            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+            return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
     if platform == "gemini":
@@ -634,6 +649,25 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         frontmatter.pop("color", None)
         # Validate and apply Gemini schema defaults
         frontmatter = validate_gemini_agent_schema(frontmatter, filename)
+        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        return f"---\n{new_frontmatter}---{parts[2]}"
+
+    elif platform == "antigravity":
+        # Remap tool names for Antigravity, preserving order and dropping duplicates
+        AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
+        filtered_tools: list[str] = []
+        seen: set[str] = set()
+        for t in original_tools:
+            # Drop MCP tools (starting with mcp__) on Antigravity
+            if t.startswith("mcp__"):
+                mapped = None
+            else:
+                mapped = AGY_TOOL_NAME_MAP.get(t, t)
+            if mapped is not None and mapped not in seen:
+                seen.add(mapped)
+                filtered_tools.append(mapped)
+
+        frontmatter["tools"] = filtered_tools
         new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 
@@ -892,7 +926,7 @@ def build_aops_core(
     # Agents get transform_agent_for_platform above (frontmatter + body);
     # this pass catches skills, commands, lib, and top-level .md files
     # that were copied verbatim by safe_copy. Antigravity needs the
-    # ${CLAUDE_PLUGIN_ROOT} replacement but no tool-name changes.
+    # ${CLAUDE_PLUGIN_ROOT} replacement and tool-name translations.
     if platform in ("gemini", "antigravity"):
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
