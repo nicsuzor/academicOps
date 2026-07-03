@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.54](https://github.com/nicsuzor/academicOps/compare/v0.3.53...v0.3.54) (2026-07-03)
+
+
+### Bug Fixes
+
+* **learn:** scope retro's immediate-fix authority to the reviewed session, not the framework ([#2048](https://github.com/nicsuzor/academicOps/issues/2048)) ([cbe9019](https://github.com/nicsuzor/academicOps/commit/cbe9019da61e9843f44b12b4c40ec2cb06844482))
+
 ## [0.3.53](https://github.com/nicsuzor/academicOps/compare/v0.3.52...v0.3.53) (2026-07-03)
 
 
