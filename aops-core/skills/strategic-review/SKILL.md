@@ -72,6 +72,17 @@ resolves them honestly, and returns **one verdict** with a synthesis table:
 
 | Agent | Issue | Feedback | Severity |
 
+**Convergent findings are agreement, not contradiction — merge them.** Because rbg, pauli, and
+marsha run blind to each other (parallel, step 2), the same underlying defect can legitimately fall
+within two or more reviewers' distinct chartered lenses at once — e.g. rbg names a
+`judgment-non-delegable` axiom violation (a deterministic rig standing in for a call requiring
+comprehension) that marsha's independent runtime pass also finds broken in practice. That is
+convergence, not contradiction, and it is james's job to notice it: when two or more reviewers flag
+the same underlying issue, collapse it into a **single** synthesis-table row that names every
+concurring reviewer and each one's distinct rationale — never emit one row per reviewer restating
+the same defect. Reserve separate rows for genuinely distinct issues, and hold genuine disagreements
+in tension as before.
+
 Severity ladder: **REJECT** (fundamental — close/redesign) · **REVISE** (substantial rework, in
 scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) · **ADVISORY**
 (non-blocking follow-up). Overall verdict: **APPROVE / REVISE / REJECT**.
