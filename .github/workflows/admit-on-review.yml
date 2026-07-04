@@ -247,11 +247,15 @@ jobs:
             -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
 
   # ─── Decide the first mechanic dispatch — AFTER any admission re-verification ──
-  # The mechanic exists to CLEAR RED (§3.5) AND to RESOLVE CONFLICTS (§3.3/§3.11).
-  # Re-read the named reviewer statuses AND the PR's mergeability on the admitted
-  # SHA once re-verification has settled, and dispatch the mechanic when EITHER:
+  # The mechanic exists to CLEAR RED (§3.5), RESOLVE CONFLICTS (§3.3/§3.11), AND
+  # TRIAGE UNADDRESSED REVIEW COMMENTS (#2094). Re-read the named reviewer
+  # statuses, the PR's mergeability, and its review-comment threads on the
+  # admitted SHA once re-verification has settled, and dispatch the mechanic
+  # when ANY of:
   #   (a) a red/pending reviewer signal remains (development to clear it), OR
-  #   (b) the PR is CONFLICTING with the base (conflict resolution).
+  #   (b) the PR is CONFLICTING with the base (conflict resolution), OR
+  #   (c) an inline review comment from anyone other than our own automation has
+  #       zero replies (comment triage — scripts/ci/check-unresolved-comments.sh).
   #
   # (b) is load-bearing and was the prior deadlock (§3.11): a conflicting PR never
   # gets a `pull_request` triage run — GitHub cannot build the `refs/pull/N/merge`
@@ -264,9 +268,22 @@ jobs:
   # Mergeability is an INDEPENDENT merge gate; reviewers green is not sufficient to
   # skip the mechanic when the PR is CONFLICTING.
   #
-  # Only when reviewers are BOTH green AND the PR is not conflicting does the armed
-  # auto-merge handle the merge with no mechanic run. `always()` because
-  # admit-enforcer/admit-qa are skipped when the reviewers were already green.
+  # (c) is load-bearing for the same reason and was PR #2094's actual failure mode
+  # (2026-07-04): Copilot's code review posts as `COMMENTED`, never
+  # `CHANGES_REQUESTED`, so it never trips the §3.10 review-response path (wired
+  # to `review.state == 'changes_requested'` only) and carries no commit-status
+  # signal — enforcer/qa/mergeable were all green, the human approved 13s after
+  # Copilot's comments landed, and the PR auto-merged 50s later with both
+  # comments still unaddressed. `check-unresolved-comments.sh` restores the v1
+  # `merge-prep` invariant ("read ALL reviews — framework agents + Gemini +
+  # Copilot + humans") as a dispatch signal: reviewer colour and mergeability
+  # alone are not sufficient to skip the mechanic when a third-party (or human)
+  # review comment thread was never replied to.
+  #
+  # Only when reviewers are BOTH green, the PR is not conflicting, AND no review
+  # comment thread is unaddressed does the armed auto-merge handle the merge with
+  # no mechanic run. `always()` because admit-enforcer/admit-qa are skipped when
+  # the reviewers were already green.
   decide-mechanic:
     name: Decide mechanic dispatch
     needs: [authorize, admit, admit-enforcer, admit-qa]
@@ -280,8 +297,15 @@ jobs:
       HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
       PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Check for unaddressed review comment threads (#2094)
+        id: comments
+        run: bash scripts/ci/check-unresolved-comments.sh
       - name: Read final reviewer state + mergeability on the admitted SHA
         id: decide
+        env:
+          UNRESOLVED: ${{ steps.comments.outputs.has_unresolved_comments }}
+          UNRESOLVED_REASON: ${{ steps.comments.outputs.reason }}
         run: |
           ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
@@ -298,9 +322,12 @@ jobs:
             sleep 3
           done
 
-          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' mergeable='${MERGEABLE}' on $HEAD_SHA"
-          if [ "$ENF" = "success" ] && [ "$QA" = "success" ] && [ "$MERGEABLE" != "CONFLICTING" ]; then
-            echo "Both reviewers green and PR is not conflicting — auto-merge handles it; mechanic not needed."
+          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' mergeable='${MERGEABLE}' unresolved-comments='${UNRESOLVED}' on $HEAD_SHA"
+          if [ "$UNRESOLVED" = "true" ]; then
+            echo "Unaddressed review comment thread(s) remain (#2094 guard: ${UNRESOLVED_REASON}) — dispatching mechanic regardless of reviewer colour."
+            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+          elif [ "$ENF" = "success" ] && [ "$QA" = "success" ] && [ "$MERGEABLE" != "CONFLICTING" ]; then
+            echo "Both reviewers green, PR is not conflicting, and no unaddressed review comments — auto-merge handles it; mechanic not needed."
             echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
           elif [ "$MERGEABLE" = "CONFLICTING" ]; then
             echo "PR is CONFLICTING — dispatching mechanic to resolve the conflict (§3.11), regardless of reviewer colour."
