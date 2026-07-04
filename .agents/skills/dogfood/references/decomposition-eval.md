@@ -1,5 +1,7 @@
 # Evaluating decomposition quality (a dogfood application)
 
+<!-- NS: i think this whole file belongs in a planning skill?           -->
+
 A reusable way to test whether a planner — or any decompose-mode instruction set —
 _critically thinks through the constituent components of a high-level abstract task_,
 not just whether it produces a well-formed task tree. This is `/dogfood` (delegated

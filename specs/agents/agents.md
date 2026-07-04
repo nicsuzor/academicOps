@@ -25,6 +25,8 @@ The framework strictly separates agent documentation from runtime instructions:
 
 ## Core Agent Roster
 
+<!-- NS: might as well call them the 'face'... -->
+
 ### Head Personalities
 
 Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. They are self-contained, not subclassed. Ida is currently the plugin's sole head personality.
@@ -36,6 +38,8 @@ Head personalities own the user-facing chat surface, manage session state, and c
 A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ### The Review Crew
+
+<!-- NS: These are all 'crew', but not 'review' agents. Reviewing is only one of their tasks. They're specialists. -->
 
 Review crew agents are stateless, specialized subagents commissioned by orchestrators to evaluate code, specs, and plans.
 
