@@ -103,7 +103,9 @@ def _run(tmp_path: Path, *, reviews: list) -> dict:
     assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
 
     calls = (
-        [json.loads(line) for line in calls_log.read_text().splitlines()] if calls_log.exists() else []
+        [json.loads(line) for line in calls_log.read_text().splitlines()]
+        if calls_log.exists()
+        else []
     )
     final_status_calls = [c for c in calls if any(f"statuses/{SHA}" in a for a in c) and "-f" in c]
     assert final_status_calls, f"no final status call captured; all calls:\n{calls}"

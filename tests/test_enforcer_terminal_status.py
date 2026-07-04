@@ -76,7 +76,9 @@ def test_committed_genuinely_unset_fails_fast_rather_than_defaulting():
     silently fall through to the review-match path this script exists to
     bypass, reintroducing the exact false-red this fix removes."""
     env = {"HEAD_SHA": SHA, "REVIEW_OUTCOME": "success", "PATH": "/usr/bin:/bin:/usr/local/bin"}
-    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
+    )
     assert proc.returncode != 0
     assert "COMMITTED" in proc.stderr
 
@@ -118,7 +120,9 @@ def test_committed_short_circuits_before_requiring_repo_or_pr_number(tmp_path: P
         "REVIEW_OUTCOME": "success",
         "PATH": "/usr/bin:/bin:/usr/local/bin",
     }
-    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
+    )
     assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
     assert not rf.exists()  # sanity: we never even referenced REVIEWS_JSON
 
@@ -181,7 +185,9 @@ def test_not_committed_transient_gh_api_failure_degrades_to_diagnosis_not_crash(
         "PR_NUMBER": "1",
         "PATH": f"{fake_bin}:/usr/bin:/bin",
     }
-    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
+    )
     assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
     out: dict[str, str] = {}
     for line in proc.stdout.splitlines():
@@ -193,7 +199,9 @@ def test_not_committed_transient_gh_api_failure_degrades_to_diagnosis_not_crash(
 
 
 def test_not_committed_both_attempts_failed_is_infra_failure(tmp_path: Path):
-    out = run(tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="failure")
+    out = run(
+        tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="failure"
+    )
     assert out["state"] == "failure"
     assert out["failed"] == "true"
     assert "failed in both attempts" in out["description"]
@@ -212,7 +220,9 @@ def test_not_committed_retry_cancelled_counts_as_both_attempts_failed(tmp_path: 
 
 
 def test_not_committed_retry_succeeded_but_posted_no_verdict(tmp_path: Path):
-    out = run(tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="success")
+    out = run(
+        tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="success"
+    )
     assert out["state"] == "failure"
     assert "retry succeeded but posted no verdict" in out["description"]
 
