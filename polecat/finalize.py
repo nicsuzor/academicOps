@@ -23,6 +23,164 @@ import click
 from polecat.manager import PolecatManager
 
 
+def _git_head_sha() -> str:
+    """Current worktree HEAD, or "" when unresolvable."""
+    import subprocess
+
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False
+        )
+        if res.returncode == 0:
+            return res.stdout.strip()
+    except Exception as e:
+        print(f"  ⚠️  Could not resolve HEAD for evidence binding: {e}", file=sys.stderr)
+    return ""  # allow-fallback: callers treat "" as no-evidence and fail closed
+
+
+def _force_done_evidence(base_ref: str) -> dict[str, str]:
+    """Evidence for the human-directed --force-done zero-change completion.
+
+    The invoking human is the independent verifier (they explicitly passed
+    --force-done after the zero-change detection); bind to HEAD and name the
+    verification method. Honest by construction — nothing here claims a code
+    review that did not happen.
+    """
+    import getpass
+
+    try:
+        user = getpass.getuser()
+    except Exception:
+        user = "polecat-operator"  # allow-fallback: identity label only
+    return {
+        "verified_by": f"human:{user} (--force-done)",
+        "verified_sha": _git_head_sha(),
+        "findings": (
+            f"no code changes required — verified via git diff --quiet "
+            f"{base_ref}..HEAD (--force-done)"
+        ),
+    }
+
+
+def _derive_release_evidence(task, pr_url: str | None) -> dict[str, str] | None:
+    """Best-effort HONEST evidence derivation for a merge_ready release.
+
+    pkb_bridge.release_task enforces the completion-claim evidence contract
+    (epic aops-262def9f WI2b); this collects what finish can actually attest,
+    in order of preference:
+
+    1. Evidence trailers already on the task record — the worker's
+       in-session verifier evidence — but only while their SHA still matches
+       the state being released (a later commit voids them).
+    2. An APPROVED independent PR review (reviewer != PR author) at head.
+    3. A fully completed, all-green status-check rollup at head (CI is an
+       independent machine verifier). Pending checks are NOT evidence —
+       verification that has not run cannot be attested.
+
+    Returns {verified_by, verified_sha, findings} or None when no honest
+    evidence exists yet (caller then leaves the task in_progress rather
+    than fabricate).
+    """
+    import json as _json
+    import subprocess
+
+    from lib.verification_evidence import (
+        parse_evidence_trailers,
+        validate_completion_evidence,
+    )
+
+    head = _git_head_sha()
+    pr_head = ""
+    pr_author = ""
+    reviews: list = []
+    rollup: list = []
+    if pr_url:
+        try:
+            res = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "view",
+                    pr_url,
+                    "--json",
+                    "headRefOid,author,latestReviews,statusCheckRollup",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=20,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                data = _json.loads(res.stdout)
+                pr_head = (
+                    data.get("headRefOid") or ""
+                )  # allow-fallback: falls back to local HEAD below
+                pr_author = (data.get("author") or {}).get(
+                    "login"
+                ) or ""  # allow-fallback: skips only the author-independence filter
+                reviews = (
+                    data.get("latestReviews") or []
+                )  # allow-fallback: no reviews -> next source
+                rollup = (
+                    data.get("statusCheckRollup") or []
+                )  # allow-fallback: no checks -> no CI evidence
+        except Exception as e:
+            print(f"  ⚠️  Could not query PR for evidence derivation: {e}", file=sys.stderr)
+
+    bind_sha = pr_head or head  # allow-fallback: PR head is authoritative when a PR exists
+    if not bind_sha:
+        return None
+
+    # 1. Worker's in-session evidence on the task record — valid only at head.
+    trailers = parse_evidence_trailers(
+        getattr(task, "body", "") or ""
+    )  # allow-fallback: absent body -> no trailers
+    if len(trailers) == 3 and not validate_completion_evidence(trailers):
+        if bind_sha.lower().startswith(trailers["verified_sha"].lower()):
+            return trailers
+        print(
+            "  ⚠️  Task-record verification evidence is bound to a stale SHA — "
+            "voided by later commits; looking for fresher evidence."
+        )
+
+    # 2. APPROVED independent review at head.
+    for review in reviews:
+        login = (
+            (review.get("author") or {}).get("login") or ""
+        ).strip()  # allow-fallback: anonymous review is skipped
+        state = (review.get("state") or "").upper()  # allow-fallback: absent state != APPROVED
+        if login and login.lower() != pr_author.lower() and state == "APPROVED":
+            return {
+                "verified_by": login,
+                "verified_sha": bind_sha,
+                "findings": (
+                    f"no findings blocking merge — APPROVED review by {login} "
+                    f"via GitHub PR review at {bind_sha[:12]}"
+                ),
+            }
+
+    # 3. Fully completed, all-green status checks at head.
+    if rollup:
+        conclusions = [  # allow-fallback: absent conclusion -> "" -> not in the green set
+            (c.get("conclusion") or c.get("state") or "").upper() for c in rollup
+        ]
+        if all(c in ("SUCCESS", "NEUTRAL", "SKIPPED") for c in conclusions):
+            names = ", ".join(
+                sorted({c.get("name") or c.get("context") or "check" for c in rollup})
+            )
+            return {
+                "verified_by": "ci:github-status-checks",
+                "verified_sha": bind_sha,
+                "findings": (
+                    f"no failing status checks via gh pr view --json "
+                    f"statusCheckRollup at {bind_sha[:12]} "
+                    f"({len(rollup)} checks: {names})"
+                ),
+            }
+
+    return None
+
+
 @click.command(name="finish")
 @click.option("--no-push", is_flag=True, help="Skip pushing to remote")
 @click.option("--nuke", "do_nuke", is_flag=True, help="Also remove the worktree after finishing")
@@ -219,7 +377,13 @@ def finish_cmd(
                 _finish_evidence = f"{task.title} — completed without code changes (--force-done)"
                 from polecat.pkb_bridge import complete_task as pkb_complete
 
-                pkb_complete(task_id, completion_evidence=_finish_evidence)
+                # Completion claim → evidence contract (aops-262def9f WI2b):
+                # the human who passed --force-done is the independent verifier.
+                pkb_complete(
+                    task_id,
+                    completion_evidence=_finish_evidence,
+                    **_force_done_evidence(origin_ref),
+                )
                 print(f"✅ Task {task_id} marked as DONE.")
 
                 # Optionally nuke
@@ -289,7 +453,13 @@ def finish_cmd(
                     )
                     from polecat.pkb_bridge import complete_task as pkb_complete
 
-                    pkb_complete(task_id, completion_evidence=_finish_evidence)
+                    # Completion claim → evidence contract (aops-262def9f
+                    # WI2b): the --force-done human is the independent verifier.
+                    pkb_complete(
+                        task_id,
+                        completion_evidence=_finish_evidence,
+                        **_force_done_evidence(base_branch),
+                    )
                     print(f"✅ Task {task_id} marked as DONE.")
                     if do_nuke:
                         print("Nuking worktree...")
@@ -769,13 +939,33 @@ def finish_cmd(
         except Exception as e:
             print(f"  ⚠️  Could not check PR CI status: {e}", file=sys.stderr)
 
+    # Completion-claim evidence (epic aops-262def9f WI2b): merge_ready is a
+    # completion claim, so pkb_bridge.release_task requires evidence binding
+    # an independent verifier to the head SHA. Derive it honestly — worker
+    # trailers on the task record / APPROVED review / all-green checks. When
+    # none exists yet (e.g. CI still pending right after the push), leave the
+    # task in_progress rather than fabricate; finish can be re-run once
+    # checks complete.
+    release_evidence = None
+    if not is_partial and not ci_failed_checks:
+        release_evidence = _derive_release_evidence(task, pr_url_str)
+        if release_evidence is None:
+            print("\n⚠️  No independent-verification evidence available yet for 'merge_ready':")
+            print("   - no valid evidence trailers on the task record at the current head")
+            print("   - no APPROVED independent review; status checks not all green/complete")
+            print("   ↪︎ Task will stay 'in_progress' (completion-claim invariant).")
+            print("   Re-run `polecat finish` from this worktree once checks complete.")
+
     target_status = (
-        "partial" if is_partial else ("in_progress" if ci_failed_checks else "merge_ready")
+        "partial"
+        if is_partial
+        else ("in_progress" if (ci_failed_checks or release_evidence is None) else "merge_ready")
     )
 
-    # When CI is failing, use update_task rather than release_task. The
-    # release_task tool is for terminal/handoff statuses; in_progress is a
-    # mid-work state that keeps the task re-dispatchable without --force.
+    # When CI is failing (or no verification evidence exists yet), use
+    # update_task rather than release_task. The release_task tool is for
+    # terminal/handoff statuses; in_progress is a mid-work state that keeps
+    # the task re-dispatchable without --force.
     if target_status == "in_progress":
         try:
             from polecat.pkb_bridge import update_task as pkb_update_status
@@ -783,7 +973,12 @@ def finish_cmd(
             pkb_update_status(task_id, status="in_progress", assignee=None, pr_url=pr_url_str)
         except Exception as _update_exc:
             print(f"  ⚠️  Could not update task to in_progress: {_update_exc}", file=sys.stderr)
-        print("✅ Task left as 'in_progress' (PR has failing CI — fix and re-dispatch)")
+        _stay_reason = (
+            "PR has failing CI — fix and re-dispatch"
+            if ci_failed_checks
+            else "no verification evidence yet — re-run finish after checks complete"
+        )
+        print(f"✅ Task left as 'in_progress' ({_stay_reason})")
         if do_nuke:
             print("Nuking worktree...")
             os.chdir(Path.home())
@@ -803,15 +998,26 @@ def finish_cmd(
             summary=finish_summary,
             pr_url=pr_url_str,
             branch=branch_name,
+            # allow-fallback: evidence is guaranteed non-None on this branch (None routes
+            # to in_progress above); {} is defensive and spreads no kwargs.
+            **(release_evidence or {}),
         )
         if not released:
             raise RuntimeError("release_task returned False")
         released_ok = True
     except Exception as _release_exc:
+        from lib.verification_evidence import EvidenceValidationError as _EvidenceError
+
         from polecat.validation import PRURLValidationError as _PRURLValidationError
 
-        if isinstance(_release_exc, _PRURLValidationError):
-            print(f"  ❌  A3/A8 integrity gate — pr_url rejected: {_release_exc}", file=sys.stderr)
+        if isinstance(_release_exc, (_PRURLValidationError, _EvidenceError)):
+            # Integrity gates (A3/A8 pr_url; aops-262def9f evidence contract):
+            # never fall through to the save_task fallback below — that would
+            # launder a rejected completion claim into merge_ready.
+            print(
+                f"  ❌  completion-claim integrity gate — release rejected: {_release_exc}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         # A `partial` stop must NEVER be laundered into `merge_ready`: that would

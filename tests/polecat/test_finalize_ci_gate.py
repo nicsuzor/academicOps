@@ -44,8 +44,13 @@ def test_ci_gate_uses_status_check_rollup():
 
 
 def test_ci_gate_sets_in_progress_on_failure():
-    """When CI fails, the target status must be in_progress, not merge_ready."""
-    assert '"in_progress" if ci_failed_checks else "merge_ready"' in FINALIZE_SRC
+    """When CI fails (or no verification evidence exists yet — epic
+    aops-262def9f WI2b), the target status must be in_progress, not
+    merge_ready."""
+    assert (
+        '"in_progress" if (ci_failed_checks or release_evidence is None) else "merge_ready"'
+        in FINALIZE_SRC
+    )
 
 
 def test_ci_gate_uses_update_task_not_release_task():
@@ -115,6 +120,21 @@ def _make_mock_run(existing_pr_number, ci_rollup):
                 )
             else:
                 stdout = "[]"
+        elif (
+            args[:3] == ["gh", "pr", "view"]
+            and "headRefOid,author,latestReviews,statusCheckRollup" in args
+        ):
+            # Evidence derivation query (epic aops-262def9f WI2b).
+            import json
+
+            stdout = json.dumps(
+                {
+                    "headRefOid": "e" * 40,
+                    "author": {"login": "botnicbot"},
+                    "latestReviews": [],
+                    "statusCheckRollup": ci_rollup,
+                }
+            )
         elif args[:3] == ["gh", "pr", "view"] and "--json" in args and "statusCheckRollup" in args:
             import json
 
@@ -207,6 +227,10 @@ def test_finish_sets_merge_ready_when_ci_passes(monkeypatch):
     release_mock.assert_called_once()
     call_kwargs = release_mock.call_args
     assert call_kwargs[1].get("status") == "merge_ready" or call_kwargs[0][1] == "merge_ready"
+    # Completion-claim evidence (aops-262def9f WI2b): the all-green rollup is
+    # the derived independent verifier, bound to the PR head.
+    assert call_kwargs[1].get("verified_by") == "ci:github-status-checks"
+    assert call_kwargs[1].get("verified_sha") == "e" * 40
 
 
 def test_finish_sets_in_progress_when_ci_fails(monkeypatch):
@@ -355,8 +379,12 @@ def test_finish_partial_ignores_ci_gate(monkeypatch):
 
 
 def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
-    """If gh pr view fails (e.g. no auth), finish should proceed to merge_ready
-    rather than blocking on tooling failure (fail-open)."""
+    """If gh pr view fails (e.g. no auth), the CI gate itself fails open —
+    but merge_ready still requires completion evidence (aops-262def9f WI2b).
+    The worker's in-session evidence trailers on the task record, bound to
+    the current HEAD, carry the release when the PR query is unavailable."""
+
+    head_sha = "abcd1234" * 5  # 40-hex HEAD the evidence must bind to
 
     def mock_run_ci_error(args, **kwargs):
         is_text = kwargs.get("text") or kwargs.get("universal_newlines")
@@ -370,10 +398,10 @@ def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
             stdout = ""
         elif args[:2] == ["git", "diff"] and "--quiet" in args:
             returncode = 1
-        elif args[:3] == ["git", "merge-base"]:
+        elif args[:2] == ["git", "merge-base"]:
             stdout = "abc"
-        elif args[:3] == ["git", "rev-parse"]:
-            stdout = "abc"
+        elif args[:2] == ["git", "rev-parse"]:
+            stdout = head_sha
         elif args[:2] == ["git", "push"]:
             stdout = ""
         elif args[:2] == ["git", "branch"] and "--show-current" in args:
@@ -419,6 +447,14 @@ def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
         manager.home_dir = Path("/tmp/home")
         manager.storage = MagicMock()
         task = _build_task()
+        # Worker's in-session verification evidence on the task record, bound
+        # to the current HEAD — the honest fail-open path when gh is down.
+        task.body = (
+            "did the work\n\n"
+            "Verified-By: marsha (subagent)\n"
+            f"Verified-SHA: {head_sha[:12]}\n"
+            "Findings: no defects found via pytest tests/polecat + read of finalize.py:1-100\n"
+        )
         manager.storage.get_task.return_value = task
         manager.resolve_project_alias.return_value = "aops"
         manager.default_branch_for.return_value = "dev"
@@ -435,3 +471,53 @@ def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
     release_mock.assert_called_once()
     call_kwargs = release_mock.call_args
     assert "merge_ready" in str(call_kwargs)
+    # ...carrying the worker's task-record evidence.
+    assert call_kwargs[1].get("verified_by") == "marsha (subagent)"
+
+
+def test_finish_stays_in_progress_when_no_evidence_derivable(monkeypatch):
+    """Completion-claim invariant (aops-262def9f WI2b): with no worker
+    evidence, no review, and checks still pending, finish must NOT claim
+    merge_ready — the task stays in_progress with an actionable message."""
+    ci_rollup = [
+        {"name": "build", "status": "IN_PROGRESS", "conclusion": ""},
+    ]
+
+    (
+        mock_mgr_cls,
+        mock_check_gh,
+        mock_transcript,
+        mock_pr_body,
+        mock_release,
+        mock_update,
+    ) = _base_manager_ctx()
+
+    with (
+        mock_mgr_cls as mgr_cls,
+        mock_check_gh,
+        mock_transcript,
+        mock_pr_body,
+        mock_release as release_mock,
+        mock_update as update_mock,
+    ):
+        manager = MagicMock()
+        mgr_cls.return_value = manager
+        manager.polecats_dir = Path("/tmp/polecats")
+        manager.home_dir = Path("/tmp/home")
+        manager.storage = MagicMock()
+        task = _build_task()
+        manager.storage.get_task.return_value = task
+        manager.resolve_project_alias.return_value = "aops"
+        manager.default_branch_for.return_value = "dev"
+        manager.resolve_branch_name.return_value = "polecat/aops-test"
+        manager.is_shared_branch.return_value = False
+
+        monkeypatch.setattr(subprocess, "run", _make_mock_run(1541, ci_rollup))
+        monkeypatch.setattr(Path, "cwd", lambda: Path("/tmp/polecats/aops-test"))
+
+        result = CliRunner().invoke(finish_cmd, [], obj={})
+
+    assert result.exit_code == 0, result.output
+    release_mock.assert_not_called()
+    update_mock.assert_called_once()
+    assert "No independent-verification evidence available yet" in result.output

@@ -113,7 +113,19 @@ jobs:
     # Stage-2 re-verification runs on each fix SHA (§3.5).
     outputs:
       admitted: ${{ steps.admit-carry.outputs.admitted }}
+      # WI5 (epic aops-262def9f): 'true' when THIS pre-admission `synchronize`'s
+      # HEAD is a bot self-fix commit (enforcer/responder/lint autofix) whose fixed
+      # SHA must be RE-VERIFIED before a human is asked to review — bounded by
+      # MAX_SELFFIX_REVERIFY. The §3.1 fire-once gate skips pre-admission
+      # synchronizes wholesale, which makes the enforcer's promised re-review on a
+      # self-fix SHA unreachable (pr-pipeline §3.4 pt 6; root-cause row 6, the (d)
+      # leg). The enforcer gate ORs this in so the fix SHA gets a fresh
+      # enforcer+qa verdict pre-admission; qa cascades. 'false' for human pushes
+      # (fire-once preserved) and at/above the ceiling. scripts/ci/selffix-reverify.sh
+      # (unit-tested, tests/test_selffix_reverify.py).
+      selffix_reverify: ${{ steps.selffix.outputs.reverify }}
     steps:
+      - uses: actions/checkout@v4
       # admit-status carry-forward (pr-pipeline §5). admit-status is the required
       # human gate; it is set to success only by `admit-on-review.yml` (§3.2)
       # when the maintainer APPROVES the PR (a review approval is the admission
@@ -187,6 +199,29 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # WI5 self-fix re-verify gate (epic aops-262def9f). On a pre-admission
+      # `synchronize` whose HEAD is a bot self-fix commit, mark it for re-verify so
+      # the enforcer gate below re-fires the reviewers on the fix SHA (qa cascades)
+      # — the enforcer's committed-short-circuit promises a re-review on the new SHA
+      # that the fire-once gate otherwise makes unreachable pre-admission (§3.4 pt 6).
+      # Only meaningful on a pre-admission `synchronize`; the enforcer gate already
+      # fires on opened/ready/reopened and on admitted synchronizes, so we compute
+      # this only for the `synchronize` action and default it 'false' otherwise.
+      - name: Compute self-fix re-verify signal
+        id: selffix
+        run: |
+          if [ "${{ github.event.action }}" != "synchronize" ]; then
+            echo "reverify=false" >> "$GITHUB_OUTPUT"
+            echo "Action is '${{ github.event.action }}' — self-fix re-verify not applicable (reviewers already fire)."
+            exit 0
+          fi
+          bash scripts/ci/selffix-reverify.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
 
   # ─── Stage 1 Triage Orchestrator (§3.4) ──────────────────────────
 
@@ -268,12 +303,19 @@ jobs:
   #   - lint did not autofix (a lint commit changes the SHA → that pass short-circuits);
   #   - not a draft PR (§3.9), and `workflow_call` invocations are unaffected;
   #   - NOT a pre-admission `synchronize`: the reviewers fire on `opened`/`ready_for_review`/
-  #     `reopened` (action != 'synchronize'), and on a `synchronize` ONLY when
+  #     `reopened` (action != 'synchronize'), and on a `synchronize` ONLY when EITHER
   #     `initialize` carried admission forward (admitted == 'true') — i.e. a POST-admission
-  #     mechanic fix SHA that Stage-2 must re-verify (§3.5). A pre-admission `synchronize`
-  #     has admitted == 'false', so enforcer skips and — via the documented dependency
-  #     cascade (§3.9) — qa, check-mechred, check-admit and the mechanic skip with it.
-  #     The admission boundary re-fires the reviewers on the admitted SHA (admit-on-review.yml).
+  #     mechanic fix SHA that Stage-2 must re-verify (§3.5) — OR `initialize` flagged the
+  #     tip as a BOT SELF-FIX to re-verify (selffix_reverify == 'true', WI5). A
+  #     pre-admission `synchronize` from a HUMAN push has both 'false', so enforcer skips
+  #     and — via the documented dependency cascade (§3.9) — qa, check-mechred, check-admit
+  #     and the mechanic skip with it (fire-once preserved). The admission boundary
+  #     re-fires the reviewers on the admitted SHA (admit-on-review.yml).
+  #   - WI5 (epic aops-262def9f) narrows the fire-once rule for BOT self-fixes: when the
+  #     enforcer (or responder, or lint) self-commits a fix pre-admission, its fix SHA
+  #     is re-reviewed here (bounded by MAX_SELFFIX_REVERIFY) so a qa verdict exists for
+  #     the FINAL SHA before a human is asked to review — the reachable path the
+  #     enforcer's committed-short-circuit already promises (§3.4 pt 6).
   # `always()` is required because `initialize` is conditional (skipped on fork-origin
   # PRs); the explicit `needs.lint.result == 'success'` restores the success-gate that
   # the bare `needs: [lint]` edge used to provide.
@@ -290,7 +332,7 @@ jobs:
       needs.lint.outputs.committed != 'true' &&
       !startsWith(github.event.pull_request.head.ref, 'release-please') &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'pull_request' || github.event.action != 'synchronize' || needs.initialize.outputs.admitted == 'true')
+      (github.event_name != 'pull_request' || github.event.action != 'synchronize' || needs.initialize.outputs.admitted == 'true' || needs.initialize.outputs.selffix_reverify == 'true')
     name: Enforcer Review
     uses: ./.github/workflows/agent-enforcer.yml
     with:
@@ -310,6 +352,14 @@ jobs:
   # re-reviews); the enforcer's red/green VERDICT no longer suppresses qa.
   # qa is still skipped when enforcer was `skipped` (lint committed → stale SHA)
   # or `cancelled`, neither of which is a verdict on this SHA.
+  #
+  # WI5 (epic aops-262def9f) makes "the new SHA's run re-reviews" REACHABLE
+  # pre-admission: the enforcer's committed short-circuit hands off to the fix SHA,
+  # and `initialize.selffix_reverify` re-fires the enforcer on that SHA even before
+  # admission — so this qa job runs on it and a qa verdict exists for the FINAL SHA
+  # before a human reviews (it does NOT depend on selffix_reverify itself — qa
+  # cascades from the enforcer having RUN on the fix SHA). Before WI5 the promise in
+  # the paragraph above was unreachable pre-admission (root-cause row 6, the (d) leg).
   qa:
     needs: [enforcer, lint]
     # Release-please PRs skip QA too (§3.13) — see the enforcer guard. In practice

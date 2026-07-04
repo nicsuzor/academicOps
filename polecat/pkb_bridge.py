@@ -385,6 +385,92 @@ def get_task(task_id: str | None = None, id: str | None = None) -> PkbTask | Non
 
 _TERMINAL_STATUSES = frozenset(("done", "cancelled", "superseded", "archived"))
 
+# Statuses that constitute a completion claim and therefore require the
+# independent-verification evidence contract (epic aops-262def9f WI2b).
+_COMPLETION_CLAIM_STATUSES = frozenset(("merge_ready", "done"))
+
+_EVIDENCE_TRAILER_LABELS = {
+    "verified_by": "Verified-By",
+    "verified_sha": "Verified-SHA",
+    "findings": "Findings",
+}
+
+
+def _evidence_module():
+    """Import the evidence-contract SSOT (aops-core/lib/verification_evidence).
+
+    pkb_bridge is normally imported after cli.py/claim.py/finalize.py put
+    aops-core on sys.path; guard for direct imports (tests, scripts) the
+    same way claim.py does.
+    """
+    try:
+        from lib import verification_evidence
+    except ImportError:
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).parent.parent / "aops-core"))
+        from lib import verification_evidence
+    return verification_evidence
+
+
+def _require_completion_evidence(
+    action: str,
+    task_id: str,
+    text: str | None,
+    pr_url: str | None,
+    explicit: dict[str, Any],
+) -> str:
+    """Enforce the completion-claim evidence contract at the tool boundary.
+
+    Replaces the pr_url-liveness-only predicate for merge_ready/done: a
+    completion claim must bind an independent reviewer (``verified_by`` ≠
+    producer), an artifact-state identifier (``verified_sha``), and
+    findings-or-method-named-null (``findings``). Evidence comes from the
+    explicit kwargs or from trailer lines already embedded in ``text``
+    (summary / completion_evidence). Where live-verifiable cheaply
+    (``pr_url`` is a PR), the SHA is checked against the PR head and the
+    reviewer against the PR author; otherwise structure is validated and
+    recorded. Attestation-only strings are rejected with an actionable
+    error (EvidenceValidationError).
+
+    Returns ``text`` with the resolved evidence embedded as trailers so the
+    release record carries it.
+    """
+    ve = _evidence_module()
+
+    tool_input: dict[str, Any] = {
+        "summary": text or ""
+    }  # allow-fallback: absent text -> missing fields become named problems
+    for field, value in explicit.items():
+        if isinstance(value, str) and value.strip():
+            tool_input[field] = value.strip()
+    evidence = ve.extract_evidence(tool_input)
+    problems = ve.validate_completion_evidence(evidence)
+
+    if not problems and pr_url:
+        from polecat.validation import check_evidence_against_pr
+
+        problems = check_evidence_against_pr(
+            pr_url, evidence["verified_by"], evidence["verified_sha"]
+        )
+
+    if problems:
+        raise ve.EvidenceValidationError(action, task_id, problems)
+
+    # Record: embed any evidence supplied via explicit kwargs as trailer
+    # lines so the claim's own record carries the evidence.
+    out = text or ""  # allow-fallback: trailers below reconstruct the full record
+    present = ve.parse_evidence_trailers(out)
+    missing_lines = [
+        f"{_EVIDENCE_TRAILER_LABELS[field]}: {evidence[field]}"
+        for field in ve.EVIDENCE_FIELDS
+        if field not in present
+    ]
+    if missing_lines:
+        block = "\n".join(missing_lines)
+        out = f"{out.rstrip()}\n\n{block}\n" if out.strip() else f"{block}\n"
+    return out
+
 
 def _open_children(task: PkbTask) -> list[str]:
     open_ids: list[str] = []
@@ -399,11 +485,20 @@ def complete_task(
     task_id: str | None = None,
     id: str | None = None,
     completion_evidence: str | None = None,
+    verified_by: str | None = None,
+    verified_sha: str | None = None,
+    findings: str | None = None,
 ) -> bool:
     """Mark a task as complete via the PKB MCP server.
 
     Supports both 'task_id' (positional) and 'id' (named) to reduce friction.
-    ``completion_evidence`` describes what was done — optional but strongly recommended.
+
+    Completing a task is a completion claim, so the independent-verification
+    evidence contract applies (epic aops-262def9f WI2b): pass
+    ``verified_by`` / ``verified_sha`` / ``findings`` explicitly, or embed
+    the equivalent trailer lines in ``completion_evidence``. Attestation-only
+    evidence is rejected with an actionable EvidenceValidationError; the MCP
+    call is not made and the task stays in its pre-completion state.
     """
     final_id = task_id or id
     if not final_id:
@@ -417,9 +512,15 @@ def complete_task(
                 f"{', '.join(blocked)}"
             )
 
-    params: dict[str, Any] = {"id": final_id}
-    if completion_evidence:
-        params["completion_evidence"] = completion_evidence
+    completion_evidence = _require_completion_evidence(
+        "complete_task",
+        final_id,
+        completion_evidence,
+        None,
+        {"verified_by": verified_by, "verified_sha": verified_sha, "findings": findings},
+    )
+
+    params: dict[str, Any] = {"id": final_id, "completion_evidence": completion_evidence}
     result = _get_client().call_tool("complete_task", params)
     return result is not None
 
@@ -637,6 +738,15 @@ def release_task(
     must not accept a fabricated PR URL as evidence of completion.
     Validation failures raise ``PRURLValidationError``; the MCP call is not
     made and the task stays in its pre-release state.
+
+    For merge_ready/done — a completion claim — the independent-verification
+    evidence contract additionally applies (epic aops-262def9f WI2b; a live
+    pr_url alone is NOT evidence of review): pass ``verified_by`` /
+    ``verified_sha`` / ``findings`` kwargs, or embed the equivalent trailer
+    lines in ``summary``. Where live-verifiable cheaply (pr_url is a PR),
+    the SHA is checked against the PR head and the reviewer against the PR
+    author. Attestation-only evidence raises EvidenceValidationError; the
+    MCP call is not made.
     """
     if status in ("done", "cancelled", "superseded", "merge_ready"):
         task = get_task(task_id)
@@ -646,6 +756,18 @@ def release_task(
                     f"Cannot close task {task_id} because children are not in terminal states: "
                     f"{', '.join(blocked)}"
                 )
+
+    # Evidence kwargs are consumed here — they are contract fields for this
+    # boundary, not MCP tool params (the record travels as summary trailers).
+    evidence_fields = {
+        "verified_by": kwargs.pop("verified_by", None),
+        "verified_sha": kwargs.pop("verified_sha", None),
+        "findings": kwargs.pop("findings", None),
+    }
+    if status in _COMPLETION_CLAIM_STATUSES:
+        summary = _require_completion_evidence(
+            "release_task", task_id, summary, pr_url, evidence_fields
+        )
 
     if pr_url:
         from polecat.validation import verify_pr_url_live

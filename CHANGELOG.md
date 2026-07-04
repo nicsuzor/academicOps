@@ -1,12 +1,5 @@
 # Changelog
 
-## [0.3.65](https://github.com/nicsuzor/academicOps/compare/v0.3.64...v0.3.65) (2026-07-04)
-
-
-### Bug Fixes
-
-* **hooks:** don't crash Claude hook on undeliverable advisory for non-HSO events ([#2110](https://github.com/nicsuzor/academicOps/issues/2110)) ([ef02262](https://github.com/nicsuzor/academicOps/commit/ef02262b5a67b8a2a2f6d24e1cf0404bed1f2db2))
-
 ## [0.3.64](https://github.com/nicsuzor/academicOps/compare/v0.3.63...v0.3.64) (2026-07-04)
 
 

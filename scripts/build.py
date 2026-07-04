@@ -655,19 +655,19 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     elif platform == "antigravity":
         # Remap tool names for Antigravity, preserving order and dropping duplicates
         AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
-        filtered_tools: list[str] = []
-        seen: set[str] = set()
+        agy_filtered_tools: list[str] = []
+        agy_seen: set[str] = set()
         for t in original_tools:
             # Drop MCP tools (starting with mcp__) on Antigravity
             if t.startswith("mcp__"):
                 mapped = None
             else:
                 mapped = AGY_TOOL_NAME_MAP.get(t, t)
-            if mapped is not None and mapped not in seen:
-                seen.add(mapped)
-                filtered_tools.append(mapped)
+            if mapped is not None and mapped not in agy_seen:
+                agy_seen.add(mapped)
+                agy_filtered_tools.append(mapped)
 
-        frontmatter["tools"] = filtered_tools
+        frontmatter["tools"] = agy_filtered_tools
         new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
         return f"---\n{new_frontmatter}---{parts[2]}"
 

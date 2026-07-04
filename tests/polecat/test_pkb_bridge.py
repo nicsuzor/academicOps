@@ -37,6 +37,19 @@ from polecat.pkb_bridge import (  # noqa: E402
 )
 from polecat.validation import PRURLValidationError  # noqa: E402
 
+sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+from lib.verification_evidence import EvidenceValidationError  # noqa: E402
+
+# Contract-conformant completion evidence (epic aops-262def9f WI2b):
+# independent reviewer + artifact-state SHA + method-named null result.
+CONFORMANT_EVIDENCE_TEXT = (
+    "Implemented and reviewed.\n\n"
+    "Verified-By: marsha (subagent 9f3e3217)\n"
+    "Verified-SHA: 51ed2fff\n"
+    "Findings: no defects found via pytest tests/polecat + read of "
+    "polecat/pkb_bridge.py:398-460\n"
+)
+
 # ---------------------------------------------------------------------------
 # Friction-fix tests
 # ---------------------------------------------------------------------------
@@ -73,17 +86,31 @@ def test_get_task_named_id(mock_client):
 def test_complete_task_positional_id(mock_client):
     mock_client.call_tool.return_value = {"success": True}
 
-    complete_task("task-1")
+    complete_task("task-1", completion_evidence=CONFORMANT_EVIDENCE_TEXT)
 
-    mock_client.call_tool.assert_any_call("complete_task", {"id": "task-1"})
+    call = next(c for c in mock_client.call_tool.call_args_list if c[0][0] == "complete_task")
+    params = call[0][1]
+    assert params["id"] == "task-1"
+    assert "Verified-By: marsha" in params["completion_evidence"]
 
 
 def test_complete_task_named_id(mock_client):
     mock_client.call_tool.return_value = {"success": True}
 
-    complete_task(id="task-1")
+    complete_task(
+        id="task-1",
+        completion_evidence="wired the thing",
+        verified_by="marsha (subagent)",
+        verified_sha="51ed2fff",
+        findings="no defects found via pytest tests/polecat + read of pkb_bridge.py:398-460",
+    )
 
-    mock_client.call_tool.assert_any_call("complete_task", {"id": "task-1"})
+    call = next(c for c in mock_client.call_tool.call_args_list if c[0][0] == "complete_task")
+    params = call[0][1]
+    assert params["id"] == "task-1"
+    # Explicit evidence kwargs are recorded as trailers on the evidence text.
+    assert "Verified-SHA: 51ed2fff" in params["completion_evidence"]
+    assert "wired the thing" in params["completion_evidence"]
 
 
 def test_create_task_with_title(mock_client):
@@ -382,6 +409,25 @@ class TestPkbTaskDeadlineFields:
 # ---------------------------------------------------------------------------
 
 
+def _mock_gh_run(head_sha: str = "51ed2fff" + "0" * 32, author: str = "botnicbot"):
+    """subprocess.run side_effect answering both gh calls the release makes:
+
+    - evidence live-check: ``gh pr view <url> --json headRefOid,author``
+    - URL liveness (A3/A8): ``gh pr view <url> --json state,url``
+    """
+    import json
+    import subprocess as _subprocess
+
+    def run(args, **kwargs):
+        if "headRefOid,author" in args:
+            stdout = json.dumps({"headRefOid": head_sha, "author": {"login": author}})
+        else:
+            stdout = '{"state":"OPEN"}'
+        return _subprocess.CompletedProcess(args, 0, stdout, "")
+
+    return run
+
+
 class TestReleaseTaskPRURLGate:
     """release_task must reject fabricated / unresolvable pr_urls."""
 
@@ -396,7 +442,7 @@ class TestReleaseTaskPRURLGate:
             release_task(
                 "task-1",
                 status="merge_ready",
-                summary="done",
+                summary=CONFORMANT_EVIDENCE_TEXT,
                 pr_url="not a url",
             )
         # Ensure release_task tool was not called
@@ -418,7 +464,7 @@ class TestReleaseTaskPRURLGate:
                 release_task(
                     "task-1",
                     status="merge_ready",
-                    summary="done",
+                    summary=CONFORMANT_EVIDENCE_TEXT,
                     pr_url="https://github.com/academic-ops/academicOps/commit/9841e951",
                 )
         # Ensure release_task tool was not called
@@ -431,15 +477,12 @@ class TestReleaseTaskPRURLGate:
         mock_client.call_tool.return_value = {"success": True}
         with (
             patch("polecat.validation.shutil.which", return_value="/usr/bin/gh"),
-            patch("polecat.validation.subprocess.run") as mock_run,
+            patch("polecat.validation.subprocess.run", side_effect=_mock_gh_run()),
         ):
-            mock_run.return_value.returncode = 0
-            mock_run.return_value.stdout = '{"state":"OPEN"}'
-            mock_run.return_value.stderr = ""
             ok = release_task(
                 "task-1",
                 status="merge_ready",
-                summary="done",
+                summary=CONFORMANT_EVIDENCE_TEXT,
                 pr_url="https://github.com/nicsuzor/academicOps/pull/649",
                 branch="polecat/task-1",
             )
@@ -456,7 +499,7 @@ class TestReleaseTaskPRURLGate:
         assert release_task(
             "task-1",
             status="merge_ready",
-            summary="done",
+            summary=CONFORMANT_EVIDENCE_TEXT,
             pr_url="https://github.com/any/repo/pull/1",
         )
         # Malformed still rejected.
@@ -464,9 +507,125 @@ class TestReleaseTaskPRURLGate:
             release_task(
                 "task-1",
                 status="merge_ready",
-                summary="done",
+                summary=CONFORMANT_EVIDENCE_TEXT,
                 pr_url="garbage",
             )
+
+
+# ---------------------------------------------------------------------------
+# release_task/complete_task — completion-claim evidence contract
+# (epic aops-262def9f WI2b)
+# ---------------------------------------------------------------------------
+
+
+class TestCompletionEvidenceGate:
+    """merge_ready/done are completion claims: the evidence contract replaces
+    the pr_url-liveness-only predicate. Attestation-only strings are NOT RUN."""
+
+    def test_merge_ready_without_evidence_rejected(self, mock_client):
+        with pytest.raises(EvidenceValidationError) as exc:
+            release_task("task-1", status="merge_ready", summary="all done!")
+        # Actionable error: names each gap and quotes the trailer format.
+        message = str(exc.value)
+        assert "Verified-By" in message
+        assert "Verified-SHA" in message
+        assert not any(
+            call[0][0] == "release_task" for call in mock_client.call_tool.call_args_list
+        )
+
+    def test_attestation_only_summary_rejected(self, mock_client):
+        """Quality bar (4): 'clean, verified' with a SHA and reviewer but no
+        findings/method is NOT evidence."""
+        summary = (
+            "Shipped.\n\n"
+            "Verified-By: marsha (subagent)\n"
+            "Verified-SHA: 51ed2fff\n"
+            "Findings: clean, verified\n"
+        )
+        with pytest.raises(EvidenceValidationError) as exc:
+            release_task("task-1", status="done", summary=summary)
+        assert "attestation-only" in str(exc.value)
+        assert not any(
+            call[0][0] == "release_task" for call in mock_client.call_tool.call_args_list
+        )
+
+    def test_structure_validated_and_recorded_without_pr_url(self, mock_client):
+        """No pr_url → structural validation only; explicit kwargs are
+        recorded as summary trailers so the release record carries them."""
+        mock_client.call_tool.return_value = {"success": True}
+        ok = release_task(
+            "task-1",
+            status="merge_ready",
+            summary="wired the frobnicator",
+            verified_by="rbg (subagent)",
+            verified_sha="deadbeef123",
+            findings="no regressions found via pytest tests/polecat -k bridge",
+        )
+        assert ok is True
+        call = next(c for c in mock_client.call_tool.call_args_list if c[0][0] == "release_task")
+        params = call[0][1]
+        assert "Verified-By: rbg (subagent)" in params["summary"]
+        assert "Verified-SHA: deadbeef123" in params["summary"]
+        # Evidence kwargs are contract fields, not MCP params.
+        assert "verified_by" not in params
+
+    def test_stale_sha_voided_by_pr_head(self, mock_client, monkeypatch):
+        """State change voids evidence: verified_sha must match the PR head."""
+        monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)
+        with (
+            patch("polecat.validation.shutil.which", return_value="/usr/bin/gh"),
+            patch(
+                "polecat.validation.subprocess.run",
+                side_effect=_mock_gh_run(head_sha="a" * 40),
+            ),
+        ):
+            with pytest.raises(EvidenceValidationError) as exc:
+                release_task(
+                    "task-1",
+                    status="merge_ready",
+                    summary=CONFORMANT_EVIDENCE_TEXT,  # bound to 51ed2fff
+                    pr_url="https://github.com/nicsuzor/academicOps/pull/649",
+                )
+        assert "voids evidence" in str(exc.value)
+
+    def test_reviewer_matching_pr_author_rejected(self, mock_client, monkeypatch):
+        """Producer == reviewer (the PR #2096 self-review collision) is
+        rejected live when a pr_url is given."""
+        monkeypatch.delenv("POLECAT_SKIP_PR_URL_CHECK", raising=False)
+        summary = (
+            "Shipped.\n\n"
+            "Verified-By: botnicbot\n"
+            "Verified-SHA: 51ed2fff\n"
+            "Findings: no defects found via pytest tests/polecat + read of cli.py:1-100\n"
+        )
+        with (
+            patch("polecat.validation.shutil.which", return_value="/usr/bin/gh"),
+            patch(
+                "polecat.validation.subprocess.run",
+                side_effect=_mock_gh_run(author="botnicbot"),
+            ),
+        ):
+            with pytest.raises(EvidenceValidationError) as exc:
+                release_task(
+                    "task-1",
+                    status="merge_ready",
+                    summary=summary,
+                    pr_url="https://github.com/nicsuzor/academicOps/pull/649",
+                )
+        assert "cannot verify their own work" in str(exc.value)
+
+    def test_non_completion_statuses_need_no_evidence(self, mock_client):
+        """blocked/partial are honest non-completions — no contract applied."""
+        mock_client.call_tool.return_value = {"success": True}
+        assert release_task("task-1", status="blocked", summary="stuck on X") is True
+        assert release_task("task-1", status="partial", summary="half done") is True
+
+    def test_complete_task_without_evidence_rejected(self, mock_client):
+        with pytest.raises(EvidenceValidationError):
+            complete_task("task-1", completion_evidence="finished everything")
+        assert not any(
+            call[0][0] == "complete_task" for call in mock_client.call_tool.call_args_list
+        )
 
 
 # ---------------------------------------------------------------------------

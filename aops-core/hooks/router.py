@@ -690,6 +690,23 @@ class HookRouter:
         if ctx.hook_event == "UserPromptSubmit":
             state.global_turn_count += 1
 
+        # Completion-claim ledger (epic aops-262def9f WI2): record completion
+        # claims (release_task / complete_task / update_task → merge_ready or
+        # done) on the session state at PostToolUse time. Lives HERE — not in
+        # gate dispatch — because _dispatch_gates skips tool-call events for
+        # is_subagent sessions (see the skip list there), while the handover
+        # gate's Stop-time evidence predicate must see claims made in exactly
+        # that session class (Stop/SessionEnd are exempt from the skip).
+        # Session-state bookkeeping only, like the turn counter above: never
+        # emits a verdict, never changes the skip lists (reserved — epic WI6).
+        if ctx.hook_event == "PostToolUse":
+            try:
+                from lib.verification_evidence import record_completion_claim
+
+                record_completion_claim(ctx, state)
+            except Exception as e:
+                print(f"WARNING: completion-claim ledger failed: {e}", file=sys.stderr)
+
         # Run special handlers first (unified_logger, ntfy, etc.) then gates
         self._run_special_handlers(ctx, state, merged_result)
 
@@ -1183,40 +1200,12 @@ class HookRouter:
         distinct from allow).
         """
         if event not in _CLAUDE_HSO_EVENTS:
-            # Claude Code exposes NO hookSpecificOutput channel for these events
-            # (SessionStart / SubagentStart / SubagentStop / AfterAgent), so an
-            # advisory ``context_injection`` cannot be delivered to the agent and
-            # a blocking verdict cannot be enforced. That does NOT make either a
-            # misconfiguration: a MULTI-EVENT trigger legitimately produces them
-            # here — the rbg reset trigger fires on
-            # ``^(PreToolUse|SubagentStart|SubagentStop)$`` with ONE shared
-            # transition, so the same rbg run that delivers its ``rbg.verified``
-            # advisory on the PreToolUse leg (an HSO event) also carries it onto
-            # SubagentStart, where it has nowhere to go. The load-bearing state
-            # change (counter reset, gate open) already persisted in
-            # ``execute_hooks`` (``state.save()``) BEFORE we reach output
-            # formatting, so nothing is lost by dropping the undeliverable copy.
-            #
-            # DROP the undeliverable channel with a loud stderr breadcrumb — a
-            # runtime hook must NEVER crash the session over an advisory it
-            # merely can't route on this event. Raising here (the strict posture
-            # introduced by the agy-focused refactor in 600985c9) turned a benign
-            # redundant advisory into a whole-hook ValueError on every rbg
-            # dispatch ("Failed with non-blocking status code: Traceback ...").
-            # This restores the pre-600985c9 graceful-drop and matches the
-            # TestNonHSOEventSafety contract ("silently dropped").
             if result.context_injection:
-                print(
-                    "WARNING: Claude Code has no context_injection (advisory) "
-                    f"channel for {event}; dropping advisory: {result.context_injection!r}",
-                    file=sys.stderr,
+                raise ValueError(
+                    f"Claude Code does not support context_injection (advisory) for {event}."
                 )
             if result.verdict in ("deny", "ask"):
-                print(
-                    f"WARNING: Claude Code cannot enforce a {result.verdict!r} "
-                    f"verdict for {event}; downgrading to allow.",
-                    file=sys.stderr,
-                )
+                raise ValueError(f"Claude Code does not support blocking verdicts for {event}.")
             return ResolvedDecision(
                 channel="json", banner=result.system_message, metadata=result.metadata
             )

@@ -63,6 +63,43 @@ def test_enforcer_fire_once_gate_skips_preadmission_synchronize():
     assert "needs.initialize.outputs.admitted == 'true'" in cond, cond
 
 
+def test_enforcer_refires_on_bot_selffix_preadmission_synchronize():
+    """WI5 (epic aops-262def9f): the fire-once gate is NARROWED for bot self-fixes.
+    A pre-admission `synchronize` whose tip is a bot self-fix commit must re-fire the
+    reviewers (so the fix SHA gets a fresh qa verdict before the human reviews) —
+    the reachable path the enforcer's committed short-circuit already promises. The
+    gate ORs `selffix_reverify == 'true'` alongside the admitted clause."""
+    cond = _jobs()["enforcer"]["if"]
+    # Fire-once for HUMAN pushes is still present ...
+    assert "github.event.action != 'synchronize'" in cond, cond
+    assert "needs.initialize.outputs.admitted == 'true'" in cond, cond
+    # ... and the WI5 self-fix re-verify clause is ORed in.
+    assert "needs.initialize.outputs.selffix_reverify == 'true'" in cond, cond
+
+
+def test_initialize_exposes_selffix_reverify_output():
+    """WI5: `initialize` must declare the `selffix_reverify` output and compute it
+    from the extracted, unit-tested decision script (not inline drift)."""
+    init = _jobs()["initialize"]
+    assert "selffix_reverify" in init.get("outputs", {}), init.get("outputs")
+    body = "\n".join(step.get("run", "") for step in init["steps"] if isinstance(step, dict))
+    assert "selffix-reverify.sh" in body, body
+
+
+def test_qa_cascades_from_enforcer_run_not_selffix_flag():
+    """WI5 (non-regression): qa is NOT gated on selffix_reverify itself — it cascades
+    from the enforcer having RUN and produced a verdict without committing. So on a
+    re-fired self-fix SHA, enforcer runs → qa runs; the convergence promise holds."""
+    qa_if = _jobs()["qa"]["if"]
+    assert (
+        "needs.enforcer.result == 'success'" in qa_if
+        or "needs.enforcer.result == 'failure'" in qa_if
+    ), qa_if
+    assert "needs.enforcer.outputs.committed != 'true'" in qa_if, qa_if
+    # qa must not itself depend on the selffix flag (it cascades from enforcer).
+    assert "selffix_reverify" not in qa_if, qa_if
+
+
 def test_initialize_exposes_admitted_output():
     """The fire-once gate reads `needs.initialize.outputs.admitted`; the
     `initialize` job must declare it and the carry-forward step must emit both
