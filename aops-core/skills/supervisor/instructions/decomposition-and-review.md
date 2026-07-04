@@ -24,6 +24,7 @@ isolation").
 ## Supervisor: Decompose Task
 
 1. Read task body and context
+   a. **Directive inventory (before decomposing):** enumerate every embedded directive in the body (imperative asks — "recover X", "also fix Y", "did we get rid of Z?"); an embedded directive is a requirement, and deleting or rewording its marker is not resolving it — each becomes an explicit subtask or AC, never a silent drop.
 2. Check parent hierarchy (P#101, P#106, P#107):
    a. Does this task have a parent? If not, find or create one.
    b. Is the parent the right abstraction level? (Task under epic, epic under project)

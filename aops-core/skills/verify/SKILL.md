@@ -34,7 +34,7 @@ Full definition, the verbatim prompt, the never-a-checklist hard rule, and the w
 
 Default posture: **assume it's broken.** The burden is on the artifact to prove it works — not on you to prove it doesn't.
 
-1. **Verify Evidence**: Read files, run code, and inspect actual outputs directly. Do not rely on agent summaries. Cite exact file paths, line numbers, or logs.
+1. **Verify Evidence**: Read files, run code, and inspect actual outputs directly. Do not rely on agent summaries. Cite exact file paths, line numbers, or logs. A worker's attestation ("clean", "verified") is not evidence, and a verdict is void once the artifact's SHA changes — canonical evidence contract: [[../supervisor/references/subagent-contracts#worker-handback-format]].
 2. **Classify the Bar**:
    - **Mechanical Bar**: Verify against Acceptance Criteria (AC). Verdict: `PASS`, `FAIL`, or `REVISE`.
    - **Fitness / Mixed Bar**: Verify against the AC and the spec's `## Fitness Rubric`. (If missing on a fitness task, return `REVISE — fitness rubric missing`).
