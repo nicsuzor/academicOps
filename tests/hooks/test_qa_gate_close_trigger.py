@@ -2,10 +2,12 @@
 """
 Regression tests for the qa gate close-on-task-claim triggers and sticky_until.
 
-The qa gate closes when a task is claimed (update_task → in_progress), NOT on
-write-tool use. Sessions without a claimed task skip the QA gate entirely.
-The verifier subagent (marsha/qa/verify) reopens it with sticky_until so
-writes to fix findings don't re-close it.
+The qa gate closes when a task is bound (claim_task, or update_task →
+in_progress), NOT on write-tool use. Sessions without a claimed task skip the
+QA gate entirely. The verifier subagent (marsha/qa/verify) reopens it — with
+sticky_until so writes to fix findings don't re-close it — but ONLY when its
+own result channel carries a parseable PASS/FAIL/REVISE verdict (epic
+aops-262def9f WI3: a name-match without a verdict no longer satisfies).
 """
 
 import importlib
@@ -151,7 +153,7 @@ def test_task_claim_then_stop_without_verifier_blocks(router, monkeypatch):
 
 
 def test_verifier_subagent_reopens_qa_gate(router):
-    """marsha completion should reopen the qa gate after a close."""
+    """marsha completion WITH a verdict should reopen the qa gate after a close."""
     state = _state_with_bound_task("qa-reopen")
 
     # Close the gate via task claim.
@@ -166,7 +168,8 @@ def test_verifier_subagent_reopens_qa_gate(router):
     )
     assert state.gates["qa"].status == GateStatus.CLOSED
 
-    # Verifier runs.
+    # Verifier completes; SubagentStop carries its verdict in
+    # last_assistant_message (the verifier's own result channel).
     router._dispatch_gates(
         HookContext(
             session_id="qa-reopen",
@@ -174,13 +177,15 @@ def test_verifier_subagent_reopens_qa_gate(router):
             tool_name=None,
             tool_input={},
             subagent_type="aops-core:marsha",
+            raw_input={"last_assistant_message": "**Verdict:** PASS — ran the suite."},
         ),
         state,
     )
     assert state.gates["qa"].status == GateStatus.OPEN, (
-        "qa gate should reopen after a verifier subagent (marsha) runs"
+        "qa gate should reopen after a verifier subagent (marsha) reports a verdict"
     )
     assert state.gates["qa"].sticky is True, "qa gate should be sticky after verification"
+    assert state.gates["qa"].metrics["last_verifier_verdict"] == "PASS"
 
 
 # --- After verifier, Stop should allow ---
@@ -207,7 +212,7 @@ def test_stop_allowed_after_verifier(router, monkeypatch):
     )
     assert state.gates["qa"].status == GateStatus.CLOSED
 
-    # Verifier runs.
+    # Verifier completes with a verdict on its result channel.
     router._dispatch_gates(
         HookContext(
             session_id="qa-allow-stop",
@@ -215,6 +220,7 @@ def test_stop_allowed_after_verifier(router, monkeypatch):
             tool_name=None,
             tool_input={},
             subagent_type="aops-core:marsha",
+            raw_input={"last_assistant_message": "**Verdict:** PASS — ran the suite."},
         ),
         state,
     )
@@ -236,6 +242,142 @@ def test_stop_allowed_after_verifier(router, monkeypatch):
         and str(result.verdict) in ("deny", "GateVerdict.DENY")
     )
     assert not has_deny, "Stop should be allowed after verifier runs"
+
+
+# --- Arming envelope: claim_task (epic aops-262def9f WI3a) ---
+
+
+def test_claim_task_closes_qa_gate(router):
+    """claim_task must arm (close) the qa gate — PR #2096 row 1: the session
+    claimed the task but never issued update_task→in_progress, so the gate
+    never armed and Stop passed an OPEN gate."""
+    state = _state_without_task("qa-claim-arm")
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-claim-arm",
+            hook_event="PostToolUse",
+            tool_name="mcp__plugin_aops-core_pkb__claim_task",
+            tool_input={"id": "task-abc"},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED, (
+        "qa gate must arm on claim_task, not only on update_task→in_progress"
+    )
+    assert state.main_agent.current_task == "task-abc", (
+        "claim_task with an explicit id must bind the session's current task"
+    )
+
+
+def test_claim_task_without_id_still_arms_qa(router):
+    """claim_task with no explicit id (claim next queued) still arms the gate;
+    binding is skipped (the id only exists in the tool result)."""
+    state = _state_without_task("qa-claim-noid")
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-claim-noid",
+            hook_event="PostToolUse",
+            tool_name="claim_task",
+            tool_input={},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED
+    assert state.main_agent.current_task is None
+
+
+# --- Verdict satisfier (epic aops-262def9f WI3b) ---
+
+
+def test_verifier_name_match_without_verdict_does_not_reopen(router):
+    """A marsha SubagentStop with NO parseable verdict on its result channel
+    must NOT satisfy the qa gate — the old name-regex satisfier accepted a
+    dispatched-but-empty verifier run (PR #2096 rows 1/3/4)."""
+    state = _state_with_bound_task("qa-noverdict")
+    state.gates["qa"].status = GateStatus.CLOSED
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-noverdict",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:marsha",
+            raw_input={"last_assistant_message": "Looks good, all clean and verified."},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED, (
+        "verifier name-match without a PASS/FAIL/REVISE verdict must not open qa"
+    )
+
+
+def test_subagent_start_no_longer_satisfies_qa(router):
+    """SubagentStart (dispatch) is not a verdict — no result channel exists
+    yet, so it must not open the gate."""
+    state = _state_with_bound_task("qa-substart")
+    state.gates["qa"].status = GateStatus.CLOSED
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-substart",
+            hook_event="SubagentStart",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:marsha",
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED, (
+        "dispatching a verifier is not verification — only a completed run "
+        "with a verdict satisfies the gate"
+    )
+
+
+def test_verifier_verdict_via_agent_tool_response(router):
+    """The Agent-tool PostToolUse leg: verdict carried in tool_response
+    content blocks (the shape captured in tests/test_subagent_gates.py)."""
+    state = _state_with_bound_task("qa-toolresp")
+    state.gates["qa"].status = GateStatus.CLOSED
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-toolresp",
+            hook_event="PostToolUse",
+            tool_name="Agent",
+            tool_input={"subagent_type": "marsha", "prompt": "verify the change"},
+            tool_output={
+                "status": "completed",
+                "content": [{"type": "text", "text": "Verdict: FAIL — tests break at x.py:12"}],
+            },
+            subagent_type="marsha",
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.OPEN
+    assert state.gates["qa"].metrics["last_verifier_verdict"] == "FAIL"
+
+
+def test_lowercase_pass_in_prose_does_not_satisfy(router):
+    """'tests pass' in prose is not a verdict — bare tokens count only in
+    UPPERCASE; the labelled 'Verdict:' form is required otherwise."""
+    state = _state_with_bound_task("qa-prose")
+    state.gates["qa"].status = GateStatus.CLOSED
+
+    router._dispatch_gates(
+        HookContext(
+            session_id="qa-prose",
+            hook_event="SubagentStop",
+            tool_name=None,
+            tool_input={},
+            subagent_type="aops-core:qa",
+            raw_input={"last_assistant_message": "I believe the tests pass now."},
+        ),
+        state,
+    )
+    assert state.gates["qa"].status == GateStatus.CLOSED
 
 
 def test_release_task_does_not_close_qa_gate(router):
@@ -275,7 +417,7 @@ def test_write_after_marsha_does_not_reclose_qa(router):
     )
     assert state.gates["qa"].status == GateStatus.CLOSED
 
-    # 2. Marsha runs — gate opens with sticky.
+    # 2. Marsha completes with a verdict — gate opens with sticky.
     router._dispatch_gates(
         HookContext(
             session_id="qa-loop",
@@ -283,6 +425,7 @@ def test_write_after_marsha_does_not_reclose_qa(router):
             tool_name=None,
             tool_input={},
             subagent_type="aops-core:marsha",
+            raw_input={"last_assistant_message": "**Verdict:** REVISE — fix /tmp/foo.py:3."},
         ),
         state,
     )

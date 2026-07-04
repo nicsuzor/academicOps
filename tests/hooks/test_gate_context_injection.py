@@ -75,7 +75,12 @@ class TestEveryPolicyHasContextKey:
         for config in GATE_CONFIGS:
             for policy in config.policies:
                 if policy.verdict not in ("allow",):
-                    if not policy.context_key:
+                    # An inline context_template satisfies the requirement
+                    # too: the engine resolves it via the same
+                    # _resolve_message path, and code-inline templates keep
+                    # instruction-text (.md) deltas at zero (e.g. the
+                    # handover evidence policy, epic aops-262def9f WI2a).
+                    if not policy.context_key and not policy.context_template:
                         missing.append(
                             f"{config.name}: verdict={policy.verdict!r}, "
                             f"message_key={policy.message_key!r}, "
