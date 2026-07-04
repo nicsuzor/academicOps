@@ -233,3 +233,43 @@ class TestPreToolUseBlockHasContextInjection:
             f"verdict={result.verdict.value}, "
             f"context_injection={result.context_injection!r}"
         )
+
+
+class TestSubagentStartContextInjectionDoesNotCrash:
+    """End-to-end regression: an rbg SubagentStart must not crash output_for_claude.
+
+    The rbg reset trigger fires on ^(PreToolUse|SubagentStart|SubagentStop)$ with
+    a shared transition that emits ``rbg.verified`` context_injection. On
+    SubagentStart, Claude has no additionalContext channel, so the router must
+    DROP the advisory rather than raise — otherwise every rbg dispatch fails with
+    "Failed with non-blocking status code: Traceback ... ValueError: Claude Code
+    does not support context_injection (advisory) for SubagentStart."
+    """
+
+    def test_rbg_subagent_start_produces_context_but_router_does_not_crash(self, router):
+        state = SessionState.create("test-subagent-start", client_type="claude")
+
+        ctx = HookContext(
+            session_id="test-subagent-start",
+            client_type="claude",
+            hook_event="SubagentStart",
+            subagent_type="aops-core:rbg",
+            tool_name=None,
+            tool_input={},
+        )
+
+        result = router._dispatch_gates(ctx, state)
+
+        # The rbg reset trigger fired and produced a context_injection — the exact
+        # canonical output that used to crash the Claude formatter.
+        assert result is not None, "rbg reset trigger should fire on SubagentStart"
+        assert result.context_injection, (
+            "expected the rbg.verified context_injection that reproduces the crash"
+        )
+
+        canonical = router._gate_result_to_canonical(result)
+        # Must NOT raise — the advisory is dropped (no HSO channel on SubagentStart).
+        output = router.output_for_claude(canonical, "SubagentStart")
+        payload = output.model_dump_json(exclude_none=True)
+        assert "hookSpecificOutput" not in payload
+        assert "additionalContext" not in payload

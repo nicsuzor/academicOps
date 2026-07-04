@@ -1183,12 +1183,40 @@ class HookRouter:
         distinct from allow).
         """
         if event not in _CLAUDE_HSO_EVENTS:
+            # Claude Code exposes NO hookSpecificOutput channel for these events
+            # (SessionStart / SubagentStart / SubagentStop / AfterAgent), so an
+            # advisory ``context_injection`` cannot be delivered to the agent and
+            # a blocking verdict cannot be enforced. That does NOT make either a
+            # misconfiguration: a MULTI-EVENT trigger legitimately produces them
+            # here — the rbg reset trigger fires on
+            # ``^(PreToolUse|SubagentStart|SubagentStop)$`` with ONE shared
+            # transition, so the same rbg run that delivers its ``rbg.verified``
+            # advisory on the PreToolUse leg (an HSO event) also carries it onto
+            # SubagentStart, where it has nowhere to go. The load-bearing state
+            # change (counter reset, gate open) already persisted in
+            # ``execute_hooks`` (``state.save()``) BEFORE we reach output
+            # formatting, so nothing is lost by dropping the undeliverable copy.
+            #
+            # DROP the undeliverable channel with a loud stderr breadcrumb — a
+            # runtime hook must NEVER crash the session over an advisory it
+            # merely can't route on this event. Raising here (the strict posture
+            # introduced by the agy-focused refactor in 600985c9) turned a benign
+            # redundant advisory into a whole-hook ValueError on every rbg
+            # dispatch ("Failed with non-blocking status code: Traceback ...").
+            # This restores the pre-600985c9 graceful-drop and matches the
+            # TestNonHSOEventSafety contract ("silently dropped").
             if result.context_injection:
-                raise ValueError(
-                    f"Claude Code does not support context_injection (advisory) for {event}."
+                print(
+                    "WARNING: Claude Code has no context_injection (advisory) "
+                    f"channel for {event}; dropping advisory: {result.context_injection!r}",
+                    file=sys.stderr,
                 )
             if result.verdict in ("deny", "ask"):
-                raise ValueError(f"Claude Code does not support blocking verdicts for {event}.")
+                print(
+                    f"WARNING: Claude Code cannot enforce a {result.verdict!r} "
+                    f"verdict for {event}; downgrading to allow.",
+                    file=sys.stderr,
+                )
             return ResolvedDecision(
                 channel="json", banner=result.system_message, metadata=result.metadata
             )
