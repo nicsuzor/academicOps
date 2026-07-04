@@ -143,10 +143,6 @@ gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 [What must be fixed]"
 ```
 
-### If `gh pr review` fails — self-review fallback
-
-See "Self-review identity-collision fallback" in shared-error-handling.md (above) for the full contract. Your marker is `# QA Verification`; use `agent=qa` in the structured recovery line.
-
 ## Rules
 
 - **Credential Isolation (P#51):** Use `GH_TOKEN` from your environment.

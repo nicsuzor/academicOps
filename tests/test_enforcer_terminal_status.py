@@ -32,37 +32,22 @@ def _review(sha: str, state: str) -> dict:
     return {"id": 1, "commit_id": sha, "state": state, "body": "## Enforcer Review"}
 
 
-def _fallback_comment(sha: str, verdict: str, login: str = "claude[bot]") -> dict:
-    return {
-        "user": {"login": login},
-        "body": (
-            "## Enforcer Review\n\n**Verdict: REQUEST_CHANGES**\n\n"
-            f"<!-- aops:self-review-fallback agent=enforcer sha={sha} verdict={verdict} -->\n\n"
-            "reasoning..."
-        ),
-    }
-
-
 def run(
     tmp_path: Path,
     *,
     committed: str = "false",
     reviews: list[dict] | None = None,
-    comments: list[dict] | None = None,
     review_outcome: str = "success",
     retry_outcome: str = "",
 ) -> dict:
     rf = tmp_path / "reviews.json"
     rf.write_text(json.dumps(reviews if reviews is not None else []))
-    cf = tmp_path / "comments.json"
-    cf.write_text(json.dumps(comments if comments is not None else []))
     env = {
         "HEAD_SHA": SHA,
         "COMMITTED": committed,
         "REVIEW_OUTCOME": review_outcome,
         "RETRY_OUTCOME": retry_outcome,
         "REVIEWS_JSON": str(rf),
-        "COMMENTS_JSON": str(cf),
         "PATH": "/usr/bin:/bin:/usr/local/bin",
     }
     proc = subprocess.run(
@@ -91,9 +76,7 @@ def test_committed_genuinely_unset_fails_fast_rather_than_defaulting():
     silently fall through to the review-match path this script exists to
     bypass, reintroducing the exact false-red this fix removes."""
     env = {"HEAD_SHA": SHA, "REVIEW_OUTCOME": "success", "PATH": "/usr/bin:/bin:/usr/local/bin"}
-    proc = subprocess.run(
-        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
-    )
+    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
     assert proc.returncode != 0
     assert "COMMITTED" in proc.stderr
 
@@ -135,83 +118,9 @@ def test_committed_short_circuits_before_requiring_repo_or_pr_number(tmp_path: P
         "REVIEW_OUTCOME": "success",
         "PATH": "/usr/bin:/bin:/usr/local/bin",
     }
-    proc = subprocess.run(
-        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
-    )
+    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
     assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
     assert not rf.exists()  # sanity: we never even referenced REVIEWS_JSON
-
-
-# ── Self-review-collision fallback (PR #2081, 2026-07-03): gh pr review fails
-#    when the PR author is also claude[bot]; the agent posts its verdict as a
-#    structured comment instead, and this script must recover it. ───────────
-
-
-def test_fallback_comment_changes_requested_recovered_as_failure(tmp_path: Path):
-    out = run(
-        tmp_path,
-        committed="false",
-        reviews=[],
-        comments=[_fallback_comment(SHA, "CHANGES_REQUESTED")],
-    )
-    assert out["state"] == "failure"
-    assert out["failed"] == "true"
-    assert "self-review fallback" in out["description"]
-
-
-def test_fallback_comment_approved_recovered_as_success(tmp_path: Path):
-    out = run(
-        tmp_path,
-        committed="false",
-        reviews=[],
-        comments=[_fallback_comment(SHA, "APPROVED")],
-    )
-    assert out["state"] == "success"
-    assert out["failed"] == "false"
-    assert "self-review fallback" in out["description"]
-
-
-def test_fallback_comment_for_different_sha_is_not_a_match(tmp_path: Path):
-    """SHA-scoping must hold for the fallback path exactly as it does for
-    formal reviews — a stale fallback comment from an earlier SHA must never
-    be read as this SHA's verdict."""
-    out = run(
-        tmp_path,
-        committed="false",
-        reviews=[],
-        comments=[_fallback_comment(OTHER_SHA, "APPROVED")],
-    )
-    assert out["state"] == "failure"
-    assert "no APPROVED/CHANGES_REQUESTED review" in out["description"]
-
-
-def test_fallback_comment_from_untrusted_author_is_ignored(tmp_path: Path):
-    """Trust is scoped to claude[bot] specifically — the same identity a
-    genuine review would have come from. An arbitrary commenter (including a
-    malicious PR participant) forging the marker text must not be able to
-    manufacture a green verdict."""
-    out = run(
-        tmp_path,
-        committed="false",
-        reviews=[],
-        comments=[_fallback_comment(SHA, "APPROVED", login="some-random-user")],
-    )
-    assert out["state"] == "failure"
-    assert "no APPROVED/CHANGES_REQUESTED review" in out["description"]
-
-
-def test_formal_review_takes_priority_over_fallback_comment(tmp_path: Path):
-    """A genuine review is stronger evidence than a comment marker — if both
-    exist (e.g. a stale fallback comment from a prior pass plus a fresh real
-    review), the formal review wins."""
-    out = run(
-        tmp_path,
-        committed="false",
-        reviews=[_review(SHA, "APPROVED")],
-        comments=[_fallback_comment(SHA, "CHANGES_REQUESTED")],
-    )
-    assert out["state"] == "success"
-    assert out["description"] == "Axiom-clean"
 
 
 # ── Not committed: the pre-existing review-matching behaviour, preserved ────
@@ -272,9 +181,7 @@ def test_not_committed_transient_gh_api_failure_degrades_to_diagnosis_not_crash(
         "PR_NUMBER": "1",
         "PATH": f"{fake_bin}:/usr/bin:/bin",
     }
-    proc = subprocess.run(
-        ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20
-    )
+    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=env, timeout=20)
     assert proc.returncode == 0, f"stderr={proc.stderr}\nstdout={proc.stdout}"
     out: dict[str, str] = {}
     for line in proc.stdout.splitlines():
@@ -286,9 +193,7 @@ def test_not_committed_transient_gh_api_failure_degrades_to_diagnosis_not_crash(
 
 
 def test_not_committed_both_attempts_failed_is_infra_failure(tmp_path: Path):
-    out = run(
-        tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="failure"
-    )
+    out = run(tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="failure")
     assert out["state"] == "failure"
     assert out["failed"] == "true"
     assert "failed in both attempts" in out["description"]
@@ -307,9 +212,7 @@ def test_not_committed_retry_cancelled_counts_as_both_attempts_failed(tmp_path: 
 
 
 def test_not_committed_retry_succeeded_but_posted_no_verdict(tmp_path: Path):
-    out = run(
-        tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="success"
-    )
+    out = run(tmp_path, committed="false", reviews=[], review_outcome="failure", retry_outcome="success")
     assert out["state"] == "failure"
     assert "retry succeeded but posted no verdict" in out["description"]
 

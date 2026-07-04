@@ -83,10 +83,6 @@ File your verdict using `gh pr review`. Use `--approve` when no violations **rem
 - **CHANGES_REQUESTED path — full reasoning in the body (unchanged):** Start the body with `## Enforcer Review` then include the violation list, axiom IDs, and mechanic-actionable fix instructions. The mechanic reads this prose to know what to fix.
 - The workflow also reconciles to a single standing verdict per SHA as a safety net, but you should still post exactly once — the safety net is not licence to double-post.
 
-### 5a. If `gh pr review` fails — self-review fallback
-
-See "Self-review identity-collision fallback" in shared-error-handling.md (above) for the full contract. Your marker is `## Enforcer Review`; use `agent=enforcer` in the structured recovery line.
-
 If you push fixes, use the commit trailer:
 
 ```
