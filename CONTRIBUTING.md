@@ -28,4 +28,4 @@ For how plugin artifacts are built, packaged per platform, and what goes where, 
 
 ## Pull requests
 
-A PR that adds, modifies, or removes an enforcement mechanism (hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour) must include the five-point Cost-Benefit Analysis from [`specs/enforcement/enforcement.md`](specs/enforcement/enforcement.md) in the PR body. The PR reviewer warns on a missing CBA and blocks when friction evidence, ongoing cost, or reversibility is missing.
+A PR that touches an enforcement mechanism must include a Cost-Benefit Analysis in the PR body — see [`specs/enforcement/enforcement.md`](specs/enforcement/enforcement.md) §4.1 for the CBA template and [`aops-core/skills/strategic-review/review-contexts/pr-framework.md`](aops-core/skills/strategic-review/review-contexts/pr-framework.md) for what counts and how it's checked.
