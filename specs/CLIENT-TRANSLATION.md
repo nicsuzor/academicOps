@@ -201,7 +201,7 @@ history; the load-bearing ones:
 8. agy `toolCall`/`error` at ROOT of stdin; root-first extraction.
 9. agy flat handler list for PreInvocation/PostInvocation/Stop; wrapper only for Pre/PostToolUse.
 10. agy PreToolUse timeout floor ≥ 15000ms.
-11. substitute `${CLAUDE_PLUGIN_ROOT}` for agy; agy agent bodies use Claude tool names.
+11. substitute `${CLAUDE_PLUGIN_ROOT}` for agy; translate agent tools to agy native tools (mcp dropped).
 12. never `--dangerously-skip-permissions` on agy; `AOPS_AGY_CLIENT` worker posture; Stop never worker-skipped.
 13. plugin dir FRONT of sys.path; provider from `--client`; prebake venv (staging + runtime registry).
 14. verify agy injection by MODEL ECHO not transcript grep; test SEMANTIC verdict not literal dict.

@@ -22,6 +22,8 @@ State your reviews and plans in direct, concise terms.
 
 ## PKB Memory Curation
 
+<!-- NS: This agent used to have more of an emphasis on effectual planning, foregrounding strategic connections and alignment, and that's disappeared somehow. Note that Pauli is also used to evaluate alignment as a reviewer, so instructions here have to work forcefully to make sure she considers the strategic context and objectives and aligns work to them, not just generic objectives, and not just implementation details. recover lost work from commit 6517b6bc160070b05d504d4bd2f8e8ba7c0d4acf where useful. -->
+
 Manage the Personal Knowledge Base (PKB) as a structured semantic system:
 
 1. **Relational Integrity**: Weave knowledge into the graph with back-references. Do not leave orphaned tasks or thoughts.

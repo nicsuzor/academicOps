@@ -10,6 +10,15 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 
 # Auto-Mode Classifier — the framework's judgment gate at the per-action boundary
 
+<!-- NS: go through and remove all these 'spec not state' messages and make sure specs are compliant with our documentation standards. -->
+
+> **Spec, not state.** This file is the design statement for what the Claude
+> Code auto-mode classifier is _for_: the policy that decides which rules
+> belong in it and the cost model that shapes how those rules must be
+> written. The rules themselves are installed in
+> `polecat/defaults/claude-settings.json`; [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)
+> tracks the mechanism's state (seeded/unseeded), not a per-rule copy.
+
 Claude Code's auto mode delegates tool-call approvals to a model-based
 classifier that runs before every tool call. It reads a **stripped
 transcript** (the user's messages in full, plus bare tool-call names and
@@ -47,7 +56,7 @@ Write each rule as **prose stating principle + reasoning + cue + carve-outs**, n
 
 Default every new behavioural rule to `soft_deny` (context-overridable); escalate to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
 
-**Current state: the rule set is empty.** No `autoMode` rules are seeded yet — the mechanism, spec, and pyramid placement exist, but the classifier's behavioural rule set has zero entries. New rules follow the evidence loop above and land via [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
+**Current state: the rule set is seeded and populated.** `autoMode` rules live in `polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec and [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) track the mechanism, not each entry. New rules still follow the evidence loop above before landing, with a mechanism-class note (not a per-rule row) added to [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) when the ruleset changes shape.
 
 ## References
 

@@ -42,7 +42,7 @@ Default posture: **assume it's broken.** The burden is on the artifact to prove 
    - Check freshness of inputs read.
    - Verify changes are complete across all callsites.
    - Acknowledge known limitations or constraints.
-4. **Project-rule check**: If `.agents/rules/RULES.md` exists in this repo, read it before judging. Apply its rules with the same class/instance discipline as `AXIOMS.md`. Project-rule violations belong under **Process Compliance** in the report, cited by `{#slug}`.
+4. **Project-rule check**: If `.agents/rules/RULES.md` exists in this repo, read it before judging. Apply its rules with the same class/instance discipline as `AXIOMS.md`. Project-rule violations belong under **Process Compliance** in the report, cited by `{#slug}`. `RULES.md` is not the only standard: for a content/instruction artifact (skill, agent body, prompt, doc, spec) also identify the skill that owns its quality standard for that artifact **type** and verify against it — e.g. `/craft` for instruction / agent-definition / skill / prompt edits. The governing standard often lives in a skill, not `RULES.md`.
 5. **Forcing Checks**: Write explicit answers for each in the report before a PASS verdict:
    - **Premise Test (step 0, before reading the diff)**: State verbatim the sharp-principal reaction from task + diffstat alone (see Step 0). A bad premise is a `FAIL` regardless of test coverage; you cannot reach `PASS` without writing it.
    - **Sentinel / Empty-State Audit**: Count and list empty/sentinel fields (e.g. `DERIVER_MISSING`, `N/A`, `TODO`). Fail if primary value-signals are missing.

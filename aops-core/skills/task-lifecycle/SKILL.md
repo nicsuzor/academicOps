@@ -21,6 +21,8 @@ domain:
 
 # task-lifecycle — Claim → (Dispatch | Execute) → Verify → Complete
 
+<!-- NS: I don't know who this skill is FOR. it seems like a spec. who's gonna invoke it? -->
+
 This skill is the **single source of truth** for advancing one task from the
 `queued` set into work. Two commands consume it; the only difference between them
 is the tail (where the work runs):
@@ -96,7 +98,7 @@ For the selected candidate leaf task:
   because it is already out of the dispatchable set — supersession or a drop
   decision moves the task to a terminal status (`done` / `cancelled`), so the
   `queued`-only selection in §1 never surfaces it. No separate field check is
-  needed here. What the select step *cannot* see is a leftover from a completed
+  needed here. What the select step _cannot_ see is a leftover from a completed
   decomposition:
   - If the task has a parent, retrieve the parent's children (siblings) via
     `mcp__plugin_aops-core_pkb__get_task_children`. If **all** siblings are

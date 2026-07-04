@@ -21,21 +21,11 @@ version: 0.1.0
 permalink: skills-design-rubric
 ---
 
+<!-- NS: I have a feeling this skill can be removed or moved into the aops contributing guide...-->
+
 # /design-rubric — Design-Stage Fitness Rubric
 
 Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`.
-
-## Modes of Operation
-
-1. **Author Mode**: Write a new rubric on a spec/epic body before implementation begins.
-2. **Critique Mode**: Red-team an existing spec/decomposition before dispatch to identify gaps and unstated assumptions.
-
-## When to Invoke
-
-- Authoring a spec or epic body for user-facing deliverables (UX, prose, design output, dashboards).
-- High-risk task preflights.
-- Strategic reviews of plans.
-- _Do not invoke_ for purely mechanical tasks (e.g. lint fixes, dependency bumps).
 
 ## Qualitative Bar Signals
 

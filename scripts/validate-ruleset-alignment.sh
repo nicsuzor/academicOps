@@ -29,6 +29,7 @@ API_DRIVEN_STATUSES=(
   "qa-status"           # set by agent-qa.yml via GitHub Statuses API (Phase 2 v2 QA / marsha)
   "admit-status"        # set by the in-pipeline `admit` job in pr-pipeline.yml on Environment approval (Phase 4 human gate)
   "review-attestation"   # set by pr-pipeline.yml `review-attestation` job (fail-closed liveness; #1450, §3.7)
+  "comment-triage-status" # set by pr-pipeline.yml `comment-triage-status` job + admit-on-review.yml `admit-comment-triage` job (fail-closed unresolved-comment gate; #2094)
   "merge-prep-status"   # legacy v1 gate (set by agent-merge-prep.yml + Initialize); no longer required
 )
 
@@ -128,6 +129,21 @@ while IFS= read -r required; do
       # Environment approval. (Retired the separate-dispatch stage2-admission.yml form.)
       if ! grep -q "admit-status" "$WORKFLOWS_DIR"/pr-pipeline.yml 2>/dev/null; then
         echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/pr-pipeline.yml does not set admit-status!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+    elif [[ "$required" == "comment-triage-status" ]]; then
+      # Set by both pr-pipeline.yml's `comment-triage-status` job (every push)
+      # and admit-on-review.yml's `admit-comment-triage` job (at admission) —
+      # both must exist so the check runs whether or not admission has
+      # happened yet.
+      if ! grep -q "comment-triage-status" "$WORKFLOWS_DIR"/pr-pipeline.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/pr-pipeline.yml does not set comment-triage-status!"
+        ERRORS=$((ERRORS + 1))
+        continue
+      fi
+      if ! grep -q "comment-triage-status" "$WORKFLOWS_DIR"/admit-on-review.yml 2>/dev/null; then
+        echo "  ✗ '$required' — API-driven status is required, but $WORKFLOWS_DIR/admit-on-review.yml does not set comment-triage-status!"
         ERRORS=$((ERRORS + 1))
         continue
       fi

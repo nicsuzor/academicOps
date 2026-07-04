@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.61](https://github.com/nicsuzor/academicOps/compare/v0.3.60...v0.3.61) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ci:** fail closed instead of crashing when enforcer-terminal-status.sh is missing on a stale PR branch ([#2094](https://github.com/nicsuzor/academicOps/issues/2094)) ([06ab34e](https://github.com/nicsuzor/academicOps/commit/06ab34ed2a63618060fa603ee14f470a227ae87e))
+
+## [0.3.60](https://github.com/nicsuzor/academicOps/compare/v0.3.59...v0.3.60) (2026-07-04)
+
+
+### Bug Fixes
+
+* **qa:** route content-quality verification to the artifact-type's governing standard ([#2080](https://github.com/nicsuzor/academicOps/issues/2080)) ([d6f236e](https://github.com/nicsuzor/academicOps/commit/d6f236ea75422063127aebe9e6651097f5ec03dd))
+
+## [0.3.59](https://github.com/nicsuzor/academicOps/compare/v0.3.58...v0.3.59) (2026-07-03)
+
+
+### Features
+
+* **build:** translate agent tool names for Antigravity platform ([#2073](https://github.com/nicsuzor/academicOps/issues/2073)) ([19d1a63](https://github.com/nicsuzor/academicOps/commit/19d1a6307e314c4726416a53b7c82a8263628617))
+
 ## [0.3.58](https://github.com/nicsuzor/academicOps/compare/v0.3.57...v0.3.58) (2026-07-03)
 
 

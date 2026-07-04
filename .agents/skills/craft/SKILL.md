@@ -44,6 +44,8 @@ These are lenses, not a checklist to tick. If instructions feel shallow but matc
 
 Instances of the principles above, worth naming because they recur:
 
+<!-- NS: I dont know who this stuff is aimed at. It _should_ be a guide to best practice agent prompting. -->
+
 - **Compliance framing.** "Did X run?" instead of "is the output correct, complete, and verified?" Require outcome-based checks, not process-completion checks.
 - **Evidence laundering.** Accepting an agent's summary, a partial artifact-channel check (just stdout, not logs/exit-code/schema), or a green test suite as proof — without inspecting the actual output for silent failures, corruption, or placeholders. (Principle 4.)
 - **Deferred-read dispersion.** A rule the agent needs _at the moment of action_ lives one pointer away ("see X.md") instead of inline. An agent that already has the instructions in hand frequently won't make the follow-up read. Inline mandatory content; reserve pointers for genuinely optional depth — never fork required content across a summary and a linked file.
@@ -71,21 +73,9 @@ Frontmatter/body boundary: permissions, model, tools, and allowlists live in fro
 
 ## Construction Rule: Static Prefix, Variable Tail
 
+<!-- NS: make it clear that this is a caching requirement. -->
+
 For any code that renders a template with dynamic data (an f-string, `.format()`/`.render()`, or a builder concatenating static scaffolding with session/transcript content): emit all static material first, append variable content last. Prompt caching keys on the longest identical prefix — one variable byte placed early invalidates the cacheable suffix that follows it. Where moving a placeholder to the tail would break meaning for negligible cache gain (a short single-token variable mid-sentence), leave it and say why.
-
-## Modes
-
-**Author** — review proposed instructions before deployment.
-
-1. Assess against the principles and patterns above.
-2. Quote any text exhibiting a defect and write a high-depth rewrite.
-3. Verdict: **SHIP** (no defects), **REVISE** (edit in place with fixes), or **REJECT** (fundamental redesign needed).
-
-**Audit** — trace an execution failure back to its instruction gap.
-
-1. Identify what the agent missed and locate the executing instruction.
-2. Classify the gap against the principles above.
-3. Edit the instruction in place to prevent recurrence — as the durable principle the failure illustrates, not a recipe tuned to this one instance (Principle 5).
 
 ## Output
 

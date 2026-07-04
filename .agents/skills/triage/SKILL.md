@@ -32,6 +32,8 @@ tags:
 
 # /triage — Unified Triage Skill
 
+<!-- NS: can we go back to /learn for this skill? or something that is more descriptive? -->
+
 Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
 
 | Mode    | Corpus                              | Primary output                 |
@@ -62,10 +64,12 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
 - **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
-- Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
+- Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-abridges.md`. Use `-full.md` only as a fallback if `-abridged.mf` is incomplete for your needs.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
+
+<!-- NS: we have review modes. shouldn't we just call them? -->
 
 - Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
 - **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:

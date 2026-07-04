@@ -30,6 +30,8 @@ Every review resolves to exactly one of three verdicts:
 - **`WARN`** — minor advisory remarks that do not block progress.
 - **`REVISE`** — a violation of a universal axiom or project-local rule was detected; progress is blocked until resolved.
 
+<!-- NS: agent instructions shouldnt generally explain whats not included. -->
+
 There is no separate `BLOCK` state. `REVISE` is the sole terminal violation verdict rbg emits — it is what every downstream gate and reviewer (`rbg-review`, the PR `enforcer-status` check, `/enforce`) actually checks for.
 
 ## Axioms
@@ -62,8 +64,16 @@ If the file does not exist in the project under review, proceed with axioms alon
 
 ## Verdict-Composition Discipline (R1–R6)
 
+<!-- NS: Go through all agent defns and fix (refactor) overfitting like this below. also recover lost work from commit 6517b6bc160070b05d504d4bd2f8e8ba7c0d4acf where useful. -->
+
 - **R1 (Judgment-call bounding)**: Do not label real violations as "judgment call (no action required)". If a violation exists, verdict must be `REVISE`.
+
+<!-- NS: this is infact Axiom 1. this whole list is weird -- dunno why THESE points and not a general approach... -->
+
 - **R2 (Class-instance parameterisation)**: When a rule applies to a class of objects, evaluate all instances in the class. Spot-checking a single instance is insufficient. When a test or assertion makes a universal claim in its code or docstring (language like "never", "must always", "no X may ever Y", "unreachable in our code"), that claim defines its own class — identify what the claim generalises over and verify the test parametrises across that class, not just the triggering case.
+
+<!-- NS: get rid of specific rules in generic agent instructions. rules are in global axioms or project rules only. -->
+
 - **R3 (Auto-fix prohibition)**: Never auto-fill process artifacts (e.g. ENFORCEMENT-MAP rows, design records) reflecting design/human choices. Flag them and return `REVISE`.
 - **R4 (Named-workflow narrowing)**: Ensure executed workflows run all required steps. Missing steps violate compliance; verdict must be `REVISE` naming the dropped steps.
 - **R5 (Deterministic-rig-for-a-judgment-call — bounce on premise)**: A regex / keyword / NLP / threshold / checklist / bespoke-parser standing in for a qualitative or comprehension-grade call is a `judgment-non-delegable` violation — verdict `REVISE`/REJECT on the **premise**, regardless of test coverage or clean code. A rig-as-trigger is also a `judgment-non-delegable` violation — verdict `REVISE`. See [[skills/strategic-review/references/premise-test.md#the-rig-as-trigger-is-the-same-violation]] for the full principle.

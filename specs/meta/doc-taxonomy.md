@@ -18,6 +18,8 @@ Live in `aops-core/agents/<name>.md` (personas, loaded via the `Agent` tool), `a
 
 This spec answers _which file_ by audience. For _which injection tier_ and enforcement mechanism applies by type and frequency, see [ENFORCEMENT-MAP.md](../ENFORCEMENT-MAP.md) §Pyramid.
 
+<!-- NS: We should make some brief quality and substance notes about what info each doc should and shouldn't contain and how to know it's good. -->
+
 ## Specs — for devs and auditors
 
 Live in `specs/<subsystem>/<name>.md` at the academicOps root.

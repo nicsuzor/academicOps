@@ -57,7 +57,7 @@ Was the work done properly?
 | No regressions | Do existing features still work?                                                      |
 | Project rules  | If `.agents/rules/RULES.md` exists in this repo, does the diff comply with its rules? |
 
-**Repo-local rules check.** If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply its rules **with the same class/instance discipline as `AXIOMS.md`** — each rule targets a class of cases, not the one diff in front of you. Project-rule violations belong in the Issues section under the **Process Compliance** dimension, cited by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note it briefly in the report. Do not invent project rules from related repos or memory.
+**Repo-local rules check.** If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply its rules **with the same class/instance discipline as `AXIOMS.md`** — each rule targets a class of cases, not the one diff in front of you. Project-rule violations belong in the Issues section under the **Process Compliance** dimension, cited by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note it briefly in the report. Do not invent project rules from related repos or memory. `RULES.md` is the floor, not the whole bar: for a content/instruction artifact (skill, agent body, prompt, doc, spec) also identify the skill that owns the quality standard for that artifact **type** and verify the diff against it — e.g. `/craft` for instruction / agent-definition / skill / prompt edits. The governing standard often lives in a skill, not `RULES.md`.
 
 #### 3. Semantic Correctness
 
