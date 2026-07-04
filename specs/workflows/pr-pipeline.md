@@ -1067,39 +1067,29 @@ posts a PR review, so their terminal status has always been "success whenever th
 itself didn't crash, committed or not" — the same committed-first shape, arrived at
 independently because they had no review-match step to get wrong.
 
-**Self-review identity-collision fallback — LIVE (2026-07-03, PR #2081).** Enforcer's and
-QA's own `gh pr review` calls authenticate as `claude[bot]` — this is `claude-code-action`'s
-own Bash-tool auth, fixed regardless of the job's `GH_TOKEN` env var (confirmed empirically:
-a `botnicbot`-authored PR's QA review posted fine as `claude[bot]`, no collision; a
-`claude[bot]`-authored PR's enforcer review failed, naming `app/claude` as its own colliding
-identity). **PR authorship is not controlled by any workflow in this repo** — it is set by
-whatever external session/tool opens the PR, and has been observed as `botnicbot`,
-`claude[bot]`, and a maintainer's personal account on different occasions. When a PR happens
-to be authored by `claude[bot]` too, GitHub rejects `gh pr review --request-changes` (and
-possibly `--approve`) as a self-review, and no formal review can ever be posted for that SHA
-— without a recovery path, the required `enforcer-status`/`qa-status` check is stuck at an
-unrecoverable `failure` forever (worked example: PR #2081).
+**Self-review identity-collision — known open failure mode (2026-07-03, PR #2081).**
+Enforcer's and QA's own `gh pr review` calls authenticate as `claude[bot]` — this is
+`claude-code-action`'s own Bash-tool auth, fixed regardless of the job's `GH_TOKEN` env var
+(confirmed empirically: a `botnicbot`-authored PR's QA review posted fine as `claude[bot]`,
+no collision; a `claude[bot]`-authored PR's enforcer review failed, naming `app/claude` as
+its own colliding identity). **PR authorship is not controlled by any workflow in this
+repo** — it is set by whatever external session/tool opens the PR, and has been observed as
+`botnicbot`, `claude[bot]`, and a maintainer's personal account on different occasions. When
+a PR happens to be authored by `claude[bot]` too, GitHub rejects `gh pr review
+--request-changes` (and possibly `--approve`) as a self-review, and no formal review can
+ever be posted for that SHA — the required `enforcer-status`/`qa-status` check sticks at
+`failure` until a human intervenes (worked example: PR #2081).
 
 This is a **credential-isolation regression in the PR-opening session**, not a defect in this
 pipeline (tracked separately: `aops-ae3aa475`, parent epic `aops-2faebd69`) — the pipeline
-cannot prevent a colliding identity from opening a PR. What the pipeline _can_ do, and now
-does, is recover gracefully instead of deadlocking:
-
-1. `enforcer.agent.md` §5a / `qa.agent.md`'s fallback section (both **LIVE**): when
-   `gh pr review` fails for any reason, the agent does not retry it (the failure is not
-   transient) — it posts its full verdict as a **PR comment** instead, keeping the same
-   marker convention, plus a structured line: `<!-- aops:self-review-fallback agent=<enforcer|qa> sha=<HEAD_SHA> verdict=<APPROVED|CHANGES_REQUESTED> -->`.
-   This was already implicitly covered by `shared-error-handling.md`'s pre-existing
-   never-fail-silently contract (the enforcer's PR #2081 fallback comment independently
-   followed it correctly); this formalizes the comment's _format_ so it is machine-readable.
-2. `scripts/ci/enforcer-terminal-status.sh` (enforcer) and the equivalent inline logic in
-   `agent-qa.yml` (QA) — both **LIVE**, unit-tested (`tests/test_enforcer_terminal_status.py`)
-   — check for this marker only when no formal review matched `HEAD_SHA` (a genuine review is
-   always stronger evidence and takes priority when both exist). Trust is scoped to comments
-   authored by `claude[bot]` specifically — the same identity a genuine review would have come
-   from, so this recovers no new trust the review path didn't already grant. SHA-scoping is
-   exact: the marker's `sha=` field must match `HEAD_SHA` literally, so a stale fallback
-   comment from an earlier SHA is never misread as the current SHA's verdict.
+cannot prevent a colliding identity from opening a PR. A comment-based recovery fallback
+(`enforcer.agent.md` / `qa.agent.md` posting a structured `<!-- aops:self-review-fallback
+... -->` marker comment, recovered by `scripts/ci/enforcer-terminal-status.sh` / the
+`agent-qa.yml` terminal-status step) was built and shipped (PR #2087) but removed by
+explicit review direction (PR #2091: "remove workarounds & fallbacks, the golden path is the
+only path") — no automated recovery is attempted; the check remains stuck at `failure` until
+a human either re-opens the PR under a non-colliding identity or manually overrides the
+status.
 
 **PASS review body contract (readability).** On a PASS (APPROVED) verdict, the agent posts a
 **marker-only** review body — no reasoning block. On a REVISE (CHANGES_REQUESTED) verdict,

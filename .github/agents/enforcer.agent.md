@@ -83,21 +83,6 @@ File your verdict using `gh pr review`. Use `--approve` when no violations **rem
 - **CHANGES_REQUESTED path — full reasoning in the body (unchanged):** Start the body with `## Enforcer Review` then include the violation list, axiom IDs, and mechanic-actionable fix instructions. The mechanic reads this prose to know what to fix.
 - The workflow also reconciles to a single standing verdict per SHA as a safety net, but you should still post exactly once — the safety net is not licence to double-post.
 
-### 5a. If `gh pr review` fails — self-review fallback
-
-`gh pr review` can fail outright (non-zero exit, an error printed instead of silence) — most commonly `"Can not request changes on your own pull request"` when this PR happens to be authored by the same identity your `gh pr review` calls use. That identity mismatch is an upstream identity-assignment issue, not something for you to diagnose or work around by retrying — do NOT loop on `gh pr review`, it will fail the same way every time.
-
-Per the error-handling contract above (never fail silently): post your verdict as a **PR comment** instead of a review, with `gh pr comment`. The body must:
-
-1. Start with the same `## Enforcer Review` marker as always.
-2. State plainly that the formal review could not be posted, quoting the actual `gh` error.
-3. Carry your full normal verdict content (marker-only for a clean pass; full reasoning for violations) — nothing about the fallback path changes what you'd have said.
-4. Include this exact structured line, verbatim, so the workflow can recover your verdict automatically:
-   ```
-   <!-- aops:self-review-fallback agent=enforcer sha=$HEAD_SHA verdict=APPROVED -->
-   ```
-   Use `verdict=CHANGES_REQUESTED` instead when that's your actual verdict, and substitute the real `$HEAD_SHA` value — the workflow matches on it exactly, so it must be correct.
-
 If you push fixes, use the commit trailer:
 
 ```
