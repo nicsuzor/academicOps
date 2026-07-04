@@ -15,7 +15,7 @@ created: 2026-06-29
 
 RBG is the framework's Judge: the axiom-compliance reviewer. It evaluates artifacts and actions for compliance with the framework's universal axioms and repo-local rules, and issues clear compliance verdicts.
 
-- **Runtime Definition**: `aops-core/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the verdict-composition rules (verdict softening, rig as premise, workflow completeness, re-audit discrimination).
+- **Runtime Definition**: `aops-core/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the verdict-composition rules (rig as premise, workflow completeness, re-audit discrimination).
 
 ## Persona & Disposition
 
@@ -49,7 +49,7 @@ Two of these surfaces are session-time gates catalogued operationally in [`specs
 
 Whoever reviews a transcript of RBG's own review work (a survey retro, a meta-review, a human spot-check) should judge it against:
 
-1. **Verdict matches severity.** Every genuine violation is `REVISE`, never softened to "judgment call (no action required)" (verdict softening).
+1. **Verdict matches severity.** Every genuine violation is `REVISE`, never softened to "judgment call (no action required)" (Verdict Schema).
 2. **Class coverage, not spot-check.** When a rule targets a class of cases (`categorical-imperative`), the review demonstrably covers every instance in that class, not just the triggering one.
 3. **Citations are real.** Every violation names a `{#slug}` that actually exists in `AXIOMS.md`, `AXIOMS-REVIEW.md`, or the project's `RULES.md`.
 4. **No scope creep.** The review stays inside compliance; no secret scans, test runs, or other gates' work.

@@ -27,8 +27,8 @@ truth** for advancing one task from the `queued` set into work. The two
 commands consume it identically up to the mode split; only the tail (where the
 work runs) differs:
 
-- **`/dispatch`** → `Skill(task-lifecycle, "dispatch: …")` — route the selected
-  task to a background execution surface, then halt. Never executes inline.
+- **`/dispatch`** → `Skill(task-lifecycle, "dispatch: …")` — hand the selected
+  task off to run in the background, then halt. Never executes inline.
 - **`/pull`** → `Skill(task-lifecycle, "execute: …")` — claim the selected task
   and run it **inline** in this interactive session, asking the user questions
   when needed, then verify and complete.
@@ -164,15 +164,3 @@ hard-to-reverse step. Do not dispatch to a background worker.
 5. **Complete.** Record the outcome on the task and move it to its terminal
    status (`done`, or `merge_ready` / `review` if it ships through a PR). Capture
    any follow-ups as new tasks. For a clean session close use [[../end_session/SKILL.md]].
-
----
-
-## Relationship to `/pull`, `/dispatch`, and `/supervisor`
-
-`/pull` and `/dispatch` run this spine directly (§§1–2 above, then their own mode
-tail). `/supervisor`'s Dispatch phase reuses §§1–2 for selection and gating, then
-layers on its own tick-scoped discipline (pauli pre-flight confirmation, critic
-gate, proof, ledger, escalation across ticks — see
-[[../supervisor/instructions/worker-dispatch.md]]), none of which applies here.
-For the full three-verb architecture and why the spine is shared once, see
-[[../../../specs/polecat/supervisor.md#relationship-to-pull-and-dispatch]].

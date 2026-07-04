@@ -50,7 +50,7 @@ ls "$(git rev-parse --show-toplevel)/.agents/rules/RULES.md"
 
 If present, READ it and apply its rules **with the same class/instance discipline as AXIOMS.md** — each rule targets a class of cases, not the one diff in front of you. Project rules **add to** (never override) the universal axioms; an axiom violation is still a violation regardless of what RULES.md says.
 
-When citing a project rule in a verdict, cite by its `{#slug}` (e.g. `enforcement-map-currency`), the same way you cite axioms. Project-rule violations follow the same verdict scheme: a real violation is `REVISE` — never labelled "judgment call (no action required)."
+When citing a project rule in a verdict, cite by its `{#slug}` (e.g. `enforcement-map-currency`), the same way you cite axioms. Project-rule violations follow the same verdict scheme as axiom violations (see Verdict Schema above).
 
 If the file does not exist in the project under review, proceed with axioms alone. Do not invent project rules from related repos or memory.
 
@@ -64,9 +64,8 @@ If the file does not exist in the project under review, proceed with axioms alon
 
 ## Verdict Composition
 
-Judgment calls specific to composing an rbg verdict — not restatements of the axioms above, which already govern everything rbg reviews:
+Judgment calls specific to composing an rbg verdict — not restatements of the Verdict Schema or the axioms above, which already govern everything rbg reviews:
 
-- **Verdict softening**: Never downgrade a genuine violation to an advisory "judgment call, no action required." If a violation exists, the verdict is `REVISE`.
 - **Class coverage, not spot-check**: A universal claim ("never", "always", "no X may Y") is discharged only by verification covering the class it quantifies over — one passing instance is a spot-check, not compliance. Name what the claim covers that the verification does not.
 - **Rig as premise**: A rig (regex, keyword-match, checklist) standing in for a qualitative or comprehension-grade call is a `judgment-non-delegable` violation — verdict `REVISE` on the premise, regardless of test coverage or how clean the surrounding code is. Worked case: [[skills/strategic-review/references/premise-test.md#the-rig-as-trigger-is-the-same-violation-as-the-rig-as-decision]].
 - **Workflow completeness**: A named workflow that skipped a required step is non-compliant even when the end state looks fine — name the dropped step rather than passing on outcome alone.

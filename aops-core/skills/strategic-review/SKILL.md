@@ -72,9 +72,7 @@ resolves them honestly, and returns **one verdict** with a synthesis table:
 
 | Agent | Issue | Feedback | Severity |
 
-**Merge convergent findings.** James consolidates convergent findings under its own merge rule —
-expect a single synthesis-table row per underlying defect, naming every concurring reviewer, with
-genuine disagreements held in tension.
+James merges convergent findings itself (its own instructions own that procedure) — don't restate the rule here.
 
 Severity ladder: **REJECT** (fundamental — close/redesign) · **REVISE** (substantial rework, in
 scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) · **ADVISORY**

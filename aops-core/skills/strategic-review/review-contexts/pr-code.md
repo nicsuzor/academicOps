@@ -46,9 +46,9 @@ A PR containing code changes — new features, bug fixes, refactors, test additi
 
 A code PR review is sufficient when:
 
-- Ruth has no unresolved REVISE or WARN
-- Marsha has runtime evidence for the claimed behavior (or has explicitly named what she couldn't verify)
-- Any architectural concern from Pauli is either resolved or carried into James's reconciliation as an open question
+- No unresolved REVISE or WARN remains from the axiom-compliance review
+- Runtime evidence exists for the claimed behavior (or the reviewer has explicitly named what couldn't be verified)
+- Any architectural concern raised is either resolved or carried into the reconciliation step as an open question
 
 ## Escalate When
 

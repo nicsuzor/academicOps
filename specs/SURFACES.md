@@ -299,7 +299,6 @@ For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls
 ## See also
 
 - `polecat-system` PKB spec — deep lifecycle, refinery, dispatch internals
-- `execution-environments` PKB doc — older GHA-vs-local framing (subsumed here; consider deprecating)
 - `infrastructure` PKB doc — machines, services, named agents, repos
 - `~/junior/.agents/CORE.md` — WSL-crew-container-specific orientation (the in-surface CLAUDE.md for this orchestrator surface)
 - [aops-2b8dd7a7] — the SSoT epic this doc is one deliverable of

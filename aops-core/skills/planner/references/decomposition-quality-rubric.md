@@ -1,11 +1,11 @@
 # Decomposition Quality Rubric
 
 What a thoughtful decomposition surfaces, beyond a well-formed task tree. Used to
-score decompose-mode output — by the [[decompose]] workflow's step 3.5
+score decompose-mode output by the [[decompose]] workflow's step 3.5
 ("Interrogate the task's epistemics", a three-question distillation applied
-during live decomposition) and by `/dogfood` when testing decompose-mode
-instructions (blind-test method:
-[[../../../../.agents/skills/dogfood/references/decomposition-eval.md]]).
+during live decomposition). Also scored against by `/dogfood`'s decompose-mode
+blind test, which is repo-development tooling outside this plugin's shipped
+payload and owns its own reference back to this rubric.
 
 The test is not string-matching a gold standard ("not deterministic
 deconstruction"). It is whether the same _kinds_ of considerations surface. Two
