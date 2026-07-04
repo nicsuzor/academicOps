@@ -11,8 +11,9 @@ GitHub API rejects (422) — leaving `enforcer-status` stuck at "pending"
 forever instead of a real terminal state.
 
 This test extracts the *actual* embedded step script from the workflow YAML
-(not a reimplementation) and executes it directly, mirroring the convention in
-tests/test_agent_qa_terminal_status_wiring.py.
+(not a reimplementation) and executes it directly under the same shell
+GitHub Actions uses for an unqualified `run:` step, `bash -e -o pipefail`, so
+it stays representative of production behavior.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ def _run(tmp_path: Path, *, committed: str = "false", review_outcome: str = "suc
     output_path.write_text("")
     script = _extract_step_script("Compute terminal decision")
     proc = subprocess.run(
-        ["bash", "-c", script],
+        ["bash", "-e", "-o", "pipefail", "-c", script],
         cwd=tmp_path,
         env={
             "PATH": "/usr/bin:/bin",
