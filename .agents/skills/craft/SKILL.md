@@ -20,13 +20,18 @@ domain:
   - quality-assurance
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent
 model: opus
-version: 0.2.0
+version: 0.3.0
 permalink: skills-craft
 ---
 
 # Instruction Craftsmanship
 
-Review and audit agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols — for excellence. Applies to any Claude agent system, not only this repo's framework.
+A guide to best-practice agent prompting, for anyone writing or reviewing agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols, agent definition files. Applies to any Claude agent system, not only this repo's framework.
+
+**Author mode** — hold draft instructions to the standard below before deployment; revise in place.
+**Audit mode** — given a shallow or wrong execution, trace it back to the instruction gap that permitted it, then fix the durable instruction, not the incident.
+
+Invoke with a leading `author:` or `audit:` token naming the target; a bare invocation defaults to author mode.
 
 ## First Principles
 
@@ -40,19 +45,16 @@ Good instructions trust a capable, improving agent to exercise judgment; they do
 
 These are lenses, not a checklist to tick. If instructions feel shallow but match nothing below, trust the feeling and say why — depth is verification specificity, not step count.
 
-## Common Defect Patterns
+## Recurring Defects
 
-Instances of the principles above, worth naming because they recur:
+What to hunt for in a draft — each is a named instance of a principle above:
 
-<!-- NS: I dont know who this stuff is aimed at. It _should_ be a guide to best practice agent prompting. -->
-
-- **Compliance framing.** "Did X run?" instead of "is the output correct, complete, and verified?" Require outcome-based checks, not process-completion checks.
+- **Compliance framing.** "Did X run?" instead of "is the output correct, complete, and verified?" Demand outcome-based checks, not process-completion checks. (Principle 4.)
 - **Evidence laundering.** Accepting an agent's summary, a partial artifact-channel check (just stdout, not logs/exit-code/schema), or a green test suite as proof — without inspecting the actual output for silent failures, corruption, or placeholders. (Principle 4.)
 - **Deferred-read dispersion.** A rule the agent needs _at the moment of action_ lives one pointer away ("see X.md") instead of inline. An agent that already has the instructions in hand frequently won't make the follow-up read. Inline mandatory content; reserve pointers for genuinely optional depth — never fork required content across a summary and a linked file.
 - **Shape without source.** A step names what the output should _look like_ but not where it comes from or what operation produces it, so the agent satisfies the shape from whatever's cheapest — recycled material, an adjacent step's by-product, memory — silently dropping the real criterion. Name the source, mandate the read, prohibit substitution — without over-specifying the keystrokes (Principle 2's over-specification is the opposite failure).
-- **Cross-skill coupling.** See Principle 3.
-- **Mechanical HOW over judgment WHEN.** See Principle 2.
-- **Over-fitting and ballast.** See Principles 1 and 5.
+
+Cross-skill coupling, keystroke-level HOW, and over-fitted or ballast lines are the direct violations of Principles 3, 2, and 1/5 — name them as such when found.
 
 ## Agent Definition Files — Content Boundary
 
@@ -71,11 +73,9 @@ The token-budget test for any passage: **if removed, would the agent behave diff
 
 Frontmatter/body boundary: permissions, model, tools, and allowlists live in frontmatter only; the body never restates them in prose.
 
-## Construction Rule: Static Prefix, Variable Tail
+## Prompt-Cache Rule: Static Prefix, Variable Tail
 
-<!-- NS: make it clear that this is a caching requirement. -->
-
-For any code that renders a template with dynamic data (an f-string, `.format()`/`.render()`, or a builder concatenating static scaffolding with session/transcript content): emit all static material first, append variable content last. Prompt caching keys on the longest identical prefix — one variable byte placed early invalidates the cacheable suffix that follows it. Where moving a placeholder to the tail would break meaning for negligible cache gain (a short single-token variable mid-sentence), leave it and say why.
+This is a caching requirement, not a style preference: prompt caching keys on the longest identical prefix, so one variable byte placed early invalidates the cacheable suffix that follows it. For any code that renders a template with dynamic data (an f-string, `.format()`/`.render()`, or a builder concatenating static scaffolding with session/transcript content): emit all static material first, append variable content last. Where moving a placeholder to the tail would break meaning for negligible cache gain (a short single-token variable mid-sentence), leave it and say why.
 
 ## Output
 

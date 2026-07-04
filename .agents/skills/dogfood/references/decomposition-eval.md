@@ -1,7 +1,5 @@
 # Evaluating decomposition quality (a dogfood application)
 
-<!-- NS: i think this whole file belongs in a planning skill?           -->
-
 A reusable way to test whether a planner — or any decompose-mode instruction set —
 _critically thinks through the constituent components of a high-level abstract task_,
 not just whether it produces a well-formed task tree. This is `/dogfood` (delegated
@@ -27,26 +25,11 @@ instruction testing) pointed at the planner's decomposition instructions.
 
 ## The epistemics rubric
 
-The test is not string-matching the gold standard ("not deterministic deconstruction").
-It is whether the same _kinds_ of considerations surface. Two classes:
-
-- **Scaffolding** (table stakes — the skill drills these): D1 spec-first, D5 GitHub issues,
-  D8 approval gate, D11 unified PR + review.
-- **Critical-thinking** (the real target): D2, D3, D4, D6, D7, D9, D10.
-
-| #   | Dimension                                    | What a thoughtful decomposition surfaces                                                             |
-| --- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| D1  | Spec-first / define-before-build             | Write the spec first, grounded in existing docs; make the artifact's purpose explicit                |
-| D2  | Negative scoping as the core constraint      | Reserve the mechanism for what it is _for_; exclude what's already handled — and say why             |
-| D3  | Architectural registration                   | Register a new element in the system's self-description (maps, pyramid, index docs)                  |
-| D4  | Evidence: lived/recent signal                | Mine recent daily notes / lived frustration, not only distilled corpora                              |
-| D5  | Evidence: formal/tracked signal              | Review GitHub issues                                                                                 |
-| D6  | Evidence: the DIAGNOSTIC negative signal     | Rejected-as-too-brittle PRs / reverts — the highest-signal source for "what only judgment can catch" |
-| D7  | Track the negative space                     | Record candidates you are _not_ actioning so they aren't dropped                                     |
-| D8  | Human approval at the right point            | Surface high-blast-radius / values calls; don't over- or under-surface                               |
-| D9  | Observability / instrumentation prerequisite | You cannot evaluate a gate whose decisions aren't instrumented — build the visibility first          |
-| D10 | Verification matches artifact nature         | A qualitative artifact needs observational / boundary-probing tests, not mechanical pass/fail        |
-| D11 | Unified delivery + review-improve loop       | One PR, reviewed, then improved                                                                      |
+Score against the planner's decomposition quality rubric
+(`aops-core/skills/planner/references/decomposition-quality-rubric.md`) — the
+D1–D11 dimension table and the scaffolding/critical-thinking split live there,
+not here, since it's decomposition-quality guidance the planner skill owns; this
+file owns only the blind-test method around it.
 
 ## Fresh pairs, not a kept fixture
 

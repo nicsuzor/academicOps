@@ -78,8 +78,8 @@ The framework uses named agents with distinct personalities and areas of experti
 - **James (The Orchestrator)**: Manages multi-agent review loops and synthesises conflicting findings.
 - **Ruth (rbg, The Judge)**: Enforces universal axioms and workflow discipline.
 - **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump`, `/daily`, `/sleep`).
-- **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
-- **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
+- **Marsha (The QA Reviewer)**: Independently verifies work against original user intent, including content quality for non-executable artifacts.
+- **Ida (The Face)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
 
 Junior (a general-purpose framework coordinator) is not part of this plugin — it is a user-level tool that lives outside the redistributable academicOps package (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 

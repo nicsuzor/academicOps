@@ -21,11 +21,11 @@ domain:
 
 # task-lifecycle — Claim → (Dispatch | Execute) → Verify → Complete
 
-<!-- NS: I don't know who this skill is FOR. it seems like a spec. who's gonna invoke it? -->
-
-This skill is the **single source of truth** for advancing one task from the
-`queued` set into work. Two commands consume it; the only difference between them
-is the tail (where the work runs):
+This skill is invoked by the `/dispatch` and `/pull` commands, and by
+`/supervisor`'s Dispatch phase (§§1–2 only). It is the **single source of
+truth** for advancing one task from the `queued` set into work. The two
+commands consume it identically up to the mode split; only the tail (where the
+work runs) differs:
 
 - **`/dispatch`** → `Skill(task-lifecycle, "dispatch: …")` — route the selected
   task to a background execution surface, then halt. Never executes inline.
@@ -34,7 +34,7 @@ is the tail (where the work runs):
   when needed, then verify and complete.
 
 Everything up to the mode split — **Select** and **Gates** — is identical for
-both. Author it once here; do not re-inline it in the command files.
+both modes.
 
 ## Invocation & Arguments
 
@@ -169,18 +169,10 @@ hard-to-reverse step. Do not dispatch to a background worker.
 
 ## Relationship to `/pull`, `/dispatch`, and `/supervisor`
 
-All three verbs run on this one spine — **Select → Gates → (Dispatch | Execute)**
-— which lives here and is authored once:
-
-- **`/pull`** runs the spine in `execute` mode (claim + run inline).
-- **`/dispatch`** runs the spine in `dispatch` mode (route to a surface, halt).
-- **`/supervisor`** is the multi-tick **delegate-and-verify** process. Its
-  Dispatch phase reuses this skill's §§1–2 **Select + Gates** spine (the shared,
-  author-once part above), then layers on the discipline that is genuinely its own
-  and has no meaning here: the pauli pre-flight confirmation summary and critic
-  gate ([[../supervisor/instructions/worker-dispatch.md]]), proof, the ledger,
-  evaluation, and escalation **across ticks**.
-
-The dependency is one-way: §§1–2 (Select + Gates) is the shared spine every verb
-reuses; each verb's own tail (routing, or the supervisor's tick discipline) builds
-on it and is never referenced back by the spine.
+`/pull` and `/dispatch` run this spine directly (§§1–2 above, then their own mode
+tail). `/supervisor`'s Dispatch phase reuses §§1–2 for selection and gating, then
+layers on its own tick-scoped discipline (pauli pre-flight confirmation, critic
+gate, proof, ledger, escalation across ticks — see
+[[../supervisor/instructions/worker-dispatch.md]]), none of which applies here.
+For the full three-verb architecture and why the spine is shared once, see
+[[../../../specs/polecat/supervisor.md#relationship-to-pull-and-dispatch]].

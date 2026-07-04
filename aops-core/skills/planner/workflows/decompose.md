@@ -31,7 +31,7 @@ version: 2.0.0
 
 3. **Map Unknowns**: Before planning execution, identify what you _don't_ know. Classify each as: **researchable** (others may have solved it → evidence-gathering task), **internal** (we have unanalysed data → audit/survey task), or **probeable** (unknown-unknown → time-boxed spike). High parent `uncertainty` means most subtasks should start here.
 
-3.5. **Interrogate the task's epistemics** — before structuring, put three questions to the task _itself_. They are prompts, not steps; answer each in a line, then let the answers shape the tree:
+3.5. **Interrogate the task's epistemics** — before structuring, put three questions to the task _itself_ (full evaluation rubric with worked dimensions: [[decomposition-quality-rubric]]). They are prompts, not steps; answer each in a line, then let the answers shape the tree:
 
 - **What evidence best answers this?** Name the _rawest, highest-signal_ source for _this_ question — including the negative/diagnostic record (rejected or closed PRs, reverts, abandoned spikes, recent lived complaints in daily notes), not only the distilled corpora you already reach for (open issues, retros). Where a mechanical fix was _tried and rejected_ is often the sharpest evidence of a problem only judgment can catch.
 - **What must be observable before success can be judged?** If the result's effect is not already visible in the artifacts you can inspect, building that instrumentation is a prerequisite task, not an afterthought — you cannot verify a gate you cannot see fire.

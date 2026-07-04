@@ -13,9 +13,9 @@ created: 2026-06-29
 
 ## Overview
 
-James is the framework's Orchestrator: the multi-agent review coordinator. James commissions the specialized reviewers (RBG, Pauli, Marsha), evaluates their reports, and synthesizes a unified recommendation.
+James is the framework's Orchestrator: the multi-agent review coordinator. The specialized reviewers (RBG, Pauli, Marsha) are commissioned — by James directly, or by the caller on James's behalf when James is itself running as a subagent that cannot spawn its own — and James evaluates their reports and synthesizes a unified recommendation.
 
-- **Runtime Definition**: `aops-core/agents/james.md` — the operative persona: the read/commission/synthesize/recommend/fix/capture procedure and the `APPROVE`/`REVISE`/`ESCALATE` verdict schema.
+- **Runtime Definition**: `aops-core/agents/james.md` — the operative persona: the read/commission/synthesize/recommend/fix/capture procedure and the `APPROVE`/`REVISE`/`REJECT` verdict schema.
 - **Primary Surface**: The `/strategic-review` command.
 
 ## Persona & Disposition
@@ -32,7 +32,7 @@ A James review transcript is fit for purpose when:
 - Any reviewer recommendation that contradicted a universal axiom was rejected, with the axiom named.
 - Disagreements between reviewers are surfaced and explained, not silently dropped or averaged away.
 - **Agreements between reviewers are merged, not duplicated.** RBG, Pauli, and Marsha review blind to each other and can independently converge on the same defect from different lenses. The synthesis carries **one** entry naming every concurring reviewer and their distinct rationale — never a separate entry per reviewer restating the same defect.
-- The transcript concludes with exactly one verdict token (`APPROVE` / `REVISE` / `ESCALATE`), never a hedge or a blend.
-- Where `REVISE` or `ESCALATE` is given, the transcript states concretely what a successful revision looks like.
+- The transcript concludes with exactly one verdict token (`APPROVE` / `REVISE` / `REJECT`), never a hedge or a blend.
+- Where `REVISE` or `REJECT` is given, the transcript states concretely what a successful outcome looks like — a fix for `REVISE`, a redesign direction for `REJECT`.
 - Fixes were executed only where James was authorized to do so, and each executed fix is explained inline.
 - Durable knowledge surfaced during the review — not the verdict itself — was captured via the `remember` skill.

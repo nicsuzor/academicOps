@@ -2,7 +2,7 @@
 name: triage
 type: skill
 category: instruction
-description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
+description: "Triage a corpus, classify, and dispatch outputs. Three modes, one shared corpus-to-disposition shape: retro (transcript review → issues, entry point `/learn`), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics, entry point `/issue-sweep`). Delegates execution to pauli for all three modes to keep main context clean."
 triggers:
   - "triage"
   - "survey"
@@ -32,15 +32,13 @@ tags:
 
 # /triage — Unified Triage Skill
 
-<!-- NS: can we go back to /learn for this skill? or something that is more descriptive? -->
+Triage a corpus, classify findings, and dispatch outputs according to the selected mode. "Triage" is the umbrella name because it spans three corpora, not just transcripts — `/learn` and `/issue-sweep` are thin, descriptively-named entry points onto this skill's `retro` and `sweep` modes respectively; invoke this skill directly (`/triage`) for `trend` mode or when the mode isn't yet known.
 
-Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
-
-| Mode    | Corpus                              | Primary output                 |
-| ------- | ----------------------------------- | ------------------------------ |
-| `retro` | Session transcripts (one at a time) | GitHub issues filed via `gh`   |
-| `trend` | Many sessions / audit files         | Trend report + recommendations |
-| `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
+| Mode    | Corpus                              | Primary output                 | Entry point        |
+| ------- | ----------------------------------- | ------------------------------ | ------------------ |
+| `retro` | Session transcripts (one at a time) | GitHub issues filed via `gh`   | `/learn`           |
+| `trend` | Many sessions / audit files         | Trend report + recommendations | `/triage` (direct) |
+| `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures | `/issue-sweep`     |
 
 **Privacy Rule**: Anonymize all findings. Do not expose real names, emails, student details, or raw session dumps.
 
@@ -69,9 +67,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
-<!-- NS: we have review modes. shouldn't we just call them? -->
-
-- Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
+- Read the entire transcript. Look for structural causes, architectural alignment, and pattern recognition. For instruction-quality failures, invoke `Skill(craft, "audit: <finding>")` to trace the shallow or wrong execution back to the instruction gap — do not re-derive craft's defect taxonomy inline here.
 - **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:
   - **In scope, fix immediately**: the concrete mistake or leftover bad state _this session_ produced — a wrong file it wrote, a task it left mis-filed, a broken reference or typo it introduced or tripped over, an actual code bug in a hook/gate/skill/tool. Fix these directly in the source files, without seeking permission.
   - **Out of scope, always**: adding, editing, or strengthening any rule, axiom, persona instruction, gate, hook, or agent-definition text so that _future_ sessions behave differently — even one line, even when you're confident it's correct and well-scoped. That is a framework change, not a fix to the reviewed session (see §2b). One incident is never sufficient warrant for it, no matter how salient; it belongs to a separate, deliberate pass informed by recurrence across multiple filed issues, not to this one. File the gap in the RCA issue and stop there.

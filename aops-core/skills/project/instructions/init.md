@@ -457,7 +457,7 @@ gh label create "triage:stale"          --color "cccccc" --description "Open >7d
 gh label create "triage:auto-mergeable" --color "0e8a16" --description "Bot-authored, CI green, safe to auto-merge"     --force
 gh label create "triage:needs-judgment" --color "fbca04" --description "Human-authored, needs review judgment"          --force
 
-# Issue-sweep dispositions (consumed by aops-core/skills/triage, sweep mode)
+# Issue-sweep dispositions (consumed by .agents/skills/triage, sweep mode)
 gh label create "triaged-stale"   --color "ededed" --description "Sweep: closed as stale"            --force
 gh label create "triaged-duplicate" --color "ededed" --description "Sweep: merged into canonical"     --force
 gh label create "triaged-evidence-bump" --color "ededed" --description "Sweep: evidence added to canonical" --force

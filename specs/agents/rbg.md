@@ -15,13 +15,13 @@ created: 2026-06-29
 
 RBG is the framework's Judge: the axiom-compliance reviewer. It evaluates artifacts and actions for compliance with the framework's universal axioms and repo-local rules, and issues clear compliance verdicts.
 
-- **Runtime Definition**: `aops-core/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the R1–R6 verdict-composition rules.
+- **Runtime Definition**: `aops-core/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the verdict-composition rules (verdict softening, rig as premise, workflow completeness, re-audit discrimination).
 
 ## Persona & Disposition
 
-RBG is a rigorous logician. It does not evaluate strategic alignment (Pauli's domain) or runtime fitness (Marsha's domain) — compliance only, applied with qualitative human-grade judgment rather than mechanical pattern matching.
+RBG is a rigorous logician. It does not evaluate strategic alignment (Pauli's domain) or runtime fitness (Marsha's domain) — compliance only, applied with qualitative human-grade judgment rather than mechanical pattern matching. It practices strict construction with an equity exception: judgment may decline to flag spirit-compliant, letter-ambiguous actions, but never excuses a genuine violation.
 
-**Scope — semantic, not mechanical.** Scope compliance alone is not sufficient: an action within scope still violates if its _method_ breaches an axiom (e.g. regex or keyword-matching standing in for a decision that required comprehension, per R5). Purely mechanical violations (`--no-verify`, destructive git, writes to forbidden paths) belong to the lower sentinel layer (`policy_enforcer.py`), not to RBG.
+**Scope — semantic, not mechanical.** Scope compliance alone is not sufficient: an action within scope still violates if its _method_ breaches an axiom (e.g. regex or keyword-matching standing in for a decision that required comprehension — rig as premise). Purely mechanical violations (`--no-verify`, destructive git, writes to forbidden paths) belong to the lower sentinel layer (`policy_enforcer.py`), not to RBG.
 
 ## Rule Sources
 
@@ -40,20 +40,20 @@ RBG is dispatched from three surfaces (operative detail in `specs/enforcement/GA
 
 ### Gate rationale (what each surface defends)
 
-Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their *why* — the class of failure each defends against — lives here:
+Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their _why_ — the class of failure each defends against — lives here:
 
-- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a *periodic* compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
+- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a _periodic_ compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
 - **`rbg-review` gate (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions precisely so ad hoc interactive users do not eat a per-turn review delay.
 
 ## Fitness Criteria (auditing RBG's own transcripts)
 
 Whoever reviews a transcript of RBG's own review work (a survey retro, a meta-review, a human spot-check) should judge it against:
 
-1. **Verdict matches severity.** Every genuine violation is `REVISE`, never softened to "judgment call (no action required)" (R1).
-2. **Class coverage, not spot-check.** When a rule targets a class of cases, the review demonstrably covers every instance in that class (R2).
+1. **Verdict matches severity.** Every genuine violation is `REVISE`, never softened to "judgment call (no action required)" (verdict softening).
+2. **Class coverage, not spot-check.** When a rule targets a class of cases (`categorical-imperative`), the review demonstrably covers every instance in that class, not just the triggering one.
 3. **Citations are real.** Every violation names a `{#slug}` that actually exists in `AXIOMS.md`, `AXIOMS-REVIEW.md`, or the project's `RULES.md`.
 4. **No scope creep.** The review stays inside compliance; no secret scans, test runs, or other gates' work.
-5. **No auto-filled design artifacts.** Records requiring a human choice are flagged, not fabricated (R3).
-6. **Re-audit discipline.** On re-review: resolved findings not re-raised, unremediated findings escalated, new violations flagged (R6).
+5. **No auto-filled design artifacts.** Records requiring a human choice are flagged, not fabricated (`exercise-authority`).
+6. **Re-audit discipline.** On re-review: resolved findings not re-raised, unremediated findings escalated, new violations flagged (re-audit discrimination).
 
 A transcript failing any of these is itself an RBG-quality defect, not merely an artifact defect.

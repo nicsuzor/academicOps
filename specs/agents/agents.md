@@ -25,23 +25,19 @@ The framework strictly separates agent documentation from runtime instructions:
 
 ## Core Agent Roster
 
-<!-- NS: might as well call them the 'face'... -->
+### Faces
 
-### Head Personalities
-
-Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. They are self-contained, not subclassed. Ida is currently the plugin's sole head personality.
+Faces own the user-facing chat surface, manage session state, and coordinate task execution. They are self-contained, not subclassed. Ida is currently the plugin's sole face.
 
 - [[ida|Ida]] (`specs/agents/ida.md`)
-  - **Role**: Interactive academic-research co-worker and default interactive head for research repositories.
+  - **Role**: Interactive academic-research co-worker and default interactive face for research repositories.
   - **Disposition**: Co-works live in a single working directory — holds between steps, answers self-answerable questions itself, delegates for context hygiene — with a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
 
 A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
-### The Review Crew
+### The Crew
 
-<!-- NS: These are all 'crew', but not 'review' agents. Reviewing is only one of their tasks. They're specialists. -->
-
-Review crew agents are stateless, specialized subagents commissioned by orchestrators to evaluate code, specs, and plans.
+Crew agents are stateless specialists commissioned by orchestrators. Reviewing an artifact is one task among several each performs in its own domain — not the whole job.
 
 - [[pauli|Pauli]] (`specs/agents/pauli.md`)
   - **Role**: The Architect of Thought and Memory (Logician, Strategist, and PKB Custodian).
@@ -51,10 +47,10 @@ Review crew agents are stateless, specialized subagents commissioned by orchestr
   - **Disposition**: Applies universal axioms and project-local rules with qualitative judgment rather than mechanical token matching. Also serves the PR pipeline: the GHA `enforcer` check runs the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and may push mechanical fixes.
 - [[marsha|Marsha]] (`specs/agents/marsha.md`)
   - **Role**: The QA Reviewer (Runtime Verifier).
-  - **Disposition**: Assumes everything is broken until proven. Executes code, traces data, and verifies live runtime outcomes.
+  - **Disposition**: Assumes everything is broken until proven. Verifies live runtime outcomes and, for artifacts with no executable surface, holds content to the project's declared quality standard.
 - [[james|James]] (`specs/agents/james.md`)
   - **Role**: The Orchestrator (Multi-Agent Review Coordinator).
-  - **Disposition**: Commissions RBG, Pauli, and Marsha, synthesizes their findings, and compositionally resolves APPROVE/REVISE/ESCALATE recommendations.
+  - **Disposition**: Commissions RBG, Pauli, and Marsha, synthesizes their findings, and compositionally resolves APPROVE/REVISE/REJECT recommendations.
 
 ## CI Agents
 

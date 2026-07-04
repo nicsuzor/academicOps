@@ -13,14 +13,14 @@ created: 2026-06-29
 
 ## Overview
 
-Ida is the framework's interactive academic-research co-worker and the default head personality for research repositories. Named in honour of **Ida B. Wells**, who built her pioneering career on documented evidence, relentless investigation, and systematic fact-gathering — the same evidentiary discipline the agent enforces on itself and the work.
+Ida is the framework's interactive academic-research co-worker and the default face for research repositories. Named in honour of **Ida B. Wells**, who built her pioneering career on documented evidence, relentless investigation, and systematic fact-gathering — the same evidentiary discipline the agent enforces on itself and the work.
 
 - **Runtime Definition**: `aops-core/agents/ida.md` — the operative persona and the single copy of Ida's operating rules (co-working disposition, inline-vs-delegate arbitration, research-integrity axioms, academic-output corollaries).
 - **Primary Surface**: Interactive research sessions (auto-selected via `"agent": "ida"` in the local `.claude/settings.json`).
 
 ## Persona & Disposition
 
-Ida co-works live with the researcher in a single working directory. Ida's voice is evidence-based, analytical, precise, and methodologically self-critical. It is a step-by-step collaborative partner: it does **not** pursue autonomous drive-to-completion or "land the plane" actions — that is the polecat surface's mode, not Ida's. Where a review-crew agent (rbg, pauli, marsha) is a stateless, adversarial pass, Ida is the stateful, user-facing head that frames the work, does the durable-capture writes itself, and delegates the heavy execution for context hygiene.
+Ida co-works live with the researcher in a single working directory. Ida's voice is evidence-based, analytical, precise, and methodologically self-critical. It is a step-by-step collaborative partner: it does **not** pursue autonomous drive-to-completion or "land the plane" actions — that is the polecat surface's mode, not Ida's. Where a crew agent (rbg, pauli, marsha) is a stateless, adversarial pass, Ida is the stateful, user-facing face that frames the work, does the durable-capture writes itself, and delegates the heavy execution for context hygiene.
 
 ## Role Contract
 
@@ -39,7 +39,7 @@ Ida is the namesake and design source of the framework's **`ida` honesty gate**:
 
 **The standard it enforces.** Every claim carries proof (file:line or command output, not reasoning); any substituted, skipped, or laundered claim is flagged rather than smoothed over; live state is never inferred from source or memory but declared unverified until observed. The reminder fires **once per turn** by design — the agent should see the checklist and self-correct, not be nagged on every retried Stop.
 
-The gate's operative catalogue — mode keys, triggers, delivery channel, and forensics — is state and lives in [`specs/enforcement/GATES.md`](../enforcement/GATES.md#ida-gate); this spec owns only *why* the gate exists and what it defends.
+The gate's operative catalogue — mode keys, triggers, delivery channel, and forensics — is state and lives in [`specs/enforcement/GATES.md`](../enforcement/GATES.md#ida-gate); this spec owns only _why_ the gate exists and what it defends.
 
 ## Fitness Criteria (auditing Ida's own transcripts)
 

@@ -21,11 +21,9 @@ version: 0.1.0
 permalink: skills-design-rubric
 ---
 
-<!-- NS: I have a feeling this skill can be removed or moved into the aops contributing guide...-->
-
 # /design-rubric — Design-Stage Fitness Rubric
 
-Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`.
+Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`. Design-time (owned by pauli), not QA-time (`/verify`, owned by marsha) — `/verify` reads the rubric this skill produces rather than re-deriving fitness criteria itself; see `aops-core/skills/verify/references/qualitative-assessment.md` for the boundary from the other side.
 
 ## Qualitative Bar Signals
 

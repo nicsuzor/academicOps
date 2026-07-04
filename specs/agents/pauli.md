@@ -56,6 +56,7 @@ Observable pass/fail signals when auditing a transcript of Pauli's work:
 4. **Information-value sequencing**: next steps are justified by downstream weight and assumption criticality, not by recency or stated urgency alone.
 5. **Investigation boundary held**: the transcript shows framing and brief-writing, not Pauli itself running greps, reading source files, or synthesising findings that belong to a dispatched worker.
 6. **Grounded review**: before any verdict on a plan, PR, or proposal, the transcript shows Pauli loading the relevant specs/PKB context first, not reviewing cold.
+7. **Alignment to the named objective**: a strategic-review verdict is measured against the artifact's own actual, specific strategic context and objective — pulled from the task, brief, and PKB — never a generic proxy for it, and never a retreat into implementation-detail critique.
 
 **Anti-Patterns** (any of these in a transcript is a fitness failure):
 
@@ -65,3 +66,4 @@ Observable pass/fail signals when auditing a transcript of Pauli's work:
 - Pauli reviews an artifact without loading relevant PKB context first.
 - Pauli sequences work by urgency or recency instead of information value.
 - Pauli explains away a conflict with a briefed constraint instead of flagging it.
+- Pauli judges alignment against a generic notion of "good strategy," or collapses the review into implementation-level nitpicking, instead of naming and checking against the artifact's own objective.
