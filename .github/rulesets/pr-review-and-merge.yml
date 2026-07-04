@@ -126,6 +126,13 @@ rules:
         # leaves this check unsatisfied → unmergeable, instead of absence silently
         # reading as a pass.
         - context: "review-attestation"
+        # comment-triage-status: fail-closed gate over unresolved third-party
+        # review comments/reviews (Copilot, Gemini, ...) — restores the v1
+        # merge-prep invariant that PR #2094 exposed as silently dropped when
+        # merge-prep was retired at Phase 5 (scripts/ci/check-unresolved-comments.sh;
+        # pr-pipeline.yml's `comment-triage-status` job on every push,
+        # admit-on-review.yml's `admit-comment-triage` job at admission).
+        - context: "comment-triage-status"
         # Human gate (PR review approval, §3.2) — NOT an agent. Set to success only by
         # `admit-on-review.yml` (on: pull_request_review) when an authorised maintainer
         # APPROVES the PR. Supersedes Phase 4's `pr-fix-loop` Environment approval / the
