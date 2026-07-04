@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.64](https://github.com/nicsuzor/academicOps/compare/v0.3.63...v0.3.64) (2026-07-04)
+
+
+### Bug Fixes
+
+* **pipeline:** extract self-review-fallback SSOT, fix qa-status null-string bug ([#2091](https://github.com/nicsuzor/academicOps/issues/2091)) ([d59dae2](https://github.com/nicsuzor/academicOps/commit/d59dae26077824bd4d86d47bc5f229298f743192))
+
 ## [0.3.63](https://github.com/nicsuzor/academicOps/compare/v0.3.62...v0.3.63) (2026-07-04)
 
 
