@@ -72,11 +72,9 @@ resolves them honestly, and returns **one verdict** with a synthesis table:
 
 | Agent | Issue | Feedback | Severity |
 
-**Merge convergent findings.** Since rbg, pauli, and marsha review blind to each other, two or more
-can independently flag the same underlying defect from their own lens — that's agreement, not
-contradiction. Collapse it into a **single** synthesis-table row naming every concurring reviewer
-and their distinct rationale; never emit one row per reviewer restating the same defect. Reserve
-separate rows for genuinely distinct issues, and hold genuine disagreements in tension as before.
+**Merge convergent findings.** James consolidates convergent findings under its own merge rule —
+expect a single synthesis-table row per underlying defect, naming every concurring reviewer, with
+genuine disagreements held in tension.
 
 Severity ladder: **REJECT** (fundamental — close/redesign) · **REVISE** (substantial rework, in
 scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) · **ADVISORY**

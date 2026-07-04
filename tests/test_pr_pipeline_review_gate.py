@@ -239,14 +239,14 @@ def test_stage2_mechanic_path_unchanged():
     assert "needs.check-admit.outputs.admitted == 'true'" in mechanic["if"], mechanic["if"]
 
 
-def test_responder_agent_file_has_judgment_boundary():
-    """§3.8: the responder agent file must document the mechanical/judgment
-    boundary from enforcer.agent.md §3. Judgment calls and recusal flags are
-    NEVER auto-applied pre-admission."""
+def test_responder_agent_file_exists_and_documents_trailer():
+    """§3.8: the responder agent file exists and documents the machine-parsed
+    `Responder-By:` commit trailer.
+
+    Whether the mechanical/judgment boundary is adequately documented is a
+    qualitative call for reviewers, not a substring scan (judgment-non-delegable);
+    prose-token assertions were removed deliberately."""
     agent_file = REPO_ROOT / ".github" / "agents" / "pre-admission-responder.agent.md"
     assert agent_file.exists(), f"Agent file not found: {agent_file}"
     content = agent_file.read_text()
-    assert "Mechanical" in content, "mechanical/judgment boundary not documented"
-    assert "Judgment" in content, "mechanical/judgment boundary not documented"
-    assert "recusal" in content.lower(), "recusal flag handling not documented"
     assert "Responder-By:" in content, "commit trailer not documented"

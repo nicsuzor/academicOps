@@ -2,8 +2,7 @@
 
 Universal dispatch rules for any orchestrator or coordinator. These rules apply whether the
 dispatcher is the supervisor skill, Ida, or any other agent composing work briefs. Machine-
-and host-specific invocation details belong in the PKB (see `remote-polecat-tmux-dispatch`),
-not here.
+and host-specific invocation details live in the PKB (see `remote-polecat-tmux-dispatch`).
 
 ## Dispatch Reflex — Expand Terse Instructions
 

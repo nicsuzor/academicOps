@@ -216,10 +216,7 @@ Fetch open issues, focusing on the focal issue first if a directed focus is prov
 
 For proposals that **add or escalate** a rule, perform this review before assigning the disposition:
 
-1. Generalize the failure into a Root Cause Category.
-2. Map to existing mechanisms in the enforcement map and axioms.
-3. Classify: _Propagation failure_ (fix via L1 propagation) vs. _Escalation candidate_ (requires CBA: ≥3 recurrence links).
-4. Default to the cheapest tier (L1 propagation). Flag missing `specs/ENFORCEMENT-MAP.md` rows as a pipeline gap.
+Read and apply `specs/enforcement/enforcement.md` §4 (escalation rules) and §4.1 (Cost-Benefit Analysis) — cheapest tier first, CBA before any add-or-escalate. Cite the `specs/ENFORCEMENT-MAP.md` row the fix propagates from; flag a missing row as a pipeline gap.
 
 ### 2c. Output Cycle Report
 
@@ -241,7 +238,7 @@ Log results in the following format:
 ### Needs human triage / decision (waiting)
 
 - #Z (rubric ambiguous: <reason>)
-- <add-or-escalate proposal>: cost-ladder reasoning + ≥3 recurrence links
+- <add-or-escalate proposal>: cost-ladder reasoning + recurrence evidence per enforcement.md §4.1
 ```
 
 ### 3. Execution Rules

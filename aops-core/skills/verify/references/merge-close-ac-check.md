@@ -32,8 +32,8 @@ Run this **after** PR↔task correspondence is confirmed (the candidate PR genui
 
 Doctrine forbids a new blocking gate on this transition (#1426 explicitly: "without adding a new blocking gate where doctrine forbids it"). The merged work is already on the default branch — blocking the _status_ transition would not un-merge anything; it would only strand the task. The honest move is to let the work land and make the **unverified judgment-laden criterion visible** to the person who can judge it, instead of laundering it into `done` on the strength of a correspondence match.
 
-## What this is not
+## Scope
 
-- Not a re-run of pre-merge review (rbg/marsha on the open PR). That already happened upstream. This is the **post-merge** check that the _task's own ACs_ — which the pre-merge review may never have read — are satisfied by what landed.
-- Not a CI check, not a hook, not a script. It is agent judgment at the close surface, consistent with the "trust agents, no bespoke closure scripts" stance of the reconcile spec.
-- Not a completeness audit of verification _subtasks_ (that is `/sleep` Activity 4b). This judges the **content** ACs against the **artifact**.
+- The **post-merge** check that the _task's own ACs_ — which pre-merge review (rbg/marsha on the open PR) may never have read — are satisfied by what landed; pre-merge review already happened upstream and is not re-run.
+- Agent judgment at the close surface, consistent with the "trust agents, no bespoke closure scripts" stance of the reconcile spec — never a CI check, hook, or script.
+- Judges the **content** ACs against the **artifact**; completeness of verification _subtasks_ is `/sleep` Activity 4b's job.

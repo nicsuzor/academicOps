@@ -186,8 +186,8 @@ Before invoking reviewers, prepare a context document containing:
 
 Dispatch both mandatory reviewers concurrently:
 
-- **pauli** (`aops-core:pauli`, opus) — reviews the decomposition for logical errors, untested assumptions, missing edge cases, scope drift, review-sizing violations, decision/prep dependencies, academic methodology gaps. Returns `PROCEED / REVISE / HALT`.
-- **rbg** (`aops-core:rbg`, haiku) — verifies the decomposition stays within granted authority and original scope, no unapproved expansions, no assumed permissions. Returns `OK / WARN / BLOCK`.
+- **pauli** (`aops-core:pauli`, opus) — reviews the decomposition for logical errors, untested assumptions, missing edge cases, scope drift, review-sizing violations, decision/prep dependencies, academic methodology gaps.
+- **rbg** (`aops-core:rbg`, haiku) — verifies the decomposition stays within granted authority and original scope, no unapproved expansions, no assumed permissions.
 
 Both receive the same review context (decomposition proposal + files affected + relevant principles).
 
@@ -195,15 +195,14 @@ Both receive the same review context (decomposition proposal + files affected + 
 
 Wait for both reviewers (timeout: 5 minutes each).
 
-Parse responses into structured verdicts:
+Consume each reviewer's native verdict — do not re-map it into a local vocabulary:
 
-| Pauli Verdict | RBG Verdict | Combined Result          |
-| ------------- | ----------- | ------------------------ |
-| PROCEED       | OK          | → APPROVED               |
-| PROCEED       | WARN        | → APPROVED (log warning) |
-| REVISE        | OK/WARN     | → NEEDS_REVISION         |
-| HALT          | any         | → BLOCKED                |
-| any           | BLOCK       | → BLOCKED                |
+| Outcome                                                                   | Combined Result          |
+| ------------------------------------------------------------------------- | ------------------------ |
+| Both clear (rbg `OK`; pauli requires no changes)                          | → APPROVED               |
+| rbg `WARN` only; pauli requires no changes                                | → APPROVED (log warning) |
+| Either requires changes (rbg `REVISE`, or pauli names required revisions) | → NEEDS_REVISION         |
+| Either rejects the decomposition's premise as fundamentally unsound       | → BLOCKED                |
 
 ---
 
