@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.62](https://github.com/nicsuzor/academicOps/compare/v0.3.61...v0.3.62) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ci:** gate merge on unresolved third-party review comments ([#2094](https://github.com/nicsuzor/academicOps/issues/2094)) ([#2106](https://github.com/nicsuzor/academicOps/issues/2106)) ([f4112ff](https://github.com/nicsuzor/academicOps/commit/f4112ff069d57b82d568bc0f58c0cf2b63a7ba07))
+* **tests:** address Copilot review comments on [#2094](https://github.com/nicsuzor/academicOps/issues/2094)'s wiring test ([#2098](https://github.com/nicsuzor/academicOps/issues/2098)) ([074849c](https://github.com/nicsuzor/academicOps/commit/074849c69cd3a8896ef3f6dc290e75d9664d7bba))
+
 ## [0.3.61](https://github.com/nicsuzor/academicOps/compare/v0.3.60...v0.3.61) (2026-07-04)
 
 
