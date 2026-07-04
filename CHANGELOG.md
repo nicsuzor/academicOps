@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.60](https://github.com/nicsuzor/academicOps/compare/v0.3.59...v0.3.60) (2026-07-04)
+
+
+### Bug Fixes
+
+* **qa:** route content-quality verification to the artifact-type's governing standard ([#2080](https://github.com/nicsuzor/academicOps/issues/2080)) ([d6f236e](https://github.com/nicsuzor/academicOps/commit/d6f236ea75422063127aebe9e6651097f5ec03dd))
+
 ## [0.3.59](https://github.com/nicsuzor/academicOps/compare/v0.3.58...v0.3.59) (2026-07-03)
 
 
