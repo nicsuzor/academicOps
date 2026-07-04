@@ -154,6 +154,8 @@ writing, code:
 
 These rules are research-specific applications of the universal axioms. They apply in addition to the universal axioms when working on research, teaching, or publication outputs:
 
+<!-- NS: i think some of these are too detailed. Might need to refer to project/user local norms instead of hardcoding stuff here. -->
+
 - **Academic Output Quality**: Nothing goes out to the public before it's perfect. All academic output (reports, papers, deliverables) must be triple-checked and presented to the user for explicit approval with full receipts before release. This applies to any stakeholder-facing deliverable. (Corollary of `data-boundaries` — externally-visible research output is high-blast-radius.)
 - **Methodology Belongs to Researcher**: Methodological choices in research belong to the researcher. When implementation requires methodology not yet specified, HALT and ask. (Corollary of `exercise-authority` — methodology choice is a named ultra-vires example under Edge 1.)
 - **User Sign-Off Required**: Never mark a report/deliverable task with status: done without explicit user approval. (Corollary of `exercise-authority` and `data-boundaries`.)

@@ -29,6 +29,29 @@
 # correct (new) SHA one pass later. A problem the agent could not fix is
 # still red; a problem it fixed inline and committed never was.
 #
+# SECOND BUG THIS FIXES (identity collision, 2026-07-03, PR #2081). The
+# agent's own `gh pr review` call authenticates as `claude[bot]` — fixed,
+# regardless of the job's GH_TOKEN — because that identity belongs to
+# claude-code-action's own Bash-tool auth, not this workflow's env (confirmed
+# empirically: QA's CHANGES_REQUESTED review on a botnicbot-authored PR
+# posted fine as claude[bot]; enforcer's failed review-post on a
+# claude[bot]-authored PR named `app/claude` as its own identity in the
+# error). When a PR's OWN author identity is also claude[bot] — a
+# credential-isolation regression in whatever session opened it, tracked
+# separately in aops-ae3aa475, not something this pipeline controls — GitHub
+# rejects `gh pr review --request-changes` as a self-review, and no formal
+# review is ever posted for that SHA. enforcer.agent.md's documented
+# contract (shared-error-handling.md: never fail silently, post the verdict
+# as a comment when a depended-on call fails) already covers this — the
+# agent posts its verdict as a plain issue comment with a structured
+# `<!-- aops:self-review-fallback agent=enforcer sha=... verdict=... -->`
+# marker instead. This script recovers that verdict when no formal review
+# exists, so enforcer-status resolves instead of being stuck at an
+# unrecoverable failure. Trust is scoped to comments authored by
+# `claude[bot]` specifically — the same identity a genuine review would have
+# come from; nothing new is trusted that the review path didn't already
+# trust.
+#
 # Required env:
 #   HEAD_SHA        exact PR head SHA this job started on (the pre-commit SHA).
 #   COMMITTED       "true" if the agent pushed a commit this pass (the
@@ -49,6 +72,9 @@
 #                   (no live call is made when COMMITTED=true).
 #   REVIEWS_JSON    path to a file with the PR reviews JSON array (testing /
 #                   offline). When set, no gh calls are made.
+#   COMMENTS_JSON   path to a file with the PR issue-comments JSON array
+#                   (testing / offline, for the self-review-fallback check).
+#                   When set, no gh calls are made for comments.
 #
 # Outputs (stdout and $GITHUB_OUTPUT when set):
 #   state        success|failure
@@ -106,8 +132,34 @@ case "$review_state" in
     ;;
 esac
 
-# No genuine verdict review found for HEAD_SHA. Distinguish infra failure
-# from agent-completed-but-silent so the description is actionable.
+# ── No formal review found: check for the self-review-collision fallback
+#    marker (see header). Only reached when the review lookup above found
+#    nothing, so this never costs an extra API call on the common path. ─────
+if [[ -n "${COMMENTS_JSON:-}" ]]; then
+  comments="$(cat "$COMMENTS_JSON")"
+else
+  comments="$(gh api "repos/${REPO:?REPO is required}/issues/${PR_NUMBER:?PR_NUMBER is required}/comments?per_page=100" 2>/dev/null || echo "[]")"
+fi
+
+fallback_marker="<!-- aops:self-review-fallback agent=enforcer sha=${HEAD_SHA} verdict="
+fallback_body="$(jq -r --arg login "claude[bot]" --arg marker "$fallback_marker" '
+  [.[] | select(.user.login == $login) | select((.body // "") | contains($marker))]
+  | last | .body // ""' <<<"$comments")"
+
+case "$fallback_body" in
+  *"verdict=APPROVED"*)
+    emit "success" "Axiom-clean (self-review fallback — formal review blocked, see comment)" "false"
+    exit 0
+    ;;
+  *"verdict=CHANGES_REQUESTED"*)
+    emit "failure" "Violations found — see review (self-review fallback — formal review blocked, see comment)" "true"
+    exit 0
+    ;;
+esac
+
+# No genuine verdict review or fallback comment found for HEAD_SHA.
+# Distinguish infra failure from agent-completed-but-silent so the
+# description is actionable.
 if [[ -z "$REVIEW_OUTCOME" ]]; then
   emit "failure" "Enforcer failed: early pipeline failure (review step never ran) — see run logs" "true"
   exit 0

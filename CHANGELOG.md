@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.3.60](https://github.com/nicsuzor/academicOps/compare/v0.3.59...v0.3.60) (2026-07-04)
+
+
+### Bug Fixes
+
+* **qa:** route content-quality verification to the artifact-type's governing standard ([#2080](https://github.com/nicsuzor/academicOps/issues/2080)) ([d6f236e](https://github.com/nicsuzor/academicOps/commit/d6f236ea75422063127aebe9e6651097f5ec03dd))
+
+## [0.3.59](https://github.com/nicsuzor/academicOps/compare/v0.3.58...v0.3.59) (2026-07-03)
+
+
+### Features
+
+* **build:** translate agent tool names for Antigravity platform ([#2073](https://github.com/nicsuzor/academicOps/issues/2073)) ([19d1a63](https://github.com/nicsuzor/academicOps/commit/19d1a6307e314c4726416a53b7c82a8263628617))
+
+## [0.3.58](https://github.com/nicsuzor/academicOps/compare/v0.3.57...v0.3.58) (2026-07-03)
+
+
+### Bug Fixes
+
+* **agents:** James must merge convergent reviewer findings, not duplicate them ([#2082](https://github.com/nicsuzor/academicOps/issues/2082)) ([d807252](https://github.com/nicsuzor/academicOps/commit/d8072527fba3ddc235696bb5cf162f0632af3790))
+
+## [0.3.57](https://github.com/nicsuzor/academicOps/compare/v0.3.56...v0.3.57) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** add always() guard to mechanic dispatch job (fixes [#2084](https://github.com/nicsuzor/academicOps/issues/2084)) ([7e4b1c6](https://github.com/nicsuzor/academicOps/commit/7e4b1c6d7a7e145bd6f941783a2e6908a181c0f4))
+
+## [0.3.56](https://github.com/nicsuzor/academicOps/compare/v0.3.55...v0.3.56) (2026-07-03)
+
+
+### Bug Fixes
+
+* **pipeline:** recover enforcer/qa verdicts when gh pr review self-collides ([#2087](https://github.com/nicsuzor/academicOps/issues/2087)) ([58513b8](https://github.com/nicsuzor/academicOps/commit/58513b84440bf50e55a57051a0410cb6ad3f21c1))
+
+## [0.3.55](https://github.com/nicsuzor/academicOps/compare/v0.3.54...v0.3.55) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** grant claude.yml write access and gate it to trusted authors ([#2078](https://github.com/nicsuzor/academicOps/issues/2078)) ([9b60165](https://github.com/nicsuzor/academicOps/commit/9b6016516d6b152afc7aff9944b7006534e60b69))
+
 ## [0.3.54](https://github.com/nicsuzor/academicOps/compare/v0.3.53...v0.3.54) (2026-07-03)
 
 

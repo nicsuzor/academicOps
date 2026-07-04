@@ -12,7 +12,7 @@ import importlib
 
 import pytest
 from hooks.router import HookRouter
-from lib.gate_types import GateStatus
+from lib.gate_types import GateStatus, GateVerdict
 from lib.gates.registry import GateRegistry
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
@@ -220,3 +220,63 @@ def test_interactive_claim_task_closes_gate(router):
 
     assert state.gates["handover"].status == GateStatus.CLOSED
     assert state.session_did_work is True
+
+
+def test_continue_skill_opens_handover_and_ida(router):
+    """The /continue pause skill opens BOTH the handover and ida gates (sticky
+    until UPS), so a legitimate hand-back is not blocked by the exit-discipline
+    or honesty gates — the skill itself delivers the honest resume summary."""
+    session_id = "test-continue"
+    state = _make_polecat_state(session_id)
+    state.main_agent.current_task = "task-abc"
+    state.session_did_work = True
+    # Both exit gates armed (CLOSED) before the pause.
+    state.gates["handover"].status = GateStatus.CLOSED
+    state.gates["ida"].status = GateStatus.CLOSED
+
+    ctx = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        tool_input={"skill": "continue"},
+    )
+    ctx.subagent_type = "continue"
+    router._dispatch_gates(ctx, state)
+
+    assert state.gates["handover"].status == GateStatus.OPEN
+    assert state.gates["handover"].sticky is True
+    assert state.gates["ida"].status == GateStatus.OPEN
+    assert state.gates["ida"].sticky is True
+
+
+def test_continue_lets_stop_pass_without_honesty_block(router, monkeypatch):
+    """After /continue opens the exit gates, the following Stop is not DENYed by
+    handover or ida (both OPEN, sticky through the Stop)."""
+    monkeypatch.setenv("IDA_GATE_MODE", "warn")
+    monkeypatch.setenv("HANDOVER_GATE_MODE", "warn")
+    monkeypatch.setenv("QA_GATE_MODE", "off")
+    monkeypatch.setenv("RBG_REVIEW_GATE_MODE", "off")
+    _reinit_gates_with_defaults()
+    session_id = "test-continue-stop"
+    state = SessionState.create(session_id)
+    state.main_agent.current_task = "task-abc"
+    state.session_did_work = True
+    state.gates["handover"].status = GateStatus.CLOSED
+    state.gates["ida"].status = GateStatus.CLOSED
+
+    cont = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="Skill",
+        tool_input={"skill": "continue"},
+    )
+    cont.subagent_type = "continue"
+    router._dispatch_gates(cont, state)
+
+    result = router._dispatch_gates(
+        HookContext(session_id=session_id, hook_event="Stop", tool_name=None, tool_input={}),
+        state,
+    )
+    assert result is None or result.verdict != GateVerdict.DENY, (
+        f"/continue must let the Stop pass without an honesty/handover block — got {result!r}"
+    )

@@ -57,7 +57,7 @@ Was the work done properly?
 | No regressions | Do existing features still work?                                                      |
 | Project rules  | If `.agents/rules/RULES.md` exists in this repo, does the diff comply with its rules? |
 
-**Repo-local rules check.** If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply its rules **with the same class/instance discipline as `AXIOMS.md`** — each rule targets a class of cases, not the one diff in front of you. Project-rule violations belong in the Issues section under the **Process Compliance** dimension, cited by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note it briefly in the report. Do not invent project rules from related repos or memory.
+**Repo-local rules check.** If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply its rules **with the same class/instance discipline as `AXIOMS.md`** — each rule targets a class of cases, not the one diff in front of you. Project-rule violations belong in the Issues section under the **Process Compliance** dimension, cited by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note it briefly in the report. Do not invent project rules from related repos or memory. `RULES.md` is the floor, not the whole bar: for a content/instruction artifact (skill, agent body, prompt, doc, spec) also identify the skill that owns the quality standard for that artifact **type** and verify the diff against it — e.g. `/craft` for instruction / agent-definition / skill / prompt edits. The governing standard often lives in a skill, not `RULES.md`.
 
 #### 3. Semantic Correctness
 
@@ -142,6 +142,18 @@ gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 ### Recommendation
 [What must be fixed]"
 ```
+
+### If `gh pr review` fails — self-review fallback
+
+`gh pr review` can fail outright (non-zero exit, an error printed instead of silence) — most commonly `"Can not request changes on your own pull request"` when this PR happens to be authored by the same identity your `gh pr review` calls use. That identity mismatch is an upstream identity-assignment issue, not something for you to diagnose or work around by retrying — do NOT loop on `gh pr review`, it will fail the same way every time.
+
+Post your verdict as a **PR comment** instead, with `gh pr comment`. The body must: (1) start with the same `# QA Verification` marker as always; (2) state plainly that the formal review could not be posted, quoting the actual `gh` error; (3) carry your full normal verdict content; (4) include this exact structured line, verbatim, so the workflow can recover your verdict automatically:
+
+```
+<!-- aops:self-review-fallback agent=qa sha=$HEAD_SHA verdict=APPROVED -->
+```
+
+Use `verdict=CHANGES_REQUESTED` instead when that's your actual verdict, and substitute the real `$HEAD_SHA` value — the workflow matches on it exactly, so it must be correct.
 
 ## Rules
 

@@ -16,7 +16,9 @@ tags: [enforcement, compliance, framework-architecture, verification]
 
 - **`specs/ENFORCEMENT-MAP.md`** — **operative state register** (canonical SSoT). Pyramid-position assignments, every runtime hook / pre-commit hook / gate / PR-pipeline agent, plus the axiom-keyed cross-reference. When to reach for it: "what is currently catching X" or "what does it cost."
 - **`specs/enforcement/enforcement.md`** (this file) — design statement. When to reach for it: deciding where a new rule, gate, or check should live; understanding why enforcement is shaped the way it is; PR cost-benefit framing.
-- **`specs/enforcement/enforcement-map.md`** — redirect stub pointing at `specs/ENFORCEMENT-MAP.md`.
+
+<!-- NS: as i understand it, gates arent state, they're design features with specs of their own. they're **configured** in the map, but how they operate is dev defined. Update gates.md accordingly.  -->
+
 - **`specs/enforcement/GATES.md`** — **state SSoT** for the runtime gate catalogue (where each lives in source, how it's configured, how to verify firing, how to debug). When to reach for it: a forensic-debug question about a specific gate.
 
 ## Two views of the same mechanisms
@@ -91,11 +93,15 @@ Full catalogue of mechanisms per layer: **see [`specs/ENFORCEMENT-MAP.md`](../..
 
 **Responsive regulation theory.** The pyramid is borrowed directly from Ian Ayres & John Braithwaite, _Responsive Regulation: Transcending the Deregulation Debate_ (Oxford University Press, 1992). The framework cannot force any agent to do anything — we can only create _encouragement with detection_. Given that, the choice of _where to intervene_ should follow the principle of least invasion: use the lightest mechanism that catches the failure, and escalate only when evidence shows the lighter mechanism is insufficient. The width of the pyramid at each level represents the **volume × frequency** of enforcement there: a wide base of high-volume soft mechanisms (always-on context injection, voluntary skill invocation, lifecycle hints) tapering to a sharp apex of rare severe responses (LLM-mediated review, branch protection, detached cross-incident review of accumulated reports). The narrower the level, the more reluctantly invoked.
 
+<!-- NS: dont say what its NOT. -->
+
 **Executive vs legislative.** The pyramid itself is neither — it is just a way to **conceptualise rules by escalation cost**, nothing more. The executive/legislative split sits one level down, in what the pyramid organises: **legislative** rules are declared in specs — axioms (the numbered A-rules in [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md)), heuristics, and the full specs backing each system; **executive** mechanisms are the runtime agents and gates (rbg, enforcer, qa, hooks) that actually enforce those rules at whichever pyramid tier they sit. Neither layer enforces itself: a rule does nothing until an executive mechanism acts on it, and an agent has no standing to rewrite a rule mid-session (that's the `/learn` constraint on witnesses, not a property of the pyramid). Promoting a rule into `AXIOMS.md` raises its _weight_ in the L1 always-on injection mechanism — axiom status is content-weighting, not pyramid placement. (Weight comes from being a first-class axiom, not from any ordinal number; axioms are keyed by slug, see §4.0.) Looking up "what enforces `exercise-authority`?" means scanning the axiom × mechanism table in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md), not the pyramid table.
 
 **Operative use.** The pyramid is **not** a decorative metaphor — it is the structure that organises every add/escalate/remove decision. Each mechanism in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) carries an explicit pyramid position (L0–L7); PRs that propose enforcement changes cite that position and justify it against §4.1. The L0–L11 pipeline numbering above and the base/middle/tip tier labels below are different lenses on the same set of mechanisms — the pipeline answers _when_, the pyramid answers _how invasive_.
 
 ### §4.0 How AXIOMS.md is written (authoring principles)
+
+<!-- NS: Not convinced this section belongs here.  -->
 
 The legislative layer has its own form discipline. These principles govern how [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md) and its paired review checklist [`.agents/rules/AXIOMS-REVIEW.md`](../../.agents/rules/AXIOMS-REVIEW.md) MUST be written. They are spec rules, not style preferences — an axiom that breaks them is malformed and `rbg` should flag it.
 
@@ -121,6 +127,9 @@ The CBA (§4.1 item 4) therefore costs _both_ axes — per-invocation cost and f
 | **Middle** | Moderate volume, triggered by threshold or event, warns or opens gates | hydration gate (L4), enforcer gate (L4), enforcer subagent invocation (L7), QA gate — planned (L4), /planner decomposition checks (L2), proof-of-compliance tool fields (L2), premise gate — agent judgment, hard-refuses (promoter L2 / spend-surface refusal L4; see [premise-gate.md](premise-gate.md)), rbg subagent invocation (L7), qa / marsha subagent invocation (L7), james orchestration (L9), pr-reviewer GHA (L9), agent-enforcer GHA (L9), linter workflows (L9), commit gate (L8), CC auto-mode classifier `soft_deny` (judgment per-action gate, pipeline L4 / pyramid L5 — context-overridable deny, reason returned to the agent; see [auto-mode-classifier.md](auto-mode-classifier.md)) |
 | **Tip**    | Rare, heavy — hard-blocks or requires human judgment                   | policy_enforcer.py hard blocks (L5), settings.json deny rules (L5), credential isolation (L5), handover gate (L8), in-pipeline `admit` job `pr-fix-loop` Environment gate (L10), branch protection (L10), mechanic loop-ceiling (L10), project-owner / admin approval (L10), CC auto-mode classifier `hard_deny` (pipeline L4 / pyramid L5 — absolute pre-execution block)                                                                                                                                                                                                                                                                                                                                  |
 
+<!-- NS: Instructions info should explain that there are gradations in the tone of instructions and there are choice about when to show them that alters enforcement. These sub-features shouldnt be skipped when escalating enforcement. -->
+<!-- NS: We should also just have a clearer and more concise list of all the different types of enforcement -- this doc is a bit messy. It's missing a lot of basic enforcement mechanisms -- from pre-commit scripts to post hoc review processes. -->
+
 **Default to instructions.** Agents are intelligent and instructions work in the large majority of cases; the burden of proof is on adding a mechanism, not on keeping behaviour in prose. Every new hook or gate is permanent complexity and a new place for the framework to fail. Prefer the lightest sufficient instruction; prefer making an existing instruction land (relocate, propagate, strengthen) over creating a new mechanism. The base prompt tiers (L1 SessionStart reads, L2 lifecycle injection, L3 voluntary skills) are **delivery channels**, and within each the instruction can be tuned across a wide insistence / urgency / visibility / salience / placement spectrum — see [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) ("Within-class Insistence & Placement Spectrum"). "Escalating a failure" at a base tier means **first walking that spectrum within the current mechanism class**; crossing into a heavier mechanism class is the move of last resort, not the default.
 
 **Escalation rules.**
@@ -131,6 +140,8 @@ The CBA (§4.1 item 4) therefore costs _both_ axes — per-invocation cost and f
 - **Never guess.** With no evidence either way, the current placement holds — changes come from §5 evidence, not authorial intuition.
 
 ### §4.1 PR requirements for enforcement changes
+
+<!-- NS: this specific review stuff doesnt belong in this spec.  -->
 
 This applies to PRs that **add, escalate, or remove** a row in [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) — a new gate, a position change (e.g. L1→L3), a new axiom, an additional hook firing surface, or removing one. Bug fixes within an existing enforcement surface at the same position (correcting wrong logic or wrong prose in an existing skill, agent, hook, or gate) do NOT require CBA — they need only a clear description of the bug and the corrective edit. User-directed architectural changes skip the ≥3 recurrence requirement but still require pyramid-position reasoning to document where the fix lands.
 
@@ -206,6 +217,8 @@ The user can file an issue by hand instead — same constraints. A bare "please 
 
 > "Let's look at what's piled up and decide what to actually change."
 
+<!-- NS: DRY: move the stuff on escalation to here, keep it concise. No need to describe the mechanics of individual skills, just the operation & function -->
+
 Periodically — when the issue queue feels heavy, or on a cadence the user sets — the user runs `/issue-sweep`. The dispatched agent enters with no prior exposure to any individual incident. It:
 
 1. Pulls up to 20 open issues and classifies each (close-stale, comment-only, single-task, fix-epic, defer).
@@ -223,69 +236,19 @@ Recency is bias. The agent that just lived through a failure proposes fixes shap
 
 #### What the user does NOT need to do
 
+<!-- NS: should these be user stories? shoulde they be removed if not important?  -->
+
 - Propose remediations at /learn time. Just describe what happened.
 - Worry about whether their issue duplicates an existing one. The sweep agent groups by root cause and bumps volume on duplicates.
 - Choose a position (L0–L7) for any rule. The sweep agent applies the pyramid; the user gates the proposal.
 - Maintain the operative register by hand. Approved fix-epics that add or move a row update [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) as part of the change (P#65).
 
-### §5.2 Implementation status
-
-| Step                               | Status                               | Detail                                                                                                                                                                                                             |
-| ---------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. Failure detection               | Implemented (aggregation partial)    | Signals from any pipeline layer: RBG findings, QA/marsha fails, /retro observations, user reports, post-merge regressions, /sleep staleness findings, hook log patterns. Aggregated ad-hoc, not a single pipeline. |
-| 2. `/learn` files anonymised issue | Implemented                          | Skill at `aops-core/commands/learn.md`. Anonymisation mandatory; RCA schema enforced; dedup by search-first. Labels: `bug`, `criticality:<level>`, plus layer tags.                                                |
-| 3. Evidence accumulation           | Implemented (GitHub issues as store) | Issues cluster around patterns; volume × criticality informs priority. No separate database.                                                                                                                       |
-| 4. `/aops` pattern detection       | Aspirational — principal known gap   | Periodic read of issue labels/bodies/close-status, detect recurring failure modes, map to pyramid layers. Not mechanically implemented.                                                                            |
-| 5. Recommendation generation       | Aspirational                         | `/aops` proposes an adjustment — layer, mechanism, escalate/de-escalate, spec/axiom/hook change. Not implemented.                                                                                                  |
-| 6. Human decision + implementation | Implemented (normal task flow)       | User approves; an agent implements via `/q` → decomposition → execution; spec/code/axiom updated through PR pipeline.                                                                                              |
-| 7. Closing the loop                | Partially implemented                | Issues referenced by the implementing PR close automatically; [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) row update is still manual.                                                             |
-
-**Principal gap.** Steps 4–5 are the unbuilt piece: evidence capture (2) and implementation (6) both work, but the recommendation connecting them is aspirational.
-
 ## §6 Per-mechanism reference
 
 Operative rule <-> mechanism register: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md). Per-gate TL;DR / config / verify / debug detail: [`specs/GATES.md`](GATES.md). PR/merge pipeline contract: [`pr-pipeline.md`](../workflows/pr-pipeline.md).
 
-### Output consolidation across gates
-
-When multiple gates fire on the same hook event, the router merges their outputs into one response using field-specific rules:
-
-| Field                | Merge strategy                           |
-| -------------------- | ---------------------------------------- |
-| `additionalContext`  | Concatenate with `\n\n---\n\n` separator |
-| `systemMessage`      | Concatenate with `\n`                    |
-| `permissionDecision` | **deny > ask > allow** (strictest wins)  |
-| `continue`           | AND logic (any false = false)            |
-| `suppressOutput`     | OR logic (any true = true)               |
-| exit code            | MAX (worst wins: 2 > 1 > 0)              |
-
-This is what makes "least invasion first" (§10) actually hold at the wire level: a lighter gate's `allow` can never mask a heavier gate's `deny`.
-
-## §7 Scope limits
-
-### §7.1 Known-clients only
-
-The framework's agent-based enforcement (rbg, enforcer, qa / marsha, pauli, james) applies **only to known clients**: polecat, crew, and interactive sessions invoked through the aops plugin. GHA agents inherit via prompt inlining at build time (see `scripts/build.py` — intentionally out of scope this cycle).
-
-**Unknown third-party agents** running on arbitrary platforms are out of scope. The framework cannot reach them, and no gate mechanism assumes they exist. The only mechanism for third-party alignment is prompt-level: by shaping the specs / axioms / templates that any agent reads, the framework influences what third-party agents do. The pipeline is _not_ a perimeter around a trust boundary.
-
-### §7.2 Per-client coverage table
-
-| Client                  | Hooks?               | Gates? | rbg/enforcer?      | /dump? | PR pipeline? |
-| ----------------------- | -------------------- | ------ | ------------------ | ------ | ------------ |
-| Polecat                 | Yes                  | Yes    | Yes                | Yes    | Yes          |
-| Crew (Claude Code)      | Yes                  | Yes    | Yes                | Yes    | Yes          |
-| Interactive (local CLI) | Yes                  | Yes    | Yes                | Yes    | Yes          |
-| GHA review agents       | No (inlined prompts) | No     | Yes (prompt-level) | No     | N/A          |
-| Third-party agents      | No                   | No     | No                 | No     | No           |
-
-### §7.3 Session scope
-
-Which session types get the full gate/context-injection stack, and how inline subagents are excluded to avoid double-enforcement: [`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md) §1.
-
-## §8 Gate mode environment variables & Operator impact
-
-Per-gate `*_GATE_MODE` env vars, defaults, and resolution mechanics (including the polecat/crew overlay): [`specs/GATES.md`](GATES.md) § Config plumbing.
+- When multiple gates fire on the same hook event, the router merges their outputs into one response.
+- This is what makes "least invasion first" (§10) actually hold at the wire level: a lighter gate's `allow` can never mask a heavier gate's `deny`.
 
 ## §9 Workflow composition (Phase 3 placeholder)
 
@@ -296,11 +259,10 @@ Task-creating agents compose compliant workflows by combining axioms, heuristics
 ## §10 Design principles
 
 1. **Layer defences** — no single mechanism is reliable. Combine base, middle, and tip tiers for any failure mode worth catching.
-2. **Prefer observable over invisible** — TodoWrite, task bodies, STATUS.md, gate icons. If a mechanism fires and the user cannot see it, the mechanism has not enforced.
-3. **Accept imperfection** — enforcement is encouragement with detection, not coercion. Design for drift, not for prevention.
-4. **Measure before changing** — the §5 evidence loop is the authority for tier changes. Authorial intuition is not evidence.
-5. **Least invasion first** — exhaust the within-prompt insistence/placement spectrum before crossing mechanism classes: gentle reminder → reasoned instruction → emphasis → **relocation** (move the instruction to the failing surface) → **propagation** (every surface that hits the failure carries the rule) → structured / parsed format. _Only then_ leave the prompt tier: conventions before templates; templates before soft gates; soft gates before hard blocks; hard blocks before human approval. Escalate only on §5 evidence — and the evidence must show the within-tier spectrum was walked, not just that the rule was once stated and once ignored. (Anti-gate bias: see §4 Escalation rules; cross-reference [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum".)
-6. **Show, don't tell** — where compliance is claimed, require information that demonstrates it. Tool signatures and task templates should carry the proof into the schema rather than accept reassurance.
+2. **Accept imperfection** — enforcement is encouragement with detection, not coercion. Design for drift, not for prevention.
+3. **Measure before changing** — the §5 evidence loop is the authority for tier changes. Authorial intuition is not evidence.
+4. **Least invasion first** — exhaust the within-prompt insistence/placement spectrum before crossing mechanism classes: gentle reminder → reasoned instruction → emphasis → **relocation** (move the instruction to the failing surface) → **propagation** (every surface that hits the failure carries the rule) → structured / parsed format. _Only then_ leave the prompt tier: conventions before templates; templates before soft gates; soft gates before hard blocks; hard blocks before human approval. Escalate only on §5 evidence — and the evidence must show the within-tier spectrum was walked, not just that the rule was once stated and once ignored. (Anti-gate bias: see §4 Escalation rules; cross-reference [`enforcement-design.md`](../../aops-core/skills/aops/references/enforcement-design.md) — "Within-class Insistence & Placement Spectrum".)
+5. **Show, don't tell** — where compliance is claimed, require information that demonstrates it. Tool signatures and task templates should carry the proof into the schema rather than accept reassurance.
 
 ## §11 Component responsibilities
 
@@ -318,43 +280,11 @@ Multiple categories can apply; defence-in-depth can fail at multiple layers.
 
 ### Root-cause analysis protocol
 
-1. Was there a rule? Check AXIOMS / HEURISTICS.
-2. Did the hydrator suggest the correct workflow?
+1. Was there a rule? Check AXIOMS / HEURISTICS / project local rules.
+2. Did the task suggest the correct workflow?
 3. Did the agent follow the workflow? If yes, was output correct?
-4. Should a PreToolUse hook have blocked? Check hook rules.
-5. Should a PostToolUse hook have detected? Check detection hooks.
-6. Should a deny rule have blocked? Check `settings.json` / `policy_enforcer.py`.
-7. Should a pre-commit hook have caught? Check `.pre-commit-config.yaml`.
+4. Should action have been reviewed ex ante? By whom?
+5. Should action have been blocked? By what mechanism?
+6. Should an ex post review have caught a problem?
 
 If all components met their responsibilities and the failure still occurred: **Gap** — create a new mechanism at the appropriate position.
-
-## §12 Verification — "Can it" ≠ "Does it"
-
-The top failure pattern in this framework is conflating capability with actual state. An agent that checks whether code _could_ work, or what defaults _would_ be, has not verified that anything _is_ working.
-
-| Agent checked              | Should have checked |
-| -------------------------- | ------------------- |
-| Framework default value    | Actual config file  |
-| Code capability exists     | Feature is enabled  |
-| Tool exists                | Tool is configured  |
-| "Should work" / "probably" | Observed output     |
-
-Evidence types, in decreasing order of trust:
-
-| Type              | Definition                                 |
-| ----------------- | ------------------------------------------ |
-| `actual_state`    | Config files read, runtime output captured |
-| `default_only`    | Only defaults checked                      |
-| `capability_only` | Only documented capabilities               |
-| `none`            | No evidence gathered                       |
-
-Conclusions require `actual_state`. Anything less is a claim, not a finding.
-
----
-
-**Related**
-
-See **Sibling documents** at the top of this file for the enforcement-cluster files (`ENFORCEMENT-MAP.md`, `enforcement-map.md`, `GATES.md`). Additionally:
-
-- [`.agents/rules/AXIOMS.md`](../../.agents/rules/AXIOMS.md) — universal axioms (read only by `rbg`).
-- [`.agents/rules/HEURISTICS.md`](../../.agents/rules/HEURISTICS.md) — advisory heuristics.
