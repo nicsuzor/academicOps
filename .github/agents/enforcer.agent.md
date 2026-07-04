@@ -46,6 +46,8 @@ For **mechanical violations** (typos, missing required frontmatter, orphan files
 
 For **judgment calls** (design trade-offs, scope, intent): flag in the review body. Do not push.
 
+A violation you fixed yourself in this step is **resolved** — it does not count against the verdict you post in step 5. Only a violation that is still unresolved once you're done (a judgment call you flagged, or a mechanical fix you attempted but could not complete) counts as "a violation exists" there. Finding a problem and fixing it inline is success, not a reason to request changes.
+
 ### 4. Check before posting (idempotent verdict)
 
 **Check first, then act once.** Before posting, list the reviews for this exact SHA and see whether an enforcer verdict already stands:
@@ -69,7 +71,7 @@ gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
 
 ### 5. Post the PR review
 
-File your verdict using `gh pr review`. Use `--approve` when no violations; `--request-changes` when violations exist.
+File your verdict using `gh pr review`. Use `--approve` when no violations **remain** — this includes the case where you found one or more, fixed every one yourself in step 3, and pushed the fix. Use `--request-changes` only when at least one violation is still unresolved after your own fixes.
 
 - **`gh pr review` prints nothing on success.** Empty output means it WORKED — do not treat silence as failure and re-run it. If you must confirm, re-list reviews (step 4) and look for your verdict; never blind-post a second time.
 - Always post a review to record your verdict, even if no violations are found — use `--approve` for APPROVE, `--request-changes` otherwise. The workflow reads the review **state** (APPROVED / CHANGES_REQUESTED), not any parsed text.
@@ -80,6 +82,21 @@ File your verdict using `gh pr review`. Use `--approve` when no violations; `--r
   The `## Enforcer Review` token MUST appear in every review body (both paths) — the SHA-skip check and the dismiss step grep `.body` for it. NEVER post a blank body. The reasoning surface for a PASS is the `enforcer-status` commit-status `description` (e.g. "Axiom-clean"); do not add a reasoning block here.
 - **CHANGES_REQUESTED path — full reasoning in the body (unchanged):** Start the body with `## Enforcer Review` then include the violation list, axiom IDs, and mechanic-actionable fix instructions. The mechanic reads this prose to know what to fix.
 - The workflow also reconciles to a single standing verdict per SHA as a safety net, but you should still post exactly once — the safety net is not licence to double-post.
+
+### 5a. If `gh pr review` fails — self-review fallback
+
+`gh pr review` can fail outright (non-zero exit, an error printed instead of silence) — most commonly `"Can not request changes on your own pull request"` when this PR happens to be authored by the same identity your `gh pr review` calls use. That identity mismatch is an upstream identity-assignment issue, not something for you to diagnose or work around by retrying — do NOT loop on `gh pr review`, it will fail the same way every time.
+
+Per the error-handling contract above (never fail silently): post your verdict as a **PR comment** instead of a review, with `gh pr comment`. The body must:
+
+1. Start with the same `## Enforcer Review` marker as always.
+2. State plainly that the formal review could not be posted, quoting the actual `gh` error.
+3. Carry your full normal verdict content (marker-only for a clean pass; full reasoning for violations) — nothing about the fallback path changes what you'd have said.
+4. Include this exact structured line, verbatim, so the workflow can recover your verdict automatically:
+   ```
+   <!-- aops:self-review-fallback agent=enforcer sha=$HEAD_SHA verdict=APPROVED -->
+   ```
+   Use `verdict=CHANGES_REQUESTED` instead when that's your actual verdict, and substitute the real `$HEAD_SHA` value — the workflow matches on it exactly, so it must be correct.
 
 If you push fixes, use the commit trailer:
 

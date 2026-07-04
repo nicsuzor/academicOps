@@ -8,8 +8,6 @@ depends_on: []
 tags: [spec, polecat, architecture]
 ---
 
-<!-- NS: this file looks like it's misfiled? -->
-
 # Polecat System: Ephemeral Agent Workspaces
 
 The polecat system gives every dispatched task its own isolated, disposable git

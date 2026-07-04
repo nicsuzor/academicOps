@@ -32,6 +32,8 @@ tags:
 
 # /triage — Unified Triage Skill
 
+<!-- NS: can we go back to /learn for this skill? or something that is more descriptive? -->
+
 Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
 
 | Mode    | Corpus                              | Primary output                 |
@@ -62,22 +64,24 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
 - **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
-- Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-full.md`. Use `-abridged.md` only as a fallback.
+- Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-abridges.md`. Use `-full.md` only as a fallback if `-abridged.mf` is incomplete for your needs.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
+<!-- NS: we have review modes. shouldn't we just call them? -->
+
 - Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
-- **Immediate Fixes Policy**:
-  - **Minor Tweaks**: You are authorized to fix minor issues immediately (e.g., typos, wrong paths, simple one-line instruction updates, formatting, or obvious logic bugs) directly in the source files, without seeking user permission.
-  - **Framework-Caused Defects**: Problems caused by the framework itself (bugs in hooks, gates, skills, tools) MUST be fixed immediately. Fixing it is the job.
+- **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:
+  - **In scope, fix immediately**: the concrete mistake or leftover bad state _this session_ produced — a wrong file it wrote, a task it left mis-filed, a broken reference or typo it introduced or tripped over, an actual code bug in a hook/gate/skill/tool. Fix these directly in the source files, without seeking permission.
+  - **Out of scope, always**: adding, editing, or strengthening any rule, axiom, persona instruction, gate, hook, or agent-definition text so that _future_ sessions behave differently — even one line, even when you're confident it's correct and well-scoped. That is a framework change, not a fix to the reviewed session (see §2b). One incident is never sufficient warrant for it, no matter how salient; it belongs to a separate, deliberate pass informed by recurrence across multiple filed issues, not to this one. File the gap in the RCA issue and stop there.
   - **First-Class Invocation: `/learn that last task should have been xyz`**: When Nic invokes this style with a description of what _should_ have happened, treat it as a directive to perform a **dual action**:
-    1. **Fix the immediate problem now**: Edit the codebase, rules, or instruction surfaces to enforce the correct behavior immediately.
-    2. **File the RCA issue in the background**: Run the standard retro analysis to file a forensic GitHub issue.
-       Never pick one and drop the other; you must perform both actions.
-  - **Complex Fixes**: If a fix is too complex, large, or requires unavailable permissions/runtime setups, file a follow-up task instead of attempting a partial fix that degrades system reliability.
+    1. **Fix the immediate problem now**: correct the reviewed session's own mistake or leftover state, per the in-scope/out-of-scope split above — never the instructions that govern future sessions.
+    2. **File the RCA issue in the background**: Run the standard retro analysis to file a forensic GitHub issue, including the "should have been xyz" framing as directive context.
+       Never pick one and drop the other; you must perform both actions. Never substitute a framework change for either.
+  - **Complex Fixes**: If an in-scope fix is too complex, large, or requires unavailable permissions/runtime setups, file a follow-up task instead of attempting a partial fix that degrades system reliability.
   - **The "Fix AND File" Invariant**: An immediate fix NEVER replaces the GitHub issue. You must STILL file the issue carrying the root-cause analysis. Do both: **Fix AND File**. The systemic lesson must survive even if the local symptom is already patched.
-- **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on the agent actually modifying the codebase to fix the live problem.
+- **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on fixing the reviewed session's own mistakes — nor, in the other direction, as license to fix the framework's future behavior; see the scope split above.
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
@@ -89,13 +93,11 @@ When the transcript shows an artifact whose **premise** a sharp principal would 
 
 This makes the reviewer's miss visible and attributed: a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it rather than compounding silently across future reviews.
 
-### 2b. Pyramid discipline — when a retro fix shapes how an agent behaves
+### 2b. Framework/behavioral changes are never a retro fix
 
-Any fix that changes what an agent is directed to do (an instruction, persona edit, rule, hook, gate, or chokepoint) is a **regulatory-pyramid action**. A retro applying one MUST:
+A fix that changes what an agent is directed to do — an instruction, persona edit, axiom, rule, hook, gate, or chokepoint — is a framework change, not a fix to the reviewed session. Retro does not apply these, at any tier, no matter how minor, obviously-correct, or narrowly-scoped to the one incident it looks from inside the review. This holds even under the `/learn that last task should have been xyz` invocation: "fix the immediate problem" there still means the reviewed session's own mistake, never the instructions that govern future sessions.
 
-- **Default to the lowest sufficient tier; escalate only on demonstrated insufficiency.** Start at the instruction tier and stay there. Per [[enforcement.md]] §4 ("Default to instructions"; Braithwaite responsive regulation) and the ENFORCEMENT-MAP Cost axis, a heavier mechanism (deterministic gate → post-hoc rbg → L4 chokepoint/funnel) is justified ONLY after a _clear, correctly-placed, propagated_ instruction was shown to fail. **Forbidden:** reflexively parking a heavier guard "to be safe" beside an instruction that has not yet failed, or framing the heavier tier as "the real enforcement" while the instruction tier is untested — that is belt-and-braces bloat (permanent maintenance + a new failure surface against a problem the prompt tier never attempted). An untested or mislocated instruction is NOT evidence the tier is exhausted. If a heavier guard might _later_ be warranted, record it on the follow-up task as **DEFERRED pending demonstrated insufficiency**, never as open enforcement.
-- **Record the enforcement-map decision.** Adding or strengthening any behavioural control triggers `{#enforcement-map-currency}` (it covers instructions and persona edits, not only gates). State the grain call in the review: either the change is _content on an already-mapped mechanism class_ (e.g. a repo-local `.agents/CORE.md` / persona edit rides the already-mapped L1 SessionStart-reads row → **no new row owed**) or it is a _genuinely new mechanism class_ (→ add one row to `specs/ENFORCEMENT-MAP.md` in the same change). Never leave the decision unrecorded.
-- **Place and propagate at the correct layer.** A framework-wide truth (true for every agent/host, not one machine) belongs in the **canonical agent definition** (`aops-core/agents/<agent>.md`) via a gated aops PR — not buried in one host's local launch context. A local-only edit is an acceptable immediate stopgap, but the retro MUST then recommend propagation to the canonical layer — this is the "correctly placed + propagated" precondition §4 requires before any later escalation.
+Recurrence across multiple filed issues, not the salience of one transcript, is the evidence base for a framework change — and deciding on one, including tier selection (Braithwaite responsive regulation, [[enforcement.md]] §4), `{#enforcement-map-currency}` recording, and canonical-layer propagation, is a separate, deliberate pass outside retro. Retro's job stops at naming the gap precisely in the filed issue.
 
 ### 3. Output Requirements
 
@@ -129,12 +131,12 @@ Produce a review in this exact format. Keep text concise:
 
 ### 5. Retro Anti-Patterns
 
-| Anti-pattern                                                                                                                                                                                                                                        | What to do instead                                                                                                                                                                                                                   |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary)                                                                                                     | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed. |
-| Including remediation proposals in the report                                                                                                                                                                                                       | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Propose fixes directly in the codebase (if permitted) but keep the filed issue strictly forensic.                            |
-| Citing a single session as justification for a new mechanism                                                                                                                                                                                        | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                       |
-| Stacking a heavier guard beside an untested instruction fix ("the real enforcement still open"), or applying a behavioural fix without recording the enforcement-map grain decision / propagating a framework-wide truth to the canonical agent def | Apply §2b: lowest sufficient tier first, escalate only on demonstrated insufficiency (defer heavier guards), record the `{#enforcement-map-currency}` decision, propagate framework-wide truths to `aops-core/agents/<agent>.md`.    |
+| Anti-pattern                                                                                                                                                                | What to do instead                                                                                                                                                                                                                    |
+| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary)                             | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed.  |
+| Including remediation proposals in the report                                                                                                                               | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Fix the reviewed session's own mistake directly in the codebase if in scope (§2), but keep the filed issue strictly forensic. |
+| Citing a single session as justification for a new mechanism                                                                                                                | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                        |
+| Editing an agent's instructions, persona, rules, hooks, or gates directly from retro because the fix looks small, obviously correct, or narrowly scoped to the one incident | Apply §2b: that is a framework change regardless of size. File it in the RCA issue and stop — closing it is a separate, deliberate, cross-incident pass, never this one.                                                              |
 
 ---
 

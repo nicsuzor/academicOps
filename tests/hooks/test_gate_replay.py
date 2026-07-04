@@ -90,11 +90,6 @@ def gate_mode(monkeypatch, tmp_path):
     Yields a SimpleNamespace with gate configuration info.
     """
     _set_gate_modes(monkeypatch)
-    # When run inside a polecat container, POLECAT_APPROVAL_MODE=plan flips
-    # the gate engine into plan mode, which skips the ops counter (see
-    # lib/gates/engine.py:548). Clear it so counter-increment tests behave
-    # the same on the host and inside a polecat session.
-    monkeypatch.delenv("POLECAT_APPROVAL_MODE", raising=False)
     _reinit_gates_with_defaults()
     yield SimpleNamespace()
     _reinit_gates_with_defaults()

@@ -26,7 +26,7 @@ Consolidated from:
 
 ### [[agents]] — Identity, authority, roles
 
-Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, RBG, James, Marsha, Ida — plus the planner, supervisor, and polecats.
+Who the framework's agents are, what they're allowed to do, how they delegate. Pauli, RBG, James, Marsha, Ida — plus the planner.
 
 - [[agents]] — Agent ecosystem overview
 - [[ida]] — Ida agent specification
@@ -35,10 +35,16 @@ Who the framework's agents are, what they're allowed to do, how they delegate. P
 - [[marsha]] — Marsha agent specification
 - [[james]] — James agent specification
 - [[agent-authority]] — Permissions and skill delegation envelope (frontmatter schema, four-axis permissions model, tool allowlists)
-- [[supervisor]] — Unified supervision architecture (swarm, burst, hypervisor)
-- [[polecat-system]] — Distributed worker dispatch
 
 (The content boundary for agent identity files — skill matter & docs out — is enforced by the `/craft` skill; the standalone `agent-definition-content` spec, along with `orchestrator-boundary` and `interactive-coworking`, was retired in the 2026-07 simplification pass.)
+
+### Polecat & supervision — worker dispatch and delegate-and-verify
+
+The execution and supervision architecture: how work is isolated, dispatched, and driven to a proven terminal state. These are subsystem-architecture specs, not agent-identity specs.
+
+- [[polecat-system]] — Ephemeral per-task workspaces, atomic claiming, PR-based merge
+- [[supervisor]] — Delegate-and-verify supervision (stateless tick; epic / portfolio / conversational scale)
+- [[spec-partial-work-tight-loop-delivery|Partial-work tight-loop delivery]] — Honest partial stops and tight delivery loops
 
 ### [[workflows]] — Multi-step processes
 

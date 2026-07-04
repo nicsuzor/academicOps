@@ -205,6 +205,35 @@ BUILD_CLAUDE_TO_GEMINI_TOOL: dict[str, str | None] = {
     "browser_resize": "resize_page",
 }
 
+# Claude-source frontmatter tool name -> Antigravity frontmatter tool name.
+# A value of ``None`` means "drop the tool" (no Antigravity equivalent).
+BUILD_CLAUDE_TO_AGY_TOOL: dict[str, str | None] = {
+    # File operations (Claude Code -> Antigravity)
+    "Read": "view_file",
+    "Write": "write_to_file",
+    "Edit": "replace_file_content",
+    "MultiEdit": "multi_replace_file_content",
+    "Glob": "list_dir",
+    "Grep": "grep_search",
+    "grep": "grep_search",  # lowercase variant
+    # Shell execution
+    "Bash": "run_command",
+    "bash": "run_command",  # lowercase variant
+    # Skills/Agents
+    "Skill": "invoke_subagent",
+    "Task": "invoke_subagent",
+    "Agent": "invoke_subagent",
+    # User interaction / planning / todos (Claude built-ins -> agy native)
+    "AskUserQuestion": "ask_question",
+    "ExitPlanMode": None,
+    "TodoWrite": None,
+    "NotebookEdit": None,
+    # Web operations
+    "WebFetch": "read_url_content",
+    "WebSearch": "search_web",
+}
+
+
 # Generic/Gemini frontmatter tool name -> Claude Code frontmatter tool name.
 # Used when projecting a (possibly Gemini-named) source agent INTO a Claude
 # artifact; unknown names pass through unchanged at the call site.
@@ -283,8 +312,27 @@ BUILD_BODY_TOOL_NOTATION: dict[str, dict[str, str]] = {
         "`Grep`": "`grep_search`",
         "Read or Grep": "read_file or grep_search",
     },
+    "antigravity": {
+        "Read(": "view_file(",
+        "Write(": "write_to_file(",
+        "Edit(": "replace_file_content(",
+        "ls(": "list_dir(",
+        "Glob(": "list_dir(",
+        "Grep(": "grep_search(",
+        "Read tool": "view_file tool",
+        "Write tool": "write_to_file tool",
+        "Edit tool": "replace_file_content tool",
+        "`Read`": "`view_file`",
+        "`Write`": "`write_to_file`",
+        "`Edit`": "`replace_file_content`",
+        "`ls`": "`list_dir`",
+        "`Glob`": "`list_dir`",
+        "`Grep`": "`grep_search`",
+        "Read or Grep": "view_file or grep_search",
+    },
     "claude": {},
 }
+
 
 # Gemini body-text spawn/skill rewrites applied AFTER the notation map above
 # (Task/Skill collapse to activate_skill in prose, mirroring the frontmatter

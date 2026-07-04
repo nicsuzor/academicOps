@@ -43,6 +43,7 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | Stage-1 triage orchestrator (`pr-pipeline.yml`): cost-order `lint → enforcer → qa`, `committed`-output short-circuit, read-only `typecheck`/`pytest`                                                                                                                                                                                                                                                              | **LIVE**      | `.github/workflows/pr-pipeline.yml`                                                                                                                                                              |
 | **Pre-admission mechanical responder** (§3.8): `check-mechred` gate + `agent-pre-admission-responder.yml` clear mechanically-fixable red pre-admission; judgment calls and recusal flags surface to the human gate; no-op-on-green guard; MAX_RESPONDER_RUNS=3 ceiling                                                                                                                                            | **LIVE**      | `pr-pipeline.yml` `check-mechred` + `pre-admission-responder` jobs; `agent-pre-admission-responder.yml`; `scripts/ci/check-mechanical-red.sh`; `.github/agents/pre-admission-responder.agent.md` |
 | Enforcer (rbg) per-agent contract: `workflow_call`-only agent file, `enforcer-status`, per-SHA loop-skip via `?target_sha=`                                                                                                                                                                                                                                                                                       | **LIVE**      | `agent-enforcer.yml` + `trigger-enforcer.yml`                                                                                                                                                    |
+| **Self-fixed findings never redden the fixer's own status** (§4.2): a committed fix is checked before any review lookup when the enforcer's terminal status is computed, so a violation the agent found *and fixed inline in the same pass* cannot cause that pass's `enforcer-status` to go red — only a violation still unresolved after the agent's own fixes can                                          | **LIVE**      | `scripts/ci/enforcer-terminal-status.sh` (`COMMITTED` short-circuit) + `agent-enforcer.yml` `decision` step; `tests/test_enforcer_terminal_status.py`; fixes aops-89d55ef5 (closed 2026-06-15 without a code change — the false red it describes was still reproducible until this) |
 | QA (marsha) per-agent contract: `workflow_call`-only, `qa-status`, per-SHA loop-skip, never commits                                                                                                                                                                                                                                                                                                               | **LIVE**      | `agent-qa.yml` + `trigger-qa.yml` + `.github/agents/qa.agent.md`                                                                                                                                 |
 | The human gate: a maintainer's PR **review approval**; `admit-on-review.yml` (`on: pull_request_review`) authorises, sets `admit-status`, arms auto-merge, dispatches the mechanic's first pass                                                                                                                                                                                                                   | **LIVE**      | `admit-on-review.yml` + `scripts/ci/admit-on-review.sh` + `tests/test_admit_on_review.py`                                                                                                        |
 | **Shared admission-grant + authorization primitives** (§5.1, anti-drift): `scripts/ci/admit-pr.sh` (grant admission) + `scripts/ci/reviewer-authz.sh` (write-class-or-allowlisted check) — the same two files are called by every admission origin (`admit-on-review.yml`, `conflict-admission-sweep.yml`), so the policy and the mechanical write can't drift independently per path                             | **LIVE**      | `scripts/ci/admit-pr.sh` + `scripts/ci/reviewer-authz.sh`; `tests/test_admit_pr.py` + `tests/test_reviewer_authz.py` + `tests/test_conflict_admission_sweep.py`                                  |
@@ -218,6 +219,12 @@ ones needing judgement or development. **A red status is a handoff** — the nex
 the chain (ultimately the mechanic in Stage 2) is who clears it. (Today, qa never commits —
 it verifies only; `committed` is always `false` — so the only Stage-1 committers are lint
 and enforcer.)
+
+**Finding a problem and fixing it inline is success, not red.** An agent's own status for
+the SHA it ran on must reflect only what it is *handing off unresolved* — never a problem it
+found and fixed itself in the same pass. Fixing something is the successful case of "fix
+what it can"; it must never be indistinguishable from the failing case ("can't fix"). §3.4
+pt 6 states the normative rule and §4.2 documents the enforcer's committed-first mechanism.
 
 `pauli`/`alignment` runs as an out-of-chain advisory surface, not inside the lint→enforcer→qa
 chain. The orchestrator's `alignment-queue` job posts `alignment-status: pending` on HEAD
@@ -399,6 +406,24 @@ that (§4.1) and runs agents only from the orchestrator:
    reviewer that _ran on this SHA_ still runs; a failing PR gets **more** review, not less.
    (Live form: `qa` runs on `needs.enforcer.result == 'success' || == 'failure'` and only
    short-circuits on `needs.enforcer.outputs.committed != 'true'`.)
+6. **An agent's own terminal status for the SHA it ran on must never go red for a finding it
+   fixed and committed in the same pass — only for a finding it hands off unresolved
+   (aops-89d55ef5).** This is the single-pass mirror of pt 5: pt 5 is about how the
+   *orchestrator* gates downstream agents on `committed`, never on verdict colour; pt 6 is
+   about how an agent computes *its own* verdict when it both fixed something and posted a
+   review in the same run. `committed == true` is checked **before** any review lookup, and
+   is decisive: a pushed commit is verified via git, so it is strictly stronger evidence than
+   a review match — and it is exactly what makes a naive review match wrong in the first
+   place (`gh pr review` attaches to the PR's CURRENT head SHA at submission time, so a
+   review posted after a mid-run commit can never match the SHA the job started on; a strict
+   `commit_id == HEAD_SHA` check then finds nothing and misreads a successful self-fix as "no
+   verdict posted"). Nothing is lost by treating a committed pass as success: the review the
+   agent just posted (APPROVE or REQUEST_CHANGES) is attached to the new SHA and is read by
+   that SHA's own pass via the ordinary §10 SHA-skip check, so a genuinely unresolved
+   violation still reddens the correct (new) SHA one pass later. Live in the enforcer (the
+   only Stage-1 committer that also posts a verdict review — §4.2); `mechanic-status` and
+   `responder-status` already followed this rule structurally (they are informational-only
+   and post success whenever the agent step itself didn't crash, committed or not).
 
 Because autofixes are idempotent, convergence is fast (passes ≈ the depth of the
 fix-dependency chain, typically 1–3). Heavy agents never run "on every lint fix" because a
@@ -926,6 +951,78 @@ The status name **equals** the agent name with `-status`:
 Skip is a **success outcome with descriptive text** — never `exit 1`. Examples: `success` /
 "Skipped: HEAD SHA already reviewed" (§10); `failure` / "2 axiom violations — see review"
 (real verdict).
+
+**Committed-first terminal status (§3.4 pt 6) — LIVE.** The enforcer both fixes mechanical
+violations (a commit) and posts a verdict review, in the same run (`enforcer.agent.md` §3
+then §5) — the only Stage-1 committer that also files a review. `agent-enforcer.yml`
+computes its terminal `enforcer-status` via `scripts/ci/enforcer-terminal-status.sh`
+(unit-tested: `tests/test_enforcer_terminal_status.py`), called once and consumed by both
+the status-posting step and the job's hard-fail check, so the two can never disagree. The
+script's decision order is:
+
+1. **`COMMITTED == true` → `success`, unconditionally, before any review lookup.** The
+   workflow's `check-commit` step verifies this via `git rev-parse` against the pushed ref —
+   strictly stronger evidence than a review match, and it is exactly what makes a review
+   match unreliable in the first place (below). Description: "Fixed inline — commit pushed;
+   enforcer re-verifies the new SHA".
+2. **Else, match the posted review against `HEAD_SHA`.** With no commit this pass, `HEAD_SHA`
+   is still the PR's actual head, so a review's `commit_id` (GitHub sets this to the PR's
+   current head at submission time — the agent cannot pin it) unambiguously targets it:
+   `APPROVED` → `success` "Axiom-clean"; `CHANGES_REQUESTED` → `failure` "Violations found —
+   see review".
+3. **Else, diagnose why no verdict landed** (infra failure in both attempts / retry succeeded
+   with no verdict / first attempt failed with no retry / the review step never ran) — all
+   `failure`, with a description naming which case applied.
+
+**Why order matters.** Before this fix (aops-89d55ef5), step 2's `commit_id == HEAD_SHA`
+match ran unconditionally. When the enforcer commits a fix mid-run, the PR head advances
+*before* `gh pr review` is called, so the posted review's `commit_id` is the new SHA — never
+`HEAD_SHA` — and the match always failed, misreporting a successful self-fix as "Enforcer
+posted no APPROVED/CHANGES_REQUESTED review" (a hard job failure). This was harmless to the
+merge gate (branch protection reads only the current HEAD SHA's statuses, and the commit's
+own push starts a fresh pass that posts a correct status on the new SHA — §3.4 pt 2), but it
+put a false red on the superseded SHA's checks and failed the enforcer job for a pass that
+had, in fact, succeeded. The task that first diagnosed this (aops-89d55ef5) was closed via
+dashboard in 2026-06 with no code change; the bug was still reproducible from
+`agent-enforcer.yml` until the script above shipped. `mechanic-status` (`agent-mechanic.yml`)
+and `responder-status` (`agent-pre-admission-responder.yml`) never had this defect: neither
+posts a PR review, so their terminal status has always been "success whenever the agent step
+itself didn't crash, committed or not" — the same committed-first shape, arrived at
+independently because they had no review-match step to get wrong.
+
+**Self-review identity-collision fallback — LIVE (2026-07-03, PR #2081).** Enforcer's and
+QA's own `gh pr review` calls authenticate as `claude[bot]` — this is `claude-code-action`'s
+own Bash-tool auth, fixed regardless of the job's `GH_TOKEN` env var (confirmed empirically:
+a `botnicbot`-authored PR's QA review posted fine as `claude[bot]`, no collision; a
+`claude[bot]`-authored PR's enforcer review failed, naming `app/claude` as its own colliding
+identity). **PR authorship is not controlled by any workflow in this repo** — it is set by
+whatever external session/tool opens the PR, and has been observed as `botnicbot`,
+`claude[bot]`, and a maintainer's personal account on different occasions. When a PR happens
+to be authored by `claude[bot]` too, GitHub rejects `gh pr review --request-changes` (and
+possibly `--approve`) as a self-review, and no formal review can ever be posted for that SHA
+— without a recovery path, the required `enforcer-status`/`qa-status` check is stuck at an
+unrecoverable `failure` forever (worked example: PR #2081).
+
+This is a **credential-isolation regression in the PR-opening session**, not a defect in this
+pipeline (tracked separately: `aops-ae3aa475`, parent epic `aops-2faebd69`) — the pipeline
+cannot prevent a colliding identity from opening a PR. What the pipeline *can* do, and now
+does, is recover gracefully instead of deadlocking:
+
+1. `enforcer.agent.md` §5a / `qa.agent.md`'s fallback section (both **LIVE**): when
+   `gh pr review` fails for any reason, the agent does not retry it (the failure is not
+   transient) — it posts its full verdict as a **PR comment** instead, keeping the same
+   marker convention, plus a structured line: `<!-- aops:self-review-fallback agent=<enforcer|qa> sha=<HEAD_SHA> verdict=<APPROVED|CHANGES_REQUESTED> -->`.
+   This was already implicitly covered by `shared-error-handling.md`'s pre-existing
+   never-fail-silently contract (the enforcer's PR #2081 fallback comment independently
+   followed it correctly); this formalizes the comment's *format* so it is machine-readable.
+2. `scripts/ci/enforcer-terminal-status.sh` (enforcer) and the equivalent inline logic in
+   `agent-qa.yml` (QA) — both **LIVE**, unit-tested (`tests/test_enforcer_terminal_status.py`)
+   — check for this marker only when no formal review matched `HEAD_SHA` (a genuine review is
+   always stronger evidence and takes priority when both exist). Trust is scoped to comments
+   authored by `claude[bot]` specifically — the same identity a genuine review would have come
+   from, so this recovers no new trust the review path didn't already grant. SHA-scoping is
+   exact: the marker's `sha=` field must match `HEAD_SHA` literally, so a stale fallback
+   comment from an earlier SHA is never misread as the current SHA's verdict.
 
 **PASS review body contract (readability).** On a PASS (APPROVED) verdict, the agent posts a
 **marker-only** review body — no reasoning block. On a REVISE (CHANGES_REQUESTED) verdict,

@@ -25,8 +25,11 @@ agent acting as coordinator.
 All dispatches run through the pre-dispatch gates in
 [[../instructions/worker-dispatch#mandatory-pre-dispatch-gates]]:
 
-0. **Premise Gate** (hard refuse, runs first): see
-   [[../../remember/references/premise-gate.md]] §2.
+0. **Select + Gates spine** (owned by `task-lifecycle` §§1–2; runs first): the
+   shared select + premise gate + freshness spine — see
+   [[../../task-lifecycle/SKILL.md]] §1–§2 (premise-gate procedure:
+   [[../../remember/references/premise-gate.md]] §2). Applied as written there, not
+   re-implemented here.
 1. **Pre-flight Confirmation Summary** (Code/Edit or Design/Spec/Research variant): 5-row table
    validating task ID, source repo, project field, chain position, and sanctioned mechanism.
 2. **Existing PR check**: Is a PR already linked to this task?

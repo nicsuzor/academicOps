@@ -229,11 +229,11 @@ class TestIdaAskUserQuestionReClose:
     def test_b_state_machine_full_lifecycle(self, router, monkeypatch):
         """Full B state machine: block-once → allow-retry → re-close-on-AUQ → re-block-Stop.
 
-        Sequence:
-          1. Stop (gate CLOSED) → IDA fires WARN, gate opens (fire-once)
+        Sequence (D1: warn fires a hard-block-once DENY, not a soft WARN):
+          1. Stop (gate CLOSED) → IDA fires DENY, gate opens (fire-once)
           2. Stop again (gate OPEN) → IDA does NOT fire (gate already open)
           3. AskUserQuestion PreToolUse (gate OPEN) → gate re-closes + inject advisory
-          4. Stop (gate re-CLOSED) → IDA fires WARN again
+          4. Stop (gate re-CLOSED) → IDA fires DENY again
         """
         set_gate_modes(monkeypatch, ida="warn")
         reinit_gates_with_defaults()
@@ -245,8 +245,8 @@ class TestIdaAskUserQuestionReClose:
         # Step 1: Stop fires → gate opens
         stop_ctx = _stop_ctx(session_id)
         result1 = router._dispatch_gates(stop_ctx, state)
-        assert result1 is not None and result1.verdict == GateVerdict.WARN, (
-            f"Step 1: Stop must WARN when IDA CLOSED. Got {result1!r}"
+        assert result1 is not None and result1.verdict == GateVerdict.DENY, (
+            f"Step 1: Stop must hard-block (DENY) when IDA CLOSED. Got {result1!r}"
         )
         assert state.gates["ida"].status == GateStatus.OPEN, (
             "Step 1: gate must OPEN after Stop fire-once"
@@ -273,8 +273,8 @@ class TestIdaAskUserQuestionReClose:
 
         # Step 4: Stop again (gate re-CLOSED) → IDA fires again
         result4 = router._dispatch_gates(stop_ctx, state)
-        assert result4 is not None and result4.verdict == GateVerdict.WARN, (
-            f"Step 4: Stop must WARN again after re-close. Got {result4!r}"
+        assert result4 is not None and result4.verdict == GateVerdict.DENY, (
+            f"Step 4: Stop must hard-block (DENY) again after re-close. Got {result4!r}"
         )
         assert state.gates["ida"].status == GateStatus.OPEN, (
             "Step 4: gate must OPEN after re-firing"
