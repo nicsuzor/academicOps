@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.63](https://github.com/nicsuzor/academicOps/compare/v0.3.62...v0.3.63) (2026-07-04)
+
+
+### Bug Fixes
+
+* **hooks:** mark rbg compliance-check output with the existing academicOps tag convention ([#2081](https://github.com/nicsuzor/academicOps/issues/2081)) ([b0bea1c](https://github.com/nicsuzor/academicOps/commit/b0bea1c8aa63d04f61dfee9891e013b20a8bb62f))
+
 ## [0.3.62](https://github.com/nicsuzor/academicOps/compare/v0.3.61...v0.3.62) (2026-07-04)
 
 
