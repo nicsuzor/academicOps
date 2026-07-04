@@ -64,7 +64,7 @@ If the file does not exist in the project under review, proceed with axioms alon
 
 ## Verdict-Composition Discipline (R1–R6)
 
-<!-- NS: Go through all agent defns and fix (refactor) overfitting like this below: -->
+<!-- NS: Go through all agent defns and fix (refactor) overfitting like this below. also recover lost work from commit 6517b6bc160070b05d504d4bd2f8e8ba7c0d4acf where useful. -->
 
 - **R1 (Judgment-call bounding)**: Do not label real violations as "judgment call (no action required)". If a violation exists, verdict must be `REVISE`.
 
