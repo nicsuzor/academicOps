@@ -131,14 +131,9 @@ Watch especially for:
 5. **Publication conflation** - Mixing details from different papers
 6. **Institutional misattribution** - Wrong university/department
 
-## What This Skill Does NOT Do
+## Scope
 
-- **Evaluate quality** of claims (that's reviewer judgment)
-- **Check methodology** soundness (domain expertise)
-- **Assess writing quality** (editorial review)
-- **Verify opinions** (professional judgment isn't factual)
-
-This skill verifies **factual accuracy only**.
+This skill verifies **factual accuracy only**. Claim quality is reviewer judgment, methodology soundness is domain expertise, writing quality is editorial review, and opinions are professional judgment rather than verifiable fact — each belongs to its own review surface.
 
 ## Example Invocation
 

@@ -85,7 +85,7 @@ Every node carries three core computed properties that drive both label assignme
 
 **What it tells you**: Which nodes to work on first when time is scarce. High criticality = unblocks many downstream nodes. Low criticality = isolated or terminal work.
 
-> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite (additive integer composition) that embeds severity, priority, deadline pressure, age/staleness, `downstream_weight`, stakeholder waiting, an `urgency` term, and a live value-of-information term (`voi_value`, live since 2026-06-01, capped at 5000). See [[multi-parent]] §2.2 for the full, current model. Component fields (`downstream_weight`, `criticality`, `uncertainty`, and the surfaced `voi_value` / `urgency` debug values) remain visible in metadata for filtering, classification, and debugging, but ranking always goes through `focus_score` and should never be driven off a single component. (Cross-repo TAXONOMY SSoT reconciliation is tracked separately under [[mem-3820aa50]].)
+> **Note**: For user-facing prioritisation and ranking, use `focus_score` — the canonical composite (additive integer composition) that embeds severity, priority, deadline pressure, age/staleness, `downstream_weight`, stakeholder waiting, an `urgency` term, and a live value-of-information term (`voi_value`, capped at 5000). See [[multi-parent]] §2.2 for the full, current model. Component fields (`downstream_weight`, `criticality`, `uncertainty`, and the surfaced `voi_value` / `urgency` debug values) remain visible in metadata for filtering, classification, and debugging, but ranking always goes through `focus_score` and should never be driven off a single component. (Cross-repo TAXONOMY SSoT reconciliation is tracked separately under [[mem-3820aa50]].)
 
 ### depth and leaf
 
@@ -124,7 +124,7 @@ The PKB separates **why / what / how**. `goal` and `target` are **strategic node
 - **`target` — milestone (what).** A tangible, **countable, measurable** output/milestone — _done / not done_. Carries the quantifiable stakes: **`severity` (SEV0–SEV4) + `consequence`** (+ optional `due`). The unit that propagates weight into the work tree, e.g. _Deliver LLB242 marks by deadline_. Out of the work tree: never a parent, never parented. Advances ≥1 goal via `contributes_to`.
 - **`epic` / `task` / `learn` — work (how).** Verbs. The only actionable tier (`ACTIONABLE_TYPES`) and the only nodes in the parent-child tree (`EPIC → EPIC|TASK → …`). Advances outcomes via `contributes_to` to **targets** (or directly to **goals**).
 
-Linkage (out-of-tree, via `contributes_to`): `task/epic → target → goal`. The `to:` of a `contributes_to` edge may be a **target or a goal**. Linkage is metadata, not structure — never parent-child, never affects tree traversal; goals & targets are excluded from orphan detection (parentless is correct). **Severity lives only on targets** and propagates down `contributes_to` (Birnbaum); goals carry no severity. `goal` is **not** an alias of `target` — the 2026-05-10 retirement is reversed; distinct coexisting types.
+Linkage (out-of-tree, via `contributes_to`): `task/epic → target → goal`. The `to:` of a `contributes_to` edge may be a **target or a goal**. Linkage is metadata, not structure — never parent-child, never affects tree traversal; goals & targets are excluded from orphan detection (parentless is correct). **Severity lives only on targets** and propagates down `contributes_to` (Birnbaum); goals carry no severity. `goal` is **not** an alias of `target` — they are distinct coexisting types.
 
 ---
 
@@ -478,4 +478,4 @@ This document supersedes any conflicting definitions in other framework files. I
 
 **Referenced by**: all `SKILL.md` files, `aops-core/skills/planner/WORKFLOWS.md`, brain PKB (project: aops, topic: workflow-system-spec)
 
-**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `TASK → TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field. (Decision 2026-05-10.)
+**Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `TASK → TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field.

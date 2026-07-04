@@ -3,7 +3,8 @@ id: non-interactive-c1dda99b
 title: "Non-Interactive Agent Workflow Specification"
 permalink: non-interactive-agent-workflow-spec
 type: spec
-status: ready
+status: superseded
+supersedes_target: specs/polecat/polecat-system.md
 tier: polecat
 depends_on: []
 created: '2026-02-12'
@@ -15,6 +16,8 @@ tags:
 - specification
 - workflow
 ---
+
+> **Superseded.** The Custodiet/Critic reviewer architecture and phase mechanics described here predate the current Crew (rbg/pauli/marsha/james) and are superseded by [`specs/polecat/polecat-system.md`](../polecat/polecat-system.md), [`specs/polecat/supervisor.md`](../polecat/supervisor.md), and [`specs/workflows/pr-pipeline.md`](pr-pipeline.md). Retained for design history.
 
 # Non-Interactive Agent Workflow Specification
 

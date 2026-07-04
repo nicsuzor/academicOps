@@ -46,12 +46,12 @@ A PR containing code changes — new features, bug fixes, refactors, test additi
 
 A code PR review is sufficient when:
 
-- Ruth has no unresolved BLOCK or WARN
+- Ruth has no unresolved REVISE or WARN
 - Marsha has runtime evidence for the claimed behavior (or has explicitly named what she couldn't verify)
-- Any architectural concern from Pauli is either resolved or flagged as a human decision
+- Any architectural concern from Pauli is either resolved or carried into James's reconciliation as an open question
 
 ## Escalate When
 
 - Marsha's tests fail and the cause is architectural, not mechanical
-- Ruth returns BLOCK on a genuinely contested authority question
+- Ruth returns REVISE on a genuinely contested authority question
 - Pauli identifies that the PR is fixing the wrong problem at the root level

@@ -276,7 +276,7 @@ Every scripted and agent-scheduled job that touches session files.
 | **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`) | End of `transcript.py`         |
 | **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                          | Every hook fire                |
 | **Enforcer gate hook**                                  | Session state + tool calls                                       | `*-enforcer.md` gate file                                                                              | Periodic (every ~25 ops)                     | PreToolUse hook                |
-| **`aops-core:rbg`**                                     | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                          | Agent invocation               |
+| **`aops-core:rbg`**                                     | Gate file path                                                   | Compliance verdict (OK/WARN/REVISE)                                                                    | On enforcer trigger                          | Agent invocation               |
 
 ---
 

@@ -64,7 +64,7 @@ for l in sys.stdin:
    Common patterns (see [[forensics-details]] for details):
    - RBG dispatching repeatedly in long sessions (normal)
    - 4 Stop denies then auto-approve (agent ignoring or unable to comply)
-   - Zero Gemini hook JSONL (open question as of 2026-04-09)
+   - Zero Gemini hook JSONL (open question)
    - Operations count ≠ turn count (50 ops ≈ 11 turns)
 
 6. **File Bug Report or Learning**

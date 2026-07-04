@@ -222,7 +222,7 @@ done
 
 ### Pattern: Zero Gemini hook JSONL
 
-**As of 2026-04-09**: No Gemini-prefixed sessions exist in hook JSONL. Either Gemini polecats haven't been run with the current hook system, or the integration is broken. This is an open question.
+No Gemini-prefixed sessions have been observed in hook JSONL. Either Gemini polecats haven't been run with the current hook system, or the integration is broken. This is an open question.
 
 ### Pattern: Operations vs turns confusion
 

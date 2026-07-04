@@ -52,7 +52,7 @@ Framework PRs are higher stakes than code PRs. They shape how all future work ge
 
 A framework PR review is sufficient when:
 
-- Ruth has no unresolved BLOCK on enforcement integrity
+- Ruth has no unresolved REVISE on enforcement integrity
 - Pauli has assessed the systemic implications, not just the local change
 - If hooks/gates are touched: Marsha has runtime evidence
 - The review has evaluated what this change makes HARDER, not just what it enables

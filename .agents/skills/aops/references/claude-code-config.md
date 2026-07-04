@@ -154,7 +154,7 @@ Set to `true` to enable extended thinking mode by default.
 
 ### Subagent Isolation
 
-**Observed 2025-12-25**: Subagents invoked via the Task tool have isolated state.
+Subagents invoked via the Task tool have isolated state.
 
 | State                 | Shared with Parent?                                            |
 | --------------------- | -------------------------------------------------------------- |
@@ -166,7 +166,7 @@ Set to `true` to enable extended thinking mode by default.
 
 ### Subagent Output and Context Efficiency
 
-**Observed 2026-01-13**: Different retrieval methods have vastly different context costs.
+Different retrieval methods have vastly different context costs.
 
 | Retrieval Method                   | What You Get          | Context Cost                                   |
 | ---------------------------------- | --------------------- | ---------------------------------------------- |
@@ -202,7 +202,7 @@ Read(output_file) → loads full 243KB transcript into context
 
 **Official guidance**: "file-based coordination is recommended instead to preserve context budget" - Claude Code docs
 
-**Known Issue**: [GitHub #14118](https://github.com/anthropics/claude-code/issues/14118) - "Background subagent tool calls exposed in parent context window" (OPEN as of 2026-01-13). Multiple users confirm this behavior.
+**Known Issue**: [GitHub #14118](https://github.com/anthropics/claude-code/issues/14118) - "Background subagent tool calls exposed in parent context window" . Multiple users confirm this behavior.
 
 **How to verify this behavior** (for future validation if Claude Code changes):
 

@@ -14,7 +14,7 @@ For Claude Code's hook system in general, see the [official docs](https://code.c
 
 ## Hook message visibility quick-reference
 
-Full Output Matrix — PTY Hook Probe (Layer C) script — validated 2026-06-27
+Full Output Matrix — PTY Hook Probe (Layer C) script
 
 label client gate U✓A U✓B earA C✓A C✓B tx?
 ─────────────────────────────────────────────────────────────────────────────────────────────────

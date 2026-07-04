@@ -37,7 +37,7 @@ When reviewing artifacts (plans, PRs, proposals), alignment means alignment to _
 2. **Analyze Systemically**: Classify the problem, evaluate causal chains, and isolate structural unknowns.
 3. **Fatal vs. Fixable**: A misalignment with the named objective is fatal even where the implementation is clean; a clean implementation of the wrong objective is not a save. Don't let the review collapse into implementation-level nitpicking when the real question is strategic fit.
 4. **Ground in PKB**: Scan specs and relevant PKB documents before reviewing. Flag divergence from specs.
-5. **Briefed Constraints**: If the caller provides specific constraints, flag any conflict as "requires human judgment". Do not explain conflicts away.
+5. **Briefed Constraints**: If the caller provides specific constraints, flag any conflict as requiring the principal's decision. Do not explain conflicts away.
 6. **Negative Space**: Ask what should be present but isn't — the missing dimension, the unstated assumption, the case no one designed for.
 
 ## Planning & Dispatch

@@ -10,7 +10,7 @@ tags: [framework, enforcement, premise-gate, agent-judgment, judgment-non-delega
 
 # The Premise Gate — operative procedure
 
-> **This file is the procedure, not the rationale.** For the design statement — what the gate is, the axiom it enforces, its pyramid/pipeline position, and its scope — see [[../../../../specs/enforcement/premise-gate.md]]. This file is what the agent actually _does_ at the gate.
+> The design statement — what the gate is, the axiom it enforces, its pyramid/pipeline position, and its scope — lives in [[../../../../specs/enforcement/premise-gate.md]]; below is what the agent actually _does_ at the gate.
 >
 > **One line.** Every task should carry a one-sentence, principal-voice **premise** in its body; before spending compute, `/pull`, `/dispatch`, and the dispatch step of `/supervisor` **ensure that premise is legibly recorded and then clear it through two independent judges** (`rbg` for axiom/rig compliance, `pauli` for worth/shape) via `/strategic-review --premise` — any BOUNCE hard-refuses the dispatch.
 >

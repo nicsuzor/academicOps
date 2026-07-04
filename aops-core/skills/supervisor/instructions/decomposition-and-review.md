@@ -202,7 +202,7 @@ Consume each reviewer's native verdict — do not re-map it into a local vocabul
 | Both clear (rbg `OK`; pauli requires no changes)                          | → APPROVED               |
 | rbg `WARN` only; pauli requires no changes                                | → APPROVED (log warning) |
 | Either requires changes (rbg `REVISE`, or pauli names required revisions) | → NEEDS_REVISION         |
-| Either rejects the decomposition's premise as fundamentally unsound       | → BLOCKED                |
+| Either rejects the decomposition's premise as fundamentally unsound       | → REJECTED               |
 
 ---
 
@@ -340,12 +340,12 @@ user at all.
 
 Then call `mcp__pkb__update_task(id=task_id, updates={"status": "in_progress", "body": synthesis_markdown})` and re-enter Phase 1 with reviewer feedback.
 
-**On BLOCKED**:
+**On REJECTED**:
 
 ```markdown
 ## Review Synthesis
 
-**Verdict**: BLOCKED
+**Verdict**: REJECTED
 
 ### Blocking Issues
 
@@ -357,7 +357,7 @@ Then call `mcp__pkb__update_task(id=task_id, updates={"status": "in_progress", "
 
 [Specific action needed before this can proceed]
 
-→ Escalating to human (status='blocked')
+→ Rejected: does not proceed until redesigned and resubmitted (status='blocked', blocking objections recorded)
 ```
 
 Then call `mcp__pkb__update_task(id=task_id, updates={"status": "blocked", "body": synthesis_markdown})`.
@@ -366,16 +366,16 @@ Then call `mcp__pkb__update_task(id=task_id, updates={"status": "blocked", "body
 
 ### 2.3 Debate Resolution (When Reviewers Disagree)
 
-If reviewers return conflicting verdicts (one PROCEED, one REVISE), initiate a debate round.
+If reviewers return conflicting verdicts (e.g. pauli finds the decomposition sound while rbg returns `REVISE`), initiate a debate round.
 
 **Debate Protocol** (max 2 rounds):
 
-````markdown
+```markdown
 ## Debate Round 1
 
 ### Conflicting Assessments
 
-- **Pauli** says PROCEED: "[rationale]"
+- **Pauli** finds it sound: "[rationale]"
 - **RBG** says WARN: "[concern]"
 
 ### Resolution Attempt
@@ -384,38 +384,15 @@ Share rbg's concern back with pauli (or vice versa) and ask whether they MAINTAI
 
 **Debate Outcomes**:
 
-| Round Result                     | Action                        |
-| -------------------------------- | ----------------------------- |
-| Both reviewers align             | Use aligned verdict           |
-| Still conflicting after 2 rounds | Synthesize for human decision |
+| Round Result                     | Action                      |
+| -------------------------------- | --------------------------- |
+| Both reviewers align             | Use aligned verdict         |
+| Still conflicting after 2 rounds | Dispatch james to reconcile |
 
-**Synthesizing Unresolved Debates**:
+**Resolving Unresolved Debates**:
 
-```markdown
-## Review Synthesis
-
-**Verdict**: ESCALATE_TO_HUMAN
-
-### Unresolved Reviewer Disagreement
-
-**Pauli Position** (after debate):
-[Their final position]
-
-**RBG Position** (after debate):
-[Their final position]
-
-### Core Tension
-
-[Supervisor's 1-sentence summary of why they disagree]
-
-### Options for Human
-
-2. **Narrow scope**: Accept RBG's constraint
-3. **Request more info**: Specific question to resolve
-
-→ Awaiting human decision (status='review')
+After 2 rounds without alignment, dispatch **james** with both reviewers' final positions and the supervisor's one-sentence summary of the core tension. James reconciles and returns one verdict — `APPROVE` / `REVISE` / `REJECT` — mapping to APPROVED / NEEDS_REVISION / REJECTED above. Reserve escalation to the principal for the supervisor skill's narrow Escalation Criteria (irreversible action, methodology under the principal's name, no defensible default).
 ```
-````
 
 ---
 

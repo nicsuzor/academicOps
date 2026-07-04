@@ -86,7 +86,7 @@ Every supervisor tick performs the same four concerns:
 
 Evaluation yields one of three outcomes: **Accept** (meets criteria, move on),
 **Revise** (specific problems found, create a new worker task with feedback), or
-**Fail** (fundamental issues or retry budget exhausted, escalate to a human).
+**Fail** (fundamental issues or retry budget exhausted: mark the task `review`, record what redesign or re-scoping is needed, and route it to the accountable role).
 
 The supervisor stays responsible for the work until it reaches a terminal state — it
 checks progress on every tick, it does not fire-and-forget.
