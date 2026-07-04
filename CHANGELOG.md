@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.61](https://github.com/nicsuzor/academicOps/compare/v0.3.60...v0.3.61) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ci:** fail closed instead of crashing when enforcer-terminal-status.sh is missing on a stale PR branch ([#2094](https://github.com/nicsuzor/academicOps/issues/2094)) ([06ab34e](https://github.com/nicsuzor/academicOps/commit/06ab34ed2a63618060fa603ee14f470a227ae87e))
+
 ## [0.3.60](https://github.com/nicsuzor/academicOps/compare/v0.3.59...v0.3.60) (2026-07-04)
 
 
