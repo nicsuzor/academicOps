@@ -277,3 +277,92 @@ def verify_pr_url_live(pr_url: str, expected_org: str | None = None) -> None:
         stderr = (res.stderr or "").strip().splitlines()
         detail = stderr[-1] if stderr else f"exit code {res.returncode}"
         raise PRURLValidationError(pr_url, f"gh could not resolve URL ({detail})")
+
+
+# ---------------------------------------------------------------------------
+# Completion-claim evidence live checks (epic aops-262def9f WI2b)
+# ---------------------------------------------------------------------------
+
+
+def check_evidence_against_pr(pr_url: str, verified_by: str, verified_sha: str) -> list[str]:
+    """Cheap live checks binding completion evidence to the PR's final state.
+
+    Returns a list of problems (empty = ok) so the caller (pkb_bridge) can
+    fold them into one actionable EvidenceValidationError — this module
+    stays import-light and does not depend on aops-core lib.
+
+    Checks (per the evidence contract — state change voids evidence):
+    - ``verified_sha`` must match the PR's current head commit (prefix
+      match on headRefOid): review of an older commit is void.
+    - reviewer identity must not be the PR author (producer == reviewer is
+      the self-review collision this contract exists to reject).
+
+    Skip posture mirrors ``verify_pr_url_live``: only pull URLs are
+    checked; ``POLECAT_SKIP_PR_URL_CHECK=1`` and a missing ``gh`` degrade
+    to structure-only (with a stderr warning for the latter).
+    """
+    import json
+
+    m = validate_pr_url_format(pr_url)
+    if not m.group("pr"):
+        return []  # issues/commit URLs carry no head/author to check against
+
+    if os.environ.get("POLECAT_SKIP_PR_URL_CHECK") == "1":
+        return []
+
+    if shutil.which("gh") is None:
+        print(
+            f"  ⚠️  gh not installed; cannot live-check evidence against {pr_url}. "
+            f"Structural validation only.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return []
+
+    try:
+        res = subprocess.run(
+            ["gh", "pr", "view", pr_url, "--json", "headRefOid,author"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        return [f"gh evidence live-check against {pr_url} timed out after 15s"]
+    except FileNotFoundError:
+        # Race: gh disappeared between shutil.which and run — same fail-open
+        # posture as verify_pr_url_live.
+        return []  # allow-fallback: gh vanished mid-call -> structure-only, no live check
+
+    if res.returncode != 0:
+        stderr = (res.stderr or "").strip().splitlines()  # allow-fallback: no stderr -> no detail
+        detail = stderr[-1] if stderr else f"exit code {res.returncode}"
+        return [f"gh could not resolve {pr_url} for the evidence live-check ({detail})"]
+
+    try:
+        data = json.loads(res.stdout)
+    except json.JSONDecodeError:
+        return [f"gh returned unparseable JSON for {pr_url} evidence live-check"]
+
+    problems: list[str] = []
+    head = data.get("headRefOid") or ""  # allow-fallback: absent head reported as a problem below
+    if not head:
+        problems.append(f"PR {pr_url} reports no headRefOid — cannot bind evidence to head state")
+    elif not head.lower().startswith(verified_sha.lower()):
+        problems.append(
+            f"evidence is bound to SHA {verified_sha} but the PR head is {head[:12]} — "
+            "a state change voids evidence; re-run verification at the current head"
+        )
+
+    author = (
+        ((data.get("author") or {}).get("login") or "").strip().lower()
+    )  # allow-fallback: absent author skips the independence live-check  # noqa: E501
+    if author:
+        reviewer_tokens = set(re.findall(r"[a-z0-9_-]+", verified_by.lower()))
+        if author in reviewer_tokens:
+            problems.append(
+                f"Verified-By={verified_by!r} matches the PR author ({author}) — "
+                "the producer cannot verify their own work"
+            )
+
+    return problems
