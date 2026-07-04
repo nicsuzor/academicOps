@@ -358,10 +358,30 @@ jobs:
       # §5 verdict), its review lands on the NEW sha and can never match this
       # job's HEAD_SHA. A problem the agent fixed inline and committed must
       # not redden this pass's status; only a problem it could not fix does.
+      # Guard against a PR branch that forked before enforcer-terminal-status.sh
+      # existed (added 2026-07-02, #2071) and was never rebased since: `ref` is
+      # the PR's OWN checkout, not dev's tip, so the script genuinely isn't
+      # there. Without this guard, `bash <missing file>` exits 127, this step's
+      # outputs are never set, and the downstream "Post terminal status" step
+      # then tries to post an EMPTY state — which the commit-status API
+      # rejects (422) — leaving enforcer-status stuck at "pending" forever
+      # instead of a real terminal state (worked example: PR #2080). Fail
+      # closed with an actionable description instead, matching this script's
+      # own infra-vs-silent distinction (see its header).
       - name: Compute terminal decision
         id: decision
         if: always() && steps.sha-skip.outputs.skip != 'true'
-        run: bash scripts/ci/enforcer-terminal-status.sh
+        run: |
+          if [[ -f scripts/ci/enforcer-terminal-status.sh ]]; then
+            bash scripts/ci/enforcer-terminal-status.sh
+          else
+            echo "::error::scripts/ci/enforcer-terminal-status.sh not found on this branch (added to dev 2026-07-02, #2071) — rebase/merge dev to pick it up."
+            {
+              echo "state=failure"
+              echo "description=Enforcer infra: enforcer-terminal-status.sh missing on this branch — rebase onto dev"
+              echo "failed=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
         env:
           COMMITTED: ${{ steps.check-commit.outputs.committed }}
           REVIEW_OUTCOME: ${{ steps.review.outcome }}
