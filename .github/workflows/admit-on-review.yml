@@ -208,6 +208,56 @@ jobs:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+  # ─── Unresolved third-party comment/review gate (§3.10, PR #2094) — REQUIRED ──
+  # Restores the v1 merge-prep invariant ("read ALL reviews — framework agents +
+  # Gemini + Copilot + humans", F5) on the admitted SHA. Unlike admit-enforcer/
+  # admit-qa/admit-attestation above, this ALWAYS runs on a successful admission
+  # (not gated on `reviewers_green`) — comment-triage-status has never been
+  # computed for this exact SHA by anything else that necessarily ran before
+  # admission, and the check itself is cheap (a few `gh api` calls, no agent
+  # invocation), so there is no waste to guard against by skipping it.
+  # scripts/ci/check-unresolved-comments.sh (unit-tested,
+  # tests/test_check_unresolved_comments.py); fail-closed on fetch error.
+  admit-comment-triage:
+    name: Admission re-verify — Comment Triage
+    needs: [authorize, admit]
+    if: needs.admit.result == 'success' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    outputs:
+      has_unresolved_comments: ${{ steps.check.outputs.has_unresolved_comments }}
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
+      HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute comment-triage decision on the admitted SHA
+        id: check
+        run: bash scripts/ci/check-unresolved-comments.sh
+      - name: Post comment-triage-status on the admitted SHA
+        if: always()
+        run: |
+          HAS_UNRESOLVED="${{ steps.check.outputs.has_unresolved_comments }}"
+          REASON="${{ steps.check.outputs.reason }}"
+          if [ "${{ steps.check.outcome }}" != "success" ]; then
+            STATE="failure"
+            REASON="check-unresolved-comments.sh step failed to run — failing closed"
+          elif [ "$HAS_UNRESOLVED" = "true" ]; then
+            STATE="failure"
+          else
+            STATE="success"
+          fi
+          DESC="${REASON:0:140}"
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="comment-triage-status" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
   admit-attestation:
     name: Admission re-verify — Review Attestation
     needs: [authorize, admit, admit-enforcer, admit-qa]
@@ -264,24 +314,43 @@ jobs:
   # Mergeability is an INDEPENDENT merge gate; reviewers green is not sufficient to
   # skip the mechanic when the PR is CONFLICTING.
   #
-  # Only when reviewers are BOTH green AND the PR is not conflicting does the armed
-  # auto-merge handle the merge with no mechanic run. `always()` because
+  # Only when reviewers are BOTH green, the PR is not conflicting, AND there is no
+  # unresolved third-party comment/review (#2094, admit-comment-triage above) does
+  # the armed auto-merge handle the merge with no mechanic run. `always()` because
   # admit-enforcer/admit-qa are skipped when the reviewers were already green.
+  #
+  # Three dispatch conditions, in priority order (a PR can match more than one;
+  # the highest-priority match decides the mode — see "Decide mechanic dispatch
+  # + mode" below):
+  #   (a) a red/pending reviewer signal remains → Stage-2 mode (clear the red).
+  #   (b) the PR is CONFLICTING with the base → Stage-2 mode (resolve the conflict,
+  #       §3.11 — this is why CONFLICTING is checked regardless of reviewer colour).
+  #   (c) reviewers green, not conflicting, but an unresolved third-party comment
+  #       or review body remains → review-response mode (comment-scoped triage
+  #       only; #2094). This is NEW: a PR matching only (c) used to get
+  #       `need_mechanic=false` and merge immediately once armed — the incident
+  #       this whole gate exists to close. If a PR ALSO matches (a) or (b), those
+  #       take priority for THIS pass; comment-triage is deferred to the next
+  #       pass once the mechanic's own commit re-triggers this decision — safe
+  #       either way, because `comment-triage-status` (a REQUIRED check,
+  #       independent of this dispatch decision) blocks merge on its own until
+  #       the comments are actually addressed, regardless of dispatch ordering.
   decide-mechanic:
     name: Decide mechanic dispatch
-    needs: [authorize, admit, admit-enforcer, admit-qa]
+    needs: [authorize, admit, admit-enforcer, admit-qa, admit-comment-triage]
     if: always() && needs.admit.result == 'success' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       need_mechanic: ${{ steps.decide.outputs.need_mechanic }}
+      mechanic_mode: ${{ steps.decide.outputs.mechanic_mode }}
     env:
       GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
       REPO: ${{ github.repository }}
       HEAD_SHA: ${{ needs.admit.outputs.admitted_sha }}
       PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
     steps:
-      - name: Read final reviewer state + mergeability on the admitted SHA
-        id: decide
+      - name: Fetch reviewer state + mergeability on the admitted SHA
+        id: fetch
         run: |
           ENF=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
             --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state // ""' 2>/dev/null || echo "")
@@ -298,16 +367,39 @@ jobs:
             sleep 3
           done
 
-          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' mergeable='${MERGEABLE}' on $HEAD_SHA"
-          if [ "$ENF" = "success" ] && [ "$QA" = "success" ] && [ "$MERGEABLE" != "CONFLICTING" ]; then
-            echo "Both reviewers green and PR is not conflicting — auto-merge handles it; mechanic not needed."
-            echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
-          elif [ "$MERGEABLE" = "CONFLICTING" ]; then
-            echo "PR is CONFLICTING — dispatching mechanic to resolve the conflict (§3.11), regardless of reviewer colour."
+          echo "enforcer_status=$ENF" >> "$GITHUB_OUTPUT"
+          echo "qa_status=$QA" >> "$GITHUB_OUTPUT"
+          echo "mergeable=$MERGEABLE" >> "$GITHUB_OUTPUT"
+
+      # Pure decision over already-fetched signals — no live `gh` calls here, so
+      # this step is extracted and unit-tested directly
+      # (tests/test_decide_mechanic_wiring.py), mirroring the convention in
+      # tests/test_agent_enforcer_terminal_status_wiring.py.
+      - name: Decide mechanic dispatch + mode
+        id: decide
+        env:
+          ENF: ${{ steps.fetch.outputs.enforcer_status }}
+          QA: ${{ steps.fetch.outputs.qa_status }}
+          MERGEABLE: ${{ steps.fetch.outputs.mergeable }}
+          HAS_UNRESOLVED_COMMENTS: ${{ needs.admit-comment-triage.outputs.has_unresolved_comments }}
+        run: |
+          echo "Final enforcer-status='${ENF:-absent}' qa-status='${QA:-absent}' mergeable='${MERGEABLE}' unresolved_comments='${HAS_UNRESOLVED_COMMENTS:-false}' on $HEAD_SHA"
+          if [ "$MERGEABLE" = "CONFLICTING" ]; then
+            echo "PR is CONFLICTING — dispatching mechanic (Stage-2) to resolve the conflict (§3.11), regardless of reviewer colour or comments."
             echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+            echo "mechanic_mode=" >> "$GITHUB_OUTPUT"
+          elif [ "$ENF" != "success" ] || [ "$QA" != "success" ]; then
+            echo "Red/pending reviewer signal — dispatching mechanic (Stage-2) to clear it."
+            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+            echo "mechanic_mode=" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_UNRESOLVED_COMMENTS" = "true" ]; then
+            echo "Reviewers green and PR mergeable, but an unresolved third-party comment/review remains (#2094) — dispatching mechanic in review-response mode to triage before merge."
+            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+            echo "mechanic_mode=review-response" >> "$GITHUB_OUTPUT"
           else
-            echo "Red/pending reviewer signal — dispatching mechanic to clear it."
-            echo "need_mechanic=true" >> "$GITHUB_OUTPUT"
+            echo "Both reviewers green, PR not conflicting, no unresolved comments — auto-merge handles it; mechanic not needed."
+            echo "need_mechanic=false" >> "$GITHUB_OUTPUT"
+            echo "mechanic_mode=" >> "$GITHUB_OUTPUT"
           fi
 
   # ─── Review-response path: changes_requested ────────────────────────────────
@@ -439,6 +531,12 @@ jobs:
       pr_number: ${{ needs.authorize.outputs.pr_number }}
       ref: ${{ needs.authorize.outputs.head_ref }}
       sha: ${{ needs.admit.outputs.admitted_sha }}
+      # '' (Stage-2 default) when dispatched for red/conflict; 'review-response'
+      # when the ONLY reason is an unresolved comment/review (#2094) —
+      # mechanic.agent.md's Stage-2 mandate carries no comment-triage
+      # instructions, so passing the wrong mode here would silently no-op on
+      # exactly the case this gate exists to fix.
+      mode: ${{ needs.decide-mechanic.outputs.mechanic_mode }}
     secrets:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

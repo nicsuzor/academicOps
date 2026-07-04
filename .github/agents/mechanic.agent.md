@@ -17,20 +17,20 @@ You are **not the merge gate.** You do not approve, you do not set required stat
 
 > **When `MECHANIC_MODE=review-response`, this section is your full mandate.** The Stage-2 mandate below (§1–§8) does NOT apply. Replace it entirely.
 
-You are operating in **review-response mode**: a write-class maintainer submitted a `CHANGES_REQUESTED` review and your sole job is to address reviewer feedback on the PR. You are NOT clearing CI red in a general sense, NOT entering the Stage-2 admitted loop, and NOT doing unsolicited development.
+You are operating in **review-response mode**: either a write-class maintainer submitted a `CHANGES_REQUESTED` review, or `comment-triage-status` found an unresolved third-party review/comment (#2094 — a third-party reviewer like Copilot posts `COMMENTED`, never `CHANGES_REQUESTED`, so its feedback needs the same response even though no human requested changes). Your sole job is to address reviewer feedback on the PR. You are NOT clearing CI red in a general sense, NOT entering the Stage-2 admitted loop, and NOT doing unsolicited development.
 
 ### Scope — address ONLY
 
-1. The body of all standing `CHANGES_REQUESTED` reviews on the PR.
+1. The body of all standing `CHANGES_REQUESTED` **and `COMMENTED`** reviews on the PR (third-party reviewers post `COMMENTED`, never `CHANGES_REQUESTED` — both carry feedback that needs a response).
 2. All open/unresolved inline review thread comments.
 3. Outstanding review comments from other reviewers.
 
 ### Fetch the scope
 
 ```bash
-# Standing CHANGES_REQUESTED reviews
+# Standing CHANGES_REQUESTED and COMMENTED reviews
 gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-  --jq '[.[] | select(.state == "CHANGES_REQUESTED") | {id, login: .user.login, submitted_at, body}]'
+  --jq '[.[] | select(.state == "CHANGES_REQUESTED" or .state == "COMMENTED") | {id, login: .user.login, state, submitted_at, body}]'
 
 # Inline review comments (all threads)
 gh api "repos/$REPO/pulls/$PR_NUMBER/comments" --paginate \

@@ -555,6 +555,63 @@ jobs:
           fi
           echo "::notice::$DESC"
 
+  # ─── Unresolved third-party comment/review gate (§3.10, PR #2094) — REQUIRED ──
+  # Restores the v1 merge-prep invariant ("read ALL reviews — framework agents +
+  # Gemini + Copilot + humans", F5) as a REQUIRED check, independent of
+  # enforcer/qa colour. A third-party review (Copilot, Gemini, ...) posts as
+  # COMMENTED, not CHANGES_REQUESTED, so it never trips the changes-requested
+  # response path in admit-on-review.yml, and it carries no commit-status
+  # signal on its own — nothing else in the merge gate ever reads it. This job
+  # runs on EVERY push (not just at admission, unlike admit-comment-triage in
+  # admit-on-review.yml), so a comment/review landing at any point in the PR's
+  # life — including mid-mechanic-loop, post-admission — blocks merge until
+  # triaged. Independent of enforcer/qa (`needs: [gate]` only) so it runs in
+  # parallel and adds no critical-path latency. Fail-closed: any `gh api` error
+  # is treated as "unresolved", matching review-attestation.sh's convention.
+  # scripts/ci/check-unresolved-comments.sh (unit-tested,
+  # tests/test_check_unresolved_comments.py).
+  comment-triage-status:
+    name: Comment Triage Status
+    needs: [gate]
+    # Release-please PRs skip this job (§3.13, mirrors review-attestation):
+    # deterministic bot-generated bumps carry no third-party review comments to
+    # triage. `release-autogreen` auto-satisfies `comment-triage-status` for
+    # release PRs instead.
+    if: github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.event.pull_request.head.ref, 'release-please') && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute comment-triage decision
+        id: check
+        run: bash scripts/ci/check-unresolved-comments.sh
+      - name: Post comment-triage-status
+        if: always()
+        run: |
+          HAS_UNRESOLVED="${{ steps.check.outputs.has_unresolved_comments }}"
+          REASON="${{ steps.check.outputs.reason }}"
+          if [ "${{ steps.check.outcome }}" != "success" ]; then
+            STATE="failure"
+            REASON="check-unresolved-comments.sh step failed to run — failing closed"
+          elif [ "$HAS_UNRESOLVED" = "true" ]; then
+            STATE="failure"
+          else
+            STATE="success"
+          fi
+          DESC="${REASON:0:140}"
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="comment-triage-status" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
   # ─── Release-please fast path (§3.13) ────────────────────────────
   # Release-please PRs (head ref `release-please--*`) are bot-generated,
   # deterministic version bumps + CHANGELOG + uv.lock. There is nothing for the
@@ -600,7 +657,7 @@ jobs:
             echo "::error::AOPS_BOT_GH_TOKEN is not set; cannot satisfy required checks for the release PR." >&2
             exit 1
           fi
-          for ctx in enforcer-status qa-status admit-status; do
+          for ctx in enforcer-status qa-status admit-status comment-triage-status; do
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state="success" \
               -f context="$ctx" \
