@@ -655,8 +655,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     elif platform == "antigravity":
         # Remap tool names for Antigravity, preserving order and dropping duplicates
         AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
-        filtered_tools: list[str] = []
-        seen: set[str] = set()
+        filtered_tools = []
+        seen = set()
         for t in original_tools:
             # Drop MCP tools (starting with mcp__) on Antigravity
             if t.startswith("mcp__"):

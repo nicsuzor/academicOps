@@ -8,6 +8,8 @@ tags: [enforcement, framework-architecture, verification]
 
 # In-Session Enforcement — The Pyramid (Layers 0–1)
 
+> **Numbering note.** `Layer 0`/`Layer 1` here belong to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning this file plus [task-contract.md](task-contract.md), [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
+
 ## Layer 0 — Intra-task loop (harness-internal)
 
 The span inside a single user-prompt → completion: the harness's own thinking

@@ -8,6 +8,8 @@ tags: [enforcement, framework-architecture, verification]
 
 # In-Session Enforcement — The Work-Unit Contract (Layer 2)
 
+> **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
+
 ## aops-pkb — Work-unit loop (the task contract)
 
 Operative from PKB `claim_task` → `release_task`. That pair is the contract for a

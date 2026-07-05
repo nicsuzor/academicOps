@@ -29,6 +29,8 @@ These views are **orthogonal**. The same mechanism appears in both. A pipeline-L
 
 When reasoning about a framework change, use the pipeline to decide _when_ the intervention fires and the pyramid to decide _how invasive_ it should be — then record the decision as a row in the operative state register.
 
+**A third, orthogonal axis — the module-boundary layer model.** [`pyramid.md`](pyramid.md), [`task-contract.md`](task-contract.md), [`workflow.md`](workflow.md), and [`sign-off.md`](sign-off.md) number the spans of a single work unit as `Layer 0`–`Layer 4` (intra-task loop → turn loop → work-unit contract → workflow → sign-off). This is a **different scheme from both views above** — it reuses the digits `0`–`4` for a distinct purpose, not a third position for the same mechanism. `Layer 1` (turn loop) does not correspond to pipeline `L1` (context injection); `Layer 4` (sign-off) does not correspond to pipeline `L4` (soft gates) or pyramid position `L4`. Do not cross-reference a `Layer N` against an `L`_N_ from either view above as if they were the same axis.
+
 ## §3 Pipeline view (temporal)
 
 ```mermaid

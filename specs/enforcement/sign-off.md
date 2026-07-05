@@ -8,6 +8,8 @@ tags: [enforcement, framework-architecture, verification, sign-off, review]
 
 # Enforcement — Sign-off (Layer 4)
 
+> **Numbering note.** `Layer 4` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), [task-contract.md](task-contract.md), [workflow.md](workflow.md), this file) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
+
 ## Layer 4 — Sign-off
 
 The final review and approval over the workflow as a whole unit.
