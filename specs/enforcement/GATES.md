@@ -22,16 +22,17 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 ## At a glance
 
-| Gate       | What it catches                                         | Fires on   | Close trigger           | Open trigger       |
-| ---------- | ------------------------------------------------------- | ---------- | ----------------------- | ------------------ |
-| `sentinel` | Destructive ops on protected env paths                  | PreToolUse | always                  |                    |
-| `rbg`      | Periodic compliance / ultra-vires drift                 | PreToolUse | tool calls >= threshold | call RBG           |
-| `rbg`      | Final rbg axiom audit before a task-bound session exits | Stop       | claim_task              | call RBG           |
-| `qa`       | "Done" claimed without verification                     | Stop       | claim_task              | Skill(verify)      |
-| `handover` | Exit without commit / task update / reflection          | Stop       | claim_task              | Skill(End Session) |
-| `ida`      | Honesty / criterion-substitution at Stop                | Stop       | User prompt             | Max once per turn  |
+| Gate             | What it catches                                          | Fires on           | Close trigger                             | Open trigger       |
+| ---------------- | -------------------------------------------------------- | ------------------ | ----------------------------------------- | ------------------ |
+| `rbg`/`enforcer` | Periodic compliance / ultra-vires drift                  | PreToolUse         | tool calls >= threshold (~17 default, H2) | call RBG           |
+| `rbg-review`     | Final rbg axiom audit before a task-bound session exits  | Stop               | claim_task                                | call RBG           |
+| `qa`             | "Done" claimed without verification                      | Stop               | claim_task                                | Skill(verify)      |
+| `handover`       | Exit without commit / task update / reflection           | Stop               | claim_task                                | Skill(End Session) |
+| task-binding     | Work without a bound task (**reactivated**, target — H4) | PreToolUse (write) | claim_task                                | —                  |
 
-Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy**: `PreToolUse`/`PostToolUse` gate evaluation is skipped entirely for subagent-attributed events (including agy workers via `AOPS_AGY_CLIENT`) — see [Subagent & worker session scope](#subagent--worker-session-scope) below.
+**Retired (H1–H18):** `sentinel` (deleted, H1 — see [§ Retired gates](#retired-gates-h1h18)); `ida` (retired as a hook, H6 — deferred to the head-personality surface, [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate)).
+
+Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy (target — H8/H12)**: gates fire uniformly across main sessions, subagents, and workers — the previous skip of `PreToolUse`/`PostToolUse` evaluation for subagent-attributed events is retired — see [Subagent & worker session scope](#subagent--worker-session-scope) below.
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
@@ -50,27 +51,27 @@ This is the canonical statement every gate's "shared Stop-gate mechanics" link p
 - **Both modes fire `DENY`.** Because the client is about to stop, every stop gate forces at least one continuation so the agent takes the reminder into account. On current Claude a `WARN` verdict renders as a non-blocking `additionalContext` advisory that would NOT force the continuation — so warn must emit `DENY`. `warn` vs `block` selects only the **re-fire latch**, not the verdict.
 - **`warn` = fire-once.** DENY once, then a warn-mode `Stop→OPEN` trigger latches the gate open so a retried Stop passes; re-arms on `UserPromptSubmit`. The single forced continuation _is_ the nudge.
 - **`block` = persist-until-satisfied.** No fire-once; the gate re-DENYs every Stop until a satisfaction trigger opens it (verifier ran / rbg ran / handover ran). Bounded by the per-gate `stop_deny_count` escape hatch: after N consecutive unsatisfied Stops **within a turn** (engine default 3; `rbg-review` 5) the DENY downgrades to `WARN`-and-allow (loud). The counter resets on `UserPromptSubmit` — the loop it bounds is within-turn (Stop → forced-continue → Stop …); a new user turn is new work and gets a fresh budget.
-- **`ida`** has no satisfaction predicate, so it is fire-once in **both** modes (`ida:block` = fire-once-**loud**, not persist). On Claude, ida `warn` stays user-quiet via the **asyncRewake** quiet-split (full body → agent `<system-reminder>`, one-line → user), keyed on ida **warn-mode** (not verdict==WARN); other clients get the loud `decision:"block"` + `reason`.
-- **Per-client delivery of the DENY:** Claude `decision:"block"` + `reason` (or the ida asyncRewake quiet-split); Gemini `AfterAgent` `decision:"deny"` + `reason` (forces one retry); **agy** cannot compel a continuation on Stop (`terminationBehavior` unemitted / `AGY_STOP_PROVISIONAL`) — it degrades to best-effort advisory `injectSteps`, and because there is no forced continuation there is no retry loop. Loop safety is gate-owned (fire-once latch + `stop_deny_count`) plus the residual client-agnostic 5-blocks-in-2-min override.
+- **(Historical, pre-H6.)** The retired `ida` gate had no satisfaction predicate, so it was fire-once in **both** modes (`ida:block` = fire-once-**loud**, not persist) — the only gate in this class. Its warn-mode delivery used a Claude-only **asyncRewake** quiet-split (full body → agent `<system-reminder>`, one-line → user), keyed on ida warn-mode. With `ida` retired as a hook (H6), no live gate is currently in the fire-once-with-no-satisfaction-predicate class; the asyncRewake quiet-split code path is dormant pending removal.
+- **Per-client delivery of the DENY:** Claude `decision:"block"` + `reason`; Gemini `AfterAgent` `decision:"deny"` + `reason` (forces one retry); **agy** cannot compel a continuation on Stop (`terminationBehavior` unemitted / `AGY_STOP_PROVISIONAL`) — it degrades to best-effort advisory `injectSteps`, and because there is no forced continuation there is no retry loop. Loop safety is gate-owned (fire-once latch + `stop_deny_count`) plus the residual client-agnostic 5-blocks-in-2-min override.
 
 ```mermaid
 timeline
     title Hook Lifecycle & Gate Events
     section Session Start
-        Session Env Setup : Injects context/tools
-        Safety Floor : Injects CORE.md
+        Safety Floor : Injects CORE.md via @-import (session_env_setup.py retired, H9)
     section Prompt Submission
-        pkb.nudge : Reminder to search PKB (Advisory)
-        hydration.warn : Skills routing hint
+        pkb.nudge : Reminder to search PKB (Advisory, aops-core, H5/H14)
+        hydration.warn : Skills routing hint (moves to aops-pkb/aops-adhd, H11)
     section Tool Use
-        sentinel : Blocks destructive paths
-        enforcer : Periodic check (after 50 ops)
+        enforcer : Periodic check (~17 ops default, H2; fires uniformly incl. subagents, H8)
+        task-binding : No mutation without claim_task (reactivated, target, H4)
     section Stop / Exit
-        qa : Checks for task verification
-        handover : Checks for commit/reflection
-        ida : Honesty reflection (once per turn)
-        rbg-review : Final axiom audit (armed everywhere; mode gates whether it bites)
+        qa : Checks for task verification (unchanged, H10/H12)
+        handover : Checks for commit/reflection (unchanged, H10/H12)
+        rbg-review : Final axiom audit (armed everywhere; mode gates whether it bites, H3)
 ```
+
+Honesty/criterion-substitution checking is no longer a hook event on this timeline — it is retired as the `ida` gate (H6) and deferred to the head-personality surface interacting with the human (`aops-interactive`); see [Retired gates](#retired-gates-h1h18).
 
 ## Config plumbing
 
@@ -128,94 +129,35 @@ If this fails, `polecat.yaml` is missing/unreadable or `$AOPS_SESSIONS` is unset
 
 ## Subagent & worker session scope
 
-`_dispatch_gates` (`hooks/router.py`) skips gate evaluation entirely for any event tagged `is_subagent=True`, **except** `Stop`, `SessionEnd`, `SubagentStop`, and `UserPromptSubmit` — those still fire so session-lifecycle bookkeeping (handover/ida/rbg-review) runs even for a dispatched child. Practical effect: `sentinel` and `enforcer` are the only two `PreToolUse`-triggered gates, so neither ever evaluates against a subagent's own tool calls — there is no partial block/warn outcome, the check simply never runs. `is_subagent` is detected from several signals — explicit flag, `agent_id`/`agent_type` fields, a short-hex session ID, a `/subagents/` transcript path (`lib/hook_utils.py:is_subagent_session`).
+**Target state (H8, scope-disciplined by H12).** Gates fire **uniformly** for every session — main, dispatched subagent, or headless worker — with no `PreToolUse`/`PostToolUse` skip keyed on `is_subagent`. With `sentinel` deleted (H1), `enforcer`/`rbg` is the only remaining `PreToolUse`-triggered gate, and it now evaluates against a subagent's/worker's own tool calls the same way it does the main session's. H12 amends H8's direction: this is a **reorganisation of the existing per-session `GateState` design**, not a rewrite to full statelessness — the mechanics-separation task (aops-5b9e95c4) implements the reorganisation; this spec describes the target it is building toward.
 
-**Worker posture override (agy).** `AOPS_AGY_CLIENT=1` — set only by `polecat/cli.py` when launching a `polecat run --model antigravity` worker — forces `is_subagent=True` for that worker's entire life, even though it isn't a literal Task/Agent-dispatched child (`router.py:463`). Rationale: a headless agy worker has no human able to action an interactive compliance prompt, so it gets the same PreToolUse/PostToolUse skip as a real subagent. Net effect for the whole run: `sentinel` and `enforcer` never fire; `rbg-review`/`qa`/`handover`/`ida` (all `Stop`-triggered) still fire normally under the Polecat/Background mode. Covered by `tests/hooks/test_agy_worker_gate_posture.py`.
+**Historical design (pre-H8, being replaced).** `_dispatch_gates` (`hooks/router.py`) previously skipped gate evaluation entirely for any event tagged `is_subagent=True`, except `Stop`/`SessionEnd`/`SubagentStop`/`UserPromptSubmit`, which always fired so session-lifecycle bookkeeping (handover/rbg-review, formerly also ida) ran even for a dispatched child. `is_subagent` is detected from several signals — explicit flag, `agent_id`/`agent_type` fields, a short-hex session ID, a `/subagents/` transcript path (`lib/hook_utils.py:is_subagent_session`).
+
+**Worker posture override (agy) — moot for gating under H8.** `AOPS_AGY_CLIENT=1` — set only by `polecat/cli.py` when launching a `polecat run --model antigravity` worker — forced `is_subagent=True` for that worker's entire life so it got the same PreToolUse/PostToolUse skip as a real subagent (a headless agy worker has no human able to action an interactive compliance prompt). Once the skip itself is retired, this override no longer changes gating behaviour; the flag may persist for session-type observability labelling only. `tests/hooks/test_agy_worker_gate_posture.py` covers the historical behaviour and needs updating alongside the reorganisation (aops-5b9e95c4).
 
 ---
 
-## `sentinel` gate
+## Retired gates (H1–H18)
 
-> **TL;DR.** Stateless PreToolUse gate that blocks destructive operations targeting protected user-environment paths before they execute. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.sentinel` / env var `SENTINEL_GATE_MODE` (default: `block`). Parity: [`aops-core/policies/deny-extension-writes.toml`](../../aops-core/policies/deny-extension-writes.toml) mirrors these rules for Gemini CLI.
+### `sentinel` gate — DELETED (H1)
 
-### What is it
+Was a stateless PreToolUse gate blocking destructive shell/write operations on protected user-environment paths (`~/.claude/plugins/`, `~/.gemini/extensions/`, etc.) via destructive-verb + path regex matching. **Ruling H1**: this failed the "no shitty NLP" rule — regex-for-meaning on shell commands is exactly the brittle-heuristic pattern the framework avoids elsewhere. The concern it addressed (accidental damage to a live environment) is operationalised properly by **container isolation** instead, not in-session string matching. No replacement hook is planned; the mechanics-separation task (aops-5b9e95c4) removes the code (`GateConfig(name="sentinel", ...)`, `is_destructive_env_op`, `SENTINEL_GATE_MODE`, `hooks/templates/sentinel-policy-*.md`, `tests/hooks/test_sentinel_gate.py`) and its Gemini-parity policy (`aops-core/policies/deny-extension-writes.toml`).
 
-A safety gate that intercepts destructive operations on protected user-environment paths before they execute — guarding against an agent deleting or modifying a live extension, plugin, or configuration file without evidence it was broken.
+### `ida` gate — retired as a hook (H6)
 
-**Class of failure caught.** Accidental deletion or modification of live extension, plugin, and configuration files that the framework depends on. Unlike advisory gates (warn once), this gate defaults to `block` because environment damage can be difficult to recover from.
+Was a Stop-triggered honesty/criterion-substitution reminder (fire-once per turn) plus a PreToolUse `AskUserQuestion` nudge, firing uniformly for every session including headless polecat workers with no human present to action it. **Ruling H6**: this discipline belongs to the **head-personality surface** interacting directly with the human (`aops-interactive` — `ida`/`junior`), not a router-level gate. Design rationale for the honesty standard itself is unchanged and lives at [`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate) — only the hook-level enforcement retires. In exchange, agents need explicit instruction on how to supply the completion proof `release_task` requires (H7); that instruction content coordinates with the mem-server schema-floor work (B2/SEAM-2) and is out of this redraft's scope.
 
-**Stateless design.** The sentinel gate has no open/close lifecycle. It fires on every matching PreToolUse event as long as `SENTINEL_GATE_MODE` is not `off`.
-
-### What it protects
-
-Protected paths (matched case-insensitively, tilde-expanded and absolute forms):
-
-| Path                      | Rationale                                      |
-| ------------------------- | ---------------------------------------------- |
-| `~/.gemini/extensions/`   | Live Gemini CLI extension installations        |
-| `~/.gemini/settings.json` | Gemini CLI global configuration                |
-| `~/.claude/plugins/`      | Claude Code plugin installations               |
-| `~/.claude/*.json`        | Claude Code config files (settings.json, etc.) |
-| `~/.config/gemini/`       | Gemini CLI config directory                    |
-
-### What triggers it
-
-**Shell tools** (`Bash`, `run_shell_command`, `shell`, `execute_code`): blocks when the command contains both a destructive verb (word-bounded, case-insensitive) AND a protected path reference.
-
-Destructive verbs: `rm`, `mv`, `rmdir`, `unlink`, `truncate`
-
-**Write-file tools** (`Edit`, `Write`, `write_file`, `replace`): blocks when the `file_path` / `path` argument resolves to a protected path. No verb check — any write to a protected path is considered destructive.
-
-### Where it lives
-
-- **Gate config**: [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) — `GateConfig(name="sentinel", ...)`
-- **Custom condition**: [`lib/gates/custom_conditions.py`](../../aops-core/lib/gates/custom_conditions.py) — `is_destructive_env_op`
-- **Mode default**: [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py) — `SENTINEL_GATE_MODE = "block"`
-- **Templates**: `hooks/templates/sentinel-policy-{message,context}.md`
-- **Gemini parity**: [`aops-core/policies/deny-extension-writes.toml`](../../aops-core/policies/deny-extension-writes.toml)
-- **Tests**: `tests/hooks/test_sentinel_gate.py`
-
-### Configuration
-
-| Env var              | Values                 | Default | Effect                                                                                |
-| -------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------- |
-| `SENTINEL_GATE_MODE` | `block`, `warn`, `off` | `block` | `block`: deny the tool call; `warn`: inject advisory, allow; `off`: sentinel disabled |
-
-In `polecat.yaml`:
-
-```yaml
-gates:
-  sentinel: block   # or warn / off
-```
-
-### Verifying it is active
-
-```bash
-python -c '
-import os, sys
-sys.path.insert(0, "/path/to/aops-core")
-from hooks.gate_config import SENTINEL_GATE_MODE
-print(f"sentinel={SENTINEL_GATE_MODE}")
-'
-```
-
-### Debugging
-
-If the sentinel fires unexpectedly, check:
-
-1. Is the matched path actually protected? `_PROTECTED_PATH_RE` in `custom_conditions.py`.
-2. Is the destructive verb word-bounded? The regex uses `\b` — `rmdir` is a separate match from `rm`.
-3. To opt out for a specific session: `SENTINEL_GATE_MODE=off` in the shell env before launching.
+> **Cross-reference note.** [`specs/interactive-experience/head-role-charter.md`](../interactive-experience/head-role-charter.md) (written before this ruling) states the `ida` gate binding to this anchor is "not moved or duplicated" into the charter. That statement predates H6 and needs a follow-up update once the hook is actually removed (aops-5b9e95c4) — out of scope for this spec-only redraft; flagged here so the cross-reference isn't silently stale.
 
 ---
 
 ## `enforcer` gate
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (default 50), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.enforcer`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
+> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (**~17 default** — lowered from 50 per H2), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. Now fires uniformly across main sessions, subagents, and workers (H8/H12 — no more `is_subagent` PreToolUse skip). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.enforcer`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
 ### What is it
 
-The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.enforcer_threshold` (default 50), the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
+The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.enforcer_threshold` (**~17 default** per H2, was 50), the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
 
 **Design rationale + class of failure caught.** Live in the [rbg spec](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
@@ -234,7 +176,7 @@ Subagent dispatches that look like `Agent(subagent_type="enforcer")` or `Agent(s
 ### How it's configured
 
 - **Mode key**: `gates.enforcer` (see [Config plumbing](#config-plumbing) for resolution). `warn` | `block` | `off`.
-- **Threshold** (write ops between checks): `gates.enforcer_threshold` (default 50).
+- **Threshold** (write ops between checks): `gates.enforcer_threshold` (**~17 default**, lowered from 50 per H2).
 - **Countdown window**: 7 ops before threshold (`start_before=7` in the `CountdownConfig` literal — not currently in YAML).
 - **Tool-category exclusions**: `infrastructure`, `always_available`, `read_only` tools do not trip the policy (`TOOL_CATEGORIES` in `gate_config.py`).
 - **Mid-edit deferral**: while a TodoWrite has an `in_progress` item, the block is deferred via the `not_mid_edit` custom check (`custom_conditions.py`).
@@ -276,7 +218,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `rbg-review` gate
 
-> **TL;DR.** End-of-session axiom-audit backstop. Armed `CLOSED` from session start for **every** session type — there is no code branch on session type anywhere in this gate. It **DENIES the exit Stop** until the `rbg` subagent has run and returned a verdict, but ONLY when `RBG_REVIEW_GATE_MODE` is `block`/`warn`; the trigger is structural (Stop event + armed flag), never a content/keyword sniff. Per-surface scoping is entirely a config knob: the built-in code default is `off` (an ad hoc CLI session with no `polecat.yaml` eats no per-turn rbg delay, even though the gate still mechanically arms/re-arms), while dispatched surfaces (`polecat run` / `polecat crew`) opt in via `polecat.yaml` `session_defaults.gates.rbg_review: block`. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (built-in default `off`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
+> **TL;DR.** End-of-session axiom-audit backstop. Armed `CLOSED` from session start for **every** session type — there is no code branch on session type anywhere in this gate. It **DENIES the exit Stop** until the `rbg` subagent has run and returned a verdict, but ONLY when `RBG_REVIEW_GATE_MODE` is `block`/`warn`; the trigger is structural (Stop event + armed flag), never a content/keyword sniff. Per-surface scoping is entirely a config knob: the built-in code default is `off` (an ad hoc CLI session with no `polecat.yaml` eats no per-turn rbg delay, even though the gate still mechanically arms/re-arms), while dispatched surfaces (`polecat run` / `polecat crew`) opt in via `polecat.yaml` `session_defaults.gates.rbg_review: block`. **Ruling H3 keeps this gate, ratifies the default-armed-on-dispatched-surfaces posture, and locks the hard constraint permanently: posture is expressed ONLY via env vars / `polecat.yaml`, never on/off/session-type/state code in the repo** — this design is the target, not a pending change. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (built-in default `off`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
 
 ### Where it lives
 
@@ -298,7 +240,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 - **Fire**: while `CLOSED` and mode is `block`/`warn`, the Stop policy returns `DENY` (both modes — warn no longer emits a soft `WARN`) and injects the rbg-dispatch instruction (`prepare_rbg_review` builds the session-review file). In `block` there is no fire-once trigger — the gate stays `CLOSED` and re-DENYs across repeated Stops until rbg actually runs (block-until-satisfied). In `warn` a warn-mode fire-once `Stop→OPEN` trigger opens the gate after the first DENY so a retried Stop passes (hard-block-once).
 - **Clear trigger**: `rbg` subagent run (`SubagentStart`/`SubagentStop`/`PostToolUse` matching `^(aops[-_]core[:_])?rbg$`) → `OPEN`, resets the escape-hatch counter, `sticky_until=["UserPromptSubmit"]`.
 - **Escape-hatch threshold**: `RBG_REVIEW_DEGRADE_THRESHOLD` (default 5) consecutive Stop blocks in one turn degrades `DENY` → `WARN`-and-allow (`rbg_review.degraded` message) — failure-degradation only, not a normal bypass. Independent of the router-level 5-blocks-in-2-min safety override.
-- **Precedence**: registered ahead of `qa`/`handover`/`ida` in `GATE_CONFIGS`, so its `DENY` is delivered first; once cleared, the later Stop gates evaluate normally (ida is deferred, not consumed, while this gate denies).
+- **Precedence**: registered ahead of `qa`/`handover` in `GATE_CONFIGS`, so its `DENY` is delivered first; once cleared, the later Stop gates evaluate normally (deferred, not consumed, while this gate denies).
 
 ### How to verify it's firing
 
@@ -325,7 +267,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `qa` gate
 
-> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.qa`.
+> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED. **Ruling H10/H12 keeps this gate's latch machinery and session-state design unchanged** — a proposed collapse to "query PKB task status" was rejected; this is a reorganisation of the surrounding stack, not a rewrite of this gate. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.qa`.
 
 ### What is it
 
@@ -373,7 +315,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 
 ## `handover` gate
 
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.handover`.
+> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. Blocks once per turn on Stop while CLOSED (fire-once, re-arms on UPS). Safety override: 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. **Ruling H10/H12 keeps this gate's latch machinery unchanged** — enforcement posture softens to incentive-first ("land the plane": commit → push → `release_task`, or the work is garbage-collected), but this machinery stays as the backstop, not rewritten. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.handover`.
 
 ### What is it
 
@@ -395,7 +337,7 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 
 - **Mode key**: `gates.handover` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
-- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$"` (widened to accept the `aops-interactive:` prefix when `dump`/`end_session` run from their new home, aops-cf3fb2f0) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate (and the `ida` gate) without concluding the task, since the skill itself emits the honest resume summary.
+- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$"` (widened to accept the `aops-interactive:` prefix when `dump`/`end_session` run from their new home, aops-cf3fb2f0) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate without concluding the task, since the skill itself emits the honest resume summary (pre-H6 it also opened the now-retired `ida` gate for the same reason).
 - **Re-arm trigger**: `UserPromptSubmit` (every session type — no session-type filter) → clears sticky latch, then fires re-arm trigger → CLOSED. Re-arming CLOSED is harmless for a session that never did any work: the block/warn policies independently exempt `session_did_work=False` regardless of gate status. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
 - **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
 - **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
@@ -426,54 +368,9 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ---
 
-## `ida` gate
+## `ida` gate {#ida-gate}
 
-> **TL;DR.** Pre-Stop honesty reminder, named for Ida B. Wells. Fires once per turn on Stop (fire-once lifecycle: CLOSED → fires → OPEN, re-arms on UPS); armed (`CLOSED`) from session start in **every** session type. Default `warn` everywhere — no per-surface posture. Warn-vs-block delivery + audience: see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.ida`.
-
-### What is it
-
-The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and injects a reminder to cite proof for assertions (file:line or command output, not reasoning) and to flag claims that were substituted, skipped, or laundered from a subagent without verification. Gate opens after the first block so retried Stops pass; re-arms on UserPromptSubmit.
-
-**Design rationale + class-of-failure caught** (criterion substitution, narrative-as-proof, skipped verification, subagent-output laundering, why fire-once, delivery-channel philosophy) live in the [ida spec](../agents/ida.md#honesty-at-stop--the-ida-gate).
-
-### Where it lives
-
-| Concern         | Path                                                                 |
-| --------------- | -------------------------------------------------------------------- |
-| Gate definition | `aops-core/lib/gates/definitions.py` (`GateConfig(name="ida", ...)`) |
-| Template        | `aops-core/hooks/templates/ida-reminder.md`                          |
-| Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)                   |
-
-Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `router.execute_hooks`). Fires on Stop in main-agent context — no subagent-skip, no threshold.
-
-### How it's configured
-
-- **Mode key**: `gates.ida` (`warn` | `block` | `off`).
-- **Triggers**: (1) Stop while CLOSED → OPEN (fire-once); (2) UserPromptSubmit → CLOSED (re-arm), **excluding slash-command turns** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`). A skill invocation (`/end-session`, `/dump`, `/remember`, or any `/command`) owns its own finishing format, so it must not re-arm the honesty gate — otherwise a slash command typed after a reflection has already fired arms a second, redundant reflection on the next Stop. Suppresses the close only — it never opens the gate, so a first-turn slash command (gate still CLOSED from session start) still reflects. (3) `PreToolUse`/`AskUserQuestion` → **re-close** + inject advisory (`definitions.py:637-647`) — asking the user a question re-arms the reminder for the answer turn. (4) `/continue` skill (`Skill`/`activate_skill` PostToolUse) → **OPEN** (sticky until UPS) — the pause path already emits the honest resume summary, so the honesty reminder must not also fire on the Stop that follows it.
-- **Stop policies**: `hook_event="Stop"`, `current_status=CLOSED` — both `is_ida_block_mode` and `is_ida_warn_mode` now emit **DENY** (both injecting `context_key="ida.reminder"`); the difference is delivery noise (block = loud `decision:block`, warn = quiet asyncRewake on Claude), not the verdict. Which one delivers, and to whom, is the shared Stop-gate behaviour — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
-- **Default-everywhere**: `polecat.yaml.example` ships `ida: warn`. `BUILTIN_GATES` (used when no polecat.yaml is found) also sets `ida: warn`.
-
-### How to verify it's firing
-
-```bash
-# Stop events with the ida context injection
-grep '"hook_event":"Stop"' <hooks.jsonl> \
-  | jq -r 'select(.output.context_injection|test("Before stopping|Ida")) | .logged_at'
-
-# Verdict-warn rate on Stop (ida is the only Stop policy that warns without state)
-grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq -c
-```
-
-**Healthy fire** (mode `warn`): first Stop per turn produces `output.verdict="deny"` — a fire-once HARD block that forces one continuation so the agent reads the reminder (warn no longer emits a soft `warn` verdict; a `warn` verdict renders as a non-blocking advisory on current Claude and would not force the continuation). `output.context_injection` carries the ida-reminder template text ("Before stopping: for each claim..."). On Claude this DENY is rerouted to the **asyncRewake quiet-split** (full body → agent `<system-reminder>`, one-line → user), keyed on ida **warn-mode** (not on the verdict); other clients get the loud `decision:"block"` + `reason`. The gate then opens (unconditional fire-once trigger), so subsequent Stops in the same turn produce no verdict. Re-arms on next UserPromptSubmit.
-
-### How to debug when it isn't
-
-| Failure mode                                          | Diagnostic                                                                                                                                                                                                                                                                                             |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Mode silently `off`                                   | `python -c "from hooks.gate_config import IDA_GATE_MODE; print(IDA_GATE_MODE)"` — confirm the resolved value.                                                                                                                                                                                          |
-| Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                        |
-| Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                                  |
-| Mode `warn` but no visible reminder in agent context  | Cross-check `output_for_claude` behaviour: when verdict is `warn` and no other gate set a system_message, the reminder is copied into `stopReason` + `systemMessage` (`router.py`, the "WARN inertia" fallback). If neither field is set in the JSONL output, the merge logic dropped it — file a bug. |
+**Retired as a hook (H6).** See [§ Retired gates](#retired-gates-h1h18) at the top of this file for the full disposition. This anchor is kept alive because [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate) and [`specs/interactive-experience/head-role-charter.md`](../interactive-experience/head-role-charter.md) link to it; both need a follow-up update once the hook code is actually removed (aops-5b9e95c4).
 
 ---
 
@@ -484,6 +381,8 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 - **Skills-routing hint** — `router.py:_run_lightweight_hydrator` adds template `hydration.warn` on every UserPromptSubmit in main-agent context.
 
 It runs unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
+
+**Ownership (target — H11):** this router-level hint moves up to aops-pkb/aops-adhd; aops-core stops owning it. `pkb-nudge` (a separate mechanism — see [`ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)) is unaffected and stays in aops-core (H14). Wiring the move is out of scope for this spec-only redraft — lands with aops-5b9e95c4.
 
 | Concern               | Path                                                        |
 | --------------------- | ----------------------------------------------------------- |
@@ -514,8 +413,9 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 
 ### Design rationale (specs)
 
-- [`specs/enforcement/enforcement.md`](enforcement.md) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop.
+- [`specs/enforcement/enforcement.md`](enforcement.md) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop, the authoritative mechanism index (§6).
 - [`specs/agents/rbg.md`](../agents/rbg.md) — the "ultra vires" scope distinction and the enforcer agent's invocation points.
+- [`specs/enforcement/pyramid.md`](pyramid.md), [`task-contract.md`](task-contract.md), [`workflow.md`](workflow.md), [`sign-off.md`](sign-off.md) — the module-boundary layer model (L0–L4); which layer owns each surviving mechanism post-H1–H18.
 
 ### Source
 

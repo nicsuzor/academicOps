@@ -29,7 +29,16 @@ work.
 - **Premise gate** — at `claim_task`; refuses a task with no genuine premise
   assessment before compute is spent.
 - **Freshness gate** — at `claim_task`; path-resolution and supersession checks.
+- **Task-binding gate** — reactivated (H4): no mutating work without a task
+  bound to the session via `claim_task`. The invariant is **one session claims
+  exactly one task** (possibly multiple subtasks of it) — never
+  `$AOPS_TASK_ID`, which never worked and is not to be built on (H10 rider).
+  Wiring is target-state, lands with the mechanics-separation task
+  (aops-5b9e95c4).
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
-  claim must carry independent-verification evidence bound to artifact state.
-  This is the single runtime enforcer of the invariant. Its floor is the `mem`
-  MCP server predicate — the contract is only as strong as that floor.
+  claim must carry independent-verification evidence bound to artifact state,
+  or a stated failure reason. **This is the primary enforcement point** (H7).
+  Framed to agents as "land the plane" — commit → push → `release_task`, or
+  the work is garbage-collected (H10): incentive-first, this machinery is the
+  backstop, not the mechanism agents are expected to lean on. Its floor is the
+  `mem` MCP server predicate — the contract is only as strong as that floor.
