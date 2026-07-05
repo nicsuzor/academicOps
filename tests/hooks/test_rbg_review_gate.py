@@ -146,7 +146,8 @@ def test_stop_denied_when_armed_and_rbg_not_run(router):
     result = router._dispatch_gates(_ctx("Stop"), state)
     assert result is not None
     assert result.verdict == GateVerdict.DENY
-    assert "subagent_type='aops-core:rbg'" in (result.context_injection or "")
+    # rbg agent definition lives in aops-pkb since the aops-pkb extraction.
+    assert "subagent_type='aops-pkb:rbg'" in (result.context_injection or "")
 
 
 def test_stop_stays_denied_across_retries_no_fire_once_leak(router):

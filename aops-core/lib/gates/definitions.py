@@ -112,7 +112,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
+                    subagent_type_pattern="^(aops[-_](core|pkb)[:_])?rbg$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
@@ -209,11 +209,12 @@ GATE_CONFIGS = [
             # latch sticky until UserPromptSubmit so post-review fixes don't
             # re-block this turn. Matches the dispatched / completed / tool
             # forms (SubagentStart, SubagentStop, PostToolUse on the Agent/Task
-            # spawn) and the aops-core: prefix.
+            # spawn) and the aops-core:/aops-pkb: prefixes (rbg agent lives in
+            # aops-pkb since the aops-pkb extraction).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
+                    subagent_type_pattern="^(aops[-_](core|pkb)[:_])?rbg$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -316,10 +317,12 @@ GATE_CONFIGS = [
             # Verifier subagent runs -> Open gate (sticky until UPS).
             # sticky_until keeps the gate open so writes to fix marsha's
             # findings don't re-close it (prevents marsha→fix→block loop).
+            # marsha (agent) and verify (skill) both live in aops-pkb since
+            # the aops-pkb extraction, so match either plugin prefix.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-core:)?(qa|verify|marsha)$",
+                    subagent_type_pattern="^(aops-(core|pkb):)?(qa|verify|marsha)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

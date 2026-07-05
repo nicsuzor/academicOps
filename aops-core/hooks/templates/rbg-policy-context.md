@@ -12,5 +12,5 @@ description: |
 
 **Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **rbg** agent with the file path argument:
 
-- `Agent(subagent_type='aops-core:rbg', prompt='{temp_path}')`
-</academicOps rbg compliance check>
+- `Agent(subagent_type='aops-pkb:rbg', prompt='{temp_path}')`
+  </academicOps rbg compliance check>

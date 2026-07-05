@@ -187,7 +187,7 @@ Before invoking reviewers, prepare a context document containing:
 Dispatch both mandatory reviewers concurrently:
 
 - **pauli** (`aops-core:pauli`, opus) — reviews the decomposition for logical errors, untested assumptions, missing edge cases, scope drift, review-sizing violations, decision/prep dependencies, academic methodology gaps. Returns `PROCEED / REVISE / HALT`.
-- **rbg** (`aops-core:rbg`, haiku) — verifies the decomposition stays within granted authority and original scope, no unapproved expansions, no assumed permissions. Returns `OK / WARN / BLOCK`.
+- **rbg** (`aops-pkb:rbg`, haiku) — verifies the decomposition stays within granted authority and original scope, no unapproved expansions, no assumed permissions. Returns `OK / WARN / BLOCK`.
 
 Both receive the same review context (decomposition proposal + files affected + relevant principles).
 
