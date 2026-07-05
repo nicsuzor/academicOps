@@ -36,12 +36,13 @@ If no arguments are given, run:
 
 `Skill(skill="task-lifecycle", args="execute")`
 
-<!-- NS/build: the aops-core `<!-- cowork:only --> ... <!-- /cowork:only -->`
+<!-- cowork:only -->
 
-marker convention (build_aops_core's cowork build strips/keeps these blocks)
-does not exist in aops-pkb's build yet — this plugin has no "cowork" platform
-build. The prior Cowork native-list-mirror paragraph (driven by aops-core's
-`cowork-sync` skill, itself overlaid from the aops-cowork package) was dropped
-here rather than shipped inert. If aops-pkb ever needs a Cowork build, port the
-marker-processing step from scripts/build.py's build_aops_core and re-add the
-paragraph, updating the cross-plugin pointer to cowork-sync accordingly. -->
+## Cowork: native-list mirror
+
+On the Cowork surface the claim step mirrors the task onto the native task list.
+`/pull` and `/end_session` are the only drivers of that mirror — see
+[[../skills/cowork-sync/SKILL.md]]. If `/pull` is run again in the same session,
+the prior parent native task is cancelled before the new one is mirrored.
+
+<!-- /cowork:only -->

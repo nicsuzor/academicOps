@@ -761,11 +761,13 @@ def build_aops_core(
     supplies every shared agent/skill/command/lib file and the one shared hook
     stack (bundling hooks here too would double-fire every lifecycle hook), so
     the cowork build ships ONLY (a) files that opt into a Cowork-specific
-    paragraph via `<!-- cowork:only -->` markers (e.g. `commands/pull.md`,
-    `skills/end_session/SKILL.md` — markers stripped, content kept) and (b) the
-    tracked `aops-cowork/` package overlay (the `cowork-sync` skill). Same
-    plugin layout as "claude" (`.claude-plugin/plugin.json` + `.mcp.json`), with
-    a distinct manifest naming the artifact `aops-cowork`.
+    paragraph via `<!-- cowork:only -->` markers — scanned across both
+    `aops-core/` (e.g. `skills/end_session/SKILL.md`) and `aops-pkb/` (e.g.
+    `commands/pull.md`, inherited from aops-core in the aops-b225ec53
+    extraction — markers stripped, content kept) — and (b) the tracked
+    `aops-cowork/` package overlay (the `cowork-sync` skill). Same plugin
+    layout as "claude" (`.claude-plugin/plugin.json` + `.mcp.json`), with a
+    distinct manifest naming the artifact `aops-cowork`.
     """
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
@@ -822,29 +824,45 @@ def build_aops_core(
         # _COWORK_BLOCK_RE (not a plain substring check) so documentation that
         # merely MENTIONS the marker syntax in prose (e.g. BUILD.md explaining
         # the mechanism) doesn't get mistaken for a real, matched marker block.
-        marker_files = sorted(
-            p
-            for p in src_dir.rglob("*.md")
-            if not any(
-                part in BUILD_DETRITUS_NAMES or part.startswith(".")
-                for part in p.relative_to(src_dir).parts
-            )
-            and _COWORK_BLOCK_RE.search(p.read_text())
-        )
-        for marker_file in marker_files:
-            rel = marker_file.relative_to(src_dir)
-            dst = content_dir / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            content = marker_file.read_text()
-            if rel.parts[0] == "agents":
-                content = transform_agent_for_platform(
-                    content, transform_platform, marker_file.name
+        #
+        # Scan aops-core AND aops-pkb: aops-pkb inherited commands/pull.md (and
+        # its cowork-only native-list-mirror paragraph) from aops-core in the
+        # aops-b225ec53 extraction, but aops-pkb has no cowork platform build of
+        # its own — this is the only place that paragraph gets shipped into
+        # dist/aops-cowork/. If another extracted plugin ever needs a
+        # cowork-only paragraph, add its source root here too.
+        marker_roots = [src_dir]
+        pkb_src_dir = aops_root / "aops-pkb"
+        if pkb_src_dir.exists():
+            marker_roots.append(pkb_src_dir)
+
+        def _cowork_marker_files(root: Path) -> list[Path]:
+            return sorted(
+                p
+                for p in root.rglob("*.md")
+                if not any(
+                    part in BUILD_DETRITUS_NAMES or part.startswith(".")
+                    for part in p.relative_to(root).parts
                 )
-            content = translate_tool_calls(content, transform_platform)
-            dst.write_text(content)
-        if marker_files:
-            rel_names = [str(p.relative_to(src_dir)) for p in marker_files]
-            print(f"  ✓ Copied {len(marker_files)} cowork-marker file(s): {rel_names}")
+                and _COWORK_BLOCK_RE.search(p.read_text())
+            )
+
+        copied_rel_names = []
+        for root in marker_roots:
+            for marker_file in _cowork_marker_files(root):
+                rel = marker_file.relative_to(root)
+                dst = content_dir / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                content = marker_file.read_text()
+                if rel.parts[0] == "agents":
+                    content = transform_agent_for_platform(
+                        content, transform_platform, marker_file.name
+                    )
+                content = translate_tool_calls(content, transform_platform)
+                dst.write_text(content)
+                copied_rel_names.append(str(rel))
+        if copied_rel_names:
+            print(f"  ✓ Copied {len(copied_rel_names)} cowork-marker file(s): {copied_rel_names}")
 
         # The pkb MCP server (.mcp.json, generated in section 4) launches via
         # scripts/run-mcp.sh, which sources ensure-path.sh — copy just those two,
@@ -1720,9 +1738,12 @@ def build_aops_pkb(
     Unlike aops-tools/aops-extras (skills-only, no agents/commands/MCP), aops-pkb
     ships agents + commands + skills + its own `pkb` MCP server registration
     (a SEPARATE plugin identity from aops-core's, so Claude Code namespaces its
-    tools as `mcp__plugin_aops-pkb_pkb__*` — source files were rewritten at the
-    source level to this prefix, not by a build-time rewrite, since aops-pkb is
-    a standalone package rather than an aops-core overlay like aops-cowork).
+    tools as `mcp__plugin_aops-pkb_pkb__*` — the 4 moved agents (james/rbg/pauli/
+    marsha) and the `task-lifecycle` skill were rewritten at the source level to
+    this prefix, not by a build-time rewrite, since aops-pkb is a standalone
+    package rather than an aops-core overlay like aops-cowork. Other moved
+    skill-body files (planner, remember) still use the bare `mcp__pkb__*` short
+    form in prose — a pre-existing, functionally-fine convention — left as-is.
     It has NO hooks (the module operates outside the agent loop — no in-session
     enforcement is needed, ruling C1) and so, like aops-tools/aops-extras, ships
     no pyproject.toml/uv.lock.
@@ -1752,8 +1773,12 @@ def build_aops_pkb(
 
     # 1. Copy content. agents/ gets the same frontmatter/body transform pass as
     # build_aops_core (Claude tool-name normalisation); everything else copies
-    # verbatim (no hooks, no cowork markers, no lib/ — the module ships pure
-    # agent/skill/command instructions plus its own MCP server registration).
+    # verbatim (no hooks, no lib/ — the module ships pure agent/skill/command
+    # instructions plus its own MCP server registration). aops-pkb has no
+    # cowork platform build of its own, but it inherited commands/pull.md's
+    # `<!-- cowork:only -->` paragraph from aops-core (aops-b225ec53) — that
+    # block is stripped below (§1a) the same way build_aops_core strips it for
+    # every non-cowork platform, so it never leaks into this (claude-only) build.
     EXCLUDED_FROM_COPY = {"mcp.json.template", "__pycache__"}
     for src_item in src_dir.iterdir():
         if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
@@ -1770,7 +1795,23 @@ def build_aops_pkb(
         else:
             safe_copy(src_item, content_dir / src_item.name)
 
-    # 1a. Co-ship the framework axioms — rbg.md and marsha.md @-import
+    # 1a. Strip cowork-only blocks (markers AND wrapped content) from every
+    # copied .md file — this build never ships the "cowork" platform, so any
+    # `<!-- cowork:only -->` paragraph inherited from aops-core (e.g.
+    # commands/pull.md's native-list-mirror note) must not leak in verbatim.
+    cowork_stripped = 0
+    for md_file in content_dir.rglob("*.md"):
+        original = md_file.read_text()
+        if _COWORK_OPEN not in original:
+            continue
+        processed = _process_cowork_markers(original, platform)
+        if processed != original:
+            md_file.write_text(processed)
+            cowork_stripped += 1
+    if cowork_stripped:
+        print(f"  ✓ Stripped cowork-only blocks in {cowork_stripped} .md file(s)")
+
+    # 1b. Co-ship the framework axioms — rbg.md and marsha.md @-import
     # ${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md, which must resolve inside
     # THIS plugin's own payload at runtime (mirrors build_aops_core §1a-axioms;
     # see the aops-75543e66 stale-axiom-decoy regression this guards against).
