@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-RBG_MD = Path(__file__).resolve().parents[1] / "aops-core" / "agents" / "rbg.md"
+RBG_MD = Path(__file__).resolve().parents[1] / "aops-pkb" / "agents" / "rbg.md"
 
 
 def _r2_text() -> str:

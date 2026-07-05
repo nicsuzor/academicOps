@@ -18,8 +18,12 @@ from scripts.build import (
 
 @pytest.mark.parametrize("agent_name", ["rbg", "marsha"])
 def test_core_agent_transformation_for_gemini(agent_name):
-    """Verify core agents are correctly transformed for Gemini."""
-    agent_src = REPO_ROOT / "aops-core" / "agents" / f"{agent_name}.md"
+    """Verify sign-off agents are correctly transformed for Gemini.
+
+    rbg/pauli/james/marsha were extracted from aops-core into the
+    aops-pkb plugin; they now live under aops-pkb/agents/.
+    """
+    agent_src = REPO_ROOT / "aops-pkb" / "agents" / f"{agent_name}.md"
     assert agent_src.exists()
 
     content = agent_src.read_text()
