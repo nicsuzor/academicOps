@@ -11,7 +11,7 @@ Specifically for this project:
 - Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
 - Project hub: [[aops|brain/projects/aops/aops]]
 - Vision: [[vision|brain/projects/aops/vision]] (where applicable)
-- Canonical taxonomy: `~/src/academicOps/aops-core/skills/remember/references/TAXONOMY.md`
+- Canonical taxonomy: `~/src/academicOps/aops-pkb/skills/remember/references/TAXONOMY.md`
 - Transcript naming & artifact conventions: `specs/observability/framework-observability.md`
 - Session summaries schema: `specs/summaries-schema.md`
 - Agent Compliance Matrix: `specs/audit/AGENT-COMPLIANCE-MATRIX.md`

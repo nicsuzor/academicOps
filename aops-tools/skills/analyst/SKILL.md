@@ -31,7 +31,7 @@ permalink: skills-analyst-skill
 
 # Analyst
 
-> **Taxonomy note**: This skill provides tech-agnostic domain principles (HOW) for research data analysis. Technology-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the **aops-extras** package skills. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides tech-agnostic domain principles (HOW) for research data analysis. Technology-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the **aops-extras** package skills. See [[aops-pkb/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Overview
 
