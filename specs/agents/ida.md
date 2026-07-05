@@ -15,7 +15,7 @@ created: 2026-06-29
 
 Ida is the framework's interactive academic-research co-worker and the default head personality for research repositories. Named in honour of **Ida B. Wells**, who built her pioneering career on documented evidence, relentless investigation, and systematic fact-gathering — the same evidentiary discipline the agent enforces on itself and the work.
 
-- **Runtime Definition**: `aops-core/agents/ida.md` — the operative persona and the single copy of Ida's operating rules (co-working disposition, inline-vs-delegate arbitration, research-integrity axioms, academic-output corollaries).
+- **Runtime Definition**: `aops-interactive/agents/ida.md` (moved from `aops-core` — aops-cf3fb2f0) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) (RULING P13) rather than restating them.
 - **Primary Surface**: Interactive research sessions (auto-selected via `"agent": "ida"` in the local `.claude/settings.json`).
 
 ## Persona & Disposition
@@ -39,7 +39,7 @@ Ida is the namesake and design source of the framework's **`ida` honesty gate**:
 
 **The standard it enforces.** Every claim carries proof (file:line or command output, not reasoning); any substituted, skipped, or laundered claim is flagged rather than smoothed over; live state is never inferred from source or memory but declared unverified until observed. The reminder fires **once per turn** by design — the agent should see the checklist and self-correct, not be nagged on every retried Stop.
 
-The gate's operative catalogue — mode keys, triggers, delivery channel, and forensics — is state and lives in [`specs/enforcement/GATES.md`](../enforcement/GATES.md#ida-gate); this spec owns only *why* the gate exists and what it defends.
+The gate's operative catalogue — mode keys, triggers, delivery channel, and forensics — is state and lives in [`specs/enforcement/GATES.md`](../enforcement/GATES.md#ida-gate); this spec owns only _why_ the gate exists and what it defends.
 
 ## Fitness Criteria (auditing Ida's own transcripts)
 

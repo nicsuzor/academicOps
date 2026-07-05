@@ -178,7 +178,7 @@ Destructive verbs: `rm`, `mv`, `rmdir`, `unlink`, `truncate`
 ### Configuration
 
 | Env var              | Values                 | Default | Effect                                                                                |
-| --------------------- | ----------------------- | ------- | ------------------------------------------------------------------------------------- |
+| -------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------- |
 | `SENTINEL_GATE_MODE` | `block`, `warn`, `off` | `block` | `block`: deny the tool call; `warn`: inject advisory, allow; `off`: sentinel disabled |
 
 In `polecat.yaml`:
@@ -221,13 +221,13 @@ The periodic-compliance gate. Counts write operations since the last rbg audit; 
 
 ### Where it lives
 
-| Concern                  | Path                                                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg", ...)` — the code object keeps the historical `rbg` name, mode key `gates.enforcer`)     |
-| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`RBG_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                         |
-| Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                 |
-| Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`       |
-| Compliance subagent      | `aops-core/agents/rbg.md` (only `rbg.md` is shipped; the regex also accepts a subagent named `enforcer` if installed) |
+| Concern                  | Path                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg", ...)` — the code object keeps the historical `rbg` name, mode key `gates.enforcer`) |
+| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`RBG_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                                                     |
+| Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`prepare_compliance_report`)                                                                             |
+| Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md`                                   |
+| Compliance subagent      | `aops-core/agents/rbg.md` (only `rbg.md` is shipped; the regex also accepts a subagent named `enforcer` if installed)                             |
 
 Subagent dispatches that look like `Agent(subagent_type="enforcer")` or `Agent(subagent_type="rbg")` reset the counter via the gate's trigger.
 
@@ -263,7 +263,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
 ### How to debug when it isn't
 
 | Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Mode silently `off`                                          | `python -c "from hooks.gate_config import RBG_GATE_MODE; print(RBG_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                                             |
 | `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap above.                                                                                                           |
 | Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                                          |
@@ -281,7 +281,7 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 ### Where it lives
 
 | Concern             | Path                                                                                                |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
 | Gate definition     | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg-review", ...)`)                         |
 | Mode + threshold    | `aops-core/hooks/gate_config.py` (`RBG_REVIEW_GATE_MODE`, `RBG_REVIEW_DEGRADE_THRESHOLD`)           |
 | Custom action       | `aops-core/lib/gates/custom_actions.py` (`prepare_rbg_review`)                                      |
@@ -336,7 +336,7 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 ### Where it lives
 
 | Concern           | Path                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
 | Gate definition   | `aops-core/lib/gates/definitions.py` (`GateConfig(name="qa", ...)`)                                  |
 | Custom action     | `aops-core/lib/gates/custom_actions.py` (`prepare_qa_review`)                                        |
 | Custom conditions | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`) |
@@ -383,19 +383,19 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 
 ### Where it lives
 
-| Concern               | Path                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                              |
-| Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                           |
-| Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md` |
-| Skills that reopen it | `aops-core/skills/end_session/SKILL.md`, `aops-core/skills/dump/SKILL.md`                              |
-| Safety override       | `aops-core/hooks/router.py` (`execute_hooks` — `stop_block_timestamps`)                                |
+| Concern               | Path                                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                                                        |
+| Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                                                     |
+| Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md`                           |
+| Skills that reopen it | `aops-interactive/skills/end_session/SKILL.md`, `aops-interactive/skills/dump/SKILL.md` (moved from `aops-core` — aops-cf3fb2f0) |
+| Safety override       | `aops-core/hooks/router.py` (`execute_hooks` — `stop_block_timestamps`)                                                          |
 
 ### How it's configured
 
 - **Mode key**: `gates.handover` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
-- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-core:)?(handover|dump|end_session|continue)$"` with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate (and the `ida` gate) without concluding the task, since the skill itself emits the honest resume summary.
+- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$"` (widened to accept the `aops-interactive:` prefix when `dump`/`end_session` run from their new home, aops-cf3fb2f0) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate (and the `ida` gate) without concluding the task, since the skill itself emits the honest resume summary.
 - **Re-arm trigger**: `UserPromptSubmit` (every session type — no session-type filter) → clears sticky latch, then fires re-arm trigger → CLOSED. Re-arming CLOSED is harmless for a session that never did any work: the block/warn policies independently exempt `session_did_work=False` regardless of gate status. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
 - **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
 - **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
@@ -416,7 +416,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | uniq -c
 ### How to debug when it isn't
 
 | Failure mode                                 | Diagnostic                                                                                                                                                                                                          |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Stop blocked despite running `/end-session`  | Re-check the subagent_type extraction — the trigger requires the router to have populated `ctx.subagent_type` from `tool_input.skill`. Look for the PostToolUse event in the JSONL and inspect its `subagent_type`. |
 | `≡` never shows after handover               | Either the skill name didn't match the trigger regex, or the gate's `sticky` flag wasn't set. Inspect the session state file (`~/.claude/projects/<workspace>/*-session.json`) for `gates.handover.sticky`.         |
 | 4–5 denies pattern (safety override)         | Normal once. Repeated across sessions = agent isn't completing handover before retrying Stop. Read the CC session JSONL between denies to see what the agent did.                                                   |
@@ -438,11 +438,11 @@ The pre-Stop honesty reminder. On the first Stop per turn, blocks the agent and 
 
 ### Where it lives
 
-| Concern         | Path                                                     |
-| ---------------- | -------------------------------------------------------- |
+| Concern         | Path                                                                 |
+| --------------- | -------------------------------------------------------------------- |
 | Gate definition | `aops-core/lib/gates/definitions.py` (`GateConfig(name="ida", ...)`) |
-| Template        | `aops-core/hooks/templates/ida-reminder.md`              |
-| Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)       |
+| Template        | `aops-core/hooks/templates/ida-reminder.md`                          |
+| Mode lookup     | `aops-core/hooks/gate_config.py` (`IDA_GATE_MODE`)                   |
 
 Loaded by the aops-core plugin's `GateRegistry.initialize()` (called from `router.execute_hooks`). Fires on Stop in main-agent context — no subagent-skip, no threshold.
 
@@ -469,7 +469,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 ### How to debug when it isn't
 
 | Failure mode                                          | Diagnostic                                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Mode silently `off`                                   | `python -c "from hooks.gate_config import IDA_GATE_MODE; print(IDA_GATE_MODE)"` — confirm the resolved value.                                                                                                                                                                                          |
 | Visible at SessionEnd but not at Stop (or vice versa) | Policy is keyed on `hook_event="Stop"`. Router maps `Stop` → `on_stop` and `SessionEnd` → `on_stop` (see `_call_gate_method`). Both should fire. If only one does, check `is_subagent` — gates are skipped in subagent context.                                                                        |
 | Suppressed when another gate blocks                   | The router merges with DENY > WARN > ALLOW. A `handover` or `qa` DENY swallows the `ida` WARN's context_injection. Read the raw hook JSONL; the gate **did** evaluate, but its output was merged out.                                                                                                  |
@@ -486,7 +486,7 @@ grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | sort | uniq
 It runs unconditionally (not gated by `gates.hydration`). Mode is a placeholder for a future `GateConfig`.
 
 | Concern               | Path                                                        |
-| ---------------------- | ----------------------------------------------------------- |
+| --------------------- | ----------------------------------------------------------- |
 | Mode placeholder      | `aops-core/lib/polecat_config.py` (`GatesConfig.hydration`) |
 | Mode lookup           | `aops-core/hooks/gate_config.py` (`HYDRATION_GATE_MODE`)    |
 | Active hint injector  | `aops-core/hooks/router.py` (`_run_lightweight_hydrator`)   |

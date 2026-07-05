@@ -463,14 +463,19 @@ GATE_CONFIGS = [
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
             # Pattern matches "end_session" (canonical), "dump" (emergency),
             # "continue" (pause/hand-back — work in progress, task NOT concluded),
-            # "handover" (legacy), and aops-core: prefixed forms. /continue opens
-            # the gate too: it delivers the honest scannable resume summary, so a
-            # legitimate pause is not blocked by the exit-discipline gate.
+            # "handover" (legacy), and aops-core:/aops-interactive: prefixed
+            # forms. dump/end_session moved to aops-interactive (aops-cf3fb2f0);
+            # continue/handover stayed in aops-core — the prefix alternation
+            # covers both origins for the whole group rather than per-name
+            # binding, mirroring how the rbg/qa gates handle the aops-pkb move.
+            # /continue opens the gate too: it delivers the honest scannable
+            # resume summary, so a legitimate pause is not blocked by the
+            # exit-discipline gate.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session|continue)$",
+                    subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,

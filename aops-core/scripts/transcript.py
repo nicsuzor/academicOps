@@ -850,7 +850,7 @@ def _process_reflection(
 
         # Surface /dump quality warnings (missing Output / Tasks worked /
         # bare-id references / feature-suggestion smell). See
-        # aops-core/skills/end_session/transcript-metadata-schema.md.
+        # aops-interactive/skills/end_session/transcript-metadata-schema.md.
         for warning in insights.get("quality_warnings") or []:
             print(f"⚠️  Quality warning: {warning}", file=sys.stderr)
     except InsightsValidationError as e:

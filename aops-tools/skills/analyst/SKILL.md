@@ -50,7 +50,7 @@ Support academic research data analysis through technology-agnostic principles: 
 - **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
 - **Report as argument** — structure research reports as cohesive arguments where every chapter, section, and visualization directly supports a specific claim. Ground all reported metrics in their practical and theoretical implications. Collaborate section-by-section with the user to refine narrative framing.
 
-(The interactive research head **Ida** carries this same disposition inline in her persona — `aops-core/agents/ida.md`. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
+(The interactive research head **Ida** carries this same disposition inline in her persona — `aops-interactive/agents/ida.md`, which defers to the shared `head-role-charter.md`. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
 
 ## 🚨 CRITICAL: Research Data is Immutable
 

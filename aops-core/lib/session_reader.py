@@ -831,10 +831,13 @@ def load_skill_scope(skill_name: str) -> str | None:
     plugin_root = get_plugin_root()
 
     # Sibling plugins whose commands/skills may have been extracted out of
-    # aops-core (e.g. aops-pkb took /learn, /pull, /q, task-lifecycle, ...).
+    # aops-core (e.g. aops-pkb took /learn, /pull, /q, task-lifecycle, ...;
+    # aops-interactive took /daily, /dump, /end_session — aops-cf3fb2f0).
     # Search core first, then siblings, so a still-present core definition
     # always wins.
-    sibling_roots = [resolve_plugin_path(name) for name in ("aops-pkb", "aops-tools")]
+    sibling_roots = [
+        resolve_plugin_path(name) for name in ("aops-pkb", "aops-tools", "aops-interactive")
+    ]
 
     # Search locations for skill/command definitions
     search_paths = [
