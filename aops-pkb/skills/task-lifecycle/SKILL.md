@@ -80,6 +80,10 @@ to two agents and **never** reduced to a regex/field/heading presence-check
 [[../remember/references/premise-gate.md]] §2. Follow it there; do not restate it
 here.
 
+> **Forward-pointer (not yet in effect):** PKB task `aops-b225ec53` RULING C7 will
+> abolish this gate once the Hydrator lands (hydration becomes the sole path to
+> `queued`). Until then, this step is live and mandatory as written above.
+
 ### 2b. Freshness pre-check
 
 For the selected candidate leaf task:

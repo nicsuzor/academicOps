@@ -15,6 +15,8 @@ tags: [framework, enforcement, premise-gate, agent-judgment, judgment-non-delega
 > **One line.** Every task should carry a one-sentence, principal-voice **premise** in its body; before spending compute, `/pull`, `/dispatch`, and the dispatch step of `/supervisor` **ensure that premise is legibly recorded and then clear it through two independent judges** (`rbg` for axiom/rig compliance, `pauli` for worth/shape) via `/strategic-review --premise` — any BOUNCE hard-refuses the dispatch.
 >
 > **Why the clearance runs at dispatch, not at `→ queued`.** `queued` is set **manually by the human**, with no hook on the transition — a hand-promoted task leaves no premise sentence and nothing fires to solicit one. So enforcement cannot attach to the promotion; it attaches at the **agent dispatch step**, the first point where machinery actually intercepts. The dispatcher makes the premise legible there and hands it to the two judges.
+>
+> **Forward-pointer (not yet in effect):** PKB task `aops-b225ec53` RULING C7 decides this gate is to be **abolished** once the Hydrator lands — hydration will be the sole path to `queued`, replacing this dispatch-time check. The Hydrator is not built yet, so this gate remains **live and mandatory today**; nothing below changes until that ruling ships.
 
 ## 1. The premise — what a good one looks like
 
