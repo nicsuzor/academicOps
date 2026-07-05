@@ -66,6 +66,16 @@
       },
       "source": "./dist/aops-pkb-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-interactive",
+      "description": "AcademicOps interactive-experience module - the head-agent co-working layer: role charter, junior/ida personality skins, session lifecycle (/daily, /end_session, /dump), and narrative digest",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-interactive-claude",
+      "category": "productivity"
     }
   ]
 }
