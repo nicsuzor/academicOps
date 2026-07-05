@@ -1702,6 +1702,136 @@ def build_aops_ts(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_pkb(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "claude",
+    version: str = "0.1.0",
+):
+    """Build the aops-pkb extension for a specific platform.
+
+    aops-pkb is the task/work-unit module: the judgment layer operating at the
+    entry (dispatch-readiness) and exit (acceptance) chokepoints — capture
+    (`/q`), strategic planning + decomposition (`planner`), the task-lifecycle
+    spine (`/pull`, `/dispatch`), acceptance (`/verify` + `strategic-review`'s
+    four-agent sign-off: james, rbg, pauli, marsha), and PKB curation
+    (`/remember`, `/learn`, `/maintain`). See PKB task aops-b225ec53.
+
+    Unlike aops-tools/aops-extras (skills-only, no agents/commands/MCP), aops-pkb
+    ships agents + commands + skills + its own `pkb` MCP server registration
+    (a SEPARATE plugin identity from aops-core's, so Claude Code namespaces its
+    tools as `mcp__plugin_aops-pkb_pkb__*` — source files were rewritten at the
+    source level to this prefix, not by a build-time rewrite, since aops-pkb is
+    a standalone package rather than an aops-core overlay like aops-cowork).
+    It has NO hooks (the module operates outside the agent loop — no in-session
+    enforcement is needed, ruling C1) and so, like aops-tools/aops-extras, ships
+    no pyproject.toml/uv.lock.
+
+    Only the "claude" platform is implemented for now (mirrors aops-ts's scope).
+    Gemini/Antigravity support can be added later following build_aops_core's
+    pattern if this module needs to ship there.
+    """
+    print(f"Building aops-pkb for {platform} (v{version})...")
+    plugin_name = "aops-pkb"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-pkb build")
+        return
+
+    if platform != "claude":
+        print(f"  ⚠️  aops-pkb build not implemented for platform={platform!r}, skipping")
+        return
+
+    dist_dir = dist_root / f"aops-pkb-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # 1. Copy content. agents/ gets the same frontmatter/body transform pass as
+    # build_aops_core (Claude tool-name normalisation); everything else copies
+    # verbatim (no hooks, no cowork markers, no lib/ — the module ships pure
+    # agent/skill/command instructions plus its own MCP server registration).
+    EXCLUDED_FROM_COPY = {"mcp.json.template", "__pycache__"}
+    for src_item in src_dir.iterdir():
+        if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+            continue
+        if src_item.name == "agents" and src_item.is_dir():
+            dst = content_dir / src_item.name
+            dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in src_item.glob("*.md"):
+                content = agent_file.read_text()
+                content = transform_agent_for_platform(content, platform, agent_file.name)
+                content = translate_tool_calls(content, platform)
+                (dst / agent_file.name).write_text(content)
+            print(f"  ✓ Translated and copied agents -> {dst}")
+        else:
+            safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a. Co-ship the framework axioms — rbg.md and marsha.md @-import
+    # ${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md, which must resolve inside
+    # THIS plugin's own payload at runtime (mirrors build_aops_core §1a-axioms;
+    # see the aops-75543e66 stale-axiom-decoy regression this guards against).
+    axioms_src_dir = aops_root / ".agents" / "rules"
+    axioms_dst_dir = content_dir / ".agents" / "rules"
+    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
+    for axiom_file in AXIOM_FILES:
+        src = axioms_src_dir / axiom_file
+        if not src.exists():
+            raise FileNotFoundError(
+                f"Required axiom file {src} not found — cannot build plugin without it"
+            )
+        dst = axioms_dst_dir / axiom_file
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        safe_copy(src, dst)
+    print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+
+    # 2. Plugin manifest. aops-pkb ships a REAL tracked plugin.json (like
+    # aops-cowork), not one fabricated from templates/ (like aops-core/
+    # aops-tools/aops-extras) — there is no reason to keep it out-of-tree.
+    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+    dist_plugin_dir = content_dir / ".claude-plugin"
+    dist_plugin_json = dist_plugin_dir / "plugin.json"
+    if not src_plugin_json.exists():
+        print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+        sys.exit(1)
+    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+    manifest = json.loads(src_plugin_json.read_text())
+    manifest["version"] = version
+    # Hygiene: strip marketplace-only fields (same as every other plugin build).
+    manifest.pop("source", None)
+    manifest.pop("category", None)
+    with open(dist_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+
+    # 3. Generate .mcp.json from the tracked mcp.json.template (own `pkb` MCP
+    # server registration — a separate plugin identity from aops-core's).
+    template_path = src_dir / "mcp.json.template"
+    if template_path.exists():
+        mcp_template = json.loads(template_path.read_text())
+        shaped_mcp_config = mcp_template.get(platform, mcp_template)
+        dist_mcp_path = dist_dir / ".mcp.json"
+        with open(dist_mcp_path, "w") as f:
+            json.dump(shaped_mcp_config, f, indent=2)
+            f.write("\n")
+        print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+    else:
+        print(f"Error: {template_path} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    # 4. Anti-drift regression guards (same as build_aops_core §6): every
+    # plugin-relative @-import must resolve inside THIS payload, and no
+    # axiom-shaped decoy may ship outside .agents/rules/.
+    _assert_plugin_imports_resolve(content_dir, platform)
+    _assert_no_axiom_decoys(content_dir)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1768,6 +1898,10 @@ def main():
 
     # Build aops-ts (opt-in Tailscale bring-up hook — Claude/web only)
     build_aops_ts(aops_root, dist_root, "claude", version)
+
+    # Build aops-pkb (task/work-unit module — Claude only for now, see
+    # build_aops_pkb's docstring)
+    build_aops_pkb(aops_root, dist_root, "claude", version)
 
     # Build components (Antigravity)
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)

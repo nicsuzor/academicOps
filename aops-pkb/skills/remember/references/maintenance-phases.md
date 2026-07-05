@@ -26,14 +26,14 @@ Agent(
   prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
-    'mcp__plugin_aops-core_pkb__search',
-    'mcp__plugin_aops-core_pkb__task_search',
-    'mcp__plugin_aops-core_pkb__get_document',
-    'mcp__plugin_aops-core_pkb__pkb_context',
+    'mcp__plugin_aops-pkb_pkb__search',
+    'mcp__plugin_aops-pkb_pkb__task_search',
+    'mcp__plugin_aops-pkb_pkb__get_document',
+    'mcp__plugin_aops-pkb_pkb__pkb_context',
     # PKB MCP — write
-    'mcp__plugin_aops-core_pkb__append',
-    'mcp__plugin_aops-core_pkb__create',
-    'mcp__plugin_aops-core_pkb__create_memory',
+    'mcp__plugin_aops-pkb_pkb__append',
+    'mcp__plugin_aops-pkb_pkb__create',
+    'mcp__plugin_aops-pkb_pkb__create_memory',
     # Filesystem / shell
     'Bash',                # transcript listing, git status
     'Glob',                # transcript discovery
@@ -47,7 +47,7 @@ Agent(
 
 **Edit scope**: `Edit` is granted ONLY to mark transcripts as `mined: YYYY-MM-DD` in their frontmatter. Transcripts live OUTSIDE `$ACA_DATA` (typically `$AOPS_SESSIONS/**/*.md`), which is the explicit exception to the [[remember]] skill's hard rules. Sub-agents must NOT use `Edit` to modify anything inside `$ACA_DATA` — knowledge writes go through PKB MCP tools.
 
-**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops-core_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
+**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops-pkb_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
 
 ### PKB MCP Tool Mutator Invariants (dry_run Default)
 
@@ -67,7 +67,7 @@ Sub-agents are instructed to emit a literal `HALT:` line and the missing tool na
 
 1. Parse each sub-agent return for any of the markers `HALT:`, `HALTED`, `tool gap`, `tool not available`, or `cannot proceed: missing tool`.
 2. Maintain a halt counter across all dispatched sub-agents in the cycle.
-3. Surface the count in the final cycle report (and in `$GITHUB_STEP_SUMMARY` on CI), with the affected phase names and missing tools listed. Example summary line: `Sub-agent halts: 2 (Phase 2 — missing Bash; Phase 4 — missing mcp__plugin_aops-core_pkb__append)`.
+3. Surface the count in the final cycle report (and in `$GITHUB_STEP_SUMMARY` on CI), with the affected phase names and missing tools listed. Example summary line: `Sub-agent halts: 2 (Phase 2 — missing Bash; Phase 4 — missing mcp__plugin_aops-pkb_pkb__append)`.
 4. If the halt count is non-zero, the cycle exit code/PR description must call this out at the TOP — not buried inside per-phase output. This closes the silent-failure mode where halts were only visible inside individual sub-agent returns.
 
 ## Pacing & Mode

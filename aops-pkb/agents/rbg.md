@@ -10,10 +10,10 @@ tools:
   - Glob
   - Edit
   - Write
-  - mcp__plugin_aops-core_pkb__search
-  - mcp__plugin_aops-core_pkb__get_task
-  - mcp__plugin_aops-core_pkb__get_document
-  - mcp__plugin_aops-core_pkb__pkb_context
+  - mcp__plugin_aops-pkb_pkb__search
+  - mcp__plugin_aops-pkb_pkb__get_task
+  - mcp__plugin_aops-pkb_pkb__get_document
+  - mcp__plugin_aops-pkb_pkb__pkb_context
 ---
 
 # RBG — The Judge

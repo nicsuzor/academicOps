@@ -62,6 +62,6 @@ Hard refuse, not soft warn — a soft warning degrades to advisory and gets sail
 - [[TAXONOMY.md#status-values-and-transitions]] — the `queued` promotion gate
 - [[commands/pull]] — inline claim-time refusal
 - [[commands/dispatch]] — dispatch-time refusal
-- [[../../supervisor/instructions/worker-dispatch.md]] — pre-dispatch gate (epic + portfolio)
+- `supervisor` skill's `worker-dispatch` instructions (aops-core plugin) — pre-dispatch gate (epic + portfolio)
 - [[../../planner/SKILL.md]] — promoter-side recording
 - [[../../../../specs/ENFORCEMENT-MAP.md]] — `judgment-non-delegable` enforcement row

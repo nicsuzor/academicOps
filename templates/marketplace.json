@@ -56,6 +56,16 @@
       },
       "source": "./dist/aops-ts-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-pkb",
+      "description": "AcademicOps task/work-unit module - the judgment layer at the entry (dispatch-readiness) and exit (acceptance) chokepoints: capture, strategic planning, task-lifecycle, dispatch, and the four-agent sign-off review",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-pkb-claude",
+      "category": "productivity"
     }
   ]
 }
