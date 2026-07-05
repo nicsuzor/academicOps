@@ -36,26 +36,40 @@ evidence the lighter one is insufficient.
 ### Mechanisms
 
 All fire on Claude Code hook events within the turn (`UserPromptSubmit → … →
-Stop`):
+Stop`), uniformly across main sessions, subagents, and workers — no
+`is_subagent` skip (H8, reorganised within the existing session-state design
+per H12):
 
-- **`ida`** (Stop) — honesty / criterion-substitution check, once per turn. The
-  honesty invariant of this layer.
-- **`sentinel`** (PreToolUse) — blocks destructive ops on protected paths.
-- **`enforcer`/`rbg`** (PreToolUse) — periodic compliance audit after N tool
-  calls.
-- **`rbg-review`** (Stop) — final axiom audit before a task-bound session exits.
+- **`enforcer`/`rbg`** (PreToolUse) — periodic compliance audit after ~17
+  tool calls (default lowered from 50, H2).
+- **`rbg-review`** (Stop) — final axiom audit before a task-bound session
+  exits; armed by default, posture expressed only via env vars/`polecat.yaml`
+  (H3).
 - **`handover` / `commit`** (Stop) — clean resumable exit: work committed, task
-  updated, reflection recorded before the session ends.
+  updated, reflection recorded before the session ends. Unchanged (H10/H12).
 - **`qa`** (Stop) — liveness nudge toward release and verification. The
-  verification invariant itself is owned by Layer 2.
+  verification invariant itself is owned by Layer 2. Unchanged (H10/H12).
+- **Task-binding** (PreToolUse, write) — reactivated: no mutation without a
+  task bound via `claim_task` (H4; target, lands with aops-5b9e95c4).
 - **Auto-mode classifier** (PreToolUse) — per-action judgment gate (`soft_deny`
   context-overridable / `hard_deny` absolute).
+- **Pre-commit mechanical checks** (git-commit hook) — dprint/ruff/
+  markdownlint/actionlint/no-fallbacks and others; deterministic, local.
 - **Context injections** (not gates): SessionStart safety floor (`CORE.md`);
-  UserPromptSubmit `pkb.nudge` and `hydration` routing hints.
+  UserPromptSubmit `pkb.nudge` (stays lowest-layer, aops-core, H5/H14) and the
+  skills-routing hint (moves up to aops-pkb/aops-adhd, H11).
+
+**Retired from this layer:** `sentinel` — deleted (H1, "no shitty NLP";
+container isolation instead). `ida` — retired as a hook (H6); the honesty /
+criterion-substitution check this layer used to enforce mechanically now
+belongs to the head-personality surface interacting with the human
+(`aops-interactive`), not a router-level gate that fires uniformly regardless
+of whether a human is present.
 
 ### Two invariant families
 
 Layer 1 carries two distinct invariant families over the same hook surface:
-**honesty/verification** (`ida`, `qa`) and **safety/data-boundaries**
-(`sentinel`, `policy_enforcer.py`, `settings.json` deny rules, credential
-isolation). They share a delivery surface but are not the same concern.
+**honesty/verification** (now owned by the head-personality surface + `qa`)
+and **safety/data-boundaries** (`policy_enforcer.py`, `settings.json` deny
+rules, credential isolation, pre-commit mechanical checks). They share a
+delivery surface but are not the same concern.
