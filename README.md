@@ -155,6 +155,8 @@ Every material action — file edits, tool calls, gate verdicts, subagent dispat
 
 Skills are Claude Code / Gemini CLI extensions that know how to do specific things, split into two groups because a researcher installing this plugin mostly needs the first for their own work, while the second runs the framework's own self-improvement loop.
 
+> **Plugin split:** `/q`, `/pull`, `/dispatch`, `/remember`, `/verify`, `/strategic-review`, `/learn`, and `/maintain` now ship in the separate `aops-pkb` plugin (the task/work-unit module — dispatch-readiness and acceptance judgment), not `aops-core`. Install both `aops-core` and `aops-pkb` to get the full command set below.
+
 **User-facing core** (the commands a researcher actually reaches for in their own work):
 
 | Skill          | Purpose                                                         |
