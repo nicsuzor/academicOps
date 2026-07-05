@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.66](https://github.com/nicsuzor/academicOps/compare/v0.3.65...v0.3.66) (2026-07-05)
+
+
+### Features
+
+* **enforcement:** extract aops-pkb + aops-interactive plugins (layer-model, extraction+scaffold) ([#2115](https://github.com/nicsuzor/academicOps/issues/2115)) ([0e01abc](https://github.com/nicsuzor/academicOps/commit/0e01abc88cc60c254b1a0148481dca90c7d59aed))
+
 ## [0.3.65](https://github.com/nicsuzor/academicOps/compare/v0.3.64...v0.3.65) (2026-07-04)
 
 
