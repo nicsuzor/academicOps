@@ -1,5 +1,5 @@
 ---
-id: TBD
+id: enforcement-task-contract
 title: In-Session Enforcement — The Work-Unit Contract (Layer 2)
 type: spec
 status: draft

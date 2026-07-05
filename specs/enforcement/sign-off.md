@@ -1,5 +1,5 @@
 ---
-id: TBD
+id: enforcement-sign-off
 title: Enforcement — Sign-off (Layer 4)
 type: spec
 status: draft

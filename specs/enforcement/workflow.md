@@ -1,5 +1,5 @@
 ---
-id: TBD
+id: enforcement-workflow
 title: Enforcement — The Workflow (Layer 3)
 type: spec
 status: draft

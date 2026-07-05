@@ -1,5 +1,5 @@
 ---
-id: TBD
+id: enforcement-pyramid
 title: In-Session Enforcement — The Pyramid (Layers 0–1)
 type: spec
 status: draft
