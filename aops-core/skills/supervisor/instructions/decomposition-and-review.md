@@ -46,7 +46,7 @@ isolation").
    b. For each **execution** subtask: "Is this conditional on a decision that hasn't been made?" — if yes, add the decision task to `depends_on`
    c. For each **writing** subtask: "What analysis/data needs to be final before this can be written?" — if it depends on analysis results, add the analysis task to `depends_on`
    d. If the parent task produces **academic output** (paper, report, benchmark, analysis): ensure methodology tasks exist (methodological justification, validation approach, claim-evidence audit, limitations completeness)
-   e. If this decomposition **replaces an existing task's work** (carves it into new subtasks or siblings): **cancel** the original (`status: cancelled`) via `mcp__pkb__update_task` in the same operation — this retires it from the dispatchable set — and add a `supersedes` edge on each replacement so the redirect is discoverable from the live side. Do not rewrite the stale body. See [[../../remember/references/TAXONOMY.md#supersession-and-retirement]].
+   e. If this decomposition **replaces an existing task's work** (carves it into new subtasks or siblings): **cancel** the original (`status: cancelled`) via `mcp__pkb__update_task` in the same operation — this retires it from the dispatchable set — and add a `supersedes` edge on each replacement so the redirect is discoverable from the live side. Do not rewrite the stale body. See [[aops-pkb/skills/remember/references/TAXONOMY.md#supersession-and-retirement]].
 9. Append decomposition summary to task body. **Remove any `- [ ]` checklists** from the body that are now tracked as subtasks — the subtask graph is the single source of truth. Keeping both causes divergence over time.
 10. Annotate the task body with supervisor phase `consensus` (status remains `in_progress` throughout decomposition and review)
 ```
@@ -238,7 +238,7 @@ Then call `mcp__pkb__update_task(id=task_id, updates={"status": "review", "body"
 
 After synthesizing Pauli + RBG verdicts (Phase 2) and BEFORE any DISPATCH
 action, the supervisor MUST check the parent task's status. Per
-[[../../remember/references/TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
+[[aops-pkb/skills/remember/references/TAXONOMY.md]] (status transitions — see `TAXONOMY.md:172`),
 agents pull only from `queued`. The transition from `review` → `queued` is
 the **human approval record** — no separate marker, no extra metadata.
 

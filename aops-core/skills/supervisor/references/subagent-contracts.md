@@ -36,7 +36,7 @@ or masked identifiers (`task-XXXX`).
     The marsha brief MUST carry: the **sanctioned QA harness** (identified at ORIENT, never
     invented; HALT and `[ATTN]` if none recorded), the **exact previously-failing user-facing
     check** (supplied by the supervisor from the epic ledger — not reconstructed by marsha), and
-    the **byte-match hallucination rule-out**. marsha's own `[[../verify/SKILL.md]]` enforces
+    the **byte-match hallucination rule-out**. marsha's own `[[aops-pkb/skills/verify/SKILL.md]]` enforces
     fresh-instance / non-implementer / source-trace posture.
   - **Standalone / Independent Tasks**: Keep legacy branch-per-task behavior; verify each PR individually.
 - **Verdict**: PASS, FAIL `<reason>`, or REVISE `<reason>`.

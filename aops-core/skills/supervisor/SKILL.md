@@ -47,7 +47,7 @@ runs, and any delegate-and-verify loop over background workers. "I'm just the co
 orchestrator" is **not** an exemption.
 
 The **Select → Gates** spine — task selection, the premise gate, and the freshness /
-stale-leftover pre-check — is owned by the [[../task-lifecycle/SKILL.md]] skill (§§1–2).
+stale-leftover pre-check — is owned by the [[aops-pkb/skills/task-lifecycle/SKILL.md]] skill (§§1–2).
 The supervisor's Dispatch phase reuses that spine, then adds the pre-flight confirmation,
 proof, ledger, evaluation, and escalation discipline that span ticks and are the
 supervisor's own.

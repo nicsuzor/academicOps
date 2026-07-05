@@ -9,10 +9,10 @@ The dispatch mechanics that govern epic progression.
 ### 0. Select + Gates spine (owned by `task-lifecycle` §§1–2)
 
 Before the supervisor-only gates below, run the shared **Select → Gates** spine
-authored once in [[../../task-lifecycle/SKILL.md]] §§1–2 (§1 Select; §2 Gates: the
+authored once in [[aops-pkb/skills/task-lifecycle/SKILL.md]] §§1–2 (§1 Select; §2 Gates: the
 premise gate plus the freshness / stale-leftover pre-check). Apply it as written
 there — this file does not restate it. The premise gate is the two-judge clearance
-owned by [[../../remember/references/premise-gate.md]] §2 (`rbg` + `pauli`,
+owned by [[aops-pkb/skills/remember/references/premise-gate.md]] §2 (`rbg` + `pauli`,
 CLEAR/BOUNCE); on a hard-refuse, append `dispatch_halt` to Pattern Memory before
 exiting.
 
