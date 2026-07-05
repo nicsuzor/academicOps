@@ -83,7 +83,7 @@ scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) ·
 (non-blocking follow-up). Overall verdict: **APPROVE / REVISE / REJECT**.
 
 ```
-Agent(subagent_type="aops-core:james",
+Agent(subagent_type="aops-pkb:james",
       prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
 

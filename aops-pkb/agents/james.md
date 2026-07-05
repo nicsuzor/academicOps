@@ -7,7 +7,7 @@ tools:
   - Read
   - Agent
   - Skill
-  - mcp__plugin_aops-core_pkb__*
+  - mcp__plugin_aops-pkb_pkb__*
 ---
 
 # James: The Orchestrator

@@ -1,0 +1,18 @@
+{
+  "name": "aops-interactive",
+  "version": "0.0.1",
+  "description": "AcademicOps interactive-experience module - the head-agent co-working layer: role charter, junior/ida personality skins, session lifecycle (/daily, /end_session, /dump), and narrative digest",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "framework",
+    "workflow",
+    "interactive",
+    "junior",
+    "ida"
+  ]
+}

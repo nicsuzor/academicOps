@@ -655,8 +655,8 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
     elif platform == "antigravity":
         # Remap tool names for Antigravity, preserving order and dropping duplicates
         AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
-        filtered_tools: list[str] = []
-        seen: set[str] = set()
+        filtered_tools = []
+        seen = set()
         for t in original_tools:
             # Drop MCP tools (starting with mcp__) on Antigravity
             if t.startswith("mcp__"):
@@ -761,11 +761,14 @@ def build_aops_core(
     supplies every shared agent/skill/command/lib file and the one shared hook
     stack (bundling hooks here too would double-fire every lifecycle hook), so
     the cowork build ships ONLY (a) files that opt into a Cowork-specific
-    paragraph via `<!-- cowork:only -->` markers (e.g. `commands/pull.md`,
-    `skills/end_session/SKILL.md` — markers stripped, content kept) and (b) the
+    paragraph via `<!-- cowork:only -->` markers — scanned across
+    `aops-core/`, `aops-pkb/` (e.g. `commands/pull.md`, inherited from
+    aops-core in the aops-b225ec53 extraction), and `aops-interactive/` (e.g.
+    `skills/end_session/SKILL.md`, inherited from aops-core in the
+    aops-cf3fb2f0 extraction — markers stripped, content kept) — and (b) the
     tracked `aops-cowork/` package overlay (the `cowork-sync` skill). Same
-    plugin layout as "claude" (`.claude-plugin/plugin.json` + `.mcp.json`), with
-    a distinct manifest naming the artifact `aops-cowork`.
+    plugin layout as "claude" (`.claude-plugin/plugin.json` + `.mcp.json`),
+    with a distinct manifest naming the artifact `aops-cowork`.
     """
     print(f"Building aops-core for {platform} (v{version})...")
     plugin_name = "aops-core"
@@ -822,29 +825,49 @@ def build_aops_core(
         # _COWORK_BLOCK_RE (not a plain substring check) so documentation that
         # merely MENTIONS the marker syntax in prose (e.g. BUILD.md explaining
         # the mechanism) doesn't get mistaken for a real, matched marker block.
-        marker_files = sorted(
-            p
-            for p in src_dir.rglob("*.md")
-            if not any(
-                part in BUILD_DETRITUS_NAMES or part.startswith(".")
-                for part in p.relative_to(src_dir).parts
-            )
-            and _COWORK_BLOCK_RE.search(p.read_text())
-        )
-        for marker_file in marker_files:
-            rel = marker_file.relative_to(src_dir)
-            dst = content_dir / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            content = marker_file.read_text()
-            if rel.parts[0] == "agents":
-                content = transform_agent_for_platform(
-                    content, transform_platform, marker_file.name
+        #
+        # Scan aops-core AND aops-pkb AND aops-interactive: aops-pkb inherited
+        # commands/pull.md (and its cowork-only native-list-mirror paragraph)
+        # from aops-core in the aops-b225ec53 extraction, and aops-interactive
+        # inherited skills/end_session/SKILL.md (and ITS cowork-only paragraph)
+        # from aops-core in the aops-cf3fb2f0 extraction — neither aops-pkb nor
+        # aops-interactive has a cowork platform build of its own, so this is
+        # the only place either plugin's marker content ships into
+        # dist/aops-cowork/. If another extracted plugin ever needs a
+        # cowork-only paragraph, add its source root here too.
+        marker_roots = [src_dir]
+        for sibling_name in ("aops-pkb", "aops-interactive"):
+            sibling_src_dir = aops_root / sibling_name
+            if sibling_src_dir.exists():
+                marker_roots.append(sibling_src_dir)
+
+        def _cowork_marker_files(root: Path) -> list[Path]:
+            return sorted(
+                p
+                for p in root.rglob("*.md")
+                if not any(
+                    part in BUILD_DETRITUS_NAMES or part.startswith(".")
+                    for part in p.relative_to(root).parts
                 )
-            content = translate_tool_calls(content, transform_platform)
-            dst.write_text(content)
-        if marker_files:
-            rel_names = [str(p.relative_to(src_dir)) for p in marker_files]
-            print(f"  ✓ Copied {len(marker_files)} cowork-marker file(s): {rel_names}")
+                and _COWORK_BLOCK_RE.search(p.read_text())
+            )
+
+        copied_rel_names = []
+        for root in marker_roots:
+            for marker_file in _cowork_marker_files(root):
+                rel = marker_file.relative_to(root)
+                dst = content_dir / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                content = marker_file.read_text()
+                if rel.parts[0] == "agents":
+                    content = transform_agent_for_platform(
+                        content, transform_platform, marker_file.name
+                    )
+                content = translate_tool_calls(content, transform_platform)
+                dst.write_text(content)
+                copied_rel_names.append(str(rel))
+        if copied_rel_names:
+            print(f"  ✓ Copied {len(copied_rel_names)} cowork-marker file(s): {copied_rel_names}")
 
         # The pkb MCP server (.mcp.json, generated in section 4) launches via
         # scripts/run-mcp.sh, which sources ensure-path.sh — copy just those two,
@@ -1702,6 +1725,294 @@ def build_aops_ts(
     print(f"✓ Built {plugin_name} ({platform})")
 
 
+def build_aops_pkb(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "claude",
+    version: str = "0.1.0",
+):
+    """Build the aops-pkb extension for a specific platform.
+
+    aops-pkb is the task/work-unit module: the judgment layer operating at the
+    entry (dispatch-readiness) and exit (acceptance) chokepoints — capture
+    (`/q`), strategic planning + decomposition (`planner`), the task-lifecycle
+    spine (`/pull`, `/dispatch`), acceptance (`/verify` + `strategic-review`'s
+    four-agent sign-off: james, rbg, pauli, marsha), and PKB curation
+    (`/remember`, `/learn`, `/maintain`). See PKB task aops-b225ec53.
+
+    Unlike aops-tools/aops-extras (skills-only, no agents/commands/MCP), aops-pkb
+    ships agents + commands + skills + its own `pkb` MCP server registration
+    (a SEPARATE plugin identity from aops-core's, so Claude Code namespaces its
+    tools as `mcp__plugin_aops-pkb_pkb__*` — the 4 moved agents (james/rbg/pauli/
+    marsha) and the `task-lifecycle` skill were rewritten at the source level to
+    this prefix, not by a build-time rewrite, since aops-pkb is a standalone
+    package rather than an aops-core overlay like aops-cowork. Other moved
+    skill-body files (planner, remember) still use the bare `mcp__pkb__*` short
+    form in prose — a pre-existing, functionally-fine convention — left as-is.
+    It has NO hooks (the module operates outside the agent loop — no in-session
+    enforcement is needed, ruling C1) and so, like aops-tools/aops-extras, ships
+    no pyproject.toml/uv.lock.
+
+    Only the "claude" platform is implemented for now (mirrors aops-ts's scope).
+    Gemini/Antigravity support can be added later following build_aops_core's
+    pattern if this module needs to ship there.
+    """
+    print(f"Building aops-pkb for {platform} (v{version})...")
+    plugin_name = "aops-pkb"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-pkb build")
+        return
+
+    if platform != "claude":
+        print(f"  ⚠️  aops-pkb build not implemented for platform={platform!r}, skipping")
+        return
+
+    dist_dir = dist_root / f"aops-pkb-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # 1. Copy content. agents/ gets the same frontmatter/body transform pass as
+    # build_aops_core (Claude tool-name normalisation); everything else copies
+    # verbatim (no hooks, no lib/ — the module ships pure agent/skill/command
+    # instructions plus its own MCP server registration). aops-pkb has no
+    # cowork platform build of its own, but it inherited commands/pull.md's
+    # `<!-- cowork:only -->` paragraph from aops-core (aops-b225ec53) — that
+    # block is stripped below (§1a) the same way build_aops_core strips it for
+    # every non-cowork platform, so it never leaks into this (claude-only) build.
+    EXCLUDED_FROM_COPY = {"mcp.json.template", "__pycache__"}
+    for src_item in src_dir.iterdir():
+        if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+            continue
+        if src_item.name == "agents" and src_item.is_dir():
+            dst = content_dir / src_item.name
+            dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in src_item.glob("*.md"):
+                content = agent_file.read_text()
+                content = transform_agent_for_platform(content, platform, agent_file.name)
+                content = translate_tool_calls(content, platform)
+                (dst / agent_file.name).write_text(content)
+            print(f"  ✓ Translated and copied agents -> {dst}")
+        else:
+            safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a. Strip cowork-only blocks (markers AND wrapped content) from every
+    # copied .md file — this build never ships the "cowork" platform, so any
+    # `<!-- cowork:only -->` paragraph inherited from aops-core (e.g.
+    # commands/pull.md's native-list-mirror note) must not leak in verbatim.
+    cowork_stripped = 0
+    for md_file in content_dir.rglob("*.md"):
+        original = md_file.read_text()
+        if _COWORK_OPEN not in original:
+            continue
+        processed = _process_cowork_markers(original, platform)
+        if processed != original:
+            md_file.write_text(processed)
+            cowork_stripped += 1
+    if cowork_stripped:
+        print(f"  ✓ Stripped cowork-only blocks in {cowork_stripped} .md file(s)")
+
+    # 1b. Co-ship the framework axioms — rbg.md and marsha.md @-import
+    # ${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md, which must resolve inside
+    # THIS plugin's own payload at runtime (mirrors build_aops_core §1a-axioms;
+    # see the aops-75543e66 stale-axiom-decoy regression this guards against).
+    axioms_src_dir = aops_root / ".agents" / "rules"
+    axioms_dst_dir = content_dir / ".agents" / "rules"
+    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
+    for axiom_file in AXIOM_FILES:
+        src = axioms_src_dir / axiom_file
+        if not src.exists():
+            raise FileNotFoundError(
+                f"Required axiom file {src} not found — cannot build plugin without it"
+            )
+        dst = axioms_dst_dir / axiom_file
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        safe_copy(src, dst)
+    print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+
+    # 2. Plugin manifest. aops-pkb ships a REAL tracked plugin.json (like
+    # aops-cowork), not one fabricated from templates/ (like aops-core/
+    # aops-tools/aops-extras) — there is no reason to keep it out-of-tree.
+    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+    dist_plugin_dir = content_dir / ".claude-plugin"
+    dist_plugin_json = dist_plugin_dir / "plugin.json"
+    if not src_plugin_json.exists():
+        print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+        sys.exit(1)
+    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+    manifest = json.loads(src_plugin_json.read_text())
+    manifest["version"] = version
+    # Hygiene: strip marketplace-only fields (same as every other plugin build).
+    manifest.pop("source", None)
+    manifest.pop("category", None)
+    with open(dist_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+
+    # 3. Generate .mcp.json from the tracked mcp.json.template (own `pkb` MCP
+    # server registration — a separate plugin identity from aops-core's).
+    template_path = src_dir / "mcp.json.template"
+    if template_path.exists():
+        mcp_template = json.loads(template_path.read_text())
+        shaped_mcp_config = mcp_template.get(platform, mcp_template)
+        dist_mcp_path = dist_dir / ".mcp.json"
+        with open(dist_mcp_path, "w") as f:
+            json.dump(shaped_mcp_config, f, indent=2)
+            f.write("\n")
+        print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+    else:
+        print(f"Error: {template_path} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    # 4. Anti-drift regression guards (same as build_aops_core §6): every
+    # plugin-relative @-import must resolve inside THIS payload, and no
+    # axiom-shaped decoy may ship outside .agents/rules/.
+    _assert_plugin_imports_resolve(content_dir, platform)
+    _assert_no_axiom_decoys(content_dir)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
+def build_aops_interactive(
+    aops_root: Path,
+    dist_root: Path,
+    platform: str = "claude",
+    version: str = "0.1.0",
+):
+    """Build the aops-interactive extension for a specific platform.
+
+    aops-interactive is the head-agent co-working layer: the shared head ROLE
+    charter and its two personality skins (`junior`, `ida`), the session-
+    lifecycle skills (`/daily`, `/dump`, `/end_session`), and the
+    `narrative-digest` skill. See PKB task aops-cf3fb2f0 (child of the
+    interactive-experience epic aops-c70490f4).
+
+    Like aops-pkb, it ships agents + skills, but UNLIKE aops-pkb it registers
+    **no MCP server of its own** — it does not own the PKB interface, it
+    consumes aops-pkb's. The `ida`/`junior` agents' PKB tool grants were
+    rewritten at the source level to the `mcp__plugin_aops-pkb_pkb__*` prefix
+    (mirroring the aops-pkb extraction's rbg/marsha/pauli/james rewrite), so a
+    session with only aops-interactive + aops-pkb installed resolves real
+    tools rather than a dangling aops-core-prefixed name. It has NO hooks
+    (enforcement disposition for this layer is parked — see aops-fef39347;
+    the `ida` honesty-at-Stop GATE stays owned by aops-core's hook stack, only
+    the persona/agent-definition file moved here) and so, like
+    aops-pkb/aops-tools/aops-extras, ships no pyproject.toml/uv.lock.
+
+    Only the "claude" platform is implemented for now (mirrors aops-pkb's
+    scope). Gemini/Antigravity support can be added later following
+    build_aops_core's pattern if this module needs to ship there.
+    """
+    print(f"Building aops-interactive for {platform} (v{version})...")
+    plugin_name = "aops-interactive"
+    src_dir = aops_root / plugin_name
+
+    if not src_dir.exists():
+        print(f"  ⚠️  {src_dir} not found, skipping aops-interactive build")
+        return
+
+    if platform != "claude":
+        print(f"  ⚠️  aops-interactive build not implemented for platform={platform!r}, skipping")
+        return
+
+    dist_dir = dist_root / f"aops-interactive-{platform}"
+    content_dir = dist_dir
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
+
+    # 1. Copy content. agents/ gets the same frontmatter/body transform pass as
+    # build_aops_core/build_aops_pkb (Claude tool-name normalisation);
+    # everything else copies verbatim (no hooks, no lib/, no MCP server of its
+    # own). aops-interactive has no cowork platform build of its own, but
+    # skills/end_session/SKILL.md inherited a `<!-- cowork:only -->` paragraph
+    # from aops-core (aops-cf3fb2f0) — that block is stripped below (§1a) the
+    # same way build_aops_pkb strips commands/pull.md's, so it never leaks
+    # into this (claude-only) build.
+    EXCLUDED_FROM_COPY = {"__pycache__"}
+    for src_item in src_dir.iterdir():
+        if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+            continue
+        if src_item.name == "agents" and src_item.is_dir():
+            dst = content_dir / src_item.name
+            dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in src_item.glob("*.md"):
+                content = agent_file.read_text()
+                content = transform_agent_for_platform(content, platform, agent_file.name)
+                content = translate_tool_calls(content, platform)
+                (dst / agent_file.name).write_text(content)
+            print(f"  ✓ Translated and copied agents -> {dst}")
+        else:
+            safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a. Strip cowork-only blocks (markers AND wrapped content) from every
+    # copied .md file — this build never ships the "cowork" platform, so
+    # skills/end_session/SKILL.md's inherited `<!-- cowork:only -->` paragraph
+    # must not leak in verbatim.
+    cowork_stripped = 0
+    for md_file in content_dir.rglob("*.md"):
+        original = md_file.read_text()
+        if _COWORK_OPEN not in original:
+            continue
+        processed = _process_cowork_markers(original, platform)
+        if processed != original:
+            md_file.write_text(processed)
+            cowork_stripped += 1
+    if cowork_stripped:
+        print(f"  ✓ Stripped cowork-only blocks in {cowork_stripped} .md file(s)")
+
+    # 1b. Co-ship the head-role charter — the `junior`/`ida` agents
+    # `@`-import it (mirrors how rbg/marsha co-ship AXIOMS.md in
+    # build_aops_core/build_aops_pkb; see aops-75543e66 for the stale-decoy
+    # regression this pattern guards against). The tracked SSoT stays at
+    # specs/interactive-experience/head-role-charter.md; this is the only
+    # copy baked into the plugin payload.
+    charter_src = aops_root / "specs" / "interactive-experience" / "head-role-charter.md"
+    charter_dst = content_dir / ".agents" / "charter" / "head-role-charter.md"
+    if not charter_src.exists():
+        raise FileNotFoundError(
+            f"Required charter file {charter_src} not found — cannot build "
+            "aops-interactive without it"
+        )
+    charter_dst.parent.mkdir(parents=True, exist_ok=True)
+    safe_copy(charter_src, charter_dst)
+    print(f"  ✓ Co-shipped head-role-charter.md -> {charter_dst}")
+
+    # 2. Plugin manifest. aops-interactive ships a REAL tracked plugin.json
+    # (like aops-pkb/aops-cowork), not one fabricated from templates/.
+    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+    dist_plugin_dir = content_dir / ".claude-plugin"
+    dist_plugin_json = dist_plugin_dir / "plugin.json"
+    if not src_plugin_json.exists():
+        print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+        sys.exit(1)
+    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+    manifest = json.loads(src_plugin_json.read_text())
+    manifest["version"] = version
+    # Hygiene: strip marketplace-only fields (same as every other plugin build).
+    manifest.pop("source", None)
+    manifest.pop("category", None)
+    with open(dist_plugin_json, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+
+    # 3. Anti-drift regression guards (same as build_aops_core/build_aops_pkb):
+    # every plugin-relative @-import must resolve inside THIS payload (the
+    # junior/ida agents' charter import included), and no axiom-shaped decoy
+    # may ship outside .agents/rules/.
+    _assert_plugin_imports_resolve(content_dir, platform)
+    _assert_no_axiom_decoys(content_dir)
+
+    print(f"✓ Built {plugin_name} ({platform})")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
@@ -1768,6 +2079,14 @@ def main():
 
     # Build aops-ts (opt-in Tailscale bring-up hook — Claude/web only)
     build_aops_ts(aops_root, dist_root, "claude", version)
+
+    # Build aops-pkb (task/work-unit module — Claude only for now, see
+    # build_aops_pkb's docstring)
+    build_aops_pkb(aops_root, dist_root, "claude", version)
+
+    # Build aops-interactive (head-agent co-working layer — Claude only for
+    # now, see build_aops_interactive's docstring)
+    build_aops_interactive(aops_root, dist_root, "claude", version)
 
     # Build components (Antigravity)
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)

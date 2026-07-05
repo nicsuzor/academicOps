@@ -46,13 +46,19 @@ from lib import tool_registry
 COMPLIANCE_SUBAGENT_TYPES: frozenset[str] = frozenset(
     {
         # rbg (The Judge) — sonnet-class ad-hoc axiom review.
+        # Agent definition lives in aops-pkb since the aops-pkb extraction;
+        # aops-core: forms kept for back-compat with pre-extraction callers.
         "rbg",
         "aops-core:rbg",
         "aops_core_rbg",
-        # marsha (The QA Reviewer).
+        "aops-pkb:rbg",
+        "aops_pkb_rbg",
+        # marsha (The QA Reviewer). Also moved to aops-pkb.
         "marsha",
         "aops-core:marsha",
         "aops_core_marsha",
+        "aops-pkb:marsha",
+        "aops_pkb_marsha",
     }
 )
 
@@ -88,6 +94,11 @@ SPAWN_TOOLS: dict[str, tuple[tuple[str, ...], bool]] = {
     # Gemini: bare agent tools (Strategy 2)
     "aops_core_rbg": ((), False),
     "aops_core_marsha": ((), False),
+    # rbg/marsha agent definitions moved to aops-pkb; Gemini's bare tool name
+    # is derived from the current plugin, so the aops-pkb form must also
+    # be recognised.
+    "aops_pkb_rbg": ((), False),
+    "aops_pkb_marsha": ((), False),
 }
 
 
@@ -249,6 +260,9 @@ TOOL_CATEGORIES: dict[str, set[str]] = {
         "aops_core_qa",
         "aops_core_audit",
         "aops_core_butler",
+        # rbg/marsha moved to aops-pkb (Gemini bare tool name follows plugin).
+        "aops_pkb_rbg",
+        "aops_pkb_marsha",
     },
     # Read-only tools: no side effects. Exempt from rbg gate.
     "read_only": {

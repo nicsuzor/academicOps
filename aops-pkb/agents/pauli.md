@@ -9,7 +9,7 @@ tools:
   - Bash
   - Write
   - mcp__outlook__*
-  - mcp__plugin_aops-core_pkb__*
+  - mcp__plugin_aops-pkb_pkb__*
 ---
 
 # Pauli — The Architect of Thought and Memory

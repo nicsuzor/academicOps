@@ -56,6 +56,26 @@
       },
       "source": "./dist/aops-ts-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-pkb",
+      "description": "AcademicOps task/work-unit module - the judgment layer at the entry (dispatch-readiness) and exit (acceptance) chokepoints: capture, strategic planning, task-lifecycle, dispatch, and the four-agent sign-off review",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-pkb-claude",
+      "category": "productivity"
+    },
+    {
+      "name": "aops-interactive",
+      "description": "AcademicOps interactive-experience module - the head-agent co-working layer: role charter, junior/ida personality skins, session lifecycle (/daily, /end_session, /dump), and narrative digest",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-interactive-claude",
+      "category": "productivity"
     }
   ]
 }

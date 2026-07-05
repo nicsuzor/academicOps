@@ -65,7 +65,7 @@ names, operational config), with per-machine paths overridable in
 ## Task Status Lifecycle
 
 Polecat uses the canonical PKB statuses (see
-[[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
+[[aops-pkb/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
 
 ```
 queued → in_progress → merge_ready → done   (PR merged)

@@ -57,7 +57,7 @@ If files changed, commit, push, and open a PR against **this repo's default work
 
 #### 3. Update Project Breadcrumb
 
-Resolve the parent epic and project node from the bound task, then use `mcp__plugin_aops-core_pkb__append` to add a line to the project file's **Active Epics** section: `- [[<epic-id>]] — <epic title> (task [[<bound-task-id>]], PR <url-or-'none'>)`.
+Resolve the parent epic and project node from the bound task, then use `mcp__pkb__append` to add a line to the project file's **Active Epics** section: `- [[<epic-id>]] — <epic title> (task [[<bound-task-id>]], PR <url-or-'none'>)`.
 
 #### 4. Release Task
 

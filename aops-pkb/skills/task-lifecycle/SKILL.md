@@ -53,7 +53,7 @@ If no mode token is present, default to `dispatch` (the safe, context-cheap path
 
 - Search for task nodes with `status: "queued"`.
 - If no task id is given, list the top candidates via
-  `mcp__plugin_aops-core_pkb__list_tasks(status="queued")` and pick the one with
+  `mcp__plugin_aops-pkb_pkb__list_tasks(status="queued")` and pick the one with
   the highest `focus_score`.
 - Descend to leaf tasks if the selected task has children.
 
@@ -80,6 +80,10 @@ to two agents and **never** reduced to a regex/field/heading presence-check
 [[../remember/references/premise-gate.md]] §2. Follow it there; do not restate it
 here.
 
+> **Forward-pointer (not yet in effect):** PKB task `aops-b225ec53` RULING C7 will
+> abolish this gate once the Hydrator lands (hydration becomes the sole path to
+> `queued`). Until then, this step is live and mandatory as written above.
+
 ### 2b. Freshness pre-check
 
 For the selected candidate leaf task:
@@ -101,7 +105,7 @@ For the selected candidate leaf task:
   needed here. What the select step _cannot_ see is a leftover from a completed
   decomposition:
   - If the task has a parent, retrieve the parent's children (siblings) via
-    `mcp__plugin_aops-core_pkb__get_task_children`. If **all** siblings are
+    `mcp__plugin_aops-pkb_pkb__get_task_children`. If **all** siblings are
     already `done` (a heuristic, not proof — parallel siblings legitimately
     finish at different times), the task may be a leftover from a completed
     decomposition. Print `[WARNING] Task <id>'s siblings are all done — may be a
@@ -129,17 +133,19 @@ Record and exit:
 - Do not mark the task as `in_progress` from this session — the executing surface
   claims it.
 - If using a subagent that does not self-claim, update the task `assignee` and
-  add a dispatch note via `mcp__plugin_aops-core_pkb__update_task`.
+  add a dispatch note via `mcp__plugin_aops-pkb_pkb__update_task`.
 - The task ID propagates to the execution surface via the `$AOPS_TASK_ID`
   environment variable and the git branch name; do not synthesise a filesystem
   binding file.
 - **Halt after dispatching.**
 
 For surface mechanics (dispatch reflex, surface templates, compose-then-dispatch
-separation) see the surface-neutral [[../supervisor/references/dispatch-rules.md]].
+separation) see the surface-neutral `dispatch-rules` reference in the `supervisor`
+skill (aops-core plugin — executor-side, consumes this module and lives outside
+its payload).
 (The supervisor's richer, tick-scoped dispatch — pauli pre-flight, critic gate —
-lives in [[../supervisor/instructions/worker-dispatch.md]] and builds on this spine;
-the generic `/dispatch` tail here does not need it.)
+lives in the `supervisor` skill's `worker-dispatch` instructions and builds on
+this spine; the generic `/dispatch` tail here does not need it.)
 
 ## 3b. Mode: `execute` — claim and run inline (interactive)
 
@@ -149,8 +155,9 @@ genuinely the user's to make — scope, ambiguous acceptance criteria, or a
 hard-to-reverse step. Do not dispatch to a background worker.
 
 1. **Claim.** Set `status: in_progress` and `assignee` to yourself via
-   `mcp__plugin_aops-core_pkb__update_task`. (On the Cowork surface this claim
-   step also drives the native-list mirror — see [[../cowork-sync/SKILL.md]].)
+   `mcp__plugin_aops-pkb_pkb__update_task`. (On the Cowork surface this claim
+   step also drives the native-list mirror — see the `cowork-sync` skill in the
+   aops-core/aops-cowork packages.)
 2. **Confirm the working context.** Verify the current working directory / repo
    matches the task scope before editing. On mismatch, switch context explicitly
    (note it on the task) or return the task to the queue with a context note
@@ -163,7 +170,8 @@ hard-to-reverse step. Do not dispatch to a background worker.
    is designated). State the observable that had to be true and confirm it.
 5. **Complete.** Record the outcome on the task and move it to its terminal
    status (`done`, or `merge_ready` / `review` if it ships through a PR). Capture
-   any follow-ups as new tasks. For a clean session close use [[../end_session/SKILL.md]].
+   any follow-ups as new tasks. For a clean session close use the `end_session`
+   skill (aops-core plugin — session/interactive UX, outside this module).
 
 ---
 
@@ -178,8 +186,8 @@ All three verbs run on this one spine — **Select → Gates → (Dispatch | Exe
   Dispatch phase reuses this skill's §§1–2 **Select + Gates** spine (the shared,
   author-once part above), then layers on the discipline that is genuinely its own
   and has no meaning here: the pauli pre-flight confirmation summary and critic
-  gate ([[../supervisor/instructions/worker-dispatch.md]]), proof, the ledger,
-  evaluation, and escalation **across ticks**.
+  gate (the `supervisor` skill's `worker-dispatch` instructions, aops-core
+  plugin), proof, the ledger, evaluation, and escalation **across ticks**.
 
 The dependency is one-way: §§1–2 (Select + Gates) is the shared spine every verb
 reuses; each verb's own tail (routing, or the supervisor's tick discipline) builds

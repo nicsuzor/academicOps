@@ -295,7 +295,7 @@ def test_subagent_transcripts_emitted_end_to_end(tmp_path: Path, monkeypatch):
 
     subagent_specs = [
         {"agent_id": "ag00001", "tool_use_id": "tool_use_001", "type": "rbg"},
-        {"agent_id": "ag00002", "tool_use_id": "tool_use_002", "type": "aops-core:pauli"},
+        {"agent_id": "ag00002", "tool_use_id": "tool_use_002", "type": "aops-pkb:pauli"},
     ]
     _build_parent_session(
         parent_path=parent_jsonl,
@@ -373,7 +373,7 @@ def test_subagent_transcripts_emitted_end_to_end(tmp_path: Path, monkeypatch):
         ins = json.loads(ins_path.read_text())
         assert ins["artifact_type"] == "subagent"
         assert ins["parent_session_id"] == session_uuid[:8]
-        assert ins["subagent_type"] in {"rbg", "aops-core:pauli"}
+        assert ins["subagent_type"] in {"rbg", "aops-pkb:pauli"}
         assert ins["transcript_path"]  # non-empty
         assert ins["surface"] == parent_surface, (
             f"subagent surface {ins.get('surface')!r} != parent {parent_surface!r}"
@@ -382,13 +382,13 @@ def test_subagent_transcripts_emitted_end_to_end(tmp_path: Path, monkeypatch):
             f"subagent client {ins.get('client')!r} != parent {parent_client!r}"
         )
         seen_types.add(ins["subagent_type"])
-    assert seen_types == {"rbg", "aops-core:pauli"}
+    assert seen_types == {"rbg", "aops-pkb:pauli"}
 
     # Parent transcript has the subagent footer with both types and links.
     parent_text = parent_md.read_text(encoding="utf-8")
     assert "## Subagent Transcripts" in parent_text, "missing footer heading"
     assert "rbg" in parent_text
-    assert "aops-core:pauli" in parent_text
+    assert "aops-pkb:pauli" in parent_text
     # The footer must reference each subagent transcript filename.
     for sub_path in sub_transcripts:
         assert sub_path.name in parent_text, (
