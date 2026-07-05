@@ -112,7 +112,7 @@ GATE_CONFIGS = [
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(PreToolUse|SubagentStart|SubagentStop)$",
-                    subagent_type_pattern="^(aops[-_](core|pkb)[:_])?rbg$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
                 ),
                 transition=GateTransition(
                     reset_ops_counter=True,
@@ -209,12 +209,11 @@ GATE_CONFIGS = [
             # latch sticky until UserPromptSubmit so post-review fixes don't
             # re-block this turn. Matches the dispatched / completed / tool
             # forms (SubagentStart, SubagentStop, PostToolUse on the Agent/Task
-            # spawn) and the aops-core:/aops-pkb: prefixes (rbg agent lives in
-            # aops-pkb since the aops-pkb extraction).
+            # spawn) and the aops-core: prefix.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops[-_](core|pkb)[:_])?rbg$",
+                    subagent_type_pattern="^(aops[-_]core[:_])?rbg$",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -287,11 +286,11 @@ GATE_CONFIGS = [
     ),
     # --- QA ---
     # Starts OPEN (short interactive chats don't need verification).
-    # Closes when a task is claimed (update_task → in_progress) so the Stop
-    # policy can require a verifier (marsha / qa / verify) before exit.
-    # Sessions without a claimed task skip the QA gate entirely.
-    # Reopens when the verifier subagent runs to completion.
-    # Policy blocks Stop when CLOSED.
+    # Closes when a task is bound (claim_task, or update_task → in_progress)
+    # so the Stop policy can require a verifier (marsha / qa / verify) before
+    # exit. Sessions without a claimed task skip the QA gate entirely.
+    # Reopens when the verifier subagent completes WITH a parseable verdict
+    # (see the satisfier trigger below). Policy blocks Stop when CLOSED.
     GateConfig(
         name="qa",
         description="Ensures requirements compliance before exit.",
@@ -314,15 +313,55 @@ GATE_CONFIGS = [
                     target_status=GateStatus.CLOSED,
                 ),
             ),
-            # Verifier subagent runs -> Open gate (sticky until UPS).
-            # sticky_until keeps the gate open so writes to fix marsha's
-            # findings don't re-close it (prevents marsha→fix→block loop).
-            # marsha (agent) and verify (skill) both live in aops-pkb since
-            # the aops-pkb extraction, so match either plugin prefix.
+            # Task bound via claim_task -> Close (arming envelope, epic
+            # aops-262def9f WI3a). PR #2096 row 1: the session claimed the
+            # task but never issued update_task→in_progress, so the gate
+            # never armed and Stop passed an OPEN gate. bind_claimed_task
+            # also records the claimed id as the session's current task so
+            # has_bound_task (UPS re-arm) and the qa audit's bound-task
+            # directive work. NOTE: both arming triggers ride PostToolUse,
+            # which _dispatch_gates skips wholesale for is_subagent sessions
+            # (router.py) — in that session class the gate still cannot arm
+            # here. That routing decision is reserved (epic WI6, Nic's call);
+            # do not widen or narrow the skip list from gate config.
             GateTrigger(
                 condition=GateCondition(
-                    hook_event="^(SubagentStart|SubagentStop|PostToolUse)$",
-                    subagent_type_pattern="^(aops-(core|pkb):)?(qa|verify|marsha)$",
+                    hook_event="PostToolUse",
+                    tool_name_pattern="claim_task",
+                ),
+                transition=GateTransition(
+                    target_status=GateStatus.CLOSED,
+                    custom_action="bind_claimed_task",
+                ),
+            ),
+            # Verifier subagent completed WITH a parseable verdict -> Open
+            # gate (sticky until UPS). sticky_until keeps the gate open so
+            # writes to fix marsha's findings don't re-close it (prevents
+            # marsha→fix→block loop).
+            #
+            # Satisfier hardening (epic aops-262def9f WI3b): the old
+            # satisfier accepted the NAME alone (^(aops-core:)?(qa|verify|
+            # marsha)$ on SubagentStart/SubagentStop/PostToolUse) with no
+            # verdict condition — a dispatched-but-empty verifier run, or a
+            # Skill(verify) invocation, laundered the gate (PR #2096 rows
+            # 1/3/4). Now the verifier's OWN result channel must carry a
+            # parseable PASS/FAIL/REVISE verdict (verifier_verdict_present:
+            # last_assistant_message on SubagentStop, Agent tool_response
+            # content on PostToolUse). SubagentStart is deliberately dropped
+            # from this trigger — dispatch is not a verdict, and no result
+            # channel exists yet (qa policies only fire on Stop, so the
+            # pre-open-for-subagent-tool-calls rationale in the header note
+            # does not apply here). Any of the three verdicts satisfies the
+            # gate: the gate enforces that verification RAN and reported;
+            # acting on a FAIL/REVISE is the agent's obligation (ida/honesty
+            # surface), not this trigger's. If the harness delivers no
+            # result channel at all, the gate stays CLOSED and block mode
+            # degrades LOUDLY via the stop_deny_count escape hatch.
+            GateTrigger(
+                condition=GateCondition(
+                    hook_event="^(SubagentStop|PostToolUse)$",
+                    subagent_type_pattern="^(aops-core:)?(qa|verify|marsha)$",
+                    custom_check="verifier_verdict_present",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -463,19 +502,27 @@ GATE_CONFIGS = [
             # Matches both Claude's Skill tool and Gemini's activate_skill tool.
             # Pattern matches "end_session" (canonical), "dump" (emergency),
             # "continue" (pause/hand-back — work in progress, task NOT concluded),
-            # "handover" (legacy), and aops-core:/aops-interactive: prefixed
-            # forms. dump/end_session moved to aops-interactive (aops-cf3fb2f0);
-            # continue/handover stayed in aops-core — the prefix alternation
-            # covers both origins for the whole group rather than per-name
-            # binding, mirroring how the rbg/qa gates handle the aops-pkb move.
-            # /continue opens the gate too: it delivers the honest scannable
-            # resume summary, so a legitimate pause is not blocked by the
-            # exit-discipline gate.
+            # "handover" (legacy), and aops-core: prefixed forms. /continue opens
+            # the gate too: it delivers the honest scannable resume summary, so a
+            # legitimate pause is not blocked by the exit-discipline gate.
+            #
+            # Evidence guard (epic aops-262def9f WI2a) on this and the two
+            # fallback satisfiers below: a skill name is not proof of
+            # verification (PR #2096 row 2 — this satisfier fired on a
+            # skill-name regex with no evidence condition). When the session
+            # ledger holds a completion claim (task → merge_ready/done)
+            # WITHOUT the evidence contract, the trigger is suppressed and
+            # the Stop policy below keeps denying until the claim is
+            # re-issued with evidence. /dump with NO claim in-session still
+            # opens the gate evidence-free (emergency bail preserved); a
+            # claim made earlier in-session is NOT laundered by a later
+            # /dump (ledger entries persist for the session).
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
                     tool_name_pattern="^(Skill|activate_skill)$",
-                    subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$",
+                    subagent_type_pattern="^(aops-core:)?(handover|dump|end_session|continue)$",
+                    custom_check="no_unevidenced_completion_claim",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -488,6 +535,7 @@ GATE_CONFIGS = [
                 condition=GateCondition(
                     hook_event="UserPromptSubmit",
                     prompt_pattern=r"^\s*#\s*/(dump|end_session)\s*[-—]\s*(Session Handover|Default session close)",
+                    custom_check="no_unevidenced_completion_claim",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -501,6 +549,7 @@ GATE_CONFIGS = [
                     hook_event="PreToolUse",
                     tool_name_pattern="^pauli$",
                     tool_input_pattern=r"/?\b(dump|end_session)\b|\bhandover\b",
+                    custom_check="no_unevidenced_completion_claim",
                 ),
                 transition=GateTransition(
                     target_status=GateStatus.OPEN,
@@ -548,6 +597,48 @@ GATE_CONFIGS = [
             ),
         ],
         policies=[
+            # Evidence predicate (epic aops-262def9f WI2a) — FIRST so its
+            # actionable message wins the same-tier collision with the
+            # generic handover advisory below. Fires while the session
+            # ledger holds a completion claim (task → merge_ready/done)
+            # without contract-conformant independent-verification evidence.
+            # The ledger is written by the router at PostToolUse (works in
+            # is_subagent sessions, where gate dispatch skips tool-call
+            # events) and force-closes this gate on an unevidenced claim, so
+            # the CLOSED condition here composes with the standard warn
+            # fire-once / block stop_deny_count lifecycles. Deliberately
+            # does NOT require session_did_work: a completion claim is a
+            # claim about work regardless of which tools this session used.
+            # Templates are inline (code), not TemplateRegistry .md — the
+            # instruction-text line budget for this change is zero.
+            GatePolicy(
+                condition=GateCondition(
+                    current_status=GateStatus.CLOSED,
+                    hook_event="Stop",
+                    custom_check="handover_unevidenced_claim",
+                ),
+                verdict=GateVerdict.DENY,
+                message_template="≡ Completion claim lacks independent-verification evidence.",
+                context_template=(
+                    "A completion claim (task → merge_ready/done) was made this "
+                    "session WITHOUT the required independent-verification "
+                    "evidence, so the exit is blocked (completion-claim "
+                    "invariant, epic aops-262def9f). Attestation-only claims "
+                    "('clean', 'verified') count as NOT RUN.\n\n"
+                    "Re-issue the release/completion call with evidence "
+                    "trailers in the summary (all three lines):\n"
+                    "  Verified-By: <reviewer identity — NOT you/the producer>\n"
+                    "  Verified-SHA: <git head SHA / content hash the review "
+                    "ran against>\n"
+                    "  Findings: <findings with file:line refs, or a "
+                    "method-named null result, e.g. 'no defects found via "
+                    "pytest tests/hooks + read of lib/gates/definitions.py:294-398'>\n\n"
+                    "If the work is NOT verified-complete, release with a "
+                    "non-terminal status (blocked/partial) instead — /dump "
+                    "remains available for an emergency bail only when no "
+                    "completion claim stands."
+                ),
+            ),
             # Block mode: advisory injected into agent context via reason channel.
             # Exempts read-only sessions (session_did_work=False) — a session that
             # used no write tools and claimed no task needs no handover (aops-16a15a05).

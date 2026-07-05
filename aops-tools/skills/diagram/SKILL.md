@@ -24,7 +24,7 @@ title: Diagram Design Skill
 
 # Diagram Design Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for creating diagrams. See [[aops-pkb/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for creating diagrams. See [[aops-core/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 **Purpose**: Create diagrams that communicate clearly. Choose the right style for the job.
 

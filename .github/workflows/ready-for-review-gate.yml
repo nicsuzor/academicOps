@@ -1,0 +1,163 @@
+# Ready-for-Review Gate — draft→ready git-surface binding (epic aops-262def9f WI4).
+#
+# THE INVARIANT. No completion claim (here: a PR presented as "ready for review",
+# asking a human to review it) without independent-verification evidence bound to
+# the FINAL artifact state (the head SHA). Evidence contract: reviewer ≠ producer;
+# artifact-state id = head SHA; a stale verdict from an earlier SHA does NOT
+# satisfy it (a later commit voids it).
+#
+# THE INCIDENT THIS CLOSES (PR #2096). The PR was marked `ready_for_review` at
+# 04:14:52Z with ZERO review on record; the only content-quality verdict was
+# sequenced AFTER the human admit gate, so the principal paid the first quality
+# read and surfaced 9 defects. The merge gate held (review-attestation red), but
+# nothing stopped the PR being PRESENTED as ready — the git surface presents
+# "ready" ~61 min before any tool-boundary transition, so a tool-boundary gate
+# (WI2) alone arrives too late here. This gate is the only change that would have
+# stopped #2096 BEFORE the principal's read.
+#
+# WHAT IT DOES. On `pull_request: ready_for_review`, require that a QA verdict
+# (qa-status = genuine terminal `success`, whose §10 target_sha equals head) is
+# bound to the CURRENT head SHA. If it is not, convert the PR back to draft
+# (`gh pr ready --undo`) with an explanatory comment — the PR is not presented for
+# human review until the independent content-quality bot has passed on THIS SHA.
+#
+# WHY THIS COMPOSITION (not a new required status). `review-attestation` (a
+# REQUIRED check, ruleset 13762049) already fail-closes the MERGE gate when
+# enforcer/qa are absent/stale, so option (b) ("leave a failing required status so
+# merge is blocked") is already covered and adding a parallel required status
+# would duplicate it. #2096's gap was PRESENTATION, not merge — so this gate takes
+# option (a): the draft-surface binding. It READS the existing `qa-status` verdict
+# via scripts/ci/review-attestation.sh (REVIEWERS=qa-status) — the same evidence
+# channel the merge gate uses — inventing no parallel signal.
+#
+# WHY qa RUNS PRE-ADMISSION NOW. WI5 (pr-pipeline.yml enforcer gate +
+# scripts/ci/selffix-reverify.sh) re-fires enforcer+qa on bot self-fix SHAs
+# pre-admission, and the §3.1 fire-once gate already fires them on the
+# `ready_for_review` event itself, so a qa verdict is produced for a readied PR
+# without waiting for admission. This gate binds the presentation to that verdict.
+#
+# FAIL-OPEN ON INFRA ERROR (deliberate). If the verdict check cannot run (gh/api
+# error → no `state` output), the PR is LEFT ready: this is a presentation guard,
+# and the required `review-attestation` check still blocks the actual merge. We
+# only undo ready on a DEFINITIVE `state == 'failure'` (qa absent / stale / red /
+# pending on this SHA), never on an unknown.
+#
+# REVERSIBILITY (CBA §5, root-cause doc). This is a HARD binding. If it over-blocks
+# — degraded-mode escape-hatch firings + /learn issues against it exceed true
+# catches over the next 5 /retro reviews, or the replay-test AC fails — demote it
+# to advisory (drop the `gh pr ready --undo` line, keep only the comment) per the
+# documented reversibility criterion.
+#
+# ── TEST PLAN (replay to confirm; cannot be triggered from a dev checkout) ──────
+#   1. Open a PR as a DRAFT; push a commit; do NOT let enforcer/qa run (they skip
+#      on draft). Click "Ready for review".
+#      EXPECT: this workflow runs, finds no qa-status success on head → converts the
+#      PR back to draft and posts the explanatory comment once (marker-deduped).
+#      Meanwhile pr-pipeline (triggered by the same ready event) runs enforcer+qa.
+#   2. Wait for qa-status=success to post on the head SHA. Click "Ready for review"
+#      again.
+#      EXPECT: enforcer/qa SHA-skip (already reviewed) re-post success fast; this
+#      gate finds qa-status=success bound to head → PR STAYS ready (no undo).
+#   3. Push a NEW commit on top (advances head), then click "Ready for review".
+#      EXPECT: the prior verdict is now stale (different SHA) → undo ready again
+#      (a later commit voids prior evidence).
+#   4. Sanity: a release-please PR marked ready is IGNORED by this gate (guard).
+
+name: Ready-for-Review Gate
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: read
+
+concurrency:
+  group: ready-for-review-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  qa-verdict-binding:
+    name: Require a QA verdict bound to head SHA
+    # Same-repo PRs only (a fork run cannot mint the bot token and the reviewers do
+    # not run on forks); release-please PRs are exempt (they auto-green and never run
+    # the reviewers — undoing their ready would break the release flow, §3.13).
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve live head SHA
+        id: head
+        run: |
+          # Re-read HEAD live — the PR may have advanced since the ready event.
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          echo "Evaluating ready-gate for PR #$PR_NUMBER at head $HEAD_SHA"
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      # Reuse the existing evidence channel: review-attestation.sh with
+      # REVIEWERS=qa-status returns state=success ONLY when qa-status is a genuine
+      # terminal success whose target_sha equals head (stale/absent/pending/red all
+      # → state=failure). continue-on-error so a gh/api fault (no output) fails OPEN.
+      - name: Check for a QA verdict bound to head SHA
+        id: verdict
+        continue-on-error: true
+        env:
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
+          REVIEWERS: qa-status
+        run: ./scripts/ci/review-attestation.sh
+
+      - name: Convert back to draft when no bound QA verdict
+        # Undo ONLY on a definitive failure verdict; leave ready on success or on an
+        # unknown (empty state → gh/api error → fail open; merge still gated by the
+        # required review-attestation check).
+        if: steps.verdict.outputs.state == 'failure'
+        env:
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
+          VERDICT_DESC: ${{ steps.verdict.outputs.description }}
+        run: |
+          set -euo pipefail
+          SHORT="${HEAD_SHA:0:12}"
+          MARKER="<!-- ready-for-review-gate:${HEAD_SHA} -->"
+
+          # Convert the PR back to draft — it is not presented for human review
+          # until the independent QA bot has passed on THIS head SHA.
+          gh pr ready "$PR_NUMBER" --repo "$REPO" --undo
+
+          # Comment once per head SHA (dedup) so rapid ready-toggling doesn't spam.
+          EXISTING=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json comments \
+            --jq "[.comments[] | select((.body // \"\") | contains(\"$MARKER\"))] | length" 2>/dev/null || echo "0")
+          if [ "${EXISTING:-0}" -ne 0 ]; then
+            echo "Already flagged head $SHORT — undid ready without re-commenting (dedup)."
+            exit 0
+          fi
+
+          # Build the comment body line-by-line (each a single YAML line) so no
+          # multi-line string leaks block-scalar indentation into the markdown.
+          BODY_FILE="$(mktemp)"
+          {
+            printf '%s\n\n' "$MARKER"
+            printf '## Converted back to draft — no independent QA verdict yet for `%s`\n\n' "$SHORT"
+            printf 'This PR was marked **ready for review**, but there is no passing `qa-status` verdict bound to the current head commit (`%s`). Per the release invariant (epic aops-262def9f), a PR is not presented for human review until the independent content-quality bot (marsha / `qa-status`) has passed on the **final** artifact state — a stale verdict from an earlier commit does not count.\n\n' "$SHORT"
+            printf '> Verdict check: `%s`\n\n' "${VERDICT_DESC:-qa-status not success on this SHA}"
+            printf '**What happens next (usually no action needed):** the reviewers run automatically on the ready event (and on any bot self-fix SHA, WI5). Once `qa-status` is **green** on `%s`, mark the PR **Ready for review** again and it will stay ready. If the pipeline looks wedged, run **Actions → Force Review** on this PR, then re-mark ready once qa-status is green.\n' "$SHORT"
+          } > "$BODY_FILE"
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"
+
+      - name: Confirm ready is allowed
+        if: steps.verdict.outputs.state == 'success'
+        env:
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
+        run: echo "::notice::qa-status=success bound to ${HEAD_SHA:0:12} — PR may stay ready for review."
+
+      - name: Leave ready on an indeterminate verdict (fail-open)
+        if: steps.verdict.outputs.state != 'success' && steps.verdict.outputs.state != 'failure'
+        run: echo "::warning::Could not determine a qa verdict (verdict check did not produce a state) — leaving the PR ready. Merge is still gated by the required review-attestation check."

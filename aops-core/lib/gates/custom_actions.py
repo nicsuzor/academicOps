@@ -308,6 +308,26 @@ def execute_custom_action(
         state.metrics["has_in_progress_todo"] = has_in_progress
         return None
 
+    if name == "bind_claimed_task":
+        # Bind the claimed task as the session's current task (qa claim_task
+        # envelope, epic aops-262def9f WI3a) so downstream machinery keys off
+        # it: has_bound_task (qa UPS re-arm), the qa/rbg audit files'
+        # bound-task directive, and is_write_tool's task-bound shell
+        # handling. claim_task without an explicit id claims the next queued
+        # task — the id then only exists in the tool RESULT, which is not
+        # parsed here (bind only on an explicit, checkable id; the gate still
+        # arms CLOSED either way via the trigger's target_status).
+        task_id = None
+        if isinstance(ctx.tool_input, dict):
+            task_id = ctx.tool_input.get("id") or ctx.tool_input.get("task_id")
+        if isinstance(task_id, str) and task_id:
+            from datetime import datetime
+
+            session_state.main_agent.current_task = task_id
+            session_state.main_agent.task_binding_source = "claim_task"
+            session_state.main_agent.task_binding_ts = datetime.now().isoformat()
+        return None
+
     if name == "set_session_did_work":
         # Mark the session as having done real work (write tool or task claim).
         # The handover gate policies check session_did_work to decide whether

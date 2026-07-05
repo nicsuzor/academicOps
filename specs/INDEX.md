@@ -97,7 +97,7 @@ The PKB itself: server, taxonomy, graph operations, ranking, planning. From both
 - [[task-focus-scoring]] — Focus score algorithm (mem)
 - [[planning-web]] — Web of plans / dashboard data model (mem)
 
-> See also [[TAXONOMY|aops-pkb/skills/remember/references/TAXONOMY.md]] — the canonical taxonomy of types, statuses, and edges (in academicOps repo, not brain).
+> See also [[TAXONOMY|aops-core/skills/remember/references/TAXONOMY.md]] — the canonical taxonomy of types, statuses, and edges (in academicOps repo, not brain).
 
 ### [[dashboard]] — Overwhelm dashboard + mem views
 

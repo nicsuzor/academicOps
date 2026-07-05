@@ -13,5 +13,5 @@ description: |
 
 Run the compliance check with this command:
 
-`Agent(subagent_type='aops-pkb:rbg', prompt='Required audit of the session log at: {temp_path}')`
+`Agent(subagent_type='aops-core:rbg', prompt='Required audit of the session log at: {temp_path}')`
 </academicOps rbg compliance check>

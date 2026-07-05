@@ -1,7 +1,7 @@
 # Available Documentation
 
 - **`README.md`**: academicOps framework overview, core loop, architecture, installation, and design principles
-- **`aops-pkb/skills/remember/references/TAXONOMY.md`**: Canonical definitions for all framework concepts — goal, project, epic, task, action, workflow, skill, procedure and their relationships
+- **`aops-core/skills/remember/references/TAXONOMY.md`**: Canonical definitions for all framework concepts — goal, project, epic, task, action, workflow, skill, procedure and their relationships
 - **`.agents/rules/AXIOMS.md`**: Inviolable principles and their logical derivations — fail-fast, DRY, verify-first, no workarounds
 - **`.agents/rules/AXIOMS-REVIEW.md`**: Review questions for universal axioms — used by rbg (the Judge) for compliance auditing
 - **`.agents/rules/HEURISTICS.md`**: Working hypotheses validated by evidence — task management, decomposition, CLI patterns

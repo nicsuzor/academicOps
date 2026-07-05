@@ -223,14 +223,8 @@ class TestNonHSOEventSafety:
 
     Claude Code rejects payloads with hookSpecificOutput for events outside
     {PreToolUse, UserPromptSubmit, PostToolUse, PostToolBatch}. If
-    context_injection (or a blocking verdict) is set for a non-HSO event it has
-    no delivery/enforcement channel, so the router DROPS it — with a loud stderr
-    breadcrumb — and never emits hookSpecificOutput. It must NOT raise: a
-    multi-event trigger legitimately produces an undeliverable advisory here
-    (e.g. the rbg reset trigger fires on PreToolUse|SubagentStart|SubagentStop
-    with one shared transition), and crashing the hook over an advisory it
-    merely can't route is worse than dropping it. See router
-    ``_resolve_policy_for_claude_general`` and the pre-600985c9 graceful-drop.
+    context_injection is set for a non-HSO event, it has no delivery channel
+    and is silently dropped — these tests document that boundary.
     """
 
     @pytest.mark.parametrize("event", NON_HSO_EVENTS)
@@ -240,45 +234,23 @@ class TestNonHSOEventSafety:
         assert output.systemMessage == "Session info"
 
     @pytest.mark.parametrize("event", NON_HSO_EVENTS)
-    def test_context_injection_dropped_not_crashed(self, router, event, capsys):
-        """context_injection for non-HSO events is dropped (no HSO channel), not raised.
-
-        Regression for the SubagentStart rbg-dispatch crash: the rbg reset
-        trigger emits ``rbg.verified`` context_injection on SubagentStart, which
-        has no additionalContext channel. The router must drop it gracefully so
-        the hook does not fail with a ValueError traceback.
-        """
+    def test_context_injection_crashes_loudly(self, router, event):
+        """context_injection for non-HSO events has no agent delivery channel and must crash."""
         canonical = CanonicalHookOutput(verdict="warn", context_injection=ADVISORY)
-        output = router.output_for_claude(canonical, event)  # must NOT raise
-
-        payload = json.loads(output.model_dump_json(exclude_none=True))
-        assert "hookSpecificOutput" not in payload, (
-            f"{event}: emitted hookSpecificOutput despite no HSO channel"
-        )
-        assert "additionalContext" not in json.dumps(payload), (
-            f"{event}: context_injection leaked into output despite no HSO channel"
-        )
-        # Advisory must not fall back into the user-visible systemMessage.
-        assert ADVISORY not in (payload.get("systemMessage") or "")
-        # Dropped, but loudly — a breadcrumb reaches stderr for debug logs.
-        assert event in capsys.readouterr().err
+        with pytest.raises(
+            ValueError,
+            match=f"Claude Code does not support context_injection \\(advisory\\) for {event}",
+        ):
+            router.output_for_claude(canonical, event)
 
     @pytest.mark.parametrize("event", NON_HSO_EVENTS)
-    def test_blocking_verdict_dropped_not_crashed(self, router, event, capsys):
-        """Blocking verdicts for non-HSO events are downgraded to allow, not raised.
-
-        Claude cannot enforce a block on SessionStart/SubagentStart/etc (no
-        permission channel), so the router downgrades to allow with a stderr
-        breadcrumb rather than crashing the hook.
-        """
+    def test_blocking_verdict_crashes_loudly(self, router, event):
+        """Blocking verdicts for non-HSO events (like SessionStart) are not supported by Claude and must crash."""
         canonical = CanonicalHookOutput(verdict="deny", system_message="blocked")
-        output = router.output_for_claude(canonical, event)  # must NOT raise
-
-        payload = json.loads(output.model_dump_json(exclude_none=True))
-        assert "hookSpecificOutput" not in payload
-        # No block wire-decision survives (decision/permissionDecision absent).
-        assert payload.get("decision") != "block"
-        assert event in capsys.readouterr().err
+        with pytest.raises(
+            ValueError, match=f"Claude Code does not support blocking verdicts for {event}"
+        ):
+            router.output_for_claude(canonical, event)
 
 
 # ===========================================================================

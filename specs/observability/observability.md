@@ -116,7 +116,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths         |
 | **Session types**           | All 6 (wherever enforcer gate is enabled)                                   |
 | **Naming**                  | `{base}-{gate_name}.md` where gate name = `enforcer`                        |
-| **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                   |
+| **Processor**               | `aops-core:rbg` agent reads on-demand; not batch-processed                  |
 | **When processed**          | On compliance check request (periodic within session)                       |
 | **Git-tracked**             | No                                                                          |
 | **Retention**               | Session-scoped; ephemeral                                                   |
@@ -231,7 +231,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | Attribute          | Value                                                                             |
 | ------------------ | --------------------------------------------------------------------------------- |
 | **File type**      | Inline in gate files or task bodies; no standalone file convention                |
-| **Producer**       | `aops-pkb:rbg` agent                                                              |
+| **Producer**       | `aops-core:rbg` agent                                                             |
 | **Path**           | Delivered as agent output; written to task body via `update_task()` if actionable |
 | **Archive target** | PKB task body (if retained at all)                                                |
 | **Git-tracked**    | Via PKB                                                                           |
@@ -276,7 +276,7 @@ Every scripted and agent-scheduled job that touches session files.
 | **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`) | End of `transcript.py`         |
 | **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                          | Every hook fire                |
 | **Enforcer gate hook**                                  | Session state + tool calls                                       | `*-enforcer.md` gate file                                                                              | Periodic (every ~25 ops)                     | PreToolUse hook                |
-| **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                          | Agent invocation               |
+| **`aops-core:rbg`**                                     | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                          | Agent invocation               |
 
 ---
 

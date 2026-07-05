@@ -128,7 +128,7 @@ queued → in_progress → merge_ready → done (PR merged)
                 └→ blocked (external dependency)
 ```
 
-See [[aops-pkb/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
+See [[aops-core/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
 for canonical status definitions. The supervisor uses the canonical set without
 extensions.
 

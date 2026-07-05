@@ -184,6 +184,56 @@ def check_custom_condition(
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)
 
+    if name == "no_unevidenced_completion_claim":
+        # Handover satisfier guard (epic aops-262def9f WI2a): the skill-open
+        # triggers (/end-session, /dump, /continue, handover templates) may
+        # only open the gate when no completion claim in the session ledger
+        # lacks the evidence contract. /dump with NO claim in-session stays
+        # evidence-free (emergency bail preserved); a claim made earlier
+        # in-session cannot be laundered by a later /dump. The ledger is
+        # written by the router at PostToolUse (works in is_subagent
+        # sessions, where gate dispatch skips tool-call events).
+        from lib.verification_evidence import has_unevidenced_completion_claim
+
+        return not has_unevidenced_completion_claim(session_state)
+
+    if name == "handover_unevidenced_claim":
+        # Handover Stop policy (epic aops-262def9f WI2a): DENY the exit while
+        # a completion claim without contract-conformant evidence stands.
+        # Mode-aware like the sibling policies (off → inert); deliberately
+        # does NOT require session_did_work — a completion claim is a claim
+        # about work regardless of which tools this session used. Warn-mode
+        # fire-once and the block-mode stop_deny_count escape hatch behave as
+        # for every other stop gate (the policy keys on gate CLOSED, which
+        # the ledger enforces by force-closing on an unevidenced claim).
+        from hooks.gate_config import HANDOVER_GATE_MODE
+
+        if HANDOVER_GATE_MODE not in ("warn", "block", "deny"):
+            return False
+        from lib.verification_evidence import has_unevidenced_completion_claim
+
+        return has_unevidenced_completion_claim(session_state)
+
+    if name == "verifier_verdict_present":
+        # qa satisfier (epic aops-262def9f WI3b): the verifier subagent's OWN
+        # result channel (last_assistant_message on SubagentStop / Agent
+        # tool_response content on PostToolUse) must carry a parseable
+        # PASS/FAIL/REVISE verdict. A name-match alone (a dispatched-but-empty
+        # marsha/qa/verify run) no longer satisfies the gate, and producer
+        # prose cannot reach these channels — that is the independence this
+        # boundary can enforce. Records what it parsed in gate metrics for
+        # observability (side effect on True, mirroring custom_action style).
+        from lib.verification_evidence import parse_verifier_verdict, verifier_result_text
+
+        verdict = parse_verifier_verdict(verifier_result_text(ctx))
+        if verdict is None:
+            return False
+        state.metrics["last_verifier_verdict"] = verdict
+        state.metrics["last_verifier_type"] = (
+            ctx.subagent_type or ""
+        )  # allow-fallback: observability metric only
+        return True
+
     if name == "session_did_work":
         # True if the session has used a write tool or claimed a task.
         # Used directly in triggers/conditions that need this signal without

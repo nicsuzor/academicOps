@@ -543,7 +543,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     # /dump quality bar requires. These may live inside the reflection body
     # or in the surrounding assistant message; we look in `text` (full
     # message) so blocks placed adjacent to the reflection still get
-    # captured. See aops-interactive/skills/end_session/transcript-metadata-schema.md.
+    # captured. See aops-core/skills/end_session/transcript-metadata-schema.md.
     outputs = parse_output_section(text)
     tasks_worked = parse_tasks_worked_section(text)
     references = parse_identifier_precis_pairs(reflection_text)
@@ -803,7 +803,7 @@ def assess_reflection_quality(
 ) -> list[str]:
     """Return non-fatal quality warnings for a parsed reflection.
 
-    See aops-interactive/skills/end_session/transcript-metadata-schema.md for the warning codes.
+    See aops-core/skills/end_session/transcript-metadata-schema.md for the warning codes.
     """
     warnings: list[str] = []
 
@@ -1254,7 +1254,7 @@ def reflection_to_insights(
     }
 
     # task-5a54f813 quality-bar fields. See
-    # aops-interactive/skills/end_session/transcript-metadata-schema.md.
+    # aops-core/skills/end_session/transcript-metadata-schema.md.
     if "outputs" in reflection:
         result["outputs"] = reflection.get("outputs", [])
         result["output_explicit_none"] = reflection.get("output_explicit_none", False)

@@ -3,6 +3,8 @@
 Detailed contracts for subagents invoked by the supervisor. The supervisor main agent
 reads verdicts from these subagents and acts on them — it never executes their roles itself.
 
+**Capability floor (`judgment never delegates down a capability class`).** A reviewer that renders judgment is pinned to the judgment-class model and never inherits a weaker dispatcher's model — the QA-gate reviewer (`marsha`) carries `model: opus` in its agent contract (`aops-core/agents/marsha.md`) for exactly this reason.
+
 ## Egress Constraints
 
 Anonymize PKB-derived information (titles, IDs, project names) before writing to public PRs,
@@ -36,7 +38,7 @@ or masked identifiers (`task-XXXX`).
     The marsha brief MUST carry: the **sanctioned QA harness** (identified at ORIENT, never
     invented; HALT and `[ATTN]` if none recorded), the **exact previously-failing user-facing
     check** (supplied by the supervisor from the epic ledger — not reconstructed by marsha), and
-    the **byte-match hallucination rule-out**. marsha's own `[[aops-pkb/skills/verify/SKILL.md]]` enforces
+    the **byte-match hallucination rule-out**. marsha's own `[[../verify/SKILL.md]]` enforces
     fresh-instance / non-implementer / source-trace posture.
   - **Standalone / Independent Tasks**: Keep legacy branch-per-task behavior; verify each PR individually.
 - **Verdict**: PASS, FAIL `<reason>`, or REVISE `<reason>`.
@@ -57,12 +59,14 @@ VERDICT: <PASS | FAIL | BLOCKED | NEEDS-PRINCIPAL>
 CLAIM: <one sentence — the conclusion>
 GATE: <the acceptance gate, and the observed result against it>
 EVIDENCE: <pointers — session id, log path, line refs — NOT pasted dumps>
+ARTIFACT-SHA: <git head SHA / content hash the verdict is bound to — a later change to the artifact VOIDS this verdict and re-arms review>
 CONFIDENCE: <high|med|low> + <what single control/test would falsify this>
 CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT RUN">
 ```
 
 `CONFOUND CHECK` is mandatory whenever the verdict blames what we don't own; `NOT RUN` means do
 not relay — commission the control first (§3 of [[../SKILL.md]]).
+`ARTIFACT-SHA` binds the verdict to a specific artifact state (completion-claim invariant, epic aops-262def9f): a verdict is evidence only for the SHA it names, so any later commit/edit voids it and the item must be re-verified — a stale verdict from an earlier SHA never satisfies a completion claim.
 
 ## Compose-then-Dispatch Separation
 

@@ -47,7 +47,7 @@ runs, and any delegate-and-verify loop over background workers. "I'm just the co
 orchestrator" is **not** an exemption.
 
 The **Select → Gates** spine — task selection, the premise gate, and the freshness /
-stale-leftover pre-check — is owned by the [[aops-pkb/skills/task-lifecycle/SKILL.md]] skill (§§1–2).
+stale-leftover pre-check — is owned by the [[../task-lifecycle/SKILL.md]] skill (§§1–2).
 The supervisor's Dispatch phase reuses that spine, then adds the pre-flight confirmation,
 proof, ledger, evaluation, and escalation discipline that span ticks and are the
 supervisor's own.
@@ -102,13 +102,16 @@ confidence" is a promise you proofed it. **A worker's verification claim is not 
 the worker asserts a cheaply re-checkable live state (PR merged/open, a task with status: done, branch pushed,
 file landed), re-check it yourself at report time and relay the live result — never pass a
 worker's "confirmed" / "CONFIDENCE: high" up to the principal as established fact, least of all
-immediately after the principal demanded verification against current state.** Correct your own
+immediately after the principal demanded verification against current state.** (This is the
+artifact-state binding of the evidence contract — canonical at [[references/subagent-contracts#worker-handback-format]].)
+Correct your own
 prior conclusions out loud and supersede the PKB record. Escalate genuine frontiers; **never
 fake-pass**.
 
 **§7 — Context-economy contract (mandatory, every mode).** (a) **Capped structured handback,
-every brief** — require the worker to end with VERDICT/CLAIM/GATE/EVIDENCE/CONFIDENCE/CONFOUND
-CHECK; read _that_, not the narrative (format: [[references/subagent-contracts#worker-handback-format]]).
+every brief** — require the worker to end with the capped structured handback — the single canonical schema (incl.
+the `ARTIFACT-SHA` evidence-binding rule) lives at [[references/subagent-contracts#worker-handback-format]];
+read _that_, not the narrative.
 `CONFOUND CHECK: NOT RUN` blocks relay — commission the control first (§3). (b) **Cheap
 summariser agent** for all bulk reading — never absorb a 30k narrative to lift a one-line verdict.
 (c) **Ledger lives in the epic body — always open an epic node**, even in conversational mode;

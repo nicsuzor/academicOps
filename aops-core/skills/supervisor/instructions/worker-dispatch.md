@@ -9,10 +9,10 @@ The dispatch mechanics that govern epic progression.
 ### 0. Select + Gates spine (owned by `task-lifecycle` §§1–2)
 
 Before the supervisor-only gates below, run the shared **Select → Gates** spine
-authored once in [[aops-pkb/skills/task-lifecycle/SKILL.md]] §§1–2 (§1 Select; §2 Gates: the
+authored once in [[../../task-lifecycle/SKILL.md]] §§1–2 (§1 Select; §2 Gates: the
 premise gate plus the freshness / stale-leftover pre-check). Apply it as written
 there — this file does not restate it. The premise gate is the two-judge clearance
-owned by [[aops-pkb/skills/remember/references/premise-gate.md]] §2 (`rbg` + `pauli`,
+owned by [[../../remember/references/premise-gate.md]] §2 (`rbg` + `pauli`,
 CLEAR/BOUNCE); on a hard-refuse, append `dispatch_halt` to Pattern Memory before
 exiting.
 
@@ -20,38 +20,22 @@ The pre-dispatch gates below — the pauli pre-flight confirmation, existing-PR
 check, and critic gate — are the supervisor's own; they have no counterpart in
 `task-lifecycle` and run **after** the shared spine, before dispatch.
 
-### Pre-flight Confirmation Summary
+### Pre-flight Confirmation Summary (one canonical checklist)
 
-Before pauli emits a `dispatch` verdict, she validates the task purely through PKB operations via a 4-row **Pre-flight Confirmation Summary**.
+Before pauli emits a `dispatch` verdict, she validates the task purely through PKB operations via a single 5-row **Pre-flight Confirmation Summary**. One checklist covers both code/edit and design/spec/research tasks — only **row 2** (the deliverable-location row) reads differently by task type.
 
-**Which variant applies:** Use the Design/Research variant if task `type` or `kind` is design/spec/research, OR if the AC indicates creating a new file/design doc/spec. Otherwise, use the Code/Edit variant.
-
-### 1. Pre-flight Confirmation Summary (Code / Edit Tasks)
-
-**Inputs**: Task body, existing file paths.
+**Inputs**: task body; existing file paths (code/edit) or Acceptance Criteria (design/spec/research).
 **Checks (5-row table)**:
 
-1. **Task ID:** The epic / subtask being dispatched.
-2. **Source repo:** Inferred from file paths the task names (file-path grep validates source repo).
-3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
-4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
-5. **Sanctioned mechanism:** Check memory/loop spec for a recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Verify chosen worker/method aligns; refuse ad-hoc harness/test-script substitutions.
+1. **Task ID:** the epic / subtask being dispatched.
+2. **Deliverable location** (variant-aware):
+   - _Code / edit task_ (default) — **source repo**, inferred from the file paths the task names (file-path grep validates it).
+   - _Design / spec / research task_ (task `type`/`kind` is design/spec/research, OR the AC creates a new file / design doc / spec) — **output-artefact location**, the canonical spec or reference doc the edits land in (from the AC).
+3. **Project:** task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
+4. **Next link in chain:** ensure the task unblocks the epic's critical path.
+5. **Sanctioned mechanism:** check the memory/loop spec for a recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Verify the chosen worker/method aligns; refuse ad-hoc harness/test-script substitutions.
 
-**Halt conditions:** Any row is unknown, source repo cannot be inferred, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
-**Dispatch line:** `dispatch <worker> on <task-id> in <project>`
-
-### 2. Pre-flight Confirmation Summary (Design / Spec / Research Tasks)
-
-**Inputs**: Task body, Acceptance Criteria.
-**Checks (5-row table)**:
-
-1. **Task ID:** The epic / subtask being dispatched.
-2. **Output artefact location:** Canonical spec or reference doc the design edits will land in (taken from AC).
-3. **Project:** Task's `project:` frontmatter MUST exist. If missing, pauli resolves it from unambiguous ancestors.
-4. **Next link in chain:** Ensure the task unblocks the epic's critical path.
-5. **Sanctioned mechanism:** Check memory/loop spec for a recorded sanctioned mechanism (e.g. `feedback_agy_wsl_dashboard_qa_loop`). Verify chosen worker/method aligns; refuse ad-hoc harness/test-script substitutions.
-
-**Halt conditions:** Any row is unknown, no AC describes where the deliverable lands, `project` is missing and ancestors are ambiguous, dependencies are not met, or a sanctioned mechanism is violated/substituted.
+**Halt conditions:** any row is unknown; row 2 cannot be resolved (source repo not inferable, or no AC describes where the deliverable lands); `project` is missing and ancestors are ambiguous; dependencies are not met; or a sanctioned mechanism is violated/substituted.
 **Dispatch line:** `dispatch <worker> on <task-id> in <project>`
 
 **Prep / review-only briefs — save the work, don't withhold it.** When the brief is "prepare a reviewable diff / prep only / do not merge / do not open a PR," it constrains the _terminal action only_. The brief MUST still direct the worker to **commit each chunk and push the branch to `origin`** — a reviewable diff is a pushed branch, not a dirty working tree in an environment about to be torn down. Never phrase a prep brief in a way that reads as "leave work unsaved." Canonical rule: [[framework-conventions-summary#commit-and-push-discipline]].

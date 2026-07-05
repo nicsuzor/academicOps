@@ -42,7 +42,7 @@ The "Review surface" column holds whatever identifier the deliverable subworkflo
 
 ### Work Item Statuses
 
-The supervisor uses canonical PKB task statuses — see [[aops-pkb/skills/remember/references/TAXONOMY.md#status-values-and-transitions]].
+The supervisor uses canonical PKB task statuses — see [[../../../remember/references/TAXONOMY.md#status-values-and-transitions]].
 
 | Status        | Meaning in the supervisor loop                                                                                  |
 | ------------- | --------------------------------------------------------------------------------------------------------------- |

@@ -29,12 +29,13 @@ The framework strictly separates agent documentation from runtime instructions:
 
 ### Head Personalities
 
-Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. There is **one head ROLE**, bound by a single charter regardless of which model runs it — [[head-role-charter|Head Role Charter]] (`specs/interactive-experience/head-role-charter.md`). Junior and Ida are two **skins** of that one role, not separate personalities with separate obligations (RULING P13, `aops-c70490f4`): their voices differ, their obligations don't.
+Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. They are self-contained, not subclassed. Ida is currently the plugin's sole head personality.
 
-- [[ida|Ida]] (`specs/agents/ida.md`) — the **research co-worker skin**.
+- [[ida|Ida]] (`specs/agents/ida.md`)
   - **Role**: Interactive academic-research co-worker and default interactive head for research repositories.
   - **Disposition**: Co-works live in a single working directory — holds between steps, answers self-answerable questions itself, delegates for context hygiene — with a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
-- **Junior** — the **general framework coordinator skin**: session coordination, institutional memory, and cross-project state across arbitrary projects, not scoped to one repo or one research thread. Junior currently runs via the `~/junior` SDK launcher (see `specs/SURFACES.md`) — that launcher is the skin's _runtime surface_, not evidence that Junior sits outside this role or this plugin's charter.
+
+A separate general-purpose framework coordinator, Junior, exists as a user-level tool outside this plugin (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ### The Review Crew
 

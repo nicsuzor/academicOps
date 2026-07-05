@@ -11,7 +11,7 @@ Specifically for this project:
 - Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
 - Project hub: [[aops|brain/projects/aops/aops]]
 - Vision: [[vision|brain/projects/aops/vision]] (where applicable)
-- Canonical taxonomy: `~/src/academicOps/aops-pkb/skills/remember/references/TAXONOMY.md`
+- Canonical taxonomy: `~/src/academicOps/aops-core/skills/remember/references/TAXONOMY.md`
 - Transcript naming & artifact conventions: `specs/observability/framework-observability.md`
 - Session summaries schema: `specs/summaries-schema.md`
 - Agent Compliance Matrix: `specs/audit/AGENT-COMPLIANCE-MATRIX.md`
@@ -82,7 +82,7 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
 
-Junior and Ida are two skins of the same head ROLE (RULING P13) — their voices differ, their obligations don't. Junior is the general framework coordinator skin (session coordination, institutional memory, cross-project state); it currently runs via the `~/junior` SDK launcher (see `specs/SURFACES.md`), which is that skin's runtime surface, not evidence that Junior sits outside this role or this plugin's charter.
+Junior (a general-purpose framework coordinator) is not part of this plugin — it is a user-level tool that lives outside the redistributable academicOps package (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
 
 ## Tool Capabilities in Dispatched Sessions
 

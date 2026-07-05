@@ -140,7 +140,7 @@ class GenericGate:
     ) -> dict[str, Any]:
         """Build the variable dict available for template rendering."""
         # Expose tool_input.file_path / path when present so templates can refer
-        # to the specific file involved (e.g. orchestrator-boundary warning).
+        # to the specific file involved (e.g. the sentinel protected-path warning).
         file_path = ""
         if isinstance(ctx.tool_input, dict):
             fp = ctx.tool_input.get("file_path") or ctx.tool_input.get("path")
