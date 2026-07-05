@@ -82,7 +82,7 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
 
-Junior (a general-purpose framework coordinator) is not part of this plugin — it is a user-level tool that lives outside the redistributable academicOps package (see `specs/SURFACES.md`'s `~/junior` SDK launcher).
+Junior and Ida are two skins of the same head ROLE (RULING P13) — their voices differ, their obligations don't. Junior is the general framework coordinator skin (session coordination, institutional memory, cross-project state); it currently runs via the `~/junior` SDK launcher (see `specs/SURFACES.md`), which is that skin's runtime surface, not evidence that Junior sits outside this role or this plugin's charter.
 
 ## Tool Capabilities in Dispatched Sessions
 
