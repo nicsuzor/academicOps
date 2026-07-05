@@ -196,6 +196,27 @@ def test_bare_rbg_subagent_name_clears(router):
     assert state.gates["rbg-review"].status == GateStatus.OPEN
 
 
+def test_aops_pkb_rbg_subagent_name_clears(router):
+    """'aops-pkb:rbg' (the post-extraction canonical form) clears the gate.
+
+    Regression guard: the aops-pkb extraction moved rbg's agent definition
+    out of aops-core, and a prior fix pass updated most `aops-core:rbg`
+    references to `aops-pkb:rbg` but shipped without a test asserting the
+    gate actually recognises the new prefix. This closes that gap.
+    """
+    state = _armed_state(router)
+    router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-pkb:rbg"), state)
+    assert state.gates["rbg-review"].status == GateStatus.OPEN
+
+
+def test_unknown_subagent_name_does_not_clear(router):
+    """An unrelated subagent_type (e.g. a typo'd 'aops-pkb:foobar') must NOT
+    clear the gate — only rbg (in any recognised prefix form) may."""
+    state = _armed_state(router)
+    router._dispatch_gates(_ctx("SubagentStop", subagent_type="aops-pkb:foobar"), state)
+    assert state.gates["rbg-review"].status == GateStatus.CLOSED
+
+
 def test_post_rbg_edits_do_not_reblock_this_turn(router):
     """Sticky latch: edits after rbg ran do not re-block / re-arm the same turn.
 

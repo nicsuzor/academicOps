@@ -66,7 +66,7 @@ class SubagentArtifact:
     """
 
     invocation_id: str  # agent file id (e.g. "a14a1c4")
-    subagent_type: str | None  # e.g. "rbg", "aops-core:pauli", or None if unresolved
+    subagent_type: str | None  # e.g. "rbg", "aops-pkb:pauli", or None if unresolved
     child_session_id: str  # short id used in the transcript filename (== invocation_id)
     parent_session_id: str  # parent's session id (8-char)
     first_timestamp: datetime | None
@@ -113,7 +113,7 @@ def _build_subagent_type_index(main_entries: list[Entry]) -> dict[str, str]:
     Walks main session entries pairing Task/Agent tool_use blocks with their
     tool_result. The result's ``tool_use_result.agentId`` is the file id; the
     tool_use's ``input.subagent_type`` is the human-readable type
-    (e.g. ``rbg``, ``aops-core:pauli``). This reads structured tool-call
+    (e.g. ``rbg``, ``aops-pkb:pauli``). This reads structured tool-call
     metadata only — it performs no parsing of model prose.
     """
     type_by_tool_id: dict[str, str] = {}
