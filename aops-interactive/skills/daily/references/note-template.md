@@ -64,7 +64,7 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 
 ## What Needs Attention
 
-<!-- Inbox (from /email): self-contained FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). Outstanding Workflows: PR buckets from pr-state.json; ready-to-merge PRs as "- [ ]" checkboxes. "Needs your call": ambiguous task completions, never auto-closed. -->
+<!-- Inbox (from /email): self-contained FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). Outstanding Workflows: PR buckets from pr-state.json; ready-to-merge PRs as "- [ ]" checkboxes. "Needs your call": ambiguous task completions, plus stale-claim/ready-queue items flagged by the reconcile sweep (task ID + one-line reason) — never auto-closed or auto-cancelled. -->
 
 ### [[Contact]] — Subject
 
@@ -93,6 +93,8 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 <summary>(collapsed — merged PRs and completed tasks)</summary>
 
 No PRs merged today. No tasks completed today.
+
+Stale-claim reconcile: 0 closed, 0 released, 0 flagged. Ready-queue reconcile: 0 flagged.
 
 </details>
 ```

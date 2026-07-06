@@ -14,8 +14,8 @@ needs_task: false
 mode: execution
 domain:
   - operations
-allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task
-version: 5.4.0
+allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__get_task_children,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task,mcp__pkb__update_task,mcp__pkb__append
+version: 5.5.0
 permalink: skills-daily
 ---
 
@@ -84,6 +84,28 @@ For each `review` task: resolve any linked PR the same way, but its state is evi
 **Guards, both passes:** never close on doubt (an unresolved condition flagged in the task body beats a MERGED PR); never cascade-close a parent whose children are still open; never touch academic, peer-review, or Nic-decision items — these are always surfaced, never auto-closed.
 
 **Report** in the daily note: tasks auto-closed against merged PRs, `review` tasks re-surfaced awaiting a decision, tasks surfaced for a call.
+
+### Stale-claim & ready-queue reconcile (required every run)
+
+This is the _scheduled-sweep_ counterpart to the task-lifecycle skill's point-of-claim gates ([[aops-pkb/skills/task-lifecycle/SKILL.md]] §2b Freshness pre-check) — those check a task once, at the moment something tries to select it; this catches claims made and then silently dropped, and stale premises on tasks nobody has tried to select since they went stale. **Owned here, not in `/sleep`**: `/daily` runs on Nic's actual cold-open cadence — a habitual, human-triggered surface that fires whether or not any automation does — while GHA cron cadence is known-unreliable (`aops-bdfb52d4`: the merge-prep cron drifted to ~hourly and stalled outright for 5h on a 30m schedule) and `/sleep`'s own loop fires only on manual invocation or that same class of cron. A reconcile step that lives only where it might not fire closes no loops. This **complements, does not replace**, `/sleep`'s longer-horizon checks — Phase 6 Activity 2 (90-day evidence-based staleness verification) and Phase 7 Gate-1 (14-day artifact-rot check on `ready`/`queued`) stay owned by `/sleep`; do not re-implement them here.
+
+**Stale-claim pass.** `mcp__pkb__list_tasks(status="in_progress", before=<today - 2 days>, format="json")` (cap 30/run). For each candidate:
+
+- If `type` is `epic` or the task has children (a parent task spanning multi-session work), skip it this run unless it has _also_ been untouched for ≥14 days — 2 days of quiet on a container task is normal, not abandonment.
+- Skip any task whose body reads as a live Nic-led TALK/interactive session (explicit "waiting on Nic being live" / "do not dispatch to a worker" framing, or similar) — those are meant to sit `in_progress` across sessions; a long gap is not abandonment.
+- Otherwise read the body and check for completion evidence (linked PR merged, a commit referencing the task ID, a same-day transcript closing statement) — same evidence classes as `/sleep` Phase 6 Activity 2. Decide exactly one:
+  - **(a) Completed** — evidence found → `mcp__pkb__complete_task(id, completion_evidence="<what was found>", pr_url=<if any>)`.
+  - **(b) Abandoned, premise still valid** — no completion evidence and nothing in the body says the work is no longer wanted → `mcp__pkb__update_task(id, updates={status: "queued", assignee: null})`, then `mcp__pkb__append(id, content="Released by /daily stale-claim reconcile YYYY-MM-DD: in_progress since <date>, no activity or completion evidence found — returned to queue for redispatch.")`. Return it to `queued` — the state it was dispatched from, already past the premise gate — never promote it further.
+  - **(c) Premise gone or superseded** — the body shows the goal no longer applies (superseded, overtaken by a sibling, or blocked on something since resolved a different way) → do **not** cancel or delete. `mcp__pkb__update_task(id, updates={needs_triage: true})`, then `mcp__pkb__append(id, content="Flagged by /daily stale-claim reconcile YYYY-MM-DD: premise appears superseded/gone — <one-line reason>. Needs a human close, not auto-cancel.")`.
+
+**Ready-queue premise pass.** Runs once per calendar day, not every `/daily` invocation (guard: skip if `$ACA_DATA/state/ready-queue-reconcile-cursor.json` already records today's date; write today's date after running). `mcp__pkb__list_tasks(status="ready", before=<today - 2 days>)` and `mcp__pkb__list_tasks(status="queued", before=<today - 2 days>)` (cap 30 each). For each candidate, check the two signals the point-of-claim gate can only catch when a select is actually attempted:
+
+1. **`superseded_by` set but status is still `ready`/`queued`** — should have moved to `cancelled` at supersession time and didn't.
+2. **All siblings under the same parent are `done`/`cancelled`** (via `mcp__pkb__get_task_children` on the parent) and this task's body reads like it belonged to the same finished batch — likely a leftover from a completed decomposition (same heuristic as the task-lifecycle stale-leftover check, applied proactively instead of waiting for a select attempt).
+
+Artifact-existence rot (named file/symbol no longer present) is **not** re-checked here — that stays `/sleep` Phase 7 Gate-1's job at its own cadence. For every match: `mcp__pkb__append(id, content="Flagged by /daily ready-queue reconcile YYYY-MM-DD: <reason>. Left as-is for human review.")`. Flag, never hard-delete or auto-cancel.
+
+**Report** in the daily note: one summary line in `## Work Log` (`Stale-claim reconcile: N closed, M released, K flagged. Ready-queue reconcile: J flagged.`) plus every flagged item (both passes) listed under "Needs your call" in `## What Needs Attention`, with task ID and the one-line reason.
 
 ### Cross-linking (when a session maps to a task)
 
