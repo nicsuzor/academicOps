@@ -940,6 +940,98 @@ class TestBuildAuditSessionContext:
             "whether post-plan actions were authorized."
         )
 
+    def test_ask_user_question_answer_not_truncated_in_full_mode(self, tmp_path):
+        """max_turns=None (full session render) must never truncate the answer.
+
+        Mirrors the full_mode-bypasses-truncation convention transcript_parser.py
+        already uses for the persisted -full.md transcript: a full render is
+        the authoritative record and must not clip an authorization decision,
+        however long.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        long_answer = "authorized: proceed with the migration. " + ("detail " * 800)
+        jsonl_path = tmp_path / "ask-user-question-long.jsonl"
+        entries_data = [
+            _create_user_entry("what should we do?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {"questions": [{"question": "Proceed?"}]},
+                offset=5,
+            ),
+            _create_tool_result_entry("tool-5", long_answer, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
+
+        assert long_answer in result, "full_mode must render the answer in full, never truncated"
+
+    def test_exit_plan_mode_response_not_truncated_in_full_mode(self, tmp_path):
+        """max_turns=None (full session render) must never truncate the approval response."""
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        long_response = "User has approved your plan. " + ("caveat " * 800)
+        jsonl_path = tmp_path / "exit-plan-mode-long.jsonl"
+        entries_data = [
+            _create_user_entry("plan out the migration", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry("ExitPlanMode", {"plan": "1. Add column"}, offset=5),
+            _create_tool_result_entry("tool-5", long_response, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
+
+        assert long_response in result, (
+            "full_mode must render the approval response in full, never truncated"
+        )
+
+    def test_ask_user_question_answer_windowed_truncation_is_generous(self, tmp_path):
+        """Windowed (abridged) mode still truncates, but at a far higher cap
+        than bulk tool output (_TOOL_RESULT_LIMIT) — this field is an
+        authorization decision, not noisy Bash/Task output.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        # Longer than _TOOL_RESULT_LIMIT (1000) but under _AUTH_RESULT_LIMIT (4000).
+        answer = "authorized. " + ("context " * 200)
+        assert 1000 < len(answer) < 4000
+        jsonl_path = tmp_path / "ask-user-question-windowed.jsonl"
+        entries_data = [
+            _create_user_entry("what should we do?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {"questions": [{"question": "Proceed?"}]},
+                offset=5,
+            ),
+            _create_tool_result_entry("tool-5", answer, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=10)
+
+        assert answer in result, (
+            "windowed mode must not truncate an answer shorter than _AUTH_RESULT_LIMIT"
+        )
+
     def test_pre_parsed_entries_empty_list(self, tmp_path):
         """Pre-parsed empty entries list returns empty session marker."""
         from lib.session_reader import build_audit_session_context
