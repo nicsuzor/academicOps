@@ -77,15 +77,17 @@ def test_handover_latch_bash_after_dump(router):
     assert state.gates["handover"].sticky is True
 
 
-def test_handover_reopens_for_aops_interactive_prefixed_skills(router):
-    """dump/end_session moved from aops-core to aops-interactive (aops-cf3fb2f0):
-    the handover-reopen trigger's subagent_type_pattern was widened to also
-    accept the `aops-interactive:` prefix these skills may now be invoked
-    with. Regression guard for the move silently breaking the reopen trigger,
-    the same way rbg/marsha's move to aops-pkb needed its own prefix widening.
+def test_handover_reopens_for_aops_pkb_prefixed_skills(router):
+    """dump/end_session moved aops-core -> aops-interactive (aops-cf3fb2f0) ->
+    aops-pkb (ruling A10, aops-7ea63b63, dissolving the short-lived
+    aops-interactive plugin): the handover-reopen trigger's
+    subagent_type_pattern was widened to also accept the `aops-pkb:` prefix
+    these skills may now be invoked with. Regression guard for the move
+    silently breaking the reopen trigger, the same way rbg/marsha's move to
+    aops-pkb needed its own prefix widening.
     """
-    for skill_name in ("aops-interactive:dump", "aops-interactive:end_session"):
-        session_id = f"test-aops-interactive-{skill_name.split(':')[1]}"
+    for skill_name in ("aops-pkb:dump", "aops-pkb:end_session"):
+        session_id = f"test-aops-pkb-{skill_name.split(':')[1]}"
         state = _make_polecat_state(session_id)
 
         ctx = HookContext(

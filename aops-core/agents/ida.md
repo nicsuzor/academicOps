@@ -21,7 +21,7 @@ tools:
   - AskUserQuestion
   - mcp__outlook__*
   - mcp__zot__*
-  # PKB — read (aops-interactive does not own the PKB interface, it consumes
+  # PKB — read (aops-core does not own the PKB interface, it consumes
   # aops-pkb's — see head-role-charter.md's Delegation Rule / Persona section)
   - mcp__plugin_aops-pkb_pkb__search
   - mcp__plugin_aops-pkb_pkb__get_task
