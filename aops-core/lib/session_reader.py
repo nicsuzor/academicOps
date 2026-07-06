@@ -444,6 +444,12 @@ def build_audit_session_context(
 
     lines: list[str] = []
 
+    # max_turns=None means the whole session is rendered (no windowing) — the
+    # same "full" vs "abridged" distinction transcript_parser.py already makes
+    # for the persisted transcript files (full_mode bypasses truncation there
+    # too). Authorization fields must never be cut off in that full render.
+    full_mode = max_turns is None
+
     # Noise tools the reviewer doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
     # Max chars for agent reasoning text per turn
@@ -452,6 +458,11 @@ def build_audit_session_context(
     _TOOL_ARG_LIMIT = 300
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
+    # Max chars for AskUserQuestion answers / ExitPlanMode approval responses
+    # in windowed (abridged) mode — these are authorization decisions, not
+    # bulk tool output, so they get a far more generous cap than
+    # _TOOL_RESULT_LIMIT. Never truncated at all in full_mode.
+    _AUTH_RESULT_LIMIT = 4000
 
     # Every turn in the (possibly windowed) set is rendered at full detail —
     # do NOT restore a historical/recent split within the window: hiding tool
@@ -592,8 +603,8 @@ def build_audit_session_context(
                     )  # allow-fallback: absent result just skips the "Response:" line below
                     if result:
                         result_str = str(result)
-                        if len(result_str) > _TOOL_RESULT_LIMIT:
-                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        if not full_mode and len(result_str) > _AUTH_RESULT_LIMIT:
+                            result_str = result_str[:_AUTH_RESULT_LIMIT] + "..."
                         tool_line += f"\n    Response: {result_str}"
 
                 elif tool_name == "AskUserQuestion":
@@ -612,8 +623,8 @@ def build_audit_session_context(
                     result = item.get("result", "")
                     if result:
                         result_str = str(result)
-                        if len(result_str) > _TOOL_RESULT_LIMIT:
-                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        if not full_mode and len(result_str) > _AUTH_RESULT_LIMIT:
+                            result_str = result_str[:_AUTH_RESULT_LIMIT] + "..."
                         tool_line += f"\n    Answer: {result_str}"
 
                 else:
