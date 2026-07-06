@@ -895,6 +895,51 @@ class TestBuildAuditSessionContext:
             "authorization decisions given via AskUserQuestion."
         )
 
+    def test_exit_plan_mode_renders_approval(self, tmp_path):
+        """ExitPlanMode tool calls must render the approval/rejection response.
+
+        Regression for issue #186: the approval confirmation ("User has
+        approved your plan...") lives in the tool_result, same as the
+        AskUserQuestion answer, but ExitPlanMode fell through to the generic
+        tool branch which never reads item["result"]. Without it, an auditor
+        cannot tell whether post-plan actions (e.g. TaskCreate) were actually
+        authorized.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "exit-plan-mode.jsonl"
+        entries_data = [
+            _create_user_entry("plan out the migration", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "ExitPlanMode",
+                {"plan": "1. Add column\n2. Backfill\n3. Add NOT NULL constraint"},
+                offset=5,
+            ),
+            _create_tool_result_entry(
+                "tool-5",
+                "User has approved your plan. You can now start coding. "
+                "Start with updating your todo list if applicable.",
+                offset=6,
+            ),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        assert "ExitPlanMode" in result
+        assert "Add NOT NULL constraint" in result
+        assert "User has approved your plan" in result, (
+            "ExitPlanMode rendering must include the approval/rejection "
+            "response, not just the plan — otherwise auditors cannot verify "
+            "whether post-plan actions were authorized."
+        )
+
     def test_pre_parsed_entries_empty_list(self, tmp_path):
         """Pre-parsed empty entries list returns empty session marker."""
         from lib.session_reader import build_audit_session_context
