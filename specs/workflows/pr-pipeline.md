@@ -540,10 +540,30 @@ abandons).** When `MECH_COUNT >= MAX_MECHANIC_RUNS` and the PR is still not gree
    `admit-status` is now pending, the armed auto-merge cannot fire. No silent merge.
 5. **The maintainer is pinged** (`gh pr edit --add-reviewer nicsuzor`) so the escalation
    is visible, not buried.
-6. **The loop stops auto-dispatching the mechanic.** Resumption requires an explicit human
-   action: **re-approve the PR** to re-admit (after intervening), or use the **Force Review**
-   escape hatch (§3.12) to re-run the reviewers directly. This mirrors v1's "manual retry
-   resets the halt" semantics.
+6. **The loop stops auto-dispatching the mechanic.** The per-SHA `mechanic-status=failure`
+   is the loop guard: on this exact commit the SHA-skip (§10) re-posts the terminal status
+   and the mechanic exits. Resumption therefore requires **advancing or clearing that guard**,
+   not merely re-admitting:
+   - **Push a fix / trim scope (new commit).** A new SHA carries no `mechanic-status`, so the
+     mechanic re-runs; then **re-approve** to re-admit the new SHA. This is the reliable hatch.
+   - **In-place reset (no new commit): the `mechanic-retry` label** (aops-c5c57bfd, Defect 3).
+     The conflict-admission sweep clears the per-SHA `mechanic-status` (posts `pending`, removes
+     the label) and re-dispatches under the standing approval — the only channel that also works
+     while the PR is `CONFLICTING`. Only write collaborators can label, so the label is the authz.
+   - **Re-approving alone does NOT re-run the mechanic on this commit** — the SHA is already
+     judged. (The old text here claimed re-approval re-admitted-and-resumed; it re-admits but the
+     SHA-skip still blocks the mechanic. Corrected under aops-c5c57bfd.)
+
+**Crash ≠ exhaustion (aops-c5c57bfd, Defect 2).** The above is the §3.6 _exhaustion_ end state
+(ceiling reached, escalation review posted). A **harness crash/timeout** is different: the
+agent step failed without a verdict, so `agent-mechanic.yml` posts a **non-terminal `error`**
+`mechanic-status` (not a sticky `failure`) and posts **no** escalation review. `error` is
+excluded from both the SHA-skip and the sweep's terminal-status guard (both match `success`/
+`failure` only), so the crashed SHA is retried automatically on the next pass — never trapped,
+and never claiming an escalation review that was not posted. This was the direct cause of PR
+2128's stall (a `push`-inherited "Unsupported event type" abort, §3.11, wrote a sticky
+`failure`, after which later passes re-posted "SHA already escalated — see prior review" for a
+review that never existed).
 
 > Net: on exhaustion the PR sits **admitted-no-more, reviewer-red, un-merged, with a named
 > escalation review and the maintainer requested.** A reader can implement this without
@@ -867,7 +887,13 @@ GitHub platform behaviour, not a pipeline choice (community discussions
 **The conflict-admission sweep (the entry path).** `conflict-admission-sweep.yml` runs on
 `push` to `dev` (every merge — exactly when open PRs go stale/conflicting) and on a 30-minute
 `schedule` (a backstop for PRs already conflicting when approved), plus manual
-`workflow_dispatch`. Its `discover` job (`scripts/ci/find-conflicting-admitted-prs.sh`,
+`workflow_dispatch`. **On `push` the sweep re-dispatches itself via `workflow_dispatch`
+(the `redispatch-on-push` job) rather than running the body** (aops-c5c57bfd, Defect 1): the
+mechanic is a reusable `workflow_call` and inherits the caller's event, and
+`anthropics/claude-code-action@v1` aborts on an inherited `push` context with "Unsupported
+event type: push" (`schedule`/`workflow_dispatch` are supported). This was PR 2128's root cause
+(run 28826349623). The re-dispatch is near-instant, so push-immediacy is preserved. Its
+`discover` job (`scripts/ci/find-conflicting-admitted-prs.sh`,
 unit-tested in `tests/test_find_conflicting_admitted_prs.py`) selects open PRs that are
 `CONFLICTING`, non-draft, same-repo, and **already approved by a write-class maintainer** (the
 same shared `scripts/ci/reviewer-authz.sh` authorisation as `admit-on-review.sh`, §5.1),

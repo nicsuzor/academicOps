@@ -18,6 +18,17 @@
 # base and pushes, the PR becomes MERGEABLE and the normal `pull_request` pipeline
 # resumes (§3.5 re-verify → armed auto-merge fires when green).
 #
+# PUSH EVENT — WHY IT RE-DISPATCHES (aops-c5c57bfd, Defect 1). The mechanic is a
+# reusable `workflow_call` workflow (`agent-mechanic.yml`) and inherits THIS
+# caller's event context. `anthropics/claude-code-action@v1` aborts on an
+# inherited `push` context with "Unsupported event type: push" (`push` is in
+# neither its ENTITY nor AUTOMATION event lists) — the exact ~2s abort that
+# stalled PR 2128 (run 28826349623). `schedule` and `workflow_dispatch` ARE
+# supported. So on `push` we do NOT run the sweep body directly; we re-invoke it
+# via `workflow_dispatch` (the `redispatch-on-push` job) and the real
+# discover→admit→mechanic work runs under that supported event. Immediacy is
+# preserved (the re-dispatch fires within seconds of the base push).
+#
 # Bounding: `find-conflicting-admitted-prs.sh` excludes any PR whose current head
 # SHA already carries a terminal `mechanic-status` (the mechanic ran and either
 # resolved → new SHA, or halted → escalated), so the schedule never re-dispatches
@@ -49,11 +60,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ─── On `push`: re-dispatch under a claude-code-action-supported event ──────
+  # See the header note. A base-branch push cannot dispatch the mechanic directly
+  # (claude-code-action@v1 rejects the inherited `push` context), so it re-invokes
+  # this same workflow via `workflow_dispatch`, under which the mechanic runs. The
+  # push run does nothing else; the re-dispatched run does the actual work.
+  redispatch-on-push:
+    name: Re-dispatch under supported event
+    if: github.event_name == 'push' && github.repository == 'nicsuzor/academicOps'
+    runs-on: ubuntu-latest
+    env:
+      # PAT (not the ephemeral job token) — dispatching a workflow needs
+      # actions:write, and only the bot PAT reliably carries it here.
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Re-trigger via workflow_dispatch
+        run: |
+          set -euo pipefail
+          : "${GH_TOKEN:?AOPS_BOT_GH_TOKEN unset — fail closed}"
+          echo "Base push to dev — re-dispatching conflict-admission-sweep under workflow_dispatch (§ Defect 1)."
+          gh workflow run conflict-admission-sweep.yml --repo "$REPO" --ref dev
+
   # ─── Discover conflicting, approved PRs that need the mechanic ──────────────
   discover:
     name: Discover conflicting + approved PRs
     # Same-repo only — a sweep on a fork has no bot write token to admit/dispatch.
-    if: github.repository == 'nicsuzor/academicOps'
+    # Skip on `push`: that path re-dispatches (redispatch-on-push) so the mechanic
+    # runs under a supported event, not the inherited `push` (aops-c5c57bfd).
+    if: github.event_name != 'push' && github.repository == 'nicsuzor/academicOps'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.find.outputs.matrix }}
@@ -63,6 +98,52 @@ jobs:
       REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
+      # In-place mechanic reset (aops-c5c57bfd, Defect 3). A maintainer adds the
+      # `mechanic-retry` label to a PR whose head SHA carries a TERMINAL
+      # `mechanic-status` (§3.6 exhaustion) to re-run the mechanic without a new
+      # commit. Only a write collaborator can add a label, so the label IS the
+      # authorization. For a CONFLICTING PR we clear the terminal status (post
+      # `pending`) and remove the label BEFORE `find-conflicting-admitted-prs.sh`
+      # runs, so its existing terminal-status guard (success|failure) naturally
+      # re-includes the SHA and the mechanic re-runs under the standing approval.
+      # This is the label's genuine niche: a CONFLICTING PR has no
+      # `pull_request`/`_review` channel, so the sweep is its only reset path.
+      # A MERGEABLE PR is left labelled with a notice — the sweep does not dispatch
+      # non-conflicting PRs (find-conflicting filters to CONFLICTING), so clearing
+      # its status would be a silent no-op; the working reset there is a new commit
+      # (which its normal `pull_request` pipeline picks up). Runs on
+      # schedule/workflow_dispatch because those fire even while the PR is CONFLICTING.
+      - name: Clear mechanic-status for mechanic-retry-labelled PRs
+        env:
+          BASE_BRANCH: dev
+        run: |
+          set -euo pipefail
+          : "${GH_TOKEN:?AOPS_BOT_GH_TOKEN unset — fail closed}"
+          # Ensure the label exists so a maintainer can find + apply it (idempotent;
+          # a no-op once created). Without this the reset would be undiscoverable.
+          gh label create mechanic-retry --repo "$REPO" --color FBCA04 \
+            --description "Clear the per-SHA mechanic-status and re-run the mechanic (aops-c5c57bfd)" \
+            2>/dev/null || true
+          labelled=$(gh pr list --repo "$REPO" --base "$BASE_BRANCH" --state open \
+            --label mechanic-retry --json number,headRefOid,mergeable \
+            --jq '.[] | "\(.number) \(.headRefOid) \(.mergeable)"' || true)
+          if [ -z "$labelled" ]; then
+            echo "No mechanic-retry-labelled PRs."
+          else
+            while read -r num sha mergeable; do
+              [ -z "$num" ] && continue
+              if [ "$mergeable" = "CONFLICTING" ]; then
+                echo "Resetting mechanic guard for CONFLICTING PR #$num on $sha (mechanic-retry label)."
+                gh api "repos/$REPO/statuses/$sha" \
+                  -f state=pending \
+                  -f context="mechanic-status" \
+                  -f description="Reset by mechanic-retry label — re-dispatching mechanic" >/dev/null
+                gh pr edit "$num" --repo "$REPO" --remove-label mechanic-retry || true
+              else
+                echo "::notice::PR #$num is $mergeable (not CONFLICTING) — the sweep does not re-dispatch it; push a commit to re-run the mechanic. Leaving mechanic-retry label in place."
+              fi
+            done <<< "$labelled"
+          fi
       - name: Find candidates
         id: find
         run: bash scripts/ci/find-conflicting-admitted-prs.sh

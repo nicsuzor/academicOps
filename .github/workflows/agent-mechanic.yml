@@ -142,8 +142,16 @@ jobs:
           # Skipped on success but not on failure) was an inconsistency, and
           # under LATEST semantics excluding them would re-run the mechanic
           # forever after the first Skipped echo of a genuine success.
-          LATEST_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
-            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | .state // \"\"" 2>/dev/null || echo "")
+          # Fetch the LATEST mechanic-status object once so we can echo its real
+          # description on a skip — NEVER fabricate an "escalated / see prior
+          # review" message. Only `failure` (§3.6 exhaustion) is terminal-skip and
+          # it ALWAYS posts an escalation review; a harness crash writes a
+          # non-terminal `error` (retryable — see "Post terminal status"), so it is
+          # NOT matched here and the mechanic re-runs on the next pass (aops-c5c57bfd).
+          LATEST=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last // {}" 2>/dev/null || echo "{}")
+          LATEST_STATE=$(echo "$LATEST" | jq -r '.state // ""')
+          LATEST_DESC=$(echo "$LATEST" | jq -r '.description // ""')
           GENUINE_SUCCESS=0
           GENUINE_FAILURE=0
           if [ "$LATEST_STATE" = "success" ]; then
@@ -154,10 +162,14 @@ jobs:
 
           if [ "${GENUINE_FAILURE:-0}" -gt 0 ]; then
             echo "SHA $HEAD_SHA already has mechanic-status=failure (prior exhaustion) — re-posting failure"
+            # Echo the prior terminal reason verbatim rather than asserting a
+            # review exists — honest even if a future path writes failure without
+            # one. (§3.6 exhaustion's own description already reads "Halted: …".)
+            SKIP_DESC="Skipped: SHA already terminal — ${LATEST_DESC:-prior mechanic verdict}"
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state=failure \
               -f context="${AGENT_NAME}-status" \
-              -f description="Skipped: SHA already escalated — see prior review" \
+              -f description="${SKIP_DESC:0:140}" \
               -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
@@ -268,14 +280,30 @@ jobs:
 
           Reaching the ceiling without converging is evidence of a structural problem
           (a fix the mechanic keeps re-attempting, an approach the reviewers keep
-          rejecting, or a genuinely human-judgement issue). One of:
+          rejecting, or a genuinely human-judgement issue).
 
-          1. **Trim PR scope** so the unresolvable signal no longer applies.
-          2. **Push a human fix** for the specific signal, which independently resets
-             \`admit-status\` to pending and re-enters the gate.
-          3. **Re-admit deliberately** by re-approving the PR (a fresh review approval
-             re-sets \`admit-status\` via \`admit-on-review.yml\`) once the underlying
-             issue is understood.
+          This commit's per-SHA \`mechanic-status\` is now terminal (\`failure\`) — the
+          loop guard that stops the mechanic re-running the same losing pass. So the
+          mechanic will **not** re-run on THIS exact commit. To re-run it you must
+          either advance the SHA or clear the guard in place:
+
+          1. **Push a fix / trim scope (new commit).** A new SHA clears the per-SHA
+             \`mechanic-status\` and re-enters the pipeline. This is the reliable
+             escape hatch. Then **re-approve** to re-admit the new SHA (admission was
+             reset below). Pushing to the branch also independently resets
+             \`admit-status\` to pending.
+          2. **In-place reset for a CONFLICTING PR (no new commit): add the
+             \`mechanic-retry\` label.** The conflict-admission sweep
+             (\`conflict-admission-sweep.yml\`) clears the per-SHA \`mechanic-status\`
+             and re-dispatches the mechanic on the same SHA under your standing
+             approval — the one channel that works while the PR is CONFLICTING (no
+             \`pull_request\` event ever fires there). If the PR is MERGEABLE, use
+             option 1 (a new commit) — the sweep only re-dispatches conflicting PRs.
+
+          Note: **re-approving alone does NOT re-run the mechanic on this commit** —
+          the SHA is already judged, so the SHA-skip guard re-posts the terminal
+          status and the mechanic exits. You need a new commit (1) or the reset
+          label (2).
 
           \`admit-status\` has been reset to \`pending\`; auto-merge cannot fire on
           the stale "good idea" decision. The PR will not merge until you re-judge
@@ -416,7 +444,15 @@ jobs:
       #
       # mechanic-status is informational (§4.2): success on a clean pass
       # (agent completed without crash, regardless of whether it committed),
-      # failure on agent crash, failure on ceiling exhaustion (handled above).
+      # RETRYABLE `error` on a harness crash/timeout (NOT a sticky `failure` —
+      # aops-c5c57bfd), and `failure` ONLY on §3.6 ceiling exhaustion (handled
+      # above, and only that path posts an escalation review). A crash is not a
+      # verdict: writing a sticky `failure` here made later passes re-post
+      # "SHA already escalated — see prior review" for a review that never
+      # existed, and made find-conflicting-admitted-prs.sh's terminal-status
+      # guard trap the SHA forever. `error` is excluded from BOTH the SHA-skip
+      # (success|failure only) and that guard, so the next sweep / synchronize
+      # pass retries the crashed SHA automatically.
       #
       # If the agent committed, that commit triggers a new synchronize event,
       # which restarts pr-pipeline.yml on the new SHA: enforcer + qa re-verify
@@ -445,10 +481,18 @@ jobs:
                 -f description="$DESC" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             else
+              # Harness crash/timeout — NOT exhaustion (that path exits above via
+              # steps.ceiling and never reaches here). Post a NON-terminal `error`
+              # so the SHA stays retryable: no escalation review was posted, so it
+              # must not masquerade as a terminal verdict (aops-c5c57bfd, Defect 2).
+              # The deterministic "Unsupported event type: push" abort that caused
+              # PR 2128 is removed at the source (Defect 1 — the sweep no longer
+              # dispatches under `push`), so what reaches here now is a genuinely
+              # transient crash, correctly retried rather than trapped.
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
+                -f state=error \
                 -f context="${AGENT_NAME}-status" \
-                -f description="Mechanic agent run failed or timed out" \
+                -f description="Mechanic harness crashed/timed out — retryable, no escalation posted" \
                 -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
             fi
           fi
