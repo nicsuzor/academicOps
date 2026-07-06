@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.67](https://github.com/nicsuzor/academicOps/compare/v0.3.66...v0.3.67) (2026-07-06)
+
+
+### Bug Fixes
+
+* **build:** resolve basedpyright redeclarations ([eee5012](https://github.com/nicsuzor/academicOps/commit/eee50120563d7f27cf282d266d9d676aac5c4ebb))
+* **transcript:** stop re-parsing empty sessions every cron tick ([0e57806](https://github.com/nicsuzor/academicOps/commit/0e57806e0995487e325d2b46e99668f34efd6edf))
+
 ## [0.3.66](https://github.com/nicsuzor/academicOps/compare/v0.3.65...v0.3.66) (2026-07-05)
 
 
