@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -985,9 +986,20 @@ def _get_session_id(session_path: Path) -> str:
     session_id = session_path.stem
     if len(session_id) > 8:
         if session_id.startswith("session-"):
-            # Gemini format: session-2026-01-08T08-18-a5234d3e -> a5234d3e
+            # Gemini format: session-2026-01-08T08-18-a5234d3e -> a5234d3e.
+            # Some Gemini components (e.g. the a2a-serv agent-to-agent
+            # server) emit filenames with a literal service-name suffix
+            # instead of a random hex id — session-2026-07-03T02-02-a2a-serv
+            # — which would otherwise collapse every such file onto the same
+            # fake id ("serv"). Only trust the trailing token as a hash if it
+            # actually looks like one; otherwise derive a stable id from the
+            # full stem so distinct files get distinct ids.
             parts = session_id.split("-")
-            session_id = parts[-1]
+            candidate = parts[-1]
+            if re.fullmatch(r"[0-9a-f]{8}", candidate):
+                session_id = candidate
+            else:
+                session_id = hashlib.sha256(session_id.encode()).hexdigest()[:8]
         else:
             # Claude format: UUID -> first 8 chars
             session_id = session_id[:8]
@@ -1219,6 +1231,38 @@ def _transcript_is_current(session_path: Path, transcript_path: Path) -> bool:
         True if transcript mtime >= session mtime
     """
     return transcript_path.stat().st_mtime >= session_path.stat().st_mtime
+
+
+_SKIP_CACHE_FILENAME = "transcript-skip-cache.json"
+
+
+def _skip_cache_path() -> Path:
+    """Location of the batch-mode empty-session skip cache.
+
+    Sessions with < MIN_MEANINGFUL_ENTRIES never get a transcript written, so
+    the existing_transcript mtime check can't short-circuit them — every
+    batch run re-parsed the same empty/noise sessions (e.g. Gemini
+    ``a2a-serv`` logs, of which there can be thousands) from scratch on every
+    cron tick. This cache remembers "already decided empty as of mtime X" per
+    session_id so unchanged files skip the full parse.
+    """
+    return get_sessions_repo() / "state" / _SKIP_CACHE_FILENAME
+
+
+def _load_skip_cache() -> dict:
+    try:
+        return json.loads(_skip_cache_path().read_text())
+    except Exception:
+        return {}  # allow-fallback: pure perf optimization — missing/corrupt cache just means a slower re-parse, never a wrong result
+
+
+def _save_skip_cache(cache: dict) -> None:
+    path = _skip_cache_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cache))
+    except Exception:
+        pass  # allow-fallback: best-effort persistence — a failed save just costs a re-parse next run, not correctness
 
 
 def _infer_project(
@@ -1596,11 +1640,30 @@ Examples:
         skipped = 0
         errors = 0
 
+        skip_cache = _load_skip_cache()
+        skip_cache_dirty = False
+        skip_cache_pending = 0
+        seen_session_ids = set()
+
         for s in sessions:
             session_path = Path(str(s))
             try:
                 session_path = s.path if hasattr(s, "path") else session_path
                 session_id = _get_session_id(session_path)
+                seen_session_ids.add(session_id)
+                source_mtime = session_path.stat().st_mtime
+
+                # Cached-empty check: skip the full parse for sessions already
+                # decided non-meaningful as of this exact mtime — see
+                # _skip_cache_path for why this can't reuse existing_transcript.
+                cached_empty_mtime = skip_cache.get(session_id)
+                if (
+                    not args.force
+                    and cached_empty_mtime is not None
+                    and cached_empty_mtime >= source_mtime
+                ):
+                    skipped += 1
+                    continue
 
                 # Early mtime check: skip if transcript already exists and is
                 # current. --force bypasses this so a re-run can backfill
@@ -1668,6 +1731,18 @@ Examples:
                     print(
                         f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
                     )
+                    skip_cache[session_id] = source_mtime
+                    skip_cache_dirty = True
+                    skip_cache_pending += 1
+                    if skip_cache_pending >= 200:
+                        # Save progress periodically during a large cold-fill
+                        # (e.g. first run after clearing the cache, or a big
+                        # backlog burst) so an interrupted run doesn't lose
+                        # everything parsed so far. Final save below prunes
+                        # against seen_session_ids; these interim saves don't
+                        # need to, since correctness isn't affected either way.
+                        _save_skip_cache(skip_cache)
+                        skip_cache_pending = 0
                     skipped += 1
                     continue
 
@@ -1858,6 +1933,13 @@ Examples:
             except Exception as e:
                 errors += 1
                 print(f"❌ Error processing {session_path}: {e}", file=sys.stderr)
+
+        if skip_cache_dirty:
+            # Prune entries for sessions that fell out of this run's window
+            # (e.g. aged past --recent's cutoff) so the cache stays bounded
+            # instead of growing forever.
+            skip_cache = {k: v for k, v in skip_cache.items() if k in seen_session_ids}
+            _save_skip_cache(skip_cache)
 
         print(f"Processed: {processed}", file=sys.stderr)
         print(f"Skipped: {skipped}", file=sys.stderr)
