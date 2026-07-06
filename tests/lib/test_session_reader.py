@@ -842,6 +842,59 @@ class TestBuildAuditSessionContext:
         assert "Now add tests for it" in result
         assert "Run the tests" in result
 
+    def test_ask_user_question_renders_answer(self, tmp_path):
+        """AskUserQuestion tool calls must render the user's answer, not just the question.
+
+        Regression for the rendering omission that caused contradictory rbg
+        audit verdicts about the same authorization decision within a single
+        session (the answer is captured in the raw JSONL tool_result but was
+        never read by the AskUserQuestion branch — see nicsuzor/academicOps
+        issue filed from session aab022ac retro).
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "ask-user-question.jsonl"
+        entries_data = [
+            _create_user_entry("what can we do about the disk?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {
+                    "questions": [
+                        {
+                            "question": "Disk is critically low. Want me to reclaim space now?",
+                        }
+                    ]
+                },
+                offset=5,
+            ),
+            _create_tool_result_entry(
+                "tool-5",
+                "Your questions have been answered: "
+                '"Disk is critically low. Want me to reclaim space now?"='
+                '"i fixed the immediate problem. you fix this bug in transcript.py '
+                'so it does not loop over old unchanged files". '
+                "You can now continue with these answers in mind.",
+                offset=6,
+            ),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        assert "AskUserQuestion" in result
+        assert "Disk is critically low" in result
+        assert "fix this bug in transcript.py" in result, (
+            "AskUserQuestion rendering must include the user's answer text, "
+            "not just the question — otherwise auditors cannot verify "
+            "authorization decisions given via AskUserQuestion."
+        )
+
     def test_pre_parsed_entries_empty_list(self, tmp_path):
         """Pre-parsed empty entries list returns empty session marker."""
         from lib.session_reader import build_audit_session_context
