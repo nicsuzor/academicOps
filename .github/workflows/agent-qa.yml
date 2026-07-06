@@ -1,7 +1,7 @@
 # Agent: QA (Marsha)
 # Personality: The QA Reviewer — runtime verification, "it's broken until proven otherwise".
 # Status check: qa-status (posted to PR head SHA via statuses API)
-# Prompt: aops-core/agents/marsha.md + .github/agents/qa.agent.md
+# Prompt: aops-pkb/agents/marsha.md + .github/agents/qa.agent.md
 #
 # This is a reusable workflow. academicOps installs its own trigger in:
 #   .github/workflows/trigger-qa.yml
@@ -170,15 +170,15 @@ jobs:
           # --no-cone: treat the arguments as file path patterns, not cone-mode
           # directories (cone mode never materialises the files; see aops-2be8f5c7).
           cd .aops && git sparse-checkout set --no-cone \
-            /aops-core/agents/marsha.md \
+            /aops-pkb/agents/marsha.md \
             /.github/agents/shared-error-handling.md \
             /.github/agents/qa.agent.md && cd ..
-          if [ ! -f .aops/aops-core/agents/marsha.md ] || [ ! -f .aops/.github/agents/qa.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
+          if [ ! -f .aops/aops-pkb/agents/marsha.md ] || [ ! -f .aops/.github/agents/qa.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::QA prompt files were not materialised by sparse-checkout" >&2
-            ls -la .aops/aops-core/agents/ .aops/.github/agents/ 2>&1 || true
+            ls -la .aops/aops-pkb/agents/ .aops/.github/agents/ 2>&1 || true
             exit 1
           fi
-          PROMPT=$(cat .aops/aops-core/agents/marsha.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/qa.agent.md)
+          PROMPT=$(cat .aops/aops-pkb/agents/marsha.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/qa.agent.md)
           # Append an explicit user-turn directive (aops-2a3b4c71). Without it
           # the prompt is just concatenated agent-def markdown and the model
           # intermittently treats it as a pasted artifact ("what would you like
