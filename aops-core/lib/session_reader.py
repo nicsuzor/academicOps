@@ -580,6 +580,18 @@ def build_audit_session_context(
                         tool_line = f"  - **AskUserQuestion**: {q_text}"
                     else:
                         tool_line = "  - **AskUserQuestion**"
+                    # Render the user's free-text answer alongside the question.
+                    # Without this, an auditor sees only the prompt and can never
+                    # verify whether a subsequent action was actually authorized —
+                    # the question/answer pair is the ONLY record of many
+                    # authorization decisions in a session (bug: answer omitted
+                    # from every audit snapshot regardless of when it was read).
+                    result = item.get("result", "")
+                    if result:
+                        result_str = str(result)
+                        if len(result_str) > _TOOL_RESULT_LIMIT:
+                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Answer: {result_str}"
 
                 else:
                     # Generic tool — show name and key args
@@ -1192,7 +1204,9 @@ def find_sessions(
                 if metadata_json.exists():
                     try:
                         meta = json.loads(metadata_json.read_text())
-                        title = meta.get("title", "")
+                        title = meta.get(
+                            "title", ""
+                        )  # allow-fallback: optional metadata field, empty title keeps default "cowork" name
                         if title:
                             words = title.lower().split()[:3]
                             project_name = "cowork-" + "-".join(w for w in words if w.isalnum())
