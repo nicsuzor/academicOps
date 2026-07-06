@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.68](https://github.com/nicsuzor/academicOps/compare/v0.3.67...v0.3.68) (2026-07-06)
+
+
+### Features
+
+* **daily:** add stale-claim + ready-queue reconciliation sweep ([34f2854](https://github.com/nicsuzor/academicOps/commit/34f2854359c6e2a6fad2d8f04f0ab747c36cb2f6))
+
 ## [0.3.67](https://github.com/nicsuzor/academicOps/compare/v0.3.66...v0.3.67) (2026-07-06)
 
 
