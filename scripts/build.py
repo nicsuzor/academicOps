@@ -635,16 +635,16 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # Remap tool names for Gemini, preserving order and dropping duplicates
         # (multiple Claude tools can map to a single Gemini tool, e.g. Skill/Task/Agent
         # all collapse to activate_skill).
-        filtered_tools: list[str] = []
-        seen: set[str] = set()
+        gemini_filtered_tools: list[str] = []
+        gemini_seen: set[str] = set()
         for t in original_tools:
             tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
             mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
-            if mapped is not None and mapped not in seen:
-                seen.add(mapped)
-                filtered_tools.append(mapped)
+            if mapped is not None and mapped not in gemini_seen:
+                gemini_seen.add(mapped)
+                gemini_filtered_tools.append(mapped)
 
-        frontmatter["tools"] = filtered_tools
+        frontmatter["tools"] = gemini_filtered_tools
         # Remove 'color' field - not supported by Gemini CLI
         frontmatter.pop("color", None)
         # Validate and apply Gemini schema defaults
