@@ -573,6 +573,29 @@ def build_audit_session_context(
                         tool_line += f", path={search_path}"
                     tool_line += ")"
 
+                elif tool_name == "ExitPlanMode":
+                    plan = tool_input.get(
+                        "plan", ""
+                    )  # allow-fallback: absent plan text just skips the "Plan:" line below
+                    if len(plan) > _TOOL_ARG_LIMIT:
+                        plan = plan[:_TOOL_ARG_LIMIT] + "..."
+                    tool_line = "  - **ExitPlanMode**"
+                    if plan:
+                        tool_line += f"\n    Plan: {plan}"
+                    # Render the approval/rejection response — this is the ONLY
+                    # record that a plan was actually authorized before later
+                    # tool calls (e.g. TaskCreate) execute it. Omitting it made
+                    # custodiet/rbg misread authorized post-plan actions as
+                    # unapproved scope expansion (#186).
+                    result = item.get(
+                        "result", ""
+                    )  # allow-fallback: absent result just skips the "Response:" line below
+                    if result:
+                        result_str = str(result)
+                        if len(result_str) > _TOOL_RESULT_LIMIT:
+                            result_str = result_str[:_TOOL_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Response: {result_str}"
+
                 elif tool_name == "AskUserQuestion":
                     questions = tool_input.get("questions", [])
                     if questions:
