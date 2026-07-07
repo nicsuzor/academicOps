@@ -2,8 +2,9 @@
 
 Partial-work doctrine (PKB: spec-partial-work, stage-5 chunk 1): `finish`
 previously hard-coded `merge_ready` as its only terminal. It must now also
-support an honest partial stop via `--partial`: file the PR as a DRAFT and
-release the task as `partial` rather than `merge_ready`.
+support an honest partial stop via `--partial`: the agent files the PR as a
+DRAFT itself (in-session, before calling `finish`), and `finish` releases the
+task as `partial` rather than `merge_ready`.
 
 The full `finish` command has heavy git/gh side effects that aren't
 reproducible here (see test_finish_surfaces_transcript.py for the same
@@ -86,6 +87,8 @@ def test_partial_release_never_launders_into_merge_ready():
     )
 
 
-def test_partial_files_draft_pr():
-    """AC#2: the partial path appends `--draft` to `gh pr create`."""
-    assert 'create_args.append("--draft")' in FINALIZE_SRC
+def test_partial_does_not_file_pr_itself():
+    """`finish` no longer files or edits the PR — the agent files the draft PR
+    itself in-session (`--draft`) before calling `finish --partial`."""
+    assert 'gh", "pr", "create"' not in FINALIZE_SRC
+    assert 'gh", "pr", "edit"' not in FINALIZE_SRC

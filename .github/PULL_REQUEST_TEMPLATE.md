@@ -3,9 +3,10 @@
      approve in ~60s. Reference (don't restate) pipeline semantics owned by
      specs/workflows/pr-pipeline.md. Drop a line only if it is genuinely N/A.
 
-     Note: polecat-authored PRs follow this same structure by instruction (the
-     finish prompt in polecat/prompt_template.py points here) — the agent
-     writes it itself from within the session; nothing scaffolds it for them. -->
+     Note: polecat workers are instructed to use this same structure when they
+     file their own PR from within their session (see the finish instructions
+     in polecat/prompt_template.py), so it applies to bot PRs and hand-opened
+     ones alike — polecat itself never creates or edits a PR. -->
 
 ## Summary
 

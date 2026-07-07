@@ -1,4 +1,9 @@
-"""Tests for the `promote` path in polecat/finalize.py and polecat/cli.py."""
+"""Tests for the `promote` path in polecat/finalize.py and polecat/cli.py.
+
+`finish` never files or edits a PR itself (the agent does that from within
+its own session, per `polecat/prompt_template.py`); `--promote` only marks an
+*already-filed* PR ready for review via `gh pr ready`.
+"""
 
 from __future__ import annotations
 
@@ -82,7 +87,6 @@ def mock_manager_and_env():
         with (
             patch("polecat.cli._check_gh_installed", return_value=True),
             patch("polecat.cli._read_latest_real_transcript_path", return_value=None),
-            patch("polecat.cli._generate_pr_body", return_value="Dummy PR Body"),
             patch("polecat.pkb_bridge.release_task", return_value=True),
             patch("os.path.exists", return_value=True),
         ):
@@ -157,45 +161,17 @@ def run_finish_test(manager, task, is_shared, promote, existing_pr, monkeypatch)
     return result, captured_runs
 
 
-def test_promote_shared_no_promote_create(mock_manager_and_env, monkeypatch):
-    """(a) shared + no-promote + create -> --draft PRESENT in the gh pr create argv"""
-    manager, task = mock_manager_and_env
-    result, captured_runs = run_finish_test(
-        manager, task, is_shared=True, promote=False, existing_pr=False, monkeypatch=monkeypatch
-    )
-
-    assert result.exit_code == 0
-    create_call = [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
-    assert len(create_call) == 1
-    assert "--draft" in create_call[0]
-
-
-def test_promote_shared_promote_create(mock_manager_and_env, monkeypatch):
-    """(b) shared + promote + create -> --draft ABSENT"""
-    manager, task = mock_manager_and_env
-    result, captured_runs = run_finish_test(
-        manager, task, is_shared=True, promote=True, existing_pr=False, monkeypatch=monkeypatch
-    )
-
-    assert result.exit_code == 0
-    create_call = [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
-    assert len(create_call) == 1
-    assert "--draft" not in create_call[0]
-
-
 def test_promote_existing_pr_promote(mock_manager_and_env, monkeypatch):
-    """(c) existing-PR + promote -> a gh pr ready call is made"""
+    """--promote + an existing open PR -> a gh pr ready call is made; finish
+    never creates or edits the PR body itself."""
     manager, task = mock_manager_and_env
     result, captured_runs = run_finish_test(
         manager, task, is_shared=True, promote=True, existing_pr=True, monkeypatch=monkeypatch
     )
 
     assert result.exit_code == 0
-    create_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
-    assert len(create_calls) == 0
-
-    edit_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "edit"]]
-    assert len(edit_calls) == 1
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "edit"]]
 
     ready_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "ready"]]
     assert len(ready_calls) == 1
@@ -203,31 +179,26 @@ def test_promote_existing_pr_promote(mock_manager_and_env, monkeypatch):
 
 
 def test_promote_existing_pr_no_promote(mock_manager_and_env, monkeypatch):
-    """(d) existing-PR + no-promote -> NO gh pr ready call"""
+    """No --promote -> no gh pr ready call, even with an existing open PR."""
     manager, task = mock_manager_and_env
     result, captured_runs = run_finish_test(
         manager, task, is_shared=True, promote=False, existing_pr=True, monkeypatch=monkeypatch
     )
 
     assert result.exit_code == 0
-    create_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
-    assert len(create_calls) == 0
-
-    edit_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "edit"]]
-    assert len(edit_calls) == 1
-
-    ready_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "ready"]]
-    assert len(ready_calls) == 0
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "edit"]]
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "ready"]]
 
 
-def test_promote_non_shared_create(mock_manager_and_env, monkeypatch):
-    """(e) non-shared -> --draft ABSENT (backward-compat)"""
+def test_promote_no_existing_pr(mock_manager_and_env, monkeypatch):
+    """--promote with no PR filed yet -> nothing to promote, no ready call,
+    and finish does not fall back to creating one."""
     manager, task = mock_manager_and_env
     result, captured_runs = run_finish_test(
-        manager, task, is_shared=False, promote=False, existing_pr=False, monkeypatch=monkeypatch
+        manager, task, is_shared=True, promote=True, existing_pr=False, monkeypatch=monkeypatch
     )
 
     assert result.exit_code == 0
-    create_calls = [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
-    assert len(create_calls) == 1
-    assert "--draft" not in create_calls[0]
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "create"]]
+    assert not [args for args in captured_runs if args[:3] == ["gh", "pr", "ready"]]

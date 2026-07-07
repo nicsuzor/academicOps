@@ -207,15 +207,16 @@ finish the whole chunk this session. File a **draft** PR (add `--draft` to \
 Partial is authorised and expected when the chunk is too big for one focused \
 session — do not pad it to look complete. Honest-partial beats false-whole.
 
-   **PR body — reviewer-decision structure.** Write the PR `--body` (and, where \
-it belongs, `task.body`) as the reviewer-decision sections defined in \
+   **PR body — reviewer-decision structure.** You are filing this PR yourself — \
+polecat does not create or scaffold it for you. Write the PR `--body` (and, \
+where it belongs, `task.body`) as the reviewer-decision sections defined in \
 `.github/PULL_REQUEST_TEMPLATE.md` (Summary, Posture, Why now / alignment, \
 Change, Risk & blast radius, Sequencing, Verification) so a maintainer can \
 decide in ~60s. Two things carry the weight: be honest in **Posture** (proper \
 fix vs workaround vs stopgap) and say explicitly in **Verification** what is \
-NOT verified. There is no scaffold behind you — polecat does not inject or \
-backfill these sections, you own the content end to end. This is intent, not \
-a form to pad: keep it scannable, drop a line only if it is genuinely N/A.
+NOT verified. Fill every section with real content — an empty skeleton helps \
+no one. This is intent, not a form to pad: keep it scannable, drop a line only \
+if it is genuinely N/A.
 
    ```bash
    git push -u origin HEAD

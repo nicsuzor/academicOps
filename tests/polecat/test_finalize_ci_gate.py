@@ -121,10 +121,6 @@ def _make_mock_run(existing_pr_number, ci_rollup):
             stdout = json.dumps({"statusCheckRollup": ci_rollup})
         elif args[:2] == ["git", "diff"] and "--shortstat" in args:
             stdout = "1 file changed, 5 insertions(+)"
-        elif args[:3] == ["gh", "pr", "edit"]:
-            stdout = ""
-        elif args[:3] == ["gh", "pr", "create"]:
-            stdout = ""
 
         if not is_text:
             if isinstance(stdout, str):
@@ -142,11 +138,10 @@ def _base_manager_ctx():
     mock_mgr_cls = patch("polecat.finalize.PolecatManager")
     mock_check_gh = patch("polecat.cli._check_gh_installed", return_value=True)
     mock_transcript = patch("polecat.cli._read_latest_real_transcript_path", return_value=None)
-    mock_pr_body = patch("polecat.cli._generate_pr_body", return_value="PR body")
     mock_release = patch("polecat.pkb_bridge.release_task", return_value=True)
     mock_update = patch("polecat.pkb_bridge.update_task", return_value=True)
 
-    return mock_mgr_cls, mock_check_gh, mock_transcript, mock_pr_body, mock_release, mock_update
+    return mock_mgr_cls, mock_check_gh, mock_transcript, mock_release, mock_update
 
 
 def _build_task(task_id="aops-test"):
@@ -172,7 +167,6 @@ def test_finish_sets_merge_ready_when_ci_passes(monkeypatch):
         mock_mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release,
         mock_update,
     ) = _base_manager_ctx()
@@ -181,7 +175,6 @@ def test_finish_sets_merge_ready_when_ci_passes(monkeypatch):
         mock_mgr_cls as mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release as release_mock,
         mock_update as _update_mock,
     ):
@@ -220,7 +213,6 @@ def test_finish_sets_in_progress_when_ci_fails(monkeypatch):
         mock_mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release,
         mock_update,
     ) = _base_manager_ctx()
@@ -229,7 +221,6 @@ def test_finish_sets_in_progress_when_ci_fails(monkeypatch):
         mock_mgr_cls as mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release as release_mock,
         mock_update as update_mock,
     ):
@@ -271,7 +262,6 @@ def test_finish_sets_in_progress_when_ci_errors(monkeypatch):
         mock_mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release,
         mock_update,
     ) = _base_manager_ctx()
@@ -280,7 +270,6 @@ def test_finish_sets_in_progress_when_ci_errors(monkeypatch):
         mock_mgr_cls as mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release as release_mock,
         mock_update as update_mock,
     ):
@@ -317,7 +306,6 @@ def test_finish_partial_ignores_ci_gate(monkeypatch):
         mock_mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release,
         mock_update,
     ) = _base_manager_ctx()
@@ -326,7 +314,6 @@ def test_finish_partial_ignores_ci_gate(monkeypatch):
         mock_mgr_cls as mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release as release_mock,
         mock_update as _update_mock,
     ):
@@ -400,7 +387,6 @@ def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
         mock_mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release,
         mock_update,
     ) = _base_manager_ctx()
@@ -409,7 +395,6 @@ def test_finish_failopen_when_ci_check_query_fails(monkeypatch):
         mock_mgr_cls as mgr_cls,
         mock_check_gh,
         mock_transcript,
-        mock_pr_body,
         mock_release as release_mock,
         mock_update as _update_mock,
     ):

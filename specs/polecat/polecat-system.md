@@ -19,7 +19,7 @@ queue; polecat is the workspace and execution surface.
 
 - [[polecat/cli.py]] — CLI (`polecat run`, `polecat start`, `polecat finish`, …)
 - [[polecat/manager.py]] — workspace lifecycle (mirrors, clones, claiming, nuking)
-- [[polecat/finalize.py]] — `finish`: push, PR creation, status transition
+- [[polecat/finalize.py]] — `finish`: push, PR detection (for CI-gating), status transition
 - [[polecat/pkb_bridge.py]] — task reads/writes against the PKB MCP server
 - [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
 - [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
@@ -37,10 +37,11 @@ queue; polecat is the workspace and execution surface.
    (`polecat/<task-id>` by default) prevents collisions across parallel workers.
 3. **Atomic claiming.** Claiming a `queued`/`ready` task sets it `in_progress` with
    an assignee and verifies the claim stuck — two claimants cannot both win.
-4. **Verified merge.** `finish` pushes the branch and files a GitHub PR; merging
-   happens through PR review and CI, never by polecat writing to main. Failing CI
-   checks or finish failures kick the task back (`in_progress` / `review`) instead
-   of merging.
+4. **Verified merge.** The agent files its own GitHub PR from within its session
+   (`gh pr create`, per `polecat/prompt_template.py`); `finish` pushes the branch
+   and detects that PR to gate on its CI status. Merging happens through PR review
+   and CI, never by polecat writing to main. Failing CI checks or finish failures
+   kick the task back (`in_progress` / `review`) instead of merging.
 5. **Observability.** Every run updates the task record (status, assignee, PR URL)
    and appends lifecycle events to `$POLECAT_HOME/transcripts/<task-id>.jsonl`, so a
    supervisor can see where any run — including a crashed one — got to.
@@ -81,8 +82,9 @@ queued → in_progress → merge_ready → done   (PR merged)
   instructions.
 - `polecat start` / `polecat checkout <id>` / `polecat resume <id>` — claim or
   re-enter a task workspace without running an agent.
-- `polecat finish` — push, file/update the PR, set `merge_ready` (`--partial` for a
-  draft-PR honest stop).
+- `polecat finish` — push, set `merge_ready` (`--partial` for an honest partial
+  stop). The agent files/updates the PR itself in-session; `finish` only detects
+  it (for the CI-check gate) and, with `--promote`, marks an existing draft ready.
 - `polecat nuke <target>` — destroy a workspace and its branch.
 - `polecat crew` — persistent named interactive workspace (branch `crew/<name>`).
 - `polecat swarm` / `polecat watch` / `polecat summary` — run, monitor, and

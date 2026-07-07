@@ -16,7 +16,7 @@ Run `./scripts/format.sh` manually before committing if pre-commit hooks aren't 
 
 ## Pull requests
 
-Open PRs against `dev`. Structure the PR body as a reviewer-decision aid so the maintainer can decide to approve in ~60s — the required sections (Summary, Posture, Why now / alignment, Change, Risk & blast radius, Sequencing, Verification) live in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), which GitHub pre-fills on hand-opened PRs. Polecat-authored PRs follow the same structure by instruction — the finish prompt points the agent at this template and the agent writes it itself from within the session; polecat does not scaffold or backfill it. This is contributor practice, not pipeline semantics — for how a PR is driven to merge, see [`specs/workflows/pr-pipeline.md`](specs/workflows/pr-pipeline.md).
+Open PRs against `dev`. Structure the PR body as a reviewer-decision aid so the maintainer can decide to approve in ~60s — the required sections (Summary, Posture, Why now / alignment, Change, Risk & blast radius, Sequencing, Verification) live in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), which GitHub pre-fills on hand-opened PRs. Polecat workers file their own PR from within their session and are instructed to use the same structure (`polecat/prompt_template.py`), so bot and human PRs read the same way — polecat itself never creates or edits a PR. This is contributor practice, not pipeline semantics — for how a PR is driven to merge, see [`specs/workflows/pr-pipeline.md`](specs/workflows/pr-pipeline.md).
 
 ## Testing and release
 

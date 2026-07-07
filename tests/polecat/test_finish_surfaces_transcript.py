@@ -4,16 +4,11 @@ Covers:
   (a) `_read_latest_real_transcript_path` returns the most recent recorded
       path from the polecat lifecycle stub.
   (b) Helper returns ``None`` when the stub is missing or the field is null.
-  (c) `_generate_pr_body` includes the ``<details>`` block when a path is
-      provided, and re-emit is idempotent (no duplicates).
-  (d) Task-body section format is what we promise.
+  (c) Task-body section format is what we promise.
 
 We unit-test the building blocks rather than driving the full ``finish``
 Click command — the latter has heavy git/gh side effects that aren't
-reproducible in this environment, but the body-section appender uses the
-exact same `_format_transcript_task_body_section` helper, so testing the
-helper plus the idempotency guard in `_generate_pr_body` covers the
-acceptance criteria precisely.
+reproducible in this environment.
 """
 
 from __future__ import annotations
@@ -21,7 +16,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -66,11 +60,8 @@ _original_cli = sys.modules.get("cli")
 try:
     sys.modules.pop("cli", None)
     from cli import (
-        TRANSCRIPT_PR_DETAILS_SUMMARY,
         TRANSCRIPT_TASK_BODY_HEADER,
-        _format_transcript_pr_details_block,
         _format_transcript_task_body_section,
-        _generate_pr_body,
         _read_latest_real_transcript_path,
         save_worker_transcript,
     )
@@ -109,13 +100,6 @@ def task_layout(tmp_path: Path) -> dict[str, Path]:
         "home_dir": home_dir,
         "real_transcript": real_transcript,
     }
-
-
-def _make_task(
-    *, body: str, task_id: str = "task-91c5058f", title: str = "Surface transcript path"
-):
-    """Minimal duck-typed task object matching what _generate_pr_body needs."""
-    return SimpleNamespace(id=task_id, title=title, body=body)
 
 
 # ---------------------------------------------------------------------------
@@ -216,63 +200,3 @@ class TestTaskBodyHelper:
         assert TRANSCRIPT_TASK_BODY_HEADER in first
         # Second run would skip because the header is present.
         assert TRANSCRIPT_TASK_BODY_HEADER in first  # the gate is "in body"
-
-
-# ---------------------------------------------------------------------------
-# _generate_pr_body
-# ---------------------------------------------------------------------------
-
-
-class TestGeneratePrBody:
-    def test_no_transcript_no_block(self) -> None:
-        task = _make_task(body="Description.\n\n## Acceptance Criteria\n- [ ] thing\n")
-        out = _generate_pr_body(task, transcript_path=None)
-        assert TRANSCRIPT_PR_DETAILS_SUMMARY not in out
-
-    def test_includes_details_block_when_path_given(self) -> None:
-        task = _make_task(body="Description.\n")
-        out = _generate_pr_body(task, transcript_path=Path("/sessions/x.jsonl"))
-        assert "<details>" in out
-        assert TRANSCRIPT_PR_DETAILS_SUMMARY in out
-        assert "/sessions/x.jsonl" in out
-        assert "</details>" in out
-
-    def test_re_emit_does_not_duplicate(self) -> None:
-        """Acceptance criterion (e): regenerating with the same body that
-        already contains a transcript block must not produce two blocks."""
-        path = Path("/sessions/abc.jsonl")
-        task = _make_task(body="Description.\n")
-        first = _generate_pr_body(task, transcript_path=path)
-        # Now feed the body that contains the previously-emitted block back in
-        # — simulates the case where the task body already has it from a
-        # prior finish run, and we regenerate the PR body from that task.
-        task_with_block = _make_task(body=first)
-        second = _generate_pr_body(task_with_block, transcript_path=path)
-        assert second.count("<details>") == 1
-        assert second.count(TRANSCRIPT_PR_DETAILS_SUMMARY) == 1
-
-    def test_re_emit_strips_old_task_body_section(self) -> None:
-        """The PR body generator strips a previously-appended task-body
-        section (different format from the PR <details> block) before
-        re-emitting, so we never end up with both side-by-side."""
-        path = Path("/sessions/abc.jsonl")
-        body_with_section = (
-            f"Description.\n\n{TRANSCRIPT_TASK_BODY_HEADER}\n- Transcript: `/sessions/abc.jsonl`\n"
-        )
-        task = _make_task(body=body_with_section)
-        out = _generate_pr_body(task, transcript_path=path)
-        assert TRANSCRIPT_TASK_BODY_HEADER not in out
-        assert out.count("<details>") == 1
-
-
-# ---------------------------------------------------------------------------
-# PR details block helper format
-# ---------------------------------------------------------------------------
-
-
-class TestPRDetailsBlock:
-    def test_block_well_formed(self) -> None:
-        block = _format_transcript_pr_details_block(Path("/p.jsonl"))
-        assert block.lstrip().startswith("<details>")
-        assert block.rstrip().endswith("</details>")
-        assert "/p.jsonl" in block
