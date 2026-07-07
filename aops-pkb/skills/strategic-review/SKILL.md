@@ -83,9 +83,13 @@ scope) · **FIX** (clear correct resolution exists) · **TRIVIAL** (cosmetic) ·
 (non-blocking follow-up). Overall verdict: **APPROVE / REVISE / REJECT**.
 
 ```
-Agent(subagent_type="aops-pkb:james",
+Agent(subagent_type="aops-pkb:james", model="sonnet",
       prompt="Reconcile these three reviews into one verdict. Do NOT spawn subagents — synthesise only. [artifact + rbg/pauli/marsha outputs]")
 ```
+
+Pass `model` explicitly on this call, and on the rbg/pauli/marsha dispatches in step 2 above — never
+omit it and rely on the specialist's own frontmatter, since `model: inherit` resolves against the
+root session's model rather than this dispatch site once a call is nested.
 
 ### 4. Act on the verdict — only if asked
 

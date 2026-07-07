@@ -52,8 +52,11 @@ uv run --project <host-path> <host-path>/polecat/cli.py run \
   -t <task-id> -p <project> --branch polecat/epic-<epic-id> --model <alias>
 ```
 
-**Agent-tool surface**: `Agent(subagent_type=…, run_in_background=True)` replaces the Bash
-invocation; the §7 context-economy and capped-handback contract still apply.
+**Agent-tool surface**: `Agent(subagent_type=…, model=…, run_in_background=True)` replaces the Bash
+invocation; the §7 context-economy and capped-handback contract still apply. Pass `model`
+explicitly on this call the same way `--model <alias>` is mandatory on the polecat surface above —
+an omitted `model` lets a subagent's own `model: inherit` resolve against the root session instead
+of the caller.
 
 ## Known Limitations
 

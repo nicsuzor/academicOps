@@ -121,7 +121,9 @@ not a finding._
 ## Conversational Orchestration Mode
 
 Same proof discipline; mechanics differ: workers are background
-`Agent(subagent_type=…, run_in_background=True)` calls; results arrive as `<task-notification>`.
+`Agent(subagent_type=…, model=…, run_in_background=True)` calls; results arrive as
+`<task-notification>`. Pass `model` explicitly on every call — see
+[[references/dispatch-rules#dispatch-surfaces]] for why an omitted `model` is unsafe under nesting.
 Front-load every brief (§5) — you cannot steer a running worker. Still open an epic node for the
 ledger. When work produces code/PRs, the one-epic-one-PR pattern applies unchanged:
 see [[references/cohesive-pr-epic]].
