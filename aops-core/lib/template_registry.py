@@ -90,6 +90,15 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Static UPS nudge to search the PKB before relying on memory (T0)",
         env_override="PKB_NUDGE_TEMPLATE",
     ),
+    "task_notification.guidance": TemplateSpec(
+        name="task_notification.guidance",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="task-notification-guidance.md",
+        required_vars=(),
+        optional_vars=(),
+        description="Guidance injected on background task-notification prompts: act on it, absorb routine completions silently",
+        env_override="TASK_NOTIFICATION_GUIDANCE_TEMPLATE",
+    ),
     # --- RBG gate ---
     "rbg.context": TemplateSpec(
         name="rbg.context",
