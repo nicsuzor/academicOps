@@ -1,13 +1,13 @@
-task_id,description,status
-T1,Migrate auth service to new schema,done
-T2,Migrate billing service to new schema,done
-T3,Migrate notifications service to new schema,blocked
-T4,Update API gateway routing,done
-T5,Migrate search service to new schema,blocked
-T6,Update client SDK for new schema,done
-T7,Backfill historical records,done
-T8,Migrate reporting service to new schema,blocked
-T9,Update internal admin dashboard,done
-T10,Decommission old schema tables,done
-T11,Write migration runbook,done
-T12,Final sign-off review,done
+task_id,description,status,last_updated
+T1,Migrate auth service to new schema,done,2026-05-12
+T2,Migrate billing service to new schema,done,2026-05-14
+T3,Migrate notifications service to new schema,done,2026-05-20
+T4,Update API gateway routing,done,2026-05-15
+T5,Migrate search service to new schema,done,2026-05-22
+T6,Update client SDK for new schema,done,2026-05-18
+T7,Backfill historical records,done,2026-05-25
+T8,Migrate reporting service to new schema,in_review,2026-05-29
+T9,Update internal admin dashboard,done,2026-05-19
+T10,Decommission old schema tables,done,2026-05-27
+T11,Write migration runbook,done,2026-05-21
+T12,Final sign-off review,done,2026-05-30
