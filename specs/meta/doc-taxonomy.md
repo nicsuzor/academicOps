@@ -28,7 +28,9 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 
 > **Note — document status, not task status.** This `draft`/`superseded` vocabulary is the _document_ lifecycle for specs; it is distinct from the canonical _task_ status set (the SSoT is [[TAXONOMY#status-values-and-transitions]]). Do not conflate the two: `draft` and `superseded` are not valid task statuses, and the task lifecycle does not govern spec documents.
 
-**Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact).
+**Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact), or provenance.
+
+**No provenance.** A spec states what's true and why, not who decided it, where, or when. PKB task/session IDs, ruling numbers, and "ruled by X on date Y" citations belong in git commit messages and task files — cite them there, not in the spec body. A reference-only section that just enumerates adjacent task IDs with no other content (a "related work" list) belongs in the tracking task, not the spec; if a spec genuinely depends on another spec's content, link that spec by name, not a PKB ID.
 
 **Specs describe the shipped system, not this repo's own process.** A spec's audience is a dev or auditor extending or auditing academicOps-as-installed — the software's behavior once installed and running. It is not about how this repository itself is built, tested, released, or contributed to.
 

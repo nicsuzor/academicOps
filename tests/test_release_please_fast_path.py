@@ -1,10 +1,11 @@
 """Static wiring tests for the release-please fast path (pr-pipeline.md §3.13).
 
 Release-please PRs (head ref `release-please--*`) are deterministic bot output —
-version bump + CHANGELOG + uv.lock. They skip the agent reviewers and merge on
-green Lint+Pytest; the single human approval is relocated to the deploy step
-(`build-extension.yml`'s `production` environment). These assert the structure
-the runtime behaviour depends on.
+version bump + CHANGELOG + uv.lock. They skip the agent reviewers and go green on
+Lint+Pytest, but the release PR itself is NOT auto-merged: it accumulates every
+feature PR merged since the last release, and the maintainer's deliberate merge of
+that standing PR is the single human approval that batches the release and cuts the
+next stable tag. These assert the structure the runtime behaviour depends on.
 """
 
 from __future__ import annotations
@@ -56,15 +57,16 @@ def test_release_autogreen_job_exists_and_is_gated():
 
 def test_release_autogreen_posts_all_required_agent_statuses():
     """It must post enforcer-status, qa-status, admit-status, AND review-attestation
-    green — the four ruleset-required checks the reviewers would otherwise own — and
-    arm auto-merge. review-attestation must carry the §10 target_sha."""
+    green — the four ruleset-required checks the reviewers would otherwise own.
+    review-attestation must carry the §10 target_sha. It must NOT arm auto-merge:
+    the release PR stays open so the maintainer's merge can batch it (§3.13)."""
     job = _jobs(PIPELINE)["release-autogreen"]
     body = "\n".join(s.get("run", "") for s in job["steps"] if isinstance(s, dict))
     for ctx in ("enforcer-status", "qa-status", "admit-status", "review-attestation"):
         assert ctx in body, f"{ctx} not posted by release-autogreen:\n{body}"
     assert 'state="success"' in body, body
     assert "target_sha=$HEAD_SHA" in body, body  # attestation auditable to the head SHA
-    assert "--auto" in body and "gh pr merge" in body, body
+    assert "--auto" not in body, body  # deliberately not armed — batching needs a human merge
 
 
 def test_release_autogreen_uses_bot_pat():
@@ -91,21 +93,19 @@ def test_enforcer_reusable_workflow_has_no_release_environment():
     assert "environment" not in enf, enf.get("environment")
 
 
-# ── The single approval lives at the deploy step ─────────────────────────────
+# ── The single approval lives at the release-PR merge, not at deploy ─────────
 
 
-def test_deploy_step_gates_stable_releases_on_production_environment():
-    """build-extension's build-and-deploy job carries the single human approval:
-    a `production` environment on stable tags (no '-'); prerelease tags skip it."""
+def test_deploy_step_has_no_production_environment_gate():
+    """The single human approval moved to the release-PR merge (§3.13);
+    build-and-deploy no longer carries a `production` environment gate."""
     job = _jobs(BUILD)["build-and-deploy"]
-    env = job.get("environment", "")
-    assert "production" in env, env
-    assert "contains(github.ref_name, '-')" in env, env  # prereleases skip the gate
+    assert "environment" not in job, job.get("environment")
 
 
-def test_deploy_concurrency_queues_instead_of_cancelling_pending_approval():
-    """A run paused on the `production` reviewer is still "in progress"; a fast-path
-    release burst must queue behind it, not cancel it — cancel-in-progress: true
-    silently dropped the pending approval the moment the next tag landed."""
+def test_deploy_concurrency_queues_instead_of_cancelling_in_flight_publish():
+    """A stable tag's deploy publishes to the `dist` branch and Docker `:latest`;
+    a fast-follow release-PR merge must queue behind it, not cancel it mid-publish —
+    cancel-in-progress: true would let a second tag clobber the first's publish."""
     concurrency = yaml.safe_load(BUILD.read_text())["concurrency"]
     assert concurrency["cancel-in-progress"] is False, concurrency

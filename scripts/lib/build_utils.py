@@ -121,10 +121,18 @@ def check_installed_plugin_version(
         with open(installed_plugins_path) as f:
             data = json.load(f)
 
-        plugin_key = f"{plugin_name}@academicOps"
         plugins = data.get("plugins", {})
-
-        if plugin_key not in plugins:
+        # Source installs land under the LOCAL `aops` marketplace; fall back to the
+        # released `academicOps` name so a release install is still version-checked.
+        plugin_key = next(
+            (
+                f"{plugin_name}@{mp}"
+                for mp in ("aops", "academicOps")
+                if f"{plugin_name}@{mp}" in plugins
+            ),
+            None,
+        )
+        if plugin_key is None:
             return (True, None)
 
         installs = plugins[plugin_key]
