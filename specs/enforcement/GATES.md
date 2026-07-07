@@ -71,7 +71,7 @@ timeline
         rbg-review : Final axiom audit (armed everywhere; mode gates whether it bites, H3)
 ```
 
-Honesty/criterion-substitution checking is no longer a hook event on this timeline — it is retired as the `ida` gate (H6) and deferred to the head-personality surface interacting with the human (`aops-interactive`); see [Retired gates](#retired-gates-h1h18).
+Honesty/criterion-substitution checking is no longer a hook event on this timeline — it is retired as the `ida` gate (H6) and deferred to the head-personality surface interacting with the human (`ida`/`junior`, `aops-core` — ida moved back from the short-lived `aops-interactive` plugin per ruling A10, aops-7ea63b63); see [Retired gates](#retired-gates-h1h18).
 
 ## Config plumbing
 
@@ -147,7 +147,7 @@ Was a stateless PreToolUse gate blocking destructive shell/write operations on p
 
 ### `ida` gate — retired as a hook (H6)
 
-Was a Stop-triggered honesty/criterion-substitution reminder (fire-once per turn) plus a PreToolUse `AskUserQuestion` nudge, firing uniformly for every session including headless polecat workers with no human present to action it. **Ruling H6**: this discipline belongs to the **head-personality surface** interacting directly with the human (`aops-interactive` — `ida`/`junior`), not a router-level gate. Design rationale for the honesty standard itself is unchanged and lives at [`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate) — only the hook-level enforcement retires. In exchange, agents need explicit instruction on how to supply the completion proof `release_task` requires (H7); that instruction content coordinates with the mem-server schema-floor work (B2/SEAM-2) and is out of this redraft's scope.
+Was a Stop-triggered honesty/criterion-substitution reminder (fire-once per turn) plus a PreToolUse `AskUserQuestion` nudge, firing uniformly for every session including headless polecat workers with no human present to action it. **Ruling H6**: this discipline belongs to the **head-personality surface** interacting directly with the human (`ida` — `aops-core`, since ruling A10/aops-7ea63b63 dissolved the short-lived `aops-interactive` plugin; `junior` is user-level, never plugin-shipped, per ruling A8), not a router-level gate. Design rationale for the honesty standard itself is unchanged and lives at [`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate) — only the hook-level enforcement retires. In exchange, agents need explicit instruction on how to supply the completion proof `release_task` requires (H7); that instruction content coordinates with the mem-server schema-floor work (B2/SEAM-2) and is out of this redraft's scope.
 
 > **Cross-reference note.** [`specs/interactive-experience/head-role-charter.md`](../interactive-experience/head-role-charter.md) (written before this ruling) states the `ida` gate binding to this anchor is "not moved or duplicated" into the charter. That statement predates H6 and needs a follow-up update once the hook is actually removed (aops-5b9e95c4) — out of scope for this spec-only redraft; flagged here so the cross-reference isn't silently stale.
 
@@ -327,19 +327,19 @@ The exit-discipline gate. Starts OPEN (short interactive chats don't require han
 
 ### Where it lives
 
-| Concern               | Path                                                                                                                             |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                                                        |
-| Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                                                     |
-| Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md`                           |
-| Skills that reopen it | `aops-interactive/skills/end_session/SKILL.md`, `aops-interactive/skills/dump/SKILL.md` (moved from `aops-core` — aops-cf3fb2f0) |
-| Safety override       | `aops-core/hooks/router.py` (`execute_hooks` — `stop_block_timestamps`)                                                          |
+| Concern               | Path                                                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                                                                                                          |
+| Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                                                                                                       |
+| Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md`                                                                             |
+| Skills that reopen it | `aops-pkb/skills/end_session/SKILL.md`, `aops-pkb/skills/dump/SKILL.md` (moved from `aops-core` via the short-lived `aops-interactive` plugin — aops-cf3fb2f0, then aops-7ea63b63) |
+| Safety override       | `aops-core/hooks/router.py` (`execute_hooks` — `stop_block_timestamps`)                                                                                                            |
 
 ### How it's configured
 
 - **Mode key**: `gates.handover` (`warn` | `block` | `off`).
 - **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
-- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|interactive):)?(handover|dump|end_session|continue)$"` (widened to accept the `aops-interactive:` prefix when `dump`/`end_session` run from their new home, aops-cf3fb2f0) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate without concluding the task, since the skill itself emits the honest resume summary (pre-H6 it also opened the now-retired `ida` gate for the same reason).
+- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|pkb):)?(handover|dump|end_session|continue)$"` (widened to accept the `aops-pkb:` prefix now that `dump`/`end_session` live there — aops-cf3fb2f0 then aops-7ea63b63) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate without concluding the task, since the skill itself emits the honest resume summary (pre-H6 it also opened the now-retired `ida` gate for the same reason).
 - **Re-arm trigger**: `UserPromptSubmit` (every session type — no session-type filter) → clears sticky latch, then fires re-arm trigger → CLOSED. Re-arming CLOSED is harmless for a session that never did any work: the block/warn policies independently exempt `session_did_work=False` regardless of gate status. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
 - **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
 - **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
