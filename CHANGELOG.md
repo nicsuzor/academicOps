@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.71](https://github.com/nicsuzor/academicOps/compare/v0.3.70...v0.3.71) (2026-07-07)
+
+
+### Bug Fixes
+
+* **ci:** scope QA/enforcer terminal-status lookups to their reviewer marker (fail-closed) ([23f4141](https://github.com/nicsuzor/academicOps/commit/23f4141f5e4608ea11bdf853e35e96ee99c93474))
+
 ## [0.3.70](https://github.com/nicsuzor/academicOps/compare/v0.3.69...v0.3.70) (2026-07-07)
 
 
