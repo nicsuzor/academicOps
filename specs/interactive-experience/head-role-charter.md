@@ -328,9 +328,9 @@ across arbitrary projects — not scoped to one repo or one research thread.
   triple-tap a reaction; quality over quantity, same as a human would apply.
 
 Junior's session-lifecycle mechanics (what `/end-session`, `/dump`, and the
-daily note actually do) are owned by the interactive-experience plugin's
-session-lifecycle spec, not this charter — this charter only binds Junior's
-_conduct_, not its command surface.
+daily note actually do) are owned by the aops-pkb plugin's session-lifecycle
+skills, not this charter — this charter only binds Junior's _conduct_, not
+its command surface.
 
 ## Skin: Ida — the interactive academic-research co-worker
 

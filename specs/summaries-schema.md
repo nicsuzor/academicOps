@@ -139,9 +139,10 @@ block must use the exact bold labels the parser matches, or the structured parse
 matches nothing and the body is dumped wholesale into `accomplishments` (the
 `aops-6a787364` silent-corruption bug). The full label → field mapping, drift
 tolerances, and quality warnings (`inferred-reflection`, `friction-in-accomplishments`)
-are the SSoT in `aops-interactive/skills/end_session/transcript-metadata-schema.md`
-(moved from `aops-core` — aops-cf3fb2f0; and `SKILL.md`'s reflection template
-must stay in lock-step with it).
+are the SSoT in `aops-pkb/skills/end_session/transcript-metadata-schema.md`
+(moved from `aops-core` via the short-lived `aops-interactive` plugin —
+aops-cf3fb2f0, then aops-7ea63b63; and `SKILL.md`'s reflection template must
+stay in lock-step with it).
 
 ## New Fields (CC 2.1+)
 
@@ -223,16 +224,18 @@ Present only when the session was a Gemini CLI session. Sourced from a sidecar `
 | `output_tokens`       | int    |                | Total completion tokens                               |
 | `cache_read_tokens`   | int    |                | Tokens read from prompt cache                         |
 | `cache_create_tokens` | int    |                | Tokens written to prompt cache                        |
+| `total_tokens`        | int    | Yes            | input + output + cache_create + cache_read            |
 | `server_tool_use`     | int    | Yes            | Server-side tool use token count                      |
 | `service_tier`        | string | Yes            | Service tier reported by the API (e.g., `"standard"`) |
 
 ### `token_metrics.efficiency` fields
 
-| Field                      | Type  | Constraints | Description                                |
-| -------------------------- | ----- | ----------- | ------------------------------------------ |
-| `cache_hit_rate`           | float | 0.0–1.0     | Fraction of input tokens served from cache |
-| `tokens_per_minute`        | float |             | Session throughput                         |
-| `session_duration_minutes` | float |             | Wall-clock session length                  |
+| Field                      | Type  | Constraints | Description                                                  |
+| -------------------------- | ----- | ----------- | ------------------------------------------------------------ |
+| `cache_hit_rate`           | float | 0.0–1.0     | cache_read / (cache_read + cache_creation)                   |
+| `fresh_tokens_per_minute`  | float |             | Throughput excluding cache tokens (input + output only)      |
+| `total_tokens_per_minute`  | float |             | Throughput including cache tokens (input + output + cache_*) |
+| `session_duration_minutes` | float |             | Wall-clock session length                                    |
 
 ## Backward Compatibility
 

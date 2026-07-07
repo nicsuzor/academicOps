@@ -65,7 +65,7 @@ per H12):
 container isolation instead). `ida` — retired as a hook (H6); the honesty /
 criterion-substitution check this layer used to enforce mechanically now
 belongs to the head-personality surface interacting with the human
-(`aops-interactive`), not a router-level gate that fires uniformly regardless
+(`ida`, `aops-core`), not a router-level gate that fires uniformly regardless
 of whether a human is present.
 
 ### Two invariant families

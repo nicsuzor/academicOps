@@ -435,7 +435,8 @@ class TestTokenMetricsValidation:
                 },
                 "efficiency": {
                     "cache_hit_rate": 0.67,
-                    "tokens_per_minute": 2500,
+                    "fresh_tokens_per_minute": 2500,
+                    "total_tokens_per_minute": 2500,
                     "session_duration_minutes": 23,
                 },
             }
@@ -519,11 +520,11 @@ class TestTokenMetricsValidation:
     def test_token_metrics_efficiency_numeric_fields(self):
         """Test that efficiency numeric fields must be numeric."""
         insights = self._minimal_insights(
-            token_metrics={"efficiency": {"tokens_per_minute": "fast"}}
+            token_metrics={"efficiency": {"fresh_tokens_per_minute": "fast"}}
         )
         with pytest.raises(
             InsightsValidationError,
-            match="token_metrics.efficiency.tokens_per_minute.*must be numeric",
+            match="token_metrics.efficiency.fresh_tokens_per_minute.*must be numeric",
         ):
             validate_insights_schema(insights)
 
@@ -550,7 +551,7 @@ class TestTokenMetricsValidation:
         insights = self._minimal_insights(
             token_metrics={
                 "totals": {"input_tokens": None, "output_tokens": None},
-                "efficiency": {"cache_hit_rate": None, "tokens_per_minute": None},
+                "efficiency": {"cache_hit_rate": None, "fresh_tokens_per_minute": None},
             }
         )
         validate_insights_schema(insights)  # Should not raise

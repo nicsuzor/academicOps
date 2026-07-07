@@ -543,7 +543,7 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     # /dump quality bar requires. These may live inside the reflection body
     # or in the surrounding assistant message; we look in `text` (full
     # message) so blocks placed adjacent to the reflection still get
-    # captured. See aops-interactive/skills/end_session/transcript-metadata-schema.md.
+    # captured. See aops-pkb/skills/end_session/transcript-metadata-schema.md.
     outputs = parse_output_section(text)
     tasks_worked = parse_tasks_worked_section(text)
     references = parse_identifier_precis_pairs(reflection_text)
@@ -803,7 +803,7 @@ def assess_reflection_quality(
 ) -> list[str]:
     """Return non-fatal quality warnings for a parsed reflection.
 
-    See aops-interactive/skills/end_session/transcript-metadata-schema.md for the warning codes.
+    See aops-pkb/skills/end_session/transcript-metadata-schema.md for the warning codes.
     """
     warnings: list[str] = []
 
@@ -1254,7 +1254,7 @@ def reflection_to_insights(
     }
 
     # task-5a54f813 quality-bar fields. See
-    # aops-interactive/skills/end_session/transcript-metadata-schema.md.
+    # aops-pkb/skills/end_session/transcript-metadata-schema.md.
     if "outputs" in reflection:
         result["outputs"] = reflection.get("outputs", [])
         result["output_explicit_none"] = reflection.get("output_explicit_none", False)
@@ -1779,6 +1779,11 @@ class UsageStats:
         ``skill_name`` is the ``input.skill`` argument of a ``Skill`` tool call,
         accumulated into ``by_skill`` (call-level attribution, aops-29d77844).
         """
+        # API-error placeholders carry no real usage and must not create a
+        # fake all-zero "<synthetic>" bucket in by_model/by_agent (aops_b190be1c).
+        if entry.model == "<synthetic>" or entry.is_api_error_message:
+            return
+
         if entry.input_tokens:
             self.input_tokens += entry.input_tokens
         if entry.output_tokens:
@@ -1907,8 +1912,20 @@ class UsageStats:
                 "efficiency": {"cache_hit_rate": float, ...}
             }
         """
-        total_input = self.input_tokens + self.cache_read_input_tokens
-        cache_hit_rate = self.cache_read_input_tokens / total_input if total_input > 0 else 0.0
+        # Cache hit rate is a ratio over cache-eligible input (read + create),
+        # NOT total input — mixing in non-cache input_tokens or dropping
+        # cache_creation_input_tokens from the denominator silently inflates
+        # the reported rate (aops_b190be1c).
+        cache_denominator = self.cache_read_input_tokens + self.cache_creation_input_tokens
+        cache_hit_rate = (
+            self.cache_read_input_tokens / cache_denominator if cache_denominator > 0 else 0.0
+        )
+        total_tokens = (
+            self.input_tokens
+            + self.output_tokens
+            + self.cache_creation_input_tokens
+            + self.cache_read_input_tokens
+        )
 
         metrics: dict[str, Any] = {
             "totals": {
@@ -1916,6 +1933,7 @@ class UsageStats:
                 "output_tokens": self.output_tokens,
                 "cache_read_tokens": self.cache_read_input_tokens,
                 "cache_create_tokens": self.cache_creation_input_tokens,
+                "total_tokens": total_tokens,
                 "server_tool_use": self.server_tool_use,
                 "service_tier": self.service_tier,
             },
@@ -1932,10 +1950,16 @@ class UsageStats:
             },
         }
 
-        # Add tokens_per_minute if duration is available
+        # Add tokens_per_minute if duration is available. `fresh_tokens_per_minute`
+        # covers only input+output (excludes cache tokens, which run ~600x larger
+        # and would otherwise dominate a naive "tokens_per_minute"); the "total"
+        # variant sums in cache_creation + cache_read for the true throughput view.
         if session_duration_minutes and session_duration_minutes > 0:
-            total_tokens = self.input_tokens + self.output_tokens
-            metrics["efficiency"]["tokens_per_minute"] = round(
+            fresh_tokens = self.input_tokens + self.output_tokens
+            metrics["efficiency"]["fresh_tokens_per_minute"] = round(
+                fresh_tokens / session_duration_minutes, 1
+            )
+            metrics["efficiency"]["total_tokens_per_minute"] = round(
                 total_tokens / session_duration_minutes, 1
             )
             metrics["efficiency"]["session_duration_minutes"] = round(session_duration_minutes, 1)
@@ -2016,6 +2040,19 @@ def normalize_cowork_event(data: dict) -> tuple[str, dict] | None:
     return None
 
 
+def _as_usage_int(value: Any) -> int | None:
+    """Coerce a raw usage field to int, discarding malformed payloads.
+
+    Mirrors the defensive ``server_tool_use`` handling in
+    ``UsageStats.add_entry`` (bool is a ``int`` subclass in Python, so it is
+    excluded explicitly) rather than raising on a string/list/garbage value
+    from a malformed transcript line.
+    """
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
+
+
 @dataclass
 class Entry:
     """Represents a single JSONL entry from any source."""
@@ -2058,6 +2095,9 @@ class Entry:
     client_version: str | None = None
     git_branch: str | None = None
     permission_mode: str | None = None
+    # True for API-error placeholder entries (no real usage data; must not
+    # pollute by_model/by_agent aggregation with a fake all-zero bucket).
+    is_api_error_message: bool = False
     # Auto-mode classifier fields — present only on a `type:result` envelope entry
     # (headless `claude -p`). `permission_denials` is the structured record of
     # calls the auto-mode classifier blocked; `terminal_reason` flags death-by-denial.
@@ -2097,12 +2137,14 @@ class Entry:
             if cowork is not None:
                 entry_type, message = cowork
 
-        # Extract tokens from message.usage if present
+        # Extract tokens from message.usage if present. Coerce to int (or None)
+        # so a malformed payload (string/list/etc.) can't raise deep inside
+        # aggregation — see aops_b190be1c.
         usage = message.get("usage", {})
-        input_tokens = usage.get("input_tokens")
-        output_tokens = usage.get("output_tokens")
-        cache_creation_input_tokens = usage.get("cache_creation_input_tokens")
-        cache_read_input_tokens = usage.get("cache_read_input_tokens")
+        input_tokens = _as_usage_int(usage.get("input_tokens"))
+        output_tokens = _as_usage_int(usage.get("output_tokens"))
+        cache_creation_input_tokens = _as_usage_int(usage.get("cache_creation_input_tokens"))
+        cache_read_input_tokens = _as_usage_int(usage.get("cache_read_input_tokens"))
         model = message.get("model")
         service_tier = usage.get("service_tier")
         server_tool_use = usage.get("server_tool_use")
@@ -2145,6 +2187,7 @@ class Entry:
             attribution_skill=data.get("attributionSkill"),
             attribution_mcp_server=data.get("attributionMcpServer"),
             attribution_mcp_tool=data.get("attributionMcpTool"),
+            is_api_error_message=bool(data.get("isApiErrorMessage")),
         )
 
         # Promote hook_non_blocking_error attachments to system_reminder so

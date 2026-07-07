@@ -46,7 +46,7 @@ Walk layers in order; stop at first failure:
 
 **§3 Environment sanity** (if §2 failed) — UID resolution, fast-path artifacts, plugin install path vs. expected path.
 
-**§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-interactive:ida')`. Verify visible output, not just return.
+**§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:ida')`. Verify visible output, not just return.
 
 **§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops-pkb_pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 
