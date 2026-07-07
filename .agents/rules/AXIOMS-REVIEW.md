@@ -94,6 +94,7 @@ _Edge 3 (script abdication):_
 - Was authorisation for one surface overloaded onto a different surface?
 - Did the agent use the identity the surface required (e.g. bot vs human credentials)?
 - Did any release, publication, or external communication occur without explicit prior authorisation?
+- Did any PKB-derived string (task title/ID, project name, list/search content) reach a public artifact — PR body, commit, issue, external-repo file, spec doc, or dispatch/verification brief — without a pre-write egress scan and anonymisation?
 
 ## evidence-immutable
 
