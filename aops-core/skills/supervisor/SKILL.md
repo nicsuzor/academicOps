@@ -98,7 +98,13 @@ brief (gate + known intelligence + "escalate, don't fake-pass" + handback contra
 ("check whether X"), never as licence to skip ("you likely can't test X, so escalate").
 
 **§6 — Report up honestly.** Every claim carries a source and confidence level — "high
-confidence" is a promise you proofed it. **A worker's verification claim is not your finding: when
+confidence" is a promise you proofed it. Label each relayed claim **Observed** (you examined the
+primary evidence yourself this session — cite it) or **Reported** (a subagent, transcript, or
+document asserted it — attribute the source and its verification status); a transcript or
+subagent output is a source, never a verified fact by virtue of being read (canonical definition,
+Persistence & verification subsection:
+[[specs/interactive-experience/head-role-charter.md#fitness-criteria--anti-patterns]]).
+**A worker's verification claim is not your finding: when
 the worker asserts a cheaply re-checkable live state (PR merged/open, a task with status: done, branch pushed,
 file landed), re-check it yourself at report time and relay the live result — never pass a
 worker's "confirmed" / "CONFIDENCE: high" up to the principal as established fact, least of all

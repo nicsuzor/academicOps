@@ -64,6 +64,13 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
 `CONFOUND CHECK` is mandatory whenever the verdict blames what we don't own; `NOT RUN` means do
 not relay — commission the control first (§3 of [[../SKILL.md]]).
 
+**CLAIM/EVIDENCE is a set of claim+evidence-pointer pairs, not a bare assertion.** If the
+handback asserts more than one substantive fact, itemize each on its own line, each paired
+with either an EVIDENCE pointer (file:line, command output, session id — not a narrative
+dump) or the literal tag `UNVERIFIED`. One `EVIDENCE` line may not silently cover multiple
+unrelated claims — the supervisor cannot sanity-check a verdict (see Verdict Sanity Check
+below) against evidence it can't attribute to a specific claim.
+
 ## Compose-then-Dispatch Separation
 
 - The agent authoring a brief must not dispatch against it (agent-identity separation).
