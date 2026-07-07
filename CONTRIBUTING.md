@@ -14,6 +14,10 @@ Or use `make install-dev` to build, install the plugin locally, and activate hoo
 
 Run `./scripts/format.sh` manually before committing if pre-commit hooks aren't firing.
 
+## Pull requests
+
+Open PRs against `dev`. Structure the PR body as a reviewer-decision aid so the maintainer can decide to approve in ~60s — the required sections (Summary, Posture, Why now / alignment, Change, Risk & blast radius, Sequencing, Verification) live in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), which GitHub pre-fills on hand-opened PRs. Polecat-authored PRs get the same structure scaffolded automatically from the task body (`polecat/cli.py`), so bot and human PRs read the same way. This is contributor practice, not pipeline semantics — for how a PR is driven to merge, see [`specs/workflows/pr-pipeline.md`](specs/workflows/pr-pipeline.md).
+
 ## Testing and release
 
 ```bash
