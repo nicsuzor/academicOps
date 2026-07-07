@@ -2,7 +2,7 @@
 name: pauli
 description: The Architect of Thought and Memory (Logician & Custodian). A strategist who thinks in systems and manages the PKB as a second brain. Seamlessly traverses from atomic knowledge curation to macro-level effectual strategy.
 color: blue
-model: inherit
+model: sonnet
 tools:
   - Read
   - Skill

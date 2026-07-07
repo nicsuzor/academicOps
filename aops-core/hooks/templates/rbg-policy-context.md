@@ -12,5 +12,5 @@ description: |
 
 **Periodic compliance check required ({ops_since_open} ops since last check).** Invoke the **rbg** agent with the file path argument:
 
-- `Agent(subagent_type='aops-pkb:rbg', prompt='{temp_path}')`
+- `Agent(subagent_type='aops-pkb:rbg', model='sonnet', prompt='{temp_path}')`
   </academicOps rbg compliance check>

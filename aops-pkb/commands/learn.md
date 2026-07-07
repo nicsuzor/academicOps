@@ -34,6 +34,6 @@ Reviews recent session transcripts through a framework-development lens, identif
 ## Workflow
 
 Delegate the retro execution to the **Pauli** coordinator agent:
-`Agent(subagent_type='pauli', prompt='Run triage skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
+`Agent(subagent_type='pauli', model='sonnet', prompt='Run triage skill in retro mode on session: <resolved-session-id-or-path> [optional directive context]')`
 
 If no explicit path or session ID is provided, locate the current session ID or active transcript path for the current conversation and pass it.

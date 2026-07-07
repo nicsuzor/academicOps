@@ -120,7 +120,9 @@ Performs exactly one dispatch step and exits. **Do not execute the task inline.*
 
 - **Specialist Subagent**: If the task or parent has an assignee matching a known
   specialist (`marsha`, `rbg`, `pauli`, `james`, `ida`, `qa`, `rbg`,
-  `polecat`), dispatch using `subagent_type="[name]"`.
+  `polecat`), dispatch using `subagent_type="[name]"` and pass `model=` explicitly on the
+  call — do not rely on the specialist's own frontmatter `model` field, since `model: inherit`
+  resolves against the root session, not this dispatch site, once nested.
 - **Polecat**: For repo-scoped, PR-shippable code/docs/tests without a named
   specialist, dispatch to a polecat.
 - **Subagent**: For research or synthesis requiring findings returned to the
