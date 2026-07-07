@@ -2,6 +2,7 @@ import pytest
 
 from polecat.prompt_template import (
     CAPTURE_DURABLE_FACTS,
+    EGRESS_GUARD_FLOOR,
     FINISH_GITHUB_ISSUE,
     FINISH_LOCAL_TASK,
     PKB_HALT_FLOOR,
@@ -89,6 +90,18 @@ def test_prompt_carries_pkb_halt_floor():
         assert PKB_HALT_FLOOR in prompt, (
             f"PKB_HALT_FLOOR missing from worker prompt (is_issue={is_issue}). "
             "Workers must receive the PKB-HALT instruction regardless of mode."
+        )
+
+
+def test_prompt_carries_egress_guard_floor():
+    """Protects the PKB egress guard (incident #887) reaching document-
+    authoring polecat workers in both task and issue modes, so a worker
+    scans for raw PKB identifiers before writing a public artifact."""
+    for is_issue in (False, True):
+        prompt = build_polecat_prompt(task_id="task-1", task_title="Title", is_issue=is_issue)
+        assert EGRESS_GUARD_FLOOR in prompt, (
+            f"EGRESS_GUARD_FLOOR missing from worker prompt (is_issue={is_issue}). "
+            "Workers must receive the PKB egress guard regardless of mode."
         )
 
 

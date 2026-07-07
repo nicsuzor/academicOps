@@ -38,6 +38,19 @@ only matters to this one task, or the repo and git history already record it, \
 do not capture it. One canonical note per topic — never a dated session-memo.\
 """
 
+# PKB egress guard injected into every polecat worker prompt (incident #887:
+# a worker copied raw list_tasks/get_task output into a public PR body and
+# commit message). Full doctrine: .agents/rules/AXIOMS.md#data-boundaries.
+EGRESS_GUARD_FLOOR = """\
+**PKB egress guard**: PKB-derived strings — task titles/IDs, project/label \
+names, note bodies, or JSON returned by `list_tasks`/`get_task`/search — are \
+private domain data. Before writing any of it into a PR body, commit message, \
+issue comment, external-repo file, or spec/reference doc, scan the draft for \
+raw `task-[a-f0-9]{8}` IDs and copied titles/labels; mask or summarise \
+instead (priority class, count, `task-XXXX`, `[REDACTED_TITLE]`) rather than \
+quoting the row verbatim.\
+"""
+
 POLECAT_WORK_TEMPLATE = """\
 You are a polecat worker. Your task has already been claimed and your \
 worktree is ready; the task context is below and the hydrator will provide \
@@ -53,6 +66,8 @@ Ground your plan in what you find (`search`, `get_document`, \
 {pkb_halt_floor}
 
 {capture_durable_facts}
+
+{egress_guard_floor}
 
 **Your brief is deliberately thin — intent + acceptance criteria, not a \
 script.** You are trusted to plan and execute the whole chunk; depth is \
@@ -366,5 +381,6 @@ def build_polecat_prompt(
         soft_dep_context=soft_dep_context,
         pkb_halt_floor=PKB_HALT_FLOOR,
         capture_durable_facts=CAPTURE_DURABLE_FACTS,
+        egress_guard_floor=EGRESS_GUARD_FLOOR,
         finish_instructions=finish_instructions,
     )
