@@ -1,0 +1,13 @@
+task_id,description,status
+T1,Migrate auth service to new schema,done
+T2,Migrate billing service to new schema,done
+T3,Migrate notifications service to new schema,blocked
+T4,Update API gateway routing,done
+T5,Migrate search service to new schema,blocked
+T6,Update client SDK for new schema,done
+T7,Backfill historical records,done
+T8,Migrate reporting service to new schema,blocked
+T9,Update internal admin dashboard,done
+T10,Decommission old schema tables,done
+T11,Write migration runbook,done
+T12,Final sign-off review,done
