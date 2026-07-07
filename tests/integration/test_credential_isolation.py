@@ -377,7 +377,7 @@ class TestCredentialBridgeHook:
         bot = credential_markers["bot"]
 
         ctx = HookContext(
-            session_id="test-cred-isolation-001",
+            session_id=str(uuid.uuid4()),
             session_short_hash="credtest",
             hook_event="SessionStart",
             raw_input={},
@@ -416,7 +416,7 @@ class TestCredentialBridgeHook:
     def test_hook_persists_ssh_isolation(self, temp_env_file):
         """session_env_setup should write SSH isolation vars to CLAUDE_ENV_FILE."""
         ctx = HookContext(
-            session_id="test-ssh-isolation",
+            session_id=str(uuid.uuid4()),
             session_short_hash="sshtest1",
             hook_event="SessionStart",
             raw_input={},
@@ -462,7 +462,7 @@ class TestCredentialBridgeHook:
         fails closed and overwrites the leak.
         """
         ctx = HookContext(
-            session_id="test-cred-no-bot",
+            session_id=str(uuid.uuid4()),
             session_short_hash="nobot123",
             hook_event="SessionStart",
             raw_input={},
@@ -521,7 +521,7 @@ class TestCredentialBridgeHook:
         personal = credential_markers["personal"]
 
         ctx = HookContext(
-            session_id="test-cred-override",
+            session_id=str(uuid.uuid4()),
             session_short_hash="override1",
             hook_event="SessionStart",
             raw_input={},

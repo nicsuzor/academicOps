@@ -61,12 +61,12 @@ class TestTranscriptNamingIntegration:
             st_mtime = ts.timestamp()
             st_mode = 0o100644  # Regular file
 
-        def mock_stat():
+        def mock_stat(*args, **kwargs):
             return MockStat()
 
         import unittest.mock as mock
 
-        with mock.patch.object(Path, "stat", side_effect=mock_stat):
+        with mock.patch.object(Path, "stat", side_effect=mock_stat), mock.patch.object(transcript, "get_sessions_repo", return_value=Path("/tmp/mock-sessions-repo")):
             filename, date_str, short_project, session_id, slug = (
                 transcript._generate_transcript_filename(session_path, entries, slug="test-slug")
             )
@@ -133,7 +133,7 @@ class TestTranscriptNamingIntegration:
         # Mock summaries dir
         import unittest.mock as mock
 
-        with mock.patch("lib.insights_generator.get_summaries_dir", return_value=tmp_path):
+        with mock.patch.object(insights_generator, "get_summaries_dir", return_value=tmp_path):
             # Old v3.7.0 format (HH)
             old_path = tmp_path / "20260411-17-project-a1b2c3d4-slug.json"
             old_path.touch()
