@@ -9,15 +9,6 @@ Anonymize PKB-derived information (titles, IDs, project names) before writing to
 commits, issues, or verification briefs. Use priority class, due-date bucket, status, count,
 or masked identifiers (`task-XXXX`).
 
-## Model Discipline
-
-Every `Agent(subagent_type=…)` call in this file — including a **nested** spawn issued from
-inside an already-dispatched subagent (e.g. dispatch-agent, or a worker that itself commissions
-pauli/marsha) — must pass `model=` explicitly. Never omit it and rely on the target's own
-frontmatter `model` field: a subagent declaring `model: inherit` resolves against the **root**
-session's model, not the immediate caller's, so an omitted override at a nested spawn site
-silently runs at the root session's rate (see `aops_5617db40`).
-
 ## pauli — Preflight & React
 
 - **Role**: Determine next action, handle worker exits, and react to verification failures.

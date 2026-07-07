@@ -60,11 +60,7 @@ The discipline is surface-independent. Implementation:
 
 - **polecat surface**: bash invocation with `polecat run`. See
   [[cohesive-pr-epic#canonical-dispatch-command-polecat-surface]] for the template.
-- **Agent-tool surface**: `Agent(subagent_type=…, model=…, run_in_background=True)`. Always pass
-  `model` explicitly — never omit it and rely on the subagent definition's own `model` field.
-  A subagent declaring `model: inherit` resolves against the ROOT session's model, not the
-  immediate caller's, so an explicit override at every dispatch site is the only thing that
-  holds under nesting.
+- **Agent-tool surface**: `Agent(subagent_type=…, run_in_background=True)`.
 - **Jules surface**: `pkb task <task-id> | jules new --repo <owner>/<repo>`.
 
 The capped handback contract (see [[subagent-contracts#worker-handback-format]]) applies on
