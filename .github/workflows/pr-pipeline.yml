@@ -619,10 +619,15 @@ jobs:
   # review-attestation / alignment-queue above). This job instead AUTO-SATISFIES
   # the four agent/human required checks — `enforcer-status`, `qa-status`,
   # `review-attestation`, `admit-status` — once the MECHANICAL gates (`Lint` and
-  # `Pytest`) are genuinely green on HEAD, then arms auto-merge. The result: a
-  # release PR merges on green lint+pytest with NO PR-level human step. The single
-  # human approval for the whole release lives at the deploy (build-extension.yml's
-  # `production` environment, stable tags only) — approve once, at publish time.
+  # `Pytest`) are genuinely green on HEAD. It deliberately does NOT arm auto-merge:
+  # the release PR stays open and mergeable, ACCUMULATING every feature PR merged
+  # since the last release (release-please maintains ONE standing release PR + a
+  # running CHANGELOG). The maintainer MERGES it when ready to cut a release — that
+  # single merge batches all accumulated PRs into ONE version AND is the sole human
+  # approval for the release. (Previously this armed auto-merge, cutting a release
+  # per PR and pushing the only approval to build-extension.yml's `production`
+  # environment gate — which froze the `dist` branch when releases piled up
+  # unapproved. See mem_c006704b.)
   #
   # Requires the bot PAT: the default GITHUB_TOKEN cannot post a status the ruleset
   # trusts as a required check (§4.7). Same-repo PRs only (a fork run cannot mint
@@ -671,10 +676,9 @@ jobs:
             -f context="review-attestation" \
             -f description="Auto-attested for release-please PR (reviewers deliberately skipped; §3.13)" \
             -f target_url="$RUN_URL?target_sha=$HEAD_SHA"
-      - name: Arm auto-merge
-        run: |
-          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash --delete-branch \
-            || echo "WARNING: could not enable auto-merge (may already be enabled, or PR already merged)"
+      # NOTE: auto-merge is deliberately NOT armed here — the release PR stays open,
+      # accumulating merged feature PRs, until the maintainer merges it to batch a
+      # release (see the job header comment). $PR_NUMBER is retained for observability.
 
   # ─── Read-only checks (typecheck, pytest) ────────────────────────
   # These contribute statuses but never end a pass. They only run if
