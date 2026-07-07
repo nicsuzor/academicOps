@@ -400,7 +400,7 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
   | jq -r 'select(.output.context_injection!=null) | "\(.logged_at) \(.output.context_injection[:120])"'
 ```
 
-**Common failures**: no injection at all → confirm `is_subagent=False` and `_is_task_notification` returned False. Expected a verdict and got none → there is no policy; this is by design.
+**Common failures**: no hydration hint at all → confirm `is_subagent=False` and `_is_task_notification` returned False. Task-notification prompts intentionally skip the hydrator, all gates, and `pkb.nudge` — but since PR #2139 they are no longer zero-output: they receive a single `task_notification.guidance` injection (act on the notification; don't relay routine noise to the user — see [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1.1). Expected a verdict and got none → there is no policy; this is by design.
 
 ---
 
