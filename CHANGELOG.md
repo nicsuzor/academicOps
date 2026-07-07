@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.75](https://github.com/nicsuzor/academicOps/compare/v0.3.74...v0.3.75) (2026-07-07)
+
+
+### Documentation
+
+* **specs:** draft aops-adhd attention-surface contract ([#2141](https://github.com/nicsuzor/academicOps/issues/2141)) ([ed0b1e7](https://github.com/nicsuzor/academicOps/commit/ed0b1e78ee42ba1aacf7c0c178cc9ffbb70767f3))
+
 ## [0.3.74](https://github.com/nicsuzor/academicOps/compare/v0.3.73...v0.3.74) (2026-07-07)
 
 
