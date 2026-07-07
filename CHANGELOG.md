@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.74](https://github.com/nicsuzor/academicOps/compare/v0.3.73...v0.3.74) (2026-07-07)
+
+
+### Bug Fixes
+
+* **transcript_parser:** correct derived token-usage metrics ([#2151](https://github.com/nicsuzor/academicOps/issues/2151)) ([726e163](https://github.com/nicsuzor/academicOps/commit/726e1637cb1a982bc1444607d615485d7209f0e5))
+
 ## [0.3.73](https://github.com/nicsuzor/academicOps/compare/v0.3.72...v0.3.73) (2026-07-07)
 
 
