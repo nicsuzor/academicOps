@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.69](https://github.com/nicsuzor/academicOps/compare/v0.3.68...v0.3.69) (2026-07-07)
+
+
+### Bug Fixes
+
+* **ci:** QA sparse-checkout materialises marsha prompt from aops-pkb/agents (after [#2115](https://github.com/nicsuzor/academicOps/issues/2115) move) ([1417446](https://github.com/nicsuzor/academicOps/commit/1417446e4160c9dc54c217a38411e96a2e809d5b))
+* **enforcer:** repoint prompt fetch to aops-pkb/agents/rbg.md ([#2115](https://github.com/nicsuzor/academicOps/issues/2115) move) ([0bdea2c](https://github.com/nicsuzor/academicOps/commit/0bdea2c5c076aefe5eb1a2f68a284fd2ff5b8658))
+* **mechanic:** repair escalation state machine (push abort, crash≠escalation, reset path) ([d2938b2](https://github.com/nicsuzor/academicOps/commit/d2938b2208a02b5d62801858f94fd0a3509da11d))
+
 ## [0.3.68](https://github.com/nicsuzor/academicOps/compare/v0.3.67...v0.3.68) (2026-07-06)
 
 
