@@ -224,16 +224,18 @@ Present only when the session was a Gemini CLI session. Sourced from a sidecar `
 | `output_tokens`       | int    |                | Total completion tokens                               |
 | `cache_read_tokens`   | int    |                | Tokens read from prompt cache                         |
 | `cache_create_tokens` | int    |                | Tokens written to prompt cache                        |
+| `total_tokens`        | int    | Yes            | input + output + cache_create + cache_read            |
 | `server_tool_use`     | int    | Yes            | Server-side tool use token count                      |
 | `service_tier`        | string | Yes            | Service tier reported by the API (e.g., `"standard"`) |
 
 ### `token_metrics.efficiency` fields
 
-| Field                      | Type  | Constraints | Description                                |
-| -------------------------- | ----- | ----------- | ------------------------------------------ |
-| `cache_hit_rate`           | float | 0.0–1.0     | Fraction of input tokens served from cache |
-| `tokens_per_minute`        | float |             | Session throughput                         |
-| `session_duration_minutes` | float |             | Wall-clock session length                  |
+| Field                      | Type  | Constraints | Description                                                  |
+| -------------------------- | ----- | ----------- | ------------------------------------------------------------ |
+| `cache_hit_rate`           | float | 0.0–1.0     | cache_read / (cache_read + cache_creation)                   |
+| `fresh_tokens_per_minute`  | float |             | Throughput excluding cache tokens (input + output only)      |
+| `total_tokens_per_minute`  | float |             | Throughput including cache tokens (input + output + cache_*) |
+| `session_duration_minutes` | float |             | Wall-clock session length                                    |
 
 ## Backward Compatibility
 

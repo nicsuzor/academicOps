@@ -105,7 +105,8 @@ These observables create an audit trail that humans and agents can analyze.
 │      totals: { input_tokens, output_tokens, cache_* },                  │
 │      by_model: { "claude-opus-4-5": { input, output } },                │
 │      by_agent: { "main": {...}, "prompt-hydrator": {...} },             │
-│      efficiency: { cache_hit_rate, tokens_per_minute, duration }        │
+│      efficiency: { cache_hit_rate, fresh_tokens_per_minute,             │
+│                     total_tokens_per_minute, duration }                 │
 │    }                                                                    │
 │  }                                                                      │
 └─────────────────────────────────────────────────────────────────────────┘

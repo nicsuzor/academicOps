@@ -186,7 +186,7 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         "totals": {"input_tokens": int, "output_tokens": int, ...},
         "by_model": {"model_name": {"input": int, "output": int}, ...},
         "by_agent": {"agent_name": {"input": int, "output": int}, ...},
-        "efficiency": {"cache_hit_rate": float, "tokens_per_minute": float, ...}
+        "efficiency": {"cache_hit_rate": float, "fresh_tokens_per_minute": float, "total_tokens_per_minute": float, ...}
     }
 
     Args:
@@ -213,6 +213,7 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
             "output_tokens",
             "cache_read_tokens",
             "cache_create_tokens",
+            "total_tokens",
             "server_tool_use",
         ]
         for field in totals_numeric_fields:
@@ -296,7 +297,8 @@ def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
         # Validate numeric fields in efficiency
         efficiency_numeric_fields = [
             "cache_hit_rate",
-            "tokens_per_minute",
+            "fresh_tokens_per_minute",
+            "total_tokens_per_minute",
             "session_duration_minutes",
         ]
         for field in efficiency_numeric_fields:
