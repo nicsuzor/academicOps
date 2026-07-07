@@ -658,11 +658,20 @@ class HookRouter:
         eliminating the wrapper layers in gates.py and gate_registry.py.
         """
         # Task-notification prompts are internal plumbing — not real user input.
-        # Return empty output so agents aren't tricked into treating them as fresh prompts.
+        # No gates, hydrator, or PKB nudge run for them; the only thing added is
+        # one short guidance line reminding the agent to act on the notification
+        # without relaying routine background noise to the user.
         # Logging happens once, uniformly, in main() after resolve_policy() runs —
         # not here (see resolve_policy() / log_hook_event() call in main()).
         if ctx.hook_event == "UserPromptSubmit" and self._is_task_notification(ctx):
-            return CanonicalHookOutput(verdict=None)
+            from lib.template_registry import TemplateRegistry
+
+            try:
+                guidance = TemplateRegistry.instance().render("task_notification.guidance")
+            except Exception as e:
+                print(f"WARNING: task_notification.guidance injection error: {e}", file=sys.stderr)
+                guidance = None
+            return CanonicalHookOutput(verdict=None, context_injection=guidance or None)
 
         merged_result = CanonicalHookOutput()
 
