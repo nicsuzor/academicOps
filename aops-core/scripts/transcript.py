@@ -905,6 +905,22 @@ def _is_test_session(p: Path) -> bool:
     return False
 
 
+def _compute_usage_and_duration(
+    processor: SessionProcessor,
+    entries: list,
+    agent_entries: dict,
+) -> tuple[UsageStats, float | None]:
+    """Aggregate usage stats and compute session duration together.
+
+    Factors out three near-identical call sites (aops_b190be1c) that always
+    ran ``_aggregate_session_usage`` immediately followed by
+    ``_compute_session_duration`` on the same entries/agent_entries.
+    """
+    usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+    session_duration_minutes = _compute_session_duration(entries)
+    return usage_stats, session_duration_minutes
+
+
 def _compute_session_duration(entries: list) -> float | None:
     """Compute session duration in minutes from entry timestamps.
 
@@ -1798,8 +1814,9 @@ Examples:
                         break
 
                 # Compute usage stats and session duration for token_metrics
-                usage_stats = processor._aggregate_session_usage(entries, agent_entries)
-                session_duration_minutes = _compute_session_duration(entries)
+                usage_stats, session_duration_minutes = _compute_usage_and_duration(
+                    processor, entries, agent_entries
+                )
 
                 # Extract timeline events for path reconstruction
                 turns = processor.group_entries_into_turns(entries, agent_entries)
@@ -2076,8 +2093,9 @@ Examples:
             slug = ""
 
             # Compute usage stats and session duration for token_metrics
-            usage_stats = processor._aggregate_session_usage(entries, agent_entries)
-            session_duration_minutes = _compute_session_duration(entries)
+            usage_stats, session_duration_minutes = _compute_usage_and_duration(
+                processor, entries, agent_entries
+            )
 
             # Extract timeline events for path reconstruction
             turns = processor.group_entries_into_turns(entries, agent_entries)
@@ -2238,8 +2256,9 @@ Examples:
                 break
 
         # Compute usage stats and session duration for token_metrics
-        usage_stats = processor._aggregate_session_usage(entries, agent_entries)
-        session_duration_minutes = _compute_session_duration(entries)
+        usage_stats, session_duration_minutes = _compute_usage_and_duration(
+            processor, entries, agent_entries
+        )
 
         # Extract timeline events for path reconstruction
         turns = processor.group_entries_into_turns(entries, agent_entries)

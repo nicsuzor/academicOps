@@ -91,8 +91,21 @@ else
   reviews="$(gh api "repos/${REPO:?REPO is required}/pulls/${PR_NUMBER:?PR_NUMBER is required}/reviews?per_page=100" 2>/dev/null || echo "[]")"
 fi
 
+# Scope to the enforcer's NAMED-reviewer marker (enforcer.agent.md §5: every
+# enforcer review body begins with "## Enforcer Review"). Without this scope
+# the lookup accepts ANY approval on the SHA — including a QA "# QA Verification"
+# review sitting on the same SHA — as an enforcer pass, the mirror image of the
+# qa-status false-green in aops_e958bd56. The SHA-skip check and the agent-side
+# idempotent-verdict lookups already scope this way; the terminal decision must
+# too, so enforcer-status attests that RBG (not another agent) reviewed the SHA.
+# Anchored to the START of the body (§5: the body begins with "## Enforcer
+# Review") so a review merely *mentioning* the phrase in prose can't leak
+# through. jq test() is single-line by default, so `^` is the body's start.
 review_state="$(jq -r --arg sha "$HEAD_SHA" '
-  [.[] | select(.commit_id == $sha) | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED")]
+  [.[]
+    | select(.commit_id == $sha)
+    | select((.body // "") | test("^#+ Enforcer Review"))
+    | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED")]
   | last | .state // ""' <<<"$reviews")"
 
 case "$review_state" in

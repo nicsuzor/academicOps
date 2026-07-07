@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.3.74](https://github.com/nicsuzor/academicOps/compare/v0.3.73...v0.3.74) (2026-07-07)
+
+
+### Bug Fixes
+
+* **transcript_parser:** correct derived token-usage metrics ([#2151](https://github.com/nicsuzor/academicOps/issues/2151)) ([726e163](https://github.com/nicsuzor/academicOps/commit/726e1637cb1a982bc1444607d615485d7209f0e5))
+
+## [0.3.73](https://github.com/nicsuzor/academicOps/compare/v0.3.72...v0.3.73) (2026-07-07)
+
+
+### Bug Fixes
+
+* **session_reader:** only truncate auth fields in windowed mode, with a generous cap ([06953c5](https://github.com/nicsuzor/academicOps/commit/06953c557a270ddae8514d4da5ac15fdb8dde2d2))
+* **session_reader:** render AskUserQuestion answer in audit narrative ([714fb79](https://github.com/nicsuzor/academicOps/commit/714fb79fc8e67485ec2d3d5624a6c159b31f63ea)), closes [#2124](https://github.com/nicsuzor/academicOps/issues/2124)
+* **session_reader:** render ExitPlanMode approval in audit narrative ([9bd9fc7](https://github.com/nicsuzor/academicOps/commit/9bd9fc78c907cea83fae9e97ecc5f46bc3392e6e))
+
+## [0.3.72](https://github.com/nicsuzor/academicOps/compare/v0.3.71...v0.3.72) (2026-07-07)
+
+
+### Bug Fixes
+
+* **hooks:** quiet the Ida checklist and task-notification noise ([#2139](https://github.com/nicsuzor/academicOps/issues/2139)) ([775a3bb](https://github.com/nicsuzor/academicOps/commit/775a3bb1f5530930597c0c046ae139186637db97))
+
+## [0.3.71](https://github.com/nicsuzor/academicOps/compare/v0.3.70...v0.3.71) (2026-07-07)
+
+
+### Bug Fixes
+
+* **ci:** scope QA/enforcer terminal-status lookups to their reviewer marker (fail-closed) ([23f4141](https://github.com/nicsuzor/academicOps/commit/23f4141f5e4608ea11bdf853e35e96ee99c93474))
+
 ## [0.3.70](https://github.com/nicsuzor/academicOps/compare/v0.3.69...v0.3.70) (2026-07-07)
 
 
