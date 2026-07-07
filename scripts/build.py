@@ -1984,6 +1984,12 @@ def main():
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
 
+    # Generate the LOCAL-dev marketplace (name `aops`, sources ./aops-*) written
+    # INTO dist/ so `claude plugin marketplace add dist/` registers it under the
+    # distinct `aops` name — never clobbering the released `academicOps`
+    # marketplace, so a developer can tell a local build apart from the release.
+    generate_local_marketplace(aops_root, dist_root, version)
+
     # Emit the LOCAL-dev cowork plugin (dist/aops-coworklocal, name
     # aops-coworklocal) + its isolated academicOps-cowork marketplace. The
     # PUBLISHED plugin (dist/aops-cowork, name aops-cowork) stays a clean plugin
@@ -2034,6 +2040,51 @@ def generate_marketplace(aops_root: Path, dist_root: Path, version: str):
         json.dump(data, f, indent=2)
         f.write("\n")
     print(f"  ✓ Generated {marketplace} (sources ./dist/aops-*)")
+
+
+def generate_local_marketplace(aops_root: Path, dist_root: Path, version: str):
+    """Generate the LOCAL-dev Claude marketplace at dist/.claude-plugin/marketplace.json.
+
+    Same plugin set as the root marketplace, but with TWO deliberate differences:
+      • name is `aops` (not `academicOps`) so `make dev` installs land in their own
+        marketplace/plugin namespace (`aops-core@aops`) — visibly distinct from the
+        released `academicOps` install in `claude plugin marketplace list`.
+      • plugin sources are rewritten ./dist/aops-* → ./aops-* because THIS
+        marketplace root is dist/ (not the repo root), so a co-located ./aops-claude
+        resolves to dist/aops-claude.
+
+    Written under dist/ (gitignored) and skipped by the publish glob `dist/*/`
+    (dot-dirs don't match), so it never reaches the dist branch. Consumed by
+    `make dev` / `make install-dev` via `claude plugin marketplace add $(DIST_DIR)`.
+    """
+    template_path = aops_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    data["name"] = "aops"
+    data["description"] = (
+        "academicOps LOCAL dev build — distinct from the released 'academicOps' marketplace"
+    )
+    for plugin in data.get(
+        "plugins", []
+    ):  # allow-fallback: template always defines plugins; empty loop is a safe no-op
+        plugin["version"] = version
+        src = plugin.get(
+            "source", ""
+        )  # allow-fallback: an entry without a source is left unrewritten
+        if src.startswith("./dist/"):
+            plugin["source"] = "./" + src[len("./dist/") :]
+
+    marketplace_dir = dist_root / ".claude-plugin"
+    marketplace_dir.mkdir(parents=True, exist_ok=True)
+    marketplace = marketplace_dir / "marketplace.json"
+    with open(marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"  ✓ Generated {marketplace} (name 'aops', sources ./aops-*)")
 
 
 def build_coworklocal_plugin(aops_root: Path, dist_root: Path, version: str):
