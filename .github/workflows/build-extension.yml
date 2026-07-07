@@ -27,13 +27,15 @@ on:
     tags: ['v*']
 
 concurrency:
-  # A stable tag's build-and-deploy job publishes to the `dist` branch and Docker
-  # `:latest`. The ONE human approval (§3.13) now happens earlier, at the maintainer's
-  # merge of the standing release-please PR — by the time this job runs the release is
-  # already approved. cancel-in-progress: true would still let a fast-follow tag (e.g.
-  # a second release-PR merge shortly after the first) cancel an in-flight publish
-  # mid-write, corrupting `dist`. Queue instead: never drop a pending or completed
-  # deploy; each tag gets its own uninterrupted turn.
+  # A stable tag's build-and-deploy job pauses on the `production` environment
+  # reviewer (the ONE human approval, §3.13) — while it's paused it is still
+  # "in progress" from concurrency's point of view. cancel-in-progress: true
+  # here silently cancelled that pending approval the instant the NEXT tag
+  # landed (release-please's fast path can cut one every few minutes), so a
+  # burst of releases each superseded the last before Nic ever saw a prompt —
+  # looked indistinguishable from "shipped with no approval" even though the
+  # cancelled runs never actually published. Queue instead: never drop a
+  # pending or completed deploy; each tag gets its own turn at the gate.
   group: build-deploy
   cancel-in-progress: false
 
