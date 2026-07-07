@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.73](https://github.com/nicsuzor/academicOps/compare/v0.3.72...v0.3.73) (2026-07-07)
+
+
+### Bug Fixes
+
+* **session_reader:** only truncate auth fields in windowed mode, with a generous cap ([06953c5](https://github.com/nicsuzor/academicOps/commit/06953c557a270ddae8514d4da5ac15fdb8dde2d2))
+* **session_reader:** render AskUserQuestion answer in audit narrative ([714fb79](https://github.com/nicsuzor/academicOps/commit/714fb79fc8e67485ec2d3d5624a6c159b31f63ea)), closes [#2124](https://github.com/nicsuzor/academicOps/issues/2124)
+* **session_reader:** render ExitPlanMode approval in audit narrative ([9bd9fc7](https://github.com/nicsuzor/academicOps/commit/9bd9fc78c907cea83fae9e97ecc5f46bc3392e6e))
+
 ## [0.3.72](https://github.com/nicsuzor/academicOps/compare/v0.3.71...v0.3.72) (2026-07-07)
 
 
