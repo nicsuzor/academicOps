@@ -28,8 +28,8 @@ SHA = "a29f1c5100000000000000000000000000000000"
 OTHER_SHA = "deadbeef00000000000000000000000000000000"
 
 
-def _review(sha: str, state: str) -> dict:
-    return {"id": 1, "commit_id": sha, "state": state, "body": "## Enforcer Review"}
+def _review(sha: str, state: str, body: str = "## Enforcer Review") -> dict:
+    return {"id": 1, "commit_id": sha, "state": state, "body": body}
 
 
 def run(
@@ -142,6 +142,39 @@ def test_not_committed_changes_requested_on_head_sha_is_failure(tmp_path: Path):
     assert out["state"] == "failure"
     assert out["failed"] == "true"
     assert "Violations found" in out["description"]
+
+
+def test_not_committed_qa_approval_on_head_sha_is_not_an_enforcer_pass(tmp_path: Path):
+    """Mirror image of the aops_e958bd56 QA false-green. A QA APPROVED review
+    ("# QA Verification") sits on the exact HEAD_SHA but is NOT an enforcer
+    verdict; the terminal lookup must be scoped to the "Enforcer Review" marker
+    and fail closed rather than green enforcer-status off another agent's
+    approval."""
+    out = run(
+        tmp_path,
+        committed="false",
+        reviews=[_review(SHA, "APPROVED", body="# QA Verification — VERIFIED")],
+        review_outcome="success",
+    )
+    assert out["state"] == "failure"
+    assert out["failed"] == "true"
+    assert "no APPROVED/CHANGES_REQUESTED review" in out["description"]
+
+
+def test_not_committed_body_mentioning_marker_mid_prose_is_ignored(tmp_path: Path):
+    """The marker is anchored to the body's first line. A QA review whose prose
+    mentions "Enforcer Review" further down must NOT be counted as an enforcer
+    verdict — the anchored scope closes the bare-substring residual."""
+    body = "# QA Verification — VERIFIED\n\nMatches the Enforcer Review posted earlier."
+    out = run(
+        tmp_path,
+        committed="false",
+        reviews=[_review(SHA, "APPROVED", body=body)],
+        review_outcome="success",
+    )
+    assert out["state"] == "failure"
+    assert out["failed"] == "true"
+    assert "no APPROVED/CHANGES_REQUESTED review" in out["description"]
 
 
 def test_not_committed_review_on_other_sha_is_not_a_match(tmp_path: Path):

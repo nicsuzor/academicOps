@@ -444,6 +444,12 @@ def build_audit_session_context(
 
     lines: list[str] = []
 
+    # max_turns=None means the whole session is rendered (no windowing) — the
+    # same "full" vs "abridged" distinction transcript_parser.py already makes
+    # for the persisted transcript files (full_mode bypasses truncation there
+    # too). Authorization fields must never be cut off in that full render.
+    full_mode = max_turns is None
+
     # Noise tools the reviewer doesn't need to see individually
     _SKIP_TOOLS = {"TodoWrite", "Skill"}
     # Max chars for agent reasoning text per turn
@@ -452,6 +458,11 @@ def build_audit_session_context(
     _TOOL_ARG_LIMIT = 300
     # Max chars for tool results
     _TOOL_RESULT_LIMIT = 1000
+    # Max chars for AskUserQuestion answers / ExitPlanMode approval responses
+    # in windowed (abridged) mode — these are authorization decisions, not
+    # bulk tool output, so they get a far more generous cap than
+    # _TOOL_RESULT_LIMIT. Never truncated at all in full_mode.
+    _AUTH_RESULT_LIMIT = 4000
 
     # Every turn in the (possibly windowed) set is rendered at full detail —
     # do NOT restore a historical/recent split within the window: hiding tool
@@ -573,6 +584,29 @@ def build_audit_session_context(
                         tool_line += f", path={search_path}"
                     tool_line += ")"
 
+                elif tool_name == "ExitPlanMode":
+                    plan = tool_input.get(
+                        "plan", ""
+                    )  # allow-fallback: absent plan text just skips the "Plan:" line below
+                    if len(plan) > _TOOL_ARG_LIMIT:
+                        plan = plan[:_TOOL_ARG_LIMIT] + "..."
+                    tool_line = "  - **ExitPlanMode**"
+                    if plan:
+                        tool_line += f"\n    Plan: {plan}"
+                    # Render the approval/rejection response — this is the ONLY
+                    # record that a plan was actually authorized before later
+                    # tool calls (e.g. TaskCreate) execute it. Omitting it made
+                    # custodiet/rbg misread authorized post-plan actions as
+                    # unapproved scope expansion (#186).
+                    result = item.get(
+                        "result", ""
+                    )  # allow-fallback: absent result just skips the "Response:" line below
+                    if result:
+                        result_str = str(result)
+                        if not full_mode and len(result_str) > _AUTH_RESULT_LIMIT:
+                            result_str = result_str[:_AUTH_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Response: {result_str}"
+
                 elif tool_name == "AskUserQuestion":
                     questions = tool_input.get("questions", [])
                     if questions:
@@ -580,6 +614,18 @@ def build_audit_session_context(
                         tool_line = f"  - **AskUserQuestion**: {q_text}"
                     else:
                         tool_line = "  - **AskUserQuestion**"
+                    # Render the user's free-text answer alongside the question.
+                    # Without this, an auditor sees only the prompt and can never
+                    # verify whether a subsequent action was actually authorized —
+                    # the question/answer pair is the ONLY record of many
+                    # authorization decisions in a session (bug: answer omitted
+                    # from every audit snapshot regardless of when it was read).
+                    result = item.get("result", "")
+                    if result:
+                        result_str = str(result)
+                        if not full_mode and len(result_str) > _AUTH_RESULT_LIMIT:
+                            result_str = result_str[:_AUTH_RESULT_LIMIT] + "..."
+                        tool_line += f"\n    Answer: {result_str}"
 
                 else:
                     # Generic tool — show name and key args
@@ -1189,7 +1235,9 @@ def find_sessions(
                 if metadata_json.exists():
                     try:
                         meta = json.loads(metadata_json.read_text())
-                        title = meta.get("title", "")
+                        title = meta.get(
+                            "title", ""
+                        )  # allow-fallback: optional metadata field, empty title keeps default "cowork" name
                         if title:
                             words = title.lower().split()[:3]
                             project_name = "cowork-" + "-".join(w for w in words if w.isalnum())

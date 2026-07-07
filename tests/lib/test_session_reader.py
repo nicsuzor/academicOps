@@ -842,6 +842,196 @@ class TestBuildAuditSessionContext:
         assert "Now add tests for it" in result
         assert "Run the tests" in result
 
+    def test_ask_user_question_renders_answer(self, tmp_path):
+        """AskUserQuestion tool calls must render the user's answer, not just the question.
+
+        Regression for the rendering omission that caused contradictory rbg
+        audit verdicts about the same authorization decision within a single
+        session (the answer is captured in the raw JSONL tool_result but was
+        never read by the AskUserQuestion branch — see nicsuzor/academicOps
+        issue filed from session aab022ac retro).
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "ask-user-question.jsonl"
+        entries_data = [
+            _create_user_entry("what can we do about the disk?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {
+                    "questions": [
+                        {
+                            "question": "Disk is critically low. Want me to reclaim space now?",
+                        }
+                    ]
+                },
+                offset=5,
+            ),
+            _create_tool_result_entry(
+                "tool-5",
+                "Your questions have been answered: "
+                '"Disk is critically low. Want me to reclaim space now?"='
+                '"i fixed the immediate problem. you fix this bug in transcript.py '
+                'so it does not loop over old unchanged files". '
+                "You can now continue with these answers in mind.",
+                offset=6,
+            ),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        assert "AskUserQuestion" in result
+        assert "Disk is critically low" in result
+        assert "fix this bug in transcript.py" in result, (
+            "AskUserQuestion rendering must include the user's answer text, "
+            "not just the question — otherwise auditors cannot verify "
+            "authorization decisions given via AskUserQuestion."
+        )
+
+    def test_exit_plan_mode_renders_approval(self, tmp_path):
+        """ExitPlanMode tool calls must render the approval/rejection response.
+
+        Regression for issue #186: the approval confirmation ("User has
+        approved your plan...") lives in the tool_result, same as the
+        AskUserQuestion answer, but ExitPlanMode fell through to the generic
+        tool branch which never reads item["result"]. Without it, an auditor
+        cannot tell whether post-plan actions (e.g. TaskCreate) were actually
+        authorized.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        jsonl_path = tmp_path / "exit-plan-mode.jsonl"
+        entries_data = [
+            _create_user_entry("plan out the migration", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "ExitPlanMode",
+                {"plan": "1. Add column\n2. Backfill\n3. Add NOT NULL constraint"},
+                offset=5,
+            ),
+            _create_tool_result_entry(
+                "tool-5",
+                "User has approved your plan. You can now start coding. "
+                "Start with updating your todo list if applicable.",
+                offset=6,
+            ),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries)
+
+        assert "ExitPlanMode" in result
+        assert "Add NOT NULL constraint" in result
+        assert "User has approved your plan" in result, (
+            "ExitPlanMode rendering must include the approval/rejection "
+            "response, not just the plan — otherwise auditors cannot verify "
+            "whether post-plan actions were authorized."
+        )
+
+    def test_ask_user_question_answer_not_truncated_in_full_mode(self, tmp_path):
+        """max_turns=None (full session render) must never truncate the answer.
+
+        Mirrors the full_mode-bypasses-truncation convention transcript_parser.py
+        already uses for the persisted -full.md transcript: a full render is
+        the authoritative record and must not clip an authorization decision,
+        however long.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        long_answer = "authorized: proceed with the migration. " + ("detail " * 800)
+        jsonl_path = tmp_path / "ask-user-question-long.jsonl"
+        entries_data = [
+            _create_user_entry("what should we do?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {"questions": [{"question": "Proceed?"}]},
+                offset=5,
+            ),
+            _create_tool_result_entry("tool-5", long_answer, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
+
+        assert long_answer in result, "full_mode must render the answer in full, never truncated"
+
+    def test_exit_plan_mode_response_not_truncated_in_full_mode(self, tmp_path):
+        """max_turns=None (full session render) must never truncate the approval response."""
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        long_response = "User has approved your plan. " + ("caveat " * 800)
+        jsonl_path = tmp_path / "exit-plan-mode-long.jsonl"
+        entries_data = [
+            _create_user_entry("plan out the migration", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry("ExitPlanMode", {"plan": "1. Add column"}, offset=5),
+            _create_tool_result_entry("tool-5", long_response, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=None)
+
+        assert long_response in result, (
+            "full_mode must render the approval response in full, never truncated"
+        )
+
+    def test_ask_user_question_answer_windowed_truncation_is_generous(self, tmp_path):
+        """Windowed (abridged) mode still truncates, but at a far higher cap
+        than bulk tool output (_TOOL_RESULT_LIMIT) — this field is an
+        authorization decision, not noisy Bash/Task output.
+        """
+        from lib.session_reader import SessionProcessor, build_audit_session_context
+
+        # Longer than _TOOL_RESULT_LIMIT (1000) but under _AUTH_RESULT_LIMIT (4000).
+        answer = "authorized. " + ("context " * 200)
+        assert 1000 < len(answer) < 4000
+        jsonl_path = tmp_path / "ask-user-question-windowed.jsonl"
+        entries_data = [
+            _create_user_entry("what should we do?", 0),
+            _create_assistant_entry(1),
+            _create_tool_use_entry(
+                "AskUserQuestion",
+                {"questions": [{"question": "Proceed?"}]},
+                offset=5,
+            ),
+            _create_tool_result_entry("tool-5", answer, offset=6),
+        ]
+        _write_jsonl(jsonl_path, entries_data)
+
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            jsonl_path, load_agents=False, load_hooks=False
+        )
+
+        result = build_audit_session_context(str(jsonl_path), entries=entries, max_turns=10)
+
+        assert answer in result, (
+            "windowed mode must not truncate an answer shorter than _AUTH_RESULT_LIMIT"
+        )
+
     def test_pre_parsed_entries_empty_list(self, tmp_path):
         """Pre-parsed empty entries list returns empty session marker."""
         from lib.session_reader import build_audit_session_context

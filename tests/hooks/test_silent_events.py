@@ -1,6 +1,10 @@
 """Silent/transparent events — task notifications and other no-op routing.
 
 Events that should produce empty or minimal output from the router.
+Task-notifications are not real user input, so no gates/hydrator/PKB-nudge
+run for them — but they DO get one short guidance line (see
+``task_notification.guidance`` template) reminding the agent to absorb
+routine background completions silently rather than relay them.
 """
 
 import json
@@ -10,6 +14,8 @@ from unittest.mock import patch
 from hooks.router import HookRouter
 
 from tests.hooks.gate_helpers import run_router_claude
+
+TASK_NOTIFICATION_GUIDANCE_MARKER = "background task notification"
 
 TASK_NOTIFICATION_RAW_INPUT = {
     "permission_mode": "bypassPermissions",
@@ -28,9 +34,10 @@ TASK_NOTIFICATION_RAW_INPUT = {
 
 
 class TestTaskNotificationSilent:
-    """Task-notification prompts should produce empty router output."""
+    """Task-notification prompts get no gates/hydrator/PKB-nudge, only the
+    short absorb-silently guidance line."""
 
-    def test_task_notification_ups_returns_empty_dict(self, monkeypatch):
+    def test_task_notification_ups_returns_guidance_only(self, monkeypatch):
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         monkeypatch.setattr("hooks.router.persist_session_data", lambda data: None)
 
@@ -49,21 +56,30 @@ class TestTaskNotificationSilent:
             output = router.output_for_claude(canonical, ctx.hook_event)
 
             output_json = json.loads(output.model_dump_json(exclude_none=True))
-            assert output_json == {}, (
-                f"Expected empty output for task-notification UPS, got: {json.dumps(output_json, indent=2)}"
+            additional_context = output_json.get("hookSpecificOutput", {}).get(
+                "additionalContext", ""
             )
+            assert TASK_NOTIFICATION_GUIDANCE_MARKER in additional_context, (
+                f"Expected task-notification guidance, got: {json.dumps(output_json, indent=2)}"
+            )
+            # No verdict, system_message, or gate side-effects — only the
+            # guidance context injection.
+            assert output_json.get("hookSpecificOutput", {}).get("permissionDecision") is None
             # execute_hooks() no longer logs internally — logging happens once,
             # uniformly, in main() AFTER resolve_policy() runs (so the JSONL
             # entry reflects the resolved wire decision, not just the gate's
             # pre-translation verdict). See main()'s log_hook_event() call.
             mock_log.assert_not_called()
 
-    def test_task_notification_subprocess_returns_empty(self) -> None:
-        """Task-notification via subprocess returns empty output."""
+    def test_task_notification_subprocess_returns_guidance_only(self) -> None:
+        """Task-notification via subprocess returns only the guidance injection."""
         input_data = {
             "hook_event_name": "UserPromptSubmit",
             "session_id": f"test-{uuid.uuid4()}",
             "prompt": "<task-notification>Task completed</task-notification>",
         }
         output, stderr = run_router_claude(input_data)
-        assert output == {}, f"Expected empty output, got: {output}"
+        additional_context = output.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert TASK_NOTIFICATION_GUIDANCE_MARKER in additional_context, (
+            f"Expected task-notification guidance, got: {output}"
+        )
