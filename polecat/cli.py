@@ -2692,6 +2692,8 @@ def _require_claude_oauth_or_exit(cli_tool: str) -> None:
 
 
 def _bootstrap_or_exit(client: str | None = None) -> None:
+    if os.environ.get("POLECAT_SKIP_BOOTSTRAP") == "1":
+        return
     from polecat.bootstrap import BootstrapError, validate_bootstrap
 
     try:

@@ -16,9 +16,9 @@ import pytest
 
 
 def _polecat_env(polecat_home, sessions_dir=None):
+    """Build an env dict for running polecat CLI."""
     if "PKB_MCP_URL" not in os.environ:
         pytest.skip("Test requires PKB_MCP_URL")
-    """Build an env dict for running polecat CLI."""
     env = os.environ.copy()
     env["AOPS"] = os.getcwd()
     env["POLECAT_HOME"] = str(polecat_home)
