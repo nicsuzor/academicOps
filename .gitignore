@@ -134,6 +134,10 @@ tmp*
 ## Except json files in our root writing data folder
 !/data/**/*.json*
 
+## Except the planted synthetic session transcript in the scenarios fixture
+## (privacy-scrubbed synthetic data, intentionally committed as test fixture)
+!/tests/scenarios/s1_cost_review/planted/session.jsonl
+
 # secrets
 authorized_keys
 models.json

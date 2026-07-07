@@ -62,11 +62,15 @@ per H12):
   skills-routing hint (moves up to aops-pkb/aops-adhd, H11).
 
 **Retired from this layer:** `sentinel` — deleted (H1, "no shitty NLP";
-container isolation instead). `ida` — retired as a hook (H6); the honesty /
-criterion-substitution check this layer used to enforce mechanically now
-belongs to the head-personality surface interacting with the human
-(`ida`, `aops-core`), not a router-level gate that fires uniformly regardless
-of whether a human is present.
+container isolation instead). `ida` remains live at this layer — the claim
+previously here that it was hook-retired under ruling H6 was a misrecording
+of Nic's H6 ruling (verbatim: "ida can _probably_ be deferred to the head
+surface for interaction with the human; but we will need to tell agents how
+to provide the completion proof that release_task is going to require" —
+session c3d962f5, 2026-07-05, on [[aops-fef39347]]), never an approved
+retirement. Nic, live 2026-07-07: "I didn't approve retiring Ida."
+Disposition is OPEN, pending the session-type walk ([[aops_3eabb0ae]]); see
+[`GATES.md#ida-gate`](GATES.md#ida-gate) for the corrected record.
 
 ### Two invariant families
 
