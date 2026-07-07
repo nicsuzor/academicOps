@@ -62,6 +62,14 @@ contributes_to:
     justification: "<one-sentence justification>"
 ```
 
+## Effect on Scores — what the edge actually does
+
+A `contributes_to` edge is **directional and reverse-scoring**. `compute_downstream_metrics` (in the `mem` repo, `graph_store.rs`) reads it as a _reverse_ edge for `downstream_weight`: the edge raises the **target's** `downstream_weight` — and thus the target's `focus_score` — and **never the source task's own**.
+
+**Common mistake this prevents:** you cannot raise a _task's_ own `focus_score` by adding `contributes_to` edges from it. If a task's score is floored (`downstream_weight` 1.0, `focus_score` at the floor), wiring more outgoing edges will not move it — they move the targets it points at.
+
+**How a task inherits stakes (the sanctioned channel):** put `severity` on the **target** node (`type: target`), then wire the task to it with `contributes_to`. The task then inherits urgency _down_ the edge — Birnbaum-weighted by `stated_weight`, discounted by slack. **Never set `severity` on the task itself:** the flat SEVn focus bonus is calibrated for terminal target obligations and will invert the ready queue; the write-boundary guard rejects it. See [[../../remember/references/TAXONOMY.md#severity-ladder-sev0sev4]] (Severity Ladder + Severity Target Boundary).
+
 ## Critical Rules
 
 - **Justification is mandatory**: Every edge MUST have a justification.
@@ -69,3 +77,4 @@ contributes_to:
 - **Search before asking**: Always verify if an edge already exists to avoid duplicates.
 - **One sentence only**: Keep justifications concise.
 - **Focus on ready tasks**: Prioritize wiring tasks that are `ready` or `in_progress`.
+- **Edges score the target, not the source**: a `contributes_to` edge never raises the source task's own `focus_score`. To give a _task_ more weight, add `severity` to the _target_ it points at — never to the task. See "Effect on Scores" above.
