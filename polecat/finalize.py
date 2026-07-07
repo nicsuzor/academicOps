@@ -604,7 +604,11 @@ def finish_cmd(
                 text=True,
                 check=False,
             )
-            prs = json.loads(pr_check.stdout) if pr_check.returncode == 0 and pr_check.stdout.strip() else []
+            prs = (
+                json.loads(pr_check.stdout)
+                if pr_check.returncode == 0 and pr_check.stdout.strip()
+                else []
+            )
             if prs:
                 pr_number = prs[0]["number"]
                 subprocess.run(
