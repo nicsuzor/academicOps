@@ -224,9 +224,35 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-      # Post terminal status based on the agent's PR review STATE (structured GitHub
-      # data, no prose parsing). APPROVED → success; CHANGES_REQUESTED → failure;
-      # no verdict review → fail-safe failure. Mirrors the enforcer's terminal step.
+      # Compute the terminal qa-status decision (state/description) from the
+      # agent's PR review STATE (structured GitHub data, no prose parsing).
+      # Extracted to a script (like the enforcer's) so the review-lookup — which
+      # MUST be scoped to marsha's "QA Verification" marker, or an enforcer
+      # approval on the same SHA leaks through as a false qa-status=success
+      # (aops_e958bd56) — is unit-tested (tests/test_qa_terminal_status.py)
+      # instead of living only as inline bash. Guard against a PR branch that
+      # forked before qa-terminal-status.sh existed and was never rebased: `ref`
+      # is the PR's OWN checkout, so the script genuinely may not be there. Fail
+      # closed with an actionable description rather than posting an empty state.
+      - name: Compute terminal decision
+        id: decision
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        env:
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+        run: |
+          if [[ -f scripts/ci/qa-terminal-status.sh ]]; then
+            bash scripts/ci/qa-terminal-status.sh
+          else
+            echo "::error::scripts/ci/qa-terminal-status.sh not found on this branch — rebase/merge dev to pick it up."
+            {
+              echo "state=failure"
+              echo "description=QA infra: qa-terminal-status.sh missing on this branch — rebase onto dev"
+              echo "failed=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Post terminal status from steps.decision (never re-derives the verdict
+      # here — see scripts/ci/qa-terminal-status.sh).
       - name: Post terminal status
         if: always() && steps.sha-skip.outputs.skip != 'true'
         run: |
@@ -236,32 +262,9 @@ jobs:
 
           # Only post if not already posted by the agent, or if we need to replace pending.
           if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
-            REVIEW_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | last.state // \"\"" 2>/dev/null || echo "")
-
-            if [ "$REVIEW_STATE" = "APPROVED" ]; then
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=success \
-                -f context="${AGENT_NAME}-status" \
-                -f description="3/3 dimensions pass" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            elif [ "$REVIEW_STATE" = "CHANGES_REQUESTED" ]; then
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="Verification failed — see review" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            elif [ "${{ steps.review.outcome }}" != "success" ]; then
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="Agent run failed without a verdict review" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            else
-              gh api "repos/$REPO/statuses/$HEAD_SHA" \
-                -f state=failure \
-                -f context="${AGENT_NAME}-status" \
-                -f description="QA posted no APPROVED/CHANGES_REQUESTED review" \
-                -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
-            fi
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="${{ steps.decision.outputs.state }}" \
+              -f context="${AGENT_NAME}-status" \
+              -f description="${{ steps.decision.outputs.description }}" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
           fi
