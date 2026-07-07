@@ -26,11 +26,12 @@ contract ruled by Nic on 2026-07-07 (ruling A15), written up for his wording
 review. It is not the plugin's full manifest, trait inventory, or a nesting
 decision for the coordinator layer (A8, still open) — those remain tracked
 separately (see **Out of scope**, below). A related but distinct question —
-whether coordination should run as a standing background process — was open
-when this document was drafted and has since been settled (ruling A16,
-`aops-fef39347`); its consequence for this plugin is folded into the
-**Interaction contract** section below, since A16c confirms the plugin only
-_consumes_ that capability rather than owning it. No implementation is
+whether coordination should run as a standing background process, and what
+the head↔coordinator interface is — was open when this document was drafted
+and has since been fully settled (rulings A16 and A17, `aops-fef39347`);
+their consequence for this plugin is folded into the **Interaction contract**
+section below, since A16c confirms the plugin only _consumes_ that capability
+rather than owning it. No implementation is
 proposed or performed here; this is the contract a later build task
 implements against.
 
@@ -177,7 +178,7 @@ obligations:
   structured decision surface, pre-resolved to options, rather than open-ended
   prose questions (head-role-charter AC-17).
 
-### Coordinator boundary (RULING A16, settles `mem_7ec4564b`)
+### Coordinator boundary (RULINGS A16 + A17, settle and close `mem_7ec4564b`)
 
 The **no play-by-play** rule above is not just a style preference — it is
 underwritten by a scope ruling made the same session, after this contract's
@@ -200,8 +201,37 @@ first draft:
   interaction-contract consequence above — a calm liaison head, with no
   time-based ruling-log ever dumped on Nic as a substitute for the three-block
   surface contract (RULING A15). Any coordinator implementation work (queue
-  mechanics, dispatch logic, the head↔coordinator interface contract) is
-  out of scope here; see **Out of scope**, below.
+  mechanics, dispatch logic) is out of scope here; see **Out of scope**,
+  below.
+
+The head↔coordinator **interface contract** — left open by A16 — was then
+probed live (a multi-chore coordinator-subagent session, same day) and
+**ratified as probed** (RULING A17, `aops-fef39347`, closing
+`mem_7ec4564b`):
+
+- **A17a — one persistent coordinator subagent per interactive session.**
+  Spawned on the session's first coordination need, then **resumed by message
+  per chore** — not spawn-per-chore, and (per A16a) not a daemon. Cross-chore
+  memory demonstrated its value in the probe: the coordinator surfaced a red
+  CI check unprompted because its earlier chore's state made the anomaly
+  visible. It owns durable coordination per A16b.
+- **A17b — the durable seam is a rolling PKB state note**, kept in A15
+  rank-and-narrate style: live pointers plus one line of why-it-matters each,
+  verify-at-write, with a self-expiry hedge — never copied state snapshots.
+  The head sends the coordinator **goal-briefs**, receives **outcome-only
+  reports**, and narrates to Nic **from the note** — never from a time-based
+  log.
+- **A17c — act-don't-surface over-suppression risk: the retirement trigger
+  is sufficient.** Nic ruled no extra safety valve is needed now for the
+  task-notification guidance injection (the "act, don't surface unless
+  important" behaviour referenced below). The trigger as written in PR
+  #2139's Cost-Benefit-Analysis stands: retire the mechanism if the next 5
+  `/retro` reviews show over-suppression incidents — and retros watch for
+  exactly this.
+
+A17 defines the **contract**, not the machinery: how the coordinator is
+implemented (subagent plumbing, message-resume mechanics, state-note tooling)
+remains supervisor/aops-polecat work per A16c, out of scope for this plugin.
 
 Two related hook-text changes were in flight at the time of this ruling and
 are referenced, not specified, here: the Ida honesty-at-Stop notice moving to
@@ -230,10 +260,11 @@ where the surface contract depends on their eventual output.
   scaffolding (not yet ruled — Nic drives that conversation separately).
 - The junior/Ida coordinator-nesting question (A8) — open, unruled.
 - The coordinator subagent capability itself — queue, dispatch, worker
-  lifecycle, reconcile mechanics, and the head↔coordinator interface contract
-  — owned by supervisor/aops-polecat machinery, not this plugin (RULING A16,
-  see **Coordinator boundary** above). This document consumes its
-  consequence, not its implementation.
+  lifecycle, reconcile mechanics, and the plumbing that implements the
+  head↔coordinator interface contract (the contract itself is now ruled:
+  A17) — owned by supervisor/aops-polecat machinery, not this plugin
+  (RULINGS A16 + A17, see **Coordinator boundary** above). This document
+  consumes their consequence, not their implementation.
 - Disposition of in-session enforcement hooks (agenda 2 of `aops-fef39347`,
   already resolved separately as rulings H1–H18; unrelated to this surface).
 - The server-side P1 write-floor (`task-8ad584f6`).
@@ -245,12 +276,13 @@ where the surface contract depends on their eventual output.
 All rulings cited here were made live with Nic on 2026-07-07 in session
 `aops-fef39347` (parent task; full session log on that task's body). Summary:
 
-| Ruling                               | What it settled                                                                                                                                 |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1, A3, A4                           | Plugin scope: accommodations-to-function framing; existing-features-first; `/email` moves in.                                                   |
-| Storage≠surfacing (`mem_7e2e9864`)   | The core lesson this whole plugin answers.                                                                                                      |
-| A15                                  | The three-block surface contract (Today / Decide / live pointers) specified above.                                                              |
-| A14, `mem_624664d1`                  | Intent capture is P1-only; no fabricated due dates.                                                                                             |
-| A12, `mem-398f664e`, `note-fcd1b887` | Cold-open sweep prototype, its cost/latency evidence, and the TrustCon cross-check lesson.                                                      |
-| A13/A14 comms corrections            | Interaction contract: cold-reader invariant, no play-by-play, headings, `AskUserQuestion`.                                                      |
-| A16 (a/b/c)                          | Coordinator boundary: no standing background coordinator, in-session subagent instead, owned by supervisor/aops-polecat and only consumed here. |
+| Ruling                               | What it settled                                                                                                                                                                                                                                                         |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1, A3, A4                           | Plugin scope: accommodations-to-function framing; existing-features-first; `/email` moves in.                                                                                                                                                                           |
+| Storage≠surfacing (`mem_7e2e9864`)   | The core lesson this whole plugin answers.                                                                                                                                                                                                                              |
+| A15                                  | The three-block surface contract (Today / Decide / live pointers) specified above.                                                                                                                                                                                      |
+| A14, `mem_624664d1`                  | Intent capture is P1-only; no fabricated due dates.                                                                                                                                                                                                                     |
+| A12, `mem-398f664e`, `note-fcd1b887` | Cold-open sweep prototype, its cost/latency evidence, and the TrustCon cross-check lesson.                                                                                                                                                                              |
+| A13/A14 comms corrections            | Interaction contract: cold-reader invariant, no play-by-play, headings, `AskUserQuestion`.                                                                                                                                                                              |
+| A16 (a/b/c)                          | Coordinator boundary: no standing background coordinator, in-session subagent instead, owned by supervisor/aops-polecat and only consumed here.                                                                                                                         |
+| A17 (a/b/c)                          | Head↔coordinator interface ratified as probed: one persistent per-session coordinator subagent resumed by message; rolling PKB state note as the durable seam (goal-briefs in, outcome-only reports out); PR #2139's over-suppression retirement trigger is sufficient. |
