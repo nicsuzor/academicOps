@@ -73,9 +73,8 @@ open calls only Nic can make. A question keeps resurfacing here until it is
 dispositioned; it does not silently drop off after one showing. "Self-
 contained" means answerable without opening another document: state the
 choice and the options in the question itself, per the head-role-charter's
-AC-17 (form and defend a position; a menu is a floor, not a finish line) and
-anti-pattern 16 (density-compliant but unreadable) — this block must read
-cold, not assume the reader remembers the thread.
+AC-17 (form and defend a position; a menu is a floor, not a finish line) —
+this block must read cold, not assume the reader remembers the thread.
 
 ### 3. Live pointers, never copied state
 
@@ -131,7 +130,7 @@ findings from that run are load-bearing for this contract:
 - **Three-part synthesis, not one**: what happened (activity), what Nic was
   actually trying to do (intent vs. yak-shave), and dropped threads (opened,
   never closed). A single-source catch-up (one task body, one repo's PR list)
-  is not an acceptable substitute — see anti-pattern 18.
+  is not an acceptable substitute.
 - **The TrustCon lesson**: the same overnight brief asserted "registration
   closes tomorrow" as the headline from email/calendar traces, when the
   underlying task (`admin-3aac6be1`) had in fact been closed a week earlier.
@@ -170,7 +169,7 @@ obligations:
   label.
 - **`AskUserQuestion` for decisions.** Genuine judgment calls use the
   structured decision surface, pre-resolved to options, rather than open-ended
-  prose questions (head-role-charter AC-17; anti-patterns 16/18/19).
+  prose questions (head-role-charter AC-17).
 
 Two related hook-text changes were in flight at the time of this ruling and
 are referenced, not specified, here: the Ida honesty-at-Stop notice moving to
