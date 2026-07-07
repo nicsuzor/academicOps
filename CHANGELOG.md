@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.72](https://github.com/nicsuzor/academicOps/compare/v0.3.71...v0.3.72) (2026-07-07)
+
+
+### Bug Fixes
+
+* **hooks:** quiet the Ida checklist and task-notification noise ([#2139](https://github.com/nicsuzor/academicOps/issues/2139)) ([775a3bb](https://github.com/nicsuzor/academicOps/commit/775a3bb1f5530930597c0c046ae139186637db97))
+
 ## [0.3.71](https://github.com/nicsuzor/academicOps/compare/v0.3.70...v0.3.71) (2026-07-07)
 
 
