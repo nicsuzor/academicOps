@@ -947,44 +947,57 @@ off the skipped reviewers). No agent runner is burned on a release PR.
 `enforcer-status`, `qa-status`, `review-attestation`, and `admit-status` for **every**
 PR to `dev`, and a GitHub ruleset cannot conditionally drop required checks by head
 ref. So the `release-autogreen` job (in `pr-pipeline.yml`) posts all four as `success`
-the moment `Lint` **and** `Pytest` are genuinely green on HEAD, then arms auto-merge
-(`--squash --delete-branch`). `review-attestation` is posted with the §10 `target_sha`
-in its `target_url` so the auto-attestation is auditable against the head SHA. The job
-requires `AOPS_BOT_GH_TOKEN` (the default token cannot satisfy a ruleset-trusted
-required check, §4.7) and is same-repo only, mirroring `initialize`.
+the moment `Lint` **and** `Pytest` are genuinely green on HEAD. It deliberately does
+**NOT** arm auto-merge (see below — batching moved the merge itself under human
+control). `review-attestation` is posted with the §10 `target_sha` in its `target_url`
+so the auto-attestation is auditable against the head SHA. The job requires
+`AOPS_BOT_GH_TOKEN` (the default token cannot satisfy a ruleset-trusted required check,
+§4.7) and is same-repo only, mirroring `initialize`.
 
-**The single human approval lives at deploy, not on the PR.** The maintainer asked for
-exactly one approval, at the deployment. So the release PR itself has **no** human gate
-— it merges automatically on green mechanical checks — and the one approval is the
-`production` GitHub Environment on `build-extension.yml`'s `build-and-deploy` job. A
-**stable** `vX.Y.Z` deploy (the tag release-please creates automatically on the next
-`push: dev`) waits on the environment reviewer before publishing to the `dist` branch
-and Docker `:latest`. **Prerelease** tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they contain a
-`-`) are hand-pushed via `make prerelease`, so that deliberate push _is_ the approval
-and they skip the gate (`environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}`).
+**The single human approval lives at the release-PR merge, not at deploy — retired
+2026-07-07.** The maintainer asked for exactly one approval, for the whole release.
+That approval used to live at the deploy step (a `production` GitHub Environment
+reviewer on `build-extension.yml`'s `build-and-deploy` job, gating only **stable**
+`vX.Y.Z` tags). It has moved: release-please maintains **one standing release PR** that
+keeps accumulating every feature PR merged to `dev` since the last release (plus a
+running `CHANGELOG`), mechanically green per the paragraph above but **never
+auto-merged**. The maintainer's deliberate merge of that PR is now the sole human
+approval — it batches everything accumulated into one version bump **and** cuts the
+next stable `vX.Y.Z` tag in the same action. `build-extension.yml`'s `build-and-deploy`
+job carries **no** environment gate any more: by the time it runs, the release it is
+building was already approved at the PR merge. Prerelease tags (`vX.Y.Z-rc.N`,
+`-dev.N`, …; they contain a `-`) are unaffected — they are still hand-pushed via `make
+prerelease`, and that deliberate push is still the approval for those.
 
-**The gate queues, it never silently drops.** `build-extension.yml` serializes on the
-`build-deploy` concurrency group with `cancel-in-progress: false`. A run paused on the
-`production` reviewer is still "in progress" to GitHub's concurrency machinery — with
-`cancel-in-progress: true` (the bug: **fixed 2026-07-02**), each new stable tag from a
-release-please burst cancelled the previous run's pending approval outright, so most of
-a burst's releases vanished from the queue before Nic ever saw a prompt (visually
-indistinguishable from "shipped without approval," though the cancelled runs never
-actually reached `dist`/Docker). Queueing instead means every stable tag gets its own
-turn at the gate, in order; approving the newest still ships the full accumulated tree
-of everything behind it.
+Why relocate it: the deploy-time `production` Environment gate lived in the Actions
+tab ("Review deployments"), was easy to miss, and froze the `dist` branch when stable
+releases piled up unapproved — their tag-triggered deploys queued (see below) but nic
+never saw the buried prompt (`v0.3.49`→`v0.3.69` all cancelled unpublished). Moving the
+approval to a PR merge puts it somewhere a maintainer actually looks, and batching
+means one click ships everything accumulated instead of one click per PR.
+
+**The `build-deploy` concurrency group still queues, it never silently drops.**
+`build-extension.yml` serializes on the `build-deploy` concurrency group with
+`cancel-in-progress: false`. This no longer defends a pending Environment approval
+(there isn't one) — it now defends an in-flight **publish**: a stable tag's deploy
+pushes to the `dist` branch and Docker `:latest`, and `cancel-in-progress: true` would
+let a fast-follow tag (e.g. a second release-PR merge shortly after the first) cancel
+that publish mid-flight, corrupting `dist`. Queueing instead means every stable tag's
+deploy gets its own uninterrupted turn, in order.
 
 > **Trade-off, recorded deliberately.** This is a scoped exception to the repository's
-> "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR merges
-> to `dev` with no per-PR human click. It is safe because (a) the content is
-> deterministic bot output, not authored change, and (b) the human decision is not
-> removed but **relocated** to the publish step — nothing ships to users until the
-> `production` environment is approved. The retired `production` gate on the _PR
-> pipeline_ `gate` job (and the dead copy on `agent-enforcer.yml`) blocked even
-> Lint/Pytest behind a buried "Review deployments → Approve" and duplicated the human
-> gate; it is gone. This exception applies ONLY to `release-please--*` head refs; every
-> other PR to `dev` still runs the full agent pipeline and the `admit-status` human
-> gate unchanged.
+> "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR's
+> mechanical-green state carries no per-push human click. It is safe because (a) the
+> content accumulated in it is deterministic bot output plus already-reviewed/admitted
+> feature PRs, not unreviewed authored change, and (b) the human decision is not
+> removed but **relocated and batched** — nothing is cut as a stable release until the
+> maintainer deliberately merges the standing release PR. The retired `production`
+> environment gate at deploy (and the earlier-retired `production` gate on the _PR
+> pipeline_ `gate` job, and the dead copy on `agent-enforcer.yml`) each blocked
+> mechanical checks or publish behind a buried "Review deployments → Approve" and
+> duplicated the human gate; both are gone. This exception applies ONLY to
+> `release-please--*` head refs; every other PR to `dev` still runs the full agent
+> pipeline and the `admit-status` human gate unchanged.
 
 ## 4. Per-agent contract (locked)
 

@@ -126,6 +126,17 @@ The mechanisms that fire on a PR / at merge. Terse current-state rows; the canon
 
 > Local/off-pipeline routes to the same agents: `/strategic-review` → james (deploys rbg+pauli+marsha, reconciles APPROVE/REVISE/ESCALATE, advisory); `/verify` → marsha; `/enforce` PR comment → rbg.
 
+### Release / publish pipeline (current state)
+
+The mechanisms specific to cutting and shipping a release, distinct from the feature-PR
+merge gates in §3 above. Canonical detail: [`workflows/pr-pipeline.md`](workflows/pr-pipeline.md) §3.13.
+
+| Mechanism                            | Level | Required?                | What it does                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| :------------------------------------ | :---- | :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Release-PR merge (human) — **replaces the retired deploy-time gate below** | L7 | **yes** (sole release approval) | `release-autogreen` (`pr-pipeline.yml`) auto-satisfies `enforcer-status`/`qa-status`/`admit-status`/`review-attestation`/`comment-triage-status` on the standing release-please PR once `Lint`+`Pytest` are green, but deliberately does **NOT** arm auto-merge. The PR stays open, accumulating every feature PR merged since the last release. The maintainer's deliberate merge of that PR is the one human approval for the whole batch, and is what cuts the next stable `vX.Y.Z` tag (pr-pipeline §3.13). |
+| `production` deploy environment gate | —     | **retired 2026-07-07**    | Previously gated `build-extension.yml`'s `build-and-deploy` job behind a GitHub Environment reviewer for stable tags only. Removed: by the time a stable tag's deploy runs, the release was already approved at the PR merge above, so a second gate at deploy was redundant and easy to miss (buried in the Actions tab), and froze the `dist` branch when unapproved deploys piled up and got cancelled. |
+| `build-deploy` concurrency (queue, no cancel) | L4 | **yes**              | `build-extension.yml` serializes stable-tag deploys (`cancel-in-progress: false`) so a fast-follow release-PR merge can't cancel an in-flight `dist`/Docker publish. No longer defends a pending Environment approval (retired above); still defends an in-progress publish.                                                                                                                                                 |
+
 ### Post-hoc pattern review (evidence loop, not per-PR)
 
 Previously missing from this catalogue (flagged by Nic against the pre-redraft `enforcement.md`, aops-3038d47c). Fires on a user-set cadence, not per-PR; canonical definition and the witness/judge split rationale: [`enforcement.md` §5](enforcement/enforcement.md#5-evidence-loop).
