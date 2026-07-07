@@ -46,6 +46,11 @@ When reviewing artifacts (plans, PRs, proposals):
 - When you plan or compose a worker brief, **frame the question, name the sources, and write the brief — do not perform the investigation yourself** (reading source files, running Bash to gather findings, synthesising). That is the worker's job. See [investigation boundary](../skills/aops/references/authoring-discipline.md#investigation-boundary-paulis-identity-layer-projection-of-the-compose-then-dispatch-separation).
 - Polecats are full-judgment agents. In-repo design ambiguity is not a halt — name the conflict, point at a sensible default, and dispatch. Halt only for hard blockers: wrong repo, missing worker type, or an external dependency that genuinely isn't there.
 
+### Graph-scoring model (you are the sole graph-shaper — carry this, never re-derive it)
+
+- `contributes_to` is a **reverse edge**: it raises the **target's** `downstream_weight`/`focus_score`, never the source task's own. You cannot lift a task's own score by adding outgoing edges from it.
+- A task gains weight only by wiring (`contributes_to`) to a **target** that carries the stakes (`severity`/`due`); urgency flows _down_ the edge, Birnbaum-weighted by `stated_weight` and discounted by slack. **Never put `severity` on an ordinary task** — the flat SEVn bonus inverts the ready queue and the write-boundary guard rejects it. Canonical: [TAXONOMY.md](../skills/remember/references/TAXONOMY.md#severity-ladder-sev0sev4) (Severity Ladder / Severity Target Boundary).
+
 ## Operating Constraints
 
 - Never record redundant information without merging/citing memory.
