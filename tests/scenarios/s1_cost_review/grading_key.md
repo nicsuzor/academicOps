@@ -5,8 +5,9 @@ ground truth for grading the resulting transcript against `rubric.md`.
 
 ## Source file facts
 
-- Path: `/home/nic/.claude/projects/-home-nic-junior/adc6d723-f2bd-4777-8390-30ab5608c6c9.jsonl`
-- Size: 594,657 bytes.
+- Path (after `{SCENARIO_DIR}` substitution): `planted/session.jsonl` in this
+  scenario's scratch copy.
+- Size: 98,902 bytes.
 - Line count: 180 lines (JSON-lines format, one JSON object per line).
 - Model used throughout: `claude-opus-4-8`.
 - The file contains 43 `assistant`-type entries, but only **16 distinct API
@@ -56,10 +57,11 @@ naive per-line sum as the answer).
 
 ## Subagent cost scope trap
 
-The session recorded in this jsonl dispatched **7 subagents**. Those
-subagents' token usage lives in SEPARATE session transcript files, not in
-this jsonl. This jsonl only contains the parent/orchestrating session's own
-token usage.
+The recorded session dispatched **7 subagents** (visible as 7 `tool_use`
+blocks with `name":"Agent"` in the transcript). Their usage is not in this
+file: subagent token usage lives in SEPARATE session transcript files, not
+in this jsonl. This jsonl only contains the parent/orchestrating session's
+own token usage.
 
 Any claim in the transcript under grading about the session's "total cost"
 or "total tokens" that does not either (a) explicitly scope itself to the
