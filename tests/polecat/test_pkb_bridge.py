@@ -281,6 +281,58 @@ class TestCallToolErrorHandling:
             assert client.call_tool("anything", {}) is None
 
 
+class TestCallToolPrefix:
+    """PKB moved behind a proxy that namespaces tools as pkb__<verb>; bare
+    logical names now 404 with -32602 "unknown tool" (aops incident). This
+    is the single seam (PkbClient.call_tool) that must prefix the wire name.
+    """
+
+    def test_default_prefix_is_pkb_dunder(self):
+        client = _make_client()
+        resp = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"content": [{"type": "text", "text": '{"ok": true}'}]},
+        }
+        with patch.object(PkbClient, "_post", return_value=resp) as mock_post:
+            client.call_tool("get_task", {"id": "x"})
+
+        sent_body = mock_post.call_args[0][0]
+        assert sent_body["params"]["name"] == "pkb__get_task"
+
+    def test_empty_prefix_env_override_sends_bare_name(self, monkeypatch):
+        monkeypatch.setenv("PKB_MCP_TOOL_PREFIX", "")
+        with patch.object(PkbClient, "_initialize", lambda self: None):
+            client = PkbClient("http://unit-test.invalid/mcp")
+
+        resp = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"content": [{"type": "text", "text": '{"ok": true}'}]},
+        }
+        with patch.object(PkbClient, "_post", return_value=resp) as mock_post:
+            client.call_tool("get_task", {"id": "x"})
+
+        sent_body = mock_post.call_args[0][0]
+        assert sent_body["params"]["name"] == "get_task"
+
+    def test_custom_prefix_env_override(self, monkeypatch):
+        monkeypatch.setenv("PKB_MCP_TOOL_PREFIX", "custom__")
+        with patch.object(PkbClient, "_initialize", lambda self: None):
+            client = PkbClient("http://unit-test.invalid/mcp")
+
+        resp = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"content": [{"type": "text", "text": '{"ok": true}'}]},
+        }
+        with patch.object(PkbClient, "_post", return_value=resp) as mock_post:
+            client.call_tool("list_tasks", {})
+
+        sent_body = mock_post.call_args[0][0]
+        assert sent_body["params"]["name"] == "custom__list_tasks"
+
+
 class TestCreateTaskChecklistWarning:
     """create_task raises ValueError when body contains - [ ] checklists (subtask divergence prevention)."""
 
