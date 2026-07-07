@@ -65,11 +65,35 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
 not relay — commission the control first (§3 of [[../SKILL.md]]).
 
 **CLAIM/EVIDENCE is a set of claim+evidence-pointer pairs, not a bare assertion.** If the
-handback asserts more than one substantive fact, itemize each on its own line, each paired
-with either an EVIDENCE pointer (file:line, command output, session id — not a narrative
-dump) or the literal tag `UNVERIFIED`. One `EVIDENCE` line may not silently cover multiple
-unrelated claims — the supervisor cannot sanity-check a verdict (see Verdict Sanity Check
-below) against evidence it can't attribute to a specific claim.
+handback asserts more than one substantive fact, itemize each on its own line. Each itemized
+claim carries one of the two labels from the canonical Observed/Reported register
+([[specs/interactive-experience/head-role-charter.md#fitness-criteria--anti-patterns]]):
+
+- **Observed** — saw the primary evidence this session (a file read, command output, live
+  service state) — cite it. In a handback, "cite it" means paired with an EVIDENCE pointer
+  (file:line, command output, session id — not a narrative dump).
+- **Reported** — a subagent, transcript, or document said it — attribute the source and state
+  its verification status. If no evidence pointer exists, the tag is the literal fallback
+  `UNVERIFIED` — the universal tag for a missing evidence pointer.
+
+One `EVIDENCE` line may not silently cover multiple unrelated claims — the supervisor cannot
+sanity-check a verdict (see Verdict Sanity Check below) against evidence it can't attribute to a
+specific claim.
+
+**Worked example** (two claims — one Observed with a pointer, one Reported/`UNVERIFIED`):
+
+```
+VERDICT: BLOCKED
+CLAIM: The migration runs cleanly on staging; the prod cutover step is unverified.
+GATE: `alembic upgrade head` exits 0 against a prod-shaped staging DB; prod cutover itself has
+  not been observed.
+EVIDENCE:
+  1. Observed — `alembic upgrade head` exited 0 on staging, scripts/migrate.out:1-40.
+  2. Reported/UNVERIFIED — prior worker's handback asserted "prod cutover is safe" with no
+     evidence pointer attached; not independently checked this session.
+CONFIDENCE: med + a dry-run against a prod snapshot would falsify claim 2
+CONFOUND CHECK: NOT RUN
+```
 
 ## Compose-then-Dispatch Separation
 
