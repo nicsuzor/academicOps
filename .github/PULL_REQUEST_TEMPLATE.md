@@ -3,10 +3,9 @@
      approve in ~60s. Reference (don't restate) pipeline semantics owned by
      specs/workflows/pr-pipeline.md. Drop a line only if it is genuinely N/A.
 
-     Note: polecat-authored PRs get this same structure scaffolded automatically
-     from the task body (polecat/cli.py `PR_BODY_SKELETON` / `_generate_pr_body`),
-     so it applies to bot PRs and hand-opened ones alike. The two copies are kept
-     in sync by tests/polecat/test_pr_body_structure.py. -->
+     Note: polecat-authored PRs follow this same structure by instruction (the
+     finish prompt in polecat/prompt_template.py points here) — the agent
+     writes it itself from within the session; nothing scaffolds it for them. -->
 
 ## Summary
 

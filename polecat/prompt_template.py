@@ -213,10 +213,9 @@ it belongs, `task.body`) as the reviewer-decision sections defined in \
 Change, Risk & blast radius, Sequencing, Verification) so a maintainer can \
 decide in ~60s. Two things carry the weight: be honest in **Posture** (proper \
 fix vs workaround vs stopgap) and say explicitly in **Verification** what is \
-NOT verified. Fill the sections with real content — polecat scaffolds the bare \
-headers if you omit them, but an empty skeleton helps no one; you own the \
-content. This is intent, not a form to pad: keep it scannable, drop a line only \
-if it is genuinely N/A.
+NOT verified. There is no scaffold behind you — polecat does not inject or \
+backfill these sections, you own the content end to end. This is intent, not \
+a form to pad: keep it scannable, drop a line only if it is genuinely N/A.
 
    ```bash
    git push -u origin HEAD

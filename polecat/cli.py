@@ -202,77 +202,6 @@ def _check_gh_installed() -> bool:
         return False
 
 
-# Reviewer-decision PR-body structure (task aops_2abaf040). Every bot-authored
-# PR must carry these sections so a maintainer can decide to approve in ~60s.
-# This skeleton is the OPERATIVE source for bot PRs: polecat overrides GitHub's
-# template by passing a body derived from `task.body` to `gh pr create`, and it
-# serves arbitrary target repos, so it cannot read a target-repo `.github` file
-# at runtime — the structure has to travel with the generator. The hand-opened
-# equivalent lives in this repo's `.github/PULL_REQUEST_TEMPLATE.md`, which
-# mirrors these same sections; `tests/polecat/test_pr_body_structure.py` keeps
-# the two copies' section set in sync (headers + the honest three-way Posture),
-# so the structure can't silently diverge — the per-section guidance prose is
-# not lock-stepped. Whether the prose does its job is a review judgment, not a
-# string-match (AXIOMS#judgment-non-delegable).
-PR_BODY_SECTION_HEADERS: tuple[str, ...] = (
-    "## Summary",
-    "## Posture",
-    "## Why now / alignment",
-    "## Change",
-    "## Risk & blast radius",
-    "## Sequencing",
-    "## Verification",
-)
-
-# If at least this many canonical headers are already present in the task body,
-# treat the agent as having authored the structure itself (mechanism (b)) and do
-# NOT scaffold a second copy. This also makes skeleton emission idempotent: the
-# skeleton contains all headers, so re-feeding a generated body never doubles it.
-_PR_STRUCTURE_PRESENT_THRESHOLD = 4
-
-PR_BODY_SKELETON = """\
-<!-- Reviewer-decision structure — fill each section; keep it scannable, a
-     decision aid, not a form to pad. Reference (don't restate) pipeline
-     semantics owned by specs/workflows/pr-pipeline.md.
-     Canonical copy: .github/PULL_REQUEST_TEMPLATE.md -->
-
-## Summary
-One or two plain sentences: what this changes and why it exists.
-
-## Posture  (be honest)
-- [ ] Proper fix / best practice
-- [ ] Pragmatic workaround — works, not ideal (say why it's OK for now)
-- [ ] Stopgap — deliberately temporary (link the follow-up)
-
-## Why now / alignment
-What breaks or is blocked without this; the task/ruling/spec it serves. Intended design, or expedient?
-
-## Change
-What changed, at file:line. For fixes: root cause + evidence (run IDs, commit SHAs, worked example).
-
-## Risk & blast radius
-What could break, who's affected (one project vs shared infra/CI/all PRs), reversibility, any gate/security implication.
-
-## Sequencing
-Standalone, or depends-on / blocks other PRs? Merge before/after something? Name the other PRs if order matters.
-
-## Verification
-How it was checked (tests, behaviour) and — explicitly — what is NOT verified (e.g. CI-only paths)."""
-
-
-def _has_reviewer_decision_structure(body: str) -> bool:
-    """True if the body already carries the reviewer-decision section structure.
-
-    Used to avoid scaffolding a second copy when the agent authored the sections
-    into ``task.body`` (mechanism (b)), and to keep skeleton emission idempotent
-    on re-run. Matches headers case-insensitively at line start.
-    """
-    present = sum(
-        1 for header in PR_BODY_SECTION_HEADERS if re.search(rf"(?im)^{re.escape(header)}\b", body)
-    )
-    return present >= _PR_STRUCTURE_PRESENT_THRESHOLD
-
-
 def _generate_pr_body(task, transcript_path: Path | None = None) -> str:
     """Generate a Pull Request body from a task object.
 
@@ -327,13 +256,6 @@ def _generate_pr_body(task, transcript_path: Path | None = None) -> str:
                 acceptance_criteria.append(re.sub(r"^[-*]\s*\[[ xX]\]", "- [ ]", item))
 
     parts = []
-    # Scaffold the reviewer-decision structure on every bot PR that doesn't
-    # already carry it. Placed at the top so it's the first thing a reviewer
-    # scans; the original task context follows below. Skipped when the agent
-    # already authored the sections into task.body (mechanism (b)).
-    if not _has_reviewer_decision_structure(body):
-        parts.append(PR_BODY_SKELETON)
-        parts.append("\n")
     if description:
         parts.append(description)
         parts.append("\n")
