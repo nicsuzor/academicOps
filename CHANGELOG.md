@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.76](https://github.com/nicsuzor/academicOps/compare/v0.3.75...v0.3.76) (2026-07-07)
+
+
+### Features
+
+* **install:** local dev marketplace as 'aops', not 'academicOps' ([a5ec4b3](https://github.com/nicsuzor/academicOps/commit/a5ec4b3f5ad43ac1a169effef480425a331faff7))
+
+
+### Bug Fixes
+
+* document release/publish gate change, fix stale tests ([91951f5](https://github.com/nicsuzor/academicOps/commit/91951f5bb2e5f1a680ddcf23e3309111828cc507))
+* **polecat:** configurable PKB MCP tool-name prefix for proxied server ([3f550e0](https://github.com/nicsuzor/academicOps/commit/3f550e011e82afcddd1a38416ffa14cc85d1ceb6))
+* **release:** batch releases via manual release-PR merge; drop publish gate ([3fe25e9](https://github.com/nicsuzor/academicOps/commit/3fe25e94f7ea3a94b2e26dcaa47998f1b683a6d2))
+* **release:** stamp clean tag version on stable builds too (G1) ([db160b6](https://github.com/nicsuzor/academicOps/commit/db160b6f3022731f5cb9259c648e80aeb4236e9b))
+
+
+### Reverts
+
+* drop workflow-file comment edit blocked by token permissions ([eb4c52e](https://github.com/nicsuzor/academicOps/commit/eb4c52e668dfd20a76cec2c46d1569815714a592))
+
+
+### Tests
+
+* **install:** cover [@aops-primary](https://github.com/aops-primary) branch in version-mismatch check ([7347498](https://github.com/nicsuzor/academicOps/commit/734749826d9480461777b5aa724ead6b6af27416))
+
 ## [0.3.75](https://github.com/nicsuzor/academicOps/compare/v0.3.74...v0.3.75) (2026-07-07)
 
 
