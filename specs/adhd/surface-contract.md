@@ -105,12 +105,12 @@ hours.
 
 ## Intent capture: Priority 1 is the only lever
 
-Stated intent ("I want to do Post CV today") is encoded as **Priority 1, and
+Stated intent ("I want to do Errand X today") is encoded as **Priority 1, and
 only Priority 1** — never as a fabricated due date (`mem_624664d1`; the
 taxonomy question is tracked on `nicsuzor/academicOps` PR #2137). Due dates
 are real-world deadlines exclusively; a fabricated one poisons deadline trust
 across every surface that reads `due`. This was a live correction: an earlier
-session stamped `due=today` on a Post CV task as an ad hoc "intent marker" and
+session stamped `due=today` on an Errand X task as an ad hoc "intent marker" and
 Nic reverted it hard.
 
 Consequence for ranking: **Today**'s importance-as-of-today score is graph
