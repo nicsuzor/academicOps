@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.70](https://github.com/nicsuzor/academicOps/compare/v0.3.69...v0.3.70) (2026-07-07)
+
+
+### Code Refactoring
+
+* **enforcement:** dissolve aops-interactive per ruling A10 ([#2128](https://github.com/nicsuzor/academicOps/issues/2128)) ([4fdce74](https://github.com/nicsuzor/academicOps/commit/4fdce742ca381589c6a4597bebd400c851944aec))
+
 ## [0.3.69](https://github.com/nicsuzor/academicOps/compare/v0.3.68...v0.3.69) (2026-07-07)
 
 
