@@ -156,12 +156,16 @@ jobs:
         env:
           ACA_DATA: ${{ github.workspace }}
         run: |
-          VERSION_FLAG=""
-          if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
-            VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
-          fi
-          # $VERSION_FLAG must word-split into separate args (empty, or
-          # "--set-version X.Y.Z"), so SC2086 quoting would break it.
+          # Always stamp the version computed above (clean tag for stable, normalised
+          # prerelease for testing). Without this on the STABLE path, build.py falls
+          # through to its git-describe resolver, which on the build-dirtied tree emits
+          # a bogus NEXT-dev version (G1) — e.g. v0.3.70 was published as
+          # 0.3.71-dev.0+gSHA.dirty, a PRERELEASE string for what is a stable release,
+          # so semver-aware installers mis-rank it. The guard used to cover only the
+          # testing path; stable needs it too (mem_c006704b).
+          VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
+          # $VERSION_FLAG must word-split into separate args
+          # ("--set-version X.Y.Z"), so SC2086 quoting would break it.
           # shellcheck disable=SC2086
           uv run python scripts/build.py $VERSION_FLAG
 
