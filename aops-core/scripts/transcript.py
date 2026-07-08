@@ -56,7 +56,6 @@ from lib.transcript_parser import (  # noqa: E402
     extract_working_dir_from_entries,
     format_reflection_header,
     infer_project_from_working_dir,
-    normalize_gemini_project,
     reflection_to_insights,
 )
 from lib.transcript_paths import (  # noqa: E402
@@ -614,8 +613,6 @@ def _save_minimal_token_summary(
             insights["session_type"] = session_summary.session_type
         if session_summary.pull_requests:
             insights["pull_requests"] = session_summary.pull_requests
-        if session_summary.gemini_version:
-            insights["gemini_version"] = session_summary.gemini_version
         if session_summary.details:
             if "gates" in session_summary.details:
                 insights["gates"] = session_summary.details["gates"]
@@ -874,10 +871,6 @@ def _is_test_session(p: Path) -> bool:
     name = p.name.lower()
     parts = [part.lower() for part in p.parts]
 
-    # Whitelist Gemini tmp directory
-    if ".gemini/tmp" in s:
-        return False
-
     # Whitelist Cowork audit logs (they contain 'local' in the path)
     if "local-agent-mode-sessions" in s and name == "audit.jsonl":
         return False
@@ -906,18 +899,14 @@ def _is_test_session(p: Path) -> bool:
 
 
 def _compute_usage_and_duration(
-    processor: SessionProcessor,
-    entries: list,
-    agent_entries: dict,
-) -> tuple[UsageStats, float | None]:
-    """Aggregate usage stats and compute session duration together.
+    session_path: Path,
+    session_duration_minutes: float,
+) -> tuple["UsageStats", float]:
+    """Aggregate usage stats and compute session duration together."""
+    from lib.transcripts.extractor import extract_cost_data
 
-    Factors out three near-identical call sites (aops_b190be1c) that always
-    ran ``_aggregate_session_usage`` immediately followed by
-    ``_compute_session_duration`` on the same entries/agent_entries.
-    """
-    usage_stats = processor._aggregate_session_usage(entries, agent_entries)
-    session_duration_minutes = _compute_session_duration(entries)
+    usage_stats = extract_cost_data(session_path)
+
     return usage_stats, session_duration_minutes
 
 
@@ -1383,8 +1372,6 @@ def _infer_project(
     # Handle Gemini JSON/JSONL sessions (Gemini chat dumps may use either ext)
     if session_path.suffix in (".json", ".jsonl"):
         project = session_path.parent.name
-        if project == "chats":
-            return normalize_gemini_project(session_path.parent.parent.name)
         # ``.json`` extension alone is a strong Gemini signal (Claude uses
         # .jsonl for transcripts), but ``.jsonl`` is shared — fall through so
         # Claude/Polecat detection can run.
