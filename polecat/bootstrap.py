@@ -1,7 +1,18 @@
 import os
 import socket
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
+
+# Add aops-core to path for lib imports (mirrors polecat/cli.py and siblings).
+SCRIPT_DIR = Path(__file__).parent.resolve()
+REPO_ROOT = SCRIPT_DIR.parent
+if str(REPO_ROOT / "aops-core") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "aops-core"))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from lib.host_secrets import resolve_forward_values
 
 
 class BootstrapError(Exception):
@@ -39,18 +50,9 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     if not pkb_url:
         errors.append("Missing required environment variable: PKB_MCP_URL")
 
-    # PAT secret — check aliases via host_secrets
-    try:
-        from lib.host_secrets import resolve_forward_values
-
-        has_gh = bool(resolve_forward_values(["GH_TOKEN", "GITHUB_TOKEN"]))
-    except ImportError:
-        # Fallback if lib is not in path
-        has_gh = bool(
-            os.environ.get("AOPS_BOT_GH_TOKEN")
-            or os.environ.get("GH_TOKEN")
-            or os.environ.get("GITHUB_TOKEN")
-        )
+    # PAT secret — check aliases via host_secrets (single source of truth for
+    # the AOPS_BOT_GH_TOKEN -> GH_TOKEN/GITHUB_TOKEN alias map).
+    has_gh = bool(resolve_forward_values(["GH_TOKEN", "GITHUB_TOKEN"]))
 
     if not has_gh:
         errors.append("Missing required secret: AOPS_BOT_GH_TOKEN (or GH_TOKEN via alias)")
