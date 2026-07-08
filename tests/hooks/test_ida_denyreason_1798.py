@@ -43,7 +43,6 @@ from lib.session_state import SessionState
 from tests.hooks.gate_helpers import (
     run_router_agy,
     run_router_claude,
-    run_router_claude_raw,
 )
 
 _IDA_MARKER = "be honest"
@@ -133,27 +132,30 @@ def test_postinvocation_routes_ida_to_advisory_not_denyreason(
     Differential control for #1798. Same armed IDA, same session — only the
     event differs. IDA content belongs in the advisory channel, never in a
     PreToolUse denyReason. The advisory channel is client-specific: agy uses
-    ``injectSteps`` (JSON); claude uses the asyncRewake quiet-split — the full
-    ida-reminder body on stdout with EXIT 2 (no JSON), so the body reaches the
-    agent as a <system-reminder> while the user sees only the one-line summary
-    (ENFORCEMENT-MAP §1.1 `ida·reminder`).
+    ``injectSteps`` (JSON); claude uses non-blocking
+    ``hookSpecificOutput.additionalContext`` on the JSON channel (GH #2181 fix
+    direction B, 2026-07-08: the asyncRewake quiet-split was retired because
+    an asyncRewake:true Stop entry was found to silently discard exit-0 JSON
+    `decision:block` from every OTHER Stop gate on 2.1.204 — warn-mode ida now
+    rides the same already-proven ``agent_context_without_block`` channel as
+    every other Stop advisory; see client_spec.channel_spec("claude","Stop")).
     """
     sid = f"1798-postinvocation-{client_type}"
     _arm_ida(monkeypatch, tmp_path, sid, client_type)
 
     if client_type == "claude":
-        # claude Stop, ida-solo warn → asyncRewake exit-2 plain-body channel.
-        stdout, returncode, stderr = run_router_claude_raw(
-            {"conversationId": sid, "hook_event_name": "Stop"}
+        # claude Stop, ida-solo warn -> non-blocking additionalContext.
+        output, stderr = run_router_claude({"conversationId": sid, "hook_event_name": "Stop"})
+        assert output.get("decision") != "block", (
+            f"claude ida·reminder (warn mode) must not block the stop: "
+            f"output={output!r} stderr={stderr[-400:]!r}"
         )
-        assert returncode == 2, (
-            f"claude ida·reminder must take the asyncRewake exit-2 path: "
-            f"rc={returncode} stdout={stdout!r} stderr={stderr[-400:]!r}"
+        hso = output.get("hookSpecificOutput") or {}
+        ctx = hso.get("additionalContext", "")
+        assert _IDA_MARKER in ctx, (
+            f"claude ida reminder must reach the agent via additionalContext: {output!r}"
         )
-        assert _IDA_MARKER in stdout, (
-            f"claude asyncRewake body must carry the IDA reminder: {stdout!r}"
-        )
-        assert "denyReason" not in stdout, f"asyncRewake body must not be a denyReason: {stdout!r}"
+        assert "denyReason" not in output, f"output must not carry denyReason: {output!r}"
         return
 
     # The Stop-family event is client-specific on the wire: agy fires

@@ -133,23 +133,31 @@ class TestChannelTable:
         assert spec.agent_context_without_block is True
         assert spec.can_block is True  # delivery != enforcement; block still available
 
-    def test_claude_stop_has_asyncrewake_quiet_split(self):
-        # PTY-proven 2026-06-29 (stop-asyncrewake-split, 2.1.195): full body →
-        # agent <system-reminder>, one-line summary → user only. The quiet
-        # full-to-agent / one-line-to-user disposition (ENFORCEMENT-MAP §1.1).
+    def test_claude_stop_asyncrewake_quiet_split_retired(self):
+        # RETIRED (GH #2181 fix direction B, 2026-07-08): the asyncRewake
+        # quiet-split (full body -> agent <system-reminder>, one-line summary
+        # -> user only) was PTY-proven live on 2.1.195, but on 2.1.204 the
+        # SAME asyncRewake:true hooks.json config was found to silently
+        # discard exit-0 JSON `decision:block` output from that SAME hook
+        # entry -- so every block-mode Stop gate (incl. ida under
+        # IDA_GATE_MODE=block, the default) was dropped with no delivery and
+        # no user notice. The single Stop entry could not safely carry both
+        # asyncRewake (for the ida warn quiet-split) and JSON blocks (for
+        # every other gate) at once, so asyncRewake was retired: warn-mode
+        # ida now rides the same already-proven `agent_context_without_block`
+        # channel (additionalContext, non-blocking) as every other Stop
+        # advisory. See client_spec.channel_spec("claude","Stop").notes.
         spec = cs.channel_spec("claude", "Stop")
-        assert spec.agent_full_user_summary is True
-        # Quiet-split is NOT a hard block (delivery != compulsion) — block stays
-        # available via the separate decision:block path.
+        assert spec.agent_full_user_summary is False
+        # Block-mode enforcement is unaffected and still available.
         assert spec.can_block is True
 
-    def test_quiet_split_is_claude_stop_only(self):
-        # No proven agent-full/user-summary split elsewhere: PreToolUse (advisory
-        # rides additionalContext, already U-silent) and agy (no user channel) do
-        # NOT have it. Guards against over-claiming the disposition.
-        assert cs.channel_spec("claude", "PreToolUse").agent_full_user_summary is False
-        assert cs.channel_spec("agy", "Stop").agent_full_user_summary is False
-        assert cs.channel_spec("gemini", "Stop").agent_full_user_summary is False
+    def test_no_client_event_has_the_retired_quiet_split(self):
+        # Guards against re-introducing the asyncRewake quiet-split anywhere:
+        # no (client, event) in the table may claim it post-#2181.
+        for client, event in cs._CHANNELS:
+            spec = cs.channel_spec(client, event)
+            assert spec.agent_full_user_summary is False, (client, event)
 
     def test_agy_pretooluse_has_no_free_agent_channel(self):
         spec = cs.channel_spec("agy", "PreToolUse")

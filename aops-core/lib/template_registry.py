@@ -246,8 +246,10 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Agent-facing honesty check injected into context on Stop",
     ),
     # ida.policy_message (ida-policy-message.md) removed when ida·reminder moved
-    # to the asyncRewake quiet-split: warn mode shows no separate user banner, and
-    # block mode carries its short line inline (gates/definitions.py).
+    # to the (now-retired, GH #2181, 2026-07-08) asyncRewake quiet-split: warn
+    # mode shows no separate user banner (delivered non-blockingly via
+    # additionalContext, router.ida_warn_solo_decision_for), and block mode
+    # carries its short line inline (gates/definitions.py).
     "ida.askuserquestion_reminder": TemplateSpec(
         name="ida.askuserquestion_reminder",
         category=TemplateCategory.CONTEXT_INJECTION,

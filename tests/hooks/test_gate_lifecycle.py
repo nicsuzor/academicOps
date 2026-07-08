@@ -87,8 +87,9 @@ class TestIdaPerTurnLifecycle:
 
         first_result = router._dispatch_gates(stop_ctx, state)
         # D1: warn fires a HARD block (DENY) once — the single forced continuation
-        # is the nudge. On Claude this DENY is rerouted to the quiet asyncRewake
-        # channel, but the gate-layer verdict is DENY.
+        # is the nudge. On Claude this DENY is delivered non-blockingly via the
+        # quiet additionalContext channel (router.ida_warn_solo_decision_for),
+        # but the gate-layer verdict here is still DENY.
         assert first_result is not None and first_result.verdict == GateVerdict.DENY
         assert state.gates["ida"].status == GateStatus.OPEN
 

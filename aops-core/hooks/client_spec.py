@@ -229,8 +229,7 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
         True,
         True,
         True,
-        notes="2.1.195 mem-4ab6cc0b; asyncRewake=quiet-summary path (PTY-proven)",
-        agent_full_user_summary=True,
+        notes="2.1.195 mem-4ab6cc0b; asyncRewake removed (#2181 fix direction B)",
     ),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
     # ---- Gemini CLI ----

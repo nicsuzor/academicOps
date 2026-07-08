@@ -689,8 +689,9 @@ GATE_CONFIGS = [
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
             # The short user-facing line is inline (the former ida-policy-message.md
-            # template was deleted when ida·reminder moved to the asyncRewake
-            # quiet-split — block mode keeps its visible reason, warn mode does not).
+            # template was deleted when ida·reminder moved to the (now-retired)
+            # asyncRewake quiet-split — block mode keeps its visible reason, warn
+            # mode does not).
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
@@ -701,15 +702,25 @@ GATE_CONFIGS = [
                 message_template="≡ Honesty check before exit.",
                 context_key="ida.reminder",
             ),
-            # Warn mode: fire-once HARD block, delivered QUIET on Claude. Like
-            # every stop gate (D1), warn forces one continuation so the agent
-            # processes the reminder — the verdict is DENY, not WARN. On Claude
-            # the DENY is rerouted to the asyncRewake quiet-split (body → agent
-            # <system-reminder>, one-line rewakeSummary → user; see the router's
-            # ida-warn-mode metadata stash in _dispatch_gates), so the user is
-            # not shown a loud "Stop hook error" banner. Non-Claude clients fall
-            # back to the loud block: gemini decision:deny+reason (forces one
-            # retry), agy best-effort injectSteps (advisory — agy cannot compel).
+            # Warn mode: fire-once HARD block at the gate layer, delivered QUIET
+            # (non-blocking) on Claude. Like every stop gate (D1), warn forces one
+            # continuation so the agent processes the reminder — the verdict is
+            # DENY, not WARN, exactly like block mode. On Claude the DENY is
+            # downgraded to a non-blocking delivery by
+            # `router.ida_warn_solo_decision_for` (via the router's
+            # `ida_warn_solo_body` metadata stash in `_dispatch_gates`), which
+            # rides `hookSpecificOutput.additionalContext` (the same
+            # `agent_context_without_block` channel every other Stop advisory
+            # uses) instead of a loud "Stop hook error" banner. GH #2181
+            # (2026-07-08): this REPLACES the retired `asyncRewake` exit-2 quiet-
+            # split — that config was found to silently discard exit-0 JSON
+            # `decision:block` from every OTHER Stop gate sharing the same entry
+            # on Claude Code 2.1.204. CAVEAT: unlike the old asyncRewake summary,
+            # additionalContext is NOT agent-only on Claude's screen (renders as
+            # "Stop hook feedback" in transcript) — the user sees the full text,
+            # not a one-liner. Non-Claude clients fall back to the loud block:
+            # gemini decision:deny+reason (forces one retry), agy best-effort
+            # injectSteps (advisory — agy cannot compel).
             # No message_key: warn never shows a separate user-facing ida banner.
             # The unconditional fire-once trigger above opens the gate after this
             # fires, so a retried Stop in the same turn is not re-blocked; re-arms
