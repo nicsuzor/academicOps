@@ -1,0 +1,337 @@
+variables:
+  ACA_DATA:
+    authoritative_source: dotfiles/.env.local
+    hosts:
+    - mac
+    - linux
+    purpose: Absolute path to the PKB data directory
+  AOPS:
+    authoritative_source: dotfiles/servers/remote/setup.sh
+    hosts:
+    - mac
+    - linux
+    purpose: Path to academicOps source
+  AOPS_AGY_CLIENT:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_BOT_GH_TOKEN:
+    authoritative_source: dotfiles/.env.local (sops)
+    hosts:
+    - mac
+    - linux
+    purpose: Machine PAT for repo read/write ops
+  AOPS_CORE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_CORE_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_CUSTOM_VAR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_ENABLED_PROVIDERS:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_GHA_REPOS:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_HOOK_LOG_PATH:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_MACHINE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_POLECAT_BRANCH:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_POLECAT_CONFIG:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_POLECAT_CONTAINER:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_PROVIDER_OVERRIDE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_SESSIONS:
+    authoritative_source: ~/.claude/settings.json
+    hosts:
+    - mac
+    - linux
+    purpose: Directory for session transcripts
+  AOPS_SESSION_ID:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_SESSION_STATE_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_SRC_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_TASK_ID:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_TS_SSH_CMD:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_TS_SSH_OPTS:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_TS_SYNC_DEST:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  AOPS_WORKER_HOSTS:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_AGENT_TYPE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_CODE_OAUTH_TOKEN:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_CODE_REMOTE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_CONFIG_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_ENV_FILE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_PARENT_SESSION_ID:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_PLUGIN_ROOT:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_PROJECT_DIR:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  CLAUDE_SUBAGENT_TYPE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  GEMINI_API_KEY:
+    authoritative_source: dotfiles/.env.local (sops)
+    hosts:
+    - mac
+    - linux
+    purpose: Gemini model auth
+  GEMINI_AUTH_IN_CONTAINER:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  GEMINI_CLI_HOME:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  GEMINI_SESSION_ID:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  GH_TOKEN:
+    authoritative_source: polecat/entrypoint.sh
+    hosts:
+    - mac
+    - linux
+    purpose: Standard GitHub CLI token (alias)
+  GITHUB_TOKEN:
+    authoritative_source: polecat/entrypoint.sh
+    hosts:
+    - mac
+    - linux
+    purpose: Standard GitHub API token (alias)
+  PKB_MCP_TOOL_PREFIX:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  PKB_MCP_URL:
+    authoritative_source: ~/.claude/settings.local.json
+    hosts:
+    - mac
+    - linux
+    purpose: PKB MCP server address
+  POLECAT_BRANCH:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_CREW_NAME:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_DISABLE_STARTUP_STAGGER:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_DOCKER_MEMORY:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_E2E_PARENT:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_E2E_PROJECT:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_FORCE_STAGING:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_GEMINI_AUTH_DISABLED:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_GEMINI_HOST:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_HOME:
+    authoritative_source: ~/.claude/settings.json
+    hosts:
+    - mac
+    - linux
+    purpose: Root for polecat runtime state
+  POLECAT_SILENT_TIMEOUT:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_SKIP_PR_URL_CHECK:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_STAGING_BASE:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
+  POLECAT_TERMINATION_GRACE_SECONDS:
+    authoritative_source: TODO
+    hosts:
+    - mac
+    - linux
+    purpose: TODO
