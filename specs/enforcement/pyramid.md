@@ -40,10 +40,14 @@ evidence the lighter one is insufficient.
 All fire on Claude Code hook events within the turn (`UserPromptSubmit → … →
 Stop`), uniformly across main sessions, subagents, and workers — no
 `is_subagent` skip (H8, reorganised within the existing session-state design
-per H12):
+per H12) — except `enforcer`/`rbg`'s PreToolUse dispatch, which stays skipped
+for subagent-classified sessions as a deliberate, permanent exception (see
+[`GATES.md` § Subagent & worker session scope](GATES.md#subagent--worker-session-scope)):
 
 - **`enforcer`/`rbg`** (PreToolUse) — periodic compliance audit after ~17
-  tool calls (default lowered from 50, H2).
+  tool calls (default lowered from 50, H2); skips subagent-classified
+  sessions at PreToolUse, but its counter still advances on subagent
+  PostToolUse activity.
 - **`rbg-review`** (Stop) — final axiom audit before a task-bound session
   exits; armed by default, posture expressed only via env vars/`polecat.yaml`
   (H3).
