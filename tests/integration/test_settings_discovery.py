@@ -13,7 +13,6 @@ Running tests:
 - pytest tests/integration/test_settings_discovery.py -xvs
 """
 
-import json
 from pathlib import Path
 
 import pytest
@@ -54,6 +53,7 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
         # Create a dummy one so the test doesn't fail on missing env setup.
         project_settings.parent.mkdir(parents=True, exist_ok=True)
         import json
+
         with open(project_settings, "w") as f:
             json.dump({"enabledPlugins": {"aops-core": {}}}, f)
         project_exists = True
