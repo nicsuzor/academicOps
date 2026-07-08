@@ -1,7 +1,7 @@
 # Q3 Schema Migration — Status Report
 
 Prepared by: Migration Working Group
-Source data: `project_status.csv` (this directory)
+Source data: project_status.csv and blockers_log.md, working-group archive
 
 ## Summary
 
