@@ -899,14 +899,18 @@ def _is_test_session(p: Path) -> bool:
 
 
 def _compute_usage_and_duration(
-    session_path: Path,
-    session_duration_minutes: float,
-) -> tuple["UsageStats", float]:
-    """Aggregate usage stats and compute session duration together."""
-    from lib.transcripts.extractor import extract_cost_data
+    processor: SessionProcessor,
+    entries: list,
+    agent_entries: dict,
+) -> tuple[UsageStats, float | None]:
+    """Aggregate usage stats and compute session duration together.
 
-    usage_stats = extract_cost_data(session_path)
-
+    Factors out three near-identical call sites (aops_b190be1c) that always
+    ran ``_aggregate_session_usage`` immediately followed by
+    ``_compute_session_duration`` on the same entries/agent_entries.
+    """
+    usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+    session_duration_minutes = _compute_session_duration(entries)
     return usage_stats, session_duration_minutes
 
 
