@@ -516,8 +516,10 @@ class TestStopReasonIsUserVisibleAndTidy:
 
         # D1: warn now fires a hard-block DENY like block, so the advisory rides
         # the user-visible `reason` in BOTH modes at this render layer. (ida-warn
-        # is rerouted to the quiet asyncRewake channel in main(); output_for_claude
-        # — tested here — still renders the loud DENY reason, which must be tidy.)
+        # is delivered via non-blocking hookSpecificOutput.additionalContext,
+        # selected by router.ida_warn_solo_decision_for() in main(); asyncRewake
+        # is retired. output_for_claude — tested here — still renders the loud
+        # DENY reason, which must be tidy.)
         assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
         user_text = output.reason
         assert _MARKER_OPEN not in user_text and _MARKER_CLOSE not in user_text, (
