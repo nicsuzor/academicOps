@@ -39,9 +39,21 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     if not pkb_url:
         errors.append("Missing required environment variable: PKB_MCP_URL")
 
-    # PAT secret — only AOPS_BOT_GH_TOKEN is accepted
-    if not os.environ.get("AOPS_BOT_GH_TOKEN"):
-        errors.append("Missing required secret: AOPS_BOT_GH_TOKEN")
+    # PAT secret — check aliases via host_secrets
+    try:
+        from lib.host_secrets import resolve_forward_values
+
+        has_gh = bool(resolve_forward_values(["GH_TOKEN", "GITHUB_TOKEN"]))
+    except ImportError:
+        # Fallback if lib is not in path
+        has_gh = bool(
+            os.environ.get("AOPS_BOT_GH_TOKEN")
+            or os.environ.get("GH_TOKEN")
+            or os.environ.get("GITHUB_TOKEN")
+        )
+
+    if not has_gh:
+        errors.append("Missing required secret: AOPS_BOT_GH_TOKEN (or GH_TOKEN via alias)")
 
     # Client-specific auth
     if client == "gemini":
