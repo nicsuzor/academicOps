@@ -859,11 +859,7 @@ class HookRouter:
         messages = []
         context_injections = []
         final_verdict = GateVerdict.ALLOW
-        # Track the advisory `ida` warn body and which gates actually contributed,
-        # so the asyncRewake quiet-split below can fire ONLY when ida·reminder is
-        # the sole Stop advisory (ENFORCEMENT-MAP §1.1). See metadata wiring after
-        # the loop — mixed Stop turns keep the status-quo additionalContext path.
-        ida_quiet_body: str | None = None
+        # Track which gates actually contributed.
         contributing_gates: list[str] = []
 
         for gate in GateRegistry.get_all_gates():
@@ -880,16 +876,6 @@ class HookRouter:
                         contributed = True
                     if contributed:
                         contributing_gates.append(gate.name)
-                    # Quiet-channel signal for the ida·reminder: stash the body
-                    # when ida fires in WARN MODE, decoupled from the verdict.
-                    # ida now emits DENY in warn mode (D1: warn hard-blocks once),
-                    # so the old `verdict == WARN` key would never match — the
-                    # channel choice keys on the gate's MODE, not the verdict.
-                    if gate.name == "ida" and result.context_injection:
-                        from hooks.gate_config import IDA_GATE_MODE
-
-                        if IDA_GATE_MODE == "warn":
-                            ida_quiet_body = result.context_injection
 
                     # Verdict precedence: DENY > WARN > ALLOW
                     if result.verdict == GateVerdict.DENY:
@@ -904,22 +890,30 @@ class HookRouter:
                 print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
 
-        # asyncRewake quiet-split (ENFORCEMENT-MAP §1.1 `ida·reminder`): when the
-        # advisory ida warn is the SOLE Stop contributor and nothing blocks, the
-        # full ida-reminder body is delivered to the AGENT via the Claude Stop
-        # asyncRewake hook (body → agent <system-reminder>; one-line config
-        # rewakeSummary → user). The router signals this by stashing the body in
-        # metadata; main() emits it on stdout + exit 2 (the asyncRewake channel),
-        # gated on the SSoT capability cell client_spec.agent_full_user_summary.
-        # Strictly scoped: any other contributing gate (qa/handover advisory) or a
-        # DENY verdict falls through to the status-quo renderer untouched.
+        # Track the advisory `ida` warn body so the Claude-only quiet delivery
+        # in resolve_policy_for_claude (see `_resolve_policy_for_claude_stop`)
+        # can fire ONLY when ida·reminder is the SOLE Stop advisory
+        # (ENFORCEMENT-MAP §1.1). This does NOT alter `final_verdict` — ida's
+        # gate-layer verdict stays DENY in both warn and block mode (both are
+        # fire-once hard blocks at the gate layer; see the "Ida" GatePolicy
+        # pair in lib/gates/definitions.py), so `_dispatch_gates` /
+        # `output_for_claude` keep rendering the loud DENY reason exactly as
+        # before this fix (existing tests key off that). The metadata stash
+        # is a pure channel-selection signal consumed downstream, in
+        # `_resolve_policy_for_claude_stop`, which is the ONLY place the
+        # warn-vs-block distinction changes the wire shape.
         metadata: dict[str, Any] = {}
+
         if (
             ctx.hook_event in ("Stop", "SessionEnd")
-            and ida_quiet_body is not None
+            and final_verdict == GateVerdict.DENY
             and contributing_gates == ["ida"]
+            and context_injections
         ):
-            metadata["ida_async_rewake_body"] = ida_quiet_body
+            from hooks.gate_config import IDA_GATE_MODE
+
+            if IDA_GATE_MODE == "warn":
+                metadata["ida_warn_solo_body"] = "\n\n".join(context_injections)
 
         if messages or context_injections or final_verdict != GateVerdict.ALLOW:
             return GateResult(
@@ -1073,12 +1067,8 @@ class HookRouter:
         """All Claude JSON-channel verdict-changing policy, for every event
         Claude can receive.
 
-        This ALWAYS resolves to the JSON channel — it does not know about the
-        Stop asyncRewake short-circuit (see ``async_rewake_body_for``), which is
-        a channel-selection decision main() must make BEFORE calling this, since
-        that channel has no representation in ``ClaudeStopHookOutput`` at all.
-        Keeping this method asyncRewake-unaware preserves ``output_for_claude``
-        as a pure "give me the Stop/general JSON shape" call for direct callers
+        This ALWAYS resolves to the JSON channel. Keeping this method
+        pure "give me the Stop/general JSON shape" call for direct callers
         and tests, exactly like the pre-refactor renderer.
 
         Stop/SessionEnd get the full channel-routing treatment (warn->
@@ -1092,38 +1082,63 @@ class HookRouter:
             return self._resolve_policy_for_claude_stop(result, event)
         return self._resolve_policy_for_claude_general(result, event)
 
-    def async_rewake_body_for(self, result: CanonicalHookOutput, event: str) -> str | None:
-        """Body to emit via the Claude Stop ``asyncRewake`` quiet-split, or None.
+    def ida_warn_solo_decision_for(
+        self, result: CanonicalHookOutput, event: str
+    ) -> ResolvedDecision | None:
+        """Quiet, non-blocking delivery for the warn-mode ida·reminder, or None.
 
-        This is a CHANNEL-SELECTION decision, made before (and independent of)
-        ``resolve_policy_for_claude`` — the asyncRewake channel is a raw stdout
-        body + exit 2, which has no representation in ``ClaudeStopHookOutput``,
-        so it cannot live inside the JSON-channel policy/translate pipeline.
-        main() calls this FIRST for Stop/SessionEnd and only falls through to
-        ``resolve_policy_for_claude`` when it returns None.
+        This is a CHANNEL-SELECTION decision made BEFORE (and independent of)
+        ``resolve_policy_for_claude`` — main() calls this FIRST for
+        Stop/SessionEnd and only falls through to ``resolve_policy_for_claude``
+        when it returns None. It exists so ``_resolve_policy_for_claude_stop``
+        (and ``output_for_claude``, its thin wrapper) can keep rendering ida's
+        gate-layer DENY as a loud decision:block+reason when called directly
+        — the shape a large body of existing tests exercise and assert on —
+        while the REAL end-to-end pipeline (this function, invoked from
+        main()) still delivers the warn-mode advisory non-blockingly.
 
-        ONLY the advisory ``ida·reminder`` rides this channel (ENFORCEMENT-MAP
-        §1.1): the full ida-reminder body is delivered to the AGENT as a
-        ``<system-reminder>`` (config ``rewakeMessage`` prefix + this stdout
-        body) while the USER sees only the one-line config ``rewakeSummary``.
-        ``_dispatch_gates`` already proved ida is the SOLE Stop contributor and
-        no gate blocked before stashing ``ida_async_rewake_body``.
+        ONLY the advisory ``ida·reminder`` rides this: ``_dispatch_gates``
+        stashes ``ida_warn_solo_body`` in metadata precisely when ida is the
+        SOLE Stop contributor and ``IDA_GATE_MODE == "warn"`` (ida's
+        gate-layer verdict is DENY in both warn and block mode — see the
+        "Ida" GatePolicy pair in lib/gates/definitions.py — so the metadata
+        stash, not the verdict, is what distinguishes them here).
 
-        Gated on the SSoT capability cell
-        ``client_spec.channel_spec("claude","Stop").agent_full_user_summary`` so
-        a client that lacks the proven split never takes this branch. NB
-        asyncRewake DELIVERS but does not COMPEL — it is never a substitute for a
-        hard ``decision:block``; block-mode Stop gates keep the JSON path.
+        GH #2181 fix direction B (2026-07-08): this REPLACES the retired
+        asyncRewake exit-2 quiet-split. asyncRewake was found on Claude Code
+        2.1.204 to silently discard exit-0 JSON ``decision:block`` output
+        from ANY hook entry carrying it — including the ida quiet-split entry
+        — so every OTHER block-mode Stop gate was dropped with no delivery
+        and no user notice (ENFORCEMENT-MAP §1.1). Rather than juggle a
+        second channel-selection flag, warn-mode ida now rides the SAME
+        already-proven ``agent_context_without_block`` channel
+        (hookSpecificOutput.additionalContext, non-blocking) as every other
+        Stop advisory — gated on that SSoT capability cell so a client that
+        lacks it never takes this branch.
+
+        NB delivery via additionalContext is NOT agent-only on the user's
+        screen (Claude Code renders it as "Stop hook feedback" in the
+        transcript) — unlike the old asyncRewake one-line summary, the user
+        now sees the full advisory text. This is an accepted, documented
+        trade-off (see ``ClaudeStopHookOutput`` docstring) for a simpler,
+        already-verified delivery channel; it is NOT a compulsion (the agent
+        weighs it as advisory) — block-mode gates keep decision:block.
         """
         if event not in ("Stop", "SessionEnd"):
             return None
-        body = result.metadata.get("ida_async_rewake_body")
+        body = result.metadata.get("ida_warn_solo_body")
         if not body:
             return None
         spec = client_spec.channel_spec("claude", "Stop")
-        if not (spec and spec.agent_full_user_summary):
+        if not (spec and spec.agent_context_without_block):
             return None
-        return body
+        return ResolvedDecision(
+            channel="json",
+            wire_decision="allow",
+            reason=None,
+            context=body,
+            metadata=result.metadata,
+        )
 
     def _resolve_policy_for_claude_stop(
         self, result: CanonicalHookOutput, event: str
@@ -1534,10 +1549,10 @@ def main():
 
         # resolve_policy() is the LAST point at which a hook event's fate can
         # still change: Stop channel routing, advisory cleanup, the
-        # general-event warn->allow collapse, the asyncRewake channel choice,
-        # agy's ask->block collapse, and per-client/event validity checks all
-        # run here. Everything after this is pure, deterministic field-mapping
-        # (translate_*) — so logging the resolved decision right after this
+        # general-event warn->allow collapse, agy's ask->block collapse, and
+        # per-client/event validity checks all run here. Everything after this is
+        # pure, deterministic field-mapping (translate_*) — so logging the
+        # resolved decision right after this
         # point IS logging what will actually be sent, in one shared shape
         # regardless of client.
         if client_type == "agy":
@@ -1545,22 +1560,18 @@ def main():
         elif client_type == "gemini":
             resolved = router.resolve_policy_for_gemini(result)
         else:
-            # asyncRewake is a channel-selection decision made BEFORE the
-            # JSON-channel policy — that channel has no representation in
-            # ClaudeStopHookOutput, so resolve_policy_for_claude never sees it
-            # (see async_rewake_body_for docstring).
-            rewake_body = router.async_rewake_body_for(result, render_event)
-            if rewake_body is not None:
-                resolved = ResolvedDecision(
-                    channel="asyncRewake_stdout",
-                    wire_decision="allow",
-                    raw_body=rewake_body,
-                    metadata=result.metadata,
-                )
-            else:
-                resolved = router.resolve_policy_for_claude(result, render_event)
+            # The warn-mode ida quiet delivery is a channel-selection decision
+            # made BEFORE the general JSON-channel policy (see
+            # ida_warn_solo_decision_for docstring for why it can't live
+            # inside resolve_policy_for_claude itself).
+            ida_decision = router.ida_warn_solo_decision_for(result, render_event)
+            resolved = (
+                ida_decision
+                if ida_decision is not None
+                else router.resolve_policy_for_claude(result, render_event)
+            )
 
-        exit_code = 2 if resolved.channel == "asyncRewake_stdout" else 0
+        exit_code = 0
 
         # Logging must never be the reason a hook fails to deliver its real
         # payload to the client — a logging failure is caught and warned here,
@@ -1569,24 +1580,6 @@ def main():
             log_hook_event(ctx, output=result, resolved=resolved, exit_code=exit_code)
         except Exception as e:
             print(f"WARNING: Failed to log hook event: {e}", file=sys.stderr)
-
-        if resolved.channel == "asyncRewake_stdout":
-            # asyncRewake quiet-split path (Claude Stop, ENFORCEMENT-MAP §1.1
-            # `ida·reminder`): emit the full ida-reminder body on stdout and EXIT
-            # 2. The Stop hook is registered with `asyncRewake:true` +
-            # `rewakeMessage`/`rewakeSummary` (aops-core/hooks/hooks.json), so the
-            # body reaches the agent as a <system-reminder> while the user sees
-            # only the one-line summary. No JSON is printed on this path — the
-            # exit-2 body IS the wire payload. The ida gate is fire-once per turn
-            # (CLOSED→OPEN on Stop), so the next Stop produces no warn, the router
-            # exits 0, and the agent terminates normally — asyncRewake re-wakes
-            # cannot trap the session.
-            body = resolved.raw_body  # guaranteed non-empty: async_rewake_body_for() only
-            # returns a truthy body, and that's the only place channel is set to this value.
-            assert body is not None
-            sys.stdout.write(body if body.endswith("\n") else body + "\n")
-            sys.stdout.flush()
-            sys.exit(2)
 
         # Output (JSON conversion happens only here — translate_* is pure)
         if client_type == "agy":
