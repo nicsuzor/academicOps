@@ -129,6 +129,7 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \
     && claude plugin install aops-tools@academicOps \
+    && claude plugin install aops-pkb@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
