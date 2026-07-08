@@ -15,7 +15,7 @@ from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
 from lib.session_state import SessionState
 from lib.template_registry import TemplateRegistry
-from lib.tool_categories import get_tool_category, is_never_block
+from lib.tool_categories import COMPLIANCE_SUBAGENT_TYPES, get_tool_category, is_never_block
 
 logger = logging.getLogger(__name__)
 
@@ -628,11 +628,17 @@ class GenericGate:
         # Update metrics
         state = self._get_state(session_state)
 
-        # Subagent tool calls (is_subagent=True) do NOT increment the parent's counter.
-        # The parent's Agent tool call increments by 1, and internal subagent calls
-        # are ignored (aops-d8ee59cc). The router already sets is_subagent=False for
-        # spawn tool calls in the parent session, so no special SPAWN_TOOLS handling needed.
-        should_increment = not context.is_subagent
+        # Subagent tool calls now count toward the session's ops counters
+        # (Nic ruling 2026-07-08, aops_571771b4) — router._dispatch_gates no
+        # longer skips PostToolUse for subagent-classified sessions, so a
+        # genuine Task-tool subagent's work counts as session activity.
+        # The one exclusion: a COMPLIANCE subagent's (rbg/marsha/...) own
+        # internal reads must NOT inflate the counter it exists to reset
+        # (aops-d8ee59cc / aops-55bcf1a2 Bug 2) — its dispatch already resets
+        # the counter via the PreToolUse/SubagentStart/SubagentStop trigger,
+        # so counting its PostToolUse calls too would double against the
+        # threshold it's meant to clear.
+        should_increment = context.subagent_type not in COMPLIANCE_SUBAGENT_TYPES
 
         if should_increment:
             if state.status == GateStatus.OPEN:

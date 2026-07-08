@@ -74,9 +74,19 @@ class TestSessionIdPattern:
 class TestEnvVarDetection:
     """Method 3: Environment variables."""
 
-    def test_claude_agent_type_env(self):
-        with patch.dict(os.environ, {"CLAUDE_AGENT_TYPE": "explorer"}, clear=False):
-            assert is_subagent_session({}) is True
+    def test_claude_agent_type_env_not_subagent(self):
+        """CLAUDE_AGENT_TYPE alone must NOT be treated as subagent evidence.
+
+        It is set by `--agent` / settings.json's "agent" key to select a
+        TOP-LEVEL session's persona (e.g. ~/junior/.claude/settings.json
+        "agent": "aops-core:junior"), not to signal a spawned subagent.
+        Prior to this fix, a bare interactive head session with an
+        agent-selected persona was misclassified as a subagent, which
+        fail-silently suppressed gate evaluation for its entire lifetime —
+        observed live on session 7b6e2908 (issue #2182, aops_571771b4).
+        """
+        with patch.dict(os.environ, {"CLAUDE_AGENT_TYPE": "aops-core:junior"}, clear=False):
+            assert is_subagent_session({}) is False
 
     def test_claude_subagent_type_env(self):
         with patch.dict(os.environ, {"CLAUDE_SUBAGENT_TYPE": "enforcer"}, clear=False):
@@ -85,6 +95,15 @@ class TestEnvVarDetection:
     def test_claude_parent_session_id_env(self):
         with patch.dict(os.environ, {"CLAUDE_PARENT_SESSION_ID": "abc-123"}, clear=False):
             assert is_subagent_session({}) is True
+
+    def test_claude_agent_type_with_short_hex_session_id_still_subagent(self):
+        """CLAUDE_AGENT_TYPE + a genuine subagent signal still detects correctly.
+
+        Removing CLAUDE_AGENT_TYPE from Method 3 must not blind real subagent
+        detection — a short-hex session_id (Method 2) still fires.
+        """
+        with patch.dict(os.environ, {"CLAUDE_AGENT_TYPE": "aops-core:junior"}, clear=False):
+            assert is_subagent_session({"session_id": "aafdeee"}) is True
 
 
 class TestTranscriptPathDetection:

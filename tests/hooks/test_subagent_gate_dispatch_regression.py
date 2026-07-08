@@ -1,13 +1,23 @@
 """Regression tests for subagent gate dispatch.
 
-Architecture: subagent tool-call events (PreToolUse/PostToolUse with
-is_subagent=True) are invisible to gates — _dispatch_gates() returns None.
-Stop/SessionEnd/SubagentStop AND UserPromptSubmit events are exempt from this
-bypass so that session-level gates (e.g. IDA) fire even for Claude Code
-background agents which get is_subagent=True despite being independent sessions.
-Stop/SessionEnd make the gate FIRE; UserPromptSubmit lets a fire-once gate
-RE-ARM for the next turn — without it IDA fired once then went silent in
-background sessions (regression covered by TestFireOnceRearmInSubagentSession).
+Architecture (updated 2026-07-08, Nic ruling "let's just do it", aops_571771b4):
+PreToolUse remains invisible to gates for subagent-classified sessions —
+sentinel and rbg carry blocking PreToolUse policies, and several subagent
+types (e.g. Explore, Plan) have no Agent-tool access to satisfy a compliance
+threshold demand, so blocking them there is an unrecoverable deadlock, not
+enforcement (aops-55bcf1a2). Every OTHER event — including PostToolUse —
+now dispatches regardless of is_subagent: gates must EVALUATE for
+subagent-classified sessions instead of being fail-silently suppressed
+(issue #2182). The one carved-out exception is COMPLIANCE_SUBAGENT_TYPES
+(rbg/marsha): their own internal tool calls still must not inflate the ops
+counter their dispatch already resets (aops-55bcf1a2 Bug 2).
+Stop/SessionEnd/SubagentStop AND UserPromptSubmit events were already exempt
+from the old PreToolUse/PostToolUse bypass so that session-level gates (e.g.
+IDA) fire even for Claude Code background agents which get is_subagent=True
+despite being independent sessions. Stop/SessionEnd make the gate FIRE;
+UserPromptSubmit lets a fire-once gate RE-ARM for the next turn — without it
+IDA fired once then went silent in background sessions (regression covered
+by TestFireOnceRearmInSubagentSession).
 
 Tests construct GenericGate instances directly from inline GateConfig objects
 to avoid the dual-module-resolution issue with GATE_CONFIGS import under pytest.
@@ -170,8 +180,11 @@ class TestSubagentGateDispatch:
         # Critic trigger should have fired and reset ops
         assert state.get_gate("critic").ops_since_open == 0
 
-    def test_subagent_triggers_run_on_post_tool_use(self, mock_session, test_registry):
-        """PostToolUse in subagent sessions MUST NOT increment ops counters."""
+    def test_subagent_post_tool_use_now_increments_ops(self, mock_session, test_registry):
+        """PostToolUse in a genuine (non-compliance) subagent session now
+        counts toward ops counters (Nic ruling 2026-07-08, aops_571771b4) —
+        the opposite of the pre-fix invariant this test used to assert.
+        """
         session_id, state = mock_session
 
         # Ensure gates start with known ops count
@@ -184,6 +197,7 @@ class TestSubagentGateDispatch:
             hook_event="PostToolUse",
             tool_name="Read",
             is_subagent=True,
+            subagent_type="Explore",
             raw_input={},
         )
 
@@ -191,8 +205,39 @@ class TestSubagentGateDispatch:
         for gate in test_registry.get_all_gates():
             gate.on_tool_use(ctx, state)
 
-        # Unit test level: subagent tool calls MUST NOT increment ops counters
+        # Unit test level: a non-compliance subagent's tool calls now count
         # (behavior enforced in GenericGate.on_tool_use)
+        total_ops = sum(
+            gs.ops_since_open for gs in state.gates.values() if gs.status == GateStatus.OPEN
+        )
+        assert total_ops == 2  # enforcer + critic, both OPEN
+
+    def test_compliance_subagent_post_tool_use_still_excluded_from_ops(
+        self, mock_session, test_registry
+    ):
+        """A COMPLIANCE_SUBAGENT_TYPES subagent's own PostToolUse calls still
+        do not inflate ops counters — regression guard for aops-55bcf1a2 Bug 2
+        (custodiet's own Read/Grep calls previously inflated the counter it
+        exists to reset).
+        """
+        session_id, state = mock_session
+
+        for gs in state.gates.values():
+            gs.ops_since_open = 0
+
+        ctx = HookContext(
+            session_id=session_id,
+            trace_id=None,
+            hook_event="PostToolUse",
+            tool_name="Read",
+            is_subagent=True,
+            subagent_type="aops-pkb:rbg",  # real COMPLIANCE_SUBAGENT_TYPES member
+            raw_input={},
+        )
+
+        for gate in test_registry.get_all_gates():
+            gate.on_tool_use(ctx, state)
+
         total_ops = sum(
             gs.ops_since_open for gs in state.gates.values() if gs.status == GateStatus.OPEN
         )
@@ -556,13 +601,19 @@ class TestSubagentStartHandler:
 
 
 class TestSubagentPostToolUseBypass:
-    """Subagent PostToolUse is invisible to gates — ops counters unchanged."""
+    """Subagent PostToolUse now dispatches through the router (Nic ruling
+    2026-07-08, aops_571771b4) — this class used to assert the opposite
+    (a blanket bypass). Gate-owned reset triggers (e.g. a compliance gate
+    resetting on its own dispatch) still apply on top of the base increment.
+    """
 
-    def test_subagent_post_tool_use_does_not_change_ops(self, mock_session, test_registry):
-        """PostToolUse from any subagent returns None — ops counter unchanged.
-
-        Gates don't evaluate for subagent sessions, so neither compliance
-        nor non-compliance subagent tool calls affect ops counters.
+    def test_subagent_post_tool_use_dispatches_and_resets_via_gate_trigger(
+        self, mock_session, test_registry
+    ):
+        """A subagent whose type matches a gate's own reset trigger (here the
+        test-local "enforcer" gate's `subagent_type_pattern="enforcer"") now
+        gets a real dispatch result, and the gate's trigger still resets its
+        counter — the increment and the reset both run, net effect zero.
         """
         session_id, state = mock_session
 
@@ -583,14 +634,15 @@ class TestSubagentPostToolUseBypass:
         router = _make_router()
         result = router._dispatch_gates(ctx, state)
 
-        # Subagent sessions return None — ops unchanged
-        assert result is None
-        assert state.get_gate("enforcer").ops_since_open == initial_ops
+        # Dispatch now runs (PostToolUse is no longer blanket-skipped for
+        # subagent sessions) — the enforcer gate's own reset trigger fires.
+        assert result is not None
+        assert state.get_gate("enforcer").ops_since_open == 0
 
-    def test_non_compliance_subagent_post_tool_use_also_unchanged(
+    def test_non_compliance_subagent_post_tool_use_now_increments(
         self, mock_session, test_registry
     ):
-        """PostToolUse from non-compliance subagents also returns None."""
+        """PostToolUse from a genuine (non-compliance) subagent now counts."""
         session_id, state = mock_session
 
         initial_ops = 10
@@ -608,11 +660,11 @@ class TestSubagentPostToolUseBypass:
         )
 
         router = _make_router()
-        result = router._dispatch_gates(ctx, state)
+        router._dispatch_gates(ctx, state)
 
-        # Subagent sessions return None — ops unchanged
-        assert result is None
-        assert state.get_gate("enforcer").ops_since_open == initial_ops
+        # No trigger matches "Explore", so the base increment is the only
+        # effect — ops counter now advances instead of staying frozen.
+        assert state.get_gate("enforcer").ops_since_open == initial_ops + 1
 
 
 class TestSubagentStartStopIsNotSubagent:
