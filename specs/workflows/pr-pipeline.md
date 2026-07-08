@@ -1106,6 +1106,50 @@ posts a PR review, so their terminal status has always been "success whenever th
 itself didn't crash, committed or not" — the same committed-first shape, arrived at
 independently because they had no review-match step to get wrong.
 
+**QA bot-actor gate + job hard-fail + one-shot retry — parity with the enforcer/mechanic
+(2026-07-08, PR #2179).** QA never commits (`qa.agent.md` "Never modify code"), so
+`scripts/ci/qa-terminal-status.sh` has no committed short-circuit — it matches the QA-marked
+verdict on `HEAD_SHA` and otherwise fails closed with a case-specific description (bot-actor
+rejection / infra failure in both attempts / retry succeeded with no verdict / agent posted
+no verdict). Three defects, all live until PR #2179:
+
+- **Root cause — missing `allowed_bots` on the primary agent step.** The `pull_request`
+  event is routinely triggered by a **bot actor** (bots push fix commits; the resulting
+  `synchronize` carries the bot's identity). `claude-code-action` refuses to run for a bot
+  actor unless the step lists it in `allowed_bots`, aborting with _"Workflow initiated by
+  non-human actor: claude (type: Bot)"_ and **exit 1** — the deterministic #2179 failure
+  (`qa-status` = "Agent run failed without a verdict review"). QA's `Run QA Verification`
+  step set no `allowed_bots` **and** had no retry, so a bot-triggered run dead-ended. The
+  **mechanic** already sets `allowed_bots` on its primary; the **enforcer** omits it on the
+  primary and leans on its retry (whose step _does_ set it) to recover — which is why
+  `enforcer-status` went green on #2179 while `qa-status` did not. QA now sets `allowed_bots:
+  "claude[bot],github-actions[bot]"` on the primary (the mechanic's pattern), so it succeeds
+  on the first attempt.
+- **Green-job-on-red-gate.** `agent-qa.yml` posted `qa-status` but its job then exited `0` —
+  a green ✓ check sitting on a red required gate, so a wedged PR read as "QA passed". The
+  enforcer already hard-failed via its "Final check and hard-fail" step; QA lacked the
+  mirror. QA now runs the same step: the job's colour matches the `qa-status` it posts.
+- **No transient-failure recovery.** QA had no retry at all. It now mirrors the enforcer's
+  one-shot retry (retry only when the first step was non-success **and** no QA verdict exists
+  yet for the SHA; a `reap-agent-processes.sh` reap between attempts prevents a cancelled
+  first attempt's zombie from double-posting) — defence-in-depth behind the `allowed_bots`
+  fix, covering truly transient failures (app-token 401, `rate_limit_event`, runner hiccups).
+
+Both gate jobs' `needs` already read the QA result on the convergence pattern (`result ==
+'success' || == 'failure'`), so hard-failing the QA job does not dead-end admission or the
+mechanic loop (the §Post-P5 convergence fix above).
+
+**`allowed_bots` unified across all agent workflows (same change).** The bot-actor gate was a
+latent issue in two siblings, now fixed alongside QA: `agent-enforcer.yml`'s primary
+`Run Enforcer Review` step had no `allowed_bots` (it recovered via its retry, wasting a
+failed primary agent run on every bot-triggered PR) — it now sets `allowed_bots` on the
+primary too. `agent-pre-admission-responder.yml` set `allowed_bots` on **neither** its primary
+nor its retry step, so a bot-triggered responder run could never apply mechanical fixes (it
+would abort on the "non-human actor" gate with no recovery) — both its steps now set it. The
+invariant across the pipeline is now uniform: **every `claude-code-action` step that reviews
+or fixes a PR sets `allowed_bots: "claude[bot],github-actions[bot]"`** (the mechanic's
+original pattern), so no agent step dead-ends on a routine bot-triggered event.
+
 **Self-review identity-collision — known open failure mode (2026-07-03, PR #2081).**
 Enforcer's and QA's own `gh pr review` calls authenticate as `claude[bot]` — this is
 `claude-code-action`'s own Bash-tool auth, fixed regardless of the job's `GH_TOKEN` env var

@@ -210,6 +210,91 @@ jobs:
           # marsha verifies; it must NOT modify code (qa.agent.md "Never modify code").
           # Edit/Write are deliberately withheld to enforce that structurally; Bash is
           # how it runs tests and posts its review via gh.
+          # Allow the agent to run when the pull_request event was triggered by a
+          # bot actor — the NORMAL case in this pipeline (bots push fix commits;
+          # the resulting `synchronize` carries a bot actor). Without this,
+          # claude-code-action aborts with "Workflow initiated by non-human
+          # actor: claude (type: Bot)" and exits 1 → qa-status flakes red with
+          # no verdict. This was the deterministic root cause of PR #2179: QA's
+          # primary step had no allowed_bots (unlike agent-mechanic.yml) AND no
+          # retry to recover, so a bot-triggered run dead-ended. (The enforcer's
+          # primary also omits this and leans on its retry to recover; QA now
+          # sets it on the primary — the mechanic's pattern — so it succeeds on
+          # the first attempt instead of burning a failed run + retry.)
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_args: '--model sonnet --allowed-tools "Bash,Read"'
+          show_full_output: true
+
+      # One-shot retry for a genuinely transient claude-code-action failure (app-token
+      # exchange 401, rate_limit_event at run start, runner hiccups). The action
+      # exits non-success WITHOUT posting a verdict, which flakes qa-status to a
+      # hard-required red on an otherwise-mergeable PR (`continue-on-error` masks
+      # the step's failure so the job continues to the terminal-status step, which
+      # posts "Agent run failed without a verdict review"). Defence-in-depth
+      # behind `allowed_bots` on the primary above: the bot-actor rejection that
+      # dead-ended PR #2179 is now handled deterministically on the first attempt,
+      # so this retry is left to cover only truly transient infra failures.
+      # Mirrors the shipped enforcer retry (agent-enforcer.yml). QA never commits,
+      # so there is no check-commit step and no mid-run SHA advance to reconcile.
+      #
+      # Retry only when (a) the first attempt's step exited non-success AND (b) no
+      # QA verdict review exists yet for this SHA — re-running after a posted
+      # verdict would create a duplicate review.
+      #
+      # `if: always()` is REQUIRED on every retry step. `continue-on-error: true`
+      # masks a step `failure` so the job continues, but it does NOT mask a step
+      # `cancelled` (claude-code-action's `rate_limit_event` surfaces as
+      # `cancelled`) — without `always()` GitHub skips subsequent steps on
+      # cancellation, the retry never fires, and qa-status flakes red anyway.
+      - name: Check first-attempt verdict
+        id: first-attempt
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
+        run: |
+          POSTED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"QA Verification\")) | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          if [ "${POSTED:-0}" -gt 0 ]; then
+            echo "Verdict already posted by first attempt — not retrying"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "First attempt did not succeed (${{ steps.review.outcome }}) and posted no verdict — will retry once"
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Reap the cancelled first attempt BEFORE the retry launches. A
+      # `rate_limit_event` surfaces as a step `cancelled`, but the underlying
+      # claude process can survive on the runner as a "zombie", race the retry,
+      # and double-post reviews. Killing the zombie's process group here keeps
+      # only ONE agent live per job. Best-effort: never aborts the job.
+      - name: Reap cancelled first-attempt agent
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        run: |
+          SCRIPT=""
+          for p in ".aops/scripts/ci/reap-agent-processes.sh" "scripts/ci/reap-agent-processes.sh"; do
+            if [ -f "$p" ]; then SCRIPT="$p"; break; fi
+          done
+          if [ -z "$SCRIPT" ]; then
+            echo "::warning::reap-agent-processes.sh not found in .aops or checkout; skipping zombie reap"
+            exit 0
+          fi
+          bash "$SCRIPT" claude
+
+      - name: Run QA Verification (retry)
+        id: review-retry
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: qa
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read"'
           show_full_output: true
 
@@ -239,6 +324,7 @@ jobs:
         if: always() && steps.sha-skip.outputs.skip != 'true'
         env:
           REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          RETRY_OUTCOME: ${{ steps.review-retry.outcome }}
         run: |
           if [[ -f scripts/ci/qa-terminal-status.sh ]]; then
             bash scripts/ci/qa-terminal-status.sh
@@ -267,4 +353,40 @@ jobs:
               -f context="${AGENT_NAME}-status" \
               -f description="${{ steps.decision.outputs.description }}" \
               -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+          fi
+
+      # Hard-fail the JOB whenever qa-status is not a genuine pass, so the check
+      # run's own colour matches the merge gate it posts. Without this the job
+      # exited 0 (green ✓) even after posting qa-status=failure — a green check
+      # sitting on a red gate, which reads as "QA passed" at a glance and left
+      # wedged PRs looking healthy (PR #2179: the QA agent completed without
+      # posting a verdict, qa-status went red, yet the "QA Verification" job
+      # showed success). Mirrors agent-enforcer.yml "Final check and hard-fail":
+      #   - skip path: the SHA was already judged; the latest qa-status is
+      #     decisive (success → green, anything else → red).
+      #   - non-skip path: steps.decision.outputs.failed is the script's own
+      #     fail-closed verdict (true for a real CHANGES_REQUESTED *and* for an
+      #     agent that ran but delivered no verdict — both must redden the check).
+      - name: Final check and hard-fail
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.sha-skip.outputs.skip }}" = "true" ]; then
+            STATUS_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+              --jq '[.[] | select(.context == "qa-status")] | sort_by(.created_at) | last.state' 2>/dev/null || echo "")
+            if [ "$STATUS_STATE" = "success" ]; then
+              echo "::notice::QA succeeded: Head SHA already reviewed and approved (skipped run)."
+            else
+              echo "::error::QA failed: Head SHA already reviewed — verification did not pass."
+              FAILED=true
+            fi
+          elif [ "${{ steps.decision.outputs.failed }}" = "true" ]; then
+            echo "::error::QA failed: ${{ steps.decision.outputs.description }}"
+            FAILED=true
+          else
+            echo "::notice::QA: ${{ steps.decision.outputs.description }}"
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            exit 1
           fi
