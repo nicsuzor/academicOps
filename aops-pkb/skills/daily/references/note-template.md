@@ -85,6 +85,10 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 
 - [ ] [task-id] [[Title]] — 2d overdue
 
+## Prompt Ledger
+
+<!-- Tail the last 10 lines from $AOPS_SESSIONS/state/prompt_ledger.md (run the miner if missing or out of date) -->
+
 ## Work Log
 
 <!-- Provenance only, collapsed. Merged PRs + completed tasks. No session narrative (that lives in Today's Log). No open-PR table (that lives in Outstanding Workflows). -->
