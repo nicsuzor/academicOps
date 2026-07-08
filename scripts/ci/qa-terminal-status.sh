@@ -31,6 +31,9 @@
 #   REVIEW_OUTCOME  outcome of the "Run QA Verification" step
 #                   (success/failure/cancelled/skipped/"" — GHA step vocabulary).
 # Optional env:
+#   RETRY_OUTCOME   outcome of the one-shot retry step, same GHA vocabulary; ""
+#                   when the retry never ran. Used only to make the no-verdict
+#                   description actionable (mirrors enforcer-terminal-status.sh).
 #   REPO, PR_NUMBER required for the live review lookup; not read when
 #                   REVIEWS_JSON is set.
 #   REVIEWS_JSON    path to a file with the PR reviews JSON array (testing /
@@ -45,6 +48,7 @@ set -euo pipefail
 
 HEAD_SHA="${HEAD_SHA:?HEAD_SHA is required}"
 REVIEW_OUTCOME="${REVIEW_OUTCOME:-}"
+RETRY_OUTCOME="${RETRY_OUTCOME:-}"
 
 emit() {
   printf 'state=%s\n' "$1"
@@ -92,9 +96,21 @@ esac
 
 # No genuine QA verdict review for HEAD_SHA → fail-closed. Distinguish an agent
 # that failed to run from one that ran but posted no verdict, for an actionable
-# description.
+# description. When the first attempt failed, fold in the one-shot retry's
+# outcome (mirrors enforcer-terminal-status.sh) so the description says whether
+# the retry also failed or succeeded-but-silent.
 if [[ "$REVIEW_OUTCOME" != "success" ]]; then
-  emit "failure" "Agent run failed without a verdict review" "true"
+  case "$RETRY_OUTCOME" in
+    failure | cancelled)
+      emit "failure" "QA action step failed in both attempts (see run logs)" "true"
+      ;;
+    success)
+      emit "failure" "QA retry succeeded but posted no verdict review (see run logs)" "true"
+      ;;
+    *)
+      emit "failure" "Agent run failed without a verdict review" "true"
+      ;;
+  esac
   exit 0
 fi
 

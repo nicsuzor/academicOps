@@ -43,12 +43,14 @@ def run(
     *,
     reviews: list[dict] | None = None,
     review_outcome: str = "success",
+    retry_outcome: str = "",
 ) -> dict:
     rf = tmp_path / "reviews.json"
     rf.write_text(json.dumps(reviews if reviews is not None else []))
     env = {
         "HEAD_SHA": SHA,
         "REVIEW_OUTCOME": review_outcome,
+        "RETRY_OUTCOME": retry_outcome,
         "REVIEWS_JSON": str(rf),
         "PATH": "/usr/bin:/bin:/usr/local/bin",
     }
@@ -208,6 +210,41 @@ def test_no_review_and_agent_did_not_succeed_is_failure(tmp_path: Path, outcome:
     assert out["state"] == "failure"
     assert out["failed"] == "true"
     assert "Agent run failed" in out["description"]
+
+
+# ── One-shot retry outcome folds into the description (mirrors enforcer) ─────
+
+
+def test_first_attempt_failed_retry_also_failed(tmp_path: Path):
+    """Both the first attempt and the one-shot retry failed with no verdict →
+    the description says both attempts failed (actionable: look at run logs)."""
+    out = run(tmp_path, reviews=[], review_outcome="failure", retry_outcome="failure")
+    assert out["state"] == "failure"
+    assert out["failed"] == "true"
+    assert "both attempts" in out["description"]
+
+
+def test_first_attempt_cancelled_retry_cancelled(tmp_path: Path):
+    out = run(tmp_path, reviews=[], review_outcome="cancelled", retry_outcome="cancelled")
+    assert out["state"] == "failure"
+    assert "both attempts" in out["description"]
+
+
+def test_retry_succeeded_but_still_no_verdict(tmp_path: Path):
+    """The retry step exited success but no QA verdict landed on the SHA — a
+    distinct, actionable state (agent ran to completion yet posted nothing)."""
+    out = run(tmp_path, reviews=[], review_outcome="failure", retry_outcome="success")
+    assert out["state"] == "failure"
+    assert out["failed"] == "true"
+    assert "retry succeeded but posted no verdict" in out["description"]
+
+
+def test_first_attempt_failed_no_retry_ran_keeps_original_message(tmp_path: Path):
+    """Retry never ran (RETRY_OUTCOME=='') → the original single-attempt message
+    is preserved, so existing behaviour is unchanged when no retry occurs."""
+    out = run(tmp_path, reviews=[], review_outcome="failure", retry_outcome="")
+    assert out["state"] == "failure"
+    assert out["description"] == "Agent run failed without a verdict review"
 
 
 def test_transient_gh_api_failure_degrades_to_failure_not_crash(tmp_path: Path):
