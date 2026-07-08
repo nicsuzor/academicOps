@@ -6,7 +6,10 @@
 # band from the normal `pull_request` triage flow. It calls the SAME reusable
 # reviewer workflows the pipeline uses (`agent-enforcer.yml`, `agent-qa.yml`), so
 # the verdicts they post (`enforcer-status`, `qa-status`) are identical to a
-# normal run and satisfy `review-attestation` on this SHA once green.
+# normal run — then re-posts the dependent `review-attestation` status itself, so
+# a PR wedged only on a stale attestation fully unwedges without a maintainer
+# hand-re-running the pipeline's attestation job (see the `review-attestation`
+# job below).
 #
 # Run from: Actions → "Force Review" → Run workflow → enter the PR number.
 # This bypasses the admission gate ON PURPOSE: it exists precisely for when
@@ -92,3 +95,61 @@ jobs:
     secrets:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # Re-post `review-attestation` after the forced reviewers run — the same
+  # fail-closed liveness check the pipeline runs (pr-pipeline.yml `review-attestation`
+  # job, scripts/ci/review-attestation.sh). Without this, Force Review refreshed the
+  # named-reviewer statuses (enforcer-status / qa-status) but left the DEPENDENT
+  # `review-attestation` status stale — so a wedged PR whose only red was
+  # `review-attestation` stayed red even after the reviewers went green, and a
+  # maintainer had to re-run the pipeline's attestation job by hand (observed
+  # unwedging PR #2179, 2026-07-08). review-attestation.sh independently re-reads
+  # enforcer-status + qa-status live on the SHA and fails closed, so this posts the
+  # honest state regardless of which reviewers were selected: forcing "qa only"
+  # still attests only if enforcer-status is already a genuine live pass on the SHA.
+  #
+  # `always()` so it runs whichever reviewers were selected (the other job is
+  # `skipped`, a terminal state that satisfies `needs`). It attests
+  # `needs.resolve.outputs.sha` — the exact SHA the reviewers were dispatched onto.
+  # If the enforcer autofixer pushed a commit mid-run, that push fires a normal
+  # `pull_request` event whose own pipeline attests the new head; this job attests
+  # the reviewed SHA, matching the pipeline's own "attest the SHA the reviewers ran
+  # on" contract.
+  review-attestation:
+    needs: [resolve, enforcer, qa]
+    if: always() && needs.resolve.result == 'success' && !startsWith(needs.resolve.outputs.ref, 'release-please')
+    name: Review Attestation
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ needs.resolve.outputs.sha }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute attestation decision
+        id: attest
+        run: ./scripts/ci/review-attestation.sh
+      - name: Post review-attestation status
+        env:
+          STATE: ${{ steps.attest.outputs.state }}
+          DESC: ${{ steps.attest.outputs.description }}
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$STATE" \
+            -f context="review-attestation" \
+            -f description="$DESC" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+      - name: Fail closed when not attested
+        env:
+          STATE: ${{ steps.attest.outputs.state }}
+          DESC: ${{ steps.attest.outputs.description }}
+        run: |
+          if [ "$STATE" != "success" ]; then
+            echo "::error::$DESC"
+            exit 1
+          fi
+          echo "::notice::$DESC"
