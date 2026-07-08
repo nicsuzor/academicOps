@@ -791,24 +791,36 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # Gates skip TOOL-CALL events (PreToolUse/PostToolUse) in subagent
-        # sessions — a non-interactive worker can't action a compliance prompt,
-        # and an inline subagent's tool calls aren't the operation that counts.
-        # SESSION-LIFECYCLE events are exempt from that skip so session-level
-        # gates (IDA honesty, handover) work for Claude Code background agents,
-        # which get is_subagent=True despite being independent sessions (#19220):
+        # PreToolUse remains skipped for subagent-classified sessions: sentinel
+        # and rbg both carry blocking PreToolUse policies (destructive-env-op
+        # protection, periodic compliance threshold), and several subagent
+        # types (e.g. Explore, Plan) have no Agent-tool access to satisfy a
+        # compliance-block demand — blocking them on PreToolUse is an
+        # unrecoverable deadlock, not enforcement (aops-55bcf1a2). This is the
+        # one deliberately-retained suppression; see aops_571771b4 PR body.
+        #
+        # Every OTHER event now evaluates regardless of is_subagent
+        # (Nic ruling 2026-07-08, aops_571771b4): gates must EVALUATE for
+        # subagent-classified sessions instead of being fail-silently
+        # suppressed. In particular PostToolUse — previously skipped wholesale
+        # — now dispatches so ops-counter increments and other PostToolUse
+        # triggers (session_did_work, mid-edit tracking) actually run for
+        # subagent-classified sessions; GenericGate.on_tool_use excludes only
+        # COMPLIANCE_SUBAGENT_TYPES from the ops-counter increment itself, so
+        # a compliance subagent's own internal reads still can't inflate the
+        # counter it exists to reset (the aops-55bcf1a2 Bug 2 regression).
+        # SESSION-LIFECYCLE events (Stop/SessionEnd/SubagentStop/
+        # UserPromptSubmit) were already exempted from the old blanket skip so
+        # session-level gates (IDA honesty, handover) work for Claude Code
+        # background agents, which get is_subagent=True despite being
+        # independent sessions (#19220):
         #   - Stop / SessionEnd  → the gate FIRES.
         #   - UserPromptSubmit    → the fire-once gate RE-ARMS for the next turn.
         #       Without this a fire-once Stop gate fires exactly once and then
         #       stays OPEN forever — IDA went silent after turn 1 in background
         #       sessions because its UPS re-arm was being dropped here.
         #   - SubagentStop        → main-context bookkeeping about a finished subagent.
-        if ctx.is_subagent and ctx.hook_event not in (
-            "Stop",
-            "SessionEnd",
-            "SubagentStop",
-            "UserPromptSubmit",
-        ):
+        if ctx.is_subagent and ctx.hook_event == "PreToolUse":
             return None
 
         # NOTE: the old global `stop_hook_active` retry bypass was REMOVED here.

@@ -221,6 +221,64 @@ class TestSubagentEventsNotSubagent:
         )
 
 
+class TestSubagentPostToolUseNowEvaluates:
+    """PostToolUse now dispatches for subagent-classified sessions (Nic ruling
+    2026-07-08 "let's just do it", aops_571771b4) instead of being
+    fail-silently suppressed, so a genuine Task-tool subagent's ops counters
+    increment. PreToolUse stays suppressed (sentinel/rbg carry blocking
+    policies; several subagent types, e.g. Explore, have no Agent-tool access
+    to satisfy rbg's compliance-threshold demand — blocking them there is an
+    unrecoverable deadlock, not enforcement, per aops-55bcf1a2).
+
+    A COMPLIANCE_SUBAGENT_TYPES subagent (rbg/marsha) is the one exception:
+    its own internal tool calls must not inflate the ops counter its dispatch
+    already resets (aops-55bcf1a2 Bug 2 regression guard).
+    """
+
+    def test_posttooluse_dispatches_and_increments_for_genuine_subagent(self, router):
+        GateRegistry.initialize()
+        state = SessionState.create("test-subagent-post")
+        ctx = HookContext(
+            session_id="test-subagent-post",
+            hook_event="PostToolUse",
+            tool_name="Read",
+            tool_input={"file_path": "/tmp/x.py"},
+            is_subagent=True,
+            subagent_type="Explore",
+        )
+        router._dispatch_gates(ctx, state)
+        assert state.get_gate("ida").ops_since_close == 1
+
+    def test_pretooluse_still_skipped_for_subagent_session(self, router):
+        GateRegistry.initialize()
+        state = SessionState.create("test-subagent-pre")
+        ctx = HookContext(
+            session_id="test-subagent-pre",
+            hook_event="PreToolUse",
+            tool_name="Read",
+            tool_input={"file_path": "/tmp/x.py"},
+            is_subagent=True,
+            subagent_type="Explore",
+        )
+        result = router._dispatch_gates(ctx, state)
+        assert result is None
+        assert state.get_gate("ida").ops_since_close == 0
+
+    def test_compliance_subagent_posttooluse_does_not_inflate_counter(self, router):
+        GateRegistry.initialize()
+        state = SessionState.create("test-subagent-rbg")
+        ctx = HookContext(
+            session_id="test-subagent-rbg",
+            hook_event="PostToolUse",
+            tool_name="Read",
+            tool_input={"file_path": "/tmp/audit.md"},
+            is_subagent=True,
+            subagent_type="aops-pkb:rbg",
+        )
+        router._dispatch_gates(ctx, state)
+        assert state.get_gate("ida").ops_since_close == 0
+
+
 # =============================================================================
 # Gate engine unit tests (these test GenericGate directly, not via router)
 # =============================================================================
