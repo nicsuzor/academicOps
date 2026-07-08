@@ -70,6 +70,10 @@ Adapt this template based on Phase 1 answers:
   existing work, prior decisions, and related artifacts.
 - **Research data is immutable.** Source datasets, ground truth labels, and raw
   outputs are sacred. Never modify, convert, or "fix" them.
+- **Edit files natively.** Use the Read/Write/Edit tools to create or modify
+  files — never a bash heredoc, a `python3 -c`/`python3 -` one-liner, `sed`,
+  or `awk` to rewrite a tracked file. If the native tool genuinely can't do the
+  job, STOP and report; do not shell out as a workaround.
 
 ## Development
 
