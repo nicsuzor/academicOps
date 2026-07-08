@@ -66,12 +66,7 @@ class TestTranscriptNamingIntegration:
 
         import unittest.mock as mock
 
-        with (
-            mock.patch.object(Path, "stat", side_effect=mock_stat),
-            mock.patch.object(
-                transcript, "get_sessions_repo", return_value=Path("/tmp/mock-sessions-repo")
-            ),
-        ):
+        with mock.patch.object(Path, "stat", side_effect=mock_stat), mock.patch.object(transcript, "get_sessions_repo", return_value=Path("/tmp/mock-sessions-repo")):
             filename, date_str, short_project, session_id, slug = (
                 transcript._generate_transcript_filename(session_path, entries, slug="test-slug")
             )

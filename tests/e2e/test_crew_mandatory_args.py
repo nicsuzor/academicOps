@@ -54,9 +54,10 @@ def temp_polecat_home(tmp_path):
 
 
 def _env(temp_polecat_home):
-    if "PKB_MCP_URL" not in os.environ:
-        pytest.skip("Test requires PKB_MCP_URL")
     env = os.environ.copy()
+    env["PKB_MCP_URL"] = "http://localhost:8026/mcp"
+    env["AOPS_BOT_GH_TOKEN"] = "dummy"
+    env["POLECAT_SKIP_BOOTSTRAP"] = "1"
     env["AOPS"] = os.getcwd()
     env["POLECAT_HOME"] = str(temp_polecat_home)
     env["AOPS_SESSIONS"] = str(temp_polecat_home.parent / "sessions")

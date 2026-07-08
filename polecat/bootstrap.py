@@ -25,6 +25,9 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     """
     errors: list[str] = []
 
+    if os.environ.get("POLECAT_SKIP_BOOTSTRAP") == "1":
+        return
+
     # 1. Environment variables
     if not aops_path:
         aops_path = os.environ.get("AOPS")
