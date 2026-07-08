@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.3.77](https://github.com/nicsuzor/academicOps/compare/v0.3.76...v0.3.77) (2026-07-08)
+
+
+### Features
+
+* **transcripts:** canonical cost-extraction module — claude+agy adapters, single rate card (aops_eb7e3729) ([308a0a6](https://github.com/nicsuzor/academicOps/commit/308a0a60904a84a456fa62eb08b828c13a5bbaf3))
+* **transcripts:** modularize cost extraction ([5c2229f](https://github.com/nicsuzor/academicOps/commit/5c2229fe0f2988458ce15a1ffea6542ff6e31198))
+
+
+### Bug Fixes
+
+* **agents:** forbid shell/python bypass of native file-editing tools ([#2156](https://github.com/nicsuzor/academicOps/issues/2156)) ([eac1c06](https://github.com/nicsuzor/academicOps/commit/eac1c06866e1ff22d3d7247e50e315537f09e4f5))
+* **agents:** pin explicit sonnet model on rbg/pauli/marsha/james, close nested-spawn inherit leak ([014e52e](https://github.com/nicsuzor/academicOps/commit/014e52e1ac4a09788c289614498bd7ec543e661a))
+* link to TAXONOMY severity ladder instead of restating it ([aac2538](https://github.com/nicsuzor/academicOps/commit/aac2538f06c1523d3adff11c5c8b10e7db1d5c11))
+* remove hardcoded per-session token subtraction, restore usage-metrics call sites ([cca1dbc](https://github.com/nicsuzor/academicOps/commit/cca1dbc93bba5bf01cec7eda8dc7921d0af75baa))
+* scope model= pin to agent frontmatter only, drop instruction-file restatements ([ecdb182](https://github.com/nicsuzor/academicOps/commit/ecdb182b4fe62bd94e159171c786ff0fca7e16f3))
+* **specs:** correct misrecorded H6 ida-gate ruling across enforcement specs ([#2164](https://github.com/nicsuzor/academicOps/issues/2164)) ([8bc091a](https://github.com/nicsuzor/academicOps/commit/8bc091ab9b708bf1122953a70287a7d9664fc4c9))
+
+
+### Documentation
+
+* **pauli:** carry the graph-scoring model in the charter, not just wire-edges ([e582165](https://github.com/nicsuzor/academicOps/commit/e582165b44e0b0e0a40323f2a9a6ae4f828fb649)), closes [#2155](https://github.com/nicsuzor/academicOps/issues/2155)
+* **wire-edges:** document contributes_to score semantics + cross-ref TAXONOMY ([5917e1f](https://github.com/nicsuzor/academicOps/commit/5917e1f8338ef3279a1a014515f5a96a42c69b0a)), closes [#2155](https://github.com/nicsuzor/academicOps/issues/2155)
+
+
+### Tests
+
+* **scenarios:** S1-S3 unverified-claim-laundering fixture (grind loop Cycle 0, aops_429e734d) ([#2165](https://github.com/nicsuzor/academicOps/issues/2165)) ([49554a1](https://github.com/nicsuzor/academicOps/commit/49554a1aba53e9bdbafeafb67d432973347d0b11))
+* **scenarios:** strengthen S2/S3 traps + grader context-grounding rule (aops_54e3e5ee) ([#2169](https://github.com/nicsuzor/academicOps/issues/2169)) ([898996e](https://github.com/nicsuzor/academicOps/commit/898996ee9199002a43f95f7915d795dcdfebe0de))
+
 ## [0.3.76](https://github.com/nicsuzor/academicOps/compare/v0.3.75...v0.3.76) (2026-07-07)
 
 
