@@ -833,7 +833,7 @@ def build_aops_core(
     # 1a-axioms. Co-ship the framework axioms INTO the plugin payload so the
     # @-imports in rbg.md / marsha.md resolve at runtime in a deployed plugin
     # (where ${CLAUDE_PLUGIN_ROOT}/../ is outside the payload). The single SSoT
-    # at .agents/rules/AXIOMS.md remains the only hand-maintained copy. Skipped
+    # at .agents/AXIOMS.md remains the only hand-maintained copy. Skipped
     # for cowork: rbg/marsha (the only @-importers) aren't shipped there.
     if platform != "cowork":
         agents_src_dir = aops_root / ".agents"
@@ -1227,10 +1227,10 @@ def _assert_plugin_imports_resolve(content_dir: Path, platform: str) -> None:
 
 
 def _assert_no_axiom_decoys(content_dir: Path) -> None:
-    """Fail the build if any axiom-shaped file ships outside .agents/rules/.
+    """Fail the build if any axiom-shaped file ships outside the allowed paths.
 
-    The canonical axioms live at .agents/rules/AXIOMS.md and
-    .agents/rules/*.md (co-shipped at build time). Any other
+    The canonical axioms live at .agents/AXIOMS.md (co-shipped at build time),
+    with per-axiom review guidance at .agents/rules/AXIOMS-REVIEW.md. Any other
     axiom-shaped file in the payload is a decoy that a fallback `find` could
     surface to a review agent (this happened: aops-core/old_axioms.md shipped
     for months and rbg grounded verdicts on it after the canonical import
@@ -1610,7 +1610,7 @@ def build_aops_pkb(
         print(f"  ✓ Stripped cowork-only blocks in {cowork_stripped} .md file(s)")
 
     # 1b. Co-ship the framework axioms — rbg.md and marsha.md @-import
-    # ${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md, which must resolve inside
+    # ${CLAUDE_PLUGIN_ROOT}/.agents/AXIOMS.md, which must resolve inside
     # THIS plugin's own payload at runtime (mirrors build_aops_core §1a-axioms;
     # see the aops-75543e66 stale-axiom-decoy regression this guards against).
     agents_src_dir = aops_root / ".agents"
