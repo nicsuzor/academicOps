@@ -308,8 +308,9 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
     # 2a. asyncRewake — the SPLIT-AUDIENCE Stop path (config asyncRewake:true +
     # rewakeMessage/rewakeSummary; hook exits 2). Full body (A) → agent
     # <system-reminder>; one-line summary (B) → user only. This is the channel
-    # that makes ENFORCEMENT-MAP §1.1's "Ephemeral→agent / one-line-to-user"
-    # disposition achievable on Claude. PASS: user_saw_a=False (body hidden),
+    # that makes the full-to-agent / one-line-to-user split described by the
+    # `ida` warn row in specs/adhd/surface-contract.md § Gate user-visibility
+    # achievable on Claude. PASS: user_saw_a=False (body hidden),
     # user_saw_b=True (⏺ summary), agent_ctx_a=True (body delivered).
     P.append(
         Probe(
@@ -359,9 +360,10 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
     # were equivalent to decision:block it would trap the session indefinitely;
     # instead the woken agent weighs the body as ADVISORY and TERMINATES ANYWAY
     # (the run reaches quiescence with a completed transcript). This is the
-    # show-don't-assert proof behind ENFORCEMENT-MAP §1.1's "delivery ≠
-    # compulsion" caveat: the advisory ida·reminder rightly rides asyncRewake,
-    # but block-mode gates (handover/qa/rbg_review) still need decision:block.
+    # show-don't-assert proof behind the "delivery is not compulsion" caveat
+    # documented at aops-core/hooks/router.py's `_resolve_policy_for_claude_stop`
+    # docstring: the advisory ida·reminder rightly rides asyncRewake, but
+    # block-mode gates (handover/qa/rbg_review) still need decision:block.
     # PASS: agent_ctx_a=True (block-attempt body delivered) AND transcript_found
     # (agent terminated despite the never-releasing block attempt).
     P.append(
@@ -401,8 +403,9 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
     # EXONERATED: JSON blocks deliver fine through a plain entry in a pinned
     # session too, ruling out the `is_subagent` misclassification hypothesis.
     # This is the root cause fixed by retiring the shared asyncRewake entry
-    # (aops-core/hooks/hooks.json) — see ENFORCEMENT-MAP §1.1 `ida` rows and
-    # CLIENT-TRANSLATION.md's asyncRewake row for the fix writeup.
+    # (aops-core/hooks/hooks.json) — see specs/adhd/surface-contract.md §
+    # Gate user-visibility `ida` rows and CLIENT-TRANSLATION.md's asyncRewake
+    # row for the fix writeup.
     for _pin in (False, True):
         _pin_tag = "-agentpin" if _pin else ""
         _pin_note = " (agent-pinned)" if _pin else ""
