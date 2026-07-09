@@ -290,9 +290,6 @@ install-claude:
 	@command claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME) \
 		&& echo "✓ Claude Code aops-extras installed" \
 		|| echo "  ⚠️ Claude aops-extras install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
-	@command claude plugin install $(CLAUDE_TS_PLUGIN_NAME) \
-		&& echo "✓ Claude Code aops-ts installed" \
-		|| echo "  ⚠️ Claude aops-ts install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 	@command claude plugin install $(CLAUDE_PKB_PLUGIN_NAME) \
 		&& echo "✓ Claude Code aops-pkb installed" \
 		|| echo "  ⚠️ Claude aops-pkb install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
@@ -460,9 +457,6 @@ install-windows:
 		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
 			&& echo "✓ Windows Claude aops-extras installed" \
 			|| echo "  ⚠️ Windows Claude aops-extras install failed"; \
-		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_TS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Claude aops-ts installed" \
-			|| echo "  ⚠️ Windows Claude aops-ts install failed"; \
 		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_PKB_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
 			&& echo "✓ Windows Claude aops-pkb installed" \
 			|| echo "  ⚠️ Windows Claude aops-pkb install failed"; \
