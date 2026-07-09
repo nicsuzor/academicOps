@@ -954,17 +954,13 @@ def build_aops_core(
     if platform != "cowork":
         axioms_src_dir = aops_root / ".agents" / "rules"
         axioms_dst_dir = content_dir / ".agents" / "rules"
-        AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
-        for axiom_file in AXIOM_FILES:
+        axiom_files = sorted([p.name for p in axioms_src_dir.glob("*.md")])
+        for axiom_file in axiom_files:
             src = axioms_src_dir / axiom_file
-            if not src.exists():
-                raise FileNotFoundError(
-                    f"Required axiom file {src} not found — cannot build plugin without it"
-                )
             dst = axioms_dst_dir / axiom_file
             dst.parent.mkdir(parents=True, exist_ok=True)
             safe_copy(src, dst)
-        print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+        print(f"  ✓ Co-shipped {len(axiom_files)} axiom/rule file(s) -> {axioms_dst_dir}")
 
     # 1a-charter. Co-ship the shared head-role charter — the `ida` agent
     # `@`-imports it (mirrors how axioms are co-shipped above; see
@@ -1903,17 +1899,13 @@ def build_aops_pkb(
     # see the aops-75543e66 stale-axiom-decoy regression this guards against).
     axioms_src_dir = aops_root / ".agents" / "rules"
     axioms_dst_dir = content_dir / ".agents" / "rules"
-    AXIOM_FILES = ("AXIOMS.md", "AXIOMS-REVIEW.md")
-    for axiom_file in AXIOM_FILES:
+    axiom_files = sorted([p.name for p in axioms_src_dir.glob("*.md")])
+    for axiom_file in axiom_files:
         src = axioms_src_dir / axiom_file
-        if not src.exists():
-            raise FileNotFoundError(
-                f"Required axiom file {src} not found — cannot build plugin without it"
-            )
         dst = axioms_dst_dir / axiom_file
         dst.parent.mkdir(parents=True, exist_ok=True)
         safe_copy(src, dst)
-    print(f"  ✓ Co-shipped {len(AXIOM_FILES)} axiom file(s) -> {axioms_dst_dir}")
+    print(f"  ✓ Co-shipped {len(axiom_files)} axiom/rule file(s) -> {axioms_dst_dir}")
 
     # 2. Plugin manifest. aops-pkb ships a REAL tracked plugin.json (like
     # aops-cowork), not one fabricated from templates/ (like aops-core/

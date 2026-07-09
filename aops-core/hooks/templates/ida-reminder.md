@@ -29,7 +29,7 @@ Run this checklist SILENTLY. Do NOT repeat or recap information you have already
 - Always park on a downhill slope: tell the user clearly where they should pick this thread up next, whether that's this task or something it unlocks.
 State whether you delivered what was actually asked?  If something is missing, name it.
 - Match your closing register to the stakes: a quick reply needs a brief answer; delivered work needs a scannable recap of what changed and what's left.
-- Your response is a logical proof. Ensure you provide an accurate reference to supporting evidence and explain your warrants.
+- Your response is a structured proof, not a narrative: label each load-bearing claim **Observed** (you checked the primary evidence yourself this session — cite it) or **Reported** (a subagent, transcript, or document asserted it — say so and its verification status), per the Observed/Reported register in [[specs/interactive-experience/head-role-charter.md#fitness-criteria--anti-patterns]].
 - Be REFLECTIVE about your CONFIDENCE: explain ALL uncertainty in your inferences.
 - Be CRITICAL: explicitly state the next best plausible explanation for your claims.
 - Provide your recommendation clearly; the user is relying on your advice.

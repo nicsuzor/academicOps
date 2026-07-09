@@ -245,7 +245,8 @@ def check_skill_spec_coverage(root: Path, metrics: HealthMetrics) -> None:
 
 
 def extract_axiom_slugs(axioms_path: Path) -> list[str]:
-    """Extract the canonical axiom slugs from AXIOMS.md heading anchors.
+    """Extract the canonical axiom slugs from AXIOMS.md heading anchors,
+    resolving any `@filename.md` imports recursively.
 
     Each axiom is identified by the durable ``{#slug}`` anchor on its heading
     (the canonical, position-independent identifier — see AXIOMS.md "Identity
@@ -258,7 +259,29 @@ def extract_axiom_slugs(axioms_path: Path) -> list[str]:
             structural break that MUST halt loudly rather than silently yield
             an empty axiom set (A8 / judgment-non-delegable).
     """
-    content = axioms_path.read_text()
+
+    def resolve_imports(file_path: Path, seen_files: set[Path] | None = None) -> str:
+        if seen_files is None:
+            seen_files = set()
+        if file_path in seen_files:
+            return ""
+        seen_files.add(file_path)
+        if not file_path.exists():
+            return ""
+
+        lines = file_path.read_text().splitlines()
+        resolved_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("@") and stripped.endswith(".md"):
+                imported_rel = stripped[1:]
+                imported_path = file_path.parent / imported_rel
+                resolved_lines.append(resolve_imports(imported_path, seen_files))
+            else:
+                resolved_lines.append(line)
+        return "\n".join(resolved_lines)
+
+    content = resolve_imports(axioms_path)
     # Anchor MUST sit on a markdown heading line (## ...), not in body prose.
     heading_anchor = re.compile(r"^#{2,6}\s+.*\{#([a-z0-9][a-z0-9-]*)\}\s*$", re.MULTILINE)
     slugs = [m.group(1) for m in heading_anchor.finditer(content)]
