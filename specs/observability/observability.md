@@ -115,7 +115,7 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-enforcer.md`                                   |
 | **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths         |
 | **Session types**           | All 6 (wherever enforcer gate is enabled)                                   |
-| **Naming**                  | `{base}-{gate_name}.md` where gate name = `enforcer`                        |
+| **Naming**                  | `{base}-{gate_name}.md` where gate name = `rbg`                             |
 | **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                   |
 | **When processed**          | On compliance check request (periodic within session)                       |
 | **Git-tracked**             | No                                                                          |
@@ -275,7 +275,7 @@ Every scripted and agent-scheduled job that touches session files.
 | **`polecat sync`**                                      | Git working repos + bare mirrors                                 | Pushed to remotes                                                                                      | On-demand                                                                                               | Manual `polecat sync`          |
 | **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`)                                                            | End of `transcript.py`         |
 | **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                                                                                     | Every hook fire                |
-| **Enforcer gate hook**                                  | Session state + tool calls                                       | `*-enforcer.md` gate file                                                                              | Periodic (`gates.rbg_threshold`, see [`GATES.md#enforcer-gate`](../enforcement/GATES.md#enforcer-gate)) | PreToolUse hook                |
+| **`rbg` gate hook**                                      | Session state + tool calls                                       | `*-rbg.md` gate file                                                                                    | Periodic (`gates.rbg_threshold`, see [`GATES.md#rbg-gate`](../enforcement/GATES.md#rbg-gate))           | PreToolUse hook                |
 | **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                                                                                     | Agent invocation               |
 
 ---

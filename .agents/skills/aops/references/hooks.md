@@ -95,10 +95,6 @@ The Stop hook enforces the gate contract for final-turn verifications. **Stop-ga
 
 `additionalContext`-without-block is a wire capability (Claude Code >= 2.1.191): it injects context on a non-blocking Stop, but it is **not** how warn-mode gates enforce (they DENY to force one continuation). Note it is **not user-silent** — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line (PTY-confirmed on 2.1.195, task aops-c0363bf8). No _user-silent_ (zero user output) Stop channel exists. This is the channel `ida·reminder`'s warn-mode delivery uses on Claude (`router.ida_warn_solo_decision_for`). Caveat: delivery ≠ compulsion (the woken agent weighs it as advisory).
 
-**Retired (#2181):** `asyncRewake` — a Claude-only Stop quiet-split that used to carry `ida·reminder` warn-mode delivery — no longer exists (`hooks.json`'s `asyncRewake`/`rewakeMessage`/`rewakeSummary` keys and `router.async_rewake_body_for` are gone). `ida·reminder` warn-mode delivery now uses the `additionalContext`-without-block channel described above.
-
-Per-field Stop delivery (`reason` / `systemMessage` / `stopReason` / `hookSpecificOutput`, block vs. approve) → [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client).
-
 **Router warning**: `merge_outputs` must preserve `decision`, `reason`, `stopReason` — these are NOT in `hookSpecificOutput`.
 
 ### additionalContext triggers tool use

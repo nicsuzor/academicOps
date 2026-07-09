@@ -37,9 +37,9 @@ Two concerns live here:
 PROVISIONAL cells are contested/empirically-pending. USER-visibility cells are
 resolved by the PTY harness (``scripts/pty_hook_probe.py`` →
 ``tests/hooks/fixtures/pty_capabilities.json``, Test Layer C — drives a real
-interactive ``claude`` in tmux). The headless ``scripts/verify_hook_formats.py``
-was removed 2026-06-26 (it was structurally blind to TTY user-visibility). Cells
-are flagged ``provisional=True`` with a note so a wrong guess is never silently
+interactive ``claude`` in tmux), not headless JSON verification: a headless
+check is structurally blind to TTY user-visibility. Cells are flagged
+``provisional=True`` with a note so a wrong guess is never silently
 load-bearing.
 """
 
@@ -192,10 +192,11 @@ class ChannelSpec:
     provisional: bool = False
     # The "quiet split" disposition: can this (client, event) deliver the FULL
     # instruction body to the AGENT while the USER sees only a one-line summary?
-    # Deliberately False everywhere — no live channel does this; the only path
-    # that ever did (Claude's asyncRewake) is retired (#2181). Rationale and
-    # full channel matrix: specs/CLIENT-TRANSLATION.md. Tests assert this stays
-    # False — do not re-enable without updating both.
+    # Claude's wire-level `asyncRewake` (Stop, exit 2) is the mechanism that would
+    # do this, but the router does not wire it — see the `asyncRewake` row in
+    # specs/CLIENT-TRANSLATION.md's per-client capability matrix for what it does
+    # and why it stays unused. Deliberately False everywhere. Tests assert this
+    # stays False — do not re-enable without updating both.
     agent_full_user_summary: bool = False
 
 

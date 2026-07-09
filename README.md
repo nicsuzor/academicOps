@@ -92,7 +92,7 @@ The gates riding those hooks:
 | Gate         | What it catches                                           | Default                                                   |
 | ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
 | `sentinel`   | Destructive ops on protected env paths                    | `block`                                                   |
-| `enforcer`   | Scope drift / compliance, every N write ops               | `warn`                                                    |
+| `rbg`        | Scope drift / compliance, every N write ops               | `warn`                                                    |
 | `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
 | `qa`         | Claiming "done" without running verification              | `warn`                                                    |
 | `handover`   | Exiting without committing, updating tasks, or reflecting | `warn` interactive / `block` polecat                      |
@@ -125,7 +125,7 @@ flowchart TD
     N --> O[Merge]
 ```
 
-Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`enforcer`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
 
 The same ladder continues past the session, into GitHub:
 
