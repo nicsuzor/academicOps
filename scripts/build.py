@@ -1831,7 +1831,7 @@ def build_aops_pkb(
         print(f"  ⚠️  {src_dir} not found, skipping aops-pkb build")
         return
 
-    if platform != "claude":
+    if platform not in ("claude", "antigravity"):
         print(f"  ⚠️  aops-pkb build not implemented for platform={platform!r}, skipping")
         return
 
@@ -1863,6 +1863,23 @@ def build_aops_pkb(
                 print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
         else:
             safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a-pre. Translate tool names in all non-agent .md files for Gemini/Antigravity.
+    if platform in ("gemini", "antigravity"):
+        translated_count = 0
+        for md_file in content_dir.rglob("*.md"):
+            if (
+                md_file.relative_to(content_dir).parts
+                and md_file.relative_to(content_dir).parts[0] == "agents"
+            ):
+                continue
+            original = md_file.read_text()
+            translated = translate_tool_calls(original, platform)
+            if translated != original:
+                md_file.write_text(translated)
+                translated_count += 1
+        if translated_count:
+            print(f"  ✓ Translated tool names in {translated_count} .md files")
 
     # 1a. Strip cowork-only blocks (markers AND wrapped content) from every
     # copied .md file — this build never ships the "cowork" platform, so any
@@ -1901,34 +1918,66 @@ def build_aops_pkb(
     # 2. Plugin manifest. aops-pkb ships a REAL tracked plugin.json (like
     # aops-cowork), not one fabricated from templates/ (like aops-core/
     # aops-tools/aops-extras) — there is no reason to keep it out-of-tree.
-    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
-    dist_plugin_dir = content_dir / ".claude-plugin"
-    dist_plugin_json = dist_plugin_dir / "plugin.json"
-    if not src_plugin_json.exists():
-        print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
-        sys.exit(1)
-    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
-    manifest = json.loads(src_plugin_json.read_text())
-    manifest["version"] = version
-    # Hygiene: strip marketplace-only fields (same as every other plugin build).
-    manifest.pop("source", None)
-    manifest.pop("category", None)
-    with open(dist_plugin_json, "w") as f:
-        json.dump(manifest, f, indent=2)
-        f.write("\n")
-    print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+    if platform == "claude":
+        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        dist_plugin_dir = content_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if not src_plugin_json.exists():
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+        dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+        manifest = json.loads(src_plugin_json.read_text())
+        manifest["version"] = version
+        # Hygiene: strip marketplace-only fields (same as every other plugin build).
+        manifest.pop("source", None)
+        manifest.pop("category", None)
+        with open(dist_plugin_json, "w") as f:
+            json.dump(manifest, f, indent=2)
+            f.write("\n")
+        print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+    elif platform == "antigravity":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.antigravity-plugin.json"
+        dist_plugin_json = content_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
 
-    # 3. Generate .mcp.json from the tracked mcp.json.template (own `pkb` MCP
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Generated plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    # 3. Generate MCP config from the tracked mcp.json.template (own `pkb` MCP
     # server registration — a separate plugin identity from aops-core's).
     template_path = src_dir / "mcp.json.template"
     if template_path.exists():
         mcp_template = json.loads(template_path.read_text())
-        shaped_mcp_config = mcp_template.get(platform, mcp_template)
-        dist_mcp_path = dist_dir / ".mcp.json"
-        with open(dist_mcp_path, "w") as f:
-            json.dump(shaped_mcp_config, f, indent=2)
-            f.write("\n")
-        print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+        mcp_config = mcp_template.get(platform, mcp_template)
+
+        if platform == "claude":
+            dist_mcp_path = dist_dir / ".mcp.json"
+            with open(dist_mcp_path, "w") as f:
+                json.dump(mcp_config, f, indent=2)
+                f.write("\n")
+            print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+        elif platform == "antigravity":
+            servers_config = mcp_config.get("mcpServers", mcp_config)
+            ag_servers_json = json.dumps(servers_config)
+            ag_servers_json = ag_servers_json.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+            ag_servers_config = json.loads(ag_servers_json)
+            ag_mcp_config = {"mcpServers": ag_servers_config}
+
+            dist_mcp_path = dist_dir / "mcp_config.json"
+            with open(dist_mcp_path, "w") as f:
+                json.dump(ag_mcp_config, f, indent=2)
+                f.write("\n")
+            print(f"  ✓ Generated mcp_config.json -> {dist_mcp_path}")
     else:
         print(f"Error: {template_path} not found.", file=sys.stderr)
         sys.exit(1)
@@ -2017,6 +2066,7 @@ def main():
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
     build_aops_tools(aops_root, dist_root, "antigravity", version)
     build_aops_extras(aops_root, dist_root, "antigravity", version)
+    build_aops_pkb(aops_root, dist_root, "antigravity", version)
 
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)
