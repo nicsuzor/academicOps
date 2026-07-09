@@ -167,13 +167,12 @@ class ResolvedDecision(BaseModel):
 
     All verdict-changing policy (Stop channel routing warn->block upgrade /
     warn->approve-with-context, advisory whitespace cleanup, the general-event
-    warn->allow collapse, the asyncRewake channel choice, agy's ask->block
-    collapse, and the per-client/event validity checks) lives in
-    ``resolve_policy_for_*``, which produces exactly one of these. Everything
-    downstream (``translate_*``) is a pure, deterministic field-mapper with no
-    further decisions — so logging a ``ResolvedDecision`` right after it is
-    produced IS logging what will actually be sent, in one shared shape
-    regardless of client.
+    warn->allow collapse, agy's ask->block collapse, and the per-client/event
+    validity checks) lives in ``resolve_policy_for_*``, which produces exactly
+    one of these. Everything downstream (``translate_*``) is a pure,
+    deterministic field-mapper with no further decisions — so logging a
+    ``ResolvedDecision`` right after it is produced IS logging what will
+    actually be sent, in one shared shape regardless of client.
 
     ``wire_decision`` uses a client-agnostic vocabulary ("allow"/"block"/"ask")
     distinct from ``CanonicalHookOutput.verdict`` on purpose: the gate's true
@@ -182,12 +181,21 @@ class ResolvedDecision(BaseModel):
     channel) are different concepts. Conflating them would corrupt anything
     downstream that reads ``verdict`` as the gate's real call (metrics,
     transcript parsing).
+
+    ``channel`` is always ``"json"`` now — the Claude ``asyncRewake`` exit-2
+    stdout channel (and its ``raw_body`` field) was RETIRED 2026-07-08 (GH
+    #2181): an ``asyncRewake:true`` Stop hook entry was found to silently
+    discard exit-0 JSON ``decision:block`` output from that SAME entry on
+    Claude Code 2.1.204, so every block-mode Stop gate sharing the one Stop
+    entry was dropped with no delivery. The ``ida·reminder`` warn-solo case
+    this channel used to carry now rides ``context``
+    (``hookSpecificOutput.additionalContext``) non-blockingly instead — see
+    ``router.ida_warn_solo_decision_for``.
     """
 
-    channel: Literal["json", "asyncRewake_stdout"] = "json"
+    channel: Literal["json"] = "json"
     wire_decision: Literal["allow", "block", "ask"] | None = None
     banner: str | None = None  # always-surfaced short text (systemMessage/stopReason)
     reason: str | None = None  # explicit reason/denyReason text, set when wire_decision needs one
     context: str | None = None  # agent-only advisory (additionalContext / injectSteps)
-    raw_body: str | None = None  # body for the asyncRewake_stdout channel
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -43,16 +43,17 @@ from polecat.manager import PolecatManager
     "is_partial",
     is_flag=True,
     help=(
-        "Honest partial stop: the chunk was too big for one session. Files the PR as a "
-        "DRAFT and releases the task as 'partial' (not 'merge_ready'). See the "
-        "partial-work doctrine — ship the finished part, declare the rest deferred."
+        "Honest partial stop: the chunk was too big for one session. The agent "
+        "files the PR as a DRAFT itself before running finish; this releases the "
+        "task as 'partial' (not 'merge_ready'). See the partial-work doctrine — "
+        "ship the finished part, declare the rest deferred."
     ),
 )
 @click.option("--branch", "-b", default=None, help="Override/specify the custom/shared branch name")
 @click.option(
     "--promote",
     is_flag=True,
-    help="Explicit final-stage promotion to mark the PR ready for review.",
+    help="Explicit final-stage promotion: mark an already-filed PR ready for review.",
 )
 @click.pass_context
 def finish_cmd(
@@ -60,11 +61,14 @@ def finish_cmd(
 ):
     """Mark current task as ready for merge — or as a partial (draft) stop.
 
-    Must be run from within a polecat worktree. Pushes the branch and, by
-    default, sets the task status to 'merge_ready' and files a normal PR.
+    Must be run from within a polecat worktree. Pushes the branch and sets the
+    task status to 'merge_ready' (or 'partial'/'in_progress' — see below).
+    ``finish`` does not file or edit the PR itself: the agent files it from
+    within its own session (``gh pr create``) before calling finish, per the
+    finish instructions in ``polecat/prompt_template.py``.
 
-    With ``--partial`` the work is an honest-incomplete stop: the PR is filed
-    as a *draft* and the task is released as 'partial' rather than
+    With ``--partial`` the work is an honest-incomplete stop: the agent files
+    the PR as a *draft* and the task is released as 'partial' rather than
     'merge_ready', so it is visible as not-yet-mergeable to the reviewer. This
     is the partial-work terminal state — a whole smaller thing, cut at a scope
     seam, disclosed via a ``## Deliberately deferred`` PR section, with a live
@@ -79,7 +83,6 @@ def finish_cmd(
         TRANSCRIPT_TASK_BODY_HEADER,
         _check_gh_installed,
         _format_transcript_task_body_section,
-        _generate_pr_body,
         _read_latest_real_transcript_path,
     )
 
@@ -574,9 +577,8 @@ def finish_cmd(
             sys.exit(1)
 
     # --- Surface real transcript path (task-91c5058f) ---
-    # Read the most recent real_transcript_path from the polecat stub, then:
-    #   1. Append it to the task body so the path lives in the PKB record.
-    #   2. Pass it to _generate_pr_body so reviewers see it on the PR.
+    # Append the most recent real_transcript_path from the polecat stub to the
+    # task body so the path lives in the PKB record.
     transcript_path = _read_latest_real_transcript_path(task_id, manager.home_dir)
     if transcript_path:
         if TRANSCRIPT_TASK_BODY_HEADER not in (task.body or ""):
@@ -586,97 +588,39 @@ def finish_cmd(
             except Exception as e:
                 print(f"  ⚠️  Could not persist transcript path to task body: {e}")
 
-    # --- GitHub PR Integration ---
-    try:
-        if _check_gh_installed():
-            print("  🐙 GitHub CLI detected. Updating Pull Request...")
-            pr_body = _generate_pr_body(task, transcript_path=transcript_path)
-
-            # Create a temp file for the body to handle multiline content safely
+    # --- GitHub PR detection ---
+    # `finish` does not file or edit PRs — the agent already does that from
+    # within its own session (`gh pr create`, per the finish instructions in
+    # polecat/prompt_template.py). This only detects whether a PR exists on
+    # this branch, so the CI-check gate and release_task below can carry its
+    # URL. `--promote` marks an existing draft PR ready; it never creates one.
+    if promote and _check_gh_installed():
+        try:
             import json
-            import tempfile
 
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(pr_body)
-                body_file = f.name
-
-            try:
-                # Check if PR exists
-                pr_check = subprocess.run(
-                    [
-                        "gh",
-                        "pr",
-                        "list",
-                        "--head",
-                        branch_name,
-                        "--json",
-                        "number",
-                        "--state",
-                        "open",
-                    ],
+            pr_check = subprocess.run(
+                ["gh", "pr", "list", "--head", branch_name, "--json", "number", "--state", "open"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            prs = (
+                json.loads(pr_check.stdout)
+                if pr_check.returncode == 0 and pr_check.stdout.strip()
+                else []
+            )
+            if prs:
+                pr_number = prs[0]["number"]
+                subprocess.run(
+                    ["gh", "pr", "ready", str(pr_number)],
+                    check=True,
                     capture_output=True,
-                    text=True,
-                    check=False,
                 )
-
-                prs = []
-                if pr_check.returncode == 0 and pr_check.stdout.strip():
-                    try:
-                        prs = json.loads(pr_check.stdout)
-                    except json.JSONDecodeError:
-                        pass
-
-                if prs:
-                    # Update existing PR
-                    pr_number = prs[0]["number"]
-                    subprocess.run(
-                        ["gh", "pr", "edit", str(pr_number), "--body-file", body_file],
-                        check=True,
-                        capture_output=True,
-                    )
-                    print(f"  ✅ Updated PR #{pr_number}")
-                    if promote:
-                        subprocess.run(
-                            ["gh", "pr", "ready", str(pr_number)],
-                            check=True,
-                            capture_output=True,
-                        )
-                        print(f"  ✅ Marked PR #{pr_number} as ready")
-                else:
-                    # Create new PR. A partial stop files a DRAFT PR — GitHub
-                    # enforces not-mergeable on drafts, so a `partial` task can
-                    # never satisfy the APPROVED-on-SHA merge trigger by accident.
-                    create_args = [
-                        "gh",
-                        "pr",
-                        "create",
-                        "--title",
-                        task.title,
-                        "--body-file",
-                        body_file,
-                        "--head",
-                        branch_name,
-                        "--base",
-                        base_branch,
-                    ]
-                    is_draft = is_partial or (is_shared and not promote)
-                    if is_draft:
-                        create_args.append("--draft")
-                    subprocess.run(create_args, check=True, capture_output=True)
-                    print("  ✅ Created new draft PR" if is_draft else "  ✅ Created new PR")
-
-            except subprocess.CalledProcessError as e:
-                # Don't fail the whole finish command if PR creation fails
-                err_msg = e.stderr.decode().strip() if e.stderr else str(e)
-                print(f"  ⚠️  Failed to manage PR: {err_msg}")
-            except Exception as e:
-                print(f"  ⚠️  Error in PR integration: {e}")
-            finally:
-                if os.path.exists(body_file):
-                    os.unlink(body_file)
-
-    except Exception as e:
-        print(f"  ⚠️  Unexpected error in PR integration: {e}")
+                print(f"  ✅ Marked PR #{pr_number} as ready")
+            else:
+                print("  ⚠️  --promote given but no open PR found on this branch to mark ready.")
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            print(f"  ⚠️  Could not mark PR ready: {e}")
 
     # Release task with summary via PKB release_task
     # Auto-generate summary from git diff stats

@@ -60,6 +60,17 @@ The big-W "what to do and in what order" specs. Workflow engine, decomposition, 
 
 (`workflow-system-spec`, `workflow-constraints`, `mcp-decomposition-tools`, `strategic-triage`, `audit-protocol`, `daily-briefing-bundle`, `session-digest`, and the `workflows/daily/*` draft bundle were removed in the 2026-07 documentation simplification pass — each described a `bd`-CLI-era mechanism, a sibling PKB/dashboard repo's infrastructure, or an unlanded draft with no live implementation in this repo. See git history if the design intent is needed.)
 
+### [[adhd]] — Attention-surface accommodations
+
+The aops-adhd plugin: accommodations Nic needs to function day-to-day. Storage
+is not surfacing — this cluster specs the surfacing loop itself, starting with
+the daily note / morning brief contract.
+
+- [[surface-contract|adhd/surface-contract]] — Attention-surface contract: the
+  daily note / morning brief's Today / Decide / live-pointers shape, intent
+  capture (P1-only), and the cold-open sweep evidence base (draft, pending
+  Nic's wording review)
+
 ### [[sessions]] — Session lifecycle
 
 How an agent session starts, hands over, sleeps, and gets its prompt. Plus the YAML format for session handover and the metrics schema.

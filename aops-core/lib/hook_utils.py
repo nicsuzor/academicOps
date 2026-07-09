@@ -60,7 +60,7 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     Uses multiple detection methods since env vars may not be passed to hook subprocesses:
     0. Explicit 'is_subagent' flag in input_data
     0a. Gemini 'is_sidechain' or 'isSidechain' flags in input_data
-    1. CLAUDE_AGENT_TYPE / CLAUDE_SUBAGENT_TYPE env var
+    1. CLAUDE_SUBAGENT_TYPE env var
     2. Session ID is a short hex string (subagent IDs like aafdeee vs main session UUIDs)
     3. agent_id/agent_type fields in hook payload
     4. Transcript path contains /subagents/ or /agent-
@@ -96,9 +96,16 @@ def is_subagent_session(input_data: dict[str, Any] | None = None) -> bool:
     except ValueError:
         pass
 
-    # Method 3: Env vars (check all known variants)
-    if os.environ.get("CLAUDE_AGENT_TYPE"):
-        return True
+    # Method 3: Env vars (check all known variants).
+    # CLAUDE_AGENT_TYPE is deliberately NOT checked here: it is set by the
+    # `--agent` flag / settings.json "agent" key to select a TOP-LEVEL
+    # session's persona (e.g. ~/junior/.claude/settings.json "agent":
+    # "aops-core:junior"), not to signal that the current process is a
+    # spawned subagent. Treating it as subagent evidence misclassified
+    # whole interactive head sessions as subagents, which fail-silently
+    # suppressed gate evaluation for their entire lifetime (aops_571771b4,
+    # issue #2182). CLAUDE_SUBAGENT_TYPE is a distinct, subagent-specific
+    # signal and is still honored.
     if os.environ.get("CLAUDE_SUBAGENT_TYPE"):
         return True
     if os.environ.get("CLAUDE_PARENT_SESSION_ID"):

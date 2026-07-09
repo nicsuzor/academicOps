@@ -213,6 +213,14 @@ jobs:
           AGENT_NAME: enforcer
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          # Run when the pull_request event was triggered by a bot actor (the
+          # normal case — bots push fix commits). Previously only the retry step
+          # below set this, so every bot-triggered PR failed the primary on the
+          # "non-human actor" abort and burned a full agent run + retry to
+          # recover. Setting it here (agent-mechanic.yml's pattern) lets the
+          # primary succeed on the first attempt; the retry remains for genuinely
+          # transient failures. See agent-qa.yml / PR #2179 for the same fix.
+          allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'

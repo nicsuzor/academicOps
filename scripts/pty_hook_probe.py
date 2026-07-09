@@ -200,6 +200,24 @@ class Probe:
     rewake_body: str = ""  # full instruction body → agent (carries SENT_A)
     rewake_summary: str = ""  # one-line user summary (carries SENT_B); "" → omit (default line)
 
+    # async_rewake_entry (Claude Stop only, GH #2181, 2026-07-08): registers the
+    # hook entry with the CONFIG-LEVEL ``asyncRewake:true``+``rewakeMessage``
+    # keys (same as `async_rewake` above) but does NOT switch to the exit-2
+    # raw-body mechanism — the hook still emits ``probe.output`` as normal
+    # exit-0 JSON. This is the discriminating measurement that surfaced the
+    # defect: does an asyncRewake:true ENTRY still honor its OWN JSON
+    # `decision:block` output, or does the client discard it? Distinct from
+    # `async_rewake` (which measures the exit-2 quiet-split channel itself).
+    async_rewake_entry: bool = False
+    # agent_pin (Claude only): registers a project-pinned `agent:` setting
+    # (minimal `.claude/agents/tester.md` + settings.json `"agent":"tester"`)
+    # to rule out the is_subagent-misclassification hypothesis from GH #2181
+    # (a session launched with a pinned `agent:` setting logs every event
+    # `is_subagent:true` — probes with agent_pin=True check whether that
+    # misclassification also affects hook delivery; GH #2181's controlled
+    # probes found it does NOT — JSON blocks deliver fine in pinned sessions).
+    agent_pin: bool = False
+
     # agy-specific:
     # unmeasurable — synthetic agy shape that agy 1.0.13 ignores (requires
     # `agy plugin install` to inject; must not mutate live build). Probe is
@@ -369,6 +387,61 @@ def candidates() -> list[Probe]:  # noqa: PLR0912, PLR0915
             fire_once=False,
         )
     )
+    # 2d-2g. JSON-BLOCK × {plain, asyncRewake-entry} × {unpinned, agent-pinned}
+    # (GH #2181, 2026-07-08 — mem-04879439). THE DISCRIMINATING MEASUREMENT
+    # that surfaced the production defect: distinct from 2a-2c above (which
+    # measure the asyncRewake EXIT-2 raw-body channel itself), these probes
+    # ask whether an asyncRewake:true Stop ENTRY still honors its OWN exit-0
+    # JSON `decision:block` output — i.e. can one Stop entry safely carry both
+    # asyncRewake (for the ida quiet-split) AND a JSON block (for every other
+    # gate) at once? MEASURED (PTY, 4-probe matrix, 2026-07-08,
+    # ~/junior/.scratch/hookfix-20260708/results.json): NO — plain entries
+    # deliver+block (control); asyncRewake entries SILENTLY DISCARD the JSON
+    # block on BOTH surfaces (no delivery, no user notice). Agent-pinning is
+    # EXONERATED: JSON blocks deliver fine through a plain entry in a pinned
+    # session too, ruling out the `is_subagent` misclassification hypothesis.
+    # This is the root cause fixed by retiring the shared asyncRewake entry
+    # (aops-core/hooks/hooks.json) — see ENFORCEMENT-MAP §1.1 `ida` rows and
+    # CLIENT-TRANSLATION.md's asyncRewake row for the fix writeup.
+    for _pin in (False, True):
+        _pin_tag = "-agentpin" if _pin else ""
+        _pin_note = " (agent-pinned)" if _pin else ""
+        P.append(
+            Probe(
+                f"stop-jsonblock-plain{_pin_tag}",
+                "claude",
+                "Stop",
+                {"decision": "block", "reason": "SENTINELA continue then stop"},
+                NEUTRAL_PROMPT,
+                f"JSON decision:block through a PLAIN Stop entry{_pin_note}: "
+                "control — must deliver AND block.",
+                claim_user_saw_a=True,
+                claim_agent_saw_a=True,
+                gate_mode="block",
+                table_cell=f"Stop JSON-block · plain entry{_pin_note} (#2181 control)",
+                agent_pin=_pin,
+            )
+        )
+        P.append(
+            Probe(
+                f"stop-jsonblock-asyncrewake{_pin_tag}",
+                "claude",
+                "Stop",
+                {"decision": "block", "reason": "SENTINELA continue then stop"},
+                NEUTRAL_PROMPT,
+                f"JSON decision:block through an asyncRewake:true Stop entry{_pin_note}: "
+                "GH #2181 — Claude Code 2.1.204 SILENTLY DISCARDS this (measured "
+                "expectation encodes the CURRENT client defect so this cell FAILS CI "
+                "the day the client fixes it — see tests/hooks/test_pty_capabilities_"
+                "agree_with_client_spec.py).",
+                claim_user_saw_a=False,
+                claim_agent_saw_a=False,
+                gate_mode="block",
+                table_cell=f"Stop JSON-block · asyncRewake entry{_pin_note} (#2181 defect)",
+                async_rewake_entry=True,
+                agent_pin=_pin,
+            )
+        )
     # 3. systemMessage banner only
     P.append(
         Probe(
@@ -1334,9 +1407,25 @@ def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR091
     _write_probe_hook(hook, out, probe.fire_once)
 
     # Register the hook for this probe's wire_event.
-    settings = {
-        "hooks": {probe.wire_event: [{"hooks": [{"type": "command", "command": f"bash {hook}"}]}]}
-    }
+    hook_entry: dict = {"type": "command", "command": f"bash {hook}"}
+    if probe.async_rewake_entry:
+        # GH #2181 discriminating measurement: the entry carries the SAME
+        # config-level asyncRewake flag as `async_rewake` probes, but this
+        # hook still emits `probe.output` via normal exit-0 JSON (no exit-2
+        # raw-body switch) — does the client honor its own JSON block?
+        hook_entry["asyncRewake"] = True
+        hook_entry["rewakeMessage"] = "PROBE rewake:"
+    settings: dict = {"hooks": {probe.wire_event: [{"hooks": [hook_entry]}]}}
+    if probe.agent_pin:
+        # Project-pinned `agent:` setting (GH #2181's `is_subagent`
+        # misclassification hypothesis — see Probe.agent_pin docstring).
+        agents_dir = workspace / ".claude" / "agents"
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        (agents_dir / "tester.md").write_text(
+            "---\nname: tester\ndescription: minimal probe agent\n---\n"
+            "You are a concise test agent. Follow the user's instructions exactly.\n"
+        )
+        settings["agent"] = "tester"
     (workspace / ".claude" / "settings.json").write_text(json.dumps(settings))
 
     MAX_ATTEMPTS = 3

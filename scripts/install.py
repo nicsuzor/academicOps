@@ -152,7 +152,9 @@ def uninstall_framework(aops_path: Path):
     # 3. Claude Plugins
     if shutil.which("claude"):
         run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-core@aops"], check=False)
         run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-tools@aops"], check=False)
         print("✓ Claude plugins uninstalled")
 
     # 4. Cleanup Files
@@ -384,21 +386,28 @@ def main():
                 break
 
         if dist_core_claude or dist_tools_claude:
-            # Use local repo as marketplace for source installs (shared setup)
-            run_command(["claude", "plugin", "marketplace", "add", str(aops_root)], check=False)
+            # Source installs register the built dist/ as the LOCAL marketplace named
+            # `aops` (dist/.claude-plugin/marketplace.json), kept DISTINCT from the
+            # released `academicOps` marketplace so a local build is visibly separate
+            # in `claude plugin marketplace list`. `make install`/clean-local removes
+            # it so a live install is never shadowed. `marketplace add` no-ops if the
+            # name already exists, so remove any prior `aops` source first.
+            dist_dir = aops_root / "dist"
+            run_command(["claude", "plugin", "marketplace", "remove", "aops"], check=False)
+            run_command(["claude", "plugin", "marketplace", "add", str(dist_dir)], check=False)
 
         if dist_core_claude:
             print(f"Installing Claude plugin from: {dist_core_claude}")
-            run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
-            run_command(["claude", "plugin", "install", "aops-core@academicOps"], check=False)
+            run_command(["claude", "plugin", "uninstall", "aops-core@aops"], check=False)
+            run_command(["claude", "plugin", "install", "aops-core@aops"], check=False)
             print("✓ Claude plugin installed")
         else:
             print("Warning: Claude plugin dist not found. Skipping install.")
 
         if dist_tools_claude:
             print(f"Installing Claude aops-tools from: {dist_tools_claude}")
-            run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
-            run_command(["claude", "plugin", "install", "aops-tools@academicOps"], check=False)
+            run_command(["claude", "plugin", "uninstall", "aops-tools@aops"], check=False)
+            run_command(["claude", "plugin", "install", "aops-tools@aops"], check=False)
             print("✓ Claude aops-tools plugin installed")
         else:
             print("Warning: Claude aops-tools dist not found. Skipping install.")

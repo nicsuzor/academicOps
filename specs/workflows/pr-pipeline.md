@@ -53,7 +53,7 @@ Read this table first; the sections below carry the detail and repeat the flags 
 | Branch-protection ruleset: required = `Lint / Lint`, `Pytest / Pytest`, `enforcer-status`, `qa-status`, `review-attestation`, `comment-triage-status`, `admit-status`; `required_approving_review_count: 0`; `enforcement: active`                                                                                                                                                                                | **LIVE**                                                | live ruleset ID `13762049` (API-verified 2026-06-19); `comment-triage-status` addition is in-ruleset, apply pending                                                                                                                                                                 |
 | **Draft-PR guard**: expensive jobs (`enforcer`, `qa`, `pre-admission-responder`, `review-attestation`) have explicit `draft == false` guards; `admit-on-review.yml` approve path and `changes_requested` path also carry explicit draft guards; the `pr-pipeline.yml` `mechanic` is draft-safe via dependency-starvation cascade (no explicit guard needed — see §3.9); `ready_for_review` is the activation edge | **LIVE**                                                | `pr-pipeline.yml` + `admit-on-review.yml` `if:` guards; §3.9                                                                                                                                                                                                                        |
 | **Sticky admission**: `admit-status` carries forward across every push (agent or human) until a terminal state (merge / §3.6 exhaustion / §3.10 changes-requested); a push never re-judges admission (§5)                                                                                                                                                                                                         | **LIVE**                                                | `pr-pipeline.yml` `initialize` job; worked example PR #2005 (non-bot `botnicbot` push stranded admission under the old reset-on-human-push rule)                                                                                                                                    |
-| **Code-owner review request** on PR open (`.github/CODEOWNERS` → GitHub auto-requests the maintainer); **Force Review** manual escape hatch (`force-review.yml`, §3.12) re-runs enforcer/qa on demand                                                                                                                                                                                                             | **LIVE**                                                | `.github/CODEOWNERS`; `.github/workflows/force-review.yml`                                                                                                                                                                                                                          |
+| **Code-owner review request** on PR open (`.github/CODEOWNERS` → GitHub auto-requests the maintainer); **Force Review** manual escape hatch (`force-review.yml`, §3.12) re-runs enforcer/qa on demand and re-posts the dependent `review-attestation` status (so a PR wedged only on a stale attestation fully unwedges without hand-re-running the pipeline's attestation job)                                   | **LIVE**                                                | `.github/CODEOWNERS`; `.github/workflows/force-review.yml`                                                                                                                                                                                                                          |
 | **Stage-2 dev/mechanic agent** appended to the cost order (real development + conflict resolution inside an admitted run)                                                                                                                                                                                                                                                                                         | **LIVE**                                                | `agent-mechanic.yml` + `.github/agents/mechanic.agent.md` + `pr-pipeline.yml` `mechanic` job gated on `admit-status=success` (Phase 5)                                                                                                                                              |
 | `mechanic-status` informational status                                                                                                                                                                                                                                                                                                                                                                            | **LIVE**                                                | posted by `agent-mechanic.yml`; NEVER in the required-checks list                                                                                                                                                                                                                   |
 | **Stage-2 re-verify contract** (enforcer + qa re-run per mechanic SHA; §3.5)                                                                                                                                                                                                                                                                                                                                      | **LIVE**                                                | mechanic stamps `Mechanic-By:`, enforcer/qa use per-SHA loop-skip on the new SHA (§10)                                                                                                                                                                                              |
@@ -947,44 +947,57 @@ off the skipped reviewers). No agent runner is burned on a release PR.
 `enforcer-status`, `qa-status`, `review-attestation`, and `admit-status` for **every**
 PR to `dev`, and a GitHub ruleset cannot conditionally drop required checks by head
 ref. So the `release-autogreen` job (in `pr-pipeline.yml`) posts all four as `success`
-the moment `Lint` **and** `Pytest` are genuinely green on HEAD, then arms auto-merge
-(`--squash --delete-branch`). `review-attestation` is posted with the §10 `target_sha`
-in its `target_url` so the auto-attestation is auditable against the head SHA. The job
-requires `AOPS_BOT_GH_TOKEN` (the default token cannot satisfy a ruleset-trusted
-required check, §4.7) and is same-repo only, mirroring `initialize`.
+the moment `Lint` **and** `Pytest` are genuinely green on HEAD. It deliberately does
+**NOT** arm auto-merge (see below — batching moved the merge itself under human
+control). `review-attestation` is posted with the §10 `target_sha` in its `target_url`
+so the auto-attestation is auditable against the head SHA. The job requires
+`AOPS_BOT_GH_TOKEN` (the default token cannot satisfy a ruleset-trusted required check,
+§4.7) and is same-repo only, mirroring `initialize`.
 
-**The single human approval lives at deploy, not on the PR.** The maintainer asked for
-exactly one approval, at the deployment. So the release PR itself has **no** human gate
-— it merges automatically on green mechanical checks — and the one approval is the
-`production` GitHub Environment on `build-extension.yml`'s `build-and-deploy` job. A
-**stable** `vX.Y.Z` deploy (the tag release-please creates automatically on the next
-`push: dev`) waits on the environment reviewer before publishing to the `dist` branch
-and Docker `:latest`. **Prerelease** tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they contain a
-`-`) are hand-pushed via `make prerelease`, so that deliberate push _is_ the approval
-and they skip the gate (`environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}`).
+**The single human approval lives at the release-PR merge, not at deploy — retired
+2026-07-07.** The maintainer asked for exactly one approval, for the whole release.
+That approval used to live at the deploy step (a `production` GitHub Environment
+reviewer on `build-extension.yml`'s `build-and-deploy` job, gating only **stable**
+`vX.Y.Z` tags). It has moved: release-please maintains **one standing release PR** that
+keeps accumulating every feature PR merged to `dev` since the last release (plus a
+running `CHANGELOG`), mechanically green per the paragraph above but **never
+auto-merged**. The maintainer's deliberate merge of that PR is now the sole human
+approval — it batches everything accumulated into one version bump **and** cuts the
+next stable `vX.Y.Z` tag in the same action. `build-extension.yml`'s `build-and-deploy`
+job carries **no** environment gate any more: by the time it runs, the release it is
+building was already approved at the PR merge. Prerelease tags (`vX.Y.Z-rc.N`,
+`-dev.N`, …; they contain a `-`) are unaffected — they are still hand-pushed via `make
+prerelease`, and that deliberate push is still the approval for those.
 
-**The gate queues, it never silently drops.** `build-extension.yml` serializes on the
-`build-deploy` concurrency group with `cancel-in-progress: false`. A run paused on the
-`production` reviewer is still "in progress" to GitHub's concurrency machinery — with
-`cancel-in-progress: true` (the bug: **fixed 2026-07-02**), each new stable tag from a
-release-please burst cancelled the previous run's pending approval outright, so most of
-a burst's releases vanished from the queue before Nic ever saw a prompt (visually
-indistinguishable from "shipped without approval," though the cancelled runs never
-actually reached `dist`/Docker). Queueing instead means every stable tag gets its own
-turn at the gate, in order; approving the newest still ships the full accumulated tree
-of everything behind it.
+Why relocate it: the deploy-time `production` Environment gate lived in the Actions
+tab ("Review deployments"), was easy to miss, and froze the `dist` branch when stable
+releases piled up unapproved — their tag-triggered deploys queued (see below) but nic
+never saw the buried prompt (`v0.3.49`→`v0.3.69` all cancelled unpublished). Moving the
+approval to a PR merge puts it somewhere a maintainer actually looks, and batching
+means one click ships everything accumulated instead of one click per PR.
+
+**The `build-deploy` concurrency group still queues, it never silently drops.**
+`build-extension.yml` serializes on the `build-deploy` concurrency group with
+`cancel-in-progress: false`. This no longer defends a pending Environment approval
+(there isn't one) — it now defends an in-flight **publish**: a stable tag's deploy
+pushes to the `dist` branch and Docker `:latest`, and `cancel-in-progress: true` would
+let a fast-follow tag (e.g. a second release-PR merge shortly after the first) cancel
+that publish mid-flight, corrupting `dist`. Queueing instead means every stable tag's
+deploy gets its own uninterrupted turn, in order.
 
 > **Trade-off, recorded deliberately.** This is a scoped exception to the repository's
-> "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR merges
-> to `dev` with no per-PR human click. It is safe because (a) the content is
-> deterministic bot output, not authored change, and (b) the human decision is not
-> removed but **relocated** to the publish step — nothing ships to users until the
-> `production` environment is approved. The retired `production` gate on the _PR
-> pipeline_ `gate` job (and the dead copy on `agent-enforcer.yml`) blocked even
-> Lint/Pytest behind a buried "Review deployments → Approve" and duplicated the human
-> gate; it is gone. This exception applies ONLY to `release-please--*` head refs; every
-> other PR to `dev` still runs the full agent pipeline and the `admit-status` human
-> gate unchanged.
+> "never merge without Nic" invariant (§5, `bypass_actors: null`): a release PR's
+> mechanical-green state carries no per-push human click. It is safe because (a) the
+> content accumulated in it is deterministic bot output plus already-reviewed/admitted
+> feature PRs, not unreviewed authored change, and (b) the human decision is not
+> removed but **relocated and batched** — nothing is cut as a stable release until the
+> maintainer deliberately merges the standing release PR. The retired `production`
+> environment gate at deploy (and the earlier-retired `production` gate on the _PR
+> pipeline_ `gate` job, and the dead copy on `agent-enforcer.yml`) each blocked
+> mechanical checks or publish behind a buried "Review deployments → Approve" and
+> duplicated the human gate; both are gone. This exception applies ONLY to
+> `release-please--*` head refs; every other PR to `dev` still runs the full agent
+> pipeline and the `admit-status` human gate unchanged.
 
 ## 4. Per-agent contract (locked)
 
@@ -1092,6 +1105,50 @@ and `responder-status` (`agent-pre-admission-responder.yml`) never had this defe
 posts a PR review, so their terminal status has always been "success whenever the agent step
 itself didn't crash, committed or not" — the same committed-first shape, arrived at
 independently because they had no review-match step to get wrong.
+
+**QA bot-actor gate + job hard-fail + one-shot retry — parity with the enforcer/mechanic
+(2026-07-08, PR #2179).** QA never commits (`qa.agent.md` "Never modify code"), so
+`scripts/ci/qa-terminal-status.sh` has no committed short-circuit — it matches the QA-marked
+verdict on `HEAD_SHA` and otherwise fails closed with a case-specific description (bot-actor
+rejection / infra failure in both attempts / retry succeeded with no verdict / agent posted
+no verdict). Three defects, all live until PR #2179:
+
+- **Root cause — missing `allowed_bots` on the primary agent step.** The `pull_request`
+  event is routinely triggered by a **bot actor** (bots push fix commits; the resulting
+  `synchronize` carries the bot's identity). `claude-code-action` refuses to run for a bot
+  actor unless the step lists it in `allowed_bots`, aborting with _"Workflow initiated by
+  non-human actor: claude (type: Bot)"_ and **exit 1** — the deterministic #2179 failure
+  (`qa-status` = "Agent run failed without a verdict review"). QA's `Run QA Verification`
+  step set no `allowed_bots` **and** had no retry, so a bot-triggered run dead-ended. The
+  **mechanic** already sets `allowed_bots` on its primary; the **enforcer** omits it on the
+  primary and leans on its retry (whose step _does_ set it) to recover — which is why
+  `enforcer-status` went green on #2179 while `qa-status` did not. QA now sets `allowed_bots:
+  "claude[bot],github-actions[bot]"` on the primary (the mechanic's pattern), so it succeeds
+  on the first attempt.
+- **Green-job-on-red-gate.** `agent-qa.yml` posted `qa-status` but its job then exited `0` —
+  a green ✓ check sitting on a red required gate, so a wedged PR read as "QA passed". The
+  enforcer already hard-failed via its "Final check and hard-fail" step; QA lacked the
+  mirror. QA now runs the same step: the job's colour matches the `qa-status` it posts.
+- **No transient-failure recovery.** QA had no retry at all. It now mirrors the enforcer's
+  one-shot retry (retry only when the first step was non-success **and** no QA verdict exists
+  yet for the SHA; a `reap-agent-processes.sh` reap between attempts prevents a cancelled
+  first attempt's zombie from double-posting) — defence-in-depth behind the `allowed_bots`
+  fix, covering truly transient failures (app-token 401, `rate_limit_event`, runner hiccups).
+
+Both gate jobs' `needs` already read the QA result on the convergence pattern (`result ==
+'success' || == 'failure'`), so hard-failing the QA job does not dead-end admission or the
+mechanic loop (the §Post-P5 convergence fix above).
+
+**`allowed_bots` unified across all agent workflows (same change).** The bot-actor gate was a
+latent issue in two siblings, now fixed alongside QA: `agent-enforcer.yml`'s primary
+`Run Enforcer Review` step had no `allowed_bots` (it recovered via its retry, wasting a
+failed primary agent run on every bot-triggered PR) — it now sets `allowed_bots` on the
+primary too. `agent-pre-admission-responder.yml` set `allowed_bots` on **neither** its primary
+nor its retry step, so a bot-triggered responder run could never apply mechanical fixes (it
+would abort on the "non-human actor" gate with no recovery) — both its steps now set it. The
+invariant across the pipeline is now uniform: **every `claude-code-action` step that reviews
+or fixes a PR sets `allowed_bots: "claude[bot],github-actions[bot]"`** (the mechanic's
+original pattern), so no agent step dead-ends on a routine bot-triggered event.
 
 **Self-review identity-collision — known open failure mode (2026-07-03, PR #2081).**
 Enforcer's and QA's own `gh pr review` calls authenticate as `claude[bot]` — this is

@@ -123,3 +123,55 @@ def test_version_injected_into_both_manifests(tmp_path):
         for plugin in manifest["plugins"]:
             assert plugin["version"] == g.version
             assert "__VERSION__" not in plugin["version"]
+
+
+# --- Local-dev `aops` marketplace (scripts/build.py:generate_local_marketplace) ---
+#
+# `make dev`/`make install-dev` register the built dist/ as a marketplace named
+# `aops` (dist/.claude-plugin/marketplace.json) so a local build is visibly
+# DISTINCT from the released `academicOps` marketplace — the whole point being that
+# a developer can tell the two apart in `claude plugin marketplace list`.
+
+
+def _generate_local(tmp_path: Path, version: str = "9.9.9-test") -> dict:
+    build = _load_build_module()
+    aops_root, dist_root = _stage(tmp_path)
+    build.generate_local_marketplace(aops_root, dist_root, version)
+    return json.loads((dist_root / ".claude-plugin" / "marketplace.json").read_text())
+
+
+def test_local_marketplace_named_aops(tmp_path):
+    """The local-dev marketplace is named `aops`, NOT `academicOps`."""
+    local = _generate_local(tmp_path)
+    assert local["name"] == "aops"
+    assert local["name"] != "academicOps"
+
+
+def test_local_marketplace_sources_are_dist_relative(tmp_path):
+    """Sources are rewritten ./dist/aops-* → ./aops-* because the marketplace root
+    is dist/ itself (`claude plugin marketplace add dist/`), so ./aops-claude
+    resolves to dist/aops-claude."""
+    local = _generate_local(tmp_path)
+    for plugin in local["plugins"]:
+        src = plugin["source"]
+        assert not src.startswith("./dist/"), src
+        assert src.startswith("./"), src
+    by_name = {p["name"]: p["source"] for p in local["plugins"]}
+    assert by_name["aops-core"] == "./aops-claude"
+    assert by_name["aops-tools"] == "./aops-tools-claude"
+
+
+def test_local_marketplace_carries_core_and_tools(tmp_path):
+    """The local marketplace lists the core + tools plugins `make dev` installs."""
+    local = _generate_local(tmp_path)
+    names = [p["name"] for p in local["plugins"]]
+    assert "aops-core" in names
+    assert "aops-tools" in names
+
+
+def test_local_marketplace_version_injected(tmp_path):
+    """Version lockstep: every plugin entry carries the build version, no placeholder."""
+    local = _generate_local(tmp_path, version="1.2.3-local")
+    for plugin in local["plugins"]:
+        assert plugin["version"] == "1.2.3-local"
+        assert "__VERSION__" not in plugin["version"]

@@ -43,14 +43,13 @@ jobs:
   build-and-deploy:
     name: Build extensions and publish release assets
     runs-on: ubuntu-latest
-    # SINGLE human approval for the whole release (pr-pipeline.md §3.13). The release
-    # PR now auto-merges on green Lint+Pytest with no PR-level gate, so the one
-    # human decision moved here — to the actual publish. A STABLE `vX.Y.Z` deploy
-    # (created automatically by release-please) waits on the `production` environment
-    # reviewer before it ships to the `dist` branch / Docker `:latest`. Prerelease
-    # tags (`vX.Y.Z-rc.N`, `-dev.N`, …; they contain a '-') are hand-pushed via
-    # `make prerelease` — that deliberate push IS the approval, so they skip the gate.
-    environment: ${{ !contains(github.ref_name, '-') && 'production' || '' }}
+    # Human approval for the whole release now happens when the maintainer MERGES the
+    # release-please PR — a deliberate, notified action on the PR page that cuts the
+    # stable `vX.Y.Z` tag. By the time this job runs the release is therefore already
+    # approved, so there is NO separate `production` environment gate here. The old
+    # gate lived in the Actions tab (Run → "Review deployments"), was easy to miss,
+    # and froze the `dist` branch when stable releases piled up unapproved and their
+    # tag-triggered deploys were cancelled (v0.3.49→v0.3.69 all cancelled unpublished).
     permissions:
       contents: write
       packages: write   # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)
@@ -157,12 +156,16 @@ jobs:
         env:
           ACA_DATA: ${{ github.workspace }}
         run: |
-          VERSION_FLAG=""
-          if [ "${{ steps.ctx.outputs.release_type }}" = "testing" ]; then
-            VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
-          fi
-          # $VERSION_FLAG must word-split into separate args (empty, or
-          # "--set-version X.Y.Z"), so SC2086 quoting would break it.
+          # Always stamp the version computed above (clean tag for stable, normalised
+          # prerelease for testing). Without this on the STABLE path, build.py falls
+          # through to its git-describe resolver, which on the build-dirtied tree emits
+          # a bogus NEXT-dev version (G1) — e.g. v0.3.70 was published as
+          # 0.3.71-dev.0+gSHA.dirty, a PRERELEASE string for what is a stable release,
+          # so semver-aware installers mis-rank it. The guard used to cover only the
+          # testing path; stable needs it too (mem_c006704b).
+          VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
+          # $VERSION_FLAG must word-split into separate args
+          # ("--set-version X.Y.Z"), so SC2086 quoting would break it.
           # shellcheck disable=SC2086
           uv run python scripts/build.py $VERSION_FLAG
 

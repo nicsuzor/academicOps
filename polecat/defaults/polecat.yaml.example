@@ -293,6 +293,9 @@ crew_names:
 #   GEMINI_API_KEY        Gemini API auth.
 #   PKB_MCP_URL           PKB MCP HTTP endpoint.
 #   PKB_MCP_TOKEN         PKB MCP auth token.
+#   PKB_MCP_TOOL_PREFIX   Prefix prepended to PKB MCP tool names to match the
+#                         proxied server's namespace (default: pkb__; set
+#                         empty for a direct pkb server).
 #   AOPS_DIST_PAT         Distribution PAT for cross-repo workflow dispatches
 #                         (GitHub Actions only).
 #

@@ -126,6 +126,17 @@ class PkbClient:
         self._session_id: str | None = None
         self._id = 0
         self._last_error: str | None = None
+        # The PKB MCP server moved behind a proxy (Docker AI MCP Gateway) that
+        # namespaces tool names by server, so the real tool name on the wire is
+        # "pkb__<verb>" rather than the bare logical name (aops incident:
+        # bare "list_tasks" -> -32602 "unknown tool"; "pkb__list_tasks" resolves).
+        # Centralized here (not in the module-level get_task/update_task/... functions)
+        # so every PKB verb — including ping-pkb, which instantiates PkbClient
+        # directly — is fixed by this one seam. Override to "" for a direct
+        # (unproxied) pkb server.
+        self._tool_prefix = os.environ.get(
+            "PKB_MCP_TOOL_PREFIX", "pkb__"
+        )  # allow-fallback: pkb__ matches the proxy's current namespace; env lets ops override without a code change
         self._initialize()
 
     def _next_id(self) -> int:
@@ -200,7 +211,7 @@ class PkbClient:
                     "jsonrpc": "2.0",
                     "id": self._next_id(),
                     "method": "tools/call",
-                    "params": {"name": name, "arguments": arguments},
+                    "params": {"name": f"{self._tool_prefix}{name}", "arguments": arguments},
                 }
             )
             if resp is None:

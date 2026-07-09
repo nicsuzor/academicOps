@@ -183,6 +183,13 @@ jobs:
           AGENT_NAME: pre-admission-responder
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          # Run when the pull_request event was triggered by a bot actor (the
+          # normal case — bots push fix commits). Without this, claude-code-action
+          # aborts with "Workflow initiated by non-human actor" and exits 1, the
+          # same dead-end that wedged QA on PR #2179 (agent-qa.yml). Neither this
+          # step nor the retry below set it before, so a bot-triggered responder
+          # run could never apply mechanical fixes. Matches agent-mechanic.yml.
+          allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
@@ -222,6 +229,10 @@ jobs:
           AGENT_NAME: pre-admission-responder
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          # Same bot-actor allowance as the primary step above — without it a
+          # retry after a transient failure on a bot-triggered event would just
+          # re-hit the "non-human actor" abort.
+          allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
