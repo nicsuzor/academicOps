@@ -601,12 +601,14 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = []
             AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
+            seen = set()
             for t in tools_list:
                 if t.startswith("mcp__"):
-                    mapped = None
+                    mapped = "call_mcp_tool"
                 else:
                     mapped = AGY_TOOL_NAME_MAP.get(t, t)
-                if mapped is not None:
+                if mapped is not None and mapped not in seen:
+                    seen.add(mapped)
                     filtered.append(mapped)
             frontmatter["tools"] = filtered
             new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
@@ -621,7 +623,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         for t in original_tools:
             # Drop MCP tools (starting with mcp__) on Antigravity
             if t.startswith("mcp__"):
-                mapped = None
+                mapped = "call_mcp_tool"
             else:
                 mapped = AGY_TOOL_NAME_MAP.get(t, t)
             if mapped is not None and mapped not in seen:
@@ -656,9 +658,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
                     transformed_tools.append(tool)
             else:
                 # Map to Claude Code name, or keep original if not in map
-                mapped = TOOL_NAME_MAP.get(tool, tool)
-                if mapped is not None:
-                    transformed_tools.append(mapped)
+                transformed_tools.append(TOOL_NAME_MAP.get(tool, tool))
 
         # Convert to comma-separated string
         tools_string = ", ".join(transformed_tools)

@@ -180,7 +180,7 @@ BUILD_CLAUDE_TO_AGY_TOOL: dict[str, str | None] = {
 # Generic/Gemini frontmatter tool name -> Claude Code frontmatter tool name.
 # Used when projecting a (possibly Gemini-named) source agent INTO a Claude
 # artifact; unknown names pass through unchanged at the call site.
-BUILD_TO_CLAUDE_TOOL: dict[str, str | None] = {
+BUILD_TO_CLAUDE_TOOL: dict[str, str] = {
     # File operations (both Gemini and Antigravity)
     "read_file": "Read",
     "view_file": "Read",
@@ -209,8 +209,6 @@ BUILD_TO_CLAUDE_TOOL: dict[str, str | None] = {
     "search_web": "WebSearch",
     # User interaction
     "ask_question": "AskUserQuestion",
-    # Control / MCP
-    "call_mcp_tool": None,
     # Already correct names (passthrough)
     "Read": "Read",
     "Write": "Write",
