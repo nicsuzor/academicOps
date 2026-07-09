@@ -2,7 +2,7 @@
 
 **Core value**: You can delegate execution to AI without delegating judgment. academicOps provides the structural guarantees that academic integrity is maintained — even when the human isn't paying close attention.
 
-An automation framework for academic work, built as a Claude Code / Gemini CLI plugin.
+An automation framework for academic work, built as a Claude Code plugin.
 
 ## How it works
 
@@ -153,7 +153,7 @@ Every material action — file edits, tool calls, gate verdicts, subagent dispat
 
 ## Skills (how work gets done)
 
-Skills are Claude Code / Gemini CLI extensions that know how to do specific things, split into two groups because a researcher installing this plugin mostly needs the first for their own work, while the second runs the framework's own self-improvement loop.
+Skills are Claude Code extensions that know how to do specific things, split into two groups because a researcher installing this plugin mostly needs the first for their own work, while the second runs the framework's own self-improvement loop.
 
 > **Plugin split:** `/q`, `/pull`, `/dispatch`, `/remember`, `/verify`, `/strategic-review`, `/learn`, and `/maintain` now ship in the separate `aops-pkb` plugin (the task/work-unit module — dispatch-readiness and acceptance judgment), not `aops-core`. Install both `aops-core` and `aops-pkb` to get the full command set below.
 
@@ -208,7 +208,7 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 
 **Requirements**:
 
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) or [Gemini CLI](https://github.com/google/gemini-cli)
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
 - GitHub CLI (`gh`) for artifact retrieval
 - Docker (optional, for sandboxing/testing)
 
@@ -216,12 +216,6 @@ Distribution repository: https://github.com/nicsuzor/academicOps
 
 ```bash
 command claude plugin marketplace add nicsuzor/academicOps@dist
-```
-
-_(For Gemini users)_:
-
-```bash
-command gemini extensions install git@github.com:nicsuzor/academicOps.git --consent --auto-update --pre-release
 ```
 
 ### Cowork
@@ -310,7 +304,7 @@ crew_defaults: {}         # interactive crew sessions (inherits session_defaults
 
 See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema.
 
-**2. Environment variables** — for direct CLI sessions (Claude Code or Gemini on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
+**2. Environment variables** — for direct CLI sessions (Claude Code on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
 
 ```bash
 export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
