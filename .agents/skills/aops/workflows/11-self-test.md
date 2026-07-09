@@ -62,18 +62,18 @@ Regression cover for [[aops-d10e7db6]] — Stop-hook RBG advisory leaked to user
 
 Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRouter.output_for_claude` / `output_for_gemini`. Re-verify rows before each run — new events in `hooks.json` make this table silently incomplete.
 
-| Hook               | Expected   | Why                                                                      |
-| ------------------ | ---------- | ------------------------------------------------------------------------ |
-| `SessionStart`     | agent-only | Boot-time principles into agent context (see §1)                         |
-| `UserPromptSubmit` | agent-only | Hydrator injection. **Canonical working reference.**                     |
-| `PreToolUse`       | both       | User sees why denied; agent gets recovery instructions                   |
-| `PostToolUse`      | agent-only | Post-hoc observations feed next agent turn                               |
-| `Stop`             | agent-only | RBG advisory in `additionalContext`. [[aops-d10e7db6]] is the inversion. |
-| `SubagentStart`    | agent-only | Dispatch context to subagent; user surface quiet                         |
-| `SubagentStop`     | agent-only | Completion summary to parent agent, not user                             |
-| `PreCompact`       | TBD        | No active gate; flag any payload and escalate                            |
-| `Notification`     | user-only  | By definition a user-surface event                                       |
-| `SessionEnd`       | agent-only | Cleanup advisory for next session; same dispatch as Stop (router.py:807) |
+| Hook               | Expected                             | Why                                                                                                                                                           |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SessionStart`     | agent-only                           | Boot-time principles into agent context (see §1)                                                                                                              |
+| `UserPromptSubmit` | agent-only                           | Hydrator injection. **Canonical working reference.**                                                                                                          |
+| `PreToolUse`       | both on deny; agent-only on advisory | Deny: user sees why (`permissionDecisionReason`), agent gets recovery instructions. Non-blocking advisory (`additionalContext`): agent-only, no user surface. |
+| `PostToolUse`      | agent-only                           | Post-hoc observations feed next agent turn                                                                                                                    |
+| `Stop`             | agent-only                           | RBG advisory in `additionalContext`. [[aops-d10e7db6]] is the inversion.                                                                                      |
+| `SubagentStart`    | agent-only                           | Dispatch context to subagent; user surface quiet                                                                                                              |
+| `SubagentStop`     | agent-only                           | Completion summary to parent agent, not user                                                                                                                  |
+| `PreCompact`       | TBD                                  | No active gate; flag any payload and escalate                                                                                                                 |
+| `Notification`     | user-only                            | By definition a user-surface event                                                                                                                            |
+| `SessionEnd`       | agent-only                           | Cleanup advisory for next session; same dispatch as Stop (router.py:807)                                                                                      |
 
 **Pre-flight: confirm hooks are executing** (per Step 0 — total hook failure reads as "no findings" here, the wrong answer). Confirm at least one hook event processed successfully before judging routing.
 

@@ -253,7 +253,7 @@ These feed into the [[aops-core/commands/learn.md|learn]] workflow for root caus
 | Hook                                  | Event        | Observable Generated            |
 | ------------------------------------- | ------------ | ------------------------------- |
 | `sessionstart_load_axioms.py`         | SessionStart | Session initialization logged   |
-| `enforcer_gate.py`                    | PostToolUse  | Block events, drift detection   |
+| `enforcer_gate.py`                    | PreToolUse   | Block events, drift detection   |
 | `aops-core/scripts/transcript.py`     | Stop         | Framework Reflection extraction |
 | `aops-core/hooks/autocommit_state.py` | PostToolUse  | State file updates              |
 

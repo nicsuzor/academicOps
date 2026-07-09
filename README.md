@@ -296,7 +296,7 @@ session_defaults:
     enforcer: warn
     ida: warn
     hydration: off
-    enforcer_threshold: 50   # write ops between enforcer checks
+    rbg_threshold: 50   # write ops between enforcer checks
 
 # Override per session type
 run_defaults:             # autonomous polecat workers
@@ -314,10 +314,10 @@ See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.exam
 
 ```bash
 export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
-export ENFORCER_GATE_MODE=block     # stricter compliance checking
+export RBG_GATE_MODE=block          # stricter compliance checking
 ```
 
-The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `ENFORCER_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `ENFORCER_TOOL_CALL_THRESHOLD`.
+The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `RBG_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`.
 
 3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 

@@ -22,13 +22,13 @@ description: SSoT for every gate the framework runs at session time — what eac
 
 ## At a glance
 
-| Gate             | What it catches                                          | Fires on           | Close trigger                             | Open trigger       |
-| ---------------- | -------------------------------------------------------- | ------------------ | ----------------------------------------- | ------------------ |
-| `rbg`/`enforcer` | Periodic compliance / ultra-vires drift                  | PreToolUse         | tool calls >= threshold (~17 default, H2) | call RBG           |
-| `rbg-review`     | Final rbg axiom audit before a task-bound session exits  | Stop               | claim_task                                | call RBG           |
-| `qa`             | "Done" claimed without verification                      | Stop               | claim_task                                | Skill(verify)      |
-| `handover`       | Exit without commit / task update / reflection           | Stop               | claim_task                                | Skill(End Session) |
-| task-binding     | Work without a bound task (**reactivated**, target — H4) | PreToolUse (write) | claim_task                                | —                  |
+| Gate             | What it catches                                          | Fires on           | Close trigger                                               | Open trigger       |
+| ---------------- | -------------------------------------------------------- | ------------------ | ----------------------------------------------------------- | ------------------ |
+| `rbg`/`enforcer` | Periodic compliance / ultra-vires drift                  | PreToolUse         | tool calls >= threshold (50 default, `gates.rbg_threshold`) | call RBG           |
+| `rbg-review`     | Final rbg axiom audit before a task-bound session exits  | Stop               | claim_task                                                  | call RBG           |
+| `qa`             | "Done" claimed without verification                      | Stop               | claim_task                                                  | Skill(verify)      |
+| `handover`       | Exit without commit / task update / reflection           | Stop               | claim_task                                                  | Skill(End Session) |
+| task-binding     | Work without a bound task (**reactivated**, target — H4) | PreToolUse (write) | claim_task                                                  | —                  |
 
 **Retired (H1–H18):** `sentinel` (deleted, H1 — see [§ Retired gates](#retired-gates-h1h18)).
 
@@ -65,7 +65,7 @@ timeline
         pkb.nudge : Reminder to search PKB (Advisory, aops-core, H5/H14)
         hydration.warn : Skills routing hint (moves to aops-pkb/aops-adhd, H11)
     section Tool Use
-        enforcer : Periodic check (~17 ops default, H2; PreToolUse skips subagents by design, but subagent PostToolUse activity still advances the counter, H8)
+        enforcer : Periodic check (50 ops default; PreToolUse skips subagents by design, but subagent PostToolUse activity still advances the counter, H8)
         task-binding : No mutation without claim_task (reactivated, target, H4)
     section Stop / Exit
         qa : Checks for task verification (unchanged, H10/H12)
@@ -151,11 +151,11 @@ Was a stateless PreToolUse gate blocking destructive shell/write operations on p
 
 ## `enforcer` gate
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.enforcer_threshold` (**~17 default** — lowered from 50 per H2), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. The PreToolUse policy itself still skips subagent-classified sessions (a deliberate, permanent exception — see [Subagent & worker session scope](#subagent--worker-session-scope)), but its counter now advances uniformly on PostToolUse across main sessions, subagents, and workers (H8/H12; PreToolUse exception made permanent by aops_571771b4). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.enforcer`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
+> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.rbg_threshold` (**50 default**), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. The PreToolUse policy itself still skips subagent-classified sessions (a deliberate, permanent exception — see [Subagent & worker session scope](#subagent--worker-session-scope)), but its counter now advances uniformly on PostToolUse across main sessions, subagents, and workers (H8/H12; PreToolUse exception made permanent by aops_571771b4). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.enforcer`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
 ### What is it
 
-The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.enforcer_threshold` (**~17 default** per H2, was 50), the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
+The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.rbg_threshold` (**50 default**), the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
 
 **Design rationale + class of failure caught.** Live in the [rbg spec](../agents/rbg.md#gate-rationale-what-each-surface-defends).
 
@@ -174,7 +174,7 @@ Subagent dispatches that look like `Agent(subagent_type="enforcer")` or `Agent(s
 ### How it's configured
 
 - **Mode key**: `gates.enforcer` (see [Config plumbing](#config-plumbing) for resolution). `warn` | `block` | `off`.
-- **Threshold** (write ops between checks): `gates.enforcer_threshold` (**~17 default**, lowered from 50 per H2).
+- **Threshold** (write ops between checks): `gates.rbg_threshold` (**50 default**).
 - **Countdown window**: 7 ops before threshold (`start_before=7` in the `CountdownConfig` literal — not currently in YAML).
 - **Tool-category exclusions**: `infrastructure`, `always_available`, `read_only` tools do not trip the policy (`TOOL_CATEGORIES` in `gate_config.py`).
 - **Mid-edit deferral**: while a TodoWrite has an `in_progress` item, the block is deferred via the `not_mid_edit` custom check (`custom_conditions.py`).
