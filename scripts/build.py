@@ -952,6 +952,19 @@ def build_aops_core(
     # at .agents/rules/AXIOMS.md remains the only hand-maintained copy. Skipped
     # for cowork: rbg/marsha (the only @-importers) aren't shipped there.
     if platform != "cowork":
+        agents_src_dir = aops_root / ".agents"
+        agents_dst_dir = content_dir / ".agents"
+        agent_md_files = sorted([p.name for p in agents_src_dir.glob("*.md")])
+        for md_file in agent_md_files:
+            src = agents_src_dir / md_file
+            dst = agents_dst_dir / md_file
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            safe_copy(src, dst)
+        if agent_md_files:
+            print(
+                f"  ✓ Co-shipped {len(agent_md_files)} top-level agent file(s) -> {agents_dst_dir}"
+            )
+
         axioms_src_dir = aops_root / ".agents" / "rules"
         axioms_dst_dir = content_dir / ".agents" / "rules"
         axiom_files = sorted([p.name for p in axioms_src_dir.glob("*.md")])
@@ -1482,14 +1495,14 @@ def _assert_no_axiom_decoys(content_dir: Path) -> None:
     """Fail the build if any axiom-shaped file ships outside .agents/rules/.
 
     The canonical axioms live at .agents/rules/AXIOMS.md and
-    .agents/rules/AXIOMS-REVIEW.md (co-shipped at build time). Any other
+    .agents/rules/*.md (co-shipped at build time). Any other
     axiom-shaped file in the payload is a decoy that a fallback `find` could
     surface to a review agent (this happened: aops-core/old_axioms.md shipped
     for months and rbg grounded verdicts on it after the canonical import
     dangled, #aops-75543e66).
     """
     allowed_rel = {
-        Path(".agents/rules/AXIOMS.md"),
+        Path(".agents/AXIOMS.md"),
         Path(".agents/rules/AXIOMS-REVIEW.md"),
     }
     decoys: list[str] = []
@@ -1897,6 +1910,17 @@ def build_aops_pkb(
     # ${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md, which must resolve inside
     # THIS plugin's own payload at runtime (mirrors build_aops_core §1a-axioms;
     # see the aops-75543e66 stale-axiom-decoy regression this guards against).
+    agents_src_dir = aops_root / ".agents"
+    agents_dst_dir = content_dir / ".agents"
+    agent_md_files = sorted([p.name for p in agents_src_dir.glob("*.md")])
+    for md_file in agent_md_files:
+        src = agents_src_dir / md_file
+        dst = agents_dst_dir / md_file
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        safe_copy(src, dst)
+    if agent_md_files:
+        print(f"  ✓ Co-shipped {len(agent_md_files)} top-level agent file(s) -> {agents_dst_dir}")
+
     axioms_src_dir = aops_root / ".agents" / "rules"
     axioms_dst_dir = content_dir / ".agents" / "rules"
     axiom_files = sorted([p.name for p in axioms_src_dir.glob("*.md")])
