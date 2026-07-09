@@ -224,6 +224,45 @@ moving to "act, don't surface unless important." Both are wiring work on the
 enforcement side (`specs/enforcement/GATES.md`), not attention-surface
 contract content, and are out of scope for this document.
 
+## Gate user-visibility
+
+The enforcement layer ([`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1) decides whether a gate blocks, warns, or stays silent, and every gate verdict reaches the agent's context — that is a single enforcement invariant, not a per-gate table. What is a genuine per-gate CHOICE is whether anything _also_ reaches the user terminal. That choice is a surfacing decision, not an enforcement one — how much of the enforcement machinery Nic should see, on the same "storage ≠ surfacing" logic that governs the rest of this contract — so it lives here.
+
+Each gate fire picks one of three dispositions:
+
+- **`silent`** — nothing rendered to the user; the agent handles it.
+- **`same`** — the user sees the same text the agent sees (no separate template).
+- **`keep`** — a low-rate, user-useful confirmation that persists (e.g. a linked `*.policy_message` file, or a session-end summary).
+
+Whether a given (client, event) pair can actually _deliver_ a user-visible message at all is a lower-level capability question, answered by [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md)'s per-client channel matrix — this section is the CHOICE made against that capability, not the capability itself.
+
+| Gate · fire (event)                                  | User message                    | Notes                                                                                                                                                                                                           |
+| :--------------------------------------------------- | :------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enforcer` · block (PreToolUse)                      | `silent`                        | Periodic compliance plumbing; outcome + hook in transcript only. PreToolUse dispatch skips subagent-classified sessions by design — see [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1 note below table.      |
+| `enforcer` · countdown (PreToolUse run-up)           | `silent`                        | "N calls until the check" is pure user noise.                                                                                                                                                                   |
+| `enforcer` · dispatch (PreToolUse)                   | `silent`                        | Instruction to invoke the enforcer subagent.                                                                                                                                                                    |
+| `qa` · block (Stop)                                  | `silent`                        | "Verify before you stop" is agent-directed.                                                                                                                                                                     |
+| `handover` · block (Stop)                            | `silent`                        | Agent-directed handover instruction.                                                                                                                                                                            |
+| `ida` · block (Stop, `IDA_GATE_MODE=block`, default) | `silent` (intended)             | Honesty backstop for verify-at-assert / claims-with-receipts. On Claude this rides `decision:block`+`reason` — see [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md) for the `reason` user-visibility caveat. |
+| `ida` · warn (Stop, `IDA_GATE_MODE=warn`)            | `silent` (intended; see caveat) | CAVEAT: this channel is NOT agent-only on Claude's screen — it also renders to the user as "Stop hook feedback", so the full advisory text is user-visible too even though the disposition intends `silent`.    |
+| `rbg_review` · block (Stop)                          | `silent`                        | Polecat/crew-only, agent-directed.                                                                                                                                                                              |
+| block-gate · degraded escape-hatch (Stop)            | `keep`                          | Mechanism-class row: every block-mode Stop gate downgrades `DENY`→`WARN`-and-allow after N consecutive unsatisfied Stops in a turn. Loud **by design** — Nic **should** see it when a gate gives up.            |
+| `pkb` · nudge (UserPromptSubmit)                     | `silent`                        | Already agent-only.                                                                                                                                                                                             |
+| `hydration` · routing hint (UserPromptSubmit)        | `silent`                        | Routing hints are agent-directed context injection, not a user message.                                                                                                                                         |
+| task-notification · guidance (UserPromptSubmit)      | `silent`                        | Agent-directed: act on the notification, surface to Nic only if important or awaited (the act-don't-surface rule this contract's Interaction contract section also relies on).                                  |
+
+**Status / transition pings** (`allow` verdict — informational, not enforcement). Default `silent`; the agent already knows the gate cleared:
+
+| Ping                        | User message | Notes                                             |
+| :-------------------------- | :----------- | :------------------------------------------------ |
+| `enforcer.verified` (reset) | `silent`     | Counter reset — agent-internal.                   |
+| `qa.complete`               | `silent`     | Verifier ran.                                     |
+| `handover.bound`            | `silent`     | Task bound.                                       |
+| `handover.complete`         | `keep`       | Session-end confirmation — user-useful, low-rate. |
+| `rbg_review.complete`       | `silent`     | rbg ran, gate cleared.                            |
+
+**Out of scope:** `SUBAGENT_INSTRUCTION` templates (`enforcer.context`, `qa.context`, `enforcer.audit`, `rbg_review.context`) reach **neither** Nic nor the main agent — they are written to the temp file a _dispatched_ subagent reads. No user-visibility disposition applies.
+
 ## Out of scope for this document
 
 - The aops-adhd plugin's full manifest, trait inventory, and package
