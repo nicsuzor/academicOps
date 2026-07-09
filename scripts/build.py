@@ -29,7 +29,11 @@ try:
         safe_symlink,
         write_plugin_version,
     )
-    from transforms.agent_schema import claude_mcp_to_gemini, validate_gemini_agent_schema
+    from transforms.agent_schema import (
+        build_agy_agent_json,
+        claude_mcp_to_gemini,
+        validate_gemini_agent_schema,
+    )
 except ImportError as e:
     # Fallback if running from a different location without setting path correctly
     # or if lib structure is not yet fully set up in development
@@ -745,6 +749,46 @@ def translate_tool_calls(text: str, platform: str) -> str:
     return text
 
 
+def copy_transform_agents(
+    src_agents_dir: Path, dst_agents_dir: Path, platform: str
+) -> tuple[int, int]:
+    """Copy + platform-transform every agent ``.md`` from src to dst.
+
+    The SINGLE agent-emission primitive, shared by every plugin builder
+    (aops-core, aops-pkb, …) so agent output is defined once and any change
+    propagates to all agent-bearing plugins automatically. For each agent:
+    transform frontmatter tools, translate body tool-calls, write the ``.md``;
+    for the ``antigravity`` platform additionally emit ``agents/{name}/agent.json``
+    (agy subagent format, system prompt inline). Returns ``(md_count, json_count)``.
+
+    ``platform`` is the caller's transform platform (e.g. build_aops_core passes
+    ``transform_platform``, which is "claude" for the cowork build).
+    """
+    dst_agents_dir.mkdir(parents=True, exist_ok=True)
+    md_count = 0
+    json_count = 0
+    for agent_file in sorted(src_agents_dir.glob("*.md")):
+        content = agent_file.read_text()
+        # Transform frontmatter (filter mcp__ tools for Gemini, apply schema) …
+        content = transform_agent_for_platform(content, platform, agent_file.name)
+        # … and translate tool calls in the body text.
+        content = translate_tool_calls(content, platform)
+        (dst_agents_dir / agent_file.name).write_text(content)
+        md_count += 1
+        # agy (Antigravity) additionally discovers subagents as
+        # agents/{name}/agent.json (system prompt inline), emitted alongside
+        # the .md from the already-transformed content.
+        if platform == "antigravity":
+            agent_json = build_agy_agent_json(
+                content, agent_file.name, tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
+            )
+            json_dir = dst_agents_dir / agent_file.stem
+            json_dir.mkdir(parents=True, exist_ok=True)
+            (json_dir / "agent.json").write_text(json.dumps(agent_json, indent=2) + "\n")
+            json_count += 1
+    return md_count, json_count
+
+
 def build_aops_core(
     aops_root: Path,
     dist_root: Path,
@@ -891,19 +935,14 @@ def build_aops_core(
             if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
                 continue
             if src_item.name == "agents" and src_item.is_dir():
-                # Special handling for agents: transform frontmatter and translate tool calls
+                # Special handling for agents: transform frontmatter and translate
+                # tool calls (+ emit agy agent.json). Shared primitive — see
+                # copy_transform_agents.
                 dst = content_dir / src_item.name
-                dst.mkdir(parents=True, exist_ok=True)
-                for agent_file in src_item.glob("*.md"):
-                    content = agent_file.read_text()
-                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                    content = transform_agent_for_platform(
-                        content, transform_platform, agent_file.name
-                    )
-                    # Translate tool calls in body text
-                    content = translate_tool_calls(content, transform_platform)
-                    (dst / agent_file.name).write_text(content)
+                _md_n, agy_json_count = copy_transform_agents(src_item, dst, transform_platform)
                 print(f"  ✓ Translated and copied agents -> {dst}")
+                if agy_json_count:
+                    print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
             else:
                 safe_copy(src_item, content_dir / src_item.name)
 
@@ -1211,11 +1250,11 @@ def build_aops_core(
                 # Leaked 'source' and 'category' cause issues in local cache
                 manifest.pop("source", None)
                 manifest.pop("category", None)
-                # 'userConfig' IS used on Claude: it prompts for PKB_MCP_URL at
-                # enable time and substitutes it into the pkb MCP server env
-                # (see mcp.json.template "claude" block). The cowork template ships
-                # no userConfig because Cowork's userConfig path is unreliable —
-                # there run-mcp.sh resolves the URL from the env / ~/.env.local.
+                # aops-core declares no 'userConfig'/pkb_mcp_url and no pkb MCP
+                # server for the "claude" platform — the aops-pkb plugin owns
+                # pkb there (HTTP transport, its own pkb_mcp_url userConfig).
+                # cowork/gemini/antigravity still get pkb via run-mcp.sh in
+                # this template, resolving the URL from the env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
@@ -1792,7 +1831,7 @@ def build_aops_pkb(
         print(f"  ⚠️  {src_dir} not found, skipping aops-pkb build")
         return
 
-    if platform != "claude":
+    if platform not in ("claude", "antigravity"):
         print(f"  ⚠️  aops-pkb build not implemented for platform={platform!r}, skipping")
         return
 
@@ -1816,16 +1855,31 @@ def build_aops_pkb(
         if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
             continue
         if src_item.name == "agents" and src_item.is_dir():
+            # Shared agent-emission primitive (transform + translate + agy json).
             dst = content_dir / src_item.name
-            dst.mkdir(parents=True, exist_ok=True)
-            for agent_file in src_item.glob("*.md"):
-                content = agent_file.read_text()
-                content = transform_agent_for_platform(content, platform, agent_file.name)
-                content = translate_tool_calls(content, platform)
-                (dst / agent_file.name).write_text(content)
+            _md_n, agy_json_count = copy_transform_agents(src_item, dst, platform)
             print(f"  ✓ Translated and copied agents -> {dst}")
+            if agy_json_count:
+                print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
         else:
             safe_copy(src_item, content_dir / src_item.name)
+
+    # 1a-pre. Translate tool names in all non-agent .md files for Gemini/Antigravity.
+    if platform in ("gemini", "antigravity"):
+        translated_count = 0
+        for md_file in content_dir.rglob("*.md"):
+            if (
+                md_file.relative_to(content_dir).parts
+                and md_file.relative_to(content_dir).parts[0] == "agents"
+            ):
+                continue
+            original = md_file.read_text()
+            translated = translate_tool_calls(original, platform)
+            if translated != original:
+                md_file.write_text(translated)
+                translated_count += 1
+        if translated_count:
+            print(f"  ✓ Translated tool names in {translated_count} .md files")
 
     # 1a. Strip cowork-only blocks (markers AND wrapped content) from every
     # copied .md file — this build never ships the "cowork" platform, so any
@@ -1864,34 +1918,66 @@ def build_aops_pkb(
     # 2. Plugin manifest. aops-pkb ships a REAL tracked plugin.json (like
     # aops-cowork), not one fabricated from templates/ (like aops-core/
     # aops-tools/aops-extras) — there is no reason to keep it out-of-tree.
-    src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
-    dist_plugin_dir = content_dir / ".claude-plugin"
-    dist_plugin_json = dist_plugin_dir / "plugin.json"
-    if not src_plugin_json.exists():
-        print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
-        sys.exit(1)
-    dist_plugin_dir.mkdir(parents=True, exist_ok=True)
-    manifest = json.loads(src_plugin_json.read_text())
-    manifest["version"] = version
-    # Hygiene: strip marketplace-only fields (same as every other plugin build).
-    manifest.pop("source", None)
-    manifest.pop("category", None)
-    with open(dist_plugin_json, "w") as f:
-        json.dump(manifest, f, indent=2)
-        f.write("\n")
-    print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+    if platform == "claude":
+        src_plugin_json = src_dir / ".claude-plugin" / "plugin.json"
+        dist_plugin_dir = content_dir / ".claude-plugin"
+        dist_plugin_json = dist_plugin_dir / "plugin.json"
+        if not src_plugin_json.exists():
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+        dist_plugin_dir.mkdir(parents=True, exist_ok=True)
+        manifest = json.loads(src_plugin_json.read_text())
+        manifest["version"] = version
+        # Hygiene: strip marketplace-only fields (same as every other plugin build).
+        manifest.pop("source", None)
+        manifest.pop("category", None)
+        with open(dist_plugin_json, "w") as f:
+            json.dump(manifest, f, indent=2)
+            f.write("\n")
+        print(f"  ✓ Updated and hygienically copied plugin.json -> {dist_plugin_json}")
+    elif platform == "antigravity":
+        src_plugin_json = aops_root / "templates" / f"{plugin_name}.antigravity-plugin.json"
+        dist_plugin_json = content_dir / "plugin.json"
+        if src_plugin_json.exists():
+            try:
+                manifest = json.loads(src_plugin_json.read_text())
+                manifest["version"] = version
 
-    # 3. Generate .mcp.json from the tracked mcp.json.template (own `pkb` MCP
+                with open(dist_plugin_json, "w") as f:
+                    json.dump(manifest, f, indent=2)
+                    f.write("\n")
+                print(f"  ✓ Generated plugin.json -> {dist_plugin_json}")
+            except Exception as e:
+                print(f"Error processing plugin.json: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {src_plugin_json} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    # 3. Generate MCP config from the tracked mcp.json.template (own `pkb` MCP
     # server registration — a separate plugin identity from aops-core's).
     template_path = src_dir / "mcp.json.template"
     if template_path.exists():
         mcp_template = json.loads(template_path.read_text())
-        shaped_mcp_config = mcp_template.get(platform, mcp_template)
-        dist_mcp_path = dist_dir / ".mcp.json"
-        with open(dist_mcp_path, "w") as f:
-            json.dump(shaped_mcp_config, f, indent=2)
-            f.write("\n")
-        print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+        mcp_config = mcp_template.get(platform, mcp_template)
+
+        if platform == "claude":
+            dist_mcp_path = dist_dir / ".mcp.json"
+            with open(dist_mcp_path, "w") as f:
+                json.dump(mcp_config, f, indent=2)
+                f.write("\n")
+            print(f"  ✓ Generated {dist_mcp_path} from mcp.json.template")
+        elif platform == "antigravity":
+            servers_config = mcp_config.get("mcpServers", mcp_config)
+            ag_servers_json = json.dumps(servers_config)
+            ag_servers_json = ag_servers_json.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
+            ag_servers_config = json.loads(ag_servers_json)
+            ag_mcp_config = {"mcpServers": ag_servers_config}
+
+            dist_mcp_path = dist_dir / "mcp_config.json"
+            with open(dist_mcp_path, "w") as f:
+                json.dump(ag_mcp_config, f, indent=2)
+                f.write("\n")
+            print(f"  ✓ Generated mcp_config.json -> {dist_mcp_path}")
     else:
         print(f"Error: {template_path} not found.", file=sys.stderr)
         sys.exit(1)
@@ -1980,6 +2066,7 @@ def main():
     build_aops_core(aops_root, dist_root, aca_data_path, "antigravity", version)
     build_aops_tools(aops_root, dist_root, "antigravity", version)
     build_aops_extras(aops_root, dist_root, "antigravity", version)
+    build_aops_pkb(aops_root, dist_root, "antigravity", version)
 
     # Generate the single root marketplace.json (sources ./dist/aops-*)
     generate_marketplace(aops_root, dist_root, version)

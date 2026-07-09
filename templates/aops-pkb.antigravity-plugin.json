@@ -1,0 +1,5 @@
+{
+  "name": "aops-pkb",
+  "version": "${VERSION}",
+  "description": "academicOps PKB and task module plugin for Antigravity 2.0"
+}

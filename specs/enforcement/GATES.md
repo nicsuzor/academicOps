@@ -87,6 +87,15 @@ timeline
 
 Honesty/criterion-substitution checking (the `ida` gate, Stop + PreToolUse `AskUserQuestion`) is omitted from this timeline for brevity, not because it was retired — H6 was misrecorded elsewhere in this spec as a retirement; the gate remains live in code with disposition OPEN, pending [[aops_3eabb0ae]]. See [§ `ida` gate](#ida-gate).
 
+## Hook-event coverage & UserPromptSubmit origin diagnostic (`aops_2597b5ff` scope D)
+
+Nic observed the `rbg-review` gate re-arming in interactive head sessions with **no human prompt**. Scope D is the deliberately-scoped instrument for catching WHAT re-arms it — it does NOT fix the re-arm (deferred; see the `rbg-review` gate's "Gate re-arms with NO human prompt visible" debug row above).
+
+- **Every Claude Code hook event is now subscribed and logged, log-only.** `aops-core/hooks/hooks.json` registers all 30 events the installed client emits (confirmed 2026-07-09 against Claude Code 2.1.205's `extension.js` — the `vQ` enum backing the settings.json `hooks` schema; SSoT copy: `client_spec.CLAUDE_ALL_EVENTS`). The 10 that already had a `router._call_gate_method` branch (PreToolUse/PostToolUse/UserPromptSubmit/SessionStart/Stop/SessionEnd/SubagentStart/SubagentStop/PreCompact/Notification) are unchanged. The other 20 (`PostToolUseFailure`, `PostToolBatch`, `UserPromptExpansion`, `StopFailure`, `PostCompact`, `PermissionRequest`, `PermissionDenied`, `Setup`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `Elicitation`, `ElicitationResult`, `ConfigChange`, `WorktreeCreate`, `WorktreeRemove`, `InstructionsLoaded`, `CwdChanged`, `FileChanged`, `MessageDisplay`) have NO gate branch — `_call_gate_method`'s if/elif chain falls through to `return None`, so they are inert by construction (exit 0, no block) and reach `main()`'s `log_hook_event` call exactly like any handled event. Re-verify the 30-event set against `extension.js` on a Claude Code version bump — it is observed, not guaranteed stable.
+- **The silent-drop gap is closed.** `unified_logger.log_hook_event` previously returned silently when `ctx.session_id` was missing or the crash-path literal `"unknown"` — invisible in exactly the scenario (a router crash before `normalize_input` resolved a session_id) where the log is most needed. It now routes those events to a global fallback sink (`~/.claude/hooks-fallback.jsonl`, override via `AOPS_HOOK_FALLBACK_LOG`), tagged `"session_id_missing": true`.
+- **UserPromptSubmit diagnostic enrichment.** Every UPS log line's `output.metadata.ups_diagnostic` carries: `prompt_id` (Claude Code ≥2.1.196; `None` elsewhere — absence is itself signal), `prompt_preview` (first 80 chars), `prompt_length`, `is_task_notification` (the `router._is_task_notification` result), and `gate_transitions` — every gate whose trigger fired on this event (`gate`, `hook_event`, `trigger_index`, `from_status`/`to_status`, `status_changed`). Captured on BOTH `execute_hooks()` branches: the task-notification short-circuit (`gate_transitions` always `[]` there — no gates run) and the normal gate-dispatch fall-through (where `rbg-review`'s unconditional UPS trigger, and any other gate's, actually shows up). This is the mechanism behind the `rbg-review` gate's verification query above — see there for a live example and the leading unverified hypothesis.
+- **Gate-transition capture is engine-level**, not UPS-specific: `GenericGate._evaluate_triggers` (`aops-core/lib/gates/engine.py`) records a transition whenever a trigger's condition matched and its transition applied — even when `from_status == to_status` (e.g. `rbg-review` re-closing an already-`CLOSED` gate), because "did this event cause the trigger to fire" is the diagnostic question, not just "did the status visibly flip". `router._dispatch_gates` collects one entry per contributing gate into `CanonicalHookOutput.metadata["gate_transitions"]` for every event, not only UserPromptSubmit; `ups_diagnostic.gate_transitions` on a UPS line is the same list, just also folded into the UPS-specific blob for convenience.
+
 ## Config plumbing
 
 **Standing rule, all gates (H3).** Posture — armed/disarmed, on/off, which mode a surface runs in — is expressed **only** through the env-var / `polecat.yaml` plumbing described in this section. No gate anywhere in this catalogue may branch its mode on session-type, on/off flags, or other state code in the repo — this generalises the constraint `rbg-review` states explicitly in its own TL;DR to every gate below.
@@ -283,6 +292,18 @@ grep '"hook_event":"Stop"' <hooks.jsonl> \
 # rbg subagent runs that cleared the gate
 grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
   | jq -r 'select(.subagent_type|test("^(aops[-_](core|pkb)[:_])?rbg$")) | .logged_at'
+
+# Every UserPromptSubmit that RE-ARMED (closed) this gate, with the raw
+# origin signal on the same line — the diagnostic instrument added by
+# aops_2597b5ff scope D (see "UserPromptSubmit origin diagnostic" below).
+# Answers "what caused this re-arm with no human prompt" directly: for each
+# line, is_task_notification / prompt_id / prompt_preview show WHAT the
+# router thought the prompt was.
+grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
+  | jq -r 'select(.output.metadata.gate_transitions // [] | any(.gate=="rbg-review"))
+           | {logged_at, is_task_notification: .output.metadata.ups_diagnostic.is_task_notification,
+              prompt_id: .output.metadata.ups_diagnostic.prompt_id,
+              prompt_preview: .output.metadata.ups_diagnostic.prompt_preview}'
 ```
 
 ### How to debug when it isn't
@@ -293,6 +314,7 @@ grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
 | Stop loops repeatedly without clearing      | Check whether the escape-hatch fired: after 5 consecutive blocks in a turn the gate degrades to `warn`-and-allow and logs `rbg_review.degraded`.                                                                               |
 | `rbg` run doesn't clear the gate            | Confirm the dispatched `subagent_type` matches `^(aops[-_](core\|pkb)[:_])?rbg$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                                                                                                     |
 | Mode silently `off`                         | `python -c "from hooks.gate_config import RBG_REVIEW_GATE_MODE; print(RBG_REVIEW_GATE_MODE)"`. If a dispatched surface should enforce this, confirm `polecat.yaml` sets `gates.rbg_review: block` — the code default is `off`. |
+| Gate re-arms with NO human prompt visible   | Open investigation `aops_2597b5ff` — scope D (this section's diagnostic query) landed; the fix is deferred. The query does NOT diagnose the culprit, it makes the culprit's log line visible. Leading unverified hypothesis: a `[SYSTEM NOTIFICATION - NOT USER INPUT]` preamble ahead of `<task-notification>` makes `_is_task_notification` return `False` on some background-completion prompts, so they fall through to the normal gate path instead of the short-circuit. |
 
 ---
 

@@ -131,9 +131,13 @@ class TestLogHookEvent:
         assert len(entries) == 3
         assert [e["hook_event"] for e in entries] == ["Event0", "Event1", "Event2"]
 
-    def test_empty_session_id_skips_silently(self, temp_claude_projects):
-        """Test that empty session_id silently skips (fail-safe for hooks)."""
-        # Should not raise or create files
+    def test_empty_session_id_writes_to_fallback_sink(self, temp_claude_projects, monkeypatch):
+        """A missing session_id can't anchor the per-session file, but the event
+        must still be visible somewhere (aops_2597b5ff scope D, item 2) —
+        NOT silently dropped, as it was before this change."""
+        fallback_path = Path(temp_claude_projects) / "fallback-hooks.jsonl"
+        monkeypatch.setenv("AOPS_HOOK_FALLBACK_LOG", str(fallback_path))
+
         log_hook_event(
             HookContext(
                 session_id="",
@@ -142,12 +146,24 @@ class TestLogHookEvent:
             ),
         )
 
+        # No per-session file was created (there is no session to anchor to)...
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))
-        assert len(log_files) == 0, "Empty session_id should not create log file"
+        assert len(log_files) == 0, "Empty session_id should not create a per-session log file"
 
-    def test_unknown_session_id_skips_silently(self, temp_claude_projects):
-        """Test that 'unknown' session_id silently skips."""
+        # ...but the event landed in the fallback sink, flagged as such.
+        assert fallback_path.exists(), "Empty session_id must still be logged (fallback sink)"
+        entries = [json.loads(line) for line in fallback_path.read_text().splitlines() if line]
+        assert len(entries) == 1
+        assert entries[0]["hook_event"] == "TestEvent"
+        assert entries[0]["session_id_missing"] is True
+
+    def test_unknown_session_id_writes_to_fallback_sink(self, temp_claude_projects, monkeypatch):
+        """Same as above for the literal 'unknown' session_id (main()'s crash-path
+        fallback when ctx couldn't even be built)."""
+        fallback_path = Path(temp_claude_projects) / "fallback-hooks.jsonl"
+        monkeypatch.setenv("AOPS_HOOK_FALLBACK_LOG", str(fallback_path))
+
         log_hook_event(
             HookContext(
                 session_id="unknown",
@@ -158,7 +174,13 @@ class TestLogHookEvent:
 
         projects_dir = Path(temp_claude_projects) / ".claude" / "projects"
         log_files = list(projects_dir.rglob("*-hooks.jsonl"))
-        assert len(log_files) == 0, "'unknown' session_id should not create log file"
+        assert len(log_files) == 0, "'unknown' session_id should not create a per-session log file"
+
+        assert fallback_path.exists(), "'unknown' session_id must still be logged (fallback sink)"
+        entries = [json.loads(line) for line in fallback_path.read_text().splitlines() if line]
+        assert len(entries) == 1
+        assert entries[0]["hook_event"] == "TestEvent"
+        assert entries[0]["session_id_missing"] is True
 
     def test_log_file_path_format(self, temp_claude_projects):
         """Test that log file path follows expected format: YYYYMMDD-HH-shorthash-hooks.jsonl."""
