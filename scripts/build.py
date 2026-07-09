@@ -1250,11 +1250,11 @@ def build_aops_core(
                 # Leaked 'source' and 'category' cause issues in local cache
                 manifest.pop("source", None)
                 manifest.pop("category", None)
-                # 'userConfig' IS used on Claude: it prompts for PKB_MCP_URL at
-                # enable time and substitutes it into the pkb MCP server env
-                # (see mcp.json.template "claude" block). The cowork template ships
-                # no userConfig because Cowork's userConfig path is unreliable —
-                # there run-mcp.sh resolves the URL from the env / ~/.env.local.
+                # aops-core declares no 'userConfig'/pkb_mcp_url and no pkb MCP
+                # server for the "claude" platform — the aops-pkb plugin owns
+                # pkb there (HTTP transport, its own pkb_mcp_url userConfig).
+                # cowork/gemini/antigravity still get pkb via run-mcp.sh in
+                # this template, resolving the URL from the env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
