@@ -18,9 +18,8 @@ import re
 import subprocess
 import sys
 import textwrap
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -1539,18 +1538,36 @@ def git_sync():
 # a second, worse prompt miner against markdown transcripts instead of
 # reusing this — do not repeat that mistake.
 
-# Surfaces where the human at the keyboard is Nic himself. GHA / polecat /
-# crew / claude-sdk sessions are agent-authored dispatch, not Nic-typed
-# prompts, and are excluded.
-_LEDGER_NIC_SURFACES = frozenset({"claude-code-cli", "claude-code-desktop"})
 
-# Nic's local timezone, fixed explicitly rather than read from the executing
-# process's system clock. `datetime.astimezone()` with no argument attaches
-# whatever timezone the *host* is configured with — correct on Nic's own
-# machine, but silently wrong (and TZ-dependent-flaky) on any other host,
-# including GitHub Actions runners (always UTC). Brisbane observes no DST,
-# so this is a stable, portable stand-in for "Nic's local offset".
-_LEDGER_NIC_TZ = ZoneInfo("Australia/Brisbane")
+def _ledger_is_nic_interactive(session: dict) -> bool:
+    """True if ``session`` is Nic typing interactively, not an automated
+    worker/subagent run.
+
+    Reuses ``session_naming.is_automated_session`` (aops-62abcf9d) — the same
+    single-source-of-truth classifier ``user_prompts.py`` already uses to
+    split worker vs interactive sessions — instead of hand-enumerating "known
+    Nic surfaces" here, which drifts silently the moment Nic starts using a
+    new interactive surface (owner: "you never know where i'll be").
+
+    ``task_id`` is deliberately NOT passed through: ``is_automated_session``
+    treats any task binding as a worker signal, but Nic legitimately works
+    on bound tasks interactively via the CLI too (see
+    ``test_single_prompt_session_resolves_task_link``) — task binding is a
+    separate axis the ledger already handles via ``_ledger_task_link``.
+    """
+    surface = session.get("surface")
+    if not surface:
+        return False
+    is_auto, _reason = session_naming.is_automated_session(
+        client=session.get("client") or surface,
+        surface=surface,
+        crew=session.get("crew"),
+        subagent_type=session.get("subagent_type"),
+        parent_session=session.get("parent_session"),
+        hostname=session.get("hostname"),
+    )
+    return not is_auto
+
 
 # Claude Code records an Escape-triggered interruption as a "user" turn.
 # build_user_prompts already strips system/harness envelopes, but this one
@@ -1664,26 +1681,26 @@ def generate_prompt_ledger(since_arg: str | None) -> int:
     resolves outcome/link ONLY for single-prompt sessions where the
     attribution is honest (see _ledger_outcome_and_link).
     """
-    # since_dt is interpreted as LOCAL midnight in _LEDGER_NIC_TZ, not UTC and
-    # not the executing process's system timezone — session/prompt timestamps
-    # in summaries/*.json carry Nic's local offset (e.g. +10:00), and
-    # "--since 2026-07-06" means the morning of July 6 as he experienced it.
-    # Using UTC midnight here would silently drop up to ~10 hours of
-    # legitimate rows depending on offset (caught by
-    # test_since_filter_excludes_earlier_prompts before this fix landed).
-    # Anchoring to a fixed _LEDGER_NIC_TZ (rather than `.astimezone()`, which
-    # reads the *host's* system timezone) keeps this deterministic across
-    # machines — including CI runners, which run in UTC.
+    # "--since 2026-07-06" means the morning of July 6 as Nic experienced it —
+    # but "Nic's timezone" isn't a fixed constant (owner: "you never know
+    # where i'll be"). Each session/prompt timestamp in summaries/*.json
+    # already carries the offset Nic was actually in when he typed it (e.g.
+    # +10:00), so the per-row filter below compares each row's OWN local date
+    # (its own embedded offset) against since_date, rather than converting to
+    # one assumed home timezone. since_dt here only widens the month-bucket
+    # file walk in _ledger_summary_paths — a generous (1-day-early) bound is
+    # safe there because the per-row date check is the authoritative filter.
+    since_date: date | None
     if since_arg:
         try:
-            since_dt = datetime.strptime(since_arg, "%Y-%m-%d").replace(tzinfo=_LEDGER_NIC_TZ)
+            since_date = datetime.strptime(since_arg, "%Y-%m-%d").date()
         except ValueError:
             print(f"❌ Error: --since must be YYYY-MM-DD, got {since_arg!r}", file=sys.stderr)
             return 1
+        since_dt = datetime.combine(since_date, datetime.min.time(), tzinfo=UTC) - timedelta(days=1)
     else:
-        since_dt = (datetime.now(_LEDGER_NIC_TZ) - timedelta(days=7)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        since_date = None
+        since_dt = datetime.now(UTC) - timedelta(days=7)
 
     summaries_dir = get_summaries_dir()
     rows: list[dict] = []
@@ -1702,7 +1719,7 @@ def generate_prompt_ledger(since_arg: str | None) -> int:
         except Exception:
             continue
 
-        if session.get("surface") not in _LEDGER_NIC_SURFACES:
+        if not _ledger_is_nic_interactive(session):
             continue
 
         user_prompts = session.get("user_prompts") or []  # allow-fallback: optional
@@ -1742,8 +1759,15 @@ def generate_prompt_ledger(since_arg: str | None) -> int:
                 ts_dt = ts_dt.replace(tzinfo=UTC)
 
             effective_dt = ts_dt or session_dt
-            if effective_dt and effective_dt.astimezone(UTC) < since_dt:
-                continue
+            if effective_dt:
+                # Compare in the row's OWN embedded offset (its "local" time
+                # from wherever Nic was), not a converted/assumed timezone —
+                # see the since_date comment above generate_prompt_ledger.
+                if since_date is not None:
+                    if effective_dt.date() < since_date:
+                        continue
+                elif effective_dt.astimezone(UTC) < since_dt:
+                    continue
 
             question = _ledger_question_text(raw_text)
             if not question:
