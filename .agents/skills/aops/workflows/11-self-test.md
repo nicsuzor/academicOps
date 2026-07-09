@@ -90,10 +90,19 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 Any mismatch is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, and agent's verbatim answer. Do not attempt to fix routing in this session.
 
-**Walk-through** (interactive, fresh Claude session; repeat for Gemini): trigger each hook — SessionStart: start session; UserPromptSubmit: any prompt; PreToolUse/PostToolUse: trivial Read; Stop: finish a turn; SubagentStart/Stop: dispatch subagent; PreCompact: /compact; Notification: any notification action; SessionEnd: /exit. After each, ask the agent explicitly whether it received the `context_injection` payload in its context. The "do not infer" guard is load-bearing — the agent answers from actual context, not from its model of expected behavior.
+**Automated Live Verification (`pty_hook_probe.py`)**
 
-**Post-hoc transcript evaluation** (auditing past sessions): confirm plugin version matches version under test. Read hooks JSONL and transcript JSONL directly — no grep shortcuts. Cross-reference: (a) `context_injection` appears in transcript system-reminders; (b) `system_message` appears in user output; (c) `context_injection` does NOT appear in user output (leakage = inversion bug). Record per pass/fail criterion; file routing bugs the same way.
+The manual walkthrough has been replaced by the PTY host testing system (`scripts/pty_hook_probe.py`), which automates end-to-end verification. This script drives live interactive `claude` and `agy` clients in a headless `tmux` pane.
 
-**No synthetic testing.** This verifies live runtime behavior — the gap between "Python produces correct JSON" and "runtime delivers to correct surface." Stdin piping, unit harnesses, mock events, and injected payloads cannot catch [[aops-d10e7db6]]. Methodology-substitution is a failure.
+**Run the probe:**
 
-**Notes for agent running §3:** answer "did you receive X payload" from your **actual context**, not from your model of what should have happened. If you didn't receive it, say "No, I did not receive that content in my context on this turn" — full stop. The `UserPromptSubmit` injection is the working reference; if that row doesn't match expected, the test rig is broken — halt and report.
+```bash
+uv run python scripts/pty_hook_probe.py --client all
+```
+
+The script explicitly verifies BOTH surfaces:
+
+1. **User Surface:** Uses `tmux capture-pane` with early and late snapshots to verify that transient toasts, feedback banners, and notifications are actually rendered to the user, and that agent-only context never leaks into the UI.
+2. **Agent Surface:** Checks the transcript JSONL (for Claude) or model echo (for agy) to confirm the agent successfully received `context_injection`.
+
+This maintains the "no synthetic testing" rule by verifying real runtime behavior in a real terminal context, closing the structural blindness gap of previous synthetic JSON harnesses without requiring manual walkthroughs.
