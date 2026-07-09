@@ -55,21 +55,19 @@ fi
 # .config at 0644 (non-traversable); this self-heals them on startup.
 chmod 777 "$HOME/.config" 2>/dev/null || true
 
-# Seed the aops-core plugin's userConfig from PKB_MCP_URL.
+# Seed the aops-pkb plugin's userConfig from PKB_MCP_URL.
 #
-# The Claude build of aops-core declares `userConfig.pkb_mcp_url` and substitutes
-# it into the pkb MCP server's env block as `${user_config.pkb_mcp_url}`. That
-# value normally comes from an interactive enable-time prompt persisted to
-# settings.json — which never happens in a headless container. Claude Code's MCP
-# launcher does NOT propagate this process's env to the server, so simply having
-# PKB_MCP_URL exported here is not enough; it must reach run-mcp.sh via the
-# userConfig→env substitution. We therefore write the value the container was
-# given (PKB_MCP_URL, forwarded by polecat/cli.py per agent-env-map.conf) into
-# settings.json under pluginConfigs["aops-core@academicOps"].options.pkb_mcp_url,
+# The Claude build of aops-pkb declares `userConfig.pkb_mcp_url` and substitutes
+# it into the pkb MCP server's `url` field (HTTP transport) as
+# `${user_config.pkb_mcp_url}`. That value normally comes from an interactive
+# enable-time prompt persisted to settings.json — which never happens in a
+# headless container. We therefore write the value the container was given
+# (PKB_MCP_URL, forwarded by polecat/cli.py per agent-env-map.conf) into
+# settings.json under pluginConfigs["aops-pkb@academicOps"].options.pkb_mcp_url,
 # the exact location Claude Code reads for `${user_config.pkb_mcp_url}`.
 #
-# If PKB_MCP_URL is unset we do NOT invent a value: run-mcp.sh then hard-fails
-# (no ~/.env.local fallback), surfacing the misconfiguration instead of silently
+# If PKB_MCP_URL is unset we do NOT invent a value: the pkb MCP server then has
+# no URL to connect to, surfacing the misconfiguration instead of silently
 # connecting to nothing.
 if [ -n "$PKB_MCP_URL" ]; then
     SETTINGS="$HOME/.claude/settings.json"
@@ -84,12 +82,12 @@ except (OSError, ValueError) as exc:
     print(f"WARN: could not read {path} ({exc}); starting from empty settings", file=sys.stderr)
     data = {}
 
-cfg = data.setdefault("pluginConfigs", {}).setdefault("aops-core@academicOps", {})
+cfg = data.setdefault("pluginConfigs", {}).setdefault("aops-pkb@academicOps", {})
 cfg.setdefault("options", {})["pkb_mcp_url"] = url
 
 path.parent.mkdir(parents=True, exist_ok=True)
 path.write_text(json.dumps(data, indent=2) + "\n")
-print(f"Seeded pkb_mcp_url into {path} (pluginConfigs.aops-core@academicOps.options)", file=sys.stderr)
+print(f"Seeded pkb_mcp_url into {path} (pluginConfigs.aops-pkb@academicOps.options)", file=sys.stderr)
 PY
     then
         echo "WARN: failed to seed pkb_mcp_url into settings.json; pkb MCP may not connect." >&2
