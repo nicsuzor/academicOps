@@ -20,6 +20,7 @@ import sys
 import textwrap
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -1543,6 +1544,14 @@ def git_sync():
 # prompts, and are excluded.
 _LEDGER_NIC_SURFACES = frozenset({"claude-code-cli", "claude-code-desktop"})
 
+# Nic's local timezone, fixed explicitly rather than read from the executing
+# process's system clock. `datetime.astimezone()` with no argument attaches
+# whatever timezone the *host* is configured with — correct on Nic's own
+# machine, but silently wrong (and TZ-dependent-flaky) on any other host,
+# including GitHub Actions runners (always UTC). Brisbane observes no DST,
+# so this is a stable, portable stand-in for "Nic's local offset".
+_LEDGER_NIC_TZ = ZoneInfo("Australia/Brisbane")
+
 # Claude Code records an Escape-triggered interruption as a "user" turn.
 # build_user_prompts already strips system/harness envelopes, but this one
 # slips through because it's syntactically a short human-authored string —
@@ -1655,20 +1664,24 @@ def generate_prompt_ledger(since_arg: str | None) -> int:
     resolves outcome/link ONLY for single-prompt sessions where the
     attribution is honest (see _ledger_outcome_and_link).
     """
-    # since_dt is interpreted as LOCAL midnight (system timezone), not UTC —
-    # session/prompt timestamps in summaries/*.json carry Nic's local offset
-    # (e.g. +10:00), and "--since 2026-07-06" means the morning of July 6 as
-    # he experienced it. Using UTC midnight here would silently drop up to
-    # ~10 hours of legitimate rows depending on offset (caught by
+    # since_dt is interpreted as LOCAL midnight in _LEDGER_NIC_TZ, not UTC and
+    # not the executing process's system timezone — session/prompt timestamps
+    # in summaries/*.json carry Nic's local offset (e.g. +10:00), and
+    # "--since 2026-07-06" means the morning of July 6 as he experienced it.
+    # Using UTC midnight here would silently drop up to ~10 hours of
+    # legitimate rows depending on offset (caught by
     # test_since_filter_excludes_earlier_prompts before this fix landed).
+    # Anchoring to a fixed _LEDGER_NIC_TZ (rather than `.astimezone()`, which
+    # reads the *host's* system timezone) keeps this deterministic across
+    # machines — including CI runners, which run in UTC.
     if since_arg:
         try:
-            since_dt = datetime.strptime(since_arg, "%Y-%m-%d").astimezone()
+            since_dt = datetime.strptime(since_arg, "%Y-%m-%d").replace(tzinfo=_LEDGER_NIC_TZ)
         except ValueError:
             print(f"❌ Error: --since must be YYYY-MM-DD, got {since_arg!r}", file=sys.stderr)
             return 1
     else:
-        since_dt = (datetime.now().astimezone() - timedelta(days=7)).replace(
+        since_dt = (datetime.now(_LEDGER_NIC_TZ) - timedelta(days=7)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
 
