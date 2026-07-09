@@ -2,7 +2,7 @@
 
 The SINGLE source of truth for how the Universal Hook Router maps between the
 internal canonical hook model and each client's wire dialect (Claude Code,
-Gemini CLI, Antigravity CLI / "agy"). Both the RUNTIME router
+Antigravity CLI / "agy"). Both the RUNTIME router
 (``aops-core/hooks/router.py``) and the BUILD (``scripts/build.py``) import from
 here, replacing the three previously-divergent copies of the event map
 (``router.GEMINI_EVENT_MAP``, ``build.CLAUDE_TO_GEMINI_EVENTS`` + ``AGY_EVENT_MAP``,
@@ -47,7 +47,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-CLIENTS = ("claude", "gemini", "agy")
+CLIENTS = ("claude", "agy")
 
 
 # --- Canonical internal event names -----------------------------------------
@@ -145,18 +145,6 @@ CLAUDE_ALL_EVENTS: tuple[str, ...] = (
 # need no entry; the resolver falls back to identity.
 _INBOUND: dict[str, dict[str, str]] = {
     "claude": {},  # identity — Claude's wire names are the canonical names.
-    "gemini": {
-        "SessionStart": Event.SESSION_START,
-        "BeforeTool": Event.PRE_TOOL,
-        "AfterTool": Event.POST_TOOL,
-        "BeforeAgent": Event.USER_PROMPT,
-        "AfterAgent": Event.STOP,
-        "SessionEnd": Event.SESSION_END,
-        "Notification": Event.NOTIFICATION,
-        "PreCompress": Event.PRE_COMPACT,
-        "SubagentStart": Event.SUBAGENT_START,
-        "SubagentStop": Event.SUBAGENT_STOP,
-    },
     "agy": {
         "PreToolUse": Event.PRE_TOOL,
         "PostToolUse": Event.POST_TOOL,
@@ -175,18 +163,6 @@ _OUTBOUND: dict[str, dict[str, list[str]]] = {
     # is the full 30-event set (see its docstring for provenance); the 20
     # added 2026-07-09 (aops_2597b5ff scope D) are log-only, no gate branch.
     "claude": {e: [e] for e in CLAUDE_ALL_EVENTS},
-    "gemini": {
-        Event.PRE_TOOL: ["BeforeTool"],
-        Event.POST_TOOL: ["AfterTool"],
-        Event.USER_PROMPT: ["BeforeAgent"],
-        Event.STOP: ["SessionEnd", "AfterAgent"],  # fan-out (see CLIENT-TRANSLATION.md)
-        Event.SESSION_START: ["SessionStart"],
-        Event.SESSION_END: ["SessionEnd"],
-        Event.SUBAGENT_START: ["BeforeTool"],
-        Event.SUBAGENT_STOP: ["AfterTool"],
-        Event.PRE_COMPACT: ["BeforeAgent"],
-        Event.NOTIFICATION: ["BeforeAgent"],
-    },
     "agy": {
         # CURRENT behavior: internal Stop -> PostInvocation. The P4 correction
         # (harness-gated) adds native ``Stop`` so handover can hard-block; until
@@ -203,9 +179,6 @@ _OUTBOUND: dict[str, dict[str, list[str]]] = {
 # drops anything that maps to a wire event not in this set).
 VALID_WIRE_EVENTS: dict[str, frozenset[str]] = {
     "claude": frozenset(_OUTBOUND["claude"]),  # Claude accepts all native names
-    "gemini": frozenset(
-        {"SessionStart", "BeforeAgent", "AfterAgent", "BeforeTool", "AfterTool", "SessionEnd"}
-    ),
     "agy": frozenset({"PreToolUse", "PostToolUse", "PreInvocation", "PostInvocation", "Stop"}),
 }
 
@@ -293,17 +266,6 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
         notes="2.1.195 mem-4ab6cc0b; asyncRewake removed (#2181 fix direction B)",
     ),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
-    # ---- Gemini CLI ----
-    ("gemini", Event.PRE_TOOL): ChannelSpec(True, True, True),
-    ("gemini", Event.USER_PROMPT): ChannelSpec(True, True, True),
-    ("gemini", Event.POST_TOOL): ChannelSpec(True, True, True),
-    ("gemini", Event.SESSION_START): ChannelSpec(False, True, True),
-    # AfterAgent delivers feedback to the agent via reason->retry (a block), not a
-    # free additionalContext. agent_context_without_block PROVISIONAL.
-    ("gemini", Event.STOP): ChannelSpec(
-        True, False, True, notes="AfterAgent: reason=retry prompt", provisional=True
-    ),
-    ("gemini", Event.SESSION_END): ChannelSpec(False, True, True),
     # ---- Antigravity CLI (agy) ----
     # PreToolUse has only decision/reason (+allowTool/denyReason) — no inject
     # channel, so advisory cannot ride an allow; reason carries the deny reason.
@@ -369,8 +331,6 @@ def config_shape(client: str, wire_event: str) -> str:
     """Registration shape for a (client, wire_event): 'wrapper' | 'flat' | 'claude'."""
     if client == "claude":
         return "claude"
-    if client == "gemini":
-        return "wrapper"
     return _CONFIG_SHAPE.get(client, {}).get(
         wire_event, "wrapper"
     )  # allow-fallback: wrapper is the default registration shape for tool-style events

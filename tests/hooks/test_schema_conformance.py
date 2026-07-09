@@ -1,7 +1,7 @@
 """Schema conformance — parameterised across all hook events × platforms.
 
 Verifies that every hook event produces output conforming to the schema
-each platform (Claude Code, Gemini CLI) will accept.
+each platform (Claude Code) will accept.
 """
 
 import json
@@ -49,25 +49,4 @@ class TestClaudeSchemaConformance:
                 f"Hook event {event!r} emitted hookSpecificOutput with "
                 f"hookEventName={event_name!r}, which Claude Code will reject. "
                 f"Accepted values: {_hso_accepted}"
-            )
-
-
-class TestGeminiSchemaConformance:
-    """Gemini CLI hookEventName must match its event."""
-
-    @pytest.mark.parametrize("event", ALL_HOOK_EVENTS)
-    def test_gemini_hook_output_schema_conformance(self, router, event):
-        canonical = CanonicalHookOutput(
-            verdict="warn",
-            context_injection="<SYSTEM HOOK INSTRUCTION>test</SYSTEM HOOK INSTRUCTION>",
-            system_message="test note",
-        )
-        output = router.output_for_gemini(canonical, event)
-        payload = json.loads(output.model_dump_json(exclude_none=True, by_alias=True))
-
-        hso = payload.get("hookSpecificOutput")
-        if hso is not None:
-            event_name = hso.get("hookEventName")
-            assert event_name == event, (
-                f"Gemini hookEventName mismatch: expected {event!r}, got {event_name!r}"
             )

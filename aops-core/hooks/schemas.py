@@ -10,8 +10,6 @@ __all__ = [
     "ClaudeStopHookOutput",
     "ClaudeGeneralHookOutput",
     "ClaudeHookOutput",
-    "GeminiHookSpecificOutput",
-    "GeminiHookOutput",
     "CanonicalHookOutput",
     "ResolvedDecision",
 ]
@@ -100,47 +98,6 @@ class ClaudeGeneralHookOutput(BaseModel):
 
 # Union type for any Claude Hook Output
 ClaudeHookOutput: TypeAlias = ClaudeGeneralHookOutput | ClaudeStopHookOutput
-
-
-# --- Gemini CLI Hook Schemas ---
-
-
-class GeminiHookSpecificOutput(BaseModel):
-    """
-    Nested output structure for Gemini CLI hooks.
-    Used for context injection and tool configuration.
-
-    Per Gemini CLI docs (2026):
-    - additionalContext: Injected into agent prompt (BeforeAgent, AfterTool)
-    - toolConfig: Override tool selection behavior (BeforeToolSelection)
-    """
-
-    hookEventName: str | None = None
-    additionalContext: str | None = None
-    toolConfig: dict[str, Any] | None = None
-    clearContext: bool | None = None
-
-
-class GeminiHookOutput(BaseModel):
-    """
-    Output structure for Gemini CLI hooks.
-
-    Per Gemini CLI docs (2026):
-    - decision: "allow", "deny", or "block" for blocking operations
-    - reason: Explanation for denial (NOT for context injection)
-    - hookSpecificOutput: Contains additionalContext for prompt injection
-    - Exit code 2 is "emergency brake" - stderr shown to agent
-    """
-
-    systemMessage: str | None = None
-    decision: Literal["allow", "deny", "block"] | None = None
-    reason: str | None = None
-    hookSpecificOutput: GeminiHookSpecificOutput | None = None
-    suppressOutput: bool | None = None
-    continue_: bool | None = Field(default=None, alias="continue")
-    stopReason: str | None = None
-    # Metadata for internal tracking/debugging
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # --- Canonical Internal Schema ---

@@ -1,12 +1,12 @@
-"""Tests that client_type ("claude" / "gemini") flows from --client into JSONL logs.
+"""Tests that client_type ("claude" / "agy") flows from --client into JSONL logs.
 
 Bug context: hook JSONL showed model=unknown for all polecat sessions. Without
-client_type in the log entry, claude vs gemini sessions were indistinguishable
+client_type in the log entry, claude vs agy sessions were indistinguishable
 except by session-ID prefix. (task-c5d2e2da)
 
 Coverage:
 1. normalize_input(client_type="claude") -> ctx.client_type == "claude"
-2. normalize_input(client_type="gemini") -> ctx.client_type == "gemini"
+2. normalize_input(client_type="agy") -> ctx.client_type == "agy"
 3. normalize_input() with no client_type -> ctx.client_type is None
    (NOT the string "unknown" -- that is a separate bug.)
 4. JSONL log entry written by unified_logger.log_hook_event includes the
@@ -67,11 +67,11 @@ class TestClientTypeOnContext:
             ctx = router.normalize_input(raw, client_type="claude")
         assert ctx.client_type == "claude"
 
-    def test_client_type_gemini(self, router):
-        raw = {"session_id": "test-gemini-session"}
+    def test_client_type_agy(self, router):
+        raw = {"session_id": "test-agy-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="gemini")
-        assert ctx.client_type == "gemini"
+            ctx = router.normalize_input(raw, client_type="agy")
+        assert ctx.client_type == "agy"
 
     def test_client_type_absent_is_none(self, router):
         """When --client is absent, client_type must be None (not 'unknown')."""
@@ -101,22 +101,22 @@ class TestClientTypeInJSONL:
         assert len(entries) == 1
         assert entries[0]["client_type"] == "claude"
 
-    def test_jsonl_contains_client_type_gemini(self, router, temp_claude_projects, monkeypatch):
-        # A gemini session must declare its dir (NO FALLBACKS): point
-        # AOPS_SESSION_STATE_DIR at a real ~/.gemini-style tmp dir so the log
-        # resolves there instead of raising.
-        gemini_dir = Path(temp_claude_projects) / ".gemini" / "tmp" / "ws"
-        gemini_dir.mkdir(parents=True, exist_ok=True)
-        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(gemini_dir))
-        raw = {"session_id": "test-jsonl-gemini"}
+    def test_jsonl_contains_client_type_agy(self, router, temp_claude_projects, monkeypatch):
+        # A non-Claude session must declare its dir (NO FALLBACKS): point
+        # AOPS_SESSION_STATE_DIR at a real ~/.gemini-style tmp dir (shared by
+        # agy) so the log resolves there instead of raising.
+        agy_dir = Path(temp_claude_projects) / ".gemini" / "tmp" / "ws"
+        agy_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(agy_dir))
+        raw = {"session_id": "test-jsonl-agy"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="gemini")
+            ctx = router.normalize_input(raw, client_type="agy")
 
         log_hook_event(ctx)
 
         entries = self._read_log_entries(temp_claude_projects)
         assert len(entries) == 1
-        assert entries[0]["client_type"] == "gemini"
+        assert entries[0]["client_type"] == "agy"
 
     def test_jsonl_client_type_null_when_absent(self, router, temp_claude_projects):
         """JSONL must show client_type: null (not 'unknown') when --client absent."""
