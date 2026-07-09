@@ -331,7 +331,7 @@ Severity belongs only on target nodes (`type: target`). Ordinary tasks, epics, a
 
 **`queued` is a human gate**: The user manually promotes tasks from `ready` to `queued` to make them available for agent dispatch. This preserves human control over what agents work on next. Agents pull only from `queued`.
 
-**The premise gate fires at `→ queued`** (see [[premise-gate]]). Crossing into the dispatchable set is the universal chokepoint every piece of work passes through before compute is spent on it, so it is where the _premise_ — is this worth doing, is the shape right? — is judged. The promoter records a **one-sentence, principal-voice premise judgment in the task body** (one open prose sentence — **never** a frontmatter field, form, or `- [ ]` checklist; rationale in [[premise-gate]]). `/pull`, `/dispatch`, and the dispatch step of `/supervisor` then **hard-refuse to spend compute on** a task whose body shows no genuine premise judgment — an agent reads the body and decides, never a string/field presence-check. Absent/vacuous → bounce back to the promoter, do not act.
+**The premise gate fires at `→ queued`.** Crossing into the dispatchable set is the universal chokepoint every piece of work passes through before compute is spent on it. Full procedure — what the promoter records, what the dispatcher does at `/pull`/`/dispatch`/`/supervisor` — is [[premise-gate]]; this is the operative home, not restated here.
 
 **Propagation**: Completion of a node should trigger readiness re-evaluation of all nodes that depend on it. The system surfaces dependency chains so that cascading unblocks are visible.
 

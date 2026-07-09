@@ -14,46 +14,7 @@ For Claude Code's hook system in general, see the [official docs](https://code.c
 
 ## Hook message visibility quick-reference
 
-Full Output Matrix — PTY Hook Probe (Layer C) script — validated 2026-06-27
-
-label client gate U✓A U✓B earA C✓A C✓B tx?
-─────────────────────────────────────────────────────────────────────────────────────────────────
-stop-block-reason claude block ✓ ✗ ✓ ✓ ✗ ✓
-stop-additionalcontext-warn claude noblock ✓ ✗ ✓ ✓ ✗ ✓
-stop-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
-stop-warnmode-real claude noblock ✓ ✓ ✓ ✓ ? ✓
-stop-blockmode-real claude block ✓ ✓ ✓ ✓ ? ✓
-stop-block-suppressoutput claude block ✓ ✗ ✓ ✓ ✗ ✓\
-stop-noblock-suppressoutput claude noblock ✓ ✗ ✓ ✓ ✗ ✓\
-stop-block-continue-false claude block ✓ ✗ ✓ ✓ ✗ ✓
-─────────────────────────────────────────────────────────────────────────────────────────────────
-sessionend-block-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
-sessionend-additionalcontext claude noblock ✗ ✗ ✗ ✗ ✗ ✓\
-─────────────────────────────────────────────────────────────────────────────────────────────────
-ups-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
-ups-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
-ups-deny-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
-─────────────────────────────────────────────────────────────────────────────────────────────────
-pretool-deny-reason claude block ✗ ✗ ✗ ✓ ✗ ✓
-pretool-ask-reason claude block ✗ ✗ ✗ ✗ ✗ ✓\
-pretool-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
-pretool-deny-systemmessage claude block ✗ ✓ ✗ ✓ ? ✓
-pretool-allow-systemmessage claude noblock ✗ ✓ ✗ ✗ ? ✓
-─────────────────────────────────────────────────────────────────────────────────────────────────
-posttool-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
-posttool-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
-─────────────────────────────────────────────────────────────────────────────────────────────────
-sessionstart-additionalcontext claude noblock ✗ ✗ ✗ ? ✗ ✓
-sessionstart-systemmessage claude - ✗ ✓ ✗ ✗ ? ✓
-─────────────────────────────────────────────────────────────────────────────────────────────────
-agy-preinvocation-live agy - ✗ ✗ ? ✗ ✓ ✗
-agy-postinvocation-live agy - ✗ ✗ ? ✗ ✓ ✗
-agy-*-unmeas [5 stubs] agy - ? ? ? ? ? ✗
-─────────────────────────────────────────────────────────────────────────────────────────────────
-U✓A/B = user saw sentinel on a banner line (early OR late snap)
-earA = user saw sentinelA on EARLY snap only (transient toasts)
-C✓A/B = agent received sentinel in context ? = in transcript, source ambiguous
-tx = visible in transcript
+Per-client channel capability (which wire field reaches the user vs. the agent, and whether it persists) is the `_CHANNELS` table in [`aops-core/hooks/client_spec.py`](../../../../aops-core/hooks/client_spec.py) — rendered as a readable matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client). Raw PTY-probe measurements backing that table live in `tests/hooks/fixtures/pty_capabilities.json`.
 
 ## Active Hooks
 
@@ -134,14 +95,9 @@ The Stop hook enforces the gate contract for final-turn verifications. **Stop-ga
 
 `additionalContext`-without-block is a wire capability (Claude Code >= 2.1.191): it injects context on a non-blocking Stop, but it is **not** how warn-mode gates enforce (they DENY to force one continuation). Note it is **not user-silent** — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line (PTY-confirmed on 2.1.195, task aops-c0363bf8). No _user-silent_ (zero user output) Stop channel exists. This is the channel `ida·reminder`'s warn-mode delivery uses on Claude (`router.ida_warn_solo_decision_for`). Caveat: delivery ≠ compulsion (the woken agent weighs it as advisory).
 
-**RETIRED 2026-07-08 (GH #2181):** `ida·reminder` warn-mode delivery used to ride a Claude-only `asyncRewake` Stop hook (`asyncRewake:true` + `rewakeMessage` + `rewakeSummary`; fires on exit 2) — full body → agent `<system-reminder>`, one-line `<summary>` → user (decompiled + PTY-proven 5×, [[kb-fcc2b95c]]). That config was found to silently discard exit-0 JSON `decision:block` output from every OTHER Stop gate sharing the same hooks.json Stop entry on Claude Code 2.1.204 — block mode was strictly weaker than warn until `asyncRewake` was removed. The `asyncRewake`/`rewakeMessage`/`rewakeSummary` hooks.json keys and `router.async_rewake_body_for` no longer exist.
+**Retired (#2181):** `asyncRewake` — a Claude-only Stop quiet-split that used to carry `ida·reminder` warn-mode delivery — no longer exists (`hooks.json`'s `asyncRewake`/`rewakeMessage`/`rewakeSummary` keys and `router.async_rewake_body_for` are gone). `ida·reminder` warn-mode delivery now uses the `additionalContext`-without-block channel described above.
 
-| Field                | `decision: "block"`              | `decision: "approve"` |
-| -------------------- | -------------------------------- | --------------------- |
-| `reason`             | Fed to agent as next instruction | Silently discarded    |
-| `systemMessage`      | Shown to user only               | Shown to user only    |
-| `stopReason`         | Shown to user only               | Shown to user only    |
-| `hookSpecificOutput` | **Supported**                    | **Supported**         |
+Per-field Stop delivery (`reason` / `systemMessage` / `stopReason` / `hookSpecificOutput`, block vs. approve) → [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client).
 
 **Router warning**: `merge_outputs` must preserve `decision`, `reason`, `stopReason` — these are NOT in `hookSpecificOutput`.
 

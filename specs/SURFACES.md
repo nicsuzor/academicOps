@@ -266,7 +266,7 @@ The polecat launcher picks the overlay from the **dispatch subcommand** (`poleca
 | `polecat run`  | `polecat.yaml:run_defaults` over `session_defaults`  | `polecat run` autonomous workers                   |
 | (unset)        | None — `gate_config.py` built-in defaults apply      | Direct CLI sessions (not polecat-launched)         |
 
-For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls back to its built-in defaults (all `warn`, hydration `off`). Override via env vars in your shell profile or per-directory CLI settings.
+For direct CLI sessions, no polecat launcher is involved — `gate_config.py` falls back to its built-in defaults; see "Hook env stripping" above for the resolved defaults and override instructions.
 
 ---
 

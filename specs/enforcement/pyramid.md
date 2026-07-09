@@ -37,43 +37,19 @@ evidence the lighter one is insufficient.
 
 ### Mechanisms
 
-All fire on Claude Code hook events within the turn (`UserPromptSubmit → … →
-Stop`), uniformly across main sessions, subagents, and workers — no
-`is_subagent` skip (H8, reorganised within the existing session-state design
-per H12) — except `enforcer`/`rbg`'s PreToolUse dispatch, which stays skipped
-for subagent-classified sessions as a deliberate, permanent exception (see
-[`GATES.md` § Subagent & worker session scope](GATES.md#subagent--worker-session-scope)):
-
-- **`enforcer`/`rbg`** (PreToolUse) — periodic compliance audit after ~17
-  tool calls (default lowered from 50, H2); skips subagent-classified
-  sessions at PreToolUse, but its counter still advances on subagent
-  PostToolUse activity.
-- **`rbg-review`** (Stop) — final axiom audit before a task-bound session
-  exits; armed by default, posture expressed only via env vars/`polecat.yaml`
-  (H3).
-- **`handover` / `commit`** (Stop) — clean resumable exit: work committed, task
-  updated, reflection recorded before the session ends. Unchanged (H10/H12).
-- **`qa`** (Stop) — liveness nudge toward release and verification. The
-  verification invariant itself is owned by Layer 2. Unchanged (H10/H12).
-- **Task-binding** (PreToolUse, write) — reactivated: no mutation without a
-  task bound via `claim_task` (H4; target, lands with aops-5b9e95c4).
-- **Auto-mode classifier** (PreToolUse) — per-action judgment gate (`soft_deny`
-  context-overridable / `hard_deny` absolute).
-- **Pre-commit mechanical checks** (git-commit hook) — dprint/ruff/
-  markdownlint/actionlint/no-fallbacks and others; deterministic, local.
-- **Context injections** (not gates): SessionStart safety floor (`CORE.md`);
-  UserPromptSubmit `pkb.nudge` (stays lowest-layer, aops-core, H5/H14) and the
-  skills-routing hint (moves up to aops-pkb/aops-adhd, H11).
+Layer 1 enforcement rides Claude Code hook events within the turn
+(`UserPromptSubmit → … → Stop`), firing uniformly across main sessions,
+subagents, and workers except `enforcer`/`rbg`'s PreToolUse dispatch, which
+stays skipped for subagent-classified sessions as a deliberate, permanent
+exception — see [`GATES.md` § Subagent & worker session
+scope](GATES.md#subagent--worker-session-scope). The full mechanism roster
+(which gate, what it catches, trigger and mode per surface) is the
+[`ENFORCEMENT-MAP.md` §1 matrix](../../ENFORCEMENT-MAP.md#1-unified-ssot-matrix-rules-mechanisms-and-triggers);
+per-gate runtime/forensic detail is [`GATES.md`](GATES.md).
 
 **Retired from this layer:** `sentinel` — deleted (H1, "no shitty NLP";
-container isolation instead). `ida` remains live at this layer — the claim
-previously here that it was hook-retired under ruling H6 was a misrecording
-of Nic's H6 ruling (verbatim: "ida can _probably_ be deferred to the head
-surface for interaction with the human; but we will need to tell agents how
-to provide the completion proof that release_task is going to require" —
-session c3d962f5, 2026-07-05, on [[aops-fef39347]]), never an approved
-retirement. Nic, live 2026-07-07: "I didn't approve retiring Ida."
-Disposition is OPEN, pending the session-type walk ([[aops_3eabb0ae]]); see
+container isolation instead). `ida` remains live at this layer; disposition
+is OPEN, pending the session-type walk ([[aops_3eabb0ae]]) — see
 [`GATES.md#ida-gate`](GATES.md#ida-gate) for the corrected record.
 
 ### Two invariant families

@@ -127,7 +127,9 @@ what the user sees.**
 
 ## Authoritative channel matrix (per client)
 
-> **Why this table exists.** The disposition layer in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1.1 (`silent`/`same`/`file` + ephemeral) is only _achievable_ against these per-client capability cells. **U** = USER-visible (human sees it in the terminal). **C** = injected into MODEL/agent context. **P** = PERSISTS beyond the current turn. `✓`/`✗`/`—`. The load-bearing trap: **the same field changes audience by event** — Claude `additionalContext` is `U✗` on UPS/PreToolUse but `U✓` on Stop.
+> **Why this table exists.** The per-gate user-visibility CHOICE (`silent`/`same`/`file`, owned by [`specs/adhd/surface-contract.md`](adhd/surface-contract.md) § Gate user-visibility) is only _achievable_ against these per-client capability cells. **U** = USER-visible (human sees it in the terminal). **C** = injected into MODEL/agent context. **P** = PERSISTS beyond the current turn. `✓`/`✗`/`—`. The load-bearing trap: **the same field changes audience by event** — Claude `additionalContext` is `U✗` on UPS/PreToolUse but `U✓` on Stop.
+>
+> This table is a human-readable rendering of the `_CHANNELS` dict in [`aops-core/hooks/client_spec.py`](../aops-core/hooks/client_spec.py) — the code SSoT. If the two disagree, the code wins; update this table to match.
 
 **Claude Code** (`output_for_claude` + PTY harness, 2.1.x):
 
@@ -184,7 +186,7 @@ flowchart TD
     A2 -.-> A3
 ```
 
-> **State Mapping.** Two complementary SSoTs in [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md): the **§1 macro matrix** owns rule→mechanism→trigger→mode routing, and **§1.1 Per-message routing (agent-first)** owns per-fire _disposition_ — agent template (always present) + user message (`silent`/`same`/`file`) + ephemeral-to-agent target. This file owns the **wire mechanics** below (which client field carries each channel); ENFORCEMENT-MAP owns who-sees-what.
+> **Three complementary layers.** [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1 owns rule→mechanism→trigger→mode routing (the enforcement verdict); [`adhd/surface-contract.md`](adhd/surface-contract.md) § Gate user-visibility owns the per-gate user-surfacing CHOICE (`silent`/`same`/`file`); this file owns the **wire mechanics** below — which client field can actually carry each channel.
 
 ## Regression-avoidance invariants (24) — encoded as permanent test anchors
 
