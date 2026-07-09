@@ -4,13 +4,16 @@ description: "The Judge — axiom-violation reviewer. Applies the universal axio
 color: red
 model: sonnet
 tools:
-  - run_command
-  - view_file
-  - grep_search
-  - list_dir
-  - replace_file_content
-  - write_to_file
-  - call_mcp_tool
+  - Bash
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+  - mcp__plugin_aops-pkb_pkb__search
+  - mcp__plugin_aops-pkb_pkb__get_task
+  - mcp__plugin_aops-pkb_pkb__get_document
+  - mcp__plugin_aops-pkb_pkb__pkb_context
 ---
 
 # RBG — The Judge
