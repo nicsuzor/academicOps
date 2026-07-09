@@ -651,6 +651,37 @@ class HookRouter:
         except Exception as e:
             print(f"WARNING: pkb_nudge injection error: {e}", file=sys.stderr)
 
+    @staticmethod
+    def _build_ups_diagnostic(ctx: HookContext) -> dict[str, Any]:
+        """Diagnostic snapshot of a UserPromptSubmit's origin signal.
+
+        aops_2597b5ff scope D — the instrument for catching WHAT re-arms
+        rbg-review with no human prompt. Nic's CORRECTION (2026-07-09):
+        template-appearance is NOT proof of no-re-arm; his leading unverified
+        hypothesis is that in the interactive head, a
+        ``[SYSTEM NOTIFICATION - NOT USER INPUT]`` preamble ahead of
+        ``<task-notification>`` makes ``_is_task_notification`` (a bare
+        ``.startswith`` check) return False, so worker-completion prompts
+        fall through to the NORMAL gate path instead of the short-circuit —
+        re-arming rbg-review's UserPromptSubmit trigger unconditionally. This
+        snapshot is captured for BOTH the short-circuit and the fall-through
+        path (see the two call sites below) so a real UPS log line can show
+        which branch a given prompt actually took, without asserting which
+        one is the culprit (that diagnosis is deferred, not this PR's job).
+        """
+        raw_prompt = ctx.raw_input.get(
+            "prompt", ""
+        )  # allow-fallback: absent prompt is itself diagnostic (e.g. agy PreInvocation has none)
+        prompt_text = raw_prompt if isinstance(raw_prompt, str) else ""
+        return {
+            # prompt_id: Claude Code >= 2.1.196 field, None on older clients
+            # or non-Claude callers — absence is itself diagnostic signal.
+            "prompt_id": ctx.raw_input.get("prompt_id"),
+            "prompt_preview": prompt_text[:80],
+            "prompt_length": len(prompt_text),
+            "is_task_notification": HookRouter._is_task_notification(ctx),
+        }
+
     def execute_hooks(self, ctx: HookContext) -> CanonicalHookOutput:
         """Run all configured gates for the event and merge results.
 
@@ -671,9 +702,18 @@ class HookRouter:
             except Exception as e:
                 print(f"WARNING: task_notification.guidance injection error: {e}", file=sys.stderr)
                 guidance = None
-            return CanonicalHookOutput(verdict=None, context_injection=guidance or None)
+            output = CanonicalHookOutput(verdict=None, context_injection=guidance or None)
+            diagnostic = self._build_ups_diagnostic(ctx)
+            # No gates run on this short-circuit branch — empty, not absent,
+            # so both branches' log lines carry the same diagnostic shape.
+            diagnostic["gate_transitions"] = []
+            output.metadata["ups_diagnostic"] = diagnostic
+            return output
 
         merged_result = CanonicalHookOutput()
+        ups_diagnostic: dict[str, Any] | None = None
+        if ctx.hook_event == "UserPromptSubmit":
+            ups_diagnostic = self._build_ups_diagnostic(ctx)
 
         # Load Session State ONCE. Thread the harness routing signals so every
         # event places artefacts in this session's real dir — required on agy,
@@ -756,6 +796,15 @@ class HookRouter:
             state.save()
         except Exception as e:
             print(f"CRITICAL: Failed to save session state: {e}", file=sys.stderr)
+
+        # UPS diagnostic (aops_2597b5ff scope D): fold in every gate_transition
+        # this UserPromptSubmit caused, so one metadata blob shows origin
+        # signal + consequence together in the log line.
+        if ups_diagnostic is not None:
+            ups_diagnostic["gate_transitions"] = merged_result.metadata.get(
+                "gate_transitions", []
+            )  # allow-fallback: no gate transitioned is the common, non-error case
+            merged_result.metadata["ups_diagnostic"] = ups_diagnostic
 
         # Logging happens once, uniformly, in main() after resolve_policy() runs.
         return merged_result
@@ -861,6 +910,12 @@ class HookRouter:
         final_verdict = GateVerdict.ALLOW
         # Track which gates actually contributed.
         contributing_gates: list[str] = []
+        # Diagnostic instrument (aops_2597b5ff scope D): every gate state
+        # transition this event caused, across every gate that ran before a
+        # DENY short-circuits the loop below. Each entry comes from
+        # GenericGate._evaluate_triggers via GateResult.metadata
+        # ["gate_transition"] — see lib/gates/engine.py.
+        gate_transitions: list[dict[str, Any]] = []
 
         for gate in GateRegistry.get_all_gates():
             try:
@@ -876,6 +931,9 @@ class HookRouter:
                         contributed = True
                     if contributed:
                         contributing_gates.append(gate.name)
+                    transition = result.metadata.get("gate_transition")
+                    if transition:
+                        gate_transitions.append(transition)
 
                     # Verdict precedence: DENY > WARN > ALLOW
                     if result.verdict == GateVerdict.DENY:
@@ -915,7 +973,10 @@ class HookRouter:
             if IDA_GATE_MODE == "warn":
                 metadata["ida_warn_solo_body"] = "\n\n".join(context_injections)
 
-        if messages or context_injections or final_verdict != GateVerdict.ALLOW:
+        if gate_transitions:
+            metadata["gate_transitions"] = gate_transitions
+
+        if messages or context_injections or final_verdict != GateVerdict.ALLOW or gate_transitions:
             return GateResult(
                 verdict=final_verdict,
                 system_message="\n".join(messages) if messages else None,

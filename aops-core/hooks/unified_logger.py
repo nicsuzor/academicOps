@@ -12,6 +12,7 @@ import logging
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import psutil
@@ -31,6 +32,24 @@ logger = logging.getLogger(__name__)
 def _json_serializer(obj: Any) -> str:
     """Convert non-serializable objects to strings for JSON serialization."""
     return str(obj)
+
+
+def _fallback_log_path() -> Path:
+    """Global sink for hook events with no resolvable session_id.
+
+    ``get_hook_log_path`` needs a real session_id to build the per-session
+    on-disk anchor (short-hash filename); it cannot place an event that has
+    none. Previously ``log_hook_event`` just returned in that case, silently
+    dropping the event — invisible in exactly the scenario (a crash before
+    ``normalize_input`` could resolve a session_id) where the log is most
+    needed (aops_2597b5ff scope D, item 2). This is a single flat file, not
+    the per-session naming scheme, since there is no session to anchor to.
+    ``AOPS_HOOK_FALLBACK_LOG`` overrides it (tests; operator debugging).
+    """
+    override = os.environ.get("AOPS_HOOK_FALLBACK_LOG")
+    path = Path(override) if override else Path.home() / ".claude" / "hooks-fallback.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def log_hook_event(
@@ -53,18 +72,27 @@ def log_hook_event(
     payload to the client.
     """
     session_id = ctx.session_id
-    # Fail-safe: empty session_id = skip (don't crash hook)
-    if not session_id or session_id == "unknown":
-        return
+    # A missing/"unknown" session_id can't anchor the per-session filename
+    # (get_hook_log_path needs a real short-hash) — route to the global
+    # fallback sink instead of dropping the event. This is the narrow gap:
+    # normalize_input() always synthesizes a non-"unknown" id
+    # ("unknown-<uuid>") for the NORMAL pipeline, so this path is reached
+    # only by main()'s crash handler (ctx built before normalize_input ran)
+    # or a direct/test caller — exactly the case where losing the log entry
+    # would hide a real router failure (aops_2597b5ff scope D, item 2).
+    session_id_missing = not session_id or session_id == "unknown"
 
-    # Path resolution — fail fast (no silent swallowing)
-    date = ctx.raw_input.get("date")
-    if date is None:
-        date = datetime.now().astimezone().strftime("%Y-%m-%d")
+    if session_id_missing:
+        log_path = _fallback_log_path()
+    else:
+        # Path resolution — fail fast (no silent swallowing)
+        date = ctx.raw_input.get("date")
+        if date is None:
+            date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
-    log_path = get_hook_log_path(
-        session_id, transcript_path=ctx.transcript_path, date=date, client_type=ctx.client_type
-    )
+        log_path = get_hook_log_path(
+            session_id, transcript_path=ctx.transcript_path, date=date, client_type=ctx.client_type
+        )
 
     # Process metrics — best-effort (psutil may fail in sandboxed envs)
     try:
@@ -94,6 +122,8 @@ def log_hook_event(
     log_dict["debug"] = debug_metrics
     if error:
         log_dict["error"] = error
+    if session_id_missing:
+        log_dict["session_id_missing"] = True
 
     with log_path.open("a") as f:
         json.dump(
