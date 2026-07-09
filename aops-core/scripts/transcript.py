@@ -17,7 +17,8 @@ import os
 import re
 import subprocess
 import sys
-from datetime import UTC, datetime, timedelta
+import textwrap
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 # Add framework roots to path for lib imports
@@ -37,7 +38,7 @@ from lib.insights_generator import (  # noqa: E402
     validate_insights_schema,
     write_insights_file,
 )
-from lib.paths import get_sessions_repo, get_transcripts_dir  # noqa: E402
+from lib.paths import get_sessions_repo, get_summaries_dir, get_transcripts_dir  # noqa: E402
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.subagent_transcript import (  # noqa: E402
     maybe_append_subagent_footer,
@@ -62,6 +63,7 @@ from lib.transcript_paths import (  # noqa: E402
     ensure_rotated_dir,
     extract_date_from_filename,
     iter_rotated_files,
+    rotated_subdir,
 )
 
 
@@ -1522,6 +1524,343 @@ def git_sync():
         print(f"Git sync failed: {e}", file=sys.stderr)
 
 
+# ── Prompt ledger (aops task_bd1d28ba) ──────────────────────────────────────
+#
+# A reverse-date-sorted, one-line-per-prompt index of Nic's *genuine* typed
+# prompts, so he can answer "what happened to that thing I asked?" without
+# opening a transcript. This is a thin reader over data the transcript
+# pipeline already produces — it does NOT re-derive prompts from raw jsonl
+# or markdown transcripts. The single source of truth for "what counts as a
+# genuine human-typed prompt" is lib.transcript_parser.build_user_prompts
+# (via _is_system_injected_prompt / clean_prompt_text / redact_secrets),
+# whose output is already persisted as the ``user_prompts`` field on every
+# summaries/*.json. A prior attempt (PR #2176) was rejected for hand-rolling
+# a second, worse prompt miner against markdown transcripts instead of
+# reusing this — do not repeat that mistake.
+
+
+def _ledger_is_nic_interactive(session: dict) -> bool:
+    """True if ``session`` is Nic typing interactively, not an automated
+    worker/subagent run.
+
+    Reuses ``session_naming.is_automated_session`` (aops-62abcf9d) — the same
+    single-source-of-truth classifier ``user_prompts.py`` already uses to
+    split worker vs interactive sessions — instead of hand-enumerating "known
+    Nic surfaces" here, which drifts silently the moment Nic starts using a
+    new interactive surface (owner: "you never know where i'll be").
+
+    ``task_id`` is deliberately NOT passed through: ``is_automated_session``
+    treats any task binding as a worker signal, but Nic legitimately works
+    on bound tasks interactively via the CLI too (see
+    ``test_single_prompt_session_resolves_task_link``) — task binding is a
+    separate axis the ledger already handles via ``_ledger_task_link``.
+    """
+    surface = session.get("surface")
+    if not surface:
+        return False
+    is_auto, _reason = session_naming.is_automated_session(
+        client=session.get("client") or surface,
+        surface=surface,
+        crew=session.get("crew"),
+        subagent_type=session.get("subagent_type"),
+        parent_session=session.get("parent_session"),
+        hostname=session.get("hostname"),
+    )
+    return not is_auto
+
+
+# Claude Code records an Escape-triggered interruption as a "user" turn.
+# build_user_prompts already strips system/harness envelopes, but this one
+# slips through because it's syntactically a short human-authored string —
+# it just carries no question. Explicit noise filter per the task spec.
+_LEDGER_NOISE_RE = re.compile(r"^\[Request interrupted")
+
+# A PKB task id looks like <project>-<8hex> or <project>_<8hex> (aops-fef39347,
+# aops_5c2f2b3d). Session summaries sometimes carry free-form task_id strings
+# from ad-hoc/no-tool sessions (e.g. "adhoc-sessions-e39d1741" is NOT a real
+# PKB id even though it matches shape-wise by accident — kept anyway since it
+# IS a stable session-scoped identifier some readers may want; anything that
+# doesn't even match the shape is dropped as unresolvable rather than emitted
+# as a broken-looking link).
+_LEDGER_TASK_ID_SHAPE_RE = re.compile(r"^[a-z][a-z0-9]*[_-][0-9a-f]{8}$", re.IGNORECASE)
+
+
+def _ledger_pr_link(session: dict) -> str:
+    """Resolve GitHub PR URL(s) from a summary's pull_requests + repo fields.
+
+    Reuses _slug_to_github_repo (same org/repo resolution transcript.py
+    already uses for _resolve_pr_numbers) so this isn't a second mapping.
+    """
+    prs = session.get("pull_requests") or []  # allow-fallback: optional field
+    if not prs:
+        return ""
+    repo_slug = session.get("repo")
+    github_repo = _slug_to_github_repo(repo_slug) if repo_slug else None
+    if not github_repo:
+        return ""
+    return " ".join(f"https://github.com/{github_repo}/pull/{n}" for n in prs)
+
+
+def _ledger_task_link(session: dict) -> str:
+    """Resolve a `task:<id>` reference from a summary's task_id field, or ''."""
+    task_id = session.get("task_id")
+    if not task_id:
+        return ""
+    clean = str(task_id).strip().strip("`")
+    if not _LEDGER_TASK_ID_SHAPE_RE.match(clean):
+        return ""
+    return f"task:{clean}"
+
+
+def _ledger_outcome_and_link(session: dict) -> tuple[str, str]:
+    """Best-effort outcome text + task/PR link for a SINGLE-prompt session.
+
+    Only called when a session has exactly one genuine user prompt: the
+    session-level summary/outcome/task_id/pull_requests fields can then be
+    honestly attributed to that one prompt. Multi-prompt sessions never call
+    this (see generate_prompt_ledger) — copying one session-level summary
+    onto every one of several unrelated prompts would misattribute answers.
+    """
+    link = _ledger_pr_link(session) or _ledger_task_link(session)
+    summary = session.get("summary") or ""  # allow-fallback: optional field
+    fallback = session.get("outcome") or ""  # allow-fallback: optional field
+    text = summary.strip() or fallback.strip()
+    outcome = textwrap.shorten(text, width=140, placeholder="…") if text else ""
+    return outcome, link
+
+
+def _ledger_question_text(raw: str) -> str:
+    """Collapse a genuine prompt into a single-line, length-capped summary.
+
+    No LLM/NLP summarization — the prompt text is already the redacted,
+    envelope-stripped human intent from build_user_prompts; this only
+    collapses whitespace and truncates for a scannable one-liner.
+    """
+    collapsed = re.sub(r"\s+", " ", raw).strip()
+    return textwrap.shorten(collapsed, width=140, placeholder="…")
+
+
+def _ledger_summary_paths(summaries_dir: Path, since_dt: datetime) -> list[Path]:
+    """List summaries/*.json to scan: rotated months from since_dt..now, plus
+    the flat (unrotated) layout at the directory root.
+
+    Bounding the walk to relevant months matters in practice — the summaries
+    corpus accumulates ~10k files across the framework's history, and the
+    ledger only ever needs a recent window.
+    """
+    paths: list[Path] = []
+    if summaries_dir.is_dir():
+        paths.extend(p for p in summaries_dir.glob("*.json") if p.is_file())
+
+    # rotated_subdir's contract is UTC-month buckets, so the walk must be
+    # driven in UTC throughout — converting since_dt to UTC *before* deriving
+    # the month range (rather than stepping a local-time cursor and
+    # converting each step) avoids a mismatch where a locally-correct cursor
+    # names the wrong UTC bucket and the loop's own advance-vs-cutoff check
+    # then disagrees with itself at a month boundary.
+    cursor = rotated_subdir(since_dt)  # "YYYY-MM" in UTC
+    now_month = rotated_subdir(datetime.now(UTC))
+    cursor_dt = datetime.strptime(cursor, "%Y-%m").replace(tzinfo=UTC)
+    now_dt = datetime.strptime(now_month, "%Y-%m").replace(tzinfo=UTC)
+    while cursor_dt <= now_dt:
+        month_dir = summaries_dir / cursor_dt.strftime("%Y-%m")
+        if month_dir.is_dir():
+            paths.extend(p for p in month_dir.glob("*.json") if p.is_file())
+        cursor_dt = (cursor_dt.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return paths
+
+
+def generate_prompt_ledger(since_arg: str | None) -> int:
+    """Build $AOPS_SESSIONS/state/prompt_ledger.md from existing summary JSON.
+
+    Walks summaries/*.json (rotated YYYY-MM layout) and reuses the
+    already-computed ``user_prompts`` field (build_user_prompts output —
+    genuine human-typed prompts, worker-dispatch preambles / system
+    envelopes / control tags already stripped, secrets already redacted).
+    Filters to Nic-authored surfaces, drops interruption-marker noise, and
+    resolves outcome/link ONLY for single-prompt sessions where the
+    attribution is honest (see _ledger_outcome_and_link).
+    """
+    # "--since 2026-07-06" means the morning of July 6 as Nic experienced it —
+    # but "Nic's timezone" isn't a fixed constant (owner: "you never know
+    # where i'll be"). Each session/prompt timestamp in summaries/*.json
+    # already carries the offset Nic was actually in when he typed it (e.g.
+    # +10:00), so the per-row filter below compares each row's OWN local date
+    # (its own embedded offset) against since_date, rather than converting to
+    # one assumed home timezone. since_dt here only widens the month-bucket
+    # file walk in _ledger_summary_paths — a generous (1-day-early) bound is
+    # safe there because the per-row date check is the authoritative filter.
+    since_date: date | None
+    if since_arg:
+        try:
+            since_date = datetime.strptime(since_arg, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"❌ Error: --since must be YYYY-MM-DD, got {since_arg!r}", file=sys.stderr)
+            return 1
+        since_dt = datetime.combine(since_date, datetime.min.time(), tzinfo=UTC) - timedelta(days=1)
+    else:
+        since_date = None
+        since_dt = datetime.now(UTC) - timedelta(days=7)
+
+    summaries_dir = get_summaries_dir()
+    rows: list[dict] = []
+
+    files_scanned = 0
+    nic_surface_sessions = 0
+    single_prompt_sessions = 0
+    single_prompt_sessions_resolved = 0
+    prompts_seen = 0
+    prompts_dropped_noise = 0
+
+    for path in _ledger_summary_paths(summaries_dir, since_dt):
+        files_scanned += 1
+        try:
+            session = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        if not _ledger_is_nic_interactive(session):
+            continue
+
+        user_prompts = session.get("user_prompts") or []  # allow-fallback: optional
+        if not user_prompts:
+            continue
+
+        session_date_raw = session.get("date")
+        try:
+            session_dt = datetime.fromisoformat(str(session_date_raw)) if session_date_raw else None
+        except ValueError:
+            session_dt = None
+        if session_dt and session_dt.tzinfo is None:
+            session_dt = session_dt.replace(tzinfo=UTC)
+
+        session_id = (session.get("session_id") or path.stem)[:8]
+        surface = session["surface"]
+
+        # First pass: decide which of this session's prompts actually land in
+        # the ledger (in-window, not noise, non-empty after collapsing). Stats
+        # below are counted against THIS set, not against the raw session —
+        # otherwise a session dated entirely before --since would still be
+        # counted as "in window" / "resolved" even though it emits zero rows.
+        kept: list[dict] = []
+        for prompt in user_prompts:
+            prompts_seen += 1
+            raw_text = prompt.get("text") or ""  # allow-fallback: optional field
+            if _LEDGER_NOISE_RE.match(raw_text.strip()):
+                prompts_dropped_noise += 1
+                continue
+
+            ts_raw = prompt.get("timestamp") or session_date_raw
+            try:
+                ts_dt = datetime.fromisoformat(str(ts_raw)) if ts_raw else None
+            except ValueError:
+                ts_dt = None
+            if ts_dt and ts_dt.tzinfo is None:
+                ts_dt = ts_dt.replace(tzinfo=UTC)
+
+            effective_dt = ts_dt or session_dt
+            if effective_dt:
+                # Compare in the row's OWN embedded offset (its "local" time
+                # from wherever Nic was), not a converted/assumed timezone —
+                # see the since_date comment above generate_prompt_ledger.
+                if since_date is not None:
+                    if effective_dt.date() < since_date:
+                        continue
+                elif effective_dt.astimezone(UTC) < since_dt:
+                    continue
+
+            question = _ledger_question_text(raw_text)
+            if not question:
+                continue
+
+            kept.append({"effective_dt": effective_dt, "question": question})
+
+        if not kept:
+            continue
+
+        nic_surface_sessions += 1
+
+        # Honesty gate: attribute the session-level summary/outcome/task/PR
+        # to a prompt only when the session had exactly ONE genuine prompt
+        # overall (not just one surviving the window filter) — otherwise a
+        # multi-prompt session that happens to have only one prompt inside
+        # --since would wrongly look attributable.
+        single_prompt = len(user_prompts) == 1
+        if single_prompt:
+            single_prompt_sessions += 1
+            outcome_text, link_text = _ledger_outcome_and_link(session)
+            if outcome_text or link_text:
+                single_prompt_sessions_resolved += 1
+        else:
+            # Multi-prompt session: never attribute the session-level
+            # summary/outcome/task/PR to any individual prompt — it would
+            # misattribute the answer to a specific question that may not
+            # be the one that produced it. Left blank per prompt, honestly.
+            outcome_text, link_text = "", ""
+
+        for item in kept:
+            effective_dt = item["effective_dt"]
+            rows.append(
+                {
+                    "sort_key": effective_dt or since_dt,
+                    "display_dt": effective_dt.strftime("%Y-%m-%d %H:%M")
+                    if effective_dt
+                    else "unknown-time",
+                    "surface": surface,
+                    "session_id": session_id,
+                    "question": item["question"],
+                    "outcome": outcome_text,
+                    "link": link_text,
+                }
+            )
+
+    rows.sort(key=lambda r: r["sort_key"], reverse=True)
+
+    generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    lines = [
+        "# Prompt Ledger",
+        "",
+        f"<!-- generated by `transcript.py --ledger --since {since_dt.strftime('%Y-%m-%d')}` "
+        f"on {generated_at}. One line per genuine Nic-typed prompt "
+        f"(claude-code-cli / claude-code-desktop only), reverse-date-sorted. "
+        f"Outcome/link are populated only when resolvable from the session "
+        f"summary without misattribution (single-prompt sessions with a "
+        f"recorded reflection/PR/task) — blank otherwise, never fabricated. -->",
+        "",
+    ]
+    for row in rows:
+        lines.append(
+            f"- [{row['display_dt']}] [{row['surface']}] [{row['session_id']}] "
+            f"[{row['question']}] [{row['outcome']}] [{row['link']}]"
+        )
+
+    ledger_dir = get_sessions_repo() / "state"
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+    ledger_path = ledger_dir / "prompt_ledger.md"
+    ledger_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    resolved_pct = (
+        (single_prompt_sessions_resolved / single_prompt_sessions * 100)
+        if single_prompt_sessions
+        else 0.0
+    )
+    print(f"📒 Prompt ledger: {ledger_path}")
+    print(
+        f"   summary files scanned: {files_scanned}, Nic-surface sessions "
+        f"in window: {nic_surface_sessions}, rows written: {len(rows)}"
+    )
+    print(
+        f"   prompts seen: {prompts_seen}, dropped as interruption noise: {prompts_dropped_noise}"
+    )
+    print(
+        f"   single-prompt sessions: {single_prompt_sessions}, with resolved "
+        f"outcome/link: {single_prompt_sessions_resolved} ({resolved_pct:.0f}%); "
+        f"multi-prompt sessions always leave outcome/link blank (honesty "
+        f"constraint — see _ledger_outcome_and_link)"
+    )
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
@@ -1585,8 +1924,26 @@ Examples:
         action="store_true",
         help="Skip git commit and push after generating transcripts",
     )
+    parser.add_argument(
+        "--ledger",
+        action="store_true",
+        help=(
+            "Build $AOPS_SESSIONS/state/prompt_ledger.md — a reverse-date-sorted "
+            "index of Nic's genuine typed prompts, reusing build_user_prompts() "
+            "output already persisted in summaries/*.json. Ignores all other "
+            "transcript-generation flags except --since."
+        ),
+    )
+    parser.add_argument(
+        "--since",
+        metavar="YYYY-MM-DD",
+        help="With --ledger: only include prompts from this date onward (default: 7 days ago).",
+    )
 
     args = parser.parse_args()
+
+    if args.ledger:
+        return generate_prompt_ledger(args.since)
 
     # Default output directory
     sessions_claude = get_transcripts_dir()
@@ -2359,7 +2716,10 @@ Examples:
 
 if __name__ == "__main__":
     exit_code = main()
-    # Sync after successful or skipped runs (exit code 2 = skipped/insufficient content)
-    if exit_code in (0, 2) and not any(a in sys.argv for a in ("--no-sync",)):
+    # Sync after successful or skipped runs (exit code 2 = skipped/insufficient content).
+    # --ledger only ever writes state/prompt_ledger.md, which is gitignored in the
+    # sessions repo (see .gitignore) — there's nothing for git_sync to pick up, so
+    # skip the no-op commit/push attempt.
+    if exit_code in (0, 2) and not any(a in sys.argv for a in ("--no-sync", "--ledger")):
         git_sync()
     sys.exit(exit_code)
