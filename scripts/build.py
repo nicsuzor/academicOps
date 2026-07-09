@@ -31,8 +31,6 @@ try:
     )
     from transforms.agent_schema import (
         build_agy_agent_json,
-        claude_mcp_to_gemini,
-        validate_gemini_agent_schema,
     )
 except ImportError as e:
     # Fallback if running from a different location without setting path correctly
@@ -596,29 +594,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
 
     original_tools = frontmatter.get("tools", [])
 
-    # Tool name mapping: Claude Code -> Gemini CLI (SSoT: tool_registry, §P3b).
-    # BUILD-frontmatter names, deliberately distinct from runtime-emitted names.
-    GEMINI_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_GEMINI_TOOL
-
     # Handle case where tools is already a string (no transformation needed for format)
     if isinstance(original_tools, str):
-        if platform == "gemini":
-            # Remap tool names for Gemini
-            tools_list = [t.strip() for t in original_tools.split(",")]
-            filtered = []
-            for t in tools_list:
-                tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
-                mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
-                if mapped is not None:
-                    filtered.append(mapped)
-            frontmatter["tools"] = filtered  # Convert to list for Gemini schema
-            # Remove 'color' field - not supported by Gemini CLI
-            frontmatter.pop("color", None)
-            # Validate and apply Gemini schema defaults
-            frontmatter = validate_gemini_agent_schema(frontmatter, filename)
-            new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-            return f"---\n{new_frontmatter}---{parts[2]}"
-        elif platform == "antigravity":
+        if platform == "antigravity":
             # Remap tool names for Antigravity
             tools_list = [t.strip() for t in original_tools.split(",")]
             filtered = []
@@ -635,28 +613,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
             return f"---\n{new_frontmatter}---{parts[2]}"
         return content
 
-    if platform == "gemini":
-        # Remap tool names for Gemini, preserving order and dropping duplicates
-        # (multiple Claude tools can map to a single Gemini tool, e.g. Skill/Task/Agent
-        # all collapse to activate_skill).
-        gemini_filtered_tools: list[str] = []
-        gemini_seen: set[str] = set()
-        for t in original_tools:
-            tool_name = claude_mcp_to_gemini(t) if t.startswith("mcp__") else t
-            mapped = GEMINI_TOOL_NAME_MAP.get(tool_name, tool_name)
-            if mapped is not None and mapped not in gemini_seen:
-                gemini_seen.add(mapped)
-                gemini_filtered_tools.append(mapped)
-
-        frontmatter["tools"] = gemini_filtered_tools
-        # Remove 'color' field - not supported by Gemini CLI
-        frontmatter.pop("color", None)
-        # Validate and apply Gemini schema defaults
-        frontmatter = validate_gemini_agent_schema(frontmatter, filename)
-        new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-        return f"---\n{new_frontmatter}---{parts[2]}"
-
-    elif platform == "antigravity":
+    if platform == "antigravity":
         # Remap tool names for Antigravity, preserving order and dropping duplicates
         AGY_TOOL_NAME_MAP = tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
         filtered_tools = []
@@ -722,23 +679,8 @@ def translate_tool_calls(text: str, platform: str) -> str:
     for abstract, concrete in platform_map.items():
         text = text.replace(abstract, concrete)
 
-    # 2. Dynamic replacement for Gemini/Claude compatibility (Task/Skill)
-    if platform == "gemini":
-        # Replace Claude plugin path variable with Gemini equivalent
-        text = text.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-
-        text = re.sub(
-            r"mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]*",
-            lambda m: claude_mcp_to_gemini(m.group(0)),
-            text,
-        )
-
-        # Task/Skill body-text spawn collapse to activate_skill (SSoT:
-        # tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES, §P3b). Applied in order.
-        for find, replace in tool_registry.BUILD_GEMINI_BODY_SPAWN_REWRITES:
-            text = text.replace(find, replace)
-
-    elif platform == "antigravity":
+    # 2. Dynamic replacement for Claude/Antigravity compatibility
+    if platform == "antigravity":
         # agy (Antigravity 2.0) is Claude-tool-compatible: agents ship with Claude
         # tool names (no frontmatter/body transformation). It uses Claude Code hook
         # event names (PreToolUse etc.) but its own plugin root variable.
@@ -787,6 +729,35 @@ def copy_transform_agents(
             (json_dir / "agent.json").write_text(json.dumps(agent_json, indent=2) + "\n")
             json_count += 1
     return md_count, json_count
+
+
+def convert_commands_to_skills(src_commands_dir: Path, dst_skills_dir: Path, platform: str) -> int:
+    """Convert command .md files to skill .md files for Antigravity (agy).
+
+    Each command file `<name>.md` becomes `skills/<name>/SKILL.md`.
+    We read the command, translate tool calls, and change frontmatter `type: command` to `type: skill`.
+    """
+    if not src_commands_dir.exists():
+        return 0
+
+    count = 0
+    for cmd_file in sorted(src_commands_dir.glob("*.md")):
+        content = cmd_file.read_text(encoding="utf-8")
+
+        # Translate tool calls in the body
+        content = translate_tool_calls(content, platform)
+
+        # Modify frontmatter type: command -> type: skill
+        content = re.sub(r"(?m)^type:\s*command\s*$", "type: skill", content)
+
+        # Output directory: dst_skills_dir / cmd_file.stem
+        skill_dir = dst_skills_dir / cmd_file.stem
+        skill_dir.mkdir(parents=True, exist_ok=True)
+
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+        count += 1
+
+    return count
 
 
 def build_aops_core(
@@ -933,6 +904,8 @@ def build_aops_core(
     else:
         for src_item in src_dir.iterdir():
             if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
+                continue
+            if src_item.name == "commands" and platform == "antigravity":
                 continue
             if src_item.name == "agents" and src_item.is_dir():
                 # Special handling for agents: transform frontmatter and translate
@@ -1384,41 +1357,13 @@ def build_aops_core(
             print(f"Error processing template {template_path}: {e}", file=sys.stderr)
             raise
 
-    # 5. Commands (Gemini only for now as they use .toml)
-    if platform in ("gemini", "antigravity"):
-        commands_dist = content_dir / "commands"
-        convert_script = aops_root / "scripts" / "convert_commands_to_toml.py"
-        if convert_script.exists():
-            subprocess.run(
-                [
-                    sys.executable,
-                    str(convert_script),
-                    "--output-dir",
-                    str(commands_dist),
-                    "--no-gitignore",
-                ],
-                env=os.environ,
-                check=False,
-            )
-        # Strip cowork-only blocks from generated .toml files. The convert
-        # script reads from `aops-core/commands/*.md` source — bypassing the
-        # staged copies that were already stripped by the cowork-marker pass —
-        # so without this post-step the markers leak into the Gemini TOML.
-        toml_stripped = 0
-        for toml_file in commands_dist.glob("*.toml"):
-            original = toml_file.read_text()
-            if _COWORK_OPEN not in original:
-                continue
-            processed = _process_cowork_markers(original, platform)
-            if processed != original:
-                toml_file.write_text(processed)
-                toml_stripped += 1
-        if toml_stripped:
-            print(f"  ✓ Stripped cowork-only blocks in {toml_stripped} .toml command(s)")
-        # Remove .md command files for Gemini (uses TOML format)
-        for md_file in commands_dist.glob("*.md"):
-            md_file.unlink()
-            print(f"  - Removed {md_file.name} (Gemini uses TOML)")
+    # 5. Commands (Antigravity gets commands converted to skills)
+    if platform == "antigravity":
+        converted = convert_commands_to_skills(
+            src_dir / "commands", content_dir / "skills", platform
+        )
+        if converted:
+            print(f"  ✓ Converted {converted} command(s) to skills for Antigravity")
 
     # 6. Anti-drift regression guard. Catches the class of defect that left
     # rbg + marsha grounding verdicts on a stale `old_axioms.md` decoy because
@@ -1854,6 +1799,8 @@ def build_aops_pkb(
     for src_item in src_dir.iterdir():
         if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
             continue
+        if src_item.name == "commands" and platform == "antigravity":
+            continue
         if src_item.name == "agents" and src_item.is_dir():
             # Shared agent-emission primitive (transform + translate + agy json).
             dst = content_dir / src_item.name
@@ -1982,7 +1929,15 @@ def build_aops_pkb(
         print(f"Error: {template_path} not found.", file=sys.stderr)
         sys.exit(1)
 
-    # 4. Anti-drift regression guards (same as build_aops_core §6): every
+    # 4. Commands (Antigravity gets commands converted to skills)
+    if platform == "antigravity":
+        converted = convert_commands_to_skills(
+            src_dir / "commands", content_dir / "skills", platform
+        )
+        if converted:
+            print(f"  ✓ Converted {converted} command(s) to skills for Antigravity")
+
+    # 5. Anti-drift regression guards (same as build_aops_core §6): every
     # plugin-relative @-import must resolve inside THIS payload, and no
     # axiom-shaped decoy may ship outside .agents/rules/.
     _assert_plugin_imports_resolve(content_dir, platform)
@@ -2035,9 +1990,6 @@ def main():
     if not dist_root.exists():
         dist_root.mkdir()
 
-    # Build components (Gemini)
-    build_aops_core(aops_root, dist_root, aca_data_path, "gemini", version)
-
     # Build components (Claude)
     build_aops_core(aops_root, dist_root, aca_data_path, "claude", version)
 
@@ -2048,11 +2000,9 @@ def main():
     build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)
 
     # Build aops-tools (domain skills package)
-    build_aops_tools(aops_root, dist_root, "gemini", version)
     build_aops_tools(aops_root, dist_root, "claude", version)
 
     # Build aops-extras (replaceable technology-specific skills package)
-    build_aops_extras(aops_root, dist_root, "gemini", version)
     build_aops_extras(aops_root, dist_root, "claude", version)
 
     # Build aops-ts (opt-in Tailscale bring-up hook — Claude/web only)
@@ -2277,20 +2227,7 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
     # inside plugin.json. Filenames stay clean for tooling that mangles `+`.
     fs_version = version.split("+", 1)[0]
 
-    # 1. aops-core.tar.gz (generic fallback for Gemini CLI)
-    # Named to match extension name in gemini-extension.json
-    # gemini-extension.json must be at archive root (arcname=".")
-    gemini_archive = dist_root / "aops-core.tar.gz"
-    with tarfile.open(gemini_archive, "w:gz") as tar:
-        tar.add(dist_root / "aops-gemini", arcname=".", filter=_source_filter)
-    print(f"  ✓ Packaged {gemini_archive.name}")
-
-    # 1a. aops-tools.tar.gz (Gemini)
-    tools_gemini_archive = dist_root / "aops-tools.tar.gz"
-    if (dist_root / "aops-tools-gemini").exists():
-        with tarfile.open(tools_gemini_archive, "w:gz") as tar:
-            tar.add(dist_root / "aops-tools-gemini", arcname=".", filter=_source_filter)
-        print(f"  ✓ Packaged {tools_gemini_archive.name}")
+    # (Gemini packaging removed)
 
     # 2. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{fs_version}.tar.gz"

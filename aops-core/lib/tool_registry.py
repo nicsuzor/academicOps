@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-CLIENTS = ("claude", "gemini", "agy")
+CLIENTS = ("claude", "agy")
 
 # Category labels — MUST match the keys of ``lib.tool_categories.TOOL_CATEGORIES``.
 READ_ONLY = "read_only"
@@ -47,26 +47,24 @@ INFRASTRUCTURE = "infrastructure"
 class ToolSpec:
     """One abstract tool and its RUNTIME name on each client.
 
-    ``claude`` / ``gemini`` / ``agy`` are the names that client EMITS in a hook
+    ``claude`` / ``agy`` are the names that client EMITS in a hook
     event (``None`` = the tool is not available / not distinct on that client).
-    Several abstract tools may share a client name (e.g. ``Edit`` and
-    ``MultiEdit`` both surface as agy ``replace_file_content`` / Gemini
-    ``replace``); that is fine — reverse lookups resolve to ``category`` which is
-    identical for them, and ``canonical`` is only needed where it is unambiguous.
+    Several abstract tools may share a client name; that is fine — reverse lookups
+    resolve to ``category`` which is identical for them, and ``canonical`` is only
+    needed where it is unambiguous.
     """
 
     canonical: str
     category: str
     claude: str | None = None
-    gemini: str | None = None
     agy: str | None = None
     # Spawn-only: flat tool_input param names that carry the subagent type
-    # (Claude ``subagent_type``, Gemini ``name``/``agent_name`` …).
+    # (Claude ``subagent_type`` …).
     spawn_flat_params: tuple[str, ...] = ()
     # Spawn-only: agy nests the type under ``Subagents: [{TypeName: ...}]`` — set
     # this so ``extract_subagent_type`` reaches it.
     spawn_agy_subagents: bool = False
-    # Skill-like spawn that runs in the MAIN agent's session (Skill / activate_skill)
+    # Skill-like spawn that runs in the MAIN agent's session (Skill)
     # rather than as a separate subagent.
     is_skill: bool = False
 
@@ -78,30 +76,25 @@ class ToolSpec:
 # own name (agy-native tools that have no Claude equivalent).
 REGISTRY: tuple[ToolSpec, ...] = (
     # ---- File reads -------------------------------------------------------
-    ToolSpec("Read", READ_ONLY, claude="Read", gemini="read_file", agy="view_file"),
-    ToolSpec("Glob", READ_ONLY, claude="Glob", gemini="glob", agy="list_dir"),
-    ToolSpec("Grep", READ_ONLY, claude="Grep", gemini="grep_search", agy="grep_search"),
+    ToolSpec("Read", READ_ONLY, claude="Read", agy="view_file"),
+    ToolSpec("Glob", READ_ONLY, claude="Glob", agy="list_dir"),
+    ToolSpec("Grep", READ_ONLY, claude="Grep", agy="grep_search"),
     # ---- File writes / shell ---------------------------------------------
-    ToolSpec("Write", WRITE, claude="Write", gemini="write_file", agy="write_to_file"),
-    ToolSpec("Edit", WRITE, claude="Edit", gemini="replace", agy="replace_file_content"),
-    ToolSpec(
-        "MultiEdit", WRITE, claude="MultiEdit", gemini="replace", agy="multi_replace_file_content"
-    ),
-    ToolSpec("Bash", WRITE, claude="Bash", gemini="run_shell_command", agy="run_command"),
-    ToolSpec("NotebookEdit", WRITE, claude="NotebookEdit"),  # no gemini/agy equivalent
+    ToolSpec("Write", WRITE, claude="Write", agy="write_to_file"),
+    ToolSpec("Edit", WRITE, claude="Edit", agy="replace_file_content"),
+    ToolSpec("MultiEdit", WRITE, claude="MultiEdit", agy="multi_replace_file_content"),
+    ToolSpec("Bash", WRITE, claude="Bash", agy="run_command"),
+    ToolSpec("NotebookEdit", WRITE, claude="NotebookEdit"),  # no agy equivalent
     # ---- Web --------------------------------------------------------------
-    ToolSpec("WebFetch", READ_ONLY, claude="WebFetch", gemini="web_fetch", agy="read_url_content"),
-    ToolSpec(
-        "WebSearch", READ_ONLY, claude="WebSearch", gemini="google_web_search", agy="search_web"
-    ),
+    ToolSpec("WebFetch", READ_ONLY, claude="WebFetch", agy="read_url_content"),
+    ToolSpec("WebSearch", READ_ONLY, claude="WebSearch", agy="search_web"),
     # ---- Spawn (subagents / skills) --------------------------------------
-    # Agent / Task: distinct Claude names, distinct Gemini runtime names, both
-    # surface as agy ``invoke_subagent`` (type nested under Subagents[].TypeName).
+    # Agent / Task: distinct Claude names, surface as agy ``invoke_subagent``
+    # (type nested under Subagents[].TypeName).
     ToolSpec(
         "Agent",
         SPAWN,
         claude="Agent",
-        gemini="invoke_agent",
         agy="invoke_subagent",
         spawn_flat_params=("subagent_type", "agent_name", "name", "agent", "agent_type"),
         spawn_agy_subagents=True,
@@ -110,7 +103,6 @@ REGISTRY: tuple[ToolSpec, ...] = (
         "Task",
         SPAWN,
         claude="Task",
-        gemini="delegate_to_agent",
         agy="invoke_subagent",
         spawn_flat_params=("subagent_type", "name", "agent_name"),
         spawn_agy_subagents=True,
@@ -119,21 +111,17 @@ REGISTRY: tuple[ToolSpec, ...] = (
         "Skill",
         SPAWN,
         claude="Skill",
-        gemini="activate_skill",
         agy=None,
         spawn_flat_params=("skill", "name"),
         is_skill=True,
     ),
     # ---- User interaction / control (NEVER block) -------------------------
-    ToolSpec(
-        "AskUserQuestion", ALWAYS, claude="AskUserQuestion", gemini="ask_user", agy="ask_question"
-    ),
+    ToolSpec("AskUserQuestion", ALWAYS, claude="AskUserQuestion", agy="ask_question"),
     # agy ask_permission: agy's own permission prompt — a control-plane surface,
     # must never be gate-blocked (blocking it deadlocks the agy permission flow).
     ToolSpec("ask_permission", ALWAYS, agy="ask_permission"),
     # ---- agy-native infrastructure / control -----------------------------
-    # manage_task: agy's task CRUD (analogue of TaskCreate/Update/Get/List, which
-    # live in the spawn/infrastructure bypass). schedule: agy's wait/timer. Both
+    # manage_task: agy's task CRUD. schedule: agy's wait/timer. Both
     # are framework control-plane, not user-data mutations — bypass gates.
     ToolSpec("manage_task", INFRASTRUCTURE, agy="manage_task"),
     ToolSpec("schedule", INFRASTRUCTURE, agy="schedule"),
@@ -155,55 +143,10 @@ AGY_MCP_WRAPPER_TOOL = "call_mcp_tool"
 # =============================================================================
 # DISTINCT from the RUNTIME registry above. These maps are what the BUILD writes
 # into a client's agent FRONTMATTER / body text when generating dist — and a
-# client's build-frontmatter tool name DELIBERATELY differs from its runtime name
-# (e.g. Claude ``Agent``/``Task`` are rewritten to ``activate_skill`` in a Gemini
-# agent's frontmatter so the agent loads, but the Gemini *runtime* emits
-# ``invoke_agent``/``delegate_to_agent``). That is why this projection lives in a
-# SEPARATE structure and must NOT be derived from / folded into the runtime
-# ``ToolSpec.gemini`` column — doing so would make recognition diverge from
-# reality. This is the SSoT that ``scripts/build.py`` reads (replacing its inline
-# ``GEMINI_TOOL_NAME_MAP`` / ``TOOL_NAME_MAP`` copies), EXACTLY mirroring how
-# P3a moved the event maps into ``client_spec``.
-#
-# Each entry is the CURRENT build behaviour, encoded verbatim — no new tool names.
-
-# Claude-source frontmatter tool name -> Gemini frontmatter tool name.
-# A value of ``None`` means "drop the tool" (no Gemini equivalent).
-BUILD_CLAUDE_TO_GEMINI_TOOL: dict[str, str | None] = {
-    # File operations (Claude Code -> Gemini)
-    "Read": "read_file",
-    "Write": "write_file",
-    "Edit": "replace",
-    "Glob": "glob",
-    "Grep": "grep_search",
-    "grep": "grep_search",  # lowercase variant
-    # Shell execution
-    "Bash": "run_shell_command",
-    "bash": "run_shell_command",  # lowercase variant
-    # Skills/Agents — build collapses all spawn-likes to activate_skill in
-    # frontmatter (NOT the runtime names invoke_agent/delegate_to_agent).
-    "Skill": "activate_skill",
-    "Task": "activate_skill",
-    "Agent": "activate_skill",
-    # User interaction / planning / todos (Claude built-ins -> agy/gemini native).
-    # NotebookEdit has no equivalent -> drop.
-    "AskUserQuestion": "ask_user",
-    "ExitPlanMode": "enter_plan_mode",
-    "TodoWrite": "write_todos",
-    "NotebookEdit": None,
-    # Web operations
-    "WebFetch": "web_fetch",
-    "WebSearch": "google_web_search",
-    # Browser/Playwright (Claude Code -> Gemini chrome-devtools-mcp)
-    "browser_navigate": "navigate_page",
-    "browser_snapshot": "take_snapshot",
-    "browser_take_screenshot": "take_screenshot",
-    "browser_click": "click",
-    "browser_wait_for": "wait_for",
-    "browser_evaluate": "evaluate_script",
-    "browser_type": "type_text",
-    "browser_resize": "resize_page",
-}
+# client's build-frontmatter tool name DELIBERATELY differs from its runtime name.
+# This is the SSoT that ``scripts/build.py`` reads (replacing its inline
+# ``TOOL_NAME_MAP`` copies), EXACTLY mirroring how P3a moved the event maps into
+# ``client_spec``.
 
 # Claude-source frontmatter tool name -> Antigravity frontmatter tool name.
 # A value of ``None`` means "drop the tool" (no Antigravity equivalent).
@@ -238,22 +181,34 @@ BUILD_CLAUDE_TO_AGY_TOOL: dict[str, str | None] = {
 # Used when projecting a (possibly Gemini-named) source agent INTO a Claude
 # artifact; unknown names pass through unchanged at the call site.
 BUILD_TO_CLAUDE_TOOL: dict[str, str] = {
-    # File operations
+    # File operations (both Gemini and Antigravity)
     "read_file": "Read",
+    "view_file": "Read",
     "write_file": "Write",
+    "write_to_file": "Write",
     "replace": "Edit",
+    "replace_file_content": "Edit",
+    "multi_replace_file_content": "MultiEdit",
     "list_directory": "Glob",
+    "list_dir": "Glob",
     "glob": "Glob",
     "grep": "Grep",
+    "grep_search": "Grep",
     "search_file_content": "Grep",
     # Shell execution
     "bash": "Bash",
     "run_shell_command": "Bash",
+    "run_command": "Bash",
     # Skills/Agents
     "activate_skill": "Skill",
+    "invoke_subagent": "Agent",
     # Web operations
     "web_fetch": "WebFetch",
+    "read_url_content": "WebFetch",
     "web_search": "WebSearch",
+    "search_web": "WebSearch",
+    # User interaction
+    "ask_question": "AskUserQuestion",
     # Already correct names (passthrough)
     "Read": "Read",
     "Write": "Write",
@@ -291,27 +246,8 @@ BUILD_TO_CLAUDE_TOOL: dict[str, str] = {
 
 # Body-text tool-call NOTATION rewrites the build applies to a client's prose
 # (call notation, descriptive notation, backticked notation). Keyed by build
-# platform name (``gemini`` / ``claude`` — the value the build hands the body
-# translator). Encodes the CURRENT replacements verbatim and in order.
+# platform name (``claude`` / ``antigravity``).
 BUILD_BODY_TOOL_NOTATION: dict[str, dict[str, str]] = {
-    "gemini": {
-        "Read(": "read_file(",
-        "Write(": "write_file(",
-        "Edit(": "replace(",
-        "ls(": "list_directory(",
-        "Glob(": "glob(",
-        "Grep(": "grep_search(",
-        "Read tool": "read_file tool",
-        "Write tool": "write_file tool",
-        "Edit tool": "replace tool",
-        "`Read`": "`read_file`",
-        "`Write`": "`write_file`",
-        "`Edit`": "`replace`",
-        "`ls`": "`list_directory`",
-        "`Glob`": "`glob`",
-        "`Grep`": "`grep_search`",
-        "Read or Grep": "read_file or grep_search",
-    },
     "antigravity": {
         "Read(": "view_file(",
         "Write(": "write_to_file(",
@@ -334,18 +270,6 @@ BUILD_BODY_TOOL_NOTATION: dict[str, dict[str, str]] = {
 }
 
 
-# Gemini body-text spawn/skill rewrites applied AFTER the notation map above
-# (Task/Skill collapse to activate_skill in prose, mirroring the frontmatter
-# collapse). Ordered list of (find, replace) pairs — applied in sequence.
-BUILD_GEMINI_BODY_SPAWN_REWRITES: tuple[tuple[str, str], ...] = (
-    ("Task(subagent_type=", "activate_skill(name="),
-    ("Skill(skill=", "activate_skill(name="),
-    ("Task() tool", "activate_skill() tool"),
-    ("`Task(`", "`activate_skill(`"),
-    ("`Skill(`", "`activate_skill(`"),
-)
-
-
 # =============================================================================
 # Derived lookups (built once)
 # =============================================================================
@@ -353,7 +277,7 @@ def _runtime_name_to_category() -> dict[str, str]:
     """{runtime tool name -> category} across all clients, generated from REGISTRY."""
     index: dict[str, str] = {}
     for spec in REGISTRY:
-        for name in (spec.claude, spec.gemini, spec.agy):
+        for name in (spec.claude, spec.agy):
             if name:
                 # Same name on two specs must agree on category (asserted by tests).
                 index[name] = spec.category
@@ -364,16 +288,12 @@ RUNTIME_NAME_TO_CATEGORY: dict[str, str] = _runtime_name_to_category()
 
 
 def _spawn_table() -> dict[str, tuple[tuple[str, ...], bool, bool]]:
-    """{spawn runtime name -> (flat_params, is_skill, agy_subagents)}.
-
-    Covers every client name of every SPAWN spec, so the same extraction spec is
-    reachable whether the runtime emitted the Claude, Gemini, or agy name.
-    """
+    """{spawn runtime name -> (flat_params, is_skill, agy_subagents)}."""
     table: dict[str, tuple[tuple[str, ...], bool, bool]] = {}
     for spec in REGISTRY:
         if spec.category != SPAWN:
             continue
-        for name in (spec.claude, spec.gemini, spec.agy):
+        for name in (spec.claude, spec.agy):
             if name:
                 table[name] = (spec.spawn_flat_params, spec.is_skill, spec.spawn_agy_subagents)
     return table
@@ -390,15 +310,11 @@ def category_for_runtime_name(tool_name: str | None) -> str | None:
 
 
 def names_by_category() -> dict[str, set[str]]:
-    """{category -> {every runtime name in that category}}.
-
-    Used to MERGE the registry's runtime vocabulary into
-    ``lib.tool_categories.TOOL_CATEGORIES``.
-    """
+    """{category -> {every runtime name in that category}}."""
     out: dict[str, set[str]] = {}
     for spec in REGISTRY:
         bucket = out.setdefault(spec.category, set())
-        for name in (spec.claude, spec.gemini, spec.agy):
+        for name in (spec.claude, spec.agy):
             if name:
                 bucket.add(name)
     return out
