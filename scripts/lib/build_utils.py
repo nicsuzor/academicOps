@@ -3,7 +3,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 
 def get_git_commit_sha(aops_root: Path) -> str:
@@ -79,19 +78,6 @@ def safe_symlink(src: Path, dst: Path) -> None:
     elif dst.exists() or dst.is_symlink():
         dst.unlink()
     dst.symlink_to(src)
-
-
-def convert_mcp_to_gemini(mcp_config: dict[str, Any]) -> dict[str, Any]:
-    """Convert Claude-style MCP config to Gemini CLI extension format."""
-    gemini_mcp = {}
-    for server_name, server_config in mcp_config.items():
-        # Gemini uses 'command' and 'args' keys directly
-        gemini_mcp[server_name] = {
-            "command": server_config.get("command"),
-            "args": server_config.get("args", []),
-            "env": server_config.get("env", {}),
-        }
-    return gemini_mcp
 
 
 def check_installed_plugin_version(

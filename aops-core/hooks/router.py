@@ -2,9 +2,8 @@
 """
 Universal Hook Router.
 
-Handles hook events from both Claude Code and Gemini CLI.
+Handles hook events from Claude Code and Antigravity (agy).
 Consolidates multiple hooks per event into a single invocation.
-Manages session persistence for Gemini.
 
 Architecture:
 - Loads Pydantic SessionState object at start.
@@ -55,8 +54,6 @@ try:
         ClaudeGeneralHookOutput,
         ClaudeHookSpecificOutput,
         ClaudeStopHookOutput,
-        GeminiHookOutput,
-        GeminiHookSpecificOutput,
         ResolvedDecision,
     )
     from hooks.unified_logger import log_hook_event
@@ -284,28 +281,28 @@ class HookRouter:
     def normalize_input(
         self,
         raw_input: dict[str, Any],
-        gemini_event: str | None = None,
+        cli_event: str | None = None,
         client_type: str | None = None,
     ) -> HookContext:
         """Create a normalized HookContext from raw input.
 
         Args:
             raw_input: The raw stdin payload from the hook caller.
-            gemini_event: Event name when invoked by Gemini CLI (which passes
-                the event as a positional arg rather than in stdin).
-            client_type: Hook caller identity ("claude" or "gemini"), normally
+            cli_event: Event name when invoked with the event as a positional
+                arg rather than in stdin (e.g. agy).
+            client_type: Hook caller identity ("claude" or "agy"), normally
                 taken from the ``--client`` flag. Stored on the resulting
                 HookContext so JSONL log entries can distinguish callers
                 instead of showing ``model=unknown``.
         """
 
         # 1. Determine Event Name — resolved through the client_spec SSoT.
-        # Gemini/agy pass the wire event positionally (gemini_event); agy may
-        # also carry it in stdin as hook_event_name. The per-client inbound map
+        # agy passes the wire event positionally (cli_event); it may also
+        # carry it in stdin as hook_event_name. The per-client inbound map
         # turns the wire name into the internal canonical name (Claude is
         # identity). to_internal_event falls back to identity for an unmapped
         # wire name or a missing client, matching the prior union's behaviour.
-        raw_event = gemini_event or raw_input.get("hook_event_name")
+        raw_event = cli_event or raw_input.get("hook_event_name")
         wire_event = raw_event or ""  # allow-fallback: identity for an absent event name
         client = client_type or ""  # allow-fallback: identity map when no --client (test/legacy)
         hook_event = client_spec.to_internal_event(client, wire_event)
@@ -318,7 +315,7 @@ class HookRouter:
         if not session_id and hook_event == "SessionStart":
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             short_uuid = str(uuid.uuid4())[:8]
-            session_id = f"gemini-{timestamp}-{short_uuid}"
+            session_id = f"{client or 'unknown'}-{timestamp}-{short_uuid}"
 
         if not session_id:
             session_id = f"unknown-{str(uuid.uuid4())[:8]}"
@@ -1043,70 +1040,6 @@ class HookRouter:
         target.metadata.update(source.metadata)
 
     # ------------------------------------------------------------------
-    # Gemini CLI
-    # ------------------------------------------------------------------
-
-    def output_for_gemini(self, result: CanonicalHookOutput, event: str) -> GeminiHookOutput:
-        """Format for Gemini CLI. Thin wrapper: resolve policy, then translate.
-
-        Kept as a single public entry point (rather than requiring callers to
-        chain resolve+translate themselves) so existing call sites and tests
-        that invoke ``output_for_gemini(canonical, event)`` directly keep
-        working unchanged.
-        """
-        resolved = self.resolve_policy_for_gemini(result)
-        return self.translate_gemini(resolved, event)
-
-    def resolve_policy_for_gemini(self, result: CanonicalHookOutput) -> ResolvedDecision:
-        """All Gemini verdict-changing policy: deny -> block, everything else -> allow.
-
-        Gemini has no non-blocking "ask"/"deliver advisory without blocking"
-        concept on the wire, so `ask` and `warn` both collapse into `allow` here
-        — preserved exactly as the pre-refactor renderer did, not "improved".
-        """
-        is_block = result.verdict == "deny"
-        return ResolvedDecision(
-            channel="json",
-            wire_decision="block" if is_block else "allow",
-            banner=result.system_message,
-            reason=result.system_message if is_block else None,
-            context=result.context_injection,
-            metadata=result.metadata,
-        )
-
-    def translate_gemini(self, resolved: ResolvedDecision, event: str) -> GeminiHookOutput:
-        """Pure mechanical mapping from a resolved decision to Gemini's wire schema.
-
-        No policy left here — ``resolve_policy_for_gemini`` already decided
-        everything; this only renames fields into ``GeminiHookOutput``.
-        """
-        out = GeminiHookOutput()
-
-        if resolved.banner:
-            out.systemMessage = resolved.banner
-
-        if resolved.wire_decision == "block":
-            out.decision = "deny"
-            # Recovery payload (e.g. RBG instructions) MUST go to
-            # hookSpecificOutput.additionalContext — `reason` is user-visible
-            # only and the model never sees it. Mirrors the Claude side, where
-            # context_injection lands on hookSpecificOutput.additionalContext.
-            if resolved.context:
-                out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event, additionalContext=resolved.context
-                )
-            out.reason = resolved.reason
-        else:
-            out.decision = "allow"
-            if resolved.context:
-                out.hookSpecificOutput = GeminiHookSpecificOutput(
-                    hookEventName=event, additionalContext=resolved.context
-                )
-
-        out.metadata = resolved.metadata
-        return out
-
-    # ------------------------------------------------------------------
     # Claude Code
     # ------------------------------------------------------------------
 
@@ -1556,12 +1489,8 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Universal Hook Router")
-    parser.add_argument(
-        "--client", choices=["gemini", "claude", "agy"], help="Client type (gemini, claude, or agy)"
-    )
-    parser.add_argument(
-        "event", nargs="?", help="Event name (required for Gemini if not in payload)"
-    )
+    parser.add_argument("--client", choices=["claude", "agy"], help="Client type (claude or agy)")
+    parser.add_argument("event", nargs="?", help="Event name (required for agy if not in payload)")
 
     # Parse known args to avoid issues if extra flags are passed
     args, unknown = parser.parse_known_args()
@@ -1590,7 +1519,7 @@ def main():
     # Detect Invocation Mode, relying on explicit --client flag
     if args.client:
         client_type = args.client
-        gemini_event = args.event
+        cli_event = args.event
     else:
         raise OSError("No --client flag provided on hook invocation.")
 
@@ -1598,14 +1527,14 @@ def main():
     ctx = None
     result = None
     try:
-        ctx = router.normalize_input(raw_input, gemini_event, client_type=client_type)
+        ctx = router.normalize_input(raw_input, cli_event, client_type=client_type)
         result = router.execute_hooks(ctx)
 
         # agy keys its protojson *Result on the ORIGINAL agy event name
         # (PreInvocation/PostInvocation/Stop map many-to-one onto the router's
-        # internal mapped name), so it needs the pre-mapping name; Claude and
-        # Gemini use the internal mapped name.
-        agy_event = gemini_event or raw_event_name or ctx.hook_event
+        # internal mapped name), so it needs the pre-mapping name; Claude
+        # uses the internal mapped name.
+        agy_event = cli_event or raw_event_name or ctx.hook_event
         render_event = agy_event if client_type == "agy" else ctx.hook_event
 
         # resolve_policy() is the LAST point at which a hook event's fate can
@@ -1618,8 +1547,6 @@ def main():
         # regardless of client.
         if client_type == "agy":
             resolved = router.resolve_policy_for_agy(result, render_event)
-        elif client_type == "gemini":
-            resolved = router.resolve_policy_for_gemini(result)
         else:
             # The warn-mode ida quiet delivery is a channel-selection decision
             # made BEFORE the general JSON-channel policy (see
@@ -1645,12 +1572,9 @@ def main():
         # Output (JSON conversion happens only here — translate_* is pure)
         if client_type == "agy":
             # agy parses stdout as exa.hooks_pb.*Result protojson and rejects on the
-            # first unknown field — it does NOT speak Gemini's hook dialect (the
+            # first unknown field — it does NOT speak Claude's hook dialect (the
             # silent-drop bug 4c73f02a introduced; aops-27004ffd).
             print(json.dumps(router.translate_agy(resolved, render_event)))
-        elif client_type == "gemini":
-            output = router.translate_gemini(resolved, render_event)
-            print(output.model_dump_json(exclude_none=True))
         else:
             output = router.translate_claude(resolved, render_event)
             print(output.model_dump_json(exclude_none=True))
@@ -1665,7 +1589,7 @@ def main():
             session_id = (
                 raw_input.get("session_id") or os.environ.get("AOPS_SESSION_ID") or "unknown"
             )  # allow-fallback: session_id is optional in crash-logging context
-            hook_event = gemini_event or raw_event_name or "unknown"
+            hook_event = cli_event or raw_event_name or "unknown"
             ctx = HookContext(
                 session_id=session_id,
                 hook_event=hook_event,

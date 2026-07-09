@@ -2,7 +2,7 @@
 
 The SINGLE source of truth for how the Universal Hook Router maps between the
 internal canonical hook model and each client's wire dialect (Claude Code,
-Gemini CLI, Antigravity CLI / "agy"). Both the RUNTIME router
+Antigravity CLI / "agy"). Both the RUNTIME router
 (``aops-core/hooks/router.py``) and the BUILD (``scripts/build.py``) import from
 here, replacing the three previously-divergent copies of the event map
 (``router.GEMINI_EVENT_MAP``, ``build.CLAUDE_TO_GEMINI_EVENTS`` + ``AGY_EVENT_MAP``,
@@ -331,8 +331,6 @@ def config_shape(client: str, wire_event: str) -> str:
     """Registration shape for a (client, wire_event): 'wrapper' | 'flat' | 'claude'."""
     if client == "claude":
         return "claude"
-    if client == "gemini":
-        return "wrapper"
     return _CONFIG_SHAPE.get(client, {}).get(
         wire_event, "wrapper"
     )  # allow-fallback: wrapper is the default registration shape for tool-style events

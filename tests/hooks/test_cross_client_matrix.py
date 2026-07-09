@@ -11,12 +11,12 @@ user-visibility is now measured by the PTY harness ``scripts/pty_hook_probe.py``
 ARCHITECTURE
 ------------
 - ``run_router(client, event, canonical)`` renders a synthetic ``CanonicalHookOutput``
-  through the client's real renderer (``HookRouter.output_for_{claude,gemini,agy}``)
+  through the client's real renderer (``HookRouter.output_for_{claude,agy}``)
   and returns the wire dict.
 - ``interpret(client, event, wire) -> Delivered`` mirrors how each REAL client
   consumes that wire dict — the agy interpreter IS the agy protojson
-  accept-contract (``agy_accept_contract.is_accepted_by_agy``); the claude/gemini
-  interpreters mirror their documented field semantics. ``Delivered`` carries
+  accept-contract (``agy_accept_contract.is_accepted_by_agy``); the claude
+  interpreter mirrors its documented field semantics. ``Delivered`` carries
   ``agent_sees`` / ``user_sees`` / ``blocked`` / ``accepted``.
 
 The matrix asserts the four core invariants (CLIENT-TRANSLATION.md §"Core invariants"):
@@ -128,17 +128,6 @@ def _interpret_claude(event: str, wire) -> Delivered:
     return Delivered(accepted=True, agent_sees=agent, user_sees=user, blocked=blocked)
 
 
-def _interpret_gemini(event: str, wire) -> Delivered:
-    """Mirror Gemini CLI consumption: decision=deny blocks; additionalContext to agent."""
-    payload = wire.model_dump(exclude_none=True)
-    hso = payload.get("hookSpecificOutput") or {}
-    agent = hso.get("additionalContext") or ""
-    user = payload.get("systemMessage") or ""
-    decision = payload.get("decision")
-    blocked = decision == "deny" if event in ("PreToolUse", "Stop", "SessionEnd") else None
-    return Delivered(accepted=True, agent_sees=agent, user_sees=user, blocked=blocked)
-
-
 def _interpret_agy(event: str, wire: dict) -> Delivered:
     """The agy interpreter IS the agy protojson accept-contract.
 
@@ -174,7 +163,6 @@ def _interpret_agy(event: str, wire: dict) -> Delivered:
 
 _INTERPRET = {
     "claude": _interpret_claude,
-    "gemini": _interpret_gemini,
     "agy": _interpret_agy,
 }
 
@@ -192,8 +180,6 @@ def run_router(client: str, event: str, canonical: CanonicalHookOutput):
     router = HookRouter()
     if client == "claude":
         wire = router.output_for_claude(canonical, event)
-    elif client == "gemini":
-        wire = router.output_for_gemini(canonical, event)
     elif client == "agy":
         wire = router.output_for_agy(canonical, event)
     else:  # pragma: no cover - guard
@@ -249,28 +235,6 @@ _MATRIX = [
     (
         "claude-ups-warn-advisory",
         "claude",
-        "UserPromptSubmit",
-        _c("warn", context=ADVISORY),
-        {"blocked": None, "agent_has": ADVISORY, "user_clean": True},
-    ),
-    # ===================== Gemini =====================
-    (
-        "gemini-pretool-deny-blocks",
-        "gemini",
-        "PreToolUse",
-        _c("deny", context=ADVISORY, system="denied"),
-        {"blocked": True, "agent_has": ADVISORY, "user_has": "denied", "user_clean": True},
-    ),
-    (
-        "gemini-pretool-allow-advisory",
-        "gemini",
-        "PreToolUse",
-        _c("allow", context=ADVISORY),
-        {"blocked": False, "agent_has": ADVISORY, "user_clean": True},
-    ),
-    (
-        "gemini-ups-allow-advisory",
-        "gemini",
         "UserPromptSubmit",
         _c("warn", context=ADVISORY),
         {"blocked": None, "agent_has": ADVISORY, "user_clean": True},

@@ -1,8 +1,8 @@
 """Tool registry SSoT — Table 2 of specs/hooks/CLIENT-TRANSLATION.md (RUNTIME half).
 
 One record per ABSTRACT tool: a canonical name, the side-effect ``category``, and
-the RUNTIME-emitted concrete tool name on each client (Claude Code, Gemini CLI,
-Antigravity "agy"). This is the SINGLE source of truth for RUNTIME tool
+the RUNTIME-emitted concrete tool name on each client (Claude Code, Antigravity
+"agy"). This is the SINGLE source of truth for RUNTIME tool
 recognition: it generates the per-client ``(name -> category)`` entries, the
 spawn table, and the agy ``call_mcp_tool`` unwrap / nested-subagent extraction
 consumed by ``lib/tool_categories.py`` — and through it the gate engine, the

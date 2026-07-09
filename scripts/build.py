@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run python
 """
 Build script for AcademicOps extensions.
-Generates dist/aops-gemini, dist/aops-claude, dist/aops-tools-gemini, dist/aops-tools-claude, and dist/antigravity.
+Generates dist/aops-claude, dist/aops-tools-claude, and dist/aops-antigravity.
 """
 
 import argparse
@@ -23,7 +23,6 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
     from build_utils import (  # pyright: ignore[reportMissingImports]
-        convert_mcp_to_gemini,
         get_git_commit_sha,
         safe_copy,
         safe_symlink,
@@ -333,8 +332,8 @@ def generate_aops_core_pyproject(
 ) -> str:
     """Return the shipped pyproject.toml content with the build version stamped in.
 
-    All platforms that ship a pyproject.toml (``claude`` / ``gemini`` /
-    ``antigravity``) read the same tracked source manifest,
+    All platforms that ship a pyproject.toml (``claude`` / ``antigravity``)
+    read the same tracked source manifest,
     ``templates/aops-core.pyproject.toml`` (ships ``lib`` + ``hooks``), and get
     the placeholder version substituted with the real build version.
 
@@ -361,97 +360,6 @@ def generate_aops_core_pyproject(
             f"Could not stamp version into {src_pyproject} (no [project] version line)"
         )
     return content
-
-
-def _generate_gemini_hooks_json(src_path: Path, dst_path: Path) -> None:
-    """Transform hooks.json from Claude Code format to Gemini CLI format.
-
-    Gemini CLI reads hooks from <extension>/hooks/hooks.json with:
-    - Different event names (BeforeTool vs PreToolUse, etc.)
-    - ${extensionPath} variable instead of ${CLAUDE_PLUGIN_ROOT}
-    """
-    try:
-        with open(src_path) as f:
-            config = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"Warning: Could not read hooks.json: {e}")
-        return
-
-    if "hooks" not in config:
-        print("Warning: hooks.json has no 'hooks' key")
-        return
-
-    src_hooks = config["hooks"]
-    valid_gemini_events = client_spec.VALID_WIRE_EVENTS["gemini"]
-    gemini_hooks: dict = {}
-
-    for claude_event, hook_list in src_hooks.items():
-        # Skip disabled hooks
-        if claude_event.endswith("-disabled"):
-            continue
-
-        # Map event name(s) via the SSoT. Events with no Gemini equivalent map to
-        # [] and are dropped (one internal event can fan out — Stop -> SessionEnd
-        # AND AfterAgent).
-        target_events = client_spec.to_wire_events("gemini", claude_event)
-
-        for gemini_event in target_events:
-            # Skip events that don't exist in Gemini
-            if gemini_event not in valid_gemini_events:
-                print(f"  Skipping unsupported Gemini event: {gemini_event} (from {claude_event})")
-                continue
-
-            # Transform hook commands
-            transformed_hooks = []
-            for hook_entry in hook_list:
-                new_entry = {}
-                # Gemini CLI requires a 'matcher' key at the root of the hook entry
-                if "matcher" not in hook_entry:
-                    # SessionStart uses 'startup', AfterAgent/SessionEnd use '*', etc.
-                    new_entry["matcher"] = "startup" if gemini_event == "SessionStart" else "*"
-
-                for key, value in hook_entry.items():
-                    if key == "hooks":
-                        new_hooks = []
-                        for hook in value:
-                            new_hook = dict(hook)
-                            # asyncRewake (config asyncRewake/rewakeMessage/
-                            # rewakeSummary) is the Claude-only Stop quiet-split
-                            # channel — strip it so it never leaks into the Gemini
-                            # hooks.json (Gemini has no asyncRewake; its Stop split
-                            # would be a separate capability).
-                            for _k in ("asyncRewake", "rewakeMessage", "rewakeSummary"):
-                                new_hook.pop(_k, None)
-                            if "command" in new_hook:
-                                # Replace Claude variable with Gemini variable
-                                cmd = new_hook["command"]
-                                cmd = cmd.replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}")
-                                cmd = cmd.replace("router.py", "router.sh")
-
-                                # Ensure we use the correct client flag for Gemini
-                                cmd = cmd.replace("--client claude", "--client gemini")
-
-                                # Gemini CLI doesn't pass hook_event_name in stdin payload like Claude does,
-                                # so we append it as a CLI argument for router.py to detect the event type
-                                cmd = f"{cmd} {gemini_event}"
-
-                                new_hook["command"] = cmd
-                            new_hooks.append(new_hook)
-                        new_entry[key] = new_hooks
-                    else:
-                        new_entry[key] = value
-                transformed_hooks.append(new_entry)
-
-            if gemini_event not in gemini_hooks:
-                gemini_hooks[gemini_event] = []
-            gemini_hooks[gemini_event].extend(transformed_hooks)
-
-    # Write Gemini-compatible hooks.json
-    # Gemini CLI requires {"hooks": {...}} wrapper — the hooks property must be an object
-    with open(dst_path, "w") as f:
-        json.dump({"hooks": gemini_hooks}, f, indent=2)
-        f.write("\n")
-    print(f"  ✓ Generated Gemini hooks.json with {len(gemini_hooks)} events")
 
 
 def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
@@ -573,8 +481,8 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
 def transform_agent_for_platform(content: str, platform: str, filename: str = "agent") -> str:
     """Transform agent markdown for a specific platform.
 
-    For Gemini: renames mcp__* tools from frontmatter by stripping prefix,
-                and validates/applies Gemini agent schema with defaults.
+    For Antigravity: remaps mcp__* tools from frontmatter to call_mcp_tool and
+                      applies the Claude-to-agy tool-name map.
     For Claude: converts YAML array tools to comma-separated string with PascalCase names.
     """
     # Split frontmatter from body
@@ -639,7 +547,7 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
         # 1. Comma-separated string (not YAML array)
         # 2. PascalCase tool names for built-in tools
 
-        # Tool name mapping: generic/Gemini -> Claude Code (SSoT: tool_registry, §P3b).
+        # Tool name mapping: generic -> Claude Code (SSoT: tool_registry, §P3b).
         TOOL_NAME_MAP = tool_registry.BUILD_TO_CLAUDE_TOOL
 
         # Transform each tool name
@@ -649,8 +557,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
                 # MCP tools keep their full name
                 transformed_tools.append(tool)
             elif tool.startswith("mcp_"):
-                # Convert Gemini format (mcp_server_tool) back to Claude format (mcp__server__tool)
-                # We assume the first word after mcp_ is the server name.
+                # Convert single-underscore format (mcp_server_tool) back to Claude
+                # format (mcp__server__tool). We assume the first word after mcp_ is
+                # the server name.
                 parts = tool.split("_", 2)
                 if len(parts) == 3:
                     transformed_tools.append(f"mcp__{parts[1]}__{parts[2]}")
@@ -713,7 +622,7 @@ def copy_transform_agents(
     json_count = 0
     for agent_file in sorted(src_agents_dir.glob("*.md")):
         content = agent_file.read_text()
-        # Transform frontmatter (filter mcp__ tools for Gemini, apply schema) …
+        # Transform frontmatter (remap mcp__ tools for Antigravity, apply schema) …
         content = transform_agent_for_platform(content, platform, agent_file.name)
         # … and translate tool calls in the body text.
         content = translate_tool_calls(content, platform)
@@ -766,12 +675,12 @@ def build_aops_core(
     aops_root: Path,
     dist_root: Path,
     aca_data_path: str,
-    platform: str = "gemini",
+    platform: str,
     version: str = "0.1.0",
 ):
     """Build the aops-core extension for a specific platform.
 
-    Supported platforms: "claude", "gemini", "antigravity", "cowork".
+    Supported platforms: "claude", "antigravity", "cowork".
     The "cowork" platform is a true skills-only ADDITIVE layer on top of
     aops-core, not a second copy of it (aops-04075740 / aops-10afe69d):
     aops-core, installed into Cowork from the dist marketplace, already
@@ -806,8 +715,8 @@ def build_aops_core(
     transform_platform = "claude" if platform == "cowork" else platform
 
     # Platform-specific dist dir. New naming: use 'aops-{platform}' as the dist folder
-    # so consumers see 'aops-gemini' / 'aops-claude' / 'aops-cowork' instead of
-    # 'aops-core-gemini'.
+    # so consumers see 'aops-claude' / 'aops-antigravity' / 'aops-cowork' instead of
+    # 'aops-core-claude'.
     dist_dir = dist_root / f"aops-{platform}"
 
     # Content goes directly into dist_dir (no nested subfolder)
@@ -829,7 +738,7 @@ def build_aops_core(
     EXCLUDED_FROM_COPY = {
         "pyproject.toml",  # Generated from template in 1b (version + dep list)
         "uv.lock",  # Regenerated in 1b to stay in sync with the new pyproject
-        "hooks",  # Handled separately in section 2 (Gemini hooks.json transform)
+        "hooks",  # Handled separately in section 2 (per-platform hooks.json transform)
         "indices",  # PATHS.md is user config, no other generated indices
         "__pycache__",
     }
@@ -965,7 +874,7 @@ def build_aops_core(
     # (below), and its own content — the cowork-sync skill describing the PKB ↔
     # native task-list mirror that only Cowork's harness uses — is overlaid here.
     # That skill lives ONLY in the cowork package, so the other surfaces
-    # (claude/gemini/agy) never see it; no drop step is needed.
+    # (claude/antigravity) never see it; no drop step is needed.
     if platform == "cowork":
         cowork_pkg = aops_root / "aops-cowork"
         cowork_skills = cowork_pkg / "skills"
@@ -986,12 +895,12 @@ def build_aops_core(
             shutil.rmtree(cowork_sync_dir)
             print(f"  - Dropped stray cowork-sync skill (not for {platform})")
 
-    # 1a. Post-copy: translate tool names in all .md files for Gemini/Antigravity.
+    # 1a. Post-copy: translate tool names in all .md files for Antigravity.
     # Agents get transform_agent_for_platform above (frontmatter + body);
     # this pass catches skills, commands, lib, and top-level .md files
     # that were copied verbatim by safe_copy. Antigravity needs the
     # ${CLAUDE_PLUGIN_ROOT} replacement and tool-name translations.
-    if platform in ("gemini", "antigravity"):
+    if platform == "antigravity":
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
             # Agent files are already translated in the special-cased loop above, skip them here.
@@ -1091,9 +1000,9 @@ def build_aops_core(
     # PreToolUse / etc. router a SECOND time and fire every lifecycle hook
     # twice. aops-cowork is therefore an additive, hooks-free layer: one shared
     # hook stack (aops-core) serves both Claude Code and Cowork.
-    # Bind hooks_src / hooks_dst unconditionally so the gemini/antigravity
-    # hooks.json generation below (which only runs for non-cowork platforms)
-    # has statically-known Paths, not possibly-Unbound names.
+    # Bind hooks_src / hooks_dst unconditionally so the antigravity hooks.json
+    # generation below (which only runs for non-cowork platforms) has
+    # statically-known Paths, not possibly-Unbound names.
     hooks_src = src_dir / "hooks"
     hooks_dst = dist_dir / "hooks"
     if platform != "cowork":
@@ -1104,105 +1013,22 @@ def build_aops_core(
                     # safe_copy's ignore filters children, not a top-level cache dir
                     # passed as src — skip detritus dirs here so they never enter the build.
                     continue
-                if item.name == "hooks.json" and platform in ("gemini", "antigravity"):
-                    # Handle hooks.json separately for Gemini/Antigravity
+                if item.name == "hooks.json" and platform == "antigravity":
+                    # Handle hooks.json separately for Antigravity
                     continue
-                if item.name == "gemini":
-                    # Don't copy gemini/ subdirectory
-                    continue
-                # Hooks also go into content_dir for execution, but Gemini discovery
-                # might need them in dist_dir/hooks/hooks.json
                 safe_copy(item, content_dir / "hooks" / item.name)
     else:
         print("  - Skipped hooks for cowork (aops-core supplies the shared hook stack)")
 
     # Generate platform-compatible hooks.json
-    if platform == "gemini":
-        hooks_json_src = hooks_src / "hooks.json"
-        if hooks_json_src.exists():
-            _generate_gemini_hooks_json(hooks_json_src, hooks_dst / "hooks.json")
-    elif platform == "antigravity":
+    if platform == "antigravity":
         # Antigravity uses Claude Code event names (PreToolUse, PostToolUse, etc.)
         # but needs ${extensionPath} instead of ${CLAUDE_PLUGIN_ROOT}
         hooks_json_src = hooks_src / "hooks.json"
         if hooks_json_src.exists():
             _generate_antigravity_hooks_json(hooks_json_src, dist_dir / "hooks.json")
 
-    # 2b. Copy Gemini context file (referenced by gemini-extension.json as
-    # contextFileName). It lives at the repo root, not inside aops-core/.
-    # GEMINI.md uses `@path` imports; resolve each referenced file once and
-    # ship it alongside so Gemini's ImportProcessor can satisfy the imports.
-    if platform == "gemini":
-        src_gemini_md = aops_root / "GEMINI.md"
-        if not src_gemini_md.exists():
-            print(f"Error: {src_gemini_md} not found.", file=sys.stderr)
-            sys.exit(1)
-
-        import re as _re
-
-        # Read and clean GEMINI.md: stop packaging project-local CORE.md
-        # Use regex to strip @.agents/CORE.md from the distributed version
-        original_content = src_gemini_md.read_text()
-        cleaned_content = _re.sub(
-            r"^@\.agents/CORE\.md\s*$", "", original_content, flags=_re.MULTILINE
-        )
-        (dist_dir / "GEMINI.md").write_text(cleaned_content)
-        print(f"  ✓ Copied and cleaned GEMINI.md -> {dist_dir / 'GEMINI.md'}")
-
-        imported = 0
-        for m in _re.finditer(r"^@([^\s]+)", original_content, flags=_re.MULTILINE):
-            rel = m.group(1)
-            if rel == ".agents/CORE.md":
-                # Skip project-local context in plugin distribution
-                continue
-            if Path(rel).is_absolute() or ".." in rel:
-                print(
-                    f"Warning: Skipping unsafe import path in GEMINI.md: {rel}",
-                    file=sys.stderr,
-                )
-                continue
-            src_import = aops_root / rel
-            if src_import.exists():
-                dst_import = dist_dir / rel
-                dst_import.parent.mkdir(parents=True, exist_ok=True)
-                safe_copy(src_import, dst_import)
-                imported += 1
-            else:
-                print(
-                    f"Warning: GEMINI.md imports {rel} but {src_import} not found.",
-                    file=sys.stderr,
-                )
-        if imported:
-            print(f"  ✓ Resolved {imported} @-imports referenced by GEMINI.md")
-
     # 3. Extension Manifest / Plugin Info
-    if platform == "gemini":
-        src_extension_json = aops_root / "templates" / "aops-core.gemini-extension.json"
-        dist_extension_json = dist_dir / "gemini-extension.json"
-        root_extension_json = aops_root / "gemini-extension.json"
-
-        if src_extension_json.exists():
-            print(f"Generating extension manifest from {src_extension_json.name}...")
-            try:
-                manifest = json.loads(src_extension_json.read_text())
-                manifest["version"] = version
-
-                with open(dist_extension_json, "w") as f:
-                    json.dump(manifest, f, indent=2)
-                    f.write("\n")
-
-                # Also save to repository root
-                with open(root_extension_json, "w") as f:
-                    json.dump(manifest, f, indent=2)
-                    f.write("\n")
-                print("  ✓ Generated gemini-extension.json at root and dist")
-            except Exception as e:
-                print(f"Error processing extension manifest: {e}", file=sys.stderr)
-                raise
-        else:
-            print(f"Error: {src_extension_json} not found.", file=sys.stderr)
-            sys.exit(1)
-
     if platform in ("claude", "cowork"):
         # Both use the same plugin contract (.claude-plugin/plugin.json). claude
         # ships from a template; cowork is a REAL composed package, so its
@@ -1228,8 +1054,8 @@ def build_aops_core(
                 # aops-core declares no 'userConfig'/pkb_mcp_url and no pkb MCP
                 # server for the "claude" platform — the aops-pkb plugin owns
                 # pkb there (HTTP transport, its own pkb_mcp_url userConfig).
-                # cowork/gemini/antigravity still get pkb via run-mcp.sh in
-                # this template, resolving the URL from the env / ~/.env.local.
+                # cowork/antigravity still get pkb via run-mcp.sh in this
+                # template, resolving the URL from the env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)
@@ -1261,7 +1087,6 @@ def build_aops_core(
 
     # 4. Generate MCP Config from Template
     template_path = src_dir / "mcp.json.template"
-    gemini_mcps = {}
 
     if template_path.exists():
         print(f"Generating MCP config from {template_path.name}...")
@@ -1291,42 +1116,6 @@ def build_aops_core(
                 with open(dist_mcp_path, "w") as f:
                     json.dump(shaped_mcp_config, f, indent=2)
                     f.write("\n")
-
-            # Prepare for Gemini Extension
-            if platform == "gemini":
-                servers_config = mcp_config.get("mcpServers", mcp_config)
-                # Replace variables for Gemini if they came from a Claude-style template
-                gemini_servers_json = json.dumps(servers_config)
-                gemini_servers_json = gemini_servers_json.replace(
-                    "${CLAUDE_PLUGIN_ROOT}", "${extensionPath}"
-                )
-
-                gemini_servers_config = json.loads(gemini_servers_json)
-                gemini_mcps = convert_mcp_to_gemini(gemini_servers_config)
-
-                if dist_extension_json.exists():
-                    with open(dist_extension_json) as f:
-                        manifest = json.load(f)
-                    current_mcps = manifest.get("mcpServers", {})
-                    for server, config in gemini_mcps.items():
-                        if server in current_mcps:
-                            existing = current_mcps[server]
-                            existing.update({k: v for k, v in config.items() if k != "env"})
-                            existing_env = existing.get("env") or {}
-                            existing_env.update(config.get("env") or {})
-                            if existing_env:
-                                existing["env"] = existing_env
-                        else:
-                            current_mcps[server] = config
-                    manifest["mcpServers"] = current_mcps
-
-                    # MCP server arguments from mcp.json.template use ${extensionPath}
-                    # which is correct since plugin content is at the root
-
-                    with open(dist_extension_json, "w") as f:
-                        json.dump(manifest, f, indent=2)
-                        f.write("\n")
-                    print(f"✓ Updated {dist_extension_json} with MCP config")
 
             # Prepare for Antigravity 2.0 Plugin (native mcp_config.json).
             #
@@ -1377,7 +1166,6 @@ def build_aops_core(
     _assert_no_axiom_decoys(content_dir)
 
     print(f"✓ Built {plugin_name} ({platform})")
-    return gemini_mcps
 
 
 _PLUGIN_ROOT_VAR_RE = re.compile(r"@\$\{(?:CLAUDE_PLUGIN_ROOT|extensionPath)\}/([^\s`'\"<>]+)")
@@ -1468,7 +1256,7 @@ def _assert_no_axiom_decoys(content_dir: Path) -> None:
 def build_aops_tools(
     aops_root: Path,
     dist_root: Path,
-    platform: str = "gemini",
+    platform: str,
     version: str = "0.1.0",
 ):
     """Build the aops-tools extension for a specific platform.
@@ -1498,23 +1286,6 @@ def build_aops_tools(
         src = src_dir / item
         if src.exists():
             safe_copy(src, content_dir / item)
-
-    # Gemini: generate extension manifest with version injection
-    if platform == "gemini":
-        src_extension_json = aops_root / "templates" / f"{plugin_name}.gemini-extension.json"
-        dist_extension_json = dist_dir / "gemini-extension.json"
-        if src_extension_json.exists():
-            try:
-                manifest = json.loads(src_extension_json.read_text())
-                manifest["version"] = version
-                with open(dist_extension_json, "w") as f:
-                    json.dump(manifest, f, indent=2)
-                print(f"  ✓ Generated gemini-extension.json (v{version})")
-            except Exception as e:
-                print(f"Error processing extension manifest: {e}", file=sys.stderr)
-                raise
-        else:
-            print(f"  ⚠️  No gemini-extension.json found in {src_dir}")
 
     # Claude: copy plugin.json with version injection
     if platform == "claude":
@@ -1569,7 +1340,7 @@ def build_aops_tools(
 def build_aops_extras(
     aops_root: Path,
     dist_root: Path,
-    platform: str = "gemini",
+    platform: str,
     version: str = "0.1.0",
 ):
     """Build the aops-extras extension for a specific platform.
@@ -1600,23 +1371,6 @@ def build_aops_extras(
         src = src_dir / item
         if src.exists():
             safe_copy(src, content_dir / item)
-
-    # Gemini: generate extension manifest with version injection
-    if platform == "gemini":
-        src_extension_json = aops_root / "templates" / f"{plugin_name}.gemini-extension.json"
-        dist_extension_json = dist_dir / "gemini-extension.json"
-        if src_extension_json.exists():
-            try:
-                manifest = json.loads(src_extension_json.read_text())
-                manifest["version"] = version
-                with open(dist_extension_json, "w") as f:
-                    json.dump(manifest, f, indent=2)
-                print(f"  ✓ Generated gemini-extension.json (v{version})")
-            except Exception as e:
-                print(f"Error processing extension manifest: {e}", file=sys.stderr)
-                raise
-        else:
-            print(f"  ⚠️  No gemini-extension.json found in {src_dir}")
 
     # Claude: copy plugin.json with version injection
     if platform == "claude":
@@ -1767,7 +1521,7 @@ def build_aops_pkb(
     no pyproject.toml/uv.lock.
 
     Only the "claude" platform is implemented for now (mirrors aops-ts's scope).
-    Gemini/Antigravity support can be added later following build_aops_core's
+    Antigravity support can be added later following build_aops_core's
     pattern if this module needs to ship there.
     """
     print(f"Building aops-pkb for {platform} (v{version})...")
@@ -1813,8 +1567,8 @@ def build_aops_pkb(
         else:
             safe_copy(src_item, content_dir / src_item.name)
 
-    # 1a-pre. Translate tool names in all non-agent .md files for Gemini/Antigravity.
-    if platform in ("gemini", "antigravity"):
+    # 1a-pre. Translate tool names in all non-agent .md files for Antigravity.
+    if platform == "antigravity":
         translated_count = 0
         for md_file in content_dir.rglob("*.md"):
             if (
@@ -1949,7 +1703,7 @@ def build_aops_pkb(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build script for AcademicOps Gemini extensions.")
+    parser = argparse.ArgumentParser(description="Build script for AcademicOps extensions.")
     parser.add_argument("--version", action="store_true", help="Print detected version and exit")
     parser.add_argument(
         "--set-version",
@@ -2211,7 +1965,6 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
 
     PKB ships as a remote MCP server (no bundled per-platform binary), so a
     single set of generic archives serves every platform:
-    - aops-core.tar.gz / aops-tools.tar.gz (Gemini CLI install names)
     - aops-claude-v{version}.tar.gz / aops-tools-claude-v{version}.tar.gz
 
     Plus 'latest' symlinks for the Claude archives.
@@ -2224,14 +1977,11 @@ def package_artifacts(aops_root: Path, dist_root: Path, version: str):
             return None
         return tarinfo
 
-    # Generic archives (no platform-specific binary)
     # Strip SemVer build metadata (+gSHA[.dirty]) from filenames only; it lives
     # inside plugin.json. Filenames stay clean for tooling that mangles `+`.
     fs_version = version.split("+", 1)[0]
 
-    # (Gemini packaging removed)
-
-    # 2. aops-claude-v{version}.tar.gz
+    # 1. aops-claude-v{version}.tar.gz
     claude_archive = dist_root / f"aops-claude-v{fs_version}.tar.gz"
     with tarfile.open(claude_archive, "w:gz") as tar:
         tar.add(dist_root / "aops-claude", arcname="aops-claude", filter=_source_filter)
