@@ -29,7 +29,11 @@ try:
         safe_symlink,
         write_plugin_version,
     )
-    from transforms.agent_schema import claude_mcp_to_gemini, validate_gemini_agent_schema
+    from transforms.agent_schema import (
+        build_agy_agent_json,
+        claude_mcp_to_gemini,
+        validate_gemini_agent_schema,
+    )
 except ImportError as e:
     # Fallback if running from a different location without setting path correctly
     # or if lib structure is not yet fully set up in development
@@ -894,6 +898,7 @@ def build_aops_core(
                 # Special handling for agents: transform frontmatter and translate tool calls
                 dst = content_dir / src_item.name
                 dst.mkdir(parents=True, exist_ok=True)
+                agy_json_count = 0
                 for agent_file in src_item.glob("*.md"):
                     content = agent_file.read_text()
                     # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
@@ -903,7 +908,24 @@ def build_aops_core(
                     # Translate tool calls in body text
                     content = translate_tool_calls(content, transform_platform)
                     (dst / agent_file.name).write_text(content)
+                    # agy (Antigravity) additionally discovers subagents as
+                    # agents/{name}/agent.json (system prompt inline). Emit that
+                    # alongside the .md from the already-transformed content.
+                    if transform_platform == "antigravity":
+                        agent_json = build_agy_agent_json(
+                            content,
+                            agent_file.name,
+                            tool_registry.BUILD_CLAUDE_TO_AGY_TOOL,
+                        )
+                        json_dir = dst / agent_file.stem
+                        json_dir.mkdir(parents=True, exist_ok=True)
+                        (json_dir / "agent.json").write_text(
+                            json.dumps(agent_json, indent=2) + "\n"
+                        )
+                        agy_json_count += 1
                 print(f"  ✓ Translated and copied agents -> {dst}")
+                if agy_json_count:
+                    print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
             else:
                 safe_copy(src_item, content_dir / src_item.name)
 
