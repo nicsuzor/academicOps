@@ -15,7 +15,7 @@ mode: execution
 domain:
   - operations
 allowed-tools: Read,Bash,Grep,Write,Edit,AskUserQuestion,Skill,mcp__pkb__delete,mcp__pkb__get_task,mcp__pkb__get_task_children,mcp__pkb__list_tasks,mcp__pkb__task_summary,mcp__pkb__complete_task,mcp__pkb__update_task,mcp__pkb__append
-version: 5.5.0
+version: 5.6.0
 permalink: skills-daily
 ---
 
@@ -36,6 +36,7 @@ A factual, reportive snapshot of the day: what happened, what's open, what's due
 - **You may turn user notes into neat, well-formatted prose** — but only if you lose no truth. When unsure, keep the original wording.
 - **No empty sections.** Omit a section rather than render an empty heading. On a morning with no sessions yet, omit Today's Log entirely.
 - **Today's Log is reconstructed from primary sources, never substituted.** Before writing Today's Log you MUST open today's session transcripts — `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`) — and reconstruct the day from them. Assembling it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list is a criterion substitution: it reproduces the file, not the day. If no same-day interactive transcript exists, omit the section — do not back-fill it from second-hand artifacts.
+- **Prompt Ledger is generated, never hand-transcribed.** If `$AOPS_SESSIONS/state/prompt_ledger.md` is missing or stale (not regenerated today), refresh it: `uv run python aops-core/scripts/transcript.py --ledger --since <7-days-ago>` from the academicOps checkout. Tail its most recent ~10 lines into `## Prompt Ledger` verbatim. Never write ledger lines by hand and never fill in a blank outcome/link yourself — they're blank because the pipeline couldn't honestly resolve them from the session summary, not because the field was skipped.
 
 ## Tools you may invoke
 

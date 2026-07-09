@@ -6,7 +6,7 @@ description: Daily note structure template (SSoT). Section order is load-bearing
 
 # Daily Note Structure (SSoT)
 
-Order is fixed: **Lede → Today's Log → (Escalated Deadlines, if any) → Status → What Needs Attention → Carryover → Work Log.** Omit any empty section. Fill the skeleton below.
+Order is fixed: **Lede → Today's Log → (Escalated Deadlines, if any) → Status → What Needs Attention → Carryover → Prompt Ledger → Work Log.** Omit any empty section. Fill the skeleton below.
 
 ```markdown
 ---
@@ -84,6 +84,12 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 <!-- Uncompleted tasks from yesterday, VERIFIED against live PKB (drop missing/done/ticked). Omit entirely if empty. -->
 
 - [ ] [task-id] [[Title]] — 2d overdue
+
+## Prompt Ledger
+
+<!-- Tail the most recent ~10 lines from `$AOPS_SESSIONS/state/prompt_ledger.md`. Regenerate first if missing or stale (older than today): `uv run python aops-core/scripts/transcript.py --ledger --since <7-days-ago>` from the academicOps checkout. Reverse-date-sorted, one line per genuine Nic-typed prompt; outcome/link are blank when not resolvable from the session summary — never fill them in by hand or infer them from the transcript yourself. Omit this whole section if the ledger file doesn't exist and can't be generated. -->
+
+- [2026-07-09 12:40] [claude-code-cli] [f355deff] [short summary of the question] [short summary of the outcome, or blank] [link to task/PR/PKB note, or blank]
 
 ## Work Log
 
