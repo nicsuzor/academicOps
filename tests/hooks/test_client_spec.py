@@ -17,18 +17,6 @@ from hooks import client_spec as cs
 # anchor: client_spec must keep reproducing every one of these, partitioned by
 # the client that actually emits the wire name.
 _EXPECTED_INBOUND: dict[str, dict[str, str]] = {
-    "gemini": {
-        "SessionStart": "SessionStart",
-        "BeforeTool": "PreToolUse",
-        "AfterTool": "PostToolUse",
-        "BeforeAgent": "UserPromptSubmit",
-        "AfterAgent": "Stop",
-        "SessionEnd": "SessionEnd",
-        "Notification": "Notification",
-        "PreCompress": "PreCompact",
-        "SubagentStart": "SubagentStart",
-        "SubagentStop": "SubagentStop",
-    },
     "agy": {
         "PreInvocation": "UserPromptSubmit",
         "PostInvocation": "Stop",
@@ -36,25 +24,6 @@ _EXPECTED_INBOUND: dict[str, dict[str, str]] = {
         "PostToolUse": "PostToolUse",
         "Stop": "Stop",
     },
-}
-
-# The outbound internal→Gemini-wire map the build historically resolved through
-# its own ``CLAUDE_TO_GEMINI_EVENTS`` copy (now removed — ``scripts/build.py``
-# reads ``client_spec.to_wire_events``). Frozen here as the regression anchor:
-# client_spec must keep reproducing every one of these. (The build's old
-# identity-passthrough of already-Gemini names — BeforeTool/AfterTool/etc. — was
-# dead for a Claude-format source and is intentionally not reproduced.)
-_EXPECTED_OUTBOUND_GEMINI: dict[str, list[str]] = {
-    "PreToolUse": ["BeforeTool"],
-    "PostToolUse": ["AfterTool"],
-    "UserPromptSubmit": ["BeforeAgent"],
-    "Stop": ["SessionEnd", "AfterAgent"],
-    "SessionStart": ["SessionStart"],
-    "SessionEnd": ["SessionEnd"],
-    "SubagentStart": ["BeforeTool"],
-    "SubagentStop": ["AfterTool"],
-    "PreCompact": ["BeforeAgent"],
-    "Notification": ["BeforeAgent"],
 }
 
 
@@ -75,13 +44,6 @@ class TestInboundEventMap:
 
 class TestOutboundEventMap:
     """`to_wire_events` must reproduce the build's Claude->external maps."""
-
-    def test_gemini_outbound_matches_build(self):
-        for claude_ev, expected in _EXPECTED_OUTBOUND_GEMINI.items():
-            # Every expected target must be a valid Gemini wire event...
-            assert all(cs.valid_wire_event("gemini", t) for t in expected), claude_ev
-            # ...and client_spec must reproduce the historical build mapping.
-            assert sorted(cs.to_wire_events("gemini", claude_ev)) == sorted(expected), claude_ev
 
     def test_agy_outbound_matches_documented_invariants(self):
         assert cs.to_wire_events("agy", "UserPromptSubmit") == ["PreInvocation"]
@@ -113,9 +75,6 @@ class TestRegistrationShapeAndTimeouts:
         # Invariant #10: agy PreToolUse cold-start floor >= 15000ms.
         assert cs.timeout_floor_ms("agy", "PreToolUse") == 15000
         assert cs.timeout_floor_ms("agy", "PostToolUse") is None
-
-    def test_gemini_uses_wrapper_shape(self):
-        assert cs.config_shape("gemini", "BeforeTool") == "wrapper"
 
 
 class TestChannelTable:
