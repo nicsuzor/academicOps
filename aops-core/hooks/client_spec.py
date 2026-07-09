@@ -63,6 +63,78 @@ class Event:
     PRE_COMPACT = "PreCompact"
     NOTIFICATION = "Notification"
 
+    # --- Log-only events (aops_2597b5ff scope D) ---------------------------
+    # These have NO gate branch in router._call_gate_method — they exist
+    # solely so hooks.json subscribes and the router logs them (see
+    # main() -> log_hook_event). Never add gate dispatch logic keyed on
+    # these without also adding a _call_gate_method branch + tests; until
+    # then they are intentionally inert (log, exit 0, no blocking).
+    POST_TOOL_USE_FAILURE = "PostToolUseFailure"
+    POST_TOOL_BATCH = "PostToolBatch"
+    USER_PROMPT_EXPANSION = "UserPromptExpansion"
+    STOP_FAILURE = "StopFailure"
+    POST_COMPACT = "PostCompact"
+    PERMISSION_REQUEST = "PermissionRequest"
+    PERMISSION_DENIED = "PermissionDenied"
+    SETUP = "Setup"
+    TEAMMATE_IDLE = "TeammateIdle"
+    TASK_CREATED = "TaskCreated"
+    TASK_COMPLETED = "TaskCompleted"
+    ELICITATION = "Elicitation"
+    ELICITATION_RESULT = "ElicitationResult"
+    CONFIG_CHANGE = "ConfigChange"
+    WORKTREE_CREATE = "WorktreeCreate"
+    WORKTREE_REMOVE = "WorktreeRemove"
+    INSTRUCTIONS_LOADED = "InstructionsLoaded"
+    CWD_CHANGED = "CwdChanged"
+    FILE_CHANGED = "FileChanged"
+    MESSAGE_DISPLAY = "MessageDisplay"
+
+
+# The full canonical Claude Code hook-event set (30 events), confirmed
+# 2026-07-09 against the INSTALLED client — extracted from the `vQ` array in
+# anthropic.claude-code-2.1.205's extension.js (the same array backs the
+# settings.json ``hooks`` schema: ``h.partialRecord(h.enum(vQ), ...)``, so
+# every one of these is a valid hooks.json registration key). This is
+# TREATED AS OBSERVED, not the ~30-event docs estimate cited in
+# aops_2597b5ff's ground truth — re-verify against extension.js on a CC
+# version bump before trusting it silently stale. The first 10 already had
+# gate branches + hooks.json entries before this change; the other 20 did
+# not (the "log-all" gap this module now closes) and get a log-only
+# subscription in hooks.json with no corresponding gate dispatch.
+CLAUDE_ALL_EVENTS: tuple[str, ...] = (
+    Event.PRE_TOOL,
+    Event.POST_TOOL,
+    Event.POST_TOOL_USE_FAILURE,
+    Event.POST_TOOL_BATCH,
+    Event.NOTIFICATION,
+    Event.USER_PROMPT,
+    Event.USER_PROMPT_EXPANSION,
+    Event.SESSION_START,
+    Event.SESSION_END,
+    Event.STOP,
+    Event.STOP_FAILURE,
+    Event.SUBAGENT_START,
+    Event.SUBAGENT_STOP,
+    Event.PRE_COMPACT,
+    Event.POST_COMPACT,
+    Event.PERMISSION_REQUEST,
+    Event.PERMISSION_DENIED,
+    Event.SETUP,
+    Event.TEAMMATE_IDLE,
+    Event.TASK_CREATED,
+    Event.TASK_COMPLETED,
+    Event.ELICITATION,
+    Event.ELICITATION_RESULT,
+    Event.CONFIG_CHANGE,
+    Event.WORKTREE_CREATE,
+    Event.WORKTREE_REMOVE,
+    Event.INSTRUCTIONS_LOADED,
+    Event.CWD_CHANGED,
+    Event.FILE_CHANGED,
+    Event.MESSAGE_DISPLAY,
+)
+
 
 # =============================================================================
 # EVENT-NAME MAPPING
@@ -99,21 +171,10 @@ _INBOUND: dict[str, dict[str, str]] = {
 # Stop -> SessionEnd AND AfterAgent). Events absent from a client's map are NOT
 # shipped to that client (e.g. agy drops SessionStart/SubagentStart/etc).
 _OUTBOUND: dict[str, dict[str, list[str]]] = {
-    "claude": {  # identity for every event Claude supports natively
-        e: [e]
-        for e in (
-            Event.SESSION_START,
-            Event.PRE_TOOL,
-            Event.POST_TOOL,
-            Event.USER_PROMPT,
-            Event.STOP,
-            Event.SESSION_END,
-            Event.SUBAGENT_START,
-            Event.SUBAGENT_STOP,
-            Event.PRE_COMPACT,
-            Event.NOTIFICATION,
-        )
-    },
+    # identity for every event Claude supports natively — CLAUDE_ALL_EVENTS
+    # is the full 30-event set (see its docstring for provenance); the 20
+    # added 2026-07-09 (aops_2597b5ff scope D) are log-only, no gate branch.
+    "claude": {e: [e] for e in CLAUDE_ALL_EVENTS},
     "gemini": {
         Event.PRE_TOOL: ["BeforeTool"],
         Event.POST_TOOL: ["AfterTool"],

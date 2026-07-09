@@ -298,8 +298,18 @@ class GenericGate:
         messages = []
         injections = []
         transition_occurred = False
+        # Diagnostic record of the fired trigger (aops_2597b5ff scope D — the
+        # UPS-re-arm instrument). Recorded whenever a trigger's CONDITION
+        # matched and its transition applied, even if target_status equals
+        # the gate's current status (e.g. rbg-review's UserPromptSubmit
+        # trigger re-closing an already-CLOSED gate) — "did this event cause
+        # the trigger to fire" is the diagnostic question, not just "did the
+        # status visibly flip". Consumed by router._dispatch_gates, which
+        # collects one of these per gate into CanonicalHookOutput.metadata
+        # ["gate_transitions"], logged uniformly by unified_logger.
+        transition_record: dict[str, Any] | None = None
 
-        for trigger in self.config.triggers:
+        for idx, trigger in enumerate(self.config.triggers):
             if self._evaluate_condition(trigger.condition, ctx, state, session_state):
                 # Sticky suppression: skip transitions targeting a different
                 # status while the gate is latched.
@@ -310,12 +320,21 @@ class GenericGate:
                 ):
                     break
 
+                old_status = state.status
                 result = self._apply_transition(trigger.transition, ctx, state, session_state)
                 if result.system_message:
                     messages.append(result.system_message)
                 if result.context_injection:
                     injections.append(result.context_injection)
                 transition_occurred = True
+                transition_record = {
+                    "gate": self.name,
+                    "hook_event": ctx.hook_event,
+                    "trigger_index": idx,
+                    "from_status": getattr(old_status, "value", old_status),
+                    "to_status": getattr(state.status, "value", state.status),
+                    "status_changed": old_status != state.status,
+                }
                 # Break after first match to ensure deterministic state transition
                 break
 
@@ -323,6 +342,7 @@ class GenericGate:
             return GateResult.allow(
                 system_message="\n".join(messages) if messages else None,
                 context_injection="\n\n".join(injections) if injections else None,
+                metadata={"gate_transition": transition_record} if transition_record else {},
             )
         return None
 
@@ -578,6 +598,14 @@ class GenericGate:
         # Always evaluate triggers — gate state transitions (e.g. IDA open)
         # must apply even when the policy denies.
         trigger_result = self._evaluate_triggers(context, session_state)
+        # Preserve the trigger's gate_transition diagnostic across every
+        # branch below — previously the DENY/WARN policy branches returned
+        # policy_result verbatim (or a fresh GateResult.warn(...)) and
+        # silently dropped trigger_result.metadata, so a Stop-time gate
+        # transition (e.g. rbg-review OPEN on a satisfied condition) never
+        # reached the log when a DIFFERENT gate's Stop policy also denied
+        # (aops_2597b5ff scope D).
+        trigger_metadata = trigger_result.metadata if trigger_result else {}
 
         if policy_result and policy_result.verdict == GateVerdict.DENY:
             # Max-fire downgrade (escape-hatch): after N consecutive Stop blocks
@@ -611,11 +639,28 @@ class GenericGate:
                 return GateResult.warn(
                     system_message=degraded_msg,
                     context_injection=policy_result.context_injection,
+                    metadata=trigger_metadata,
                 )
-            return policy_result
+            return GateResult(
+                verdict=policy_result.verdict,
+                system_message=policy_result.system_message,
+                context_injection=policy_result.context_injection,
+                metadata={
+                    **trigger_metadata,
+                    **policy_result.metadata,
+                },  # allow-fallback: deliberate precedence — policy_result (the fired verdict) intentionally overrides trigger_result's diagnostic-only gate_transition key on collision; no data is required from either side
+            )
 
         if policy_result and policy_result.verdict == GateVerdict.WARN:
-            return policy_result
+            return GateResult(
+                verdict=policy_result.verdict,
+                system_message=policy_result.system_message,
+                context_injection=policy_result.context_injection,
+                metadata={
+                    **trigger_metadata,
+                    **policy_result.metadata,
+                },  # allow-fallback: same deliberate precedence as the DENY branch above
+            )
 
         return trigger_result
 
