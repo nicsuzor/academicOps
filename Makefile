@@ -26,6 +26,15 @@ GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
+# Additional published plugins that `make install` should install — everything on
+# the academicOps marketplace EXCEPT aops-cowork (which has its own isolated
+# marketplace/flow, see install-cowork). Soft installs: a plugin's asset can
+# legitimately be absent from a given dist build, so a failure warns and
+# continues (mirrors aops-tools). Claude-only: no antigravity builds exist for
+# these, so install-agy stays core+tools.
+CLAUDE_EXTRAS_PLUGIN_NAME := aops-extras@academicOps
+CLAUDE_TS_PLUGIN_NAME := aops-ts@academicOps
+CLAUDE_PKB_PLUGIN_NAME := aops-pkb@academicOps
 
 # LOCAL-dev marketplace + plugin names. `make dev`/`make install-dev` register the
 # built dist/ as a marketplace named `aops` (generated at dist/.claude-plugin/
@@ -278,6 +287,15 @@ install-claude:
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
 		&& echo "✓ Claude Code aops-tools installed" \
 		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
+	@command claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME) \
+		&& echo "✓ Claude Code aops-extras installed" \
+		|| echo "  ⚠️ Claude aops-extras install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
+	@command claude plugin install $(CLAUDE_TS_PLUGIN_NAME) \
+		&& echo "✓ Claude Code aops-ts installed" \
+		|| echo "  ⚠️ Claude aops-ts install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
+	@command claude plugin install $(CLAUDE_PKB_PLUGIN_NAME) \
+		&& echo "✓ Claude Code aops-pkb installed" \
+		|| echo "  ⚠️ Claude aops-pkb install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
 install-openclaw:
 	@echo "Installing aops plugin for OpenClaw..."
@@ -439,6 +457,15 @@ install-windows:
 		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
 			&& echo "✓ Windows Claude aops-tools installed" \
 			|| echo "  ⚠️ Windows Claude aops-tools install failed"; \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Claude aops-extras installed" \
+			|| echo "  ⚠️ Windows Claude aops-extras install failed"; \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_TS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Claude aops-ts installed" \
+			|| echo "  ⚠️ Windows Claude aops-ts install failed"; \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_PKB_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Claude aops-pkb installed" \
+			|| echo "  ⚠️ Windows Claude aops-pkb install failed"; \
 	else \
 		echo "  (no Windows-side claude found — skipping)"; \
 	fi
