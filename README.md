@@ -82,7 +82,7 @@ Axioms describe what must never happen. They don't enforce themselves — that's
 Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
 
 - **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, enforcer (periodic compliance), destructive-command block
+- **PreToolUse gates**: hydration, rbg (periodic compliance), destructive-command block
 - **PostToolUse**: boundary detection, warn-tier checks, autocommit
 - **Stop gates**: QA and handover discipline before a session ends
 - **Transcript capture**: every session recorded for reflection
@@ -108,7 +108,7 @@ flowchart TD
     B --> C[Agent works: tool calls]
     C --> D{sentinel gate\nPreToolUse}
     D -- destructive op on\nprotected path --> DB["BLOCK\n(hard deny)"]
-    D -- clear --> E{enforcer gate\nevery N write ops}
+    D -- clear --> E{rbg gate\nevery N write ops}
     E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
     E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
     EW --> F
@@ -293,16 +293,16 @@ session_defaults:
   gates:
     handover: warn      # warn | block | off
     qa: warn
-    enforcer: warn
+    rbg: warn
     ida: warn
     hydration: off
-    rbg_threshold: 50   # write ops between enforcer checks
+    rbg_threshold: 50   # write ops between rbg checks
 
 # Override per session type
 run_defaults:             # autonomous polecat workers
   gates:
     handover: block       # workers must hand over before exiting
-    enforcer: block
+    rbg: block
     rbg_threshold: 30
 
 crew_defaults: {}         # interactive crew sessions (inherits session_defaults)

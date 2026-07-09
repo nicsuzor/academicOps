@@ -106,20 +106,20 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Git-tracked**             | No — `hooks/` is NOT added to git                                                                                                                                               |
 | **Retention**               | Debugging value only; safe to delete after session ends without incident                                                                                                        |
 
-### 3.4 Gate Files (enforcer, etc.)
+### 3.4 Gate Files (rbg, etc.)
 
-| Attribute                   | Value                                                                       |
-| --------------------------- | --------------------------------------------------------------------------- |
-| **File type**               | `*-enforcer.md` (Markdown audit document)                                   |
-| **Producer**                | `aops-core/hooks/enforcer_gate.py` via `session_paths.get_gate_file_path()` |
-| **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-enforcer.md`                                   |
-| **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths         |
-| **Session types**           | All 6 (wherever enforcer gate is enabled)                                   |
-| **Naming**                  | `{base}-{gate_name}.md` where gate name = `rbg`                             |
-| **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                   |
-| **When processed**          | On compliance check request (periodic within session)                       |
-| **Git-tracked**             | No                                                                          |
-| **Retention**               | Session-scoped; ephemeral                                                   |
+| Attribute                   | Value                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **File type**               | `*-rbg.md` (Markdown audit document)                                                                     |
+| **Producer**                | `aops-core/lib/gates/custom_actions.py` (`create_audit_file`) via `session_paths.get_gate_file_path()`   |
+| **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-rbg.md`                                                                     |
+| **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths                                       |
+| **Session types**           | All 6 (wherever the `rbg` gate is enabled)                                                               |
+| **Naming**                  | `{base}-{gate_name}.md` where gate name = `rbg`                                                          |
+| **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                                                |
+| **When processed**          | On compliance check request (periodic within session)                                                    |
+| **Git-tracked**             | No                                                                                                        |
+| **Retention**               | Session-scoped; ephemeral                                                                                 |
 
 ### 3.5 Session Status JSON (SessionState)
 
@@ -276,7 +276,7 @@ Every scripted and agent-scheduled job that touches session files.
 | **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`)                                                            | End of `transcript.py`         |
 | **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                                                                                     | Every hook fire                |
 | **`rbg` gate hook**                                      | Session state + tool calls                                       | `*-rbg.md` gate file                                                                                    | Periodic (`gates.rbg_threshold`, see [`GATES.md#rbg-gate`](../enforcement/GATES.md#rbg-gate))           | PreToolUse hook                |
-| **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                                                                                     | Agent invocation               |
+| **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On `rbg` trigger                                                                                        | Agent invocation               |
 
 ---
 
@@ -333,7 +333,7 @@ The PKB is structured for human-readable notes (KB, tasks, daily notes). Raw obs
 Several artifacts are written mid-session:
 
 - Hook logs: written on every hook invocation throughout the session
-- Gate files: written when enforcer fires
+- Gate files: written when `rbg` fires
 - Status JSON: written at SessionStart and updated throughout
 
 These must be writable by the running agent/hook process in real-time. They cannot be deferred to post-session archival. This requires a fast, locally-writable path — not a PKB sync.
@@ -404,4 +404,4 @@ This is spec-only; implementation is out of scope for this task.
 | `polecat/cli.py`                      | `_get_sessions_base()`, `_run_docker_container()`, `save_worker_transcript()`, `_extract_gemini_sessions()` |
 | `polecat/observability.py`            | Polecat-specific metrics (sync latency, queue depth)                                                        |
 | `aops-core/hooks/unified_logger.py`   | Writes to hook log                                                                                          |
-| `aops-core/hooks/enforcer_gate.py`    | Writes to gate files                                                                                        |
+| `aops-core/lib/gates/custom_actions.py` | Writes to gate files (`create_audit_file`)                                                                |

@@ -142,7 +142,7 @@ from hooks.gate_config import (
     RBG_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE,
     HYDRATION_GATE_MODE, IDA_GATE_MODE, RBG_TOOL_CALL_THRESHOLD,
 )
-print(f"enforcer={RBG_GATE_MODE} threshold={RBG_TOOL_CALL_THRESHOLD}")
+print(f"rbg={RBG_GATE_MODE} threshold={RBG_TOOL_CALL_THRESHOLD}")
 print(f"qa={QA_GATE_MODE} handover={HANDOVER_GATE_MODE}")
 print(f"ida={IDA_GATE_MODE} hydration={HYDRATION_GATE_MODE}")
 '
@@ -471,7 +471,7 @@ grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
 ### Design rationale (specs)
 
 - [`specs/enforcement/enforcement.md`](enforcement.md) — design statement: why enforcement is shaped this way, pipeline and pyramid views, evidence loop, the authoritative mechanism index (§6).
-- [`specs/agents/rbg.md`](../agents/rbg.md) — the "ultra vires" scope distinction and the enforcer agent's invocation points.
+- [`specs/agents/rbg.md`](../agents/rbg.md) — the "ultra vires" scope distinction and the rbg agent's invocation points.
 - [`specs/enforcement/pyramid.md`](pyramid.md), [`task-contract.md`](task-contract.md), [`workflow.md`](workflow.md), [`sign-off.md`](sign-off.md) — the module-boundary layer model (L0–L4); which layer owns each surviving mechanism post-H1–H18.
 
 ### Source
