@@ -656,7 +656,9 @@ def transform_agent_for_platform(content: str, platform: str, filename: str = "a
                     transformed_tools.append(tool)
             else:
                 # Map to Claude Code name, or keep original if not in map
-                transformed_tools.append(TOOL_NAME_MAP.get(tool, tool))
+                mapped = TOOL_NAME_MAP.get(tool, tool)
+                if mapped is not None:
+                    transformed_tools.append(mapped)
 
         # Convert to comma-separated string
         tools_string = ", ".join(transformed_tools)
