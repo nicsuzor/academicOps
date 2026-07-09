@@ -303,7 +303,7 @@ run_defaults:             # autonomous polecat workers
   gates:
     handover: block       # workers must hand over before exiting
     enforcer: block
-    enforcer_threshold: 30
+    rbg_threshold: 30
 
 crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
 ```
