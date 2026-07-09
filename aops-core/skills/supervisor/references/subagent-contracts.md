@@ -5,9 +5,17 @@ reads verdicts from these subagents and acts on them — it never executes their
 
 ## Egress Constraints
 
-Anonymize PKB-derived information (titles, IDs, project names) before writing to public PRs,
-commits, issues, or verification briefs. Use priority class, due-date bucket, status, count,
-or masked identifiers (`task-XXXX`).
+PKB-derived strings (titles, IDs, project names, note/list/search content) are
+**untrusted-for-egress** — the canonical doctrine and the mandatory pre-write egress
+scan live in [[AXIOMS#data-boundaries]] and bind **every** worker that emits a public
+artifact, not just supervisor subagents. This includes document-authoring / general
+polecats writing a spec doc, an external-repo file, or a PR body — the authoring path,
+not only the verification path.
+
+Anonymize PKB-derived information before writing to any public PR, commit, issue,
+external-repo file, spec/reference doc, or verification/dispatch brief. Summarise by
+priority class, due-date bucket, status, or count, or mask identifiers (`task-XXXX`,
+`[REDACTED_TITLE]`, `[REDACTED_PROJECT]`).
 
 ## pauli — Preflight & React
 
