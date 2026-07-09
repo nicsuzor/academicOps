@@ -1,3 +1,19 @@
+# This is the current, live pattern for installing the Stage-1 triage
+# pipeline (lint -> enforcer -> qa) in a satellite repo. Prefer '@dev' over
+# a pinned tag unless you have a mechanism to advance the tag yourself —
+# a static tag does not auto-advance and can leave a satellite repo running
+# a stale pipeline for weeks with merged upstream fixes silently inert
+# (academicOps#2158).
+#
+# The agent-merge-prep.yml / merge-prep-cron.yml shims formerly shown
+# alongside this file are REMOVED (2026-07-10). Those reusable workflows
+# were retired from dev on 2026-06-10/06-22, replaced by the Stage-2
+# "mechanic" model: a maintainer's PR review approval admits the PR to
+# Stage 2 (admit-on-review.yml), which runs agent-mechanic.yml inside this
+# same pr-pipeline.yml orchestrator — there is no separate cron dispatcher
+# to shim anymore. For Stage-2 autonomous fix-loop support in a satellite
+# repo, install admit-on-review.yml and extend this shim with a `mechanic`
+# job (see specs/workflows/pr-pipeline.md §3.3-3.6), not a merge-prep-cron shim.
 name: "PR Review Pipeline (Shim)"
 
 on:
