@@ -36,7 +36,7 @@ There is no separate `BLOCK` state. `REVISE` is the sole terminal violation verd
 
 ## Axioms
 
-@${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS.md
+@${CLAUDE_PLUGIN_ROOT}/.agents/AXIOMS.md
 @${CLAUDE_PLUGIN_ROOT}/.agents/rules/AXIOMS-REVIEW.md
 
 ## Project Rules (repo-local, in addition to universal axioms)
