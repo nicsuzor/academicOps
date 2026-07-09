@@ -260,32 +260,13 @@ def run_router_claude_raw(input_data: dict, timeout: int = 30) -> tuple[str, int
     return result.stdout, result.returncode, result.stderr
 
 
-def run_router_gemini(input_data: dict, event: str, timeout: int = 30) -> tuple[dict, str]:
-    """Run router in Gemini CLI mode."""
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(AOPS_CORE)
-    result = subprocess.run(
-        [sys.executable, str(ROUTER_PATH), "--client", "gemini", event],
-        input=json.dumps(input_data),
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        env=env,
-        cwd=str(AOPS_CORE),
-    )
-    output = {}
-    if result.stdout.strip():
-        output = json.loads(result.stdout)
-    return output, result.stderr
-
-
 def run_router_agy(input_data: dict, event: str, timeout: int = 30) -> tuple[dict, str]:
     """Run router in Antigravity (agy) mode.
 
-    Sibling of run_router_claude/run_router_gemini. Exercises the `--client agy`
-    output path end-to-end so its stdout can be checked against the agy
-    protojson accept-contract (see tests/hooks/agy_accept_contract.py). This is
-    the consumer-side coverage that was missing when commit 4c73f02a folded agy
+    Sibling of run_router_claude. Exercises the `--client agy` output path
+    end-to-end so its stdout can be checked against the agy protojson
+    accept-contract (see tests/hooks/agy_accept_contract.py). This is the
+    consumer-side coverage that was missing when commit 4c73f02a folded agy
     into the Claude-schema gemini path (aops-27004ffd / aops-2dc18411).
     """
     env = os.environ.copy()

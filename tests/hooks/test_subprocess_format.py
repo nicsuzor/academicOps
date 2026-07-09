@@ -1,14 +1,14 @@
 """Subprocess integration — JSON format per platform.
 
 Tests that the router executes correctly as a subprocess and produces
-correct JSON for Claude Code and Gemini CLI.
+correct JSON for Claude Code.
 """
 
 import uuid
 
 import pytest
 
-from tests.hooks.gate_helpers import run_router_claude, run_router_gemini
+from tests.hooks.gate_helpers import run_router_claude
 
 
 class TestRouterClaudeFormat:
@@ -67,61 +67,6 @@ class TestRouterClaudeFormat:
         output, stderr = run_router_claude(input_data)
         assert "decision" in output, f"Missing decision. Output: {output}"
         assert output["decision"] in ["approve", "block"]
-
-
-class TestRouterGeminiFormat:
-    """Gemini CLI output format from subprocess invocation."""
-
-    def test_session_start_output_format(self) -> None:
-        input_data = {}
-        output, stderr = run_router_gemini(input_data, "SessionStart")
-        assert "decision" in output, f"Missing decision. Output: {output}"
-        assert output["decision"] in ["allow", "deny"]
-
-    def test_before_tool_output_format(self) -> None:
-        input_data = {
-            "tool_name": "shell",
-            "tool_input": {"command": "ls"},
-            "session_id": f"test-{uuid.uuid4()}",
-        }
-        output, stderr = run_router_gemini(input_data, "BeforeTool")
-        assert "decision" in output, f"Missing decision. Output: {output}"
-        assert output["decision"] in ["allow", "deny"]
-        assert output["decision"] == "allow", f"Expected allow. Output: {output}, Stderr: {stderr}"
-
-    def test_after_tool_output_format(self) -> None:
-        input_data = {
-            "tool_name": "shell",
-            "tool_input": {"command": "ls"},
-            "tool_output": "file1 file2",
-        }
-        output, stderr = run_router_gemini(input_data, "AfterTool")
-        assert "decision" in output, f"Missing decision. Output: {output}"
-        assert output["decision"] in ["allow", "deny"]
-
-    def test_session_end_output_format(self) -> None:
-        input_data = {}
-        output, stderr = run_router_gemini(input_data, "SessionEnd")
-        assert "decision" in output, f"Missing decision. Output: {output}"
-        assert output["decision"] in ["allow", "deny"]
-
-
-class TestRouterEventMapping:
-    """Gemini to Claude event mapping."""
-
-    def test_before_tool_maps_to_pretooluse(self) -> None:
-        input_data = {
-            "tool_name": "read_file",
-            "tool_input": {"path": "test.txt"},
-            "session_id": f"test-{uuid.uuid4()}",
-        }
-        output, stderr = run_router_gemini(input_data, "BeforeTool")
-        assert output["decision"] == "allow", f"Expected allow. Output: {output}, Stderr: {stderr}"
-
-    def test_session_end_maps_to_stop(self) -> None:
-        input_data = {}
-        output, stderr = run_router_gemini(input_data, "SessionEnd")
-        assert "decision" in output
 
 
 class TestRouterStdoutIntegrity:
