@@ -186,7 +186,7 @@ flowchart TD
     A2 -.-> A3
 ```
 
-> **Three complementary layers.** [`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1 owns rule→mechanism→trigger→mode routing (the enforcement verdict); [`adhd/surface-contract.md`](adhd/surface-contract.md) § Gate user-visibility owns the per-gate user-surfacing CHOICE (`silent`/`same`/`file`); this file owns the **wire mechanics** below — which client field can actually carry each channel.
+> **Three complementary layers.** [`ENFORCEMENT-MAP.md`](ENFORCEMENT-MAP.md) §1 owns rule→mechanism→trigger→mode routing (the enforcement verdict); [`adhd/surface-contract.md`](adhd/surface-contract.md) § Gate user-visibility owns the per-gate user-surfacing CHOICE (`silent`/`same`/`file`); this file owns the **wire mechanics** below — which client field can actually carry each channel.
 
 ## Regression-avoidance invariants (24) — encoded as permanent test anchors
 

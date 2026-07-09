@@ -44,7 +44,7 @@ stays skipped for subagent-classified sessions as a deliberate, permanent
 exception — see [`GATES.md` § Subagent & worker session
 scope](GATES.md#subagent--worker-session-scope). The full mechanism roster
 (which gate, what it catches, trigger and mode per surface) is the
-[`ENFORCEMENT-MAP.md` §1 matrix](../../ENFORCEMENT-MAP.md#1-unified-ssot-matrix-rules-mechanisms-and-triggers);
+[`ENFORCEMENT-MAP.md` §1 matrix](../ENFORCEMENT-MAP.md#1-unified-ssot-matrix-rules-mechanisms-and-triggers);
 per-gate runtime/forensic detail is [`GATES.md`](GATES.md).
 
 **Retired from this layer:** `sentinel` — deleted (H1, "no shitty NLP";
