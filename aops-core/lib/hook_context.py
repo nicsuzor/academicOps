@@ -2,8 +2,8 @@
 
 Lives in `lib/` rather than `hooks/` because gate-engine code (`lib/gates/*`)
 needs to consume it, and `lib/` is the lower layer. The hook-platform-specific
-output schemas (ClaudeHookSpecificOutput, GeminiHookOutput, etc.) stay in
-`hooks/schemas.py` — only the cross-cutting *input* context moved here.
+output schemas (ClaudeHookSpecificOutput, etc.) stay in `hooks/schemas.py` —
+only the cross-cutting *input* context moved here.
 
 `hooks/schemas.py` re-exports `HookContext` for backward compatibility.
 """

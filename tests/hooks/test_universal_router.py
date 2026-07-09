@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -10,7 +9,6 @@ if str(AOPS_CORE_DIR) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE_DIR))
 
 from hooks.router import CanonicalHookOutput, HookRouter
-from hooks.schemas import GeminiHookOutput
 
 
 class TestUniversalRouter:
@@ -19,24 +17,6 @@ class TestUniversalRouter:
         # Mock get_session_data to avoid reading shared PID session map during xdist tests
         monkeypatch.setattr("hooks.router.get_session_data", lambda: {})
         return HookRouter()
-
-    def test_normalize_input_basic(self, router_instance):
-        raw = {
-            "tool_name": "read_file",
-            "tool_input": {"path": "test.txt"},
-            "hook_event_name": "BeforeTool",
-        }
-        # Clear AOPS_SESSION_ID so the router doesn't pick up a real session ID
-        # when running inside a Claude Code session (env leak into test)
-        with patch.dict("os.environ", {"AOPS_SESSION_ID": ""}, clear=False):
-            router_instance.session_data = {}  # Also clear cached session data
-            ctx = router_instance.normalize_input(
-                raw, gemini_event="BeforeTool", client_type="gemini"
-            )
-
-        assert ctx.hook_event == "PreToolUse"
-        assert ctx.tool_name == "read_file"
-        assert ctx.session_id.startswith("gemini-") or ctx.session_id.startswith("unknown-")
 
     def test_normalize_input_claude(self, router_instance):
         raw = {
@@ -49,22 +29,6 @@ class TestUniversalRouter:
 
         assert ctx.hook_event == "PreToolUse"
         assert ctx.session_id == "claude-1"
-
-    def test_output_for_gemini(self, router_instance):
-        canonical = CanonicalHookOutput(
-            verdict="deny", context_injection="Reason", system_message="Msg"
-        )
-        out = router_instance.output_for_gemini(canonical, "BeforeTool")
-
-        assert isinstance(out, GeminiHookOutput)
-        assert out.decision == "deny"
-        # `reason` is the user-visible short denial summary (system_message).
-        # The recovery payload (context_injection) goes to additionalContext
-        # so the model can see it.
-        assert out.reason == "Msg"
-        assert out.systemMessage == "Msg"
-        assert out.hookSpecificOutput is not None
-        assert out.hookSpecificOutput.additionalContext == "Reason"
 
     def test_output_for_claude_stop(self, router_instance):
         canonical = CanonicalHookOutput(
@@ -250,28 +214,6 @@ class TestSubagentTypeExtraction:
             "session_id": "test-123",
             "tool_name": "Task",
             "tool_input": {"subagent_type": "enforcer", "prompt": "Check compliance"},
-        }
-        ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "enforcer"
-
-    def test_gemini_delegate_to_agent_name(self, router_instance):
-        """Gemini delegate_to_agent with name= extracts correctly."""
-        raw = {
-            "hook_event_name": "PreToolUse",
-            "session_id": "test-123",
-            "tool_name": "delegate_to_agent",
-            "tool_input": {"name": "enforcer", "query": "Check compliance"},
-        }
-        ctx = router_instance.normalize_input(raw)
-        assert ctx.subagent_type == "enforcer"
-
-    def test_gemini_delegate_to_agent_agent_name(self, router_instance):
-        """Gemini delegate_to_agent with agent_name= also works."""
-        raw = {
-            "hook_event_name": "PreToolUse",
-            "session_id": "test-123",
-            "tool_name": "delegate_to_agent",
-            "tool_input": {"agent_name": "enforcer", "query": "Check compliance"},
         }
         ctx = router_instance.normalize_input(raw)
         assert ctx.subagent_type == "enforcer"

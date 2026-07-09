@@ -171,9 +171,7 @@ def main():
 
             # 2. Update version in template files consistent with release-please config
             extra_files = [
-                "templates/aops-core.gemini-extension.json",
                 "templates/aops-core.plugin.json",
-                "templates/aops-tools.gemini-extension.json",
                 "templates/aops-tools.plugin.json",
             ]
             template_paths = []

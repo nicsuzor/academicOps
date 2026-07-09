@@ -19,50 +19,6 @@ def router(monkeypatch):
     return HookRouter()
 
 
-class TestGeminiEventMapping:
-    """Test regression cases for Gemini event mapping.
-
-    Production passes ``--client gemini`` for these hooks; the router resolves
-    the wire name through ``client_spec.to_internal_event("gemini", …)``.
-    """
-
-    def test_gemini_before_tool_maps_to_pre_tool_use(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="BeforeTool", client_type="gemini")
-        assert ctx.hook_event == "PreToolUse"
-
-    def test_gemini_after_tool_maps_to_post_tool_use(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="AfterTool", client_type="gemini")
-        assert ctx.hook_event == "PostToolUse"
-
-    def test_gemini_before_agent_maps_to_user_prompt_submit(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="BeforeAgent", client_type="gemini")
-        assert ctx.hook_event == "UserPromptSubmit"
-
-    def test_gemini_after_agent_maps_to_stop(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="AfterAgent", client_type="gemini")
-        assert ctx.hook_event == "Stop"
-
-    def test_gemini_session_end_maps_to_stop(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="SessionEnd", client_type="gemini")
-        assert ctx.hook_event == "SessionEnd"
-
-    def test_gemini_event_without_mapping_passes_through(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="UnknownEvent", client_type="gemini")
-        assert ctx.hook_event == "UnknownEvent"
-
-
 class TestClientTypePropagation:
     """client_type from --client flag should land on HookContext and JSONL.
 
@@ -76,13 +32,6 @@ class TestClientTypePropagation:
             ctx = router.normalize_input(raw, client_type="claude")
         assert ctx.client_type == "claude"
 
-    def test_client_type_gemini_set_on_context(self, router):
-        raw = {"session_id": "test-session"}
-        with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, gemini_event="BeforeTool", client_type="gemini")
-        assert ctx.client_type == "gemini"
-        assert ctx.hook_event == "PreToolUse"
-
     def test_client_type_defaults_to_none(self, router):
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
@@ -95,7 +44,7 @@ class TestClientTypePropagation:
 
         raw = {"session_id": "test-session"}
         with patch("hooks.router.persist_session_data"):
-            ctx = router.normalize_input(raw, client_type="gemini")
+            ctx = router.normalize_input(raw, client_type="agy")
         entry = HookLogEntry(
             logged_at="2026-04-30T00:00:00+00:00",
             exit_code=0,
@@ -104,7 +53,7 @@ class TestClientTypePropagation:
             session_id=ctx.session_id,
         )
         dumped = entry.model_dump()
-        assert dumped["client_type"] == "gemini"
+        assert dumped["client_type"] == "agy"
 
 
 class TestAntigravityEventMapping:
