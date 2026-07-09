@@ -82,7 +82,7 @@ Axioms describe what must never happen. They don't enforce themselves — that's
 Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
 
 - **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, enforcer (periodic compliance), destructive-command block
+- **PreToolUse gates**: hydration, rbg (periodic compliance), destructive-command block
 - **PostToolUse**: boundary detection, warn-tier checks, autocommit
 - **Stop gates**: QA and handover discipline before a session ends
 - **Transcript capture**: every session recorded for reflection
@@ -92,7 +92,7 @@ The gates riding those hooks:
 | Gate         | What it catches                                           | Default                                                   |
 | ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
 | `sentinel`   | Destructive ops on protected env paths                    | `block`                                                   |
-| `enforcer`   | Scope drift / compliance, every N write ops               | `warn`                                                    |
+| `rbg`        | Scope drift / compliance, every N write ops               | `warn`                                                    |
 | `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
 | `qa`         | Claiming "done" without running verification              | `warn`                                                    |
 | `handover`   | Exiting without committing, updating tasks, or reflecting | `warn` interactive / `block` polecat                      |
@@ -108,7 +108,7 @@ flowchart TD
     B --> C[Agent works: tool calls]
     C --> D{sentinel gate\nPreToolUse}
     D -- destructive op on\nprotected path --> DB["BLOCK\n(hard deny)"]
-    D -- clear --> E{enforcer gate\nevery N write ops}
+    D -- clear --> E{rbg gate\nevery N write ops}
     E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
     E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
     EW --> F
@@ -125,7 +125,7 @@ flowchart TD
     N --> O[Merge]
 ```
 
-Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`enforcer`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
 
 The same ladder continues past the session, into GitHub:
 
@@ -287,17 +287,17 @@ session_defaults:
   gates:
     handover: warn      # warn | block | off
     qa: warn
-    enforcer: warn
+    rbg: warn
     ida: warn
     hydration: off
-    enforcer_threshold: 50   # write ops between enforcer checks
+    rbg_threshold: 50   # write ops between rbg checks
 
 # Override per session type
 run_defaults:             # autonomous polecat workers
   gates:
     handover: block       # workers must hand over before exiting
-    enforcer: block
-    enforcer_threshold: 30
+    rbg: block
+    rbg_threshold: 30
 
 crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
 ```
@@ -308,10 +308,10 @@ See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.exam
 
 ```bash
 export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
-export ENFORCER_GATE_MODE=block     # stricter compliance checking
+export RBG_GATE_MODE=block          # stricter compliance checking
 ```
 
-The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `ENFORCER_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `ENFORCER_TOOL_CALL_THRESHOLD`.
+The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `RBG_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`.
 
 3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 

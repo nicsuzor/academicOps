@@ -69,7 +69,7 @@ Native Claude Code installation on a developer machine (laptop, WSL, services-ne
 - **Plugin source & override behaviour**: aops-core loaded from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` (most recent dir wins). Plugin enabled per `~/.claude/settings.json` `enabledPlugins`. No marketplace-override issue on this surface.
 - **Hook env propagation**: ⚠ **Broken.** `settings.json` `env` block doesn't propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). All `*_GATE_MODE` env vars in settings.json are dead — `gate_config.py` ignores env vars by design (hard-fail policy) and reads only from `polecat.yaml` via `$AOPS_SESSIONS`. Result: gates silently fail on import if `$AOPS_SESSIONS` isn't in hook env. → see _Cross-cutting: Hook env stripping_.
 - **MCPs available**: Same set as the WSL crew container plus host-shell access. Specific MCP set depends on host's `settings.json` `mcpServers` block.
-- **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, `ida` / `handover` / `enforcer` (formerly `custodiet`) / `qa` active per `polecat.yaml gates.*` — see [`GATES.md`](enforcement/GATES.md) for the runtime catalogue.
+- **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, `ida` / `handover` / `rbg` (formerly `custodiet`) / `qa` active per `polecat.yaml gates.*` — see [`GATES.md`](enforcement/GATES.md) for the runtime catalogue.
 - **Worker dispatch**: Direct — can launch `pc run`, `pc crew`, `jules`, GHA workflows. The intended primary dispatcher surface alongside the WSL crew container.
 - **Known traps**: Hook env stripping (see above and "Cross-cutting notes" below) is the material trap here. Host-local housekeeping quirks (stale plugin-cache dirs, secret hygiene in `settings.json`) are tracked in the personal ops PKB, not here.
 - **Trust posture**: Full user trust.
@@ -266,7 +266,7 @@ The polecat launcher picks the overlay from the **dispatch subcommand** (`poleca
 | `polecat run`  | `polecat.yaml:run_defaults` over `session_defaults`  | `polecat run` autonomous workers                   |
 | (unset)        | None — `gate_config.py` built-in defaults apply      | Direct CLI sessions (not polecat-launched)         |
 
-For direct CLI sessions, no polecat launcher is involved. `gate_config.py` falls back to its built-in defaults (all `warn`, hydration `off`). Override via env vars in your shell profile or per-directory CLI settings.
+For direct CLI sessions, no polecat launcher is involved — `gate_config.py` falls back to its built-in defaults; see "Hook env stripping" above for the resolved defaults and override instructions.
 
 ---
 

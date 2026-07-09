@@ -37,9 +37,9 @@ Two concerns live here:
 PROVISIONAL cells are contested/empirically-pending. USER-visibility cells are
 resolved by the PTY harness (``scripts/pty_hook_probe.py`` →
 ``tests/hooks/fixtures/pty_capabilities.json``, Test Layer C — drives a real
-interactive ``claude`` in tmux). The headless ``scripts/verify_hook_formats.py``
-was removed 2026-06-26 (it was structurally blind to TTY user-visibility). Cells
-are flagged ``provisional=True`` with a note so a wrong guess is never silently
+interactive ``claude`` in tmux), not headless JSON verification: a headless
+check is structurally blind to TTY user-visibility. Cells are flagged
+``provisional=True`` with a note so a wrong guess is never silently
 load-bearing.
 """
 
@@ -224,18 +224,13 @@ class ChannelSpec:
     user_message: bool
     notes: str = ""
     provisional: bool = False
-    # The "quiet split" disposition (ENFORCEMENT-MAP §1.1 Ephemeral→agent target):
-    # can this (client, event) deliver the FULL instruction body to the AGENT while
-    # the USER sees ONLY a one-line summary? On Claude Stop this is the asyncRewake
-    # path (config asyncRewake:true + rewakeMessage/rewakeSummary; hook exits 2):
-    # body → agent <system-reminder>, user → ⏺ <rewakeSummary> one-liner.
-    # PTY-PROVEN live on 2.1.195 (stop-asyncrewake-split: user_saw_body=False,
-    # user_saw_summary=True, agent_ctx_body=True). CAVEAT — delivery ≠ compulsion:
-    # asyncRewake wakes the agent but treats the body as advisory it weighs, so it
-    # is NOT a hard block. It is the quiet ADVISORY Stop path (ida-style), not a
-    # substitute for decision:block. It is CONFIG-level (build registers the hook),
-    # NOT router-stdout-emitted; the one-line user summary is UNAVOIDABLE (no
-    # user-silent Stop exists). False elsewhere = no proven split channel.
+    # The "quiet split" disposition: can this (client, event) deliver the FULL
+    # instruction body to the AGENT while the USER sees only a one-line summary?
+    # Claude's wire-level `asyncRewake` (Stop, exit 2) is the mechanism that would
+    # do this, but the router does not wire it — see the `asyncRewake` row in
+    # specs/CLIENT-TRANSLATION.md's per-client capability matrix for what it does
+    # and why it stays unused. Deliberately False everywhere. Tests assert this
+    # stays False — do not re-enable without updating both.
     agent_full_user_summary: bool = False
 
 
@@ -247,23 +242,15 @@ _CHANNELS: dict[tuple[str, str], ChannelSpec] = {
     ("claude", Event.USER_PROMPT): ChannelSpec(True, True, True),
     ("claude", Event.POST_TOOL): ChannelSpec(False, True, True),
     ("claude", Event.SESSION_START): ChannelSpec(False, True, True),
-    # Stop additionalContext-without-block CONFIRMED on 2.1.191, re-confirmed
-    # 2.1.195 (mem-4ab6cc0b; task aops-c0363bf8, PTY-probed): delivery works
-    # without blocking. The legacy "Stop rejects hookSpecificOutput" (2.1.158)
-    # is STALE. user_message=True: the delivered field ALSO renders to the user
-    # as "Stop hook feedback:" — there is NO user-SILENT agent-only Stop channel.
-    # BUT the asyncRewake Stop hook (config asyncRewake:true + rewakeMessage +
-    # rewakeSummary; fires on exit 2) DOES give the Ephemeral->agent disposition:
-    # full body -> agent <system-reminder>, user sees only a one-line <summary>
-    # (decompiled + PTY-proven 5x, 2026-06-29, kb-fcc2b95c). NB delivery !=
-    # compulsion: the woken agent weighs it as advisory (did not reliably act),
-    # so block-mode gates (handover) still need can_block. See ENFORCEMENT-MAP
-    # §1.1 caveat + RCA #2014.
+    # Stop additionalContext-without-block: delivery works without blocking.
+    # user_message=True: the delivered field ALSO renders to the user as "Stop
+    # hook feedback:" — there is NO user-silent agent-only Stop channel.
+    # Full channel rationale + the asyncRewake retirement: CLIENT-TRANSLATION.md.
     ("claude", Event.STOP): ChannelSpec(
         True,
         True,
         True,
-        notes="2.1.195 mem-4ab6cc0b; asyncRewake removed (#2181 fix direction B)",
+        notes="see specs/CLIENT-TRANSLATION.md (#2181)",
     ),
     ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
     # ---- Antigravity CLI (agy) ----

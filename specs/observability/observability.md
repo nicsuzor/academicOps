@@ -106,20 +106,20 @@ All artifact types across all 6 session types. "Current" means what the code act
 | **Git-tracked**             | No — `hooks/` is NOT added to git                                                                                                                                               |
 | **Retention**               | Debugging value only; safe to delete after session ends without incident                                                                                                        |
 
-### 3.4 Gate Files (enforcer, etc.)
+### 3.4 Gate Files (rbg, etc.)
 
-| Attribute                   | Value                                                                       |
-| --------------------------- | --------------------------------------------------------------------------- |
-| **File type**               | `*-enforcer.md` (Markdown audit document)                                   |
-| **Producer**                | `aops-core/hooks/enforcer_gate.py` via `session_paths.get_gate_file_path()` |
-| **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-enforcer.md`                                   |
-| **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths         |
-| **Session types**           | All 6 (wherever enforcer gate is enabled)                                   |
-| **Naming**                  | `{base}-{gate_name}.md` where gate name = `enforcer`                        |
-| **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                   |
-| **When processed**          | On compliance check request (periodic within session)                       |
-| **Git-tracked**             | No                                                                          |
-| **Retention**               | Session-scoped; ephemeral                                                   |
+| Attribute                   | Value                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **File type**               | `*-rbg.md` (Markdown audit document)                                                                     |
+| **Producer**                | `aops-core/lib/gates/custom_actions.py` (`create_audit_file`) via `session_paths.get_gate_file_path()`   |
+| **Host-side path (target)** | `$AOPS_SESSIONS/hooks/{base}-rbg.md`                                                                     |
+| **Fallback**                | Same resolution logic as hook log: fallback to provider-local paths                                       |
+| **Session types**           | All 6 (wherever the `rbg` gate is enabled)                                                               |
+| **Naming**                  | `{base}-{gate_name}.md` where gate name = `rbg`                                                          |
+| **Processor**               | `aops-pkb:rbg` agent reads on-demand; not batch-processed                                                |
+| **When processed**          | On compliance check request (periodic within session)                                                    |
+| **Git-tracked**             | No                                                                                                        |
+| **Retention**               | Session-scoped; ephemeral                                                                                 |
 
 ### 3.5 Session Status JSON (SessionState)
 
@@ -260,23 +260,23 @@ Git-tracked: transcripts + summaries only. Everything else is local.
 
 Every scripted and agent-scheduled job that touches session files.
 
-| Process                                                 | Inputs                                                           | Outputs                                                                                                | Cadence                                      | Trigger                        |
-| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------- | ------------------------------ |
-| **`transcript.py`** (single session)                    | Client log (`.jsonl` or Gemini `.json`)                          | `transcripts/*-full.md`, `transcripts/*-abridged.md`, `summaries/*.json`, `client-logs/*-client.jsonl` | On-demand                                    | Manual or Stop hook            |
-| **`transcript.py --all`**                               | All client logs in `$AOPS_SESSIONS` and extracted container dirs | Same as above, batch                                                                                   | On-demand                                    | Manual or `/sleep`             |
-| **`sync_client_log()`**                                 | Raw client log file + session_id                                 | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl`                                                       | Per-session (called from `transcript.py`)    | Called inside `transcript.py`  |
-| **`polecat/cli.py::_run_docker_container()`** (extract) | Running container state                                          | Extracted files in `$AOPS_SESSIONS/polecats/{id}/` or `crew/{name}/`                                   | Post-container-stop                          | Automatic via `docker cp`      |
-| **`_extract_gemini_sessions()`**                        | `~/.gemini/tmp/` in container                                    | Host-side session dir                                                                                  | Post-container-stop                          | Called from `polecat run/crew` |
-| **`save_worker_transcript()`**                          | `polecat run` captured stdout                                    | `$POLECAT_HOME/polecats/{task_id}.jsonl`                                                               | Per polecat-run session                      | Auto post-run                  |
-| **`/sleep` — Phase 1: Backfill**                        | Session client logs missing transcripts                          | Runs `transcript.py` for each                                                                          | `/sleep` cycle                               | Cron / manual `/sleep`         |
-| **`/sleep` — Phase 1b: Mining**                         | `$AOPS_SESSIONS/transcripts/*.md` (unmined)                      | PKB knowledge notes (`$ACA_DATA/brain/notes/`)                                                         | `/sleep` cycle                               | Cron / manual `/sleep`         |
-| **`/sleep` — Phase 2+: Synthesis**                      | PKB observations                                                 | Synthesis notes in PKB                                                                                 | `/sleep` cycle                               | Cron / manual `/sleep`         |
-| **`/daily` — Today's Log synthesis**                    | `$AOPS_SESSIONS/summaries/*.json`                                | Daily note editorial synthesis of the day's sessions                                                   | Once/daily                                   | Manual `/daily`                |
-| **`polecat sync`**                                      | Git working repos + bare mirrors                                 | Pushed to remotes                                                                                      | On-demand                                    | Manual `polecat sync`          |
-| **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`) | End of `transcript.py`         |
-| **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                          | Every hook fire                |
-| **Enforcer gate hook**                                  | Session state + tool calls                                       | `*-enforcer.md` gate file                                                                              | Periodic (every ~25 ops)                     | PreToolUse hook                |
-| **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On enforcer trigger                          | Agent invocation               |
+| Process                                                 | Inputs                                                           | Outputs                                                                                                | Cadence                                                                                                 | Trigger                        |
+| ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **`transcript.py`** (single session)                    | Client log (`.jsonl` or Gemini `.json`)                          | `transcripts/*-full.md`, `transcripts/*-abridged.md`, `summaries/*.json`, `client-logs/*-client.jsonl` | On-demand                                                                                               | Manual or Stop hook            |
+| **`transcript.py --all`**                               | All client logs in `$AOPS_SESSIONS` and extracted container dirs | Same as above, batch                                                                                   | On-demand                                                                                               | Manual or `/sleep`             |
+| **`sync_client_log()`**                                 | Raw client log file + session_id                                 | `$AOPS_SESSIONS/client-logs/{base}-client.jsonl`                                                       | Per-session (called from `transcript.py`)                                                               | Called inside `transcript.py`  |
+| **`polecat/cli.py::_run_docker_container()`** (extract) | Running container state                                          | Extracted files in `$AOPS_SESSIONS/polecats/{id}/` or `crew/{name}/`                                   | Post-container-stop                                                                                     | Automatic via `docker cp`      |
+| **`_extract_gemini_sessions()`**                        | `~/.gemini/tmp/` in container                                    | Host-side session dir                                                                                  | Post-container-stop                                                                                     | Called from `polecat run/crew` |
+| **`save_worker_transcript()`**                          | `polecat run` captured stdout                                    | `$POLECAT_HOME/polecats/{task_id}.jsonl`                                                               | Per polecat-run session                                                                                 | Auto post-run                  |
+| **`/sleep` — Phase 1: Backfill**                        | Session client logs missing transcripts                          | Runs `transcript.py` for each                                                                          | `/sleep` cycle                                                                                          | Cron / manual `/sleep`         |
+| **`/sleep` — Phase 1b: Mining**                         | `$AOPS_SESSIONS/transcripts/*.md` (unmined)                      | PKB knowledge notes (`$ACA_DATA/brain/notes/`)                                                         | `/sleep` cycle                                                                                          | Cron / manual `/sleep`         |
+| **`/sleep` — Phase 2+: Synthesis**                      | PKB observations                                                 | Synthesis notes in PKB                                                                                 | `/sleep` cycle                                                                                          | Cron / manual `/sleep`         |
+| **`/daily` — Today's Log synthesis**                    | `$AOPS_SESSIONS/summaries/*.json`                                | Daily note editorial synthesis of the day's sessions                                                   | Once/daily                                                                                              | Manual `/daily`                |
+| **`polecat sync`**                                      | Git working repos + bare mirrors                                 | Pushed to remotes                                                                                      | On-demand                                                                                               | Manual `polecat sync`          |
+| **`transcript.py` git push**                            | `$AOPS_SESSIONS/transcripts/`, `$AOPS_SESSIONS/summaries/`       | Committed + pushed to sessions git repo                                                                | Per `transcript.py` run (unless `--no-push`)                                                            | End of `transcript.py`         |
+| **Unified logger hook**                                 | Hook execution events                                            | `*-hooks.jsonl` entries                                                                                | Per hook invocation                                                                                     | Every hook fire                |
+| **`rbg` gate hook**                                      | Session state + tool calls                                       | `*-rbg.md` gate file                                                                                    | Periodic (`gates.rbg_threshold`, see [`GATES.md#rbg-gate`](../enforcement/GATES.md#rbg-gate))           | PreToolUse hook                |
+| **`aops-pkb:rbg`**                                      | Gate file path                                                   | Compliance verdict (OK/WARN/BLOCK)                                                                     | On `rbg` trigger                                                                                        | Agent invocation               |
 
 ---
 
@@ -333,7 +333,7 @@ The PKB is structured for human-readable notes (KB, tasks, daily notes). Raw obs
 Several artifacts are written mid-session:
 
 - Hook logs: written on every hook invocation throughout the session
-- Gate files: written when enforcer fires
+- Gate files: written when `rbg` fires
 - Status JSON: written at SessionStart and updated throughout
 
 These must be writable by the running agent/hook process in real-time. They cannot be deferred to post-session archival. This requires a fast, locally-writable path — not a PKB sync.
@@ -404,4 +404,4 @@ This is spec-only; implementation is out of scope for this task.
 | `polecat/cli.py`                      | `_get_sessions_base()`, `_run_docker_container()`, `save_worker_transcript()`, `_extract_gemini_sessions()` |
 | `polecat/observability.py`            | Polecat-specific metrics (sync latency, queue depth)                                                        |
 | `aops-core/hooks/unified_logger.py`   | Writes to hook log                                                                                          |
-| `aops-core/hooks/enforcer_gate.py`    | Writes to gate files                                                                                        |
+| `aops-core/lib/gates/custom_actions.py` | Writes to gate files (`create_audit_file`)                                                                |

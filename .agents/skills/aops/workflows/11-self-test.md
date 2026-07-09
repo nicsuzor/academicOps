@@ -60,20 +60,9 @@ Regression cover for [[aops-d10e7db6]] — Stop-hook RBG advisory leaked to user
 
 **Channel model:** `system_message` → user-visible surface; `context_injection` → agent's next-turn context.
 
-Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRouter.output_for_claude` / `output_for_gemini`. Re-verify rows before each run — new events in `hooks.json` make this table silently incomplete.
+Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRouter.output_for_claude` / `output_for_gemini`.
 
-| Hook               | Expected   | Why                                                                      |
-| ------------------ | ---------- | ------------------------------------------------------------------------ |
-| `SessionStart`     | agent-only | Boot-time principles into agent context (see §1)                         |
-| `UserPromptSubmit` | agent-only | Hydrator injection. **Canonical working reference.**                     |
-| `PreToolUse`       | both       | User sees why denied; agent gets recovery instructions                   |
-| `PostToolUse`      | agent-only | Post-hoc observations feed next agent turn                               |
-| `Stop`             | agent-only | RBG advisory in `additionalContext`. [[aops-d10e7db6]] is the inversion. |
-| `SubagentStart`    | agent-only | Dispatch context to subagent; user surface quiet                         |
-| `SubagentStop`     | agent-only | Completion summary to parent agent, not user                             |
-| `PreCompact`       | TBD        | No active gate; flag any payload and escalate                            |
-| `Notification`     | user-only  | By definition a user-surface event                                       |
-| `SessionEnd`       | agent-only | Cleanup advisory for next session; same dispatch as Stop (router.py:807) |
+**Expected disposition is not restated here.** Derive it at test time from the SSoT, not a local copy that can silently drift as gates are added, retired, or reclassified: the **Gate user-visibility** table in [`specs/adhd/surface-contract.md`](../../../../specs/adhd/surface-contract.md#gate-user-visibility) (per-gate `silent` / `same` / `keep`) plus the per-(client, event) capability matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client) (what a channel can even deliver). For each hook event under test (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop, PreCompact, Notification, SessionEnd — see the Walk-through below), look up every gate that fires on it in the surface-contract table before judging pass/fail.
 
 **Pre-flight: confirm hooks are executing** (per Step 0 — total hook failure reads as "no findings" here, the wrong answer). Confirm at least one hook event processed successfully before judging routing.
 

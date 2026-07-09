@@ -947,8 +947,9 @@ class HookRouter:
 
         # Track the advisory `ida` warn body so the Claude-only quiet delivery
         # in resolve_policy_for_claude (see `_resolve_policy_for_claude_stop`)
-        # can fire ONLY when ida·reminder is the SOLE Stop advisory
-        # (ENFORCEMENT-MAP §1.1). This does NOT alter `final_verdict` — ida's
+        # can fire ONLY when ida·reminder is the SOLE Stop advisory (see the
+        # `ida` warn row, specs/adhd/surface-contract.md § Gate
+        # user-visibility). This does NOT alter `final_verdict` — ida's
         # gate-layer verdict stays DENY in both warn and block mode (both are
         # fire-once hard blocks at the gate layer; see the "Ida" GatePolicy
         # pair in lib/gates/definitions.py), so `_dispatch_gates` /
@@ -1103,8 +1104,9 @@ class HookRouter:
         2.1.204 to silently discard exit-0 JSON ``decision:block`` output
         from ANY hook entry carrying it — including the ida quiet-split entry
         — so every OTHER block-mode Stop gate was dropped with no delivery
-        and no user notice (ENFORCEMENT-MAP §1.1). Rather than juggle a
-        second channel-selection flag, warn-mode ida now rides the SAME
+        and no user notice (specs/adhd/surface-contract.md § Gate
+        user-visibility). Rather than juggle a second channel-selection
+        flag, warn-mode ida now rides the SAME
         already-proven ``agent_context_without_block`` channel
         (hookSpecificOutput.additionalContext, non-blocking) as every other
         Stop advisory — gated on that SSoT capability cell so a client that

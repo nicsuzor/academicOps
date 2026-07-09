@@ -224,6 +224,46 @@ moving to "act, don't surface unless important." Both are wiring work on the
 enforcement side (`specs/enforcement/GATES.md`), not attention-surface
 contract content, and are out of scope for this document.
 
+## Gate user-visibility
+
+The enforcement layer ([`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) §1) decides whether a gate blocks, warns, or stays silent, and every gate verdict reaches the agent's context — that is a single enforcement invariant, not a per-gate table. What is a genuine per-gate CHOICE is whether anything _also_ reaches the user terminal. That choice is a surfacing decision, not an enforcement one — how much of the enforcement machinery Nic should see, on the same "storage ≠ surfacing" logic that governs the rest of this contract — so it lives here.
+
+Each gate fire picks one of four dispositions:
+
+- **`silent`** — nothing rendered to the user; the agent handles it.
+- **`ephemeral`** — a short, generic one-line banner rendered inline at the point of the block/deny (transient, not persisted as a retrievable artifact) — distinct from the fuller text the agent receives via `context_injection`.
+- **`same`** — the user sees the same text the agent sees (no separate template).
+- **`keep`** — a low-rate, user-useful confirmation that persists (e.g. a linked `*.policy_message` file, or a session-end summary).
+
+Whether a given (client, event) pair can actually _deliver_ a user-visible message at all is a lower-level capability question, answered by [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md)'s per-client channel matrix — this section is the CHOICE made against that capability, not the capability itself. Verified against `aops-core/lib/gates/definitions.py` + `aops-core/hooks/templates/*.md` (source of the wire field each row cites) — a `message_key`/`message_template` on a `GatePolicy` always renders real text; it is never silent by omission.
+
+| Gate · fire (event)                                  | User message | Notes                                                                                                                                                                                                |
+| :--------------------------------------------------- | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rbg` (enforcer) · block (PreToolUse)                | `ephemeral`  | `permissionDecisionReason`: "✕ Compliance check required (N ops)." (`rbg.policy_message`). Agent separately gets the compliance-report dispatch instruction via `additionalContext` (`rbg.policy_context`). |
+| `rbg` (enforcer) · countdown (PreToolUse run-up)     | `ephemeral`  | `systemMessage`: "◇ N turns until compliance check required." (`rbg.countdown`) — a real banner, not agent-only.                                                                                    |
+| `rbg` (enforcer) · dispatch (PreToolUse)             | `silent`     | Agent-only: the compliance-report dispatch instruction (`rbg.instruction`, via `context_injection`) — no separate user text beyond the `block` row's banner above.                                  |
+| `qa` · block (Stop)                                  | `ephemeral`  | `reason` on `decision:"block"`: "🧪 QA verification required before exit." (`qa.policy_message`).                                                                                                    |
+| `handover` · block (Stop)                            | `ephemeral`  | `reason` on `decision:"block"`: "▶ Handover required before exit — invoke the `end_session` or `dump` skill." (`handover.policy_message`).                                                          |
+| `ida` · block (Stop, `IDA_GATE_MODE=block`, default) | `ephemeral`  | `reason` on `decision:"block"`: "≡ Honesty check before exit." (inline `message_template`). Agent separately gets the full reminder via `context_injection` (`ida.reminder`).                       |
+| `ida` · warn (Stop, `IDA_GATE_MODE=warn`)            | `silent` (intended; see caveat) | CAVEAT: this channel is NOT agent-only on Claude's screen — it also renders to the user as "Stop hook feedback", so the full advisory text is user-visible too even though the disposition intends `silent`.    |
+| `rbg_review` · block (Stop)                          | `ephemeral`  | Polecat/crew-only. `reason` on `decision:"block"` currently reuses the `rbg` gate's own banner text (`rbg_review.policy_message` renders the same `rbg-policy-message.md` file). Agent gets the rbg-review dispatch instruction via `rbg_review.policy_context`.                                                                                                                          |
+| block-gate · degraded escape-hatch (Stop)            | `keep`       | Mechanism-class row: every block-mode Stop gate downgrades `DENY`→`WARN`-and-allow after N consecutive unsatisfied Stops in a turn. Loud **by design** — Nic **should** see it when a gate gives up. |
+| `pkb` · nudge (UserPromptSubmit)                     | `silent`     | `context_injection` only (`pkb.nudge`) — no system_message.                                                                                                                                          |
+| `hydration` · routing hint (UserPromptSubmit)        | `silent`     | Rendered into `context_injection` at runtime (`hydration.warn`) — agent-directed, not a user message.                                                                                                |
+| task-notification · guidance (UserPromptSubmit)      | `silent`     | Agent-directed: act on the notification, surface to Nic only if important or awaited (the act-don't-surface rule this contract's Interaction contract section also relies on).                      |
+
+**Status / transition pings** (`allow` verdict — informational, not enforcement). These are NOT uniformly silent: several carry a real `system_message_key`/`message_template` whose text reaches the user whenever the firing event carries a user_message channel (PreToolUse, Stop, PostToolUse all do, per [`CLIENT-TRANSLATION.md`](../CLIENT-TRANSLATION.md)). "Silent" below means no message reaches the user on that channel — it does not mean the agent is otherwise uninformed; the agent already has the outcome from the gate's normal verdict/context regardless:
+
+| Ping                        | User message | Notes                                                                                                                                                                          |
+| :-------------------------- | :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enforcer.verified` (reset) | `ephemeral`  | Trigger matches PreToolUse/SubagentStart/SubagentStop; on PreToolUse, "◇ Compliance verified." (`rbg.verified`) is user-visible. Claude's SubagentStart/SubagentStop user-message capability is not covered by `CLIENT-TRANSLATION.md`'s matrix — undocumented, not asserted silent here. |
+| `qa.complete`               | `ephemeral`  | "🧪 QA complete." (`qa.complete`) — same PreToolUse/SubagentStart/SubagentStop caveat as `enforcer.verified` above.                                                            |
+| `handover.bound`            | `ephemeral`  | Fires on `update_task` PostToolUse (`in_progress`); Claude's PostToolUse carries a user_message channel, so "▶ Task bound. Handover required before exit." (`handover.bound`) is user-visible. |
+| `handover.complete`         | `keep`       | Session-end confirmation — user-useful, low-rate.                                                                                                                              |
+| `rbg_review.complete`       | `ephemeral`  | Reuses `rbg.verified`'s "◇ Compliance verified." text — same PreToolUse/SubagentStart/SubagentStop caveat.                                                                     |
+
+**Out of scope:** `SUBAGENT_INSTRUCTION` templates (`enforcer.context`, `qa.context`, `enforcer.audit`, `rbg_review.context`) reach **neither** Nic nor the main agent — they are written to the temp file a _dispatched_ subagent reads. No user-visibility disposition applies.
+
 ## Out of scope for this document
 
 - The aops-adhd plugin's full manifest, trait inventory, and package

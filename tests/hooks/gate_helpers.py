@@ -241,8 +241,9 @@ def run_router_claude_raw(input_data: dict, timeout: int = 30) -> tuple[str, int
 
     Router always emits JSON on the Claude channel now (the Claude
     `asyncRewake` exit-2 plain-stdout quiet-split was retired 2026-07-08, GH
-    #2181 — see ENFORCEMENT-MAP §1.1 `ida·reminder`; the warn-mode advisory
-    now rides non-blocking JSON `additionalContext` instead). Kept as a raw
+    #2181 — see specs/adhd/surface-contract.md § Gate user-visibility
+    `ida·reminder`; the warn-mode advisory now rides non-blocking JSON
+    `additionalContext` instead). Kept as a raw
     (non-JSON-parsing) runner for tests that want to inspect stdout/exit code
     directly without ``run_router_claude``'s JSON decode.
     """
