@@ -158,7 +158,37 @@ what the user sees.**
 | `reason` (Stop)                  | ✗ | ✓ | ✓ | StopHookResult reason fed to the model. `router.py:1087-1095`                                                                                                                            |
 | PreToolUse advisory              | — | — | — | **n/a** — agy PreToolHookResult has only `allowTool`/`denyReason`; advisory on a PreToolUse allow RAISES. `router.py:1058-1061`                                                          |
 
-**Differences that drive the disposition layer:** (1) agy injectSteps are model-facing, never a user banner — `silent`-to-user is automatic and `same` is impossible (no user channel). (2) agy PreToolUse cannot carry advisory at all. (3) Claude/Gemini have **no _user-silent_ (zero user output) Stop channel** — any agent-visible Stop payload is also at least summarised to the user. Claude's `asyncRewake` hook body (row above) USED TO BE the quiet `Ephemeral→agent` path (full instruction to agent, one-line `<summary>` to user) for the warn-solo `ida·reminder` — **retired 2026-07-08 (GH #2181)**: it was found to silently discard exit-0 JSON `decision:block` from every other Stop gate sharing the same entry, so block mode was strictly weaker than warn. The `ida·reminder` warn-solo case now rides the plain `additionalContext` (Stop, no-block) channel instead — still non-blocking and still agent-directed, but the FULL text is now visible to the user too (no more one-line-only quiet split); see `router.ida_warn_solo_decision_for`. The earlier "relocate the Stop reminder to the next `UserPromptSubmit`" plan is fully superseded: warn-mode Stop gates still DENY at the gate layer (hard-block-once) — `ida_warn_solo_decision_for` downgrades DELIVERY, not the gate-layer verdict, to non-blocking specifically when `ida` is the sole Stop contributor in warn mode. Note agy **cannot compel** a continuation on a Stop DENY (`terminationBehavior` unemitted / `AGY_STOP_PROVISIONAL`) — its Stop DENY degrades to best-effort advisory `injectSteps`; no forced continuation means no retry loop, which is why deleting the router `stop_hook_active` bypass is safe on agy. (4) `ephemeral`-to-agent is agy-native (`ephemeralMessage` P✗); Claude/Gemini `additionalContext` persists.
+**Differences that drive the disposition layer:** (1) agy injectSteps are model-facing, never a user banner — `silent`-to-user is automatic and `same` is impossible (no user channel). (2) agy PreToolUse cannot carry advisory at all. (3) Claude/Gemini have **no _user-silent_ (zero user output) Stop channel** — any agent-visible Stop payload is also at least summarised to the user. Claude's `asyncRewake` hook body (row above) USED TO BE the quiet `Ephemeral→agent` path (full instruction to agent, one-line `<summary>` to user) for the warn-solo `ida·reminder` — **retired 2026-07-08 (GH #2181)**: it was found to silently discard exit-0 JSON `decision:block` from every other Stop gate sharing the same entry, so block mode was strictly weaker than warn. The `ida·reminder` warn-solo case now rides the plain `additionalContext` (Stop, no-block) channel instead — still non-blocking and still agent-directed, but the FULL text is now visible to the user too (no more one-line-only quiet split); see `router.ida_warn_solo_decision_for`. The earlier "relocate the Stop reminder to the next `UserPromptSubmit`" plan is fully superseded: warn-mode Stop gates still DENY at the gate layer (hard-block-once) — `ida_warn_solo_decision_for` downgrades DELIVERY, not the gate-layer verdict, to non-blocking specifically when `ida` is the sole Stop contributor in warn mode. (4) `ephemeral`-to-agent is agy-native (`ephemeralMessage` P✗); Claude/Gemini `additionalContext` persists.
+
+### Definitive Finding: Context Injection & Silent Continuation (agy vs Claude Code)
+
+Based on current documentation, **Antigravity CLI (`agy`) can accomplish background validation and silent continuation natively, while Claude Code cannot.**
+
+**1. Claude Code: Context & Continuation, but Loud**
+In Claude Code, you can use a `Stop` hook to inject context and force the agent to continue working, but **you cannot do it silently**.
+
+- **How it works:** To prevent Claude from stopping, your `type: "command"` Stop hook must return an **Exit Code 2** (a "blocking error").
+- **Injecting Context:** When you exit with code 2, you can print context or instructions to `stderr`. Claude Code intercepts this `stderr` output and feeds it back to the model as an error/reasoning message, effectively injecting context.
+- **Continuing the Agent:** Because Exit 2 is a blocking error, it prevents the `Stop` event from finalizing. Claude is forced to read the `stderr` context and continue generating a response to address the "error."
+- **The Limitation (The User Message):** Claude Code treats Exit 2 as a visible error. The `stderr` text you used to inject context to the model will be visibly printed in the user's transcript as a hook error. There is currently no supported way in Claude Code to use a Stop hook to loop the agent silently without showing that error text to the user.
+  _(Note: Returning JSON with `additionalContext` on a `Stop` event is ignored for continuation; Claude Code only processes exit codes to block the stop)._
+
+**2. Antigravity CLI (`agy`): Full Support via `ephemeralMessage`**
+Antigravity CLI natively supports silent continuation loops.
+
+- **How it works:** In `agy`, a `Stop` hook can exit successfully (Exit 0) and output a JSON payload to `stdout` to manipulate the agent's state.
+- **Injecting Context & Continuing the Agent:** To inject context and resume the loop, your Stop hook outputs JSON containing an `injectSteps` array. By injecting a new step, the execution loop is given new data to process, meaning the agent will seamlessly continue instead of terminating. _(This corrects a previous assumption that agy could not compel a continuation on Stop. The `injectSteps` array itself forces the continuation)._
+- **Minimal/No User Message:** Inside the `injectSteps` array, you can define the step type as an **`ephemeralMessage`**. This injects the context directly into the model's active working memory, but it is deliberately hidden (or heavily minimized) in the terminal UI.
+
+```json
+{
+  "injectSteps": [
+    {
+      "ephemeralMessage": "User's tests failed in the background. Review the following logs and fix the file..."
+    }
+  ]
+}
+```
 
 ## Payload Routing Flowchart
 
