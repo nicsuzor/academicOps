@@ -749,6 +749,46 @@ def translate_tool_calls(text: str, platform: str) -> str:
     return text
 
 
+def copy_transform_agents(
+    src_agents_dir: Path, dst_agents_dir: Path, platform: str
+) -> tuple[int, int]:
+    """Copy + platform-transform every agent ``.md`` from src to dst.
+
+    The SINGLE agent-emission primitive, shared by every plugin builder
+    (aops-core, aops-pkb, …) so agent output is defined once and any change
+    propagates to all agent-bearing plugins automatically. For each agent:
+    transform frontmatter tools, translate body tool-calls, write the ``.md``;
+    for the ``antigravity`` platform additionally emit ``agents/{name}/agent.json``
+    (agy subagent format, system prompt inline). Returns ``(md_count, json_count)``.
+
+    ``platform`` is the caller's transform platform (e.g. build_aops_core passes
+    ``transform_platform``, which is "claude" for the cowork build).
+    """
+    dst_agents_dir.mkdir(parents=True, exist_ok=True)
+    md_count = 0
+    json_count = 0
+    for agent_file in sorted(src_agents_dir.glob("*.md")):
+        content = agent_file.read_text()
+        # Transform frontmatter (filter mcp__ tools for Gemini, apply schema) …
+        content = transform_agent_for_platform(content, platform, agent_file.name)
+        # … and translate tool calls in the body text.
+        content = translate_tool_calls(content, platform)
+        (dst_agents_dir / agent_file.name).write_text(content)
+        md_count += 1
+        # agy (Antigravity) additionally discovers subagents as
+        # agents/{name}/agent.json (system prompt inline), emitted alongside
+        # the .md from the already-transformed content.
+        if platform == "antigravity":
+            agent_json = build_agy_agent_json(
+                content, agent_file.name, tool_registry.BUILD_CLAUDE_TO_AGY_TOOL
+            )
+            json_dir = dst_agents_dir / agent_file.stem
+            json_dir.mkdir(parents=True, exist_ok=True)
+            (json_dir / "agent.json").write_text(json.dumps(agent_json, indent=2) + "\n")
+            json_count += 1
+    return md_count, json_count
+
+
 def build_aops_core(
     aops_root: Path,
     dist_root: Path,
@@ -895,34 +935,11 @@ def build_aops_core(
             if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
                 continue
             if src_item.name == "agents" and src_item.is_dir():
-                # Special handling for agents: transform frontmatter and translate tool calls
+                # Special handling for agents: transform frontmatter and translate
+                # tool calls (+ emit agy agent.json). Shared primitive — see
+                # copy_transform_agents.
                 dst = content_dir / src_item.name
-                dst.mkdir(parents=True, exist_ok=True)
-                agy_json_count = 0
-                for agent_file in src_item.glob("*.md"):
-                    content = agent_file.read_text()
-                    # Transform frontmatter (filter mcp__ tools for Gemini, apply schema)
-                    content = transform_agent_for_platform(
-                        content, transform_platform, agent_file.name
-                    )
-                    # Translate tool calls in body text
-                    content = translate_tool_calls(content, transform_platform)
-                    (dst / agent_file.name).write_text(content)
-                    # agy (Antigravity) additionally discovers subagents as
-                    # agents/{name}/agent.json (system prompt inline). Emit that
-                    # alongside the .md from the already-transformed content.
-                    if transform_platform == "antigravity":
-                        agent_json = build_agy_agent_json(
-                            content,
-                            agent_file.name,
-                            tool_registry.BUILD_CLAUDE_TO_AGY_TOOL,
-                        )
-                        json_dir = dst / agent_file.stem
-                        json_dir.mkdir(parents=True, exist_ok=True)
-                        (json_dir / "agent.json").write_text(
-                            json.dumps(agent_json, indent=2) + "\n"
-                        )
-                        agy_json_count += 1
+                _md_n, agy_json_count = copy_transform_agents(src_item, dst, transform_platform)
                 print(f"  ✓ Translated and copied agents -> {dst}")
                 if agy_json_count:
                     print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
@@ -1838,14 +1855,12 @@ def build_aops_pkb(
         if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
             continue
         if src_item.name == "agents" and src_item.is_dir():
+            # Shared agent-emission primitive (transform + translate + agy json).
             dst = content_dir / src_item.name
-            dst.mkdir(parents=True, exist_ok=True)
-            for agent_file in src_item.glob("*.md"):
-                content = agent_file.read_text()
-                content = transform_agent_for_platform(content, platform, agent_file.name)
-                content = translate_tool_calls(content, platform)
-                (dst / agent_file.name).write_text(content)
+            _md_n, agy_json_count = copy_transform_agents(src_item, dst, platform)
             print(f"  ✓ Translated and copied agents -> {dst}")
+            if agy_json_count:
+                print(f"  ✓ Emitted {agy_json_count} agy agent.json file(s) -> {dst}/<name>/")
         else:
             safe_copy(src_item, content_dir / src_item.name)
 
