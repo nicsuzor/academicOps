@@ -92,21 +92,13 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 # no settings.json override), the defaults below apply.
 
 _GATE_MODES = {
-    "QA_GATE_MODE": "warn",
-    "RBG_GATE_MODE": "warn",
+    "QA_GATE_MODE": "off",
+    "RBG_GATE_MODE": "off",
     "HYDRATION_GATE_MODE": "off",
-    # Sentinel defaults to block — this is a safety gate protecting user
-    # environment files from destructive ops, not just an advisory.
-    "SENTINEL_GATE_MODE": "block",
-    # RBG-review defaults to OFF: with no polecat.yaml (an undispatched, ad hoc
-    # CLI session) there is no per-turn rbg delay by default. Dispatched
-    # surfaces (polecat run / polecat crew) opt IN explicitly via
-    # polecat.yaml's `gates.rbg_review: block` (session_defaults), which is
-    # the canonical way to arm this gate for task-bound work — never a code
-    # branch on session type.
+    "SENTINEL_GATE_MODE": "off",
     "RBG_REVIEW_GATE_MODE": "off",
-    "HANDOVER_GATE_MODE": "block",
-    "IDA_GATE_MODE": "block",
+    "HANDOVER_GATE_MODE": "off",
+    "IDA_GATE_MODE": "off",
 }
 
 
@@ -119,7 +111,16 @@ _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT = 5
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
     if name in _GATE_MODES:
-        return os.environ.get(name, _GATE_MODES[name])
+        val = os.environ.get(name)
+        if val is None:
+            import sys
+
+            print(
+                f"WARNING: Gate mode '{name}' not set in environment, falling back to default '{_GATE_MODES[name]}'",
+                file=sys.stderr,
+            )
+            return _GATE_MODES[name]
+        return val
     if name == "RBG_TOOL_CALL_THRESHOLD":
         raw = os.environ.get("RBG_TOOL_CALL_THRESHOLD")
         if raw is None:

@@ -18,7 +18,7 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
     Checks:
     1. Required environment variables (PKB_MCP_URL, AOPS, POLECAT_HOME, GH_TOKEN)
     2. PKB MCP server reachability
-    3. Axioms file presence (.agents/rules/AXIOMS.md)
+    3. Axioms file presence (.agents/AXIOMS.md)
 
     Raises:
         BootstrapError: If any validation check fails.
@@ -80,7 +80,7 @@ def validate_bootstrap(aops_path: Path | str | None = None, client: str | None =
 
     # 3. Axioms file
     if aops_path:
-        axioms_path = Path(aops_path) / ".agents" / "rules" / "AXIOMS.md"
+        axioms_path = Path(aops_path) / ".agents" / "AXIOMS.md"
         if not axioms_path.exists():
             errors.append(f"Axioms file missing: {axioms_path}")
 
