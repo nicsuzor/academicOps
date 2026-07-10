@@ -295,10 +295,10 @@ class TestNeverBlockList:
 class TestGatePrecedence:
     """WS7 item 1: the precedence model must be explicit and match the runtime."""
 
-    def test_sentinel_has_highest_precedence(self):
+    def test_rbg_has_highest_precedence(self):
         from lib.gates.definitions import GATE_CONFIGS
 
-        assert GATE_CONFIGS[0].name == "sentinel"
+        assert GATE_CONFIGS[0].name == "rbg"
 
     def test_ida_has_lowest_precedence(self):
         from lib.gates.definitions import GATE_CONFIGS

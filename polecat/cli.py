@@ -2387,15 +2387,6 @@ def _replicate_gemini_auth(
         # This is critical for ~/.gemini/settings.json which is often symlinked.
         shutil.copy2(gemini_dir / f, target_dir / f, follow_symlinks=True)
 
-    # Copy our default framework policies. Source from aops-core/policies/
-    # (the single source of truth) rather than a duplicate under
-    # polecat/defaults/ — the bundled copy got out of sync with gemini's
-    # policy engine schema and silently disabled itself. See issue #940.
-    deny_ext_src = SCRIPT_DIR.parent / "aops-core" / "policies" / "deny-extension-writes.toml"
-    if not deny_ext_src.exists():
-        raise RuntimeError(f"Missing framework policy file: {deny_ext_src}")
-    shutil.copy2(deny_ext_src, policies_dir / "deny-extension-writes.toml")
-
     # If trustedFolders.json didn't exist but we have a work_dir, create it.
     # Cover both the host path and the in-container mount (/workspace) so the
     # trust prompt is suppressed regardless of where Gemini runs.

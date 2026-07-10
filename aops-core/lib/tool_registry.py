@@ -5,8 +5,8 @@ the RUNTIME-emitted concrete tool name on each client (Claude Code, Antigravity
 "agy"). This is the SINGLE source of truth for RUNTIME tool
 recognition: it generates the per-client ``(name -> category)`` entries, the
 spawn table, and the agy ``call_mcp_tool`` unwrap / nested-subagent extraction
-consumed by ``lib/tool_categories.py`` — and through it the gate engine, the
-sentinel, and the rbg.
+consumed by ``lib/tool_categories.py`` — and through it the gate engine and the
+rbg gate.
 
 SCOPE — RUNTIME names only: what each client EMITS in a hook event. A client's
 BUILD-frontmatter tool name can DIFFER from its runtime name. For example, Claude
@@ -20,7 +20,7 @@ build names into this table or recognition will diverge from reality.
 The agy column is the previously-missing half: agy agent bodies reuse Claude tool
 names, so the build never needed agy names, but the agy runtime emits its own
 vocabulary (``view_file``, ``run_command``, ``invoke_subagent``, ``call_mcp_tool``,
-…). Those names were unknown to the runtime, so spawn / rbg / sentinel
+…). Those names were unknown to the runtime, so spawn / rbg
 matching silently failed on agy. The vocabulary here is EMPIRICAL — mined from real
 ``~/.gemini/antigravity-cli/brain/*.jsonl`` transcripts (see PKB ref mem-689f170f).
 

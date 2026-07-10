@@ -24,8 +24,8 @@ that the mechanism is NOT in router.py / engine.py / definitions.py:
   * ``ida.reminder`` is referenced ONLY by those two Stop policies
     (definitions.py:482, 496) — no PreToolUse policy renders it.
   * ``grep_search`` is in the ``read_only`` tool category (gate_config.py:244),
-    which the enforcer policy excludes (definitions.py:129) and which sentinel
-    never matches — so NO PreToolUse gate can even DENY ``grep_search``.
+    which the enforcer policy excludes (definitions.py:129) — so NO
+    PreToolUse gate can even DENY ``grep_search``.
   * For agy: ``output_for_agy`` only emits ``denyReason`` on ``event=="PreToolUse"``
     with a block verdict (router.py:1040-1044); the PostInvocation/Stop advisory
     (IDA included) is routed to ``injectSteps`` / ``reason`` instead.

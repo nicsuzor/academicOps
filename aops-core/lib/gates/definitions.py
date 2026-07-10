@@ -3,7 +3,6 @@ from hooks.gate_config import (
     RBG_REVIEW_DEGRADE_THRESHOLD,
     RBG_REVIEW_GATE_MODE,  # noqa: F401  (referenced via custom_check, kept for discoverability)
     RBG_TOOL_CALL_THRESHOLD,
-    SENTINEL_GATE_MODE,
     SLASH_COMMAND_PROMPT_PATTERNS,
 )
 
@@ -37,8 +36,6 @@ from lib.gate_types import (
 #      this list wins a same-tier collision.
 #
 # The order and its rationale (highest precedence first):
-#   sentinel    — PreToolUse destructive-op safety block; protects the user's
-#                 environment, never advisory. Highest-stakes forcing function.
 #   RBG    — periodic compliance self-check (PreToolUse threshold block).
 #   rbg-review  — end-of-session rbg axiom audit, scoped to task-bound
 #                 (polecat/crew) sessions only. Armed CLOSED for polecat/crew,
@@ -56,43 +53,6 @@ from lib.gate_types import (
 #   ida         — honesty reminder (Stop); advisory, lowest precedence.
 # ----------------------------------------------------------------------
 GATE_CONFIGS = [
-    # --- Sentinel ---
-    # Named for its role as a guardian. Stateless PreToolUse gate that blocks
-    # destructive operations targeting protected user-environment paths before
-    # they execute. Origin: GitHub issue #106 — an agent deleted a working
-    # Gemini extension installation without evidence it was broken.
-    #
-    # Three-class protection:
-    # (1) Shell tools (Bash, run_shell_command, shell, execute_code):
-    #     blocked when command contains a destructive verb (rm, mv, rmdir,
-    #     unlink, truncate) AND a protected path reference.
-    # (2) Write-file tools (Edit, Write, write_file, replace):
-    #     blocked when the target file_path/path resolves to a protected path.
-    # No state transitions — the gate is always armed. Mode default: block.
-    GateConfig(
-        name="sentinel",
-        description="Blocks destructive operations targeting protected user-environment paths.",
-        initial_status=GateStatus.OPEN,
-        triggers=[],  # Stateless — no open/close lifecycle
-        policies=[
-            GatePolicy(
-                condition=GateCondition(
-                    hook_event="PreToolUse",
-                    # Covers shell tools and write-file tools (Claude + Gemini names).
-                    # tool_name_pattern is an early-exit optimisation; the
-                    # custom check also validates tool_name internally.
-                    tool_name_pattern=(
-                        r"^(?:Bash|run_shell_command|shell|execute_code"
-                        r"|Edit|Write|write_file|replace)$"
-                    ),
-                    custom_check="is_destructive_env_op",
-                ),
-                verdict=normalize_verdict(SENTINEL_GATE_MODE),
-                message_key="sentinel.policy_message",
-                context_key="sentinel.policy_context",
-            ),
-        ],
-    ),
     # --- RBG ---
     GateConfig(
         name="rbg",
@@ -268,17 +228,18 @@ GATE_CONFIGS = [
                 message_key="rbg_review.policy_message",
                 context_key="rbg_review.policy_context",
             ),
-            # Warn mode (staged-rollout parity): fire-once HARD block (D1) via the
-            # warn-mode fire-once trigger below. DENY, not WARN — warn forces one
-            # continuation so the agent reads the dispatch instruction, then the
-            # gate opens for the rest of the turn.
+            # Warn mode: non-blocking delivery. WARN (not DENY) rides the
+            # agent_context_without_block channel (additionalContext) — the
+            # agent sees the full dispatch instruction next turn without a
+            # forced continuation. The fire-once trigger below still opens the
+            # gate on this same Stop event so it does not re-fire mid-turn.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_rbg_review_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 custom_action="prepare_rbg_review",
                 message_key="rbg_review.policy_message",
                 context_key="rbg_review.policy_context",
@@ -381,18 +342,18 @@ GATE_CONFIGS = [
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
             ),
-            # Warn mode: fire-once HARD block (D1) — forces one continuation so
-            # the agent reads the verification requirement, then the warn-mode
-            # fire-once trigger above opens the gate so the turn proceeds. DENY,
-            # not WARN (a WARN would render as a non-blocking advisory on Claude
-            # and would not force the continuation).
+            # Warn mode: non-blocking delivery. WARN (not DENY) rides the
+            # agent_context_without_block channel (additionalContext) — the
+            # agent sees the full verification requirement next turn without a
+            # forced continuation. The fire-once trigger above still opens the
+            # gate on this same Stop event so it does not re-fire mid-turn.
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_qa_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 custom_action="prepare_qa_review",
                 message_key="qa.policy_message",
                 context_key="qa.policy_context",
@@ -563,22 +524,19 @@ GATE_CONFIGS = [
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
-            # Warn mode: fire-once HARD block (D1) — forces one continuation so
-            # the agent reads the handover requirement, then the warn-mode
-            # fire-once Stop trigger above opens the gate so the turn proceeds.
-            # DENY, not WARN (a WARN renders as a non-blocking advisory on Claude
-            # and would not force the continuation). Exempts read-only sessions.
-            # The former soft interactive rate-limiting (spec mem-438429c5
-            # §5.4-5.5, record_handover_warn_fired) is superseded: warn now
-            # behaves like every other stop gate — one forced continuation IS the
-            # nudge. Exempts read-only sessions (session_did_work=False).
+            # Warn mode: non-blocking delivery. WARN (not DENY) rides the
+            # agent_context_without_block channel (additionalContext) — the
+            # agent sees the full handover requirement next turn without a
+            # forced continuation. The fire-once Stop trigger above still opens
+            # the gate on this same Stop event so it does not re-fire mid-turn.
+            # Exempts read-only sessions (session_did_work=False).
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,
                     hook_event="Stop",
                     custom_check="is_handover_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 message_key="handover.policy_message",
                 context_key="stop.handover_block",
             ),
@@ -702,37 +660,22 @@ GATE_CONFIGS = [
                 message_template="≡ Honesty check before exit.",
                 context_key="ida.reminder",
             ),
-            # Warn mode: fire-once HARD block at the gate layer, delivered QUIET
-            # (non-blocking) on Claude. Like every stop gate (D1), warn forces one
-            # continuation so the agent processes the reminder — the verdict is
-            # DENY, not WARN, exactly like block mode. On Claude the DENY is
-            # downgraded to a non-blocking delivery by
-            # `router.ida_warn_solo_decision_for` (via the router's
-            # `ida_warn_solo_body` metadata stash in `_dispatch_gates`), which
-            # rides `hookSpecificOutput.additionalContext` (the same
-            # `agent_context_without_block` channel every other Stop advisory
-            # uses) instead of a loud "Stop hook error" banner. GH #2181
-            # (2026-07-08): this REPLACES the retired `asyncRewake` exit-2 quiet-
-            # split — that config was found to silently discard exit-0 JSON
-            # `decision:block` from every OTHER Stop gate sharing the same entry
-            # on Claude Code 2.1.204. CAVEAT: unlike the old asyncRewake summary,
-            # additionalContext is NOT agent-only on Claude's screen (renders as
-            # "Stop hook feedback" in transcript) — the user sees the full text,
-            # not a one-liner. Non-Claude clients fall back to the loud block:
-            # gemini decision:deny+reason (forces one retry), agy best-effort
-            # injectSteps (advisory — agy cannot compel).
-            # No message_key: warn never shows a separate user-facing ida banner.
-            # The unconditional fire-once trigger above opens the gate after this
-            # fires, so a retried Stop in the same turn is not re-blocked; re-arms
-            # on UPS. (ida has no satisfaction predicate, so block mode is also
-            # fire-once — it differs from warn only in that block is LOUD.)
+            # Warn mode: non-blocking delivery. WARN (not DENY) rides the
+            # agent_context_without_block channel (additionalContext) on
+            # Claude — the agent sees the full reminder next turn without a
+            # forced continuation; Claude also renders it to the user ("Stop
+            # hook feedback"). Non-Claude client delivery of this WARN verdict
+            # is unchanged from before this policy carried DENY — see
+            # resolve_policy_for_agy for agy's Stop handling. The unconditional
+            # fire-once trigger above still opens the gate after this fires, so
+            # a retried Stop in the same turn is not re-blocked; re-arms on UPS.
             GatePolicy(
                 condition=GateCondition(
                     hook_event="Stop",
                     current_status=GateStatus.CLOSED,
                     custom_check="is_ida_warn_mode",
                 ),
-                verdict=GateVerdict.DENY,
+                verdict=GateVerdict.WARN,
                 context_key="ida.reminder",
             ),
         ],
