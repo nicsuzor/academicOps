@@ -1,15 +1,20 @@
 #!/bin/bash
 # run-mcp.sh — Launch the PKB MCP client.
 #
-# Called by Cowork / Gemini / Antigravity plugin MCP launchers, which provide a
+# This is the sole tracked copy of this launcher (single-source-of-truth);
+# aops-core's cowork build copies these same two files in at build time
+# (scripts/build.py, build_aops_core's cowork branch) rather than keeping a
+# second copy in aops-core/scripts/.
+#
+# Called by the Cowork and Antigravity plugin MCP launchers, which provide a
 # minimal PATH and do NOT propagate the user's shell env. Claude does NOT use
-# this script — aops-core ships no pkb server for the "claude" platform; pkb
-# there is served by the separate aops-pkb plugin over HTTP transport.
+# this script — aops-pkb serves pkb for the "claude" platform over HTTP
+# transport directly.
 #
 # PKB_MCP_URL MUST arrive via this process's environment — there is no file
 # fallback. Each launcher is responsible for supplying it:
-#   - Gemini / Antigravity: the extension's pkb env block sets
-#     PKB_MCP_URL: ${PKB_MCP_URL}, expanded from the host/container env.
+#   - Antigravity: the plugin's pkb env block sets PKB_MCP_URL: ${PKB_MCP_URL},
+#     expanded from the host/container env.
 #   - Cowork / dev shells: PKB_MCP_URL must be exported in the launching env.
 # (specs: brain PKB framework-observability.)
 #
@@ -21,7 +26,7 @@ source "$SCRIPT_DIR/ensure-path.sh"
 
 if [[ -z "$PKB_MCP_URL" ]]; then
     echo "CRITICAL: PKB_MCP_URL is not set in the environment." >&2
-    echo "It must be supplied via the launcher (Gemini/Antigravity env block)" >&2
+    echo "It must be supplied via the launcher (Cowork/Antigravity env block)" >&2
     echo "or exported in your shell. There is no ~/.env.local fallback." >&2
     exit 1
 fi

@@ -130,6 +130,7 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && claude plugin install aops-core@academicOps \
     && claude plugin install aops-tools@academicOps \
     && claude plugin install aops-pkb@academicOps \
+    && claude plugin install aops-extras@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
@@ -140,7 +141,21 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
     && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && cp -r /tmp/aops-dist/dist/aops-pkb-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
+    && cp -r /tmp/aops-dist/dist/aops-extras-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
     && chmod -R a+rwX /home/worker/.gemini \
+    && python3 -c "
+import glob, json
+for path in glob.glob('/home/worker/.gemini/**/mcp_config.json', recursive=True):
+    try: data = json.loads(open(path).read())
+    except (OSError, ValueError): raise
+    plugin_dir = path[:path.rfind('/')]
+    s = json.dumps(data)
+    r = s.replace('\${extensionPath}', plugin_dir).replace('\${CLAUDE_PLUGIN_ROOT}', plugin_dir)
+    if r != s: open(path, 'w').write(r)
+" \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
     && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
@@ -156,7 +171,7 @@ m = json.loads(mp.read_text()); \
 [p.__setitem__('source', './' + p['name'] + '/' + next((e.name for e in (cache / p['name']).iterdir() if e.is_dir()), '')) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
 mp.write_text(json.dumps(m, indent=2))"
 
-# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-core's
+# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-pkb's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 

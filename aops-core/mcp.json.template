@@ -19,11 +19,6 @@
     }
   },
   "antigravity": {
-    "mcpServers": {
-      "pkb": {
-        "command": "bash",
-        "args": ["${extensionPath}/scripts/run-mcp.sh"]
-      }
-    }
+    "mcpServers": {}
   }
 }

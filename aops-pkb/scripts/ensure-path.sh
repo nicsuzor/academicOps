@@ -4,12 +4,6 @@
 # Source this file; do not execute it directly.
 # Works across macOS (Homebrew), Debian (pip --user), Docker, and cron.
 #
-# Intentional duplicate of aops-pkb/scripts/ensure-path.sh: aops-core/hooks/
-# router.sh sources this file, and aops-core must be installable standalone
-# without aops-pkb — it cannot rely on a sibling aops-pkb plugin/checkout
-# being present. Keep both copies in sync; do not consolidate into one
-# tracked file without giving router.sh an aops-pkb-independent path.
-#
 # Usage:
 #   source "$(dirname "$0")/ensure-path.sh"
 

@@ -70,7 +70,11 @@ The PKB MCP server uses a wrapper script instead of calling `uvx` directly:
 
 `run-mcp.sh` sources `ensure-path.sh`, validates `$PKB_MCP_URL`, ensures `UV_CACHE_DIR` is writable, then exec's `uvx fastmcp run "$PKB_MCP_URL"`.
 
-**Template**: `aops-core/mcp.json.template` — has platform-specific sections for Claude (`${CLAUDE_PLUGIN_ROOT}`, `${user_config.*}`) and Gemini (`${extensionPath}`, `${PKB_MCP_URL}`).
+`aops-pkb/scripts/{run-mcp.sh,ensure-path.sh}` is the sole tracked copy of the PKB launcher pair — `aops-core` carries no `run-mcp.sh` of its own. The cowork build of `aops-core` copies both files in from `aops-pkb/scripts/` at build time (`scripts/build.py`); the antigravity build of `aops-pkb` ships them directly via its own full-tree copy.
+
+`aops-core/scripts/ensure-path.sh` is a deliberate exception — a second tracked copy, kept in sync with `aops-pkb`'s. `aops-core/hooks/router.sh` sources it for its own PATH bootstrap (unrelated to PKB), and `aops-core` must be installable standalone without `aops-pkb` present, so it cannot rely on a sibling `aops-pkb` checkout/plugin existing at hook-run time.
+
+**Template**: `aops-core/mcp.json.template` (Claude/Cowork/Gemini/Antigravity sections) and `aops-pkb/mcp.json.template` (Claude/Antigravity) — platform-specific sections for Claude (`${CLAUDE_PLUGIN_ROOT}`, `${user_config.*}`) and Gemini/Antigravity (`${extensionPath}`, `${PKB_MCP_URL}`).
 
 ## Hook I/O Schemas
 
