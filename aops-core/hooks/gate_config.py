@@ -21,6 +21,7 @@ __all__ = [
     "RBG_REVIEW_GATE_MODE",
     "RBG_TOOL_CALL_THRESHOLD",
     "RBG_REVIEW_DEGRADE_THRESHOLD",
+    "GATE_MODE_VARS",
     # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
 ]
@@ -97,6 +98,12 @@ _GATE_MODES = {
     "HANDOVER_GATE_MODE": "off",
     "IDA_GATE_MODE": "off",
 }
+
+# Canonical list of gate-mode env-var names — the single source of truth for
+# every consumer that needs to enumerate them (SessionStart summary/anchoring,
+# router.py's test/ad-hoc fallback). Do not hardcode a second copy of this
+# list elsewhere; import this instead.
+GATE_MODE_VARS: list[str] = list(_GATE_MODES)
 
 
 _RBG_THRESHOLD_DEFAULT = 50

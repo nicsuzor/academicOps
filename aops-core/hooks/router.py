@@ -728,17 +728,9 @@ class HookRouter:
                 transcript_path=ctx.transcript_path,
                 client_type=ctx.client_type,
             )
-
-            # Populate default gate_modes on creation for test/bootstrap scenarios
-            # where SessionStart hasn't explicitly set them yet.
-            try:
-                from hooks import gate_config
-                from hooks.session_env_setup import _gate_mode_vars
-
-                for name in _gate_mode_vars:
-                    state.gate_modes[name] = getattr(gate_config, name)
-            except Exception:
-                pass
+            # state.gate_modes is empty here (fresh SessionState); the
+            # _dispatch_gates fallback below populates it from gate_config
+            # for test/bootstrap scenarios where SessionStart hasn't run.
 
         # Initialize gate registry
         GateRegistry.initialize()
@@ -840,24 +832,12 @@ class HookRouter:
         if not state.gate_modes:
             try:
                 from hooks import gate_config
+                from hooks.gate_config import GATE_MODE_VARS
 
-                _gate_mode_vars = [
-                    "SENTINEL_GATE_MODE",
-                    "RBG_GATE_MODE",
-                    "RBG_REVIEW_GATE_MODE",
-                    "HANDOVER_GATE_MODE",
-                    "QA_GATE_MODE",
-                    "IDA_GATE_MODE",
-                    "HYDRATION_GATE_MODE",
-                ]
-                for name in _gate_mode_vars:
-                    if hasattr(gate_config, name):
-                        state.gate_modes[name] = getattr(gate_config, name)
+                for name in GATE_MODE_VARS:
+                    state.gate_modes[name] = getattr(gate_config, name)
             except Exception as e:
-                import traceback
-
-                traceback.print_exc()
-                print(f"DEBUG FALLBACK EXCEPTION: {e}")
+                print(f"WARNING: gate_modes fallback resolution failed: {e}", file=sys.stderr)
 
         """Dispatch to GenericGate methods based on event type.
 
