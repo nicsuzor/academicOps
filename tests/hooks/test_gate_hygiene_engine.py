@@ -45,6 +45,13 @@ def _state_with_enforcer_overdue():
     state.main_agent.current_task = "task-x"  # so the gate is "armed"
     state.gates["rbg"].status = GateStatus.OPEN
     state.gates["rbg"].ops_since_open = 999
+
+    # Simulate session start environment capture
+    import os
+
+    if "RBG_GATE_MODE" in os.environ:
+        state.gate_modes["RBG_GATE_MODE"] = os.environ["RBG_GATE_MODE"]
+
     return state
 
 
