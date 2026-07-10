@@ -1,9 +1,13 @@
 # This is the current, live pattern for installing the Stage-1 triage
-# pipeline (lint -> enforcer -> qa) in a satellite repo. Prefer '@dev' over
-# a pinned tag unless you have a mechanism to advance the tag yourself —
-# a static tag does not auto-advance and can leave a satellite repo running
-# a stale pipeline for weeks with merged upstream fixes silently inert
-# (academicOps#2158).
+# pipeline (lint -> enforcer -> qa) in a satellite repo. Pin '@dist' — the
+# published-distribution branch, refreshed by every academicOps release
+# (build-extension.yml copies pr-pipeline.yml + its called workflows there).
+# It auto-advances with zero manual step (no tag to forget to move) while
+# staying on tested, released code rather than raw `@dev` churn. The old
+# `pipeline-v1` static tag drifted silently — nothing auto-advanced it, so
+# merged pipeline fixes never reached consumers until someone remembered to
+# move it by hand (academicOps#2158, aops_1a4b8e23) — it is retired; do not
+# reintroduce a pinned tag here.
 #
 # The agent-merge-prep.yml / merge-prep-cron.yml shims formerly shown
 # alongside this file are REMOVED (2026-07-10). Those reusable workflows
@@ -32,7 +36,6 @@ jobs:
       id-token: write
       issues: write
       actions: read
-    # Replace 'main' with '@pipeline-v1' for stability
-    uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@pipeline-v1
+    uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist
     secrets:
       AOPS_BOT_GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
