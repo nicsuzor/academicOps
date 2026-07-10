@@ -123,8 +123,9 @@ class SessionState(BaseModel):
     client_type: str | None = None  # "claude" | "gemini" | "agy"
     transcript_path: str | None = None
 
-    # Global turn counter (increments on user prompt)
+    # Global metrics
     global_turn_count: int = 0
+    gate_modes: dict[str, str] = Field(default_factory=dict)
 
     # Session type detection (polecat vs interactive)
     session_type: str = "interactive"

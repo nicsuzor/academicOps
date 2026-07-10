@@ -10,6 +10,7 @@ from lib.gate_types import (
     GateState,
     GateStatus,
     GateTransition,
+    normalize_verdict,
 )
 from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
@@ -492,12 +493,23 @@ class GenericGate:
                 final_sys_msg = sys_msg_prefix + sys_msg
                 final_ctx_inj = ctx_inj_prefix + (ctx_inj if ctx_inj else "")
 
-                if policy.verdict == GateVerdict.DENY:
+                if policy.session_mode_key:
+                    raw_mode = session_state.gate_modes.get(
+                        policy.session_mode_key, policy.session_mode_default
+                    )
+                    active_verdict = normalize_verdict(raw_mode)
+                else:
+                    active_verdict = policy.verdict
+
+                if active_verdict == GateVerdict.ALLOW:
+                    continue
+
+                if active_verdict == GateVerdict.DENY:
                     return GateResult.deny(
                         system_message=final_sys_msg,
                         context_injection=final_ctx_inj if final_ctx_inj else None,
                     )
-                elif policy.verdict == GateVerdict.WARN:
+                elif active_verdict == GateVerdict.WARN:
                     return GateResult.warn(
                         system_message=final_sys_msg,
                         context_injection=final_ctx_inj if final_ctx_inj else None,

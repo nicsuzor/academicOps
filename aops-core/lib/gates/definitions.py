@@ -1,5 +1,4 @@
 from hooks.gate_config import (
-    RBG_GATE_MODE,
     RBG_REVIEW_DEGRADE_THRESHOLD,
     RBG_REVIEW_GATE_MODE,  # noqa: F401  (referenced via custom_check, kept for discoverability)
     RBG_TOOL_CALL_THRESHOLD,
@@ -15,7 +14,6 @@ from lib.gate_types import (
     GateStatus,
     GateTransition,
     GateTrigger,
-    normalize_verdict,
 )
 
 # Note: SubagentStart is included in trigger patterns alongside SubagentStop so
@@ -101,7 +99,7 @@ GATE_CONFIGS = [
                     excluded_tool_categories=["infrastructure", "always_available", "read_only"],
                     custom_check="not_mid_edit",
                 ),
-                verdict=normalize_verdict(RBG_GATE_MODE),
+                session_mode_key="RBG_GATE_MODE",
                 message_key="rbg.policy_message",
                 context_key="rbg.policy_context",
                 custom_action="prepare_compliance_report",

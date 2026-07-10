@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from lib.gate_model import GateVerdict
 
@@ -127,11 +127,21 @@ class GatePolicy(BaseModel):
 
     condition: GateCondition
     verdict: GateVerdict = GateVerdict.ALLOW
+    session_mode_key: str | None = None
+    session_mode_default: str = "off"
 
     @field_validator("verdict", mode="before")
     @classmethod
     def _normalize_verdict(cls, v: Any) -> Any:
         return normalize_verdict(v)
+
+    @model_validator(mode="after")
+    def _validate_verdict_source(self) -> Self:
+        if self.session_mode_key is not None and self.verdict != GateVerdict.ALLOW:
+            raise ValueError(
+                "GatePolicy cannot define both a static verdict and a session_mode_key"
+            )
+        return self
 
     # Message to show if policy triggers — prefer _key fields (resolved via
     # TemplateRegistry) over inline _template strings. Keys take priority.

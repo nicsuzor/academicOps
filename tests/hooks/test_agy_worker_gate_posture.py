@@ -66,6 +66,7 @@ def _seed_enforcer_deny(monkeypatch, state_dir: Path, session_id: str) -> None:
     monkeypatch.setenv("RBG_GATE_MODE", "block")
     monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     state = SessionState.create(session_id, client_type="agy")
+    state.gate_modes["RBG_GATE_MODE"] = "block"
     state.gates["rbg"].status = GateStatus.OPEN
     state.gates["rbg"].ops_since_open = 100
     state.save()
@@ -149,6 +150,7 @@ def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
     monkeypatch.setenv("RBG_GATE_MODE", "warn")
     monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
     state = SessionState.create(sid, client_type="agy")
+    state.gate_modes["RBG_GATE_MODE"] = "warn"
     state.gates["rbg"].status = GateStatus.OPEN
     state.gates["rbg"].ops_since_open = 100
     state.save()

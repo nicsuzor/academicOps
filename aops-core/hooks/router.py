@@ -729,6 +729,17 @@ class HookRouter:
                 client_type=ctx.client_type,
             )
 
+            # Populate default gate_modes on creation for test/bootstrap scenarios
+            # where SessionStart hasn't explicitly set them yet.
+            try:
+                from hooks import gate_config
+                from hooks.session_env_setup import _gate_mode_vars
+
+                for name in _gate_mode_vars:
+                    state.gate_modes[name] = getattr(gate_config, name)
+            except Exception:
+                pass
+
         # Initialize gate registry
         GateRegistry.initialize()
 
@@ -825,6 +836,29 @@ class HookRouter:
                 print(f"WARNING: session_env_setup error: {e}", file=sys.stderr)
 
     def _dispatch_gates(self, ctx: HookContext, state: SessionState) -> GateResult | None:
+        # Fallback for tests/ad-hoc invocations where SessionStart hasn't run.
+        if not state.gate_modes:
+            try:
+                from hooks import gate_config
+
+                _gate_mode_vars = [
+                    "SENTINEL_GATE_MODE",
+                    "RBG_GATE_MODE",
+                    "RBG_REVIEW_GATE_MODE",
+                    "HANDOVER_GATE_MODE",
+                    "QA_GATE_MODE",
+                    "IDA_GATE_MODE",
+                    "HYDRATION_GATE_MODE",
+                ]
+                for name in _gate_mode_vars:
+                    if hasattr(gate_config, name):
+                        state.gate_modes[name] = getattr(gate_config, name)
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                print(f"DEBUG FALLBACK EXCEPTION: {e}")
+
         """Dispatch to GenericGate methods based on event type.
 
         Maps hook events to GenericGate methods:

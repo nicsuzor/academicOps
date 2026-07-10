@@ -158,6 +158,12 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
             name[: -len("_GATE_MODE")].lower(): getattr(gate_config, name)
             for name in _gate_mode_vars
         }
+
+        # Persist modes to session state so inner-loop hooks (which get a stripped shell env)
+        # can correctly evaluate gate verdicts based on the original SessionStart environment.
+        for name in _gate_mode_vars:
+            state.gate_modes[name] = getattr(gate_config, name)
+
         gate_summary = " ".join(f"{k}={v}" for k, v in gate_modes.items())
         messages.append(_ok(f"Gates: {gate_summary}"))
     except Exception as e:
