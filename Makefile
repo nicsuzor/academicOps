@@ -153,8 +153,6 @@ install-dev: build-dev
 	-command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	-command openclaw plugins uninstall aops-core
-	-command openclaw plugins uninstall aops-tools
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
@@ -173,9 +171,6 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE)
 	@# Add dist/ as the marketplace: dist/.claude-plugin/marketplace.json names it
 	@# `aops` and sources ./aops-* (see build.py generate_local_marketplace).
 	-command claude plugin marketplace add $(DIST_DIR)
-	-command openclaw plugins install --marketplace $(AOPS_ROOT) aops-core
-	-command openclaw plugins install --marketplace $(AOPS_ROOT) aops-tools
-	-command openclaw gateway restart || echo "  ⚠️ OpenClaw gateway restart failed"
 	@echo "Delegating install to scripts/install.py (single authoritative path)..."
 	@AOPS=$(AOPS_ROOT) ACA_DATA=$${ACA_DATA:-$(AOPS_ROOT)} uv run python scripts/install.py
 	@$(MAKE) report-versions
@@ -217,7 +212,7 @@ install-hooks:
 # plugins. The two CORE surfaces — Claude + agy — run first and HALT the chain if
 # their core plugin fails to install (that's the point of `make install`: prove
 # it works). The trailing surfaces (docker image, Windows-side Claude, crontab)
-# are optional and self-tolerant. The deprecated Gemini CLI and OpenClaw are
+# are optional and self-tolerant. The deprecated Gemini CLI is
 # intentionally NOT in this chain.
 install: clean-local install-claude install-agy ensure-docker install-windows install-crontab
 	@$(MAKE) report-versions
@@ -294,16 +289,6 @@ install-claude:
 		&& echo "✓ Claude Code aops-pkb installed" \
 		|| echo "  ⚠️ Claude aops-pkb install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
 
-install-openclaw:
-	@echo "Installing aops plugin for OpenClaw..."
-	@echo "  Source: $(DIST_REPO_URL)"
-	-command openclaw plugins uninstall aops-core
-	-command openclaw plugins uninstall aops-tools
-	@command openclaw plugins install --marketplace $(DIST_REPO) aops-core && \
-	echo "✓ OpenClaw aops-core installed"
-	@command openclaw plugins install --marketplace $(DIST_REPO) aops-tools \
-		|| echo "  ⚠️ OpenClaw aops-tools install failed"
-	@command openclaw gateway restart || echo "  ⚠️ OpenClaw gateway restart failed — is it running as a service?"
 
 # Cowork on personal accounts has no marketplace mechanism. The Cowork plugin
 # is a SEPARATE build (`aops-coworklocal`) from the Claude Code CLI build (`aops-core`):

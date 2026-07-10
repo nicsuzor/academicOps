@@ -417,12 +417,13 @@ class TestAntigravityStatusDir:
     def test_agy_without_transcript_raises_no_fallback(self):
         """No transcript_path, no env var, client=agy → RAISE, not a silent
         write under ~/.claude (NO-FALLBACKS axiom)."""
-        with pytest.raises(ValueError, match="Refusing to fall back to the Claude"):
-            get_session_status_dir(
-                "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
-                transcript_path=None,
-                client_type="agy",
-            )
+        with patch.dict("os.environ", {"ANTIGRAVITY_CONVERSATION_ID": ""}, clear=False):
+            with pytest.raises(ValueError, match="Refusing to fall back to the Claude"):
+                get_session_status_dir(
+                    "57cd4afc-9375-4b9b-b0d0-75321c10ac64",
+                    transcript_path=None,
+                    client_type="agy",
+                )
 
     def test_session_state_save_lands_in_agy_dir(self, tmp_path):
         """End-to-end: SessionState carrying agy routing saves under the agy

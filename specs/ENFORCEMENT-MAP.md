@@ -8,14 +8,6 @@ description: SSoT for the current-state register mapping rules to enforcement me
 
 # Enforcement Map
 
-> **State — operative current-state register.** Which **rule** is reinforced by which **mechanism**, at which pyramid level, _right now_. This file is the single source of truth (SSoT) for the macroscopic matrix mapping rules to enforcement triggers, client differences, and gate modes.
->
-> **Where things live now (read this if you came looking for prose):** each mechanism's canonical definition — what it is, what it enforces, how it's configured, its pyramid tier — is in [`enforcement/enforcement.md`](enforcement/enforcement.md) §6 (the authoritative mechanism index, aops-3038d47c). This file only records **WHEN** each mechanism fires; it does not redefine mechanisms. Per-gate forensic detail (config / verify / debug) is in [`enforcement/GATES.md`](enforcement/GATES.md). Per-agent detail is in `specs/agents/*.md`. Hook wire-channel detail (which field reaches user vs agent) is in [`CLIENT-TRANSLATION.md`](CLIENT-TRANSLATION.md). `rbg` blocks on this file's currency (P#65).
-
-**Module ownership (H13/H16/H11/H17).** The gate engine, every surviving gate, and observability (`unified_logger`, the transcript family) stay in **aops-core** — aops-pkb is outer to the task contract, gates are inner (H13/H16). Ownership is not the same as deployment: this tooling must run wherever work actually happens, **including remote surfaces**, not just the primary host (H16). The skills-routing hint moves up to aops-pkb/aops-adhd; `pkb-nudge` does not (H11/H14). Git-push safety becomes project-local git hooks installed at provisioning, not plugin code — `aops-core`'s `git_safety.py` retires (H17). See [`enforcement.md` §6.1](enforcement/enforcement.md#61-live-mechanisms) for the full mechanism-by-mechanism ownership detail.
-
----
-
 ## 1. Unified SSoT Matrix: Rules, Mechanisms, and Triggers
 
 This matrix is the centralized authoritative register tracking every core rule, how it is enforced (the mechanism — canonical definition in [`enforcement.md` §6](enforcement/enforcement.md#6-mechanism-index-authoritative)), when it fires (trigger), and its mode across interactive vs. autonomous surfaces. **Design intent is client-agnostic** — per-client wire differences are not behavioural intent and never appear here as rows or columns; they live as capability caveats in [`CLIENT-TRANSLATION.md`](CLIENT-TRANSLATION.md). (The Mode columns below are _surface_ distinctions — interactive vs. background vs. subagent — not clients.)
