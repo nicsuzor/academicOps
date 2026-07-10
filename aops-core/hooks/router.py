@@ -850,7 +850,7 @@ class HookRouter:
         # subagent-classified sessions instead of being fail-silently
         # suppressed. In particular PostToolUse — previously skipped wholesale
         # — now dispatches so ops-counter increments and other PostToolUse
-        # triggers (session_did_work, mid-edit tracking) actually run for
+        # triggers (turn_did_work, mid-edit tracking) actually run for
         # subagent-classified sessions; GenericGate.on_tool_use excludes only
         # COMPLIANCE_SUBAGENT_TYPES from the ops-counter increment itself, so
         # a compliance subagent's own internal reads still can't inflate the

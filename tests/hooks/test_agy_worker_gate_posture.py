@@ -185,7 +185,7 @@ def test_stop_gate_fires_for_agy_worker(monkeypatch, tmp_path):
     # Force handover gate CLOSED so the Stop policy can fire
     state = SessionState.create(sid, client_type="agy")
     state.gates["handover"].status = GateStatus.CLOSED
-    state.session_did_work = True
+    state.turn_did_work = True
     state.save()
 
     # PostInvocation maps to "Stop" internally — this is what agy sends

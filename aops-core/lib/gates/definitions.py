@@ -407,7 +407,7 @@ GATE_CONFIGS = [
     # Whether a CLOSED gate actually holds up the exit Stop is entirely down to
     # HANDOVER_GATE_MODE (gates.handover in polecat.yaml, or a project's
     # .claude/settings.json for a direct CLI surface) plus the independent
-    # session_did_work exemption (read-only sessions are exempt regardless of
+    # turn_did_work exemption (read-only turns are exempt regardless of
     # gate status or mode — see is_handover_block_mode/is_handover_warn_mode in
     # custom_conditions.py). Policy blocks Stop when CLOSED.
     GateConfig(
@@ -416,8 +416,8 @@ GATE_CONFIGS = [
         initial_status=GateStatus.OPEN,
         triggers=[
             # Task bound: update_task with status=in_progress -> Close, EVERY
-            # session type alike. Also sets session_did_work so the Stop policy
-            # fires for this session.
+            # session type alike. Also sets turn_did_work so the Stop policy
+            # fires for this turn.
             GateTrigger(
                 condition=GateCondition(
                     hook_event="PostToolUse",
@@ -427,7 +427,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key="handover.bound",
-                    custom_action="set_session_did_work",
+                    custom_action="set_turn_did_work",
                 ),
             ),
             # pkb claim_task -> Close (every session type).
@@ -440,7 +440,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key=None,
-                    custom_action="set_session_did_work",
+                    custom_action="set_turn_did_work",
                 ),
             ),
             # Write / edit tool used -> Close (every session type). is_write_tool
@@ -454,7 +454,7 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     system_message_key=None,
-                    custom_action="set_session_did_work",
+                    custom_action="set_turn_did_work",
                 ),
             ),
             # Handover skill completes -> Open (sticky until UPS)
@@ -525,9 +525,14 @@ GATE_CONFIGS = [
             ),
             # UserPromptSubmit -> re-arm for the next turn cycle, EVERY session
             # type alike. Re-arming CLOSED here is harmless for a read-only
-            # session: the block/warn policies below independently exempt
-            # session_did_work=False regardless of gate status, so a session
-            # that never wrote anything still exits cleanly.
+            # turn: the block/warn policies below independently exempt
+            # turn_did_work=False regardless of gate status, so a turn
+            # that does no work of its own still exits cleanly — even if an
+            # earlier turn in the same session did write something, because
+            # reset_turn_did_work below clears the flag fresh for THIS turn
+            # (aops_d18b2d4b — previously session-wide and never reset, so one
+            # write anywhere in the session latched the full ceremony onto
+            # every later no-op turn).
             # Slash-command turns (skill invocations such as /end-session,
             # /dump, /remember) are excluded: a finishing/meta skill owns its
             # own handover format and must not re-close the gate it just
@@ -546,12 +551,13 @@ GATE_CONFIGS = [
                 transition=GateTransition(
                     target_status=GateStatus.CLOSED,
                     set_metrics={"stop_deny_count": 0},
+                    custom_action="reset_turn_did_work",
                 ),
             ),
         ],
         policies=[
             # Block mode: advisory injected into agent context via reason channel.
-            # Exempts read-only sessions (session_did_work=False) — a session that
+            # Exempts read-only turns (turn_did_work=False) — a turn that
             # used no write tools and claimed no task needs no handover (aops-16a15a05).
             GatePolicy(
                 condition=GateCondition(
@@ -567,11 +573,11 @@ GATE_CONFIGS = [
             # the agent reads the handover requirement, then the warn-mode
             # fire-once Stop trigger above opens the gate so the turn proceeds.
             # DENY, not WARN (a WARN renders as a non-blocking advisory on Claude
-            # and would not force the continuation). Exempts read-only sessions.
+            # and would not force the continuation). Exempts read-only turns.
             # The former soft interactive rate-limiting (spec mem-438429c5
             # §5.4-5.5, record_handover_warn_fired) is superseded: warn now
             # behaves like every other stop gate — one forced continuation IS the
-            # nudge. Exempts read-only sessions (session_did_work=False).
+            # nudge. Exempts read-only turns (turn_did_work=False).
             GatePolicy(
                 condition=GateCondition(
                     current_status=GateStatus.CLOSED,

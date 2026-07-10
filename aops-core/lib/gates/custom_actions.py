@@ -308,12 +308,21 @@ def execute_custom_action(
         state.metrics["has_in_progress_todo"] = has_in_progress
         return None
 
-    if name == "set_session_did_work":
-        # Mark the session as having done real work (write tool or task claim).
-        # The handover gate policies check session_did_work to decide whether
-        # a full handover is required (aops-16a15a05). Read-only sessions
+    if name == "set_turn_did_work":
+        # Mark the CURRENT TURN as having done real work (write tool or task
+        # claim). The handover gate policies check turn_did_work to decide
+        # whether a full handover is required (aops-16a15a05). Read-only turns
         # never trigger this action and bypass the handover gate.
-        session_state.session_did_work = True
+        session_state.turn_did_work = True
+        return None
+
+    if name == "reset_turn_did_work":
+        # Fired on the UserPromptSubmit re-arm trigger (start of a new turn):
+        # turn_did_work must start False each turn so a no-op turn is exempt
+        # from handover even if an earlier turn in the same session wrote
+        # something (aops_d18b2d4b — was never reset, so one write latched the
+        # full ceremony onto every later turn for the rest of the session).
+        session_state.turn_did_work = False
         return None
 
     return None

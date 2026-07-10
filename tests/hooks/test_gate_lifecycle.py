@@ -169,9 +169,9 @@ class TestHandoverReadOnlyExemption:
 
         state = self._make_polecat_state("test-read-only-stop")
         # Gate starts OPEN (every session type alike) and nothing closed it —
-        # session_did_work is also False, so the policy is exempt either way.
+        # turn_did_work is also False, so the policy is exempt either way.
         assert state.gates["handover"].status == GateStatus.OPEN
-        assert state.session_did_work is False
+        assert state.turn_did_work is False
 
         ctx = HookContext(
             session_id="test-read-only-stop",
@@ -193,7 +193,7 @@ class TestHandoverReadOnlyExemption:
         state = self._make_polecat_state("test-working-stop")
         state.gates["handover"].status = GateStatus.CLOSED
         # Simulate a write tool having been used — triggers the full handover requirement
-        state.session_did_work = True
+        state.turn_did_work = True
         # Open QA so it doesn't mask the handover DENY
         state.gates["qa"].status = GateStatus.OPEN
 
@@ -208,13 +208,13 @@ class TestHandoverReadOnlyExemption:
             f"Expected DENY from handover gate, got {result.verdict.value if result else 'None'}"
         )
 
-    def test_set_session_did_work_on_task_claim(self, router, monkeypatch):
-        """Claiming a task (update_task in_progress) sets session_did_work=True."""
+    def test_set_turn_did_work_on_task_claim(self, router, monkeypatch):
+        """Claiming a task (update_task in_progress) sets turn_did_work=True."""
         set_gate_modes(monkeypatch, handover="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-task-claim")
-        assert state.session_did_work is False
+        assert state.turn_did_work is False
 
         ctx = HookContext(
             session_id="test-task-claim",
@@ -224,18 +224,18 @@ class TestHandoverReadOnlyExemption:
         )
         router._dispatch_gates(ctx, state)
 
-        assert state.session_did_work is True, (
-            "Claiming a task must set session_did_work=True so the handover policy fires"
+        assert state.turn_did_work is True, (
+            "Claiming a task must set turn_did_work=True so the handover policy fires"
         )
 
-    def test_set_session_did_work_on_write_tool(self, router, monkeypatch):
-        """Using a write tool (Edit) sets session_did_work=True in polecat sessions."""
+    def test_set_turn_did_work_on_write_tool(self, router, monkeypatch):
+        """Using a write tool (Edit) sets turn_did_work=True in polecat sessions."""
         set_gate_modes(monkeypatch, handover="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-write-tool")
         state.main_agent.current_task = "task-xyz"  # required for is_write_tool to fire
-        assert state.session_did_work is False
+        assert state.turn_did_work is False
 
         ctx = HookContext(
             session_id="test-write-tool",
@@ -245,8 +245,8 @@ class TestHandoverReadOnlyExemption:
         )
         router._dispatch_gates(ctx, state)
 
-        assert state.session_did_work is True, (
-            "Using a write tool must set session_did_work=True so the handover policy fires"
+        assert state.turn_did_work is True, (
+            "Using a write tool must set turn_did_work=True so the handover policy fires"
         )
 
 
@@ -319,7 +319,7 @@ class TestStopDenyMaxFireDowngrade:
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("handover")
-        # session_did_work already set to True by make_gate_trigger_state
+        # turn_did_work already set to True by make_gate_trigger_state
         state.gates["qa"].status = GateStatus.OPEN
 
         stop_ctx = HookContext(
@@ -471,7 +471,7 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
         reinit_gates_with_defaults()
         state = self._fresh_state("test-gate-mode")
         state.main_agent.current_task = "task-xyz"
-        state.session_did_work = True
+        state.turn_did_work = True
         for g in ("qa", "handover", "ida"):
             state.gates.setdefault(g, GateState()).status = GateStatus.CLOSED
 

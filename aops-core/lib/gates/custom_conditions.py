@@ -158,10 +158,10 @@ def check_custom_condition(
 
     if name == "is_handover_block_mode":
         # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking
-        # AND the session did real work (write tool or task claim).
-        # Read-only sessions (session_did_work=False) are exempt — they need no
-        # structured handover (aops-16a15a05).
-        if not session_state.session_did_work:
+        # AND the CURRENT TURN did real work (write tool or task claim).
+        # Read-only turns (turn_did_work=False) are exempt — they need no
+        # structured handover (aops-16a15a05, aops_d18b2d4b).
+        if not session_state.turn_did_work:
             return False
         from hooks.gate_config import HANDOVER_GATE_MODE
 
@@ -169,8 +169,8 @@ def check_custom_condition(
 
     if name == "is_handover_warn_mode":
         # Handover gate policy: active only when HANDOVER_GATE_MODE is warn
-        # AND the session did real work. Same read-only exemption as block mode.
-        if not session_state.session_did_work:
+        # AND the current turn did real work. Same read-only exemption as block mode.
+        if not session_state.turn_did_work:
             return False
         from hooks.gate_config import HANDOVER_GATE_MODE
 
@@ -184,10 +184,10 @@ def check_custom_condition(
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)
 
-    if name == "session_did_work":
-        # True if the session has used a write tool or claimed a task.
+    if name == "turn_did_work":
+        # True if the current turn has used a write tool or claimed a task.
         # Used directly in triggers/conditions that need this signal without
-        # combining it with a gate-mode check (aops-16a15a05).
-        return session_state.session_did_work
+        # combining it with a gate-mode check (aops-16a15a05, aops_d18b2d4b).
+        return session_state.turn_did_work
 
     return False

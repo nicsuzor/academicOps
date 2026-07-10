@@ -392,7 +392,7 @@ def test_stop_hook_active_is_ignored_no_special_bypass(router, monkeypatch):
     monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
     _reinit_gates_with_defaults()
     state = _state_with_bound_task("hv-stop-active")
-    state.session_did_work = True
+    state.turn_did_work = True
     state.gates["handover"] = GateState(status=GateStatus.CLOSED)  # armed → would block
 
     result = router._dispatch_gates(
@@ -422,7 +422,7 @@ def test_block_gate_retry_loop_is_bounded_by_deny_counter(router, monkeypatch):
     monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
     _reinit_gates_with_defaults()
     state = _state_with_bound_task("hv-loop")
-    state.session_did_work = True
+    state.turn_did_work = True
     state.gates["handover"] = GateState(status=GateStatus.CLOSED)  # armed, never satisfied
 
     stop = HookContext(session_id="hv-loop", hook_event="Stop", tool_name=None, tool_input={})

@@ -83,7 +83,7 @@ class TestTwoModeLatch:
     def test_handover_warn_fires_once_then_latches_open(self, router, monkeypatch):
         set_gate_modes(monkeypatch, handover="warn", qa="off", ida="off")
         reinit_gates_with_defaults()
-        state = make_gate_trigger_state("handover")  # sets session_did_work
+        state = make_gate_trigger_state("handover")  # sets turn_did_work
         ctx = make_gate_trigger_context("handover")
 
         r1 = router._dispatch_gates(ctx, state)
