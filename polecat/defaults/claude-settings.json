@@ -119,6 +119,7 @@
   "enabledPlugins": {
     "aops-core@academicOps": true,
     "aops-tools@academicOps": true,
-    "aops-pkb@academicOps": true
+    "aops-pkb@academicOps": true,
+    "aops-extras@academicOps": true
   }
 }
