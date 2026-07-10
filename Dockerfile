@@ -1,3 +1,28 @@
+# --- aops dist/ source selection ---------------------------------------
+# The image needs the built dist/aops-* tree + .claude-plugin/marketplace.json.
+# Two interchangeable sources, selected by AOPS_DIST_SOURCE:
+#   remote (default) — clone the published `dist` branch. Used by CI
+#     (build-extension.yml builds the image right after publishing that
+#     branch, so this is exactly the release just shipped).
+#   local — copy the dist/ this checkout already built (`make build-dev` /
+#     scripts/build.py). Used by `make build-docker` for local dev builds, so
+#     the image reflects your current source tree instead of whatever the
+#     dist branch last published (which can lag current source — see #2208).
+ARG AOPS_DIST_SOURCE=remote
+ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
+ARG AOPS_DIST_REF=dist
+
+FROM alpine/git:latest AS aops-dist-remote
+ARG AOPS_REPO_URL
+ARG AOPS_DIST_REF
+RUN git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} /aops-dist
+
+FROM scratch AS aops-dist-local
+COPY dist /aops-dist/dist
+COPY .claude-plugin /aops-dist/.claude-plugin
+
+FROM aops-dist-${AOPS_DIST_SOURCE} AS aops-dist
+
 # Use Python 3.12 with Debian Bookworm slim for a minimal, compatible base
 FROM python:3.12-slim-bookworm
 
@@ -105,24 +130,19 @@ RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
 
-# ── Install aops framework from GitHub ────────────────────────────────
-# Both CLIs install from a SINGLE shallow clone of the dist repo so they
+# ── Install aops framework from the source selected above ─────────────
+# Both CLIs install from the SAME /tmp/aops-dist tree (either the single
+# shallow clone or the local dist/ copy — see AOPS_DIST_SOURCE above) so they
 # always get the same commit. The previous approach used two independent
 # git clones that could diverge if the repo updated between them
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
-ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
-# The published distribution lives on the non-default `dist` branch (orphan branch:
-# .claude-plugin/marketplace.json + dist/aops-*). The default branch is the SOURCE
-# trunk and carries no built dist/, so the framework must be cloned from the dist ref.
-# Overridable so a release build can pin the exact ref it just published.
-ARG AOPS_DIST_REF=dist
 
 # Fixup script for post-install Gemini/Antigravity config (see file for why).
 COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
-# Single clone of the dist branch → install both Claude plugin and Gemini extension
-# from it. Both CLIs internally set 444 on git objects — chmod after each install.
-RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} /tmp/aops-dist \
+# Both CLIs internally set 444 on git objects — chmod after each install.
+COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
+RUN umask 000 \
     && claude plugin marketplace add /tmp/aops-dist \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \

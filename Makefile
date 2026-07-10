@@ -546,21 +546,29 @@ DOCKER_IMAGE := ghcr.io/nicsuzor/aops-crew
 SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
 # Build the Docker image used for crew/worker agent environments and Gemini sandboxing.
+#
+# AOPS_DIST_SOURCE=local: builds from THIS checkout's dist/ output (rebuilt
+# fresh via build-dev first) rather than cloning the published `dist` branch,
+# so local builds always reflect current source instead of whatever last
+# shipped (which can lag — see #2208). CI (build-extension.yml) doesn't pass
+# AOPS_DIST_SOURCE, so it keeps the `remote` default and clones the branch it
+# just published.
+#
 # CLAUDE_CODE_VERSION/RUST_CACHEBUST bust their layer cache once per calendar
 # day (not once per build) so Claude Code and Rust — and, via the framework
 # install's hard dependency on a fresh `claude` binary, the aops plugin
 # install — don't reinstall on every local build. Pass an explicit version to
 # pin, or `make docker-refresh-tools` to force an immediate refresh.
-build-docker:
+build-docker: build-dev
 	@echo "Building aops crew image..."
-	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%Y%m%d) --build-arg RUST_CACHEBUST=$$(date +%Y%m%d) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
+	@docker build --build-arg AOPS_DIST_SOURCE=local --build-arg CLAUDE_CODE_VERSION=$$(date +%Y%m%d) --build-arg RUST_CACHEBUST=$$(date +%Y%m%d) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Image built: $(DOCKER_IMAGE) (also tagged $(notdir $(DOCKER_IMAGE)):latest)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
 # Force an immediate Claude Code / Rust refresh without a full --no-cache rebuild.
-docker-refresh-tools:
+docker-refresh-tools: build-dev
 	@echo "Refreshing Claude Code + Rust in aops crew image..."
-	@docker build --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
+	@docker build --build-arg AOPS_DIST_SOURCE=local --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Image refreshed: $(DOCKER_IMAGE)"
 
 # Build from a clean checkout — required when verifying Dockerfile changes.

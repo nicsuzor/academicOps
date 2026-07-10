@@ -33,6 +33,11 @@
 **/.coverage
 **/htmlcov
 **/dist
+# Root-level dist/ is the built framework output, needed by the Dockerfile's
+# aops-dist-local stage (AOPS_DIST_SOURCE=local, used by `make build-docker`
+# for local dev builds — see Dockerfile). Nested dist dirs (.venv/, worktrees,
+# node_modules) stay excluded via the blanket rule above.
+!/dist/**
 **/node_modules
 **/.venv
 **/.agent
