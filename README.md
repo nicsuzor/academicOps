@@ -82,7 +82,7 @@ Axioms describe what must never happen. They don't enforce themselves — that's
 Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
 
 - **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, rbg (periodic compliance), destructive-command block
+- **PreToolUse gates**: hydration, rbg (periodic compliance)
 - **PostToolUse**: boundary detection, warn-tier checks, autocommit
 - **Stop gates**: QA and handover discipline before a session ends
 - **Transcript capture**: every session recorded for reflection
@@ -91,7 +91,6 @@ The gates riding those hooks:
 
 | Gate         | What it catches                                           | Default                                                   |
 | ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| `sentinel`   | Destructive ops on protected env paths                    | `block`                                                   |
 | `rbg`        | Scope drift / compliance, every N write ops               | `warn`                                                    |
 | `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
 | `qa`         | Claiming "done" without running verification              | `warn`                                                    |
@@ -106,9 +105,7 @@ The gates riding those hooks:
 flowchart TD
     A[Session start] --> B["Axioms + safety floor injected\n(always-on, every surface)"]
     B --> C[Agent works: tool calls]
-    C --> D{sentinel gate\nPreToolUse}
-    D -- destructive op on\nprotected path --> DB["BLOCK\n(hard deny)"]
-    D -- clear --> E{rbg gate\nevery N write ops}
+    C --> E{rbg gate\nevery N write ops}
     E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
     E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
     EW --> F
@@ -125,7 +122,7 @@ flowchart TD
     N --> O[Merge]
 ```
 
-Three postures do the work: **hard blocks** (`sentinel`, `rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+Three postures do the work: **hard blocks** (`rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
 
 The same ladder continues past the session, into GitHub:
 

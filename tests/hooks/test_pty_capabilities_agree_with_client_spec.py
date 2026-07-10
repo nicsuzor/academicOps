@@ -134,19 +134,21 @@ class TestClaudeStopCapabilitiesAgreeWithFixture:
             "longer be exonerated; re-open the investigation."
         )
 
-    def test_ida_warn_solo_channel_precondition_holds(self):
-        """router.ida_warn_solo_decision_for (aops-core/hooks/router.py) gates
-        delivery on agent_context_without_block. This must stay True for the
-        GH #2181 fix to keep working — if it ever measures False, the
-        warn-mode ida advisory would silently stop reaching the agent on
-        Claude, with no test elsewhere catching it (the router-level unit
-        tests mock the channel_spec answer rather than re-measuring it).
+    def test_warn_mode_stop_channel_precondition_holds(self):
+        """router._resolve_policy_for_claude_stop (aops-core/hooks/router.py)
+        gates every warn-mode Stop gate's non-blocking delivery (qa, handover,
+        rbg-review, ida) on agent_context_without_block. This must stay True
+        for warn-mode gates to deliver non-blockingly — if it ever measures
+        False, warn-mode advisories would silently upgrade to a blocking
+        decision on Claude, with no test elsewhere catching it (the
+        router-level unit tests mock the channel_spec answer rather than
+        re-measuring it).
         """
         spec = cs.channel_spec("claude", "Stop")
         assert spec.agent_context_without_block is True, (
-            "router.ida_warn_solo_decision_for requires "
-            "agent_context_without_block=True to deliver the warn-mode ida "
-            "advisory non-blockingly — if this capability is ever measured "
-            "False, ida-warn silently stops delivering on Claude. Re-probe "
-            "stop-additionalcontext-warn before assuming this is stale."
+            "warn-mode Stop gates require agent_context_without_block=True "
+            "to deliver non-blockingly — if this capability is ever measured "
+            "False, warn-mode advisories silently upgrade to a blocking "
+            "decision on Claude. Re-probe stop-additionalcontext-warn before "
+            "assuming this is stale."
         )

@@ -222,13 +222,13 @@ class TestSubagentEventsNotSubagent:
 
 
 class TestSubagentPostToolUseNowEvaluates:
-    """PostToolUse now dispatches for subagent-classified sessions (Nic ruling
-    2026-07-08 "let's just do it", aops_571771b4) instead of being
-    fail-silently suppressed, so a genuine Task-tool subagent's ops counters
-    increment. PreToolUse stays suppressed (sentinel/rbg carry blocking
-    policies; several subagent types, e.g. Explore, have no Agent-tool access
-    to satisfy rbg's compliance-threshold demand — blocking them there is an
-    unrecoverable deadlock, not enforcement, per aops-55bcf1a2).
+    """PostToolUse dispatches for subagent-classified sessions (aops_571771b4)
+    instead of being fail-silently suppressed, so a genuine Task-tool
+    subagent's ops counters increment. PreToolUse stays suppressed (rbg
+    carries a blocking policy; several subagent types, e.g. Explore, have no
+    Agent-tool access to satisfy rbg's compliance-threshold demand — blocking
+    them there is an unrecoverable deadlock, not enforcement, per
+    aops-55bcf1a2).
 
     A COMPLIANCE_SUBAGENT_TYPES subagent (rbg/marsha) is the one exception:
     its own internal tool calls must not inflate the ops counter its dispatch

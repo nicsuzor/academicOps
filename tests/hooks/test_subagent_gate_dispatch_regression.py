@@ -1,16 +1,16 @@
 """Regression tests for subagent gate dispatch.
 
-Architecture (updated 2026-07-08, Nic ruling "let's just do it", aops_571771b4):
-PreToolUse remains invisible to gates for subagent-classified sessions —
-sentinel and rbg carry blocking PreToolUse policies, and several subagent
-types (e.g. Explore, Plan) have no Agent-tool access to satisfy a compliance
-threshold demand, so blocking them there is an unrecoverable deadlock, not
-enforcement (aops-55bcf1a2). Every OTHER event — including PostToolUse —
-now dispatches regardless of is_subagent: gates must EVALUATE for
-subagent-classified sessions instead of being fail-silently suppressed
-(issue #2182). The one carved-out exception is COMPLIANCE_SUBAGENT_TYPES
-(rbg/marsha): their own internal tool calls still must not inflate the ops
-counter their dispatch already resets (aops-55bcf1a2 Bug 2).
+Architecture (aops_571771b4): PreToolUse remains invisible to gates for
+subagent-classified sessions — rbg carries a blocking PreToolUse policy, and
+several subagent types (e.g. Explore, Plan) have no Agent-tool access to
+satisfy a compliance threshold demand, so blocking them there is an
+unrecoverable deadlock, not enforcement (aops-55bcf1a2). Every OTHER event —
+including PostToolUse — dispatches regardless of is_subagent: gates must
+EVALUATE for subagent-classified sessions instead of being fail-silently
+suppressed (issue #2182). The one carved-out exception is
+COMPLIANCE_SUBAGENT_TYPES (rbg/marsha): their own internal tool calls still
+must not inflate the ops counter their dispatch already resets
+(aops-55bcf1a2 Bug 2).
 Stop/SessionEnd/SubagentStop AND UserPromptSubmit events were already exempt
 from the old PreToolUse/PostToolUse bypass so that session-level gates (e.g.
 IDA) fire even for Claude Code background agents which get is_subagent=True

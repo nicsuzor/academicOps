@@ -514,14 +514,15 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        # D1: warn now fires a hard-block DENY like block, so the advisory rides
-        # the user-visible `reason` in BOTH modes at this render layer. (ida-warn
-        # is delivered via non-blocking hookSpecificOutput.additionalContext,
-        # selected by router.ida_warn_solo_decision_for() in main(); asyncRewake
-        # is retired. output_for_claude — tested here — still renders the loud
-        # DENY reason, which must be tidy.)
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        user_text = output.reason
+        # Block mode forces a continuation: the advisory rides the user-visible
+        # `reason` (decision:block). Warn mode delivers non-blockingly via
+        # hookSpecificOutput.additionalContext instead — `reason` is empty and
+        # the advisory lives there. Either way, no raw marker scaffold may leak
+        # into whichever channel is populated.
+        user_text = (
+            output.reason if mode == "block" else output.hookSpecificOutput.additionalContext
+        )
+        assert user_text, f"{gate_name} ({mode}): expected a populated user-visible channel"
         assert _MARKER_OPEN not in user_text and _MARKER_CLOSE not in user_text, (
             f"{gate_name} ({mode}): raw <SYSTEM HOOK INSTRUCTION> scaffold leaked into a "
             f"user-visible Stop channel: {user_text[:120]!r}"
@@ -546,10 +547,12 @@ class TestStopReasonIsUserVisibleAndTidy:
         assert result is not None, f"{gate_name} ({mode}) did not fire on Stop"
         output = router.output_for_claude(router._gate_result_to_canonical(result), "Stop")
 
-        # D1: warn now fires a hard-block DENY like block, so the advisory rides
-        # the user-visible `reason` in BOTH modes at this render layer.
-        assert output.reason, f"{gate_name} ({mode}): expected a populated user-visible reason"
-        user_text = output.reason
+        # Block mode's advisory rides the user-visible `reason` (decision:block);
+        # warn mode delivers non-blockingly via hookSpecificOutput.additionalContext.
+        user_text = (
+            output.reason if mode == "block" else output.hookSpecificOutput.additionalContext
+        )
+        assert user_text, f"{gate_name} ({mode}): expected a populated user-visible channel"
         leaked = [s for s in self._CALL_SYNTAX if s in user_text]
         assert not leaked, (
             f"{gate_name} ({mode}): raw agent-invocation syntax {leaked} leaked into a "
