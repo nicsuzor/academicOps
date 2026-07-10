@@ -11,7 +11,10 @@
     "mcpServers": {
       "pkb": {
         "command": "bash",
-        "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
+        "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+        "env": {
+          "PKB_MCP_URL": "${PKB_MCP_URL}"
+        }
       }
     }
   }

@@ -55,5 +55,9 @@ fi
 # .config at 0644 (non-traversable); this self-heals them on startup.
 chmod 777 "$HOME/.config" 2>/dev/null || true
 
+# Note: Claude settings.json injection (pkb_mcp_url via pluginConfigs) is handled
+# at launch time by polecat/cli.py. Direct container invocations that bypass cli.py
+# will have agy working (PKB_MCP_URL inherited from env) but Claude missing pkb_mcp_url.
+
 # Execute the agent command (e.g., claude, gemini, bash).
 exec "$@"

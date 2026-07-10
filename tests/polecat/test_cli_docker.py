@@ -244,12 +244,12 @@ class TestClaudeAuthEnvOnly:
             "staged .credentials.json leaked host auth"
         )
         staged_settings = docker_cmd.staging_dir / ".claude" / "settings.json"
-        if staged_settings.exists():
-            data = json.loads(staged_settings.read_text())
-            assert "host_sentinel" not in data, (
-                "host settings.json content leaked into staged file; "
-                "settings must be generated from polecat/defaults, not copied from host"
-            )
+        assert staged_settings.exists(), "settings.json must be staged when PKB_MCP_URL is set"
+        data = json.loads(staged_settings.read_text())
+        assert "host_sentinel" not in data, (
+            "host settings.json content leaked into staged file; "
+            "settings must be generated from polecat/defaults, not copied from host"
+        )
 
     def test_pkb_url_staged_into_settings(self, tmp_path):
         """When PKB_MCP_URL is set, a settings.json generated from polecat/defaults
@@ -276,6 +276,10 @@ class TestClaudeAuthEnvOnly:
             .get("pkb_mcp_url")
         )
         assert pkb_url == "http://pkb.example.com:8026/mcp/"
+        assert "model" in data, (
+            "defaults from claude-settings.json must survive the merge; "
+            "staging must not overwrite the defaults file, only inject pkb_mcp_url"
+        )
 
     def test_no_settings_staged_without_pkb_url(self, tmp_path):
         """settings.json is only generated and staged when PKB_MCP_URL is set.

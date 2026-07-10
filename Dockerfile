@@ -130,6 +130,7 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && claude plugin install aops-core@academicOps \
     && claude plugin install aops-tools@academicOps \
     && claude plugin install aops-pkb@academicOps \
+    && claude plugin install aops-extras@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
@@ -140,12 +141,16 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
     && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && cp -r /tmp/aops-dist/dist/aops-pkb-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
+    && cp -r /tmp/aops-dist/dist/aops-extras-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 -c "
 import glob, json
 for path in glob.glob('/home/worker/.gemini/**/mcp_config.json', recursive=True):
     try: data = json.loads(open(path).read())
-    except (OSError, ValueError): continue
+    except (OSError, ValueError): raise
     plugin_dir = path[:path.rfind('/')]
     s = json.dumps(data)
     r = s.replace('\${extensionPath}', plugin_dir).replace('\${CLAUDE_PLUGIN_ROOT}', plugin_dir)

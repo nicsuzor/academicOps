@@ -1511,12 +1511,9 @@ def _build_docker_cmd(
         pkb_url = env.get("PKB_MCP_URL")
         if pkb_url:
             _default_settings = Path(__file__).parent / "defaults" / "claude-settings.json"
-            try:
-                _settings_data = (
-                    json.loads(_default_settings.read_text()) if _default_settings.exists() else {}
-                )
-            except (OSError, ValueError):
-                _settings_data = {}
+            _settings_data = (
+                json.loads(_default_settings.read_text()) if _default_settings.exists() else {}
+            )
             _cfg_node = _settings_data.setdefault("pluginConfigs", {}).setdefault(
                 "aops-pkb@academicOps", {}
             )
