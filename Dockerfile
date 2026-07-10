@@ -171,7 +171,7 @@ m = json.loads(mp.read_text()); \
 [p.__setitem__('source', './' + p['name'] + '/' + next((e.name for e in (cache / p['name']).iterdir() if e.is_dir()), '')) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
 mp.write_text(json.dumps(m, indent=2))"
 
-# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-core's
+# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-pkb's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 

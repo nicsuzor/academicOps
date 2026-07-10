@@ -805,13 +805,16 @@ def build_aops_core(
             print(f"  ✓ Copied {len(copied_rel_names)} cowork-marker file(s): {copied_rel_names}")
 
         # The pkb MCP server (.mcp.json, generated in section 4) launches via
-        # scripts/run-mcp.sh, which sources ensure-path.sh — copy just those two,
-        # not the rest of aops-core/scripts/ (hook/session-sync tooling aops-core
-        # already ships).
+        # scripts/run-mcp.sh, which sources ensure-path.sh. aops-pkb/scripts/ is
+        # the sole tracked copy of this launcher pair (single-source-of-truth —
+        # aops-core carries no scripts/run-mcp.sh or scripts/ensure-path.sh of
+        # its own); the antigravity build of aops-pkb copies the same two files
+        # via its own full-tree copy (build_aops_pkb §1).
+        pkb_scripts_src = aops_root / "aops-pkb" / "scripts"
         mcp_launcher_dst = content_dir / "scripts"
         mcp_launcher_dst.mkdir(parents=True, exist_ok=True)
         for script_name in ("run-mcp.sh", "ensure-path.sh"):
-            safe_copy(src_dir / "scripts" / script_name, mcp_launcher_dst / script_name)
+            safe_copy(pkb_scripts_src / script_name, mcp_launcher_dst / script_name)
     else:
         for src_item in src_dir.iterdir():
             if src_item.name in EXCLUDED_FROM_COPY or src_item.name.startswith("."):
@@ -1061,10 +1064,12 @@ def build_aops_core(
                 manifest.pop("source", None)
                 manifest.pop("category", None)
                 # aops-core declares no 'userConfig'/pkb_mcp_url and no pkb MCP
-                # server for the "claude" platform — the aops-pkb plugin owns
-                # pkb there (HTTP transport, its own pkb_mcp_url userConfig).
-                # cowork/antigravity still get pkb via run-mcp.sh in this
-                # template, resolving the URL from the env / ~/.env.local.
+                # server for the "claude" or "antigravity" platforms — the
+                # aops-pkb plugin owns pkb there (HTTP transport for claude,
+                # its own run-mcp.sh for antigravity). Only "cowork" still gets
+                # pkb via run-mcp.sh in this template (copied in from
+                # aops-pkb/scripts/ at build time), resolving the URL from the
+                # env / ~/.env.local.
 
                 with open(dist_plugin_json, "w") as f:
                     json.dump(manifest, f, indent=2)

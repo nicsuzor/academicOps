@@ -10,7 +10,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 # Bootstrap PATH if possible
-[[ -f "aops-core/scripts/ensure-path.sh" ]] && source "aops-core/scripts/ensure-path.sh"
+[[ -f "aops-pkb/scripts/ensure-path.sh" ]] && source "aops-pkb/scripts/ensure-path.sh"
 
 echo "--- 🎨 Formatting with dprint (Markdown/JSON/TOML) ---"
 uv run dprint fmt --allow-no-files
