@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.3.78](https://github.com/nicsuzor/academicOps/compare/v0.3.77...v0.3.78) (2026-07-10)
+
+
+### Features
+
+* **docker:** build from local dist/ for dev, keep remote dist branch for CI ([cf4f63b](https://github.com/nicsuzor/academicOps/commit/cf4f63bb76585f1c9a3474a36b089ad1859312f8))
+* fix call_mcp_tool translation and update aops-pkb mcp_config syntax for agy ([9dd1195](https://github.com/nicsuzor/academicOps/commit/9dd1195e9a7daeb10d4a20c9d55b5e3b693ad7e5))
+* **gates:** remove sentinel, non-blocking warn-mode Stop delivery ([#2202](https://github.com/nicsuzor/academicOps/issues/2202)) ([afb490f](https://github.com/nicsuzor/academicOps/commit/afb490fceb94a4402fce6ceeed34ca54894d3c76))
+* **hooks:** log every CC hook event through router.py + UPS re-arm diagnostic ([#2192](https://github.com/nicsuzor/academicOps/issues/2192)) ([d78ccf1](https://github.com/nicsuzor/academicOps/commit/d78ccf16699b193594d7c3c4e8cc592678e63b6d))
+* remove gemini support, fix and convert agy commands to skills ([ed5e025](https://github.com/nicsuzor/academicOps/commit/ed5e0256c00998785e1f54464403e96dffe10c4b))
+* **transcript:** --ledger mode — prompt ledger of Nic's real prompts (task_bd1d28ba) ([#2194](https://github.com/nicsuzor/academicOps/issues/2194)) ([fee28a2](https://github.com/nicsuzor/academicOps/commit/fee28a20b201a61d5f617da1495d15591eb870bd))
+
+
+### Bug Fixes
+
+* **ci:** agents run on bot-triggered PRs (allowed_bots) + QA job hard-fail + retry ([#2185](https://github.com/nicsuzor/academicOps/issues/2185)) ([6f78f66](https://github.com/nicsuzor/academicOps/commit/6f78f66e1df3835c74f152b0baafde22d36534e3))
+* **ci:** Force Review re-posts review-attestation after the reviewers ([#2187](https://github.com/nicsuzor/academicOps/issues/2187)) ([01fee96](https://github.com/nicsuzor/academicOps/commit/01fee962dfff3ebaef404cdb1a9b7406c345a604))
+* **ci:** kill pipeline-v1 static-tag drift — point consumers at [@dist](https://github.com/dist) ([#2206](https://github.com/nicsuzor/academicOps/issues/2206)) ([10f1fda](https://github.com/nicsuzor/academicOps/commit/10f1fda3b49260dde62506b1a863e9409cba1e12))
+* clear dev-red pytest + type-check failures blocking PR pipeline ([#2207](https://github.com/nicsuzor/academicOps/issues/2207)) ([0bcf832](https://github.com/nicsuzor/academicOps/commit/0bcf832d5710b5f4b0abb8e5bb85cab9023a0b0f))
+* complete Gemini-CLI-plugin removal — fix live KeyError, finish hook/schema cleanup ([93c8152](https://github.com/nicsuzor/academicOps/commit/93c8152638e909327f5be7144f0bfc6dfe2162c2))
+* **docker:** install aops-pkb plugin in worker image ([8462068](https://github.com/nicsuzor/academicOps/commit/8462068ca13f5508646668bd6369208965835e36))
+* **egress:** restore + widen untrusted-for-egress PKB guard ([#887](https://github.com/nicsuzor/academicOps/issues/887)) ([#2150](https://github.com/nicsuzor/academicOps/issues/2150)) ([3a32437](https://github.com/nicsuzor/academicOps/commit/3a32437762651eb4ac6515c538b8f00c65e2681b))
+* **gates:** migrate to dynamic SessionState evaluation ([#2199](https://github.com/nicsuzor/academicOps/issues/2199)) ([428964a](https://github.com/nicsuzor/academicOps/commit/428964a594dd17188ab4668133cd075fd3683138))
+* **gates:** reset handover turn_did_work per-turn instead of session-wide ([#2205](https://github.com/nicsuzor/academicOps/issues/2205)) ([24f3b27](https://github.com/nicsuzor/academicOps/commit/24f3b27c3c4c308f29fc2cda44c2d562b4612dcb))
+* **gates:** stop fail-silently suppressing gate evaluation for subagent-classified sessions ([#2183](https://github.com/nicsuzor/academicOps/issues/2183)) ([6622961](https://github.com/nicsuzor/academicOps/commit/6622961d7448ae89500a6c8c8bb7a3c78b7d367b))
+* **polecat:** address review findings from PKB config injection refactor ([#2204](https://github.com/nicsuzor/academicOps/issues/2204)) ([3ddca3a](https://github.com/nicsuzor/academicOps/commit/3ddca3ab8308d87981904af330cbd6af687efd93))
+* **polecat:** enable aops-pkb plugin in worker claude-settings ([df11478](https://github.com/nicsuzor/academicOps/commit/df1147803b4a4773591c9e892357b6e0aca4ca79))
+* remove stale Gemini install docs and dead build-doc references ([d729254](https://github.com/nicsuzor/academicOps/commit/d729254c9f3f1bf6af42941f243674aa6a42ac9c))
+* restore claude tool names in rbg.md and fix agy tool mapping in build.py ([b48de2b](https://github.com/nicsuzor/academicOps/commit/b48de2b1a4a004624fcec138db66d029e9b3c679))
+
+
+### Code Refactoring
+
+* **docker:** extract inline heredocs, drop cache-bust every build ([41d053b](https://github.com/nicsuzor/academicOps/commit/41d053b0ec81c87ceba5c536cdcc672889d32f4c))
+
+
+### Documentation
+
+* **enforcement:** DRY consolidation of hook/gate enforcement docs ([#2193](https://github.com/nicsuzor/academicOps/issues/2193)) ([41cf822](https://github.com/nicsuzor/academicOps/commit/41cf8227890e0258783bc6df992cc9de36c66909))
+* remove stale merge-prep-cron/agent-merge-prep cross-repo-shim examples ([#2198](https://github.com/nicsuzor/academicOps/issues/2198)) ([707b2e5](https://github.com/nicsuzor/academicOps/commit/707b2e518335c12f4e35b6238d2493869b194b88))
+
+
+### Build System
+
+* add antigravity (agy) build target for aops-pkb ([db68baa](https://github.com/nicsuzor/academicOps/commit/db68baaee228d22e8c1adcdc8bdfc4c75656d7ee))
+* centralize agent emission into one shared primitive ([37dbe8a](https://github.com/nicsuzor/academicOps/commit/37dbe8a2184e9cd2a680f837974c471f4f33a65a))
+* emit agy agent.json alongside .md for antigravity target ([1e03efe](https://github.com/nicsuzor/academicOps/commit/1e03efe3da59e52bfd87dc745deb93a043bed6ab))
+* include top-level .agents/*.md in packaging ([#2197](https://github.com/nicsuzor/academicOps/issues/2197)) ([ddf4975](https://github.com/nicsuzor/academicOps/commit/ddf4975b34857722ba3133f05b25f849c9a67926))
+* **install:** install all marketplace plugins except aops-cowork ([a7ce80e](https://github.com/nicsuzor/academicOps/commit/a7ce80ea85692f705565bfa27aba31d53e614338))
+
+
+### Tests
+
+* **hooks:** refresh pty_capabilities fixture — re-verified live on claude 2.1.205 / agy 1.1.0 (zero signal divergence; GH [#2181](https://github.com/nicsuzor/academicOps/issues/2181) asyncRewake-block defect persists) ([2df1980](https://github.com/nicsuzor/academicOps/commit/2df1980fe8150d6e8813bddf2ad503bc0edbcfd6))
+
 ## [0.3.77](https://github.com/nicsuzor/academicOps/compare/v0.3.76...v0.3.77) (2026-07-08)
 
 
