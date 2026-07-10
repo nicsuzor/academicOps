@@ -31,6 +31,7 @@ A factual, reportive snapshot of the day: what happened, what's open, what's due
 
 ## Core rules
 
+- **Frontmatter MUST set `type: daily`.** This is the canonical-path derivation key — `remember`'s Storage and File Locations table points here rather than restating the path, precisely so the path is derived from this one field. A note written or regenerated without `type: daily` is misfiled by definition (issue #1081/#1080 root cause). Verify the field is present before the first write and after every regeneration; never let a fallback path (e.g. `type: note`) stand in silently.
 - **Update throughout the day.** Re-run freely; update in place with Edit, not full rewrites. Consolidate where it helps readability.
 - **Never remove user notes.** Preserve everything the user wrote, plus their ticks (`[x]`) and annotations, across regenerations. Match items by ID/PR/subject and carry ticks forward.
 - **You may turn user notes into neat, well-formatted prose** — but only if you lose no truth. When unsure, keep the original wording.
