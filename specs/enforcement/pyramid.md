@@ -48,11 +48,8 @@ scope](GATES.md#subagent--worker-session-scope). The full mechanism roster
 [`ENFORCEMENT-MAP.md` §1 matrix](../ENFORCEMENT-MAP.md#1-unified-ssot-matrix-rules-mechanisms-and-triggers);
 per-gate runtime/forensic detail is [`GATES.md`](GATES.md).
 
-`sentinel` remains live at this stage (armed by default, mode `block`) — see
-[`GATES.md` § `sentinel` gate](GATES.md#sentinel-gate) for its current status
-and the pending removal task. `ida` also remains live at this stage;
-disposition is OPEN, pending the session-type walk ([[aops_3eabb0ae]]) — see
-[`GATES.md#ida-gate`](GATES.md#ida-gate) for the corrected record.
+`ida` remains live at this stage; disposition is OPEN, pending the
+session-type walk ([[aops_3eabb0ae]]) — see [`GATES.md#ida-gate`](GATES.md#ida-gate).
 
 ### Two invariant families
 

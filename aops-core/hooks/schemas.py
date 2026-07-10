@@ -139,15 +139,13 @@ class ResolvedDecision(BaseModel):
     downstream that reads ``verdict`` as the gate's real call (metrics,
     transcript parsing).
 
-    ``channel`` is always ``"json"`` now — the Claude ``asyncRewake`` exit-2
-    stdout channel (and its ``raw_body`` field) was RETIRED 2026-07-08 (GH
-    #2181): an ``asyncRewake:true`` Stop hook entry was found to silently
-    discard exit-0 JSON ``decision:block`` output from that SAME entry on
-    Claude Code 2.1.204, so every block-mode Stop gate sharing the one Stop
-    entry was dropped with no delivery. The ``ida·reminder`` warn-solo case
-    this channel used to carry now rides ``context``
-    (``hookSpecificOutput.additionalContext``) non-blockingly instead — see
-    ``router.ida_warn_solo_decision_for``.
+    ``channel`` is always ``"json"``. Claude's ``asyncRewake`` exit-2 stdout
+    channel is not wired: an ``asyncRewake:true`` Stop hook entry silently
+    discards exit-0 JSON ``decision:block`` output from that SAME entry, so it
+    cannot safely coexist with block-mode Stop gates sharing the one Stop
+    entry. Every warn-mode Stop gate instead rides ``context``
+    (``hookSpecificOutput.additionalContext``) non-blockingly — see
+    ``_resolve_policy_for_claude_stop``.
     """
 
     channel: Literal["json"] = "json"

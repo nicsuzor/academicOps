@@ -221,22 +221,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Block message requiring handover before stop",
         env_override="STOP_GATE_HANDOVER_TEMPLATE",
     ),
-    # --- Sentinel gate: destructive-env-op protection ---
-    "sentinel.policy_message": TemplateSpec(
-        name="sentinel.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="sentinel-policy-message.md",
-        required_vars=(),
-        description="Short message when sentinel gate blocks a destructive env op",
-    ),
-    "sentinel.policy_context": TemplateSpec(
-        name="sentinel.policy_context",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="sentinel-policy-context.md",
-        required_vars=(),
-        description="Context injection when sentinel gate blocks a destructive env op",
-        env_override="SENTINEL_POLICY_CONTEXT_TEMPLATE",
-    ),
     # --- Ida (Ida B. Wells — proof-of-claim reminder) gate ---
     "ida.reminder": TemplateSpec(
         name="ida.reminder",
@@ -245,11 +229,10 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=(),
         description="Agent-facing honesty check injected into context on Stop",
     ),
-    # ida.policy_message (ida-policy-message.md) removed when ida·reminder moved
-    # to the (now-retired, GH #2181, 2026-07-08) asyncRewake quiet-split: warn
-    # mode shows no separate user banner (delivered non-blockingly via
-    # additionalContext, router.ida_warn_solo_decision_for), and block mode
-    # carries its short line inline (gates/definitions.py).
+    # ida.policy_message (ida-policy-message.md) removed: warn mode shows no
+    # separate user banner (delivered non-blockingly via additionalContext,
+    # same channel every warn-mode Stop gate uses), and block mode carries its
+    # short line inline (gates/definitions.py).
     "ida.askuserquestion_reminder": TemplateSpec(
         name="ida.askuserquestion_reminder",
         category=TemplateCategory.CONTEXT_INJECTION,

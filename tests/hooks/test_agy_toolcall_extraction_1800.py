@@ -10,8 +10,8 @@ agy 1.0.7 Pre/PostToolUse payload — captured from the live hook log of session
      "workspacePaths": [...]}
 
 With the lookup pointed at the wrong nesting, ``ctx.tool_name`` was ``None`` on
-every agy tool event, silently defeating sentinel / enforcer / handover
-tool-name matching (the gates believed no tool was being called).
+every agy tool event, silently defeating enforcer / handover tool-name
+matching (the gates believed no tool was being called).
 
 These tests drive the REAL router (``HookRouter.normalize_input``) with the
 exact logged payload shape and assert the extracted ``tool_name`` /

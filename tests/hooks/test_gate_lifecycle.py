@@ -86,11 +86,10 @@ class TestIdaPerTurnLifecycle:
         stop_ctx = make_gate_trigger_context("ida")
 
         first_result = router._dispatch_gates(stop_ctx, state)
-        # D1: warn fires a HARD block (DENY) once — the single forced continuation
-        # is the nudge. On Claude this DENY is delivered non-blockingly via the
-        # quiet additionalContext channel (router.ida_warn_solo_decision_for),
-        # but the gate-layer verdict here is still DENY.
-        assert first_result is not None and first_result.verdict == GateVerdict.DENY
+        # Warn mode fires once (fire-once trigger opens the gate on this same
+        # Stop) but does NOT force a continuation — verdict is WARN, delivered
+        # non-blockingly via the additionalContext channel on Claude.
+        assert first_result is not None and first_result.verdict == GateVerdict.WARN
         assert state.gates["ida"].status == GateStatus.OPEN
 
         router._dispatch_gates(stop_ctx, state)

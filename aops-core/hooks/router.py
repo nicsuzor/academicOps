@@ -353,7 +353,7 @@ class HookRouter:
         # "args":{...}},"workspacePaths":[...]}` (#1800; verified against the live
         # hook log for session 6d3d5783). The earlier double-nested
         # `raw_input.raw_input.toolCall` lookup never matched, so ctx.tool_name was
-        # None on every agy tool event, defeating sentinel/rbg/handover
+        # None on every agy tool event, defeating rbg/handover
         # tool-name matching. Prefer the root-level object; keep the nested form as
         # a defensive fallback for any wrapper that re-nests the payload.
         if not tool_name:
@@ -837,13 +837,13 @@ class HookRouter:
         - SubagentStart -> gate.on_subagent_start()
         - SubagentStop -> gate.on_subagent_stop()
         """
-        # PreToolUse remains skipped for subagent-classified sessions: sentinel
-        # and rbg both carry blocking PreToolUse policies (destructive-env-op
-        # protection, periodic compliance threshold), and several subagent
-        # types (e.g. Explore, Plan) have no Agent-tool access to satisfy a
-        # compliance-block demand — blocking them on PreToolUse is an
-        # unrecoverable deadlock, not enforcement (aops-55bcf1a2). This is the
-        # one deliberately-retained suppression; see aops_571771b4 PR body.
+        # PreToolUse remains skipped for subagent-classified sessions: rbg
+        # carries a blocking PreToolUse policy (periodic compliance threshold),
+        # and several subagent types (e.g. Explore, Plan) have no Agent-tool
+        # access to satisfy a compliance-block demand — blocking them on
+        # PreToolUse is an unrecoverable deadlock, not enforcement
+        # (aops-55bcf1a2). This is the one deliberately-retained suppression;
+        # see aops_571771b4 PR body.
         #
         # Every OTHER event now evaluates regardless of is_subagent
         # (Nic ruling 2026-07-08, aops_571771b4): gates must EVALUATE for
@@ -905,8 +905,6 @@ class HookRouter:
         messages = []
         context_injections = []
         final_verdict = GateVerdict.ALLOW
-        # Track which gates actually contributed.
-        contributing_gates: list[str] = []
         # Diagnostic instrument (aops_2597b5ff scope D): every gate state
         # transition this event caused, across every gate that ran before a
         # DENY short-circuits the loop below. Each entry comes from
@@ -919,15 +917,10 @@ class HookRouter:
                 result = self._call_gate_method(gate, ctx, state)
 
                 if result:
-                    contributed = False
                     if result.system_message:
                         messages.append(result.system_message)
-                        contributed = True
                     if result.context_injection:
                         context_injections.append(result.context_injection)
-                        contributed = True
-                    if contributed:
-                        contributing_gates.append(gate.name)
                     transition = result.metadata.get("gate_transition")
                     if transition:
                         gate_transitions.append(transition)
@@ -945,31 +938,7 @@ class HookRouter:
                 print(f"Gate '{gate.name}' failed: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
 
-        # Track the advisory `ida` warn body so the Claude-only quiet delivery
-        # in resolve_policy_for_claude (see `_resolve_policy_for_claude_stop`)
-        # can fire ONLY when ida·reminder is the SOLE Stop advisory (see the
-        # `ida` warn row, specs/adhd/surface-contract.md § Gate
-        # user-visibility). This does NOT alter `final_verdict` — ida's
-        # gate-layer verdict stays DENY in both warn and block mode (both are
-        # fire-once hard blocks at the gate layer; see the "Ida" GatePolicy
-        # pair in lib/gates/definitions.py), so `_dispatch_gates` /
-        # `output_for_claude` keep rendering the loud DENY reason exactly as
-        # before this fix (existing tests key off that). The metadata stash
-        # is a pure channel-selection signal consumed downstream, in
-        # `_resolve_policy_for_claude_stop`, which is the ONLY place the
-        # warn-vs-block distinction changes the wire shape.
         metadata: dict[str, Any] = {}
-
-        if (
-            ctx.hook_event in ("Stop", "SessionEnd")
-            and final_verdict == GateVerdict.DENY
-            and contributing_gates == ["ida"]
-            and context_injections
-        ):
-            from hooks.gate_config import IDA_GATE_MODE
-
-            if IDA_GATE_MODE == "warn":
-                metadata["ida_warn_solo_body"] = "\n\n".join(context_injections)
 
         if gate_transitions:
             metadata["gate_transitions"] = gate_transitions
@@ -1076,65 +1045,6 @@ class HookRouter:
         if event in ("Stop", "SessionEnd"):
             return self._resolve_policy_for_claude_stop(result, event)
         return self._resolve_policy_for_claude_general(result, event)
-
-    def ida_warn_solo_decision_for(
-        self, result: CanonicalHookOutput, event: str
-    ) -> ResolvedDecision | None:
-        """Quiet, non-blocking delivery for the warn-mode ida·reminder, or None.
-
-        This is a CHANNEL-SELECTION decision made BEFORE (and independent of)
-        ``resolve_policy_for_claude`` — main() calls this FIRST for
-        Stop/SessionEnd and only falls through to ``resolve_policy_for_claude``
-        when it returns None. It exists so ``_resolve_policy_for_claude_stop``
-        (and ``output_for_claude``, its thin wrapper) can keep rendering ida's
-        gate-layer DENY as a loud decision:block+reason when called directly
-        — the shape a large body of existing tests exercise and assert on —
-        while the REAL end-to-end pipeline (this function, invoked from
-        main()) still delivers the warn-mode advisory non-blockingly.
-
-        ONLY the advisory ``ida·reminder`` rides this: ``_dispatch_gates``
-        stashes ``ida_warn_solo_body`` in metadata precisely when ida is the
-        SOLE Stop contributor and ``IDA_GATE_MODE == "warn"`` (ida's
-        gate-layer verdict is DENY in both warn and block mode — see the
-        "Ida" GatePolicy pair in lib/gates/definitions.py — so the metadata
-        stash, not the verdict, is what distinguishes them here).
-
-        GH #2181 fix direction B (2026-07-08): this REPLACES the retired
-        asyncRewake exit-2 quiet-split. asyncRewake was found on Claude Code
-        2.1.204 to silently discard exit-0 JSON ``decision:block`` output
-        from ANY hook entry carrying it — including the ida quiet-split entry
-        — so every OTHER block-mode Stop gate was dropped with no delivery
-        and no user notice (specs/adhd/surface-contract.md § Gate
-        user-visibility). Rather than juggle a second channel-selection
-        flag, warn-mode ida now rides the SAME
-        already-proven ``agent_context_without_block`` channel
-        (hookSpecificOutput.additionalContext, non-blocking) as every other
-        Stop advisory — gated on that SSoT capability cell so a client that
-        lacks it never takes this branch.
-
-        NB delivery via additionalContext is NOT agent-only on the user's
-        screen (Claude Code renders it as "Stop hook feedback" in the
-        transcript) — unlike the old asyncRewake one-line summary, the user
-        now sees the full advisory text. This is an accepted, documented
-        trade-off (see ``ClaudeStopHookOutput`` docstring) for a simpler,
-        already-verified delivery channel; it is NOT a compulsion (the agent
-        weighs it as advisory) — block-mode gates keep decision:block.
-        """
-        if event not in ("Stop", "SessionEnd"):
-            return None
-        body = result.metadata.get("ida_warn_solo_body")
-        if not body:
-            return None
-        spec = client_spec.channel_spec("claude", "Stop")
-        if not (spec and spec.agent_context_without_block):
-            return None
-        return ResolvedDecision(
-            channel="json",
-            wire_decision="allow",
-            reason=None,
-            context=body,
-            metadata=result.metadata,
-        )
 
     def _resolve_policy_for_claude_stop(
         self, result: CanonicalHookOutput, event: str
@@ -1550,16 +1460,7 @@ def main():
         if client_type == "agy":
             resolved = router.resolve_policy_for_agy(result, render_event)
         else:
-            # The warn-mode ida quiet delivery is a channel-selection decision
-            # made BEFORE the general JSON-channel policy (see
-            # ida_warn_solo_decision_for docstring for why it can't live
-            # inside resolve_policy_for_claude itself).
-            ida_decision = router.ida_warn_solo_decision_for(result, render_event)
-            resolved = (
-                ida_decision
-                if ida_decision is not None
-                else router.resolve_policy_for_claude(result, render_event)
-            )
+            resolved = router.resolve_policy_for_claude(result, render_event)
 
         exit_code = 0
 

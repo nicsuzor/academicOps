@@ -153,7 +153,6 @@ def run_session_env_setup(ctx: HookContext, state: SessionState) -> GateResult |
             "RBG_GATE_MODE",
             "RBG_REVIEW_GATE_MODE",
             "HYDRATION_GATE_MODE",
-            "SENTINEL_GATE_MODE",
         ]
         gate_modes = {
             name[: -len("_GATE_MODE")].lower(): getattr(gate_config, name)

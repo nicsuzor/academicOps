@@ -23,14 +23,15 @@ from tests.hooks.gate_helpers import (
 _GATE_MODE_CASES = [
     ("rbg", "warn", GateVerdict.WARN),
     ("rbg", "block", GateVerdict.DENY),
-    # D1: warn mode now fires a hard-block-once DENY (not a soft WARN) so every
-    # stop gate forces one continuation. The warn-vs-block difference is the
-    # re-fire latch (warn=fire-once, block=persist), not the verdict.
-    ("qa", "warn", GateVerdict.DENY),
+    # Stop-triggered gates: warn mode delivers non-blockingly (WARN, no forced
+    # continuation); block mode forces a continuation (DENY). The warn-vs-block
+    # difference is now both the verdict AND the re-fire latch (warn=fire-once,
+    # block=persist).
+    ("qa", "warn", GateVerdict.WARN),
     ("qa", "block", GateVerdict.DENY),
-    ("handover", "warn", GateVerdict.DENY),
+    ("handover", "warn", GateVerdict.WARN),
     ("handover", "block", GateVerdict.DENY),
-    ("ida", "warn", GateVerdict.DENY),
+    ("ida", "warn", GateVerdict.WARN),
     ("ida", "block", GateVerdict.DENY),
 ]
 
@@ -72,8 +73,9 @@ class TestGateModeConfigOverrides:
 class TestTwoModeLatch:
     """D1 two-mode latch (client-agnostic — pure GateStatus, no stop_hook_active).
 
-    Both modes emit DENY (verdict tested above); this pins the LATCH that
-    distinguishes them: `warn` fires once then latches the gate OPEN (fire-once),
+    Warn emits WARN (non-blocking) and block emits DENY (verdict tested
+    above); this pins the LATCH that distinguishes their re-fire behavior:
+    `warn` fires once then latches the gate OPEN (fire-once),
     while `block` keeps the gate CLOSED and re-fires every Stop until a
     satisfaction trigger opens it (persist-until-satisfied). Uses `handover`
     (no PKB/temp dependency) for the warn-vs-block contrast, and `ida` for the
@@ -87,12 +89,12 @@ class TestTwoModeLatch:
         ctx = make_gate_trigger_context("handover")
 
         r1 = router._dispatch_gates(ctx, state)
-        assert r1 is not None and r1.verdict == GateVerdict.DENY
+        assert r1 is not None and r1.verdict == GateVerdict.WARN
         assert state.gates["handover"].status == GateStatus.OPEN, (
-            "warn is fire-once: the gate latches OPEN after the first hard block"
+            "warn is fire-once: the gate latches OPEN after the first delivery"
         )
         r2 = router._dispatch_gates(ctx, state)
-        assert r2 is None or r2.verdict != GateVerdict.DENY, (
+        assert r2 is None or r2.verdict != GateVerdict.WARN, (
             "warn must not re-fire on a retried Stop in the same turn"
         )
 
@@ -115,14 +117,16 @@ class TestTwoModeLatch:
     @pytest.mark.parametrize("mode", ["warn", "block"])
     def test_ida_is_fire_once_in_both_modes(self, router, monkeypatch, mode):
         # ida has no satisfaction predicate, so block == warn == fire-once
-        # (block would otherwise be an unescapable loop). Both hard-block once.
+        # (block would otherwise be an unescapable loop). block hard-blocks
+        # (DENY); warn delivers non-blockingly (WARN). Both fire exactly once.
         set_gate_modes(monkeypatch, ida=mode, qa="off", handover="off")
         reinit_gates_with_defaults()
         state = make_gate_trigger_state("ida")
         ctx = make_gate_trigger_context("ida")
 
+        expected = GateVerdict.DENY if mode == "block" else GateVerdict.WARN
         r1 = router._dispatch_gates(ctx, state)
-        assert r1 is not None and r1.verdict == GateVerdict.DENY, f"ida {mode} hard-blocks once"
+        assert r1 is not None and r1.verdict == expected, f"ida {mode} fires {expected.value} once"
         assert state.gates["ida"].status == GateStatus.OPEN, (
             f"ida {mode} is fire-once (latches OPEN) regardless of mode"
         )

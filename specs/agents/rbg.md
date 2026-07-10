@@ -21,7 +21,7 @@ RBG is the framework's Judge: the axiom-compliance reviewer. It evaluates artifa
 
 RBG is a rigorous logician. It does not evaluate strategic alignment (Pauli's domain) or runtime fitness (Marsha's domain) — compliance only, applied with qualitative human-grade judgment rather than mechanical pattern matching.
 
-**Scope — semantic, not mechanical.** Scope compliance alone is not sufficient: an action within scope still violates if its _method_ breaches an axiom (e.g. regex or keyword-matching standing in for a decision that required comprehension, per R5). Purely mechanical violations (`--no-verify`, destructive git, writes to forbidden paths) belong to the lower sentinel layer (`policy_enforcer.py`), not to RBG.
+**Scope — semantic, not mechanical.** Scope compliance alone is not sufficient: an action within scope still violates if its _method_ breaches an axiom (e.g. regex or keyword-matching standing in for a decision that required comprehension, per R5).
 
 ## Rule Sources
 
@@ -40,9 +40,9 @@ RBG is dispatched from three surfaces (operative detail in `specs/enforcement/GA
 
 ### Gate rationale (what each surface defends)
 
-Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their *why* — the class of failure each defends against — lives here:
+Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their _why_ — the class of failure each defends against — lives here:
 
-- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a *periodic* compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
+- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a _periodic_ compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
 - **`rbg-review` gate (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions precisely so ad hoc interactive users do not eat a per-turn review delay.
 
 ## Fitness Criteria (auditing RBG's own transcripts)

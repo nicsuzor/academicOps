@@ -405,7 +405,7 @@ del _category, _variants
 # names across Claude, Gemini, and agy — including the agy RUNTIME vocabulary
 # (view_file, run_command, write_to_file, replace_file_content, invoke_subagent,
 # manage_task, …) that was previously unknown here, so agy tool calls fell through
-# to the conservative ``write`` default and broke spawn/rbg/sentinel matching.
+# to the conservative ``write`` default and broke spawn/rbg matching.
 # Server-specific MCP sets (Outlook, Zotero, Playwright, …) stay defined above; the
 # registry only owns the cross-client core. The merge is additive and must never
 # DISAGREE with an existing entry (asserted by tests/hooks/test_tool_registry.py).
