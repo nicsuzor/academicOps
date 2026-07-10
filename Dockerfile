@@ -102,11 +102,6 @@ RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
     && agy --version > /home/worker/.agy-version 2>&1 \
     && cat /home/worker/.agy-version
 
-# RUST_CACHEBUST is intentionally unused in the RUN command — it only invalidates
-# this layer so rebuilds always fetch the latest Rust toolchain from rustup.
-ARG RUST_CACHEBUST
-RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
-
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
 
@@ -121,6 +116,9 @@ ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
 # trunk and carries no built dist/, so the framework must be cloned from the dist ref.
 # Overridable so a release build can pin the exact ref it just published.
 ARG AOPS_DIST_REF=dist
+
+# Fixup script for post-install Gemini/Antigravity config (see file for why).
+COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Single clone of the dist branch → install both Claude plugin and Gemini extension
 # from it. Both CLIs internally set 444 on git objects — chmod after each install.
@@ -146,63 +144,25 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && cp -r /tmp/aops-dist/dist/aops-extras-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
     && chmod -R a+rwX /home/worker/.gemini \
-    && python3 -c "
-import glob, json
-for path in glob.glob('/home/worker/.gemini/**/mcp_config.json', recursive=True):
-    try: data = json.loads(open(path).read())
-    except (OSError, ValueError): raise
-    plugin_dir = path[:path.rfind('/')]
-    s = json.dumps(data)
-    r = s.replace('\${extensionPath}', plugin_dir).replace('\${CLAUDE_PLUGIN_ROOT}', plugin_dir)
-    if r != s: open(path, 'w').write(r)
-" \
+    && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
     && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
-    && python3 -c "import json, pathlib; \
-cache = pathlib.Path('/home/worker/.claude/plugins/cache/academicOps'); \
-km = pathlib.Path('/home/worker/.claude/plugins/known_marketplaces.json'); \
-d = json.loads(km.read_text()); \
-d['academicOps']['source']['path'] = str(cache); \
-d['academicOps']['installLocation'] = str(cache); \
-km.write_text(json.dumps(d, indent=2)); \
-mp = cache / '.claude-plugin' / 'marketplace.json'; \
-m = json.loads(mp.read_text()); \
-[p.__setitem__('source', './' + p['name'] + '/' + next((e.name for e in (cache / p['name']).iterdir() if e.is_dir()), '')) for p in m.get('plugins', []) if (cache / p['name']).is_dir()]; \
-mp.write_text(json.dumps(m, indent=2))"
+    && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache
 
 # NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-pkb's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 
-# Set permissive extension enablement so hooks fire for any workspace path.
-# `gemini extensions install` restricts to /home/<user>/* which doesn't match
-# mounted worktrees (e.g. /workspace, /data, or deeply nested crew paths).
-RUN umask 000 && if [ -f /home/worker/.gemini/extensions/extension-enablement.json ]; then \
-    python3 -c "import json, pathlib; \
-p = pathlib.Path('/home/worker/.gemini/extensions/extension-enablement.json'); \
-d = json.loads(p.read_text()); \
-[d.__setitem__(k, {**v, 'overrides': ['*']}) for k, v in d.items()]; \
-p.write_text(json.dumps(d, indent=2))" ; \
-    fi
+# Set permissive extension enablement so hooks fire for any workspace path
+# (see docker_gemini_fixups.py:fixup_extension_enablement for why).
+RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-enablement
 
-# Build-time version check: fail if Claude and Gemini hook Python sources
-# diverge. hooks.json and router.sh differ by design (platform-specific event
-# names and path variables), but .py files must be identical (see #1384).
-RUN set -e; \
-    CLAUDE_HOOKS=$(ls -d /home/worker/.claude/plugins/cache/academicOps/aops-core/*/hooks 2>/dev/null | head -1); \
-    GEMINI_HOOKS=/home/worker/.gemini/extensions/aops-core/hooks; \
-    if [ -z "$CLAUDE_HOOKS" ] || [ ! -d "$GEMINI_HOOKS" ]; then \
-        echo "FATAL: Could not find hook directories for comparison"; exit 1; \
-    fi; \
-    cd "$CLAUDE_HOOKS"; \
-    for f in *.py; do \
-        [ -f "$f" ] || continue; \
-        diff -q "$CLAUDE_HOOKS/$f" "$GEMINI_HOOKS/$f" >/dev/null 2>&1 || \
-        { echo "FATAL: hooks/$f differs between Claude plugin and Gemini extension (see #1384)"; \
-          diff "$CLAUDE_HOOKS/$f" "$GEMINI_HOOKS/$f" || true; exit 1; }; \
-    done; \
-    echo "Build check passed: hook Python sources match between Claude and Gemini"
+# NOTE: Claude/Gemini hook .py sources cannot diverge (see #1384) — scripts/build.py
+# copies both from the single aops-core/hooks source dir into every platform's dist/
+# output, so a build-time diff here would only ever re-confirm what the build
+# pipeline already guarantees by construction. Removed as a redundant, image-build-
+# time-costly check; drift would show up as a build.py bug, not a runtime one.
 
 # Pre-bake Python venvs for Claude plugins, Gemini extensions, AND agy
 # (Antigravity CLI) plugins in one pass so the first hook call always
@@ -240,6 +200,11 @@ RUN umask 000 && set -e && \
 # exa.hooks_pb.PreToolHookResult, where an OMITTED bool defaults to false — so {}
 # causes agy to deny every tool call. AOPS_AGY_CLIENT=1 sets is_subagent=True so
 # gates are skipped and the plain ALLOW path is exercised in isolation.
+# NOT redundant with tests/hooks/test_agy_protojson_contract.py: that test
+# validates protojson *shape* against canonical router output in isolation and
+# explicitly disclaims proving the live/baked harness behavior; this check
+# exercises the actual pre-baked router.sh inside the image being built, which
+# is the artifact that actually shipped broken in aops-aa4c85a6.
 RUN set -e; \
     ROUTER=/home/worker/.gemini/antigravity-cli/plugins/aops-core/hooks/router.sh; \
     out=$(printf '{"toolCall":{"name":"Bash","args":{"command":"echo test"}},"workspacePaths":["/workspace"]}' \
@@ -285,6 +250,19 @@ COPY --chown=worker:worker --chmod=666 polecat/defaults/claude-config.json /home
 # cache dir so BuildKit doesn't auto-create it 0644 (non-traversable).
 RUN umask 000 && mkdir -p /home/worker/.gemini/antigravity-cli/cache
 COPY --chown=worker:worker --chmod=666 polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+
+# Install Rust toolchain (nothing in this image's build needs cargo/rustc —
+# it's provided for agents that use it at runtime). Deliberately placed this
+# late, after the aops framework clone/install and all the uv-sync venv
+# pre-bakes above: those are the expensive layers, and Docker's cache
+# invalidates every layer AFTER the first one that misses. RUST_CACHEBUST
+# only invalidates this layer and the (cheap) ones below it, so a forced
+# rustup refresh no longer forces a re-clone + re-install of the whole
+# framework and a re-sync of every plugin venv.
+# RUST_CACHEBUST is intentionally unused in the RUN command — it only
+# invalidates this layer so rebuilds can fetch the latest Rust toolchain.
+ARG RUST_CACHEBUST
+RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 polecat/entrypoint.sh /home/worker/entrypoint.sh
