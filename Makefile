@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell
+.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell docker-push
 
 # --- Configuration ---
 
@@ -105,6 +105,7 @@ help:
 	@echo "  make build          - Build the aops crew worker image"
 	@echo "  make verify-docker  - Build from clean (--no-cache) — required for verification; prevents false-green from cached layers"
 	@echo "  make shell          - Interactive shell in the crew image"
+	@echo "  make docker-push    - Push the docker image to ghcr.io"
 	@echo ""
 	@echo "Detected Platform: $(or $(PLATFORM),unknown)"
 
@@ -566,6 +567,11 @@ verify-docker:
 # Aliases
 build: build-docker
 build-sandbox: build-docker
+
+docker-push:
+	@echo "Pushing aops crew image..."
+	@docker push $(DOCKER_IMAGE)
+	@echo "✓ Image pushed: $(DOCKER_IMAGE)"
 
 # Drop into an interactive shell in the crew image (for local testing)
 shell: build-docker
