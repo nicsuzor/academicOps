@@ -17,6 +17,8 @@ from lib.gates.registry import GateRegistry
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
+from tests.hooks.gate_helpers import set_gate_modes
+
 
 def _reinit_gates_with_defaults():
     if "hooks.gate_config" in sys.modules:
@@ -228,7 +230,7 @@ def test_interactive_edit_tool_closes_gate(router):
 
     # Gate should CLOSE and the session is marked as having done work.
     assert state.gates["handover"].status == GateStatus.CLOSED
-    assert state.session_did_work is True
+    assert state.turn_did_work is True
 
 
 def test_interactive_claim_task_closes_gate(router):
@@ -246,7 +248,7 @@ def test_interactive_claim_task_closes_gate(router):
     router._dispatch_gates(ctx_claim, state)
 
     assert state.gates["handover"].status == GateStatus.CLOSED
-    assert state.session_did_work is True
+    assert state.turn_did_work is True
 
 
 def test_continue_skill_opens_handover_and_ida(router):
@@ -256,7 +258,7 @@ def test_continue_skill_opens_handover_and_ida(router):
     session_id = "test-continue"
     state = _make_polecat_state(session_id)
     state.main_agent.current_task = "task-abc"
-    state.session_did_work = True
+    state.turn_did_work = True
     # Both exit gates armed (CLOSED) before the pause.
     state.gates["handover"].status = GateStatus.CLOSED
     state.gates["ida"].status = GateStatus.CLOSED
@@ -287,7 +289,7 @@ def test_continue_lets_stop_pass_without_honesty_block(router, monkeypatch):
     session_id = "test-continue-stop"
     state = SessionState.create(session_id)
     state.main_agent.current_task = "task-abc"
-    state.session_did_work = True
+    state.turn_did_work = True
     state.gates["handover"].status = GateStatus.CLOSED
     state.gates["ida"].status = GateStatus.CLOSED
 
@@ -306,4 +308,91 @@ def test_continue_lets_stop_pass_without_honesty_block(router, monkeypatch):
     )
     assert result is None or result.verdict != GateVerdict.DENY, (
         f"/continue must let the Stop pass without an honesty/handover block — got {result!r}"
+    )
+
+
+def test_turn_did_work_resets_on_user_prompt_submit(router):
+    """turn_did_work must reset to False on the UPS re-arm trigger (aops_d18b2d4b).
+
+    Without the reset (the pre-fix session_did_work), a single write early in
+    a session latches the flag True for the rest of the session, forcing the
+    handover ceremony on every later no-op turn.
+    """
+    session_id = "test-turn-did-work-reset"
+    state = SessionState.create(session_id)
+
+    ctx_edit = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="Edit",
+        tool_input={"file_path": "x.py", "old_string": "a", "new_string": "b"},
+    )
+    router._dispatch_gates(ctx_edit, state)
+    assert state.turn_did_work is True
+
+    router._dispatch_gates(
+        HookContext(
+            session_id=session_id, hook_event="UserPromptSubmit", tool_name=None, tool_input={}
+        ),
+        state,
+    )
+    assert state.turn_did_work is False, (
+        "turn_did_work must reset to False on UserPromptSubmit so a new turn "
+        "is not treated as having done work just because an earlier turn did"
+    )
+
+
+def test_no_op_turn_not_reblocked_after_earlier_turn_wrote(router, monkeypatch):
+    """A session that writes once then has a pure Q&A turn must not be
+    re-blocked by the handover gate on that later no-op turn (aops_d18b2d4b).
+
+    Regression for: session_did_work was session-wide and never reset, so a
+    single early write kept forcing the full handover ceremony on every
+    subsequent turn even when that turn made no changes at all.
+    """
+    set_gate_modes(monkeypatch, handover="block", qa="off", ida="off", rbg="off")
+    _reinit_gates_with_defaults()
+
+    session_id = "test-no-reblock"
+    state = SessionState.create(session_id)
+
+    # Turn 1: real work (Edit), then land via /end_session (opens gate, sticky).
+    ctx_edit = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="Edit",
+        tool_input={"file_path": "x.py", "old_string": "a", "new_string": "b"},
+    )
+    router._dispatch_gates(ctx_edit, state)
+    assert state.gates["handover"].status == GateStatus.CLOSED
+    assert state.turn_did_work is True
+
+    ctx_end_session = HookContext(
+        session_id=session_id,
+        hook_event="PostToolUse",
+        tool_name="activate_skill",
+        tool_input={"skill": "end_session"},
+    )
+    ctx_end_session.subagent_type = "end_session"
+    router._dispatch_gates(ctx_end_session, state)
+    assert state.gates["handover"].status == GateStatus.OPEN
+
+    # Turn 2 starts: UserPromptSubmit re-arms CLOSED and resets turn_did_work.
+    router._dispatch_gates(
+        HookContext(
+            session_id=session_id, hook_event="UserPromptSubmit", tool_name=None, tool_input={}
+        ),
+        state,
+    )
+    assert state.gates["handover"].status == GateStatus.CLOSED
+    assert state.turn_did_work is False
+
+    # Turn 2 is pure Q&A — no write tool, no task claim — then Stop.
+    result = router._dispatch_gates(
+        HookContext(session_id=session_id, hook_event="Stop", tool_name=None, tool_input={}),
+        state,
+    )
+    assert result is None or result.verdict != GateVerdict.DENY, (
+        "A no-op turn must not be re-blocked by handover just because an "
+        f"earlier turn wrote something. Got verdict={result.verdict.value if result else None}"
     )

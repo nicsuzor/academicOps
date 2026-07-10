@@ -144,10 +144,12 @@ class SessionState(BaseModel):
     # Session insights (written at close)
     insights: dict[str, Any] | None = None
 
-    # True once a write tool is used or a task is claimed in this session.
-    # Handover gate policies check this to exempt genuinely read-only sessions
-    # from the full handover requirement (aops-16a15a05).
-    session_did_work: bool = False
+    # True once a write tool is used or a task is claimed in the CURRENT turn.
+    # Handover gate policies check this to exempt genuinely read-only turns
+    # from the full handover requirement (aops-16a15a05). Reset to False on
+    # every UserPromptSubmit re-arm so a turn that does no work of its own is
+    # exempt even if an earlier turn in the same session did (aops_d18b2d4b).
+    turn_did_work: bool = False
 
     @classmethod
     def create(

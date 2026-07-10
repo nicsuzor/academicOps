@@ -142,7 +142,7 @@ def make_session_state(scenario: dict) -> SessionState:
             gate.metrics.update(overrides["metrics"])
         state.gates[gate_name] = gate
     for key, value in scenario.get("state_overrides", {}).items():
-        # Support typed SessionState fields (e.g. session_did_work) in addition
+        # Support typed SessionState fields (e.g. turn_did_work) in addition
         # to the generic state dict so scenarios can set them via state_overrides.
         if hasattr(state, key) and not key.startswith("_"):
             setattr(state, key, value)
@@ -171,7 +171,7 @@ def make_gate_trigger_state(gate_name: str) -> SessionState:
     - rbg: ops_since_open at threshold
     - qa / handover / ida: gate CLOSED so Stop-event policy fires
 
-    For the handover gate, session_did_work is set to True so the policy
+    For the handover gate, turn_did_work is set to True so the policy
     condition (which exempts read-only sessions) is satisfied (aops-16a15a05).
     """
     state = SessionState.create("test-gate-mode", client_type="claude")
@@ -187,9 +187,9 @@ def make_gate_trigger_state(gate_name: str) -> SessionState:
         if gate_name == "qa":
             state.gates[gate_name].metrics["temp_path"] = "/tmp/qa-gate.md"
         if gate_name == "handover":
-            # Handover policy requires session_did_work=True; tests for
+            # Handover policy requires turn_did_work=True; tests for
             # working sessions should satisfy this condition.
-            state.session_did_work = True
+            state.turn_did_work = True
     return state
 
 
