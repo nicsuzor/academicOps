@@ -83,6 +83,17 @@ tmux send-keys -t $SESSION_ID "Finally, delegate a quick check to the 'ida' suba
 - _Infrastructure:_ Did the `SubagentStart` and `SubagentStop` hooks route context correctly? Did the `Stop` gate satisfy safely without trapping the agent in an error loop?
 - _Capability:_ Did the subagent execute and report back its findings accurately?
 
+### Step 3: Render the transcript yourself before delegating
+
+Before invoking `marsha` or `rbg`, run `aops-core/scripts/transcript.py` **yourself** against the test session's own transcript file to produce a pinned, human-readable artifact:
+
+```bash
+python3 aops-core/scripts/transcript.py /path/to/<session-id>.jsonl -o /path/to/unique/e2e-<timestamp>
+# generates e2e-<timestamp>-full.md and e2e-<timestamp>-abridged.md
+```
+
+Do this yourself rather than telling a subagent to go find the transcript — a subagent instructed to "verify against primary evidence" may independently search for "a session matching this description" and can collide with a stale, same-named leftover session from a prior run (tmux session names like `e2e-test-*`, `e2e-claude`, `e2e-agy` repeat across days and orphaned/trapped sessions can linger for a long time, continuing to write to their own logs — a fresh mtime does NOT mean a fresh session; check the session-ID timestamp prefix and, if the tmux session is still alive, its own `tmux list-sessions` "created" time). Rendering the transcript yourself gives you one unambiguous, timestamped artifact whose provenance you personally verified, to hand downstream instead of a bag of file paths.
+
 ## Part 2: Polecat Container Certification
 
 This track answers a different question than Part 1: not "does the framework work in an agent's hands," but "does the _containerized dispatch path itself_ — config, plugins, credentials — do what it claims." Treat it as a supervisor's verification brief: state the acceptance gates up front, demand proof over claims, and never let a script's exit code substitute for your judgment.
@@ -131,22 +142,24 @@ Run this after whichever track(s) you executed above — Part 1 alone, Part 2 al
 
 Visual verification of the `tmux` pane is necessary but not sufficient. You MUST delegate the rigorous extraction of log evidence to **`marsha` (The QA Reviewer)**, who is specialized in reading system logs.
 
-1. **Locate the Logs:** Identify the sandbox session's logs directory (`transcript_full.jsonl` and `*-hooks.jsonl`).
-2. **Invoke Marsha:** Dispatch `marsha` with the paths to the logs and instruct her to:
+1. **Locate the Logs:** Identify the sandbox session's raw transcript/hooks-log paths, plus the `-full.md`/`-abridged.md` pair you rendered in Step 3.
+2. **Invoke Marsha:** Dispatch `marsha` with the exact raw log paths (she needs the raw `jsonl`, not just the rendered markdown, for exhaustive verbatim `exit_code`/`stderr` extraction) and instruct her to:
    - Extract verbatim proof that expected hooks fired and returned cleanly (`exit_code: 0`, no `stderr`).
    - Extract verbatim proof from the transcript that context injections successfully reached the LLM's prompt.
    - Cross-reference the transcript with the `tmux` pane captures to confirm the user UI remained clean.
    - For Part 2: extract verbatim proof for each of the seven axes above (gate transitions in session state, plugin list output, git identity/env output), not just the framework-smoke-test signals.
+   - State explicitly that these are the only artifacts in scope — she should not go looking for other candidate sessions.
 
 ### B. Axiom Verification via `rbg`
 
 Once `marsha` provides the raw evidence and proofs, you MUST delegate the legal/axiomatic review to **`rbg` (The Judge)**.
 
-1. **Invoke RBG:** Pass `marsha`'s compiled evidence to `rbg` and ask for a ruling on:
+1. **Invoke RBG:** Feed rbg the **abridged markdown transcript** you rendered in Step 3 (not raw log paths) alongside `marsha`'s compiled evidence, and ask for a ruling on:
    - **Data Boundaries:** Does the evidence definitively prove that internal system context was properly isolated from the human surface?
    - **Honest Epistemics:** Does `marsha`'s extracted proof actually support the claim of success, or are there gaps?
    - **Halt on Failure:** Did the agent safely halt on any intentional roadblocks, or did it try to invent a workaround?
    - For Part 2: did the credential-isolation axis get a genuine HALT-and-file-task treatment if the observed identity wasn't `botnicbot`, rather than a silent pass or an inline patch?
+2. **Pin the artifact, don't let rbg re-discover it.** State the exact abridged-transcript path (and the raw paths `marsha` verified) directly in the prompt, and instruct rbg to rule on _those specific files_ — not to independently search for "a session matching this description." If rbg's ruling cites a session ID or file path you didn't hand it, that is a signal the ruling is invalid: stop, confirm which artifact is actually yours (check the session-ID timestamp prefix and, for any still-live tmux session, its own `created` time — not file mtime, which a still-looping orphaned session keeps refreshing), and re-invoke rbg with the correct pinned artifact rather than either accepting or silently overruling the mismatched verdict.
 
 ### C. Synthesis & Certification Report
 
