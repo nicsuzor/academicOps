@@ -1203,20 +1203,41 @@ The prompt file is the agent's behaviour contract. It sources the canonical pers
 `gh pr view`, format the review). Orchestration (the workflow) and behaviour (the prompt)
 version independently.
 
-### 4.5 Canonical consumer ref — `@dev` (branch) — **LIVE** (decision Nic, 2026-06-23; mem-94ad94c1)
+### 4.5 Canonical consumer ref — `@dist` (branch) — **LIVE** (decision Nic, 2026-07-10; aops_1a4b8e23)
 
-Satellite-repo trigger shims call the aops reusable workflows by **branch ref `@dev`**, not
-versioned tags (`@enforcer-v1`, `@qa-v1`, `@pipeline-v1`).
+Satellite-repo trigger shims call `pr-pipeline.yml` by **branch ref `@dist`**
+(`uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`), not a
+versioned tag (`@pipeline-v1`, retired) and not the raw `@dev` branch (superseded,
+below).
 
-**Rationale (single-owner fix-forward fleet):** versioned tags (`-vN`) earn their cost only
-when you must run two pipeline versions simultaneously — a public-action concern, not ours.
-We own every satellite repo and fix forward; we would never deliberately leave a satellite on
-an old pipeline. A moving tag (`@pipeline`, advanced manually on every green change) was the
-other candidate but requires discipline that is easy to forget. A branch ref (`@dev`)
-auto-updates with zero maintenance. Tradeoff accepted: satellites following `@dev` inherit
-dev's churn (a half-finished pipeline commit can momentarily break satellites). Acceptable
-because the fleet is small, single-owner, and fix-forward; breakage is caught on the first
-satellite and fixed at HEAD.
+`dist` is the same published-distribution orphan branch the Claude/Gemini
+marketplace installs from (§ RELEASING.md). `build-extension.yml`'s "Publish
+distribution to dist" step, which already runs on every release (stable and
+prerelease), also copies `pr-pipeline.yml` and every workflow it calls via a
+relative `uses: ./.github/workflows/*.yml` ref into `.github/workflows/` on
+`dist` — derived from `pr-pipeline.yml`'s own `uses:` lines, not a second
+hand-maintained list, so a new sub-job can't silently fall out of sync with
+what ships.
+
+**Rationale:** the static `pipeline-v1` tag drifted silently — nothing
+auto-advanced it, so a merged pipeline fix sat inert on consumers for weeks
+until someone remembered to move the tag by hand (mem_6dd1c780; on 2026-07-07
+this stranded ~2.5 weeks of merged fixes with zero signal). The 2026-06-23
+`@dev` decision fixed the drift but traded it for raw dev churn — a
+half-finished pipeline commit on `dev` could momentarily break every
+satellite at once. `@dist` fixes both: it auto-advances on every release with
+no manual step (killing the drift failure class), and it only ever points at
+released, already-built code (killing the churn tradeoff). The cost is a one
+main-loop's-worth of lag between a pipeline fix landing on `dev` and it
+reaching consumers — acceptable because releases are frequent and this is a
+single-owner, fix-forward fleet.
+
+**Superseded:** `@dev` (branch ref, decision Nic 2026-06-23; mem-94ad94c1) —
+auto-updated with zero maintenance but inherited dev's churn. `@pipeline-v1`
+/ `@enforcer-v1` / `@qa-v1` (versioned tags) — earn their cost only when you
+must run two pipeline versions simultaneously, a public-action concern, not
+ours; the static tag also has no auto-advance mechanism, which is the drift
+this decision retires.
 
 ### 4.6 Per-pass SHA-based loop-skip — **LIVE** (enforcer, qa)
 
