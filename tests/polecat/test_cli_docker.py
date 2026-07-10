@@ -197,26 +197,89 @@ class TestAgyBrainPersistence:
 
 
 class TestClaudeAuthEnvOnly:
-    """Claude auth must be env-var only: no `.claude.json`/`.credentials.json`/
-    `settings.json` staging from the host. See aops-06ab3ee0."""
+    """Host Claude auth/config files must never be copied into staging.
+
+    The invariant (aops-06ab3ee0): the host's ~/.claude/ dir carries PII
+    (oauthAccount email, org UUID) and tokens scoped to the host user. None of
+    that should leak into worker containers. Auth uses CLAUDE_CODE_OAUTH_TOKEN
+    forwarded via agent-env-map.conf; settings.json is generated from
+    polecat/defaults/claude-settings.json (not read from the host).
+    """
 
     @pytest.fixture(autouse=True)
     def _patch_remote_daemon(self):
         with patch("cli._is_remote_daemon", return_value=False):
             yield
 
-    def test_no_claude_auth_files_staged(self, tmp_path):
-        """Host `.claude.json`, `.claude/.credentials.json`, and
-        `.claude/settings.json` must NOT be copied into the staging dir."""
-        # Seed all three host files that the old code path would have staged.
+    def test_host_auth_files_never_staged(self, tmp_path):
+        """Host .claude.json and .credentials.json must never appear in staging.
+        Host settings.json content must never appear in the staged file even when
+        PKB_MCP_URL causes a settings.json to be generated."""
+        # Seed host files with PII sentinel content.
         (tmp_path / ".claude.json").write_text(
             json.dumps({"oauthAccount": {"emailAddress": "host@example.com"}})
         )
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
         (claude_dir / ".credentials.json").write_text('{"token": "host-token"}')
-        (claude_dir / "settings.json").write_text("{}")
+        # Put a sentinel in the host settings.json — must not appear in staged output.
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"host_sentinel": "DO_NOT_COPY_INTO_CONTAINER"})
+        )
 
+        with patch("cli.Path.home", return_value=tmp_path):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={"PKB_MCP_URL": "http://pkb.example.com:8026/mcp/"},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+
+        assert docker_cmd.staging_dir is not None
+        assert not (docker_cmd.staging_dir / ".claude.json").exists(), (
+            "staged .claude.json leaked host auth"
+        )
+        assert not (docker_cmd.staging_dir / ".claude" / ".credentials.json").exists(), (
+            "staged .credentials.json leaked host auth"
+        )
+        staged_settings = docker_cmd.staging_dir / ".claude" / "settings.json"
+        if staged_settings.exists():
+            data = json.loads(staged_settings.read_text())
+            assert "host_sentinel" not in data, (
+                "host settings.json content leaked into staged file; "
+                "settings must be generated from polecat/defaults, not copied from host"
+            )
+
+    def test_pkb_url_staged_into_settings(self, tmp_path):
+        """When PKB_MCP_URL is set, a settings.json generated from polecat/defaults
+        with pkb_mcp_url pre-merged is staged. The aops-pkb plugin reads the URL
+        from pluginConfigs["aops-pkb@academicOps"].options.pkb_mcp_url via
+        ${user_config.pkb_mcp_url}; the interactive enable-time prompt never runs
+        in headless containers."""
+        with patch("cli.Path.home", return_value=tmp_path):
+            docker_cmd = _build_docker_cmd(
+                cli_tool="claude",
+                work_dir=Path("/tmp/worktree"),
+                env={"PKB_MCP_URL": "http://pkb.example.com:8026/mcp/"},
+                agent_cmd=["claude", "--dangerously-skip-permissions"],
+                is_interactive=False,
+            )
+
+        staged = docker_cmd.staging_dir / ".claude" / "settings.json"
+        assert staged.exists(), "settings.json must be staged when PKB_MCP_URL is set"
+        data = json.loads(staged.read_text())
+        pkb_url = (
+            data.get("pluginConfigs", {})
+            .get("aops-pkb@academicOps", {})
+            .get("options", {})
+            .get("pkb_mcp_url")
+        )
+        assert pkb_url == "http://pkb.example.com:8026/mcp/"
+
+    def test_no_settings_staged_without_pkb_url(self, tmp_path):
+        """settings.json is only generated and staged when PKB_MCP_URL is set.
+        Without it there is nothing to inject so no file is written."""
         with patch("cli.Path.home", return_value=tmp_path):
             docker_cmd = _build_docker_cmd(
                 cli_tool="claude",
@@ -226,17 +289,7 @@ class TestClaudeAuthEnvOnly:
                 is_interactive=False,
             )
 
-        assert docker_cmd.staging_dir is not None
-        # None of the host auth files should appear in the staging dir.
-        assert not (docker_cmd.staging_dir / ".claude.json").exists(), (
-            "staged .claude.json leaked host auth — must be env-var only"
-        )
-        assert not (docker_cmd.staging_dir / ".claude" / ".credentials.json").exists(), (
-            "staged .credentials.json leaked host auth — must be env-var only"
-        )
-        assert not (docker_cmd.staging_dir / ".claude" / "settings.json").exists(), (
-            "staged settings.json leaked host config — must be env-var only"
-        )
+        assert not (docker_cmd.staging_dir / ".claude" / "settings.json").exists()
 
 
 class TestClaudeConfigSeed:

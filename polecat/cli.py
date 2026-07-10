@@ -1496,17 +1496,35 @@ def _build_docker_cmd(
             staging_dir is not None
         )  # always set: ("claude","shell") ⊆ ("claude","shell","gemini")
         # Claude auth is env-only: CLAUDE_CODE_OAUTH_TOKEN forwarded via
-        # agent-env-map.conf. We do NOT stage `.claude.json`, `.credentials.json`,
-        # or `settings.json` from the host. Two reasons:
-        #   1) Single source of truth for auth — the host env var. No "which path
-        #      won this time" debugging when the file says one thing and the env
-        #      another.
-        #   2) Host `.credentials.json` carries PII (oauthAccount: email, org
-        #      UUID) and a token that may be scoped differently from what the
-        #      worker needs. Forwarding the OAuth env var is sufficient.
+        # agent-env-map.conf. We do NOT stage `.claude.json` or `.credentials.json`
+        # from the host — they carry PII and a token scoped differently from what
+        # the worker needs. Forwarding the OAuth env var is sufficient.
         # If `CLAUDE_CODE_OAUTH_TOKEN` is unset on the host, the worker will hit
         # a clear 401 — see the explicit pre-flight check at the `polecat run`
         # entry point.
+
+        # Stage a settings.json with pkb_mcp_url pre-merged when PKB_MCP_URL is
+        # available. The aops-pkb plugin's Claude MCP transport reads the URL from
+        # pluginConfigs["aops-pkb@academicOps"].options.pkb_mcp_url in settings.json
+        # (via ${user_config.pkb_mcp_url}); interactive enable-time prompt never
+        # runs in headless containers so we inject it here at launch time.
+        pkb_url = env.get("PKB_MCP_URL")
+        if pkb_url:
+            _default_settings = Path(__file__).parent / "defaults" / "claude-settings.json"
+            try:
+                _settings_data = (
+                    json.loads(_default_settings.read_text()) if _default_settings.exists() else {}
+                )
+            except (OSError, ValueError):
+                _settings_data = {}
+            _cfg_node = _settings_data.setdefault("pluginConfigs", {}).setdefault(
+                "aops-pkb@academicOps", {}
+            )
+            _cfg_node.setdefault("options", {})["pkb_mcp_url"] = pkb_url
+            _staged_settings = staging_dir / ".claude" / "settings.json"
+            _staged_settings.parent.mkdir(parents=True, exist_ok=True)
+            _staged_settings.write_text(json.dumps(_settings_data, indent=2) + "\n")
+
         # Stage Gemini auth files for "shell" mode so users can run gemini interactively.
         # Gemini normally handles its own sandbox, but in shell mode we're managing Docker.
         if cli_tool == "shell":

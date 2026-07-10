@@ -141,6 +141,16 @@ RUN umask 000 && git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} 
     && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
+    && python3 -c "
+import glob, json
+for path in glob.glob('/home/worker/.gemini/**/mcp_config.json', recursive=True):
+    try: data = json.loads(open(path).read())
+    except (OSError, ValueError): continue
+    plugin_dir = path[:path.rfind('/')]
+    s = json.dumps(data)
+    r = s.replace('\${extensionPath}', plugin_dir).replace('\${CLAUDE_PLUGIN_ROOT}', plugin_dir)
+    if r != s: open(path, 'w').write(r)
+" \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
     && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
