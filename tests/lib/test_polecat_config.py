@@ -83,6 +83,8 @@ def test_container_env_forward_defaults_when_absent(cfg_path: Path) -> None:
         "CLAUDE_CODE_OAUTH_TOKEN",
         "AOPS_CC_OAUTH_TOKEN",
         "GEMINI_API_KEY",
+        "PKB_MCP_URL",
+        "AOPS_BOT_GH_TOKEN",
     )
 
 
