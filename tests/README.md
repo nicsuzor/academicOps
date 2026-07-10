@@ -232,7 +232,7 @@ Execute Claude Code in headless mode for integration testing:
 ```python
 result = claude_headless(
     prompt="What is 2+2?",
-    model="claude-sonnet-4-5-20250929",  # Optional
+    model="sonnet",  # Optional
     timeout_seconds=120,                  # Optional
     permission_mode="plan",               # Optional
     cwd=writing_root,                     # Optional

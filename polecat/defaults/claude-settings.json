@@ -1,5 +1,5 @@
 {
-  "model": "claude-sonnet-4-6",
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "ccstatusline",
@@ -119,6 +119,7 @@
   "enabledPlugins": {
     "aops-core@academicOps": true,
     "aops-tools@academicOps": true,
-    "aops-pkb@academicOps": true
+    "aops-pkb@academicOps": true,
+    "aops-extras@academicOps": true
   }
 }

@@ -42,7 +42,7 @@ session_defaults:
   # the single source of truth for your default Claude model. To dispatch
   # Opus workers without pinning a version in every command, set this to
   # claude-opus-4-8 and use `--model claude` in dispatch commands.
-  claude_model: claude-sonnet-4-6
+  claude_model: sonnet
   # `--model gemini` selects the npm/nvm Gemini CLI; this is the model id
   # passed to `gemini --model`. Distinct from antigravity_model below.
   gemini_model: gemini-3.1-pro-preview
