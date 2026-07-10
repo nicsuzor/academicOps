@@ -1410,15 +1410,15 @@ def run_probe(probe: Probe, workspace: Path) -> Result:  # noqa: PLR0912, PLR091
     _write_probe_hook(hook, out, probe.fire_once)
 
     # Register the hook for this probe's wire_event.
-    hook_entry: dict = {"type": "command", "command": f"bash {hook}"}
+    probe_hook_entry: dict = {"type": "command", "command": f"bash {hook}"}
     if probe.async_rewake_entry:
         # GH #2181 discriminating measurement: the entry carries the SAME
         # config-level asyncRewake flag as `async_rewake` probes, but this
         # hook still emits `probe.output` via normal exit-0 JSON (no exit-2
         # raw-body switch) — does the client honor its own JSON block?
-        hook_entry["asyncRewake"] = True
-        hook_entry["rewakeMessage"] = "PROBE rewake:"
-    settings: dict = {"hooks": {probe.wire_event: [{"hooks": [hook_entry]}]}}
+        probe_hook_entry["asyncRewake"] = True
+        probe_hook_entry["rewakeMessage"] = "PROBE rewake:"
+    settings: dict = {"hooks": {probe.wire_event: [{"hooks": [probe_hook_entry]}]}}
     if probe.agent_pin:
         # Project-pinned `agent:` setting (GH #2181's `is_subagent`
         # misclassification hypothesis — see Probe.agent_pin docstring).

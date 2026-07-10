@@ -82,8 +82,8 @@ def test_validate_bootstrap_missing_axioms(tmp_path, monkeypatch):
 def test_validate_bootstrap_success(tmp_path, monkeypatch):
     aops_dir = tmp_path / "aops"
     aops_dir.mkdir()
-    (aops_dir / ".agents" / "rules").mkdir(parents=True)
-    (aops_dir / ".agents" / "rules" / "AXIOMS.md").touch()
+    (aops_dir / ".agents").mkdir(parents=True)
+    (aops_dir / ".agents" / "AXIOMS.md").touch()
     monkeypatch.setenv("AOPS", str(aops_dir))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8026/mcp")
