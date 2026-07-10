@@ -49,9 +49,9 @@ deleted 2026-06-26, so the agy values stand as recorded measurements, no longer 
 One record per ABSTRACT tool: `canonical`, `category`
 (read/write/spawn/destructive/skill), and the per-client concrete name. Drives BOTH the
 build's text/frontmatter rewriting (replacing `tool_translation.py` and the agent maps)
-AND runtime recognition (`extract_subagent_type`, `SPAWN_TOOLS`, sentinel, enforcer).
+AND runtime recognition (`extract_subagent_type`, `SPAWN_TOOLS`, enforcer).
 Fixes the agy gap: agy's vocabulary (`view_file`, `run_command`, `invoke_subagent`, …)
-is currently unknown at runtime, so sentinel/enforcer/spawn matching silently fails on agy.
+is currently unknown at runtime, so enforcer/spawn matching silently fails on agy.
 
 ### Renderers (thin, structural only)
 
