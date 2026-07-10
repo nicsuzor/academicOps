@@ -806,10 +806,13 @@ def build_aops_core(
 
         # The pkb MCP server (.mcp.json, generated in section 4) launches via
         # scripts/run-mcp.sh, which sources ensure-path.sh. aops-pkb/scripts/ is
-        # the sole tracked copy of this launcher pair (single-source-of-truth —
-        # aops-core carries no scripts/run-mcp.sh or scripts/ensure-path.sh of
-        # its own); the antigravity build of aops-pkb copies the same two files
-        # via its own full-tree copy (build_aops_pkb §1).
+        # the sole tracked copy of run-mcp.sh (aops-core carries no copy of its
+        # own); the antigravity build of aops-pkb copies both files via its own
+        # full-tree copy (build_aops_pkb §1). ensure-path.sh also has its own
+        # tracked copy at aops-core/scripts/ensure-path.sh — a deliberate
+        # exception kept in sync, since aops-core/hooks/router.sh sources it
+        # for PATH bootstrap and aops-core must install standalone without
+        # aops-pkb present.
         pkb_scripts_src = aops_root / "aops-pkb" / "scripts"
         mcp_launcher_dst = content_dir / "scripts"
         mcp_launcher_dst.mkdir(parents=True, exist_ok=True)
