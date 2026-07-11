@@ -1,7 +1,10 @@
 """Gate lifecycle — per-gate state transitions.
 
 Tests gate-specific lifecycle behaviour where the transition sequence is
-genuinely gate-specific (e.g. IDA re-arm on UPS, handover opens on skill).
+genuinely gate-specific (e.g. IDA re-arm on UPS, exit_reflection opens on a
+legal exit). The exit_reflection gate (aops_4c2949d9) consolidates the former
+rbg-review + qa + handover trio into one Stop gate with a FULL tier
+(task-bound, did work this turn) and a LITE tier (everyone else).
 """
 
 import os
@@ -24,11 +27,13 @@ from tests.hooks.gate_helpers import (
     set_gate_modes,
 )
 
-# --- Handover gate opens ---
+# --- Exit-reflection gate opens on a legal exit ---
 
 
-class TestHandoverGateOpens:
-    """Handover gate opens on /end-session or /dump skill completion."""
+class TestExitReflectionGateOpens:
+    """exit_reflection gate opens on /end-session, /dump completion, or an
+    honest release_task handback (delivered or a stated failure reason —
+    both are legal exits, note_296e5520 §1)."""
 
     SCENARIOS = flatten_scenarios("handover_gate_opens")
 
@@ -37,19 +42,61 @@ class TestHandoverGateOpens:
         SCENARIOS,
         ids=[s["id"] for s in SCENARIOS],
     )
-    def test_handover_gate_opens_on_event(self, router, scenario):
+    def test_exit_reflection_gate_opens_on_event(self, router, scenario):
         state = make_session_state(scenario)
         ctx = make_context(scenario)
 
         router._dispatch_gates(ctx, state)
 
-        assert state.gates["handover"].status == GateStatus.OPEN, (
-            f"[{scenario['id']}] Handover gate should be OPEN in response, "
-            f"but got {state.gates['handover'].status}"
+        assert state.gates["exit_reflection"].status == GateStatus.OPEN, (
+            f"[{scenario['id']}] exit_reflection gate should be OPEN in response, "
+            f"but got {state.gates['exit_reflection'].status}"
         )
 
+    @pytest.mark.parametrize(
+        "status", ["merge_ready", "done", "blocked", "review", "partial", "cancelled"]
+    )
+    def test_release_task_any_terminal_status_opens_gate(self, router, monkeypatch, status):
+        """An honest failure/pause handback is exactly as legal an exit as a
+        verified success (note_296e5520 §1) — release_task with ANY terminal
+        status opens the gate immediately, no deadlock."""
+        set_gate_modes(monkeypatch, exit_reflection="block")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("exit_reflection")
+        assert state.gates["exit_reflection"].status == GateStatus.CLOSED
 
-# --- IDA per-turn lifecycle ---
+        ctx = HookContext(
+            session_id="test-gate-mode",
+            client_type="claude",
+            hook_event="PostToolUse",
+            tool_name="mcp__services__pkb__release_task",
+            tool_input={"status": status, "summary": "done or honestly not done"},
+        )
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["exit_reflection"].status == GateStatus.OPEN, (
+            f"release_task(status={status!r}) must be a legal exit — gate must open"
+        )
+
+    def test_release_task_non_terminal_status_does_not_open_gate(self, router, monkeypatch):
+        """A non-terminal release_task call (e.g. status=in_progress, if that
+        ever reached release_task) must NOT be treated as a legal exit."""
+        set_gate_modes(monkeypatch, exit_reflection="block")
+        reinit_gates_with_defaults()
+        state = make_gate_trigger_state("exit_reflection")
+
+        ctx = HookContext(
+            session_id="test-gate-mode",
+            hook_event="PostToolUse",
+            tool_name="mcp__services__pkb__release_task",
+            tool_input={"status": "in_progress"},
+        )
+        router._dispatch_gates(ctx, state)
+
+        assert state.gates["exit_reflection"].status == GateStatus.CLOSED
+
+
+# --- IDA per-turn lifecycle (untouched by the exit_reflection consolidation) ---
 
 
 class TestIdaPerTurnLifecycle:
@@ -132,22 +179,19 @@ class TestIdaPerTurnLifecycle:
         )
 
 
-# --- Handover read-only exemption (aops-16a15a05) ---
+# --- Exit-reflection tier selection + read-only exemption (aops-16a15a05 lineage) ---
 
 
-class TestHandoverReadOnlyExemption:
-    """Handover gate exempts sessions that made no writes and claimed no task.
+class TestExitReflectionTierSelection:
+    """The FULL checklist applies only to a task-bound main-agent session that
+    did work THIS turn; everyone else (no task, subagent, or a read-only turn
+    on a bound task) gets the LITE reminder, which never denies.
 
-    AC from aops-16a15a05:
-    - Read-only session: handover gate OPEN at Stop, verdict ALLOW
-    - Working session: handover gate CLOSED at Stop, verdict DENY (block)
-    - Max-fire loop-breaker: block→warn after N Stop blocks so a done session
-      is not perpetually denied (Gemini watchdog fix, was aops-c5513f7f)
-
-    The "polecat" framing in these test names/helpers is legacy — the gate no
+    The "polecat" framing in some test names/helpers is legacy — the gate no
     longer branches on session type. `_make_polecat_state` still tags the
-    session as polecat only because `HANDOVER_GATE_MODE=block` here mirrors a
-    dispatched surface's config; the assertions hold for ANY session type.
+    session as polecat only because `EXIT_REFLECTION_GATE_MODE=block` here
+    mirrors a dispatched surface's config; the assertions hold for ANY
+    session type.
     """
 
     def _make_polecat_state(self, session_id: str) -> "SessionState":
@@ -161,15 +205,14 @@ class TestHandoverReadOnlyExemption:
             else:
                 os.environ.pop("AOPS_POLECAT_CONTAINER", None)
 
-    def test_read_only_polecat_allows_stop(self, router, monkeypatch):
-        """Read-only session (no writes, no task claim) exits without handover block."""
-        set_gate_modes(monkeypatch, handover="block", ida="off")
+    def test_read_only_session_never_denied(self, router, monkeypatch):
+        """Read-only session (no writes, no task claim) never gets a DENY —
+        at most the LITE reminder (WARN)."""
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-read-only-stop")
-        # Gate starts OPEN (every session type alike) and nothing closed it —
-        # turn_did_work is also False, so the policy is exempt either way.
-        assert state.gates["handover"].status == GateStatus.OPEN
+        assert state.gates["exit_reflection"].status == GateStatus.CLOSED
         assert state.turn_did_work is False
 
         ctx = HookContext(
@@ -178,38 +221,75 @@ class TestHandoverReadOnlyExemption:
         )
         result = router._dispatch_gates(ctx, state)
 
-        # Policy must NOT fire — read-only sessions are exempt from handover
-        assert result is None or result.verdict == GateVerdict.ALLOW, (
-            "Read-only polecat session must not be blocked by handover gate at Stop. "
-            f"Got verdict={result.verdict.value if result else 'None'}"
+        assert result is None or result.verdict != GateVerdict.DENY, (
+            "Read-only session must never be DENYed by exit_reflection — LITE "
+            f"tier only. Got verdict={result.verdict.value if result else 'None'}"
         )
 
-    def test_working_polecat_blocks_stop(self, router, monkeypatch):
-        """Session that used a write tool is still blocked at Stop until handover."""
-        set_gate_modes(monkeypatch, handover="block", ida="off")
+    def test_working_session_full_tier_blocks_stop(self, router, monkeypatch):
+        """Task-bound session that used a write tool is blocked at Stop
+        (FULL tier) until a legal exit fires."""
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-working-stop")
-        state.gates["handover"].status = GateStatus.CLOSED
-        # Simulate a write tool having been used — triggers the full handover requirement
+        state.main_agent.current_task = "task-abc"
+        state.gates["exit_reflection"].status = GateStatus.CLOSED
         state.turn_did_work = True
-        # Open QA so it doesn't mask the handover DENY
-        state.gates["qa"].status = GateStatus.OPEN
 
         ctx = HookContext(
             session_id="test-working-stop",
+            client_type="claude",
             hook_event="Stop",
         )
         result = router._dispatch_gates(ctx, state)
 
-        assert result is not None, "Working session must be blocked at Stop"
+        assert result is not None, "Working task-bound session must be blocked at Stop"
         assert result.verdict == GateVerdict.DENY, (
-            f"Expected DENY from handover gate, got {result.verdict.value if result else 'None'}"
+            f"Expected DENY from exit_reflection FULL tier, got {result.verdict.value if result else 'None'}"
+        )
+
+    def test_no_bound_task_gets_lite_tier_only(self, router, monkeypatch):
+        """A write-tool turn with NO bound task gets the LITE reminder, never
+        a DENY — the FULL checklist is scoped to task-bound sessions only."""
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
+        reinit_gates_with_defaults()
+
+        state = self._make_polecat_state("test-no-task-stop")
+        state.gates["exit_reflection"].status = GateStatus.CLOSED
+        state.turn_did_work = True
+        assert state.main_agent.current_task is None
+
+        ctx = HookContext(session_id="test-no-task-stop", hook_event="Stop")
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None and result.verdict == GateVerdict.WARN, (
+            "No bound task -> LITE tier (WARN), never DENY, "
+            f"got verdict={result.verdict.value if result else 'None'}"
+        )
+
+    def test_subagent_gets_lite_tier_even_with_bound_task(self, router, monkeypatch):
+        """A subagent Stop always gets the LITE tier, even if the MAIN session
+        has a bound task — the FULL checklist is main-agent only."""
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
+        reinit_gates_with_defaults()
+
+        state = self._make_polecat_state("test-subagent-stop")
+        state.main_agent.current_task = "task-abc"
+        state.gates["exit_reflection"].status = GateStatus.CLOSED
+        state.turn_did_work = True
+
+        ctx = HookContext(session_id="test-subagent-stop", hook_event="Stop", is_subagent=True)
+        result = router._dispatch_gates(ctx, state)
+
+        assert result is not None and result.verdict == GateVerdict.WARN, (
+            "Subagent Stop -> LITE tier (WARN), never DENY, "
+            f"got verdict={result.verdict.value if result else 'None'}"
         )
 
     def test_set_turn_did_work_on_task_claim(self, router, monkeypatch):
         """Claiming a task (update_task in_progress) sets turn_did_work=True."""
-        set_gate_modes(monkeypatch, handover="block", ida="off")
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-task-claim")
@@ -224,12 +304,12 @@ class TestHandoverReadOnlyExemption:
         router._dispatch_gates(ctx, state)
 
         assert state.turn_did_work is True, (
-            "Claiming a task must set turn_did_work=True so the handover policy fires"
+            "Claiming a task must set turn_did_work=True so the FULL tier can fire"
         )
 
     def test_set_turn_did_work_on_write_tool(self, router, monkeypatch):
-        """Using a write tool (Edit) sets turn_did_work=True in polecat sessions."""
-        set_gate_modes(monkeypatch, handover="block", ida="off")
+        """Using a write tool (Edit) sets turn_did_work=True."""
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
 
         state = self._make_polecat_state("test-write-tool")
@@ -245,7 +325,7 @@ class TestHandoverReadOnlyExemption:
         router._dispatch_gates(ctx, state)
 
         assert state.turn_did_work is True, (
-            "Using a write tool must set turn_did_work=True so the handover policy fires"
+            "Using a write tool must set turn_did_work=True so the FULL tier can fire"
         )
 
 
@@ -256,19 +336,19 @@ class TestStopDenyMaxFireDowngrade:
     """After N Stop DENY events from the same gate, downgrade to WARN.
 
     Prevents Gemini sessions (no Stop hook = no loop-breaker) from being
-    held indefinitely against the termination watchdog.
+    held indefinitely against the termination watchdog. This is also the
+    backstop that keeps exit_reflection's FULL-tier block mode from ever
+    being a no-legal-exit deadlock (note_296e5520 §1).
     """
 
     def test_ida_block_downgrades_after_n_stops(self, router, monkeypatch):
         """IDA block mode downgrades block→warn after 3 consecutive Stop blocks."""
-        set_gate_modes(monkeypatch, handover="off", ida="block", qa="off")
-        # qa="off" is not a valid mode but we can force qa gate open
-        monkeypatch.setenv("QA_GATE_MODE", "off")
+        set_gate_modes(monkeypatch, exit_reflection="off", ida="block")
         reinit_gates_with_defaults()
 
         state = make_gate_trigger_state("ida")
-        # Force QA open so only IDA fires
-        state.gates["qa"].status = GateStatus.OPEN
+        # Force exit_reflection open so only IDA fires
+        state.gates["exit_reflection"].status = GateStatus.OPEN
 
         stop_ctx = HookContext(
             session_id="test-gate-mode",
@@ -303,40 +383,35 @@ class TestStopDenyMaxFireDowngrade:
             f"got {r3.verdict.value if r3 else None}"
         )
 
-    def test_handover_block_downgrades_after_n_stops(self, router, monkeypatch):
-        """Handover block downgrades after N CONSECUTIVE Stop blocks WITHIN a turn
-        (no UPS between) so a session that cannot run handover can still exit.
+    def test_exit_reflection_full_block_downgrades_after_n_stops(self, router, monkeypatch):
+        """exit_reflection FULL-tier block downgrades after N CONSECUTIVE Stop
+        blocks WITHIN a turn (no UPS between), so a session with a
+        structurally-broken auditor dispatch can still exit — the escape
+        hatch, not the primary exit (the release_task legal-exit trigger is).
 
-        The loop the escape hatch bounds is within-turn (Stop → forced-continue →
-        Stop …): block mode has no warn-fire-once, so the gate persists and
-        re-DENYs each Stop, accumulating stop_deny_count until the engine
-        downgrades to WARN-and-allow. UPS would reset the budget (new turn = new
-        work), so this test drives consecutive Stops without one.
+        EXIT_REFLECTION_DEGRADE_THRESHOLD defaults to 5.
         """
-        set_gate_modes(monkeypatch, handover="block", ida="off")
-        monkeypatch.setenv("QA_GATE_MODE", "off")
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
 
-        state = make_gate_trigger_state("handover")
-        # turn_did_work already set to True by make_gate_trigger_state
-        state.gates["qa"].status = GateStatus.OPEN
+        state = make_gate_trigger_state("exit_reflection")  # full_tier=True by default
 
         stop_ctx = HookContext(
             session_id="test-gate-mode",
             hook_event="Stop",
         )
 
-        # Three consecutive Stops in the SAME turn (no UPS): counter accumulates.
-        r1 = router._dispatch_gates(stop_ctx, state)
-        assert r1 is not None and r1.verdict == GateVerdict.DENY
-        r2 = router._dispatch_gates(stop_ctx, state)
-        assert r2 is not None and r2.verdict == GateVerdict.DENY
+        results = []
+        for _ in range(6):
+            results.append(router._dispatch_gates(stop_ctx, state))
 
-        # Third Stop: downgraded to WARN-and-allow (escape hatch).
-        r3 = router._dispatch_gates(stop_ctx, state)
-        assert r3 is not None and r3.verdict == GateVerdict.WARN, (
-            f"Handover should downgrade to WARN after 3 within-turn blocks, "
-            f"got {r3.verdict.value if r3 else None}"
+        assert all(r is not None and r.verdict == GateVerdict.DENY for r in results[:4]), (
+            "First several within-turn Stops must persist as DENY (no fire-once "
+            f"in FULL-tier block mode); got {[r.verdict.value if r else None for r in results[:4]]}"
+        )
+        assert results[-1] is not None and results[-1].verdict == GateVerdict.WARN, (
+            "exit_reflection FULL tier should downgrade to WARN after the "
+            f"escape-hatch threshold, got {results[-1].verdict.value if results[-1] else None}"
         )
 
 
@@ -367,7 +442,7 @@ def _ups(prompt: str) -> HookContext:
 
 class TestSlashCommandDoesNotRearmSessionEndGates:
     """A slash-command turn (skill invocation) owns its own finishing format, so
-    the session-end gates (qa, handover, ida) must NOT re-arm (close) on it.
+    the session-end gates (exit_reflection, ida) must NOT re-arm (close) on it.
 
     Directive (Turn-1): typing /end-session, /dump or /remember after an honesty
     reflection has already fired must not arm a SECOND redundant reflection. The
@@ -412,84 +487,61 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
             "a file path must not be mistaken for a slash command"
         )
 
-    def test_qa_not_rearmed_on_slash(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, qa="block")
+    def test_exit_reflection_not_rearmed_on_slash(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, exit_reflection="block")
         reinit_gates_with_defaults()
-        state = make_gate_trigger_state("qa")
-        state.main_agent.current_task = "task-xyz"  # has_bound_task
-        state.gates["qa"].status = GateStatus.OPEN
+        state = make_gate_trigger_state("exit_reflection")
+        state.gates["exit_reflection"].status = GateStatus.OPEN
 
         router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
 
-        assert state.gates["qa"].status == GateStatus.OPEN, (
-            "qa must NOT re-arm on a slash-command turn"
+        assert state.gates["exit_reflection"].status == GateStatus.OPEN, (
+            "exit_reflection must NOT re-arm on a slash-command turn"
         )
 
-    def test_qa_still_rearms_on_normal_with_task(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, qa="block")
+    def test_exit_reflection_still_rearms_on_normal(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, exit_reflection="block")
         reinit_gates_with_defaults()
-        state = make_gate_trigger_state("qa")
-        state.main_agent.current_task = "task-xyz"
-        state.gates["qa"].status = GateStatus.OPEN
+        state = make_gate_trigger_state("exit_reflection")
+        state.gates["exit_reflection"].status = GateStatus.OPEN
 
         router._dispatch_gates(_ups(NORMAL_PROMPT), state)
 
-        assert state.gates["qa"].status == GateStatus.CLOSED, (
-            "qa MUST re-arm on a normal prompt when a task is bound"
-        )
-
-    def test_handover_not_rearmed_on_slash(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, handover="block")
-        reinit_gates_with_defaults()
-        state = self._fresh_state("test-gate-mode")
-        state.gates["handover"].status = GateStatus.OPEN
-
-        router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
-
-        assert state.gates["handover"].status == GateStatus.OPEN, (
-            "handover must NOT re-arm on a slash-command turn"
-        )
-
-    def test_handover_still_rearms_on_normal(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, handover="block")
-        reinit_gates_with_defaults()
-        state = self._fresh_state("test-gate-mode")
-        state.gates["handover"].status = GateStatus.OPEN
-
-        router._dispatch_gates(_ups(NORMAL_PROMPT), state)
-
-        assert state.gates["handover"].status == GateStatus.CLOSED, (
-            "handover MUST re-arm on a normal prompt"
+        assert state.gates["exit_reflection"].status == GateStatus.CLOSED, (
+            "exit_reflection MUST re-arm on a normal prompt"
         )
 
     def test_slash_command_never_opens_a_closed_gate(self, router, monkeypatch):
         """The exclusion suppresses CLOSE only — it must never OPEN a gate.
         A gate that is CLOSED coming into a slash turn stays CLOSED (the
         directive: 'don't take this to mean we should open any gates')."""
-        set_gate_modes(monkeypatch, ida="warn", qa="block", handover="block")
+        set_gate_modes(monkeypatch, ida="warn", exit_reflection="block")
         reinit_gates_with_defaults()
         state = self._fresh_state("test-gate-mode")
         state.main_agent.current_task = "task-xyz"
         state.turn_did_work = True
-        for g in ("qa", "handover", "ida"):
+        for g in ("exit_reflection", "ida"):
             state.gates.setdefault(g, GateState()).status = GateStatus.CLOSED
 
         router._dispatch_gates(_ups(CLAUDE_SLASH_PROMPT), state)
 
-        for g in ("qa", "handover", "ida"):
+        for g in ("exit_reflection", "ida"):
             assert state.gates[g].status == GateStatus.CLOSED, (
                 f"{g} must stay CLOSED — the slash exclusion suppresses close, never opens"
             )
 
     @pytest.mark.parametrize("skill", ["end_session", "dump", "remember"])
-    def test_skill_tool_invocation_does_not_rearm_ida_or_qa(self, router, monkeypatch, skill):
+    def test_skill_tool_invocation_does_not_rearm_ida_or_exit_reflection(
+        self, router, monkeypatch, skill
+    ):
         """E2: the agent invoking Skill(end_session/dump/remember) — a PostToolUse,
-        not a UPS — must not re-arm ida or qa (they only close on UPS / task-claim)."""
-        set_gate_modes(monkeypatch, ida="warn", qa="block")
+        not a UPS — must not re-arm ida or exit_reflection (they only close on
+        UPS / task-claim / write tool)."""
+        set_gate_modes(monkeypatch, ida="warn", exit_reflection="block")
         reinit_gates_with_defaults()
         state = SessionState.create("test-gate-mode")
         state.main_agent.current_task = "task-xyz"
-        for g in ("qa", "ida"):
+        for g in ("exit_reflection", "ida"):
             state.gates.setdefault(g, GateState()).status = GateStatus.OPEN
 
         ctx = HookContext(
@@ -501,5 +553,7 @@ class TestSlashCommandDoesNotRearmSessionEndGates:
         )
         router._dispatch_gates(ctx, state)
 
-        assert state.gates["qa"].status == GateStatus.OPEN, f"Skill({skill}) must not re-arm qa"
+        assert state.gates["exit_reflection"].status == GateStatus.OPEN, (
+            f"Skill({skill}) must not re-arm exit_reflection"
+        )
         assert state.gates["ida"].status == GateStatus.OPEN, f"Skill({skill}) must not re-arm ida"

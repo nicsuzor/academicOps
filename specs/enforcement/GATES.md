@@ -18,27 +18,26 @@ description: SSoT for every gate the framework runs at session time — what eac
 - **Hook router architecture, MCP wiring, hook I/O schemas, PATH bootstrap** — see [`aops-core/skills/aops/references/hooks.md`](../../aops-core/skills/aops/references/hooks.md).
 - **JSONL log schema, raw-file forensics procedures** — see [`aops-core/skills/aops/references/forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md).
 - **Design rationale (why the gate system is shaped this way)** — see [`specs/enforcement/enforcement.md`](enforcement.md) and [`specs/agents/rbg.md`](../agents/rbg.md).
-- **Per-gate design rationale (why a given gate exists, the class of failure it defends against)** — lives in the respective agent spec: `ida` → [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate); `rbg` and `rbg-review` → [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends); gates without an agent spec → [`specs/enforcement/enforcement.md`](enforcement.md). GATES.md holds the operational state (what / where / config / verify / debug).
+- **Per-gate design rationale (why a given gate exists, the class of failure it defends against)** — lives in the respective agent spec: `ida` → [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate); `exit_reflection`'s RBG-lens self-audit tier → [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends); gates without an agent spec → [`specs/enforcement/enforcement.md`](enforcement.md). GATES.md holds the operational state (what / where / config / verify / debug).
 
 ## At a glance
 
-| Gate         | What it catches                                          | Fires on           | Close trigger                                                                                      | Open trigger       |
-| ------------ | -------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------- | ------------------ |
-| `rbg`        | Periodic compliance / ultra-vires drift                  | PreToolUse         | tool calls >= `gates.rbg_threshold` (explicit, required — see [Config plumbing](#config-plumbing)) | call RBG           |
-| `rbg-review` | Final rbg axiom audit before a task-bound session exits  | Stop               | claim_task                                                                                         | call RBG           |
-| `qa`         | "Done" claimed without verification                      | Stop               | claim_task                                                                                         | Skill(verify)      |
-| `handover`   | Exit without commit / task update / reflection           | Stop               | claim_task                                                                                         | Skill(End Session) |
-| task-binding | Work without a bound task (**reactivated**, target — H4) | PreToolUse (write) | claim_task                                                                                         | —                  |
+**Consolidation (aops_4c2949d9, 2026-07).** The former `rbg-review` + `qa` + `handover` trio is now ONE Stop gate, `exit_reflection`, with two tiers selected per-Stop by session scope (never a session-type code branch). The turn-based `rbg` PreToolUse compliance-counter gate is **retired entirely** — nothing fires mid-session (PreToolUse) on any surface any more. See [note_296e5520](../../note_296e5520) §1 for the ratifying plan.
 
-**`ida` gate — disposition OPEN, not retired.** See [§ `ida` gate](#ida-gate) below.
+| Gate              | What it catches                                                                                                                                                                              | Fires on           | Close trigger                                               | Open trigger                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `exit_reflection` | FULL tier: axiom drift, unverified "done" claims, exit without commit/capture/handover on a task-bound session that did work. LITE tier: honesty/criterion-substitution only (never blocks). | Stop               | task claim / claim_task / write tool (sets FULL-tier scope) | reflection auditor ran, OR an honest `release_task` completion/failure, OR `/end-session`/`/dump`/`/continue` |
+| task-binding      | Work without a bound task (**reactivated**, target — H4)                                                                                                                                     | PreToolUse (write) | claim_task                                                  | —                                                                                                             |
 
-Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy (H8/H12, PreToolUse exception permanent as of aops_571771b4)**: gates fire uniformly across main sessions, subagents, and workers — the previous blanket skip of PostToolUse evaluation for subagent-attributed events is retired — except PreToolUse, which stays skipped for subagent-classified sessions as a deliberate, permanent exception, not a still-pending target — see [Subagent & worker session scope](#subagent--worker-session-scope) below.
+**`ida` gate — disposition OPEN, not retired; untouched by this consolidation.** See [§ `ida` gate](#ida-gate) below.
+
+Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); the `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy (H8/H12, PreToolUse exception permanent as of aops_571771b4)**: gates fire uniformly across main sessions, subagents, and workers. The PreToolUse-skip-for-subagents exception is now **moot** for compliance gating specifically — `GATE_CONFIGS` carries no PreToolUse policy at all since the turn-based `rbg` gate was retired (aops_4c2949d9) — but the skip remains general engine behaviour for any future PreToolUse gate; see [Subagent & worker session scope](#subagent--worker-session-scope) below.
 
 **Reserved name.** `hydration` is accepted in the `gates.*` config schema (`HYDRATION_GATE_MODE`) but **has no `GateConfig` today** — the visible hydration behaviour (skills-routing hint on UPS) runs unconditionally in the router. See [Reserved names](#reserved-names-hydration) at the bottom.
 
-**Historical name.** `custodiet` was the previous name for the `rbg` gate. Old references to `custodiet_*` env vars or the `custodiet` gate map one-to-one onto `rbg`.
+**Retired name.** `custodiet` → `rbg` → deleted (aops_4c2949d9). The turn-based PreToolUse compliance-counter gate under any of these names no longer exists in code; nothing fires mid-session on any surface. `rbg-review`, `qa`, and `handover` are also retired names — folded into `exit_reflection`.
 
-**`sticky_until` (engine feature).** A `GateTransition` can carry `sticky_until: list[str]` — a list of hook events that will "unstick" the gate. When such a transition fires, the engine sets `gate.sticky = True` in GateState and suppresses any subsequent transition targeting a _different_ status. When any event in the `sticky_until` list fires, the engine clears the sticky latch before evaluating triggers, so the same event can fire a normal re-arm transition. Used by the QA and handover gates to keep the gate OPEN after verification/handover until UserPromptSubmit.
+**`sticky_until` (engine feature).** A `GateTransition` can carry `sticky_until: list[str]` — a list of hook events that will "unstick" the gate. When such a transition fires, the engine sets `gate.sticky = True` in GateState and suppresses any subsequent transition targeting a _different_ status. When any event in the `sticky_until` list fires, the engine clears the sticky latch before evaluating triggers, so the same event can fire a normal re-arm transition. Used by `exit_reflection` to keep the gate OPEN after a reflection auditor runs / legal exit fires until UserPromptSubmit.
 
 ---
 
@@ -52,13 +51,12 @@ This is the canonical statement every gate's "shared Stop-gate mechanics" link p
 
 **Known limitation.** No available channel can BOTH deliver separate messages to the agent and the user AND force a continuation on Stop — `decision:"block"`+`reason` is the only channel that forces a retry, and it delivers the same text to both audiences (see the per-client table below). If a future client channel supported both, block-mode gates should switch to it; until then this is the accepted trade-off for enforcement.
 
-| Mode / gate                | Verdict | Re-fire behavior                                                                                                                                                                                      | Escape-hatch threshold (consecutive unsatisfied Stops/turn) |
-| :------------------------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| `warn` (any gate)          | `WARN`  | Fire-once: delivers once, then a warn-mode `Stop→OPEN` trigger latches the gate open so a retried Stop passes without re-delivering; re-arms on `UserPromptSubmit`.                                   | n/a — fire-once already bounds it                           |
-| `block` (`qa`, `handover`) | `DENY`  | Persist-until-satisfied: no fire-once; re-DENYs every Stop until a satisfaction trigger opens it (verifier ran / rbg ran / handover ran).                                                             | 3 (engine default)                                          |
-| `block` (`rbg-review`)     | `DENY`  | Same persist-until-satisfied behavior as above.                                                                                                                                                       | 5                                                           |
-| `ida` (`block`)            | `DENY`  | Fire-once-**loud**, not persist — ida has no satisfaction predicate (there is no "ida ran" event to open the gate later), so even block mode can only force one continuation, not an open-ended loop. | n/a                                                         |
-| `ida` (`warn`)             | `WARN`  | Fire-once, non-blocking — same mechanics as any other warn-mode gate.                                                                                                                                 | n/a                                                         |
+| Mode / gate                            | Verdict | Re-fire behavior                                                                                                                                                                                                                  | Escape-hatch threshold (consecutive unsatisfied Stops/turn) |
+| :------------------------------------- | :------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| `warn` (`exit_reflection`, any tier)   | `WARN`  | Fire-once: delivers once, then a warn-mode `Stop→OPEN` trigger latches the gate open so a retried Stop passes without re-delivering; re-arms on `UserPromptSubmit`. The LITE tier is WARN-only by construction — it never denies. | n/a — fire-once already bounds it                           |
+| `block` (`exit_reflection`, FULL tier) | `DENY`  | Persist-until-satisfied: no fire-once; re-DENYs every Stop until a legal exit fires — reflection auditor ran, an honest `release_task` completion/failure, or `/end-session`/`/dump`/`/continue`.                                 | 5 (`EXIT_REFLECTION_DEGRADE_THRESHOLD`)                     |
+| `ida` (`block`)                        | `DENY`  | Fire-once-**loud**, not persist — ida has no satisfaction predicate (there is no "ida ran" event to open the gate later), so even block mode can only force one continuation, not an open-ended loop.                             | n/a                                                         |
+| `ida` (`warn`)                         | `WARN`  | Fire-once, non-blocking — same mechanics as any other warn-mode gate.                                                                                                                                                             | n/a                                                         |
 
 The escape-hatch counter (block mode only) resets on `UserPromptSubmit` — the loop it bounds is within-turn (Stop → forced-continue → Stop …); a new user turn is new work and gets a fresh budget. Once the threshold is hit, the DENY downgrades to `WARN`-and-allow (loud, not silent).
 
@@ -81,32 +79,32 @@ timeline
         pkb.nudge : Reminder to search PKB (Advisory, aops-core, H5/H14)
         hydration.warn : Skills routing hint (moves to aops-pkb/aops-adhd, H11)
     section Tool Use
-        rbg : Periodic check (threshold via `gates.rbg_threshold`; PreToolUse skips subagents by design, but subagent PostToolUse activity still advances the counter, H8)
         task-binding : No mutation without claim_task (reactivated, target, H4)
     section Stop / Exit
-        qa : Checks for task verification
-        handover : Checks for commit/reflection
-        rbg-review : Final axiom audit (armed everywhere; mode gates whether it bites)
+        exit_reflection (FULL) : task-bound + did work — axiom self-audit, durable capture, commit/push/PR, /learn, /remember, evidenced handover
+        exit_reflection (LITE) : everyone else — honesty/criterion-substitution reminder only, never blocks
 ```
+
+The turn-based `rbg` PreToolUse compliance-counter gate (aops_4c2949d9, retired) no longer appears in the "Tool Use" section — nothing fires mid-session on any surface any more.
 
 Honesty/criterion-substitution checking (the `ida` gate, Stop + PreToolUse `AskUserQuestion`) is omitted from this timeline for brevity, not because it was retired — see [§ `ida` gate](#ida-gate) for its disposition.
 
 ## Hook-event coverage & UserPromptSubmit origin diagnostic
 
-Known open issue: the `rbg-review` gate can re-arm in interactive head sessions with no human prompt visible (see the `rbg-review` gate's "Gate re-arms with NO human prompt visible" debug row above). The diagnostic instrumentation below identifies WHAT re-arms it; it does not fix the re-arm.
+Known open issue: the `exit_reflection` gate can re-arm in interactive head sessions with no human prompt visible (inherited from the former `rbg-review` gate's identical, unconditional UPS trigger). The diagnostic instrumentation below identifies WHAT re-arms it; it does not fix the re-arm.
 
 - **Every Claude Code hook event is subscribed and logged, log-only.** `aops-core/hooks/hooks.json` registers all 30 events the installed client emits (`vQ` enum backing the settings.json `hooks` schema; SSoT copy: `client_spec.CLAUDE_ALL_EVENTS`). 10 have a `router._call_gate_method` branch (PreToolUse/PostToolUse/UserPromptSubmit/SessionStart/Stop/SessionEnd/SubagentStart/SubagentStop/PreCompact/Notification). The other 20 (`PostToolUseFailure`, `PostToolBatch`, `UserPromptExpansion`, `StopFailure`, `PostCompact`, `PermissionRequest`, `PermissionDenied`, `Setup`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `Elicitation`, `ElicitationResult`, `ConfigChange`, `WorktreeCreate`, `WorktreeRemove`, `InstructionsLoaded`, `CwdChanged`, `FileChanged`, `MessageDisplay`) have NO gate branch — `_call_gate_method`'s if/elif chain falls through to `return None`, so they are inert by construction (exit 0, no block) and reach `main()`'s `log_hook_event` call exactly like any handled event. Re-verify the 30-event set against `extension.js` on a Claude Code version bump — it is observed, not guaranteed stable.
 - **A missing/`"unknown"` `session_id` never silently drops the log entry.** `unified_logger.log_hook_event` routes those events to a global fallback sink (`~/.claude/hooks-fallback.jsonl`, override via `AOPS_HOOK_FALLBACK_LOG`), tagged `"session_id_missing": true`.
-- **UserPromptSubmit diagnostic enrichment.** Every UPS log line's `output.metadata.ups_diagnostic` carries: `prompt_id` (Claude Code ≥2.1.196; `None` elsewhere — absence is itself signal), `prompt_preview` (first 80 chars), `prompt_length`, `is_task_notification` (the `router._is_task_notification` result), and `gate_transitions` — every gate whose trigger fired on this event (`gate`, `hook_event`, `trigger_index`, `from_status`/`to_status`, `status_changed`). Captured on BOTH `execute_hooks()` branches: the task-notification short-circuit (`gate_transitions` always `[]` there — no gates run) and the normal gate-dispatch fall-through (where `rbg-review`'s unconditional UPS trigger, and any other gate's, actually shows up). This is the mechanism behind the `rbg-review` gate's verification query above — see there for a live example and the leading unverified hypothesis.
-- **Gate-transition capture is engine-level**, not UPS-specific: `GenericGate._evaluate_triggers` (`aops-core/lib/gates/engine.py`) records a transition whenever a trigger's condition matched and its transition applied — even when `from_status == to_status` (e.g. `rbg-review` re-closing an already-`CLOSED` gate), because "did this event cause the trigger to fire" is the diagnostic question, not just "did the status visibly flip". `router._dispatch_gates` collects one entry per contributing gate into `CanonicalHookOutput.metadata["gate_transitions"]` for every event, not only UserPromptSubmit; `ups_diagnostic.gate_transitions` on a UPS line is the same list, just also folded into the UPS-specific blob for convenience.
+- **UserPromptSubmit diagnostic enrichment.** Every UPS log line's `output.metadata.ups_diagnostic` carries: `prompt_id` (Claude Code ≥2.1.196; `None` elsewhere — absence is itself signal), `prompt_preview` (first 80 chars), `prompt_length`, `is_task_notification` (the `router._is_task_notification` result), and `gate_transitions` — every gate whose trigger fired on this event (`gate`, `hook_event`, `trigger_index`, `from_status`/`to_status`, `status_changed`). Captured on BOTH `execute_hooks()` branches: the task-notification short-circuit (`gate_transitions` always `[]` there — no gates run) and the normal gate-dispatch fall-through (where `exit_reflection`'s unconditional UPS trigger, and any other gate's, actually shows up).
+- **Gate-transition capture is engine-level**, not UPS-specific: `GenericGate._evaluate_triggers` (`aops-core/lib/gates/engine.py`) records a transition whenever a trigger's condition matched and its transition applied — even when `from_status == to_status` (e.g. `exit_reflection` re-closing an already-`CLOSED` gate), because "did this event cause the trigger to fire" is the diagnostic question, not just "did the status visibly flip". `router._dispatch_gates` collects one entry per contributing gate into `CanonicalHookOutput.metadata["gate_transitions"]` for every event, not only UserPromptSubmit; `ups_diagnostic.gate_transitions` on a UPS line is the same list, just also folded into the UPS-specific blob for convenience.
 
 ## Config plumbing
 
-**Standing rule, all gates (H3).** Posture — armed/disarmed, on/off, which mode a surface runs in — is expressed **only** through the env-var / `polecat.yaml` plumbing described in this section. No gate anywhere in this catalogue may branch its mode on session-type, on/off flags, or other state code in the repo — this generalises the constraint `rbg-review` states explicitly in its own TL;DR to every gate below.
+**Standing rule, all gates (H3).** Posture — armed/disarmed, on/off, which mode a surface runs in — is expressed **only** through the env-var / `polecat.yaml` plumbing described in this section. No gate anywhere in this catalogue may branch its mode on session-type, on/off flags, or other state code in the repo.
 
-Every gate's mode resolves from a `*_GATE_MODE` environment variable, read lazily by [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py) with hardcoded fallback defaults. For polecat/crew containers, the polecat launcher reads `polecat.yaml`, applies the crew/run overlay, and stages the resolved env vars into the container before the session starts — the source repo never resolves modes itself at runtime. See `gate_config.py` for the full variable list, defaults, and the `__getattr__`/`_reset_gate_mode_cache()` resolution mechanics.
+Every gate's mode resolves from a `*_GATE_MODE` environment variable, read lazily by [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py) with hardcoded fallback defaults. For polecat/crew containers, the polecat launcher reads `polecat.yaml`, applies the crew/run overlay, and stages the resolved env vars into the container before the session starts — the source repo never resolves modes itself at runtime. See `gate_config.py` for the full variable list, defaults, and the `__getattr__` resolution mechanics.
 
-**Explicit threshold required when the `rbg` gate is enabled.** `polecat.yaml`-loaded config has no fallback: `_validate_gates` (`aops-core/lib/polecat_config.py`) hard-fails with `missing required gates.rbg_threshold` if the key is absent — per that module's `DEFAULTS — NONE` policy (A14, fail-fast). For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher sets the env vars; `gate_config.py` currently falls back to built-in values (all gates `warn`, hydration `off`, threshold 50) for this path only — a gap relative to the explicit-config policy above, not a sanctioned default. Set the env vars in your shell profile or per-directory CLI settings rather than relying on the fallback.
+**No threshold config left (aops_4c2949d9).** The turn-based `rbg` gate's `gates.rbg_threshold` requirement is gone along with the gate — `_validate_gates` (`aops-core/lib/polecat_config.py`) now validates only `exit_reflection` / `hydration` / `ida`. `EXIT_REFLECTION_DEGRADE_THRESHOLD` (default 5) is a plain constant, not a required config key — see [gate_config.py](../../aops-core/hooks/gate_config.py). For **direct CLI sessions** (Claude Code or Gemini without polecat), no launcher sets the env vars; `gate_config.py` falls back to built-in values (all gates `off`) for this path only — a gap relative to the explicit-config policy above, not a sanctioned default. Set the env vars in your shell profile or per-directory CLI settings rather than relying on the fallback.
 
 ### Session-type overlays (polecat sessions)
 
@@ -143,11 +141,10 @@ python -c '
 import os, sys
 sys.path.insert(0, "/path/to/aops-core")
 from hooks.gate_config import (
-    RBG_GATE_MODE, QA_GATE_MODE, HANDOVER_GATE_MODE,
-    HYDRATION_GATE_MODE, IDA_GATE_MODE, RBG_TOOL_CALL_THRESHOLD,
+    EXIT_REFLECTION_GATE_MODE, EXIT_REFLECTION_DEGRADE_THRESHOLD,
+    HYDRATION_GATE_MODE, IDA_GATE_MODE,
 )
-print(f"rbg={RBG_GATE_MODE} threshold={RBG_TOOL_CALL_THRESHOLD}")
-print(f"qa={QA_GATE_MODE} handover={HANDOVER_GATE_MODE}")
+print(f"exit_reflection={EXIT_REFLECTION_GATE_MODE} degrade_threshold={EXIT_REFLECTION_DEGRADE_THRESHOLD}")
 print(f"ida={IDA_GATE_MODE} hydration={HYDRATION_GATE_MODE}")
 '
 ```
@@ -158,251 +155,106 @@ If this fails, `polecat.yaml` is missing/unreadable or `$AOPS_SESSIONS` is unset
 
 ## Subagent & worker session scope
 
-**Current state (aops_571771b4).** Gates fire **uniformly** for every session — main, dispatched subagent, or headless worker — for every event **except PreToolUse**, which stays skipped for subagent-classified sessions. This is a deliberate, permanent exception: `rbg` carries a blocking PreToolUse policy, and several subagent types (e.g. Explore, Plan) have no Agent-tool access to satisfy a compliance-block demand — blocking them on PreToolUse would be an unrecoverable deadlock, not enforcement (aops-55bcf1a2). `rbg` is the only `PreToolUse`-triggered gate, and it continues to skip a subagent's/worker's own tool calls at PreToolUse — its blocking behaviour stays scoped to the main session. PostToolUse fires uniformly regardless of `is_subagent`: ops-counter increments and other PostToolUse triggers run for subagent-classified sessions too, so a genuine Task-tool subagent's work still advances the `rbg` threshold even though it can't itself be PreToolUse-blocked. `GenericGate.on_tool_use` excludes `COMPLIANCE_SUBAGENT_TYPES` (rbg/marsha) from that increment specifically, so a compliance subagent's own internal reads can't inflate the counter its dispatch already resets (aops-d8ee59cc / aops-55bcf1a2 Bug 2). `is_subagent` is detected from several signals — explicit flag, `agent_id`/`agent_type` fields, a short-hex session ID, a `/subagents/` transcript path (`lib/hook_utils.py:is_subagent_session`).
+**Current state (aops_571771b4, updated aops_4c2949d9).** Gates fire **uniformly** for every session — main, dispatched subagent, or headless worker — for every event **except PreToolUse**, which stays skipped for subagent-classified sessions as engine behaviour. That exception is now **moot in practice**: `GATE_CONFIGS` carries no PreToolUse policy at all — the only gate that ever used PreToolUse (the turn-based `rbg` compliance counter) was retired entirely (aops_4c2949d9). The skip itself is not removed from the engine (it remains a deliberate, permanent guard against blocking a subagent type with no Agent-tool access to satisfy a compliance-block demand, e.g. Explore/Plan — aops-55bcf1a2), it simply has nothing to guard today. `exit_reflection`'s FULL-tier scope check instead uses `ctx.is_subagent` directly (not the PreToolUse skip) to route subagent Stops to the LITE tier — see [§ `exit_reflection` gate](#exit_reflection-gate). `is_subagent` is detected from several signals — explicit flag, `agent_id`/`agent_type` fields, a short-hex session ID, a `/subagents/` transcript path (`lib/hook_utils.py:is_subagent_session`).
 
 **Worker posture override (agy).** `AOPS_AGY_CLIENT=1` — set only by `polecat/cli.py` when launching a `polecat run --model antigravity` worker — forces `is_subagent=True` for that worker's entire life so it gets the same PreToolUse skip as a real subagent (a headless agy worker has no human able to action an interactive compliance prompt); the flag also carries session-type observability labelling.
 
 ---
 
-## `rbg` gate
+## `exit_reflection` gate {#exit_reflection-gate}
 
-> **TL;DR.** Periodic compliance check. Counts write-tool calls since the last reset; when the count reaches `gates.rbg_threshold` (explicit config key — see [Config plumbing](#config-plumbing) for when a fallback applies), the next non-infrastructure tool call fires a PreToolUse policy that dispatches the `rbg` subagent. The PreToolUse policy itself still skips subagent-classified sessions (a deliberate, permanent exception — see [Subagent & worker session scope](#subagent--worker-session-scope)), but its counter now advances uniformly on PostToolUse across main sessions, subagents, and workers (H8/H12; PreToolUse exception made permanent by aops_571771b4). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg`. Design rationale + class-of-failure: [`specs/agents/rbg.md`](../agents/rbg.md#gate-rationale-what-each-surface-defends).
+> **TL;DR.** The single consolidated exit-reflection Stop gate (aops_4c2949d9, replacing the former `rbg-review` + `qa` + `handover` trio; the turn-based `rbg` PreToolUse compliance-counter gate is retired entirely — nothing fires mid-session on any surface). Armed `CLOSED` from session start for **every** session type — no code branch on session type anywhere in this gate (H3). Two tiers, selected per-Stop by session scope (never a session-type label): **FULL** — a task-bound main-agent session that did real work this turn — gets the complete checklist (RBG-lens self-audit, durable capture, commit→push→PR, `/aops-pkb:learn`, `/aops-pkb:remember`, an evidenced prose handover); **LITE** — subagents, sessions with no bound task, or a read-only turn on a bound task — gets a non-blocking honesty/self-reflection reminder only (the ida-gate lineage) and never denies. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.exit_reflection` / env `EXIT_REFLECTION_GATE_MODE`. Design rationale: `specs/agents/rbg.md` (the RBG-lens tier) and [note_296e5520](../../note_296e5520) §1 (the consolidation itself).
 
 ### What is it
 
-The periodic-compliance gate. Counts write operations since the last rbg audit; when the count reaches `gates.rbg_threshold`, the gate's PreToolUse policy fires on the next non-infrastructure tool call. The policy renders a compliance report from the session transcript into a temp file and instructs the agent to invoke the `rbg` subagent. A successful dispatch resets the counter.
+One Stop gate replacing three. Starts OPEN-equivalent (armed `CLOSED`) for every session. Closes (sets FULL-tier scope) when the session claims/binds a task (`update_task` → `in_progress`, or `claim_task`) or uses a write tool — `turn_did_work` tracks whether the CURRENT turn did real work, so a read-only turn on an otherwise task-bound session still gets the LITE tier (preserves the former handover gate's read-only exemption, aops-16a15a05). Which tier's policy fires is resolved by `is_exit_reflection_full_scope` in `custom_conditions.py`: `not ctx.is_subagent AND has_bound_task AND turn_did_work`.
 
-**Design rationale + class of failure caught.** Live in the [rbg spec](../agents/rbg.md#gate-rationale-what-each-surface-defends).
+**Class of failure caught.** All three of the retired gates' failure classes in one place: axiom drift (rbg-lens), "done" claimed without verification (qa), and exit without commit/task-update/reflection (handover).
+
+**Legal exits (no no-legal-exit deadlock, note_296e5520 §1).** ANY of:
+
+1. The reflection auditor actually runs — a subagent matching `^(aops[-_](core|pkb)[:_])?(rbg|qa|verify|marsha|exit[-_]reflection)$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.
+2. An HONEST completion or failure handback: `release_task` with `status` in `{merge_ready, done, blocked, review, partial, cancelled}` — a stated failure reason is exactly as legal an exit as a verified success.
+3. `/end-session`, `/dump`, or `/continue` completes.
+4. The engine's stop-deny escape hatch: `EXIT_REFLECTION_DEGRADE_THRESHOLD` (default 5) consecutive Stop denies in one turn degrades DENY → WARN-and-allow (failure-degradation only, never a normal bypass).
+5. WARN-mode Stops are fire-once by construction (never persist); the LITE tier never denies at all.
+
+### Where it lives
+
+| Concern                               | Path                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gate definition (config)              | `aops-core/lib/gates/definitions.py` (`GateConfig(name="exit_reflection", ...)`)                                                                                                                                                                                                                                                                                                                                 |
+| Mode + threshold lookup               | `aops-core/hooks/gate_config.py` (`EXIT_REFLECTION_GATE_MODE`, `EXIT_REFLECTION_DEGRADE_THRESHOLD`)                                                                                                                                                                                                                                                                                                              |
+| Audit-file builder                    | `aops-core/lib/gates/custom_actions.py` (`create_audit_file(gate="exit_reflection", ...)`, `prepare_exit_reflection_full`)                                                                                                                                                                                                                                                                                       |
+| Custom conditions                     | `aops-core/lib/gates/custom_conditions.py` (`is_exit_reflection_full_block_mode`, `is_exit_reflection_full_warn_mode`, `is_exit_reflection_lite_active`, `is_exit_reflection_fire_once`, `is_write_tool`, `has_bound_task`)                                                                                                                                                                                      |
+| Templates                             | `aops-core/hooks/templates/exit-reflection-{context,bound,complete,policy-message,policy-context,lite-reminder,degraded}.md`                                                                                                                                                                                                                                                                                     |
+| Hook-dispatched auditor (Claude Code) | `aops-core/hooks/hooks.json` — a `"type": "prompt"` Stop hook runs the same two-tier judgment DIRECTLY via the harness, in parallel with the command hook above. Excluded from the agy build (`scripts/build.py`) — agy's protojson dialect has no confirmed prompt-hook support, so agy gets the command-hook's reminder-text delivery only (note_296e5520 §1: "Fall back to reminder text where unsupported"). |
+| Reflection subagents                  | `aops-pkb/agents/rbg.md`, `aops-pkb/agents/marsha.md`                                                                                                                                                                                                                                                                                                                                                            |
+| Tests                                 | `tests/hooks/test_gate_lifecycle.py` (`TestExitReflectionGateOpens`, `TestExitReflectionTierSelection`, `TestStopDenyMaxFireDowngrade`), `tests/hooks/test_gate_verdict_logic.py`, `tests/hooks/test_gate_context_injection.py`, `tests/test_antigravity_hooks_build.py::test_prompt_type_hooks_dropped_for_agy`                                                                                                 |
 
 ### The audit file — how it's built and what it contains
 
-`prepare_compliance_report` (`aops-core/lib/gates/custom_actions.py`) calls `create_audit_file(session_id, "rbg", ctx, bound_task_id=...)`, which:
+`prepare_exit_reflection_full` (`aops-core/lib/gates/custom_actions.py`) calls `create_audit_file(session_id, "exit_reflection", ctx, bound_task_id=...)`, which:
 
 1. **Locates the file** at a predictable per-gate, per-session path via `get_gate_file_path` (`lib/session_paths.py`).
-2. **Builds the content** by parsing the live session transcript (`ctx.transcript_path`) and windowing it to the last `gates.rbg_threshold + 2` turns (`build_audit_session_context` — the `+2` overlaps the previous window so no turn is skipped between consecutive rbg fires, without re-sending the whole session). Renders through the `rbg.context` template, falling back to the plainer `rbg.audit` template if rich rendering fails.
-3. **Prepends the bound task's directive** (title + body) when a task is claimed, so the reviewing `rbg` subagent can check the session stayed on-target and within authority.
-4. **Appends a coverage sentinel** (`<!-- audit-complete: N turns -->`) as the last line — the `rbg` subagent's own audit procedure `tail -3`s the file to detect a truncated read (aops-e4e90f31, #1976).
+2. **Builds the content** by parsing the live session transcript (`ctx.transcript_path`) and windowing it to the last 52 turns (a fixed constant, decoupled from any gate/env var since the turn-based `rbg` cadence it used to be sized against is retired — see `_audit_window_turns` in `custom_actions.py`). Renders through the `exit_reflection.context` template.
+3. **Prepends the bound task's directive** (title + body) when a task is claimed, so a dispatched auditor can check the session stayed on-target and within authority.
+4. **Appends a coverage sentinel** (`<!-- audit-complete: N turns -->`) as the last line — a `tail -3`-detectable truncated-read guard (aops-e4e90f31, #1976), carried over from the former `rbg` gate.
 5. **Redacts known secrets** (`lib/secret_redaction.redact_secrets`) before writing.
 
-This is the same builder the `rbg-review` gate uses (see below) — one windowed context, two dispatch points (per-cadence PreToolUse, end-of-session Stop).
-
-### Where it lives
-
-| Concern                  | Path                                                                                                            |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Gate definition (config) | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg", ...)`, mode key `gates.rbg`)                      |
-| Threshold + mode lookup  | `aops-core/hooks/gate_config.py` (`RBG_TOOL_CALL_THRESHOLD`, `RBG_GATE_MODE`)                                   |
-| Audit-file builder       | `aops-core/lib/gates/custom_actions.py` (`create_audit_file`, `prepare_compliance_report`)                      |
-| Templates                | `aops-core/hooks/templates/rbg-{audit,context,countdown,instruction,policy-context,policy-message,verified}.md` |
-| Compliance subagent      | `aops-core/agents/rbg.md`                                                                                       |
-
-Subagent dispatches matching `^(aops[-_](core|pkb)[:_])?rbg$` reset the counter via the gate's trigger.
-
 ### How it's configured
 
-- **Mode key**: `gates.rbg` (see [Config plumbing](#config-plumbing) for resolution). `warn` | `block` | `off`.
-- **Threshold** (write ops between checks): `gates.rbg_threshold` — required, no default, under `polecat.yaml`; `gate_config.py` falls back to 50 only for direct-CLI sessions with no launcher (see [Config plumbing](#config-plumbing)).
-- **Countdown window**: 7 ops before threshold (`start_before=7` in the `CountdownConfig` literal — not currently in YAML).
-- **Tool-category exclusions**: `infrastructure`, `always_available`, `read_only` tools do not trip the policy (`TOOL_CATEGORIES` in `gate_config.py`).
-- **Mid-edit deferral**: while a TodoWrite has an `in_progress` item, the block is deferred via the `not_mid_edit` custom check (`custom_conditions.py`).
+- **Mode key**: `gates.exit_reflection` / `EXIT_REFLECTION_GATE_MODE`. `block` | `warn` | `off` (built-in code default `off`).
+- **Tier resolution — FULL**: `not ctx.is_subagent AND session_state.main_agent.current_task AND session_state.turn_did_work`. Everyone else gets LITE.
+- **Close triggers** (mark FULL-tier scope): `update_task` PostToolUse with input matching `in_progress`; `claim_task` PostToolUse; any PostToolUse where `is_write_tool` matches. `is_write_tool` natively treats shell tools as read-only when the gate is sticky (post-skill) or no task is bound, so discovery commands (`git status`, etc.) don't flip a read-only turn into a FULL-tier one.
+- **Legal-exit triggers** (→ `OPEN`, `sticky_until=["UserPromptSubmit"]`): `release_task` PostToolUse with `status` matching `merge_ready|done|blocked|review|partial|cancelled`; a reflection-auditor subagent run; `Skill`/`activate_skill` PostToolUse matching `^(aops-(core|pkb):)?(handover|dump|end_session|continue)$`; the Gemini slash-command / pauli-fallback equivalents.
+- **Fire-once trigger**: `Stop` while `CLOSED` → `OPEN`, ONLY when `is_exit_reflection_fire_once` is true (FULL-tier warn mode, or ANY lite-tier-active mode). FULL-tier BLOCK mode deliberately has NO fire-once — it persists until a legal exit above fires or the escape hatch degrades it.
+- **Re-arm trigger**: `UserPromptSubmit` → `CLOSED`, resets the escape-hatch counter, resets `turn_did_work` to `False` for the new turn. **Slash-command turns excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`) — a finishing/meta skill owns its own format and must not re-arm the gate it just satisfied.
+- **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. FULL-tier block/warn policies call `prepare_exit_reflection_full` (builds the audit file) and render `exit_reflection.policy_message`/`exit_reflection.policy_context`. The LITE-tier policy is always WARN, has no custom_action, and renders `exit_reflection.lite_reminder` only.
+- **Escape-hatch threshold**: `EXIT_REFLECTION_DEGRADE_THRESHOLD` (default 5) consecutive Stop blocks in one turn degrades `DENY` → `WARN`-and-allow (`exit_reflection.degraded` message) — failure-degradation only, not a normal bypass.
 
 ### How to verify it's firing
 
 ```bash
-# Live counter (since session start or last check)
-jq -r 'select(.hook_event=="PostToolUse") | .output.system_message // empty' \
-  ~/.claude/projects/*/$(ls -1t ~/.claude/projects/*/ | head -1)*-hooks.jsonl \
-  | grep -iE '◇|compliance check' | tail -5
-
-# Find PreToolUse blocks where the rbg gate denied
-grep '"hook_event":"PreToolUse"' <hooks.jsonl> \
-  | jq -r 'select(.output.verdict=="deny") | "\(.logged_at) \(.tool_name): \(.output.system_message[:120])"'
-
-# Count compliance dispatches (SubagentStart for rbg)
-grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
-  | jq -r 'select(.subagent_type|test("rbg"))' | wc -l
-```
-
-**Healthy fire**: PreToolUse with `tool_name` ≠ infrastructure/read-only, `output.verdict="deny"` (mode `block`) or `"warn"`, system_message starting with `✕ 0 remaining — compliance check now required` (aops_47d0a754 — down-to-zero framing, replaces the old up-counting `✕ Compliance check required` text) or carrying the `rbg.policy_context` template. SubagentStart with `subagent_type` matching `rbg` clears the counter.
-
-**Visible icons** (`format_gate_status_icons` in `router.py`): `◇ N` during countdown window, `◇` when over threshold.
-
-### How to debug when it isn't
-
-| Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                                |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mode silently `off`                                          | `python -c "from hooks.gate_config import RBG_GATE_MODE; print(RBG_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                                                         |
-| `polecat.yaml` unreadable / `$AOPS_SESSIONS` not in hook env | `gate_config.py` raises at import; check `~/.claude/projects/<workspace>/<base>-hooks.jsonl` for `CRITICAL: Failed to import`. Cross-ref the Mac-CLI hook env-stripping trap above.                                                                                       |
-| Gate never reaches threshold                                 | Read-only / infrastructure tools don't increment the counter by design. Confirm with `PostToolUse` entries where `tool_name` is `Edit`/`Write`/`Bash` — counter only ticks on these.                                                                                      |
-| Block deferred indefinitely                                  | Check `state.metrics.has_in_progress_todo` in the session state file — the `not_mid_edit` condition defers blocks while a TodoWrite item is `in_progress`.                                                                                                                |
-| Subagent dispatch doesn't reset counter                      | Trigger regex: `^(aops[-_](core\|pkb)[:_])?rbg$` on `(PreToolUse\|SubagentStart\|SubagentStop)`. `aops-core:rbg` and `rbg` match; `aops_core_rbg` does not. If dispatch was never emitted, check that the policy reached threshold (`not_mid_edit` may have deferred it). |
-
-See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md#rbg--rbg-gate) for the JSONL-level forensics procedure that complements these.
-
----
-
-## `rbg-review` gate
-
-> **TL;DR.** End-of-session axiom-audit backstop. Armed `CLOSED` from session start for **every** session type — there is no code branch on session type anywhere in this gate. In `block` mode it **DENIES the exit Stop** until the `rbg` subagent has run and returned a verdict; in `warn` mode it delivers the same dispatch instruction non-blockingly, once per turn. The trigger is structural (Stop event + armed flag), never a content/keyword sniff. Per-surface scoping is entirely a config knob: the built-in code default is `off` (an ad hoc CLI session with no `polecat.yaml` eats no per-turn rbg delay, even though the gate still mechanically arms/re-arms), while dispatched surfaces (`polecat run` / `polecat crew`) opt in via `polecat.yaml` `session_defaults.gates.rbg_review: block`. Posture is expressed ONLY via env vars / `polecat.yaml`, never on/off/session-type/state code in the repo. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.rbg_review` / env `RBG_REVIEW_GATE_MODE` (built-in default `off`). Design rationale and failure taxonomy: `specs/agents/rbg.md`.
-
-### Where it lives
-
-| Concern             | Path                                                                                                                                                                                                                                                                                                                                |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate definition     | `aops-core/lib/gates/definitions.py` (`GateConfig(name="rbg-review", ...)`)                                                                                                                                                                                                                                                         |
-| Mode + threshold    | `aops-core/hooks/gate_config.py` (`RBG_REVIEW_GATE_MODE`, `RBG_REVIEW_DEGRADE_THRESHOLD`)                                                                                                                                                                                                                                           |
-| Audit-file builder  | `aops-core/lib/gates/custom_actions.py` (`create_audit_file`, `prepare_rbg_review`) — same builder the `rbg` gate uses ([§ `rbg` gate](#rbg-gate)); the only difference is the gate label passed in (`"rbg_review"` vs `"rbg"`, so it renders `rbg_review.context`/`rbg_review.audit`) and no coverage sentinel (that's `rbg`-only) |
-| Custom conditions   | `aops-core/lib/gates/custom_conditions.py` (`is_rbg_review_block_mode`, `is_rbg_review_warn_mode`)                                                                                                                                                                                                                                  |
-| Escape-hatch wiring | `aops-core/lib/gates/engine.py` (`_handle_stop_event` per-gate downgrade + loud message)                                                                                                                                                                                                                                            |
-| Templates           | `aops-core/hooks/templates/rbg-review-{policy-message,policy-context,complete,degraded,context}.md`                                                                                                                                                                                                                                 |
-| Review subagent     | `aops-core/agents/rbg.md`                                                                                                                                                                                                                                                                                                           |
-| Tests               | `tests/hooks/test_rbg_review_gate.py`                                                                                                                                                                                                                                                                                               |
-
-### How it's configured
-
-- **Mode key**: `gates.rbg_review` / `RBG_REVIEW_GATE_MODE`. `block` | `warn` | `off` (built-in code default `off`; set explicitly to `block` in `polecat.yaml` for dispatched surfaces — see `polecat.yaml.example`).
-- **Arm/re-arm**: `CLOSED` from session start for **every** session type, re-arming `CLOSED` on every real `UserPromptSubmit` — no session-type filter. When mode is `off`, this arming is inert: `is_rbg_review_block_mode`/`is_rbg_review_warn_mode` never match `off`, so no DENY/WARN is ever produced regardless of gate status.
-- **Fire**: while `CLOSED`, the Stop policy injects the rbg-dispatch instruction (`prepare_rbg_review` builds the session-review file). In `block` mode it returns `DENY`; there is no fire-once trigger — the gate stays `CLOSED` and re-DENYs across repeated Stops until rbg actually runs (block-until-satisfied). In `warn` mode it returns `WARN` (non-blocking delivery); a warn-mode fire-once `Stop→OPEN` trigger opens the gate after this same Stop so a retried Stop passes without re-delivering.
-- **Clear trigger**: `rbg` subagent run (`SubagentStart`/`SubagentStop`/`PostToolUse` matching `^(aops[-_](core|pkb)[:_])?rbg$`) → `OPEN`, resets the escape-hatch counter, `sticky_until=["UserPromptSubmit"]`.
-- **Escape-hatch threshold**: `RBG_REVIEW_DEGRADE_THRESHOLD` (default 5) consecutive Stop blocks in one turn degrades `DENY` → `WARN`-and-allow (`rbg_review.degraded` message) — failure-degradation only, not a normal bypass. Independent of the router-level 5-blocks-in-2-min safety override.
-- **Precedence**: registered ahead of `qa`/`handover` in `GATE_CONFIGS`, so its `DENY` is delivered first; once cleared, the later Stop gates evaluate normally (deferred, not consumed, while this gate denies).
-
-### How to verify it's firing
-
-```bash
-# Stop fires caused by rbg-review (deny = block mode, warn = non-blocking delivery)
+# Stop events exit_reflection fired on (deny = FULL-tier block mode, warn = FULL-tier warn OR any LITE-tier fire)
 grep '"hook_event":"Stop"' <hooks.jsonl> \
-  | jq -r 'select(.output.verdict|test("deny|warn")) | select(.output.system_message|test("rbg-review|rbg dispatch")) | "\(.logged_at) \(.output.verdict)"'
+  | jq -r 'select(.output.verdict|test("deny|warn")) | select(.output.system_message|test("[Ee]xit-reflection")) | "\(.logged_at) \(.output.verdict)"'
 
-# rbg subagent runs that cleared the gate
+# Reflection-auditor runs that cleared the gate
 grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
-  | jq -r 'select(.subagent_type|test("^(aops[-_](core|pkb)[:_])?rbg$")) | .logged_at'
+  | jq -r 'select(.subagent_type|test("^(aops[-_](core|pkb)[:_])?(rbg|qa|verify|marsha)$")) | .logged_at'
 
-# Every UserPromptSubmit that RE-ARMED (closed) this gate, with the raw
-# origin signal on the same line — the diagnostic instrument added by
-# aops_2597b5ff scope D (see "UserPromptSubmit origin diagnostic" below).
-# Answers "what caused this re-arm with no human prompt" directly: for each
-# line, is_task_notification / prompt_id / prompt_preview show WHAT the
-# router thought the prompt was.
+# Honest legal-exit release_task calls (delivered OR a stated failure)
+grep '"hook_event":"PostToolUse"' <hooks.jsonl> \
+  | jq -r 'select(.tool_name|test("release_task")) | "\(.logged_at) \(.tool_input.status)"'
+
+# Every UserPromptSubmit that RE-ARMED (closed) this gate
 grep '"hook_event":"UserPromptSubmit"' <hooks.jsonl> \
-  | jq -r 'select(.output.metadata.gate_transitions // [] | any(.gate=="rbg-review"))
+  | jq -r 'select(.output.metadata.gate_transitions // [] | any(.gate=="exit_reflection"))
            | {logged_at, is_task_notification: .output.metadata.ups_diagnostic.is_task_notification,
-              prompt_id: .output.metadata.ups_diagnostic.prompt_id,
               prompt_preview: .output.metadata.ups_diagnostic.prompt_preview}'
 ```
 
-### How to debug when it isn't
+**Healthy fire, FULL tier**: `Stop` with `output.verdict="deny"` (block mode) or `"warn"` (warn mode), `system_message` carrying the `exit_reflection.policy_message` short text, `context_injection` carrying the full checklist from `exit_reflection.policy_context` including a real `{temp_path}`.
 
-| Failure mode                                | Diagnostic                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Gate never blocks in an interactive session | By design — the built-in `RBG_REVIEW_GATE_MODE` default is `off` for any surface without an explicit `polecat.yaml` override. Confirm the resolved mode, not `session_type` (the gate no longer reads it).                                                                                                                                                                                                                                                                     |
-| Stop loops repeatedly without clearing      | Check whether the escape-hatch fired: after 5 consecutive blocks in a turn the gate degrades to `warn`-and-allow and logs `rbg_review.degraded`.                                                                                                                                                                                                                                                                                                                               |
-| `rbg` run doesn't clear the gate            | Confirm the dispatched `subagent_type` matches `^(aops[-_](core\|pkb)[:_])?rbg$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                                                                                                                                                                                                                                                                                                                                              |
-| Mode silently `off`                         | `python -c "from hooks.gate_config import RBG_REVIEW_GATE_MODE; print(RBG_REVIEW_GATE_MODE)"`. If a dispatched surface should enforce this, confirm `polecat.yaml` sets `gates.rbg_review: block` — the code default is `off`.                                                                                                                                                                                                                                                 |
-| Gate re-arms with NO human prompt visible   | Open investigation `aops_2597b5ff` — scope D (this section's diagnostic query) landed; the fix is deferred. The query does NOT diagnose the culprit, it makes the culprit's log line visible. Leading unverified hypothesis: a `[SYSTEM NOTIFICATION - NOT USER INPUT]` preamble ahead of `<task-notification>` makes `_is_task_notification` return `False` on some background-completion prompts, so they fall through to the normal gate path instead of the short-circuit. |
+**Healthy fire, LITE tier**: `Stop` with `output.verdict="warn"` ONLY (never `"deny"`), `context_injection` carrying the `exit_reflection.lite_reminder` text.
 
----
-
-## `qa` gate
-
-> **TL;DR.** Completion-quality gate — starts OPEN, closes when a task is claimed (`update_task` → `in_progress`), reopens when a `qa`/`marsha`/`verify` subagent runs with `sticky_until=["UserPromptSubmit"]` so writes to fix verification findings don't re-close it. Sessions without a claimed task skip the QA gate entirely. Blocks Stop while CLOSED in `block` mode; delivers non-blockingly in `warn` mode (see [Two-mode Stop-gate contract](#two-mode-stop-gate-contract-client-agnostic)). Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.qa`.
-
-### What is it
-
-The completion-quality gate. Starts OPEN (short interactive chats don't require verification). Closes when a task is claimed (`update_task` with `status=in_progress`). Sessions without a claimed task skip the QA gate entirely — no work claimed means nothing to verify. Reopens when a `qa` / `verify` / `marsha` subagent runs to completion — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that code fixes based on verification findings don't re-close the gate (preventing the marsha→fix→Stop-blocked endless loop). On Stop, the policy blocks once per turn while the gate is CLOSED (fire-once + re-arm-on-UPS lifecycle, task-bound only). Warn-vs-block behaviour and audience are the shared Stop-gate mechanics — see [Lifecycle and Gate Events Timeline](#lifecycle-and-gate-events-timeline).
-
-**Class of failure caught.** "Done" claimed without verification: tests not run, acceptance criteria not checked, build broken on exit.
-
-### Where it lives
-
-| Concern            | Path                                                                                                                                                                                                                                           |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate definition    | `aops-core/lib/gates/definitions.py` (`GateConfig(name="qa", ...)`)                                                                                                                                                                            |
-| Audit-file builder | `aops-core/lib/gates/custom_actions.py` (`create_audit_file`, `prepare_qa_review`) — same builder the `rbg` gate uses ([§ `rbg` gate](#rbg-gate)); gate label `"qa"` renders `qa.context`/`qa.audit`, no coverage sentinel (that's `rbg`-only) |
-| Custom conditions  | `aops-core/lib/gates/custom_conditions.py` (`has_bound_task`, `is_qa_block_mode`, `is_qa_warn_mode`)                                                                                                                                           |
-| Templates          | `aops-core/hooks/templates/qa-{complete,context,policy-context,policy-message}.md`                                                                                                                                                             |
-| Verifier subagent  | `aops-core/agents/marsha.md` (the only verifier shipped today)                                                                                                                                                                                 |
-
-### How it's configured
-
-- **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
-- **Close trigger**: `update_task` PostToolUse with input matching `in_progress` (task claim). Write-tool use does not close the QA gate — only an explicit task claim activates it.
-- **Reopen triggers**: (1) any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse` with `sticky_until=["UserPromptSubmit"]`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
-- **Re-arm trigger**: `UserPromptSubmit` → clears sticky latch, then fires re-arm trigger → CLOSED. Only re-arms when a task is bound (`has_bound_task` custom check) — sessions without a claimed task skip the QA gate entirely. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a skill invocation owns its own finishing format, so it must not re-arm the gate. The exclusion suppresses the close only — it never opens the gate.
-- **Policy fires**: only on `hook_event="Stop"` while `current_status=CLOSED`. `prepare_qa_review` writes a qa-context audit file into the session dir; the policy message points the agent at it.
-
-### How to verify it's firing
-
-```bash
-# Stop events the qa gate fired on (deny = block mode, warn = non-blocking delivery)
-grep '"hook_event":"Stop"' <hooks.jsonl> \
-  | jq -r 'select(.output.verdict|test("deny|warn")) | select(.output.system_message|test("QA|qa|marsha")) | "\(.logged_at) \(.output.verdict)"'
-
-# Verifier completions that touched the gate
-grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
-  | jq -r 'select(.subagent_type|test("qa|verify|marsha")) | "\(.logged_at) opened: \(.subagent_type)"'
-```
+**Visible icon**: `≡` appears in the icon strip (`format_gate_status_icons` in `router.py`) only when the gate is OPEN **and** `sticky=True` (set by the `sticky_until` transition on a legal exit).
 
 ### How to debug when it isn't
 
-- **Gate stays OPEN despite work activity**: the QA gate only closes on task-claim (`update_task` with `in_progress`), not on write-tool use. Confirm a task was claimed — sessions without a claimed task skip the QA gate by design.
-- **Subagent didn't reset**: check the spelled `subagent_type` against `^(aops-core:)?(qa|verify|marsha)$` — `aops-core:marsha` and `marsha` both match; `aops_core_marsha` does not.
-- **Mode `off`**: confirm with `from hooks.gate_config import QA_GATE_MODE`.
+| Failure mode                                                 | Diagnostic                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FULL tier never fires despite a claimed task                 | Confirm `turn_did_work=True` for THIS turn — a read-only turn (even on a task-bound session) gets LITE, not FULL, by design. Check the `update_task`/`claim_task`/write-tool close triggers actually fired.                                                             |
+| Gate stays DENY forever, no legal exit visible               | Check the `EXIT_REFLECTION_DEGRADE_THRESHOLD` escape hatch — after 5 consecutive blocks in a turn it degrades to WARN-and-allow and logs `exit_reflection.degraded`. If that never fires either, the router-level 5-blocks-in-2-min override is the residual net.       |
+| Auditor run doesn't clear the gate                           | Confirm the dispatched `subagent_type` matches `^(aops[-_](core\|pkb)[:_])?(rbg\|qa\|verify\|marsha\|exit[-_]reflection)$` on `SubagentStart`/`SubagentStop`/`PostToolUse`.                                                                                             |
+| `release_task` doesn't clear the gate                        | Confirm the tool name matches `release_task` and `tool_input` contains a `status` key with one of `merge_ready\|done\|blocked\|review\|partial\|cancelled` — the regex tolerates both Python-repr single quotes and JSON double quotes in the stringified `tool_input`. |
+| Mode silently `off`                                          | `python -c "from hooks.gate_config import EXIT_REFLECTION_GATE_MODE; print(EXIT_REFLECTION_GATE_MODE)"` — if "off", check `polecat.yaml`.                                                                                                                               |
+| `≡` never shows after a legal exit                           | Either the skill/subagent name didn't match a trigger regex, or the gate's `sticky` flag wasn't set. Inspect the session state file for `gates.exit_reflection.sticky`.                                                                                                 |
+| Gate closed on a `git status` after a legal exit             | The Bash-as-read carve-out depends on `exit_reflection.sticky` OR no bound task. If both are false the carve-out is off — that's by design while work is in progress.                                                                                                   |
+| Hook-dispatched auditor (Claude Code prompt hook) never runs | Confirm `aops-core/hooks/hooks.json`'s `Stop` array has a `"type": "prompt"` entry (not buried under a dead `-disabled` key). Prompt hooks load at session start — restart the session after editing. Use `claude --debug` to confirm registration.                     |
 
----
-
-## `handover` gate
-
-> **TL;DR.** Exit-discipline gate. Starts OPEN, CLOSES when work begins (task bound to `in_progress` or any write-tool PostToolUse), reopens when `/end-session` or `/dump` completes with `sticky_until=["UserPromptSubmit"]`. In `block` mode, DENYs every Stop while CLOSED until handover runs (fire-once does not apply). In `warn` mode, delivers the reminder once per turn non-blockingly (fire-once, re-arms on UPS) — see [Two-mode Stop-gate contract](#two-mode-stop-gate-contract-client-agnostic). Safety override (block mode): 5+ Stop denies in 2 minutes auto-approves to prevent deadlock. Primary enforcement is incentive-first ("land the plane": commit → push → `release_task`, or the work is garbage-collected); this gate is the backstop. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py). Mode key: `gates.handover`.
-
-### What is it
-
-The exit-discipline gate. Starts OPEN (short interactive chats don't require handover). Closes when work begins (task bound to `in_progress`, or any write-tool PostToolUse). Reopens when the `/end-session` (canonical), `/dump` (emergency), or `/continue` (pause — work in progress, task NOT concluded) skill completes — the reopen transition carries `sticky_until=["UserPromptSubmit"]`, which keeps the gate OPEN until the next user prompt so that post-handover operations (git push, release_task, etc.) don't re-close it. On Stop, the policy fires while the gate is CLOSED. This is a **posture gate**: interactive → `warn` (delivers the handover reminder non-blockingly, once per turn — the agent is free to act on it or genuinely stop); polecat → `block` (persist — the Stop is re-DENYed until handover runs, bounded by the `stop_deny_count` escape hatch). Delivery and audience are the shared Stop-gate mechanics — see [Two-mode Stop-gate contract](#two-mode-stop-gate-contract-client-agnostic).
-
-**Class of failure caught.** Uncommitted changes lost at exit, task left without a status update, no framework reflection captured.
-
-### Where it lives
-
-| Concern               | Path                                                                                                                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate definition       | `aops-core/lib/gates/definitions.py` (`GateConfig(name="handover", ...)`)                                                                                                                                      |
-| Custom condition      | `aops-core/lib/gates/custom_conditions.py` (`is_write_tool`)                                                                                                                                                   |
-| Templates             | `aops-core/hooks/templates/handover-{bound,complete,policy-message}.md`, `stop-gate-handover-block.md`                                                                                                         |
-| Skills that reopen it | `aops-pkb/skills/end_session/SKILL.md`, `aops-pkb/skills/dump/SKILL.md` — see [`specs/agents/ida.md`](../agents/ida.md#honesty-at-stop--the-ida-gate) for why these live in `aops-pkb` rather than `aops-core` |
-| Safety override       | `aops-core/hooks/router.py` (`execute_hooks` — `stop_block_timestamps`)                                                                                                                                        |
-
-### How it's configured
-
-- **Mode key**: `gates.handover` (`warn` | `block` | `off`).
-- **Close triggers**: `update_task` PostToolUse with input matching `in_progress`, OR any PostToolUse where `is_write_tool` matches (Edit, Write, Bash/`run_shell_command`/`shell`/`execute_code`, etc. per `TOOL_CATEGORIES["write"]`). While handover is sticky (post-skill), close transitions are suppressed by the engine natively.
-- **Reopen triggers**: (1) `Skill`/`activate_skill` PostToolUse with `subagent_type_pattern="^(aops-(core|pkb):)?(handover|dump|end_session|continue)$"` (the pattern accepts both the `aops-core:` and `aops-pkb:` prefixes) with `sticky_until=["UserPromptSubmit"]`, OR a Gemini slash-command UPS prompt matching `^\s*#\s*/(dump|end_session)`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass). `/continue` is the pause path — it opens the gate without concluding the task, since the skill itself emits the honest resume summary (it also opens the `ida` gate for the same reason — see [§ `ida` gate](#ida-gate)).
-- **Re-arm trigger**: `UserPromptSubmit` (every session type — no session-type filter) → clears sticky latch, fires re-arm trigger → CLOSED, and runs the `reset_turn_did_work` custom action so `turn_did_work` starts `False` for the new turn (aops_d18b2d4b). Re-arming CLOSED is harmless for a turn that does no work of its own: the block/warn policies independently exempt `turn_did_work=False` regardless of gate status — including a turn following one that DID write something, since the flag is per-turn, not session-wide. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a finishing/meta skill (`/end-session`, `/dump`, `/remember`) must not re-close the gate it just satisfied. The write-tool / task-claim close triggers still fire, so a slash turn that does real work is still gated. Suppresses the close only — never opens.
-- **Safety override**: after **5** consecutive Stop denies within 2 minutes (`router.py:execute_hooks`), the gate auto-approves to prevent deadlock.
-- **Bash-as-read carve-out**: while the handover gate is sticky (post-skill) or no task is bound, shell tools are treated as read-only by `is_write_tool` so the gate doesn't re-close on `git status` / `echo` after a /dump.
-
-### How to verify it's firing
-
-```bash
-# Stop events handover fired on (deny = block mode, warn = non-blocking delivery)
-grep '"hook_event":"Stop"' <hooks.jsonl> \
-  | jq -r 'select(.output.verdict|test("deny|warn")) | select(.output.system_message|test("Handover|handover")) | "\(.logged_at) \(.output.verdict)"'
-
-# Pattern: N denies followed by an allow → safety override fired
-grep '"hook_event":"Stop"' <hooks.jsonl> | jq -r '.output.verdict' | uniq -c
-```
-
-**Visible icon**: `≡` appears in the icon strip only when the gate is OPEN **and** `sticky=True` (set by the `sticky_until` transition on skill completion).
-
-### How to debug when it isn't
-
-| Failure mode                                 | Diagnostic                                                                                                                                                                                                          |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stop blocked despite running `/end-session`  | Re-check the subagent_type extraction — the trigger requires the router to have populated `ctx.subagent_type` from `tool_input.skill`. Look for the PostToolUse event in the JSONL and inspect its `subagent_type`. |
-| `≡` never shows after handover               | Either the skill name didn't match the trigger regex, or the gate's `sticky` flag wasn't set. Inspect the session state file (`~/.claude/projects/<workspace>/*-session.json`) for `gates.handover.sticky`.         |
-| 4–5 denies pattern (safety override)         | Normal once. Repeated across sessions = agent isn't completing handover before retrying Stop. Read the CC session JSONL between denies to see what the agent did.                                                   |
-| Gate closed on a `git status` after handover | The Bash-as-read carve-out depends on `handover.sticky` OR no bound task. If both are false the carve-out is off — that's by design while work is in progress.                                                      |
-
-See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md#stop--handover-gate) for the JSONL-level forensics procedure.
+See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-details.md) for the JSONL-level forensics procedure that complements these (the per-gate anchors there still say `rbg`/`qa`/`handover` pending a follow-up sync pass — the underlying JSONL fields are unchanged).
 
 ---
 

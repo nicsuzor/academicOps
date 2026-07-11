@@ -378,13 +378,9 @@ def _resolve_session_config(
 # the in-container hooks read these env vars directly (they never read
 # polecat.yaml).
 _GATE_ENV_VARS = (
-    "HANDOVER_GATE_MODE",
-    "QA_GATE_MODE",
-    "RBG_GATE_MODE",
+    "EXIT_REFLECTION_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "IDA_GATE_MODE",
-    "RBG_REVIEW_GATE_MODE",
-    "RBG_TOOL_CALL_THRESHOLD",
 )
 
 
@@ -396,13 +392,9 @@ def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-
     container. The hook stack reads them directly via ``hooks.gate_config``.
     """
     gates = session_cfg.gates
-    env["HANDOVER_GATE_MODE"] = gates.handover
-    env["QA_GATE_MODE"] = gates.qa
-    env["RBG_GATE_MODE"] = gates.rbg
+    env["EXIT_REFLECTION_GATE_MODE"] = gates.exit_reflection
     env["HYDRATION_GATE_MODE"] = gates.hydration
     env["IDA_GATE_MODE"] = gates.ida
-    env["RBG_REVIEW_GATE_MODE"] = gates.rbg_review
-    env["RBG_TOOL_CALL_THRESHOLD"] = str(gates.rbg_threshold)
 
 
 def _coerce_set_value(raw: str) -> object:
@@ -3920,7 +3912,7 @@ def _branch_has_open_pr(branch_name: str, repo_path: Path) -> bool:
     "set_overrides",
     multiple=True,
     metavar="KEY=VALUE",
-    help="Override an arbitrary config key (e.g. gates.handover=block).",
+    help="Override an arbitrary config key (e.g. gates.exit_reflection=block).",
 )
 @click.option(
     "--capture-on-exit",
@@ -3998,7 +3990,7 @@ def crew_alias(
     "set_overrides",
     multiple=True,
     metavar="KEY=VALUE",
-    help="Override an arbitrary config key (e.g. gates.handover=block).",
+    help="Override an arbitrary config key (e.g. gates.exit_reflection=block).",
 )
 @click.option(
     "--capture-on-exit",

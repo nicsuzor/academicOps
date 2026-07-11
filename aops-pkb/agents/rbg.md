@@ -32,7 +32,7 @@ Every review resolves to exactly one of three verdicts:
 
 <!-- NS: agent instructions shouldnt generally explain whats not included. -->
 
-There is no separate `BLOCK` state. `REVISE` is the sole terminal violation verdict rbg emits — it is what every downstream gate and reviewer (`rbg-review`, the PR `enforcer-status` check, `/enforce`) actually checks for.
+There is no separate `BLOCK` state. `REVISE` is the sole terminal violation verdict rbg emits — it is what every downstream gate and reviewer (the `exit_reflection` gate's FULL tier, the PR `enforcer-status` check, `/enforce`) actually checks for.
 
 ## Axioms
 

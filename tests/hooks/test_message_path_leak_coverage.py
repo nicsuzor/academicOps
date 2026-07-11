@@ -92,10 +92,7 @@ def _body_leaked_into(user_text: str | None, context_body: str) -> bool:
 # ---------------------------------------------------------------------------
 
 _TEMPLATE_VARS: dict[str, dict[str, object]] = {
-    "rbg.policy_context": {"temp_path": "/tmp/rbg-ctx.md", "ops_since_open": 50},
-    "qa.policy_context": {"temp_path": "/tmp/qa-gate.md"},
-    "rbg_review.policy_context": {"temp_path": "/tmp/rbg-review.md"},
-    "rbg.policy_message": {"ops_since_open": 50},
+    "exit_reflection.policy_context": {"temp_path": "/tmp/exit-reflection-ctx.md"},
 }
 
 
@@ -256,15 +253,15 @@ class TestContextBodyNeverLeaksToUser:
 
     @pytest.mark.parametrize("path", CONTEXT_PATHS, ids=[p.id for p in CONTEXT_PATHS])
     def test_context_body_absent_from_user_channels(self, router, path: MessagePath):
-        # Same-key paths (message_key == context_key) deliberately route ONE
-        # short status to both the user and the agent channel — the body IS the
-        # user notice, so it is expected in a user field. That pattern is
-        # covered (and asserted short) by TestEnforcerVerifiedSameKey; excluding
-        # it here keeps this sweep a pure instruction-body-leak detector.
+        # Same-key paths (message_key == context_key) would deliberately route
+        # ONE short status to both the user and the agent channel — the body
+        # IS the user notice, so it would be expected in a user field. No
+        # current GATE_CONFIGS path does this (the former rbg.verified
+        # same-key transition was retired with the turn-based rbg gate,
+        # aops_4c2949d9) — this branch is defensive, kept for any future path
+        # that reintroduces the pattern.
         if path.message_key and path.message_key == path.context_key:
-            pytest.skip(
-                f"{path.id}: same-key dual-channel status — see TestEnforcerVerifiedSameKey"
-            )
+            pytest.skip(f"{path.id}: same-key dual-channel status")
 
         canonical, rendered_ctx, _short = _build_canonical(path)
         output = router.output_for_claude(canonical, path.event)
@@ -339,40 +336,12 @@ class TestShortMessageInUserChannelNotContext:
             )
 
 
-# ---------------------------------------------------------------------------
-# Same-key suspicion: enforcer.verified feeds one template into BOTH channels.
-# ---------------------------------------------------------------------------
-
-
-class TestEnforcerVerifiedSameKey:
-    """The enforcer 'verified' transition uses ONE key for both system_message
-    and context — confirm what that template actually contains and whether it
-    constitutes an instruction-text leak."""
-
-    def test_enforcer_verified_template_is_short_status_not_instruction(self):
-        body = _render("rbg.verified")
-        norm = _norm(body)
-        # The template is a short status line, not a full instruction block.
-        assert norm == "◇ Compliance verified.", (
-            f"enforcer.verified content changed; re-evaluate leak risk. Got: {body!r}"
-        )
-
-    def test_enforcer_verified_routes_same_body_to_both_channels(self, router):
-        # Mirror the transition: both system_message and context_injection are
-        # the SAME rendered body (no marker — transitions don't wrap).
-        body = _render("rbg.verified")
-        canonical = CanonicalHookOutput(
-            verdict="allow", system_message=body, context_injection=body
-        )
-        # Transition fires on PreToolUse (general HSO path).
-        output = router.output_for_claude(canonical, "PreToolUse")
-        # The body lands in BOTH systemMessage (user) and additionalContext
-        # (agent). Because the body is a benign short status, this is not a
-        # full-instruction leak — but it IS the same text in both channels.
-        assert output.systemMessage == body
-        assert output.hookSpecificOutput is not None
-        assert output.hookSpecificOutput.additionalContext == body
-
+# NOTE: the former TestEnforcerVerifiedSameKey covered the retired `rbg` gate's
+# rbg.verified transition, which used ONE key for both system_message and
+# context (aops_4c2949d9 — the whole `rbg` gate is deleted). No current
+# GATE_CONFIGS path uses a same-key dual-channel transition; the defensive
+# skip branch above (TestContextBodyNeverLeaksToUser) covers the case if one
+# is reintroduced.
 
 # ---------------------------------------------------------------------------
 # Real end-to-end: drive gates that can actually fire through the full
@@ -381,7 +350,7 @@ class TestEnforcerVerifiedSameKey:
 
 
 # Gates whose policy can be made to fire deterministically via gate_helpers.
-_FIREABLE_STOP_GATES = ["qa", "handover", "ida"]
+_FIREABLE_STOP_GATES = ["exit_reflection", "ida"]
 
 
 class TestRealPipelineStopGateLeak:
@@ -445,38 +414,11 @@ class TestRealPipelineStopGateLeak:
         )
 
 
-class TestRealPipelineEnforcerLeak:
-    """Full pipeline for enforcer (PreToolUse policy): the policy context body
-    must not leak into the user-visible permissionDecisionReason/systemMessage."""
-
-    @pytest.mark.parametrize("mode", ["warn", "block"])
-    def test_real_enforcer_policy_context_absent_from_user(self, router, monkeypatch, mode):
-        set_gate_modes(monkeypatch, rbg=mode)
-        reinit_gates_with_defaults()
-
-        state = make_gate_trigger_state("rbg")
-        ctx = make_gate_trigger_context("rbg")
-
-        result = router._dispatch_gates(ctx, state)
-        if result is None:
-            pytest.skip("enforcer policy did not fire under current threshold config")
-
-        canonical = router._gate_result_to_canonical(result)
-        output = router.output_for_claude(canonical, "PreToolUse")
-
-        rendered_ctx = _strip_marker(result.context_injection or "")
-        assert rendered_ctx, f"enforcer ({mode}): no context body produced by engine"
-        user_vals = _user_visible_values(output)
-        leaks = {
-            field: value
-            for field, value in user_vals.items()
-            if value is not None and _body_leaked_into(value, rendered_ctx)
-        }
-        assert not leaks, (
-            f"LEAK [real enforcer {mode}]: context body in user field(s) "
-            f"{list(leaks)}: {next(iter(leaks.values()))[:120]!r}"
-        )
-
+# NOTE: the former TestRealPipelineEnforcerLeak drove the retired `rbg` gate's
+# PreToolUse policy through the same leak check (aops_4c2949d9 — the whole
+# `rbg` gate, and PreToolUse gating generally, is deleted; nothing fires
+# mid-session on any surface any more). No replacement: GATE_CONFIGS has no
+# PreToolUse policy left to exercise this way.
 
 # ---------------------------------------------------------------------------
 # Stop `reason` is USER-VISIBLE.

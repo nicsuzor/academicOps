@@ -1168,12 +1168,7 @@ def _drive_once(workspace: Path, session: str, probe: Probe) -> tuple[str, str, 
 # ---------------------------------------------------------------------------
 
 _AGY_GATE_ENV = (
-    "HYDRATION_GATE_MODE=warn "
-    "IDA_GATE_MODE=warn "
-    "HANDOVER_GATE_MODE=warn "
-    "QA_GATE_MODE=warn "
-    "COMMIT_GATE_MODE=warn "
-    "AOPS_AGY_CLIENT=1"
+    "HYDRATION_GATE_MODE=warn IDA_GATE_MODE=warn EXIT_REFLECTION_GATE_MODE=warn AOPS_AGY_CLIENT=1"
 )
 
 _AGY_READY_NEEDLES = [">", "●", "Gemini", "gemini", "Ready", "agy"]

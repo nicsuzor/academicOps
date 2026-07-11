@@ -70,9 +70,8 @@ class TestSessionEnvSetup:
 
         # Gate modes now live in $AOPS_SESSIONS/polecat.yaml and are read by
         # hooks at runtime; they are no longer persisted as env vars at all.
-        assert "ENFORCER_GATE_MODE" not in content
-        assert "QA_GATE_MODE" not in content
-        assert "HANDOVER_GATE_MODE" not in content
+        assert "EXIT_REFLECTION_GATE_MODE" not in content
+        assert "IDA_GATE_MODE" not in content
         assert "HYDRATION_GATE_MODE" not in content
 
     def test_run_session_env_setup_does_not_persist_gate_modes(self, tmp_path):
@@ -105,12 +104,10 @@ class TestSessionEnvSetup:
 
         content = env_file.read_text()
         for var in (
-            "HANDOVER_GATE_MODE",
-            "QA_GATE_MODE",
-            "ENFORCER_GATE_MODE",
+            "EXIT_REFLECTION_GATE_MODE",
             "HYDRATION_GATE_MODE",
             "IDA_GATE_MODE",
-            "ENFORCER_TOOL_CALL_THRESHOLD",
+            "EXIT_REFLECTION_DEGRADE_THRESHOLD",
         ):
             assert var not in content, (
                 f"{var} must not be persisted: gate modes live in polecat.yaml now"

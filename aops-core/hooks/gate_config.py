@@ -13,14 +13,10 @@ from typing import TYPE_CHECKING
 
 __all__ = [
     # Gate modes (PEP 562 lazy attrs)
-    "RBG_GATE_MODE",
-    "HANDOVER_GATE_MODE",
-    "QA_GATE_MODE",
+    "EXIT_REFLECTION_GATE_MODE",
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
-    "RBG_REVIEW_GATE_MODE",
-    "RBG_TOOL_CALL_THRESHOLD",
-    "RBG_REVIEW_DEGRADE_THRESHOLD",
+    "EXIT_REFLECTION_DEGRADE_THRESHOLD",
     "GATE_MODE_VARS",
     # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
@@ -29,14 +25,10 @@ __all__ = [
 if TYPE_CHECKING:
     # Declared here so type checkers see precise types for PEP 562 lazy attrs.
     # At runtime these names come from __getattr__ below.
-    RBG_GATE_MODE: str
-    HANDOVER_GATE_MODE: str
-    QA_GATE_MODE: str
+    EXIT_REFLECTION_GATE_MODE: str
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
-    RBG_REVIEW_GATE_MODE: str
-    RBG_TOOL_CALL_THRESHOLD: int
-    RBG_REVIEW_DEGRADE_THRESHOLD: int
+    EXIT_REFLECTION_DEGRADE_THRESHOLD: int
 
 
 # =============================================================================
@@ -91,11 +83,8 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 # no settings.json override), the defaults below apply.
 
 _GATE_MODES = {
-    "QA_GATE_MODE": "off",
-    "RBG_GATE_MODE": "off",
     "HYDRATION_GATE_MODE": "off",
-    "RBG_REVIEW_GATE_MODE": "off",
-    "HANDOVER_GATE_MODE": "off",
+    "EXIT_REFLECTION_GATE_MODE": "off",
     "IDA_GATE_MODE": "off",
 }
 
@@ -106,11 +95,15 @@ _GATE_MODES = {
 GATE_MODE_VARS: list[str] = list(_GATE_MODES)
 
 
-_RBG_THRESHOLD_DEFAULT = 50
-# Consecutive Stop-DENYs from the rbg-review gate in one turn before it degrades
-# to WARN-and-allow (loud, not silent). Matches the 5-block router-level safety
-# override; the escape-hatch is failure-degradation only, never a normal bypass.
-_RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT = 5
+# Consecutive Stop-DENYs from the exit_reflection gate's full (task-bound)
+# tier in one turn before it degrades to WARN-and-allow (loud, not silent).
+# Matches the 5-block router-level safety override; the escape-hatch is
+# failure-degradation only, never a normal bypass. An honest-failure
+# release_task call (status=blocked/review/partial/cancelled) is also a legal,
+# immediate exit — see the exit_reflection gate's release_task trigger in
+# lib/gates/definitions.py — so this threshold is a backstop, not the primary
+# escape valve (aops_4c2949d9).
+_EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT = 5
 
 
 def __getattr__(name: str):  # PEP 562 module-level lazy attrs
@@ -125,33 +118,23 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
             )
             return _GATE_MODES[name]
         return val
-    if name == "RBG_TOOL_CALL_THRESHOLD":
-        raw = os.environ.get("RBG_TOOL_CALL_THRESHOLD")
+    if name == "EXIT_REFLECTION_DEGRADE_THRESHOLD":
+        raw = os.environ.get("EXIT_REFLECTION_DEGRADE_THRESHOLD")
         if raw is None:
-            _warn_threshold_fallback(name, raw, _RBG_THRESHOLD_DEFAULT)
-            return _RBG_THRESHOLD_DEFAULT
+            _warn_threshold_fallback(name, raw, _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT)
+            return _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT
         try:
             return int(raw)
         except ValueError:
-            _warn_threshold_fallback(name, raw, _RBG_THRESHOLD_DEFAULT)
-            return _RBG_THRESHOLD_DEFAULT
-    if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
-        raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
-        if raw is None:
-            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
-            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
-        try:
-            return int(raw)
-        except ValueError:
-            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
-            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
+            _warn_threshold_fallback(name, raw, _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT)
+            return _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _warn_threshold_fallback(name: str, raw: str | None, default: int) -> None:
     """Loudly warn on a threshold env-var fallback (aops_47d0a754).
 
-    RBG_TOOL_CALL_THRESHOLD and RBG_REVIEW_DEGRADE_THRESHOLD used to fall
+    Threshold env vars (e.g. EXIT_REFLECTION_DEGRADE_THRESHOLD) used to fall
     back to a hardcoded default silently — unlike every *_GATE_MODE var,
     which prints a WARNING to stderr on fallback (see the `name in
     _GATE_MODES` branch above). A silently-defaulted threshold degrades

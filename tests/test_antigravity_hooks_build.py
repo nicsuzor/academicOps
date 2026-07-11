@@ -173,6 +173,22 @@ class TestAntigravityHooksBuildTransform:
                     f"Hook command must not hardcode $HOME (argv exec won't expand it): {cmd}"
                 )
 
+    def test_prompt_type_hooks_dropped_for_agy(self, transform):
+        """ "type": "prompt" hooks (harness-dispatched LLM judgment, e.g. the
+        exit-reflection auditor on Stop, aops_4c2949d9) must never reach agy's
+        hooks.json — agy's protojson dialect has no confirmed prompt-hook
+        support, and shipping an unaccepted hook risks exactly the
+        silently-discarded-verdict failure class this module's docstring
+        documents (4c73f02a). The sibling command hook's context-injection
+        reminder is agy's fallback delivery path instead (note_296e5520 §1)."""
+        for event, hook_entries in transform["hooks"].items():
+            for entry in hook_entries:
+                handlers = entry.get("hooks", [entry] if "type" in entry else [])
+                for handler in handlers:
+                    assert handler.get("type") != "prompt", (
+                        f"{event}: a 'type':'prompt' hook leaked into the agy build: {handler}"
+                    )
+
     def test_client_flag_is_agy(self, transform):
         """agy hooks must use --client agy."""
         for event, hook_entries in transform["hooks"].items():

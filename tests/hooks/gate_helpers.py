@@ -103,28 +103,20 @@ def reinit_gates_with_defaults():
 def set_gate_modes(
     monkeypatch,
     *,
-    handover: str = "warn",
-    qa: str = "block",
-    rbg: str = "block",
+    exit_reflection: str = "block",
     hydration: str = "off",
     ida: str = "off",
-    rbg_review: str = "off",
-    rbg_threshold: int = 50,
 ) -> None:
     """Stamp the requested gate modes onto the environment.
 
-    ida and rbg_review default to "off" so existing test scenarios that expect
-    "allow" on Stop keep their invariants — the rbg-review gate is a NEW Stop
-    gate that would otherwise DENY every Stop and mask the gate under test.
-    Tests targeting ida / rbg-review behaviour pass the mode explicitly.
+    ida defaults to "off" so existing test scenarios that expect "allow" on
+    Stop keep their invariants — a non-off ida mode is a Stop gate that would
+    otherwise WARN/DENY every Stop and mask the gate under test. Tests
+    targeting ida behaviour pass the mode explicitly.
     """
-    monkeypatch.setenv("HANDOVER_GATE_MODE", handover)
-    monkeypatch.setenv("QA_GATE_MODE", qa)
-    monkeypatch.setenv("RBG_GATE_MODE", rbg)
+    monkeypatch.setenv("EXIT_REFLECTION_GATE_MODE", exit_reflection)
     monkeypatch.setenv("HYDRATION_GATE_MODE", hydration)
     monkeypatch.setenv("IDA_GATE_MODE", ida)
-    monkeypatch.setenv("RBG_REVIEW_GATE_MODE", rbg_review)
-    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", str(rbg_threshold))
 
 
 def make_session_state(scenario: dict) -> SessionState:
@@ -165,48 +157,38 @@ def make_context(scenario: dict) -> HookContext:
     )
 
 
-def make_gate_trigger_state(gate_name: str) -> SessionState:
+def make_gate_trigger_state(gate_name: str, *, full_tier: bool = True) -> SessionState:
     """Create a SessionState that causes the named gate's policy to fire.
 
-    - rbg: ops_since_open at threshold
-    - qa / handover / ida: gate CLOSED so Stop-event policy fires
-
-    For the handover gate, turn_did_work is set to True so the policy
-    condition (which exempts read-only sessions) is satisfied (aops-16a15a05).
+    - exit_reflection: gate CLOSED so Stop-event policy fires. full_tier=True
+      (default) also binds a task and sets turn_did_work=True so the FULL
+      checklist scope condition is satisfied (aops-16a15a05 lineage); pass
+      full_tier=False to exercise the LITE tier instead (no bound task).
+    - ida: gate CLOSED so Stop-event policy fires.
     """
     state = SessionState.create("test-gate-mode", client_type="claude")
-    if gate_name == "rbg":
-        from hooks.gate_config import RBG_TOOL_CALL_THRESHOLD
-
-        state.gates["rbg"].ops_since_open = RBG_TOOL_CALL_THRESHOLD
-    elif gate_name in ("qa", "handover", "ida"):
+    if gate_name == "exit_reflection":
         if gate_name not in state.gates:
             state.gates[gate_name] = GateState(status=GateStatus.CLOSED)
         else:
             state.gates[gate_name].status = GateStatus.CLOSED
-        if gate_name == "qa":
-            state.gates[gate_name].metrics["temp_path"] = "/tmp/qa-gate.md"
-        if gate_name == "handover":
-            # Handover policy requires turn_did_work=True; tests for
-            # working sessions should satisfy this condition.
+        state.gates[gate_name].metrics["temp_path"] = "/tmp/exit-reflection-gate.md"
+        if full_tier:
+            state.main_agent.current_task = "test-task-id"
             state.turn_did_work = True
+    elif gate_name == "ida":
+        if gate_name not in state.gates:
+            state.gates[gate_name] = GateState(status=GateStatus.CLOSED)
+        else:
+            state.gates[gate_name].status = GateStatus.CLOSED
     return state
 
 
 def make_gate_trigger_context(gate_name: str) -> HookContext:
     """Create a HookContext that triggers the named gate's policy.
 
-    - rbg: PreToolUse on Agent (spawn tool, not excluded)
-    - qa / handover / ida: Stop event
+    - exit_reflection / ida: Stop event
     """
-    if gate_name == "rbg":
-        return HookContext(
-            session_id="test-gate-mode",
-            client_type="claude",
-            hook_event="PreToolUse",
-            tool_name="Agent",
-            tool_input={"prompt": "test"},
-        )
     return HookContext(
         session_id="test-gate-mode",
         client_type="claude",

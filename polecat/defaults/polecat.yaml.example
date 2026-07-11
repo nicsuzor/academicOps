@@ -55,21 +55,21 @@ session_defaults:
   debug: false
 
   # Gate enforcement modes. Each value MUST be one of warn | block | off.
-  # handover: block — a session that did real work must hand over before Stop
-  # (read-only sessions are exempt automatically). /end-session and /dump unlock it.
-  # rbg_review: block — dispatched (polecat/crew) sessions must run a final rbg
-  # axiom audit before exit. The code-level fallback (used only when NO
+  # exit_reflection: block — the single consolidated exit-reflection Stop gate
+  # (aops_4c2949d9, replacing the former rbg-review + qa + handover trio, and
+  # the turn-based rbg PreToolUse counter is retired entirely — nothing fires
+  # mid-session on any surface any more). Two tiers, selected per-Stop by
+  # session scope (task-bound + did work this turn = FULL checklist; everyone
+  # else = LITE honesty-only reminder), never by a session-type code branch.
+  # A dispatched (polecat/crew) session that did real work must satisfy the
+  # FULL checklist before Stop; the code-level fallback (used only when NO
   # polecat.yaml applies at all, e.g. an ad hoc direct-CLI session) is "off" —
-  # this is the ONLY lever for that distinction; the gate engine itself no
-  # longer branches on session type.
+  # this is the ONLY lever for that distinction; the gate engine itself never
+  # branches on session type.
   gates:
-    handover: block
-    qa: warn
-    rbg: warn
+    exit_reflection: block
     hydration: off
     ida: warn
-    rbg_review: block
-    rbg_threshold: 50
 
 # ---------------------------------------------------------------------------
 # POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).
@@ -113,9 +113,7 @@ crew_defaults: {}
 # To tighten enforcement for unsupervised sessions, replace {} with:
 #   run_defaults:
 #     gates:
-#       handover: block
-#       enforcer: block
-#       enforcer_threshold: 30
+#       exit_reflection: block
 run_defaults: {}
 
 # ---------------------------------------------------------------------------

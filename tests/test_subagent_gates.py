@@ -294,8 +294,12 @@ def test_regex_hook_event_matching():
         hook_event="^(SubagentStop|PostToolUse)$", subagent_type_pattern="enforcer"
     )
 
-    enforcer_config = next(g for g in GATE_CONFIGS if g.name == "rbg")
-    gate = GenericGate(enforcer_config)
+    # Any registered GateConfig will do — _evaluate_condition is generic and
+    # doesn't depend on the specific gate's own triggers/policies. Uses
+    # GATE_CONFIGS[0] rather than a name lookup so this doesn't couple to
+    # which gate happens to exist (the retired turn-based `rbg` gate this
+    # test used to look up by name is deleted, aops_4c2949d9).
+    gate = GenericGate(GATE_CONFIGS[0])
 
     # Matches
     assert (
