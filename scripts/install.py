@@ -368,24 +368,32 @@ def main():
     else:
         print("Warning: 'gemini' executable not found. Skipping extension linking.")
 
-    print("\n=== Phase 4: Install Claude Plugin ===")
+    print("\n=== Phase 4: Install Claude Plugins ===")
     if shutil.which("claude"):
-        # Install Claude plugin. New builds name the directory 'aops-claude'
-        dist_core_claude = None
-        for name in ("aops-core-claude", "aops-claude"):
-            candidate = aops_root / "dist" / name
-            if candidate.exists():
-                dist_core_claude = candidate
-                break
+        # Every plugin below is a HARD dependency (Nic ruling 2026-07-12): no more
+        # soft-fail/warn-and-continue. If a dist build is missing an expected
+        # plugin directory, or `claude plugin install` fails, HALT immediately —
+        # a partial local-dev install is a build bug, not something to degrade
+        # past silently. New core builds name the directory 'aops-claude'; the
+        # legacy 'aops-core-claude' name is still probed for older dist trees.
+        claude_plugin_specs = [
+            ("aops-core", ("aops-core-claude", "aops-claude")),
+            ("aops-tools", ("aops-tools-claude", "aops-tools")),
+            ("aops-extras", ("aops-extras-claude",)),
+            ("aops-pkb", ("aops-pkb-claude",)),
+        ]
 
-        dist_tools_claude = None
-        for name in ("aops-tools-claude", "aops-tools"):
-            candidate = aops_root / "dist" / name
-            if candidate.exists():
-                dist_tools_claude = candidate
-                break
+        resolved = {}
+        for plugin_name, candidates in claude_plugin_specs:
+            found = None
+            for name in candidates:
+                candidate = aops_root / "dist" / name
+                if candidate.exists():
+                    found = candidate
+                    break
+            resolved[plugin_name] = found
 
-        if dist_core_claude or dist_tools_claude:
+        if any(resolved.values()):
             # Source installs register the built dist/ as the LOCAL marketplace named
             # `aops` (dist/.claude-plugin/marketplace.json), kept DISTINCT from the
             # released `academicOps` marketplace so a local build is visibly separate
@@ -396,21 +404,18 @@ def main():
             run_command(["claude", "plugin", "marketplace", "remove", "aops"], check=False)
             run_command(["claude", "plugin", "marketplace", "add", str(dist_dir)], check=False)
 
-        if dist_core_claude:
-            print(f"Installing Claude plugin from: {dist_core_claude}")
-            run_command(["claude", "plugin", "uninstall", "aops-core@aops"], check=False)
-            run_command(["claude", "plugin", "install", "aops-core@aops"], check=False)
-            print("✓ Claude plugin installed")
-        else:
-            print("Warning: Claude plugin dist not found. Skipping install.")
-
-        if dist_tools_claude:
-            print(f"Installing Claude aops-tools from: {dist_tools_claude}")
-            run_command(["claude", "plugin", "uninstall", "aops-tools@aops"], check=False)
-            run_command(["claude", "plugin", "install", "aops-tools@aops"], check=False)
-            print("✓ Claude aops-tools plugin installed")
-        else:
-            print("Warning: Claude aops-tools dist not found. Skipping install.")
+        for plugin_name, candidates in claude_plugin_specs:
+            dist_path = resolved[plugin_name]
+            if not dist_path:
+                print(
+                    f"Error: Claude {plugin_name} dist not found "
+                    f"(checked: {', '.join(candidates)}). Run 'make build-dev' first."
+                )
+                sys.exit(1)
+            print(f"Installing Claude {plugin_name} from: {dist_path}")
+            run_command(["claude", "plugin", "uninstall", f"{plugin_name}@aops"], check=False)
+            run_command(["claude", "plugin", "install", f"{plugin_name}@aops"], check=True)
+            print(f"✓ Claude {plugin_name} plugin installed")
 
         # Install auto mode classifier rules
         print("\n=== Phase 4b: Install Auto Mode Rules ===")
@@ -440,26 +445,40 @@ def main():
         print("Warning: 'claude' executable not found. Skipping plugin installation.")
 
     print("\n=== Phase 5: Install Antigravity 2.0 Plugins ===")
-    dist_core_ag = aops_root / "dist" / "aops-antigravity"
-    dist_tools_ag = aops_root / "dist" / "aops-tools-antigravity"
+    # extras/pkb antigravity builds exist (build.py) but were previously unwired
+    # anywhere. `install-agy` (Makefile, the LIVE agy install via `agy plugin
+    # install`) deliberately stays core+tools only (see specs/build-and-install.md
+    # §2) — that scope choice is untouched. This dev-symlink path is a genuinely
+    # separate mechanism (local `make dev`/`install-dev` only); Nic asked for
+    # extras+pkb to be wired in here too, and for every plugin to be a hard
+    # dependency — no soft-fail (2026-07-12).
+    ag_plugin_specs = [
+        ("aops-core", "aops-antigravity"),
+        ("aops-tools", "aops-tools-antigravity"),
+        ("aops-extras", "aops-extras-antigravity"),
+        ("aops-pkb", "aops-pkb-antigravity"),
+    ]
 
     ag_plugins_dirs = [
         Path.home() / ".gemini" / "config" / "plugins",
         Path.home() / ".gemini" / "antigravity-cli" / "plugins",
     ]
 
-    if dist_core_ag.exists() or dist_tools_ag.exists():
-        for plugins_dir in ag_plugins_dirs:
-            plugins_dir.mkdir(parents=True, exist_ok=True)
+    resolved_ag = {name: aops_root / "dist" / dirname for name, dirname in ag_plugin_specs}
+    missing_ag = [name for name, path in resolved_ag.items() if not path.exists()]
 
-            if dist_core_ag.exists():
-                safe_symlink(dist_core_ag, plugins_dir / "aops-core")
+    if missing_ag:
+        print(
+            f"Error: Antigravity 2.0 dist missing for: {', '.join(missing_ag)}. "
+            "Run 'make build-dev' first."
+        )
+        sys.exit(1)
 
-            if dist_tools_ag.exists():
-                safe_symlink(dist_tools_ag, plugins_dir / "aops-tools")
-        print("✓ Antigravity 2.0 plugins linked")
-    else:
-        print("Warning: Antigravity 2.0 dist not found. Skipping install.")
+    for plugins_dir in ag_plugins_dirs:
+        plugins_dir.mkdir(parents=True, exist_ok=True)
+        for plugin_name, dist_path in resolved_ag.items():
+            safe_symlink(dist_path, plugins_dir / plugin_name)
+    print(f"✓ Antigravity 2.0 plugins linked: {', '.join(resolved_ag)}")
 
 
 if __name__ == "__main__":
