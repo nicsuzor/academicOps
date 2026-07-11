@@ -4,23 +4,35 @@ Background
 ----------
 When a parent agent dispatches a ``Task`` subagent, Claude Code writes the
 subagent's tool calls to its own ``agent-<id>.jsonl`` file under
-``<session_dir>/<session_uuid>/subagents/``. Historically these folded into
-the parent transcript only — there was no standalone ``-full.md`` per
-subagent, no per-subagent insights JSON, and no link from the parent
-transcript to the subagent's session ID.
+``<session_dir>/<session_uuid>/subagents/``, alongside a sibling
+``agent-<id>.meta.json`` sidecar carrying its identity/provenance
+(``agentType``, ``description``, ``name``, ``parentAgentId``, ``spawnDepth``,
+``teamName``, ``color``, ``model``, ``permissionMode``, ``taskKind``,
+``toolUseId``) — written directly by the harness at spawn time.
 
-This module fills that gap (PKB ``task-b483e037``):
+This module (PKB ``task-b483e037``) emits, per subagent invocation:
 
-* Subagent transcripts land in ``$AOPS_SESSIONS/subagent-transcripts/YYYY-MM/``
-  — a separate top-level directory from primary session ``transcripts/`` —
-  using the same yyyy-mm rotation contract as parent transcripts (see
-  :mod:`lib.transcript_paths`).
-* Per-subagent insights JSON land in ``$AOPS_SESSIONS/subagent-summaries/YYYY-MM/``.
-* The parent transcript gets an additive footer section listing every
+* An independent ``-full.md`` transcript in
+  ``$AOPS_SESSIONS/subagent-transcripts/YYYY-MM/`` — a separate top-level
+  directory from primary session ``transcripts/`` — using the same yyyy-mm
+  rotation contract as parent transcripts (see :mod:`lib.transcript_paths`).
+* An insights JSON in ``$AOPS_SESSIONS/subagent-summaries/YYYY-MM/``.
+* An additive footer section on the parent transcript listing every
   subagent invocation with its type, child session ID, and a relative
   link to the child transcript markdown. This is purely additive — no
   changes to the existing transcript body — so existing parsers stay
   compatible.
+
+The ``agent-<id>.meta.json`` sidecar is the sole, required source of
+subagent identity for the transcript/insights emitted here — this module
+does not reconstruct it by parsing Task/Agent tool_use blocks in the main
+thread (that approach cannot see nested subagent-of-subagent spawns or
+background "teammate" Agent calls, and silently mis-resolves once it's
+wrong). ``_build_subagent_type_index`` retains that tool_use-pairing
+approach, but only for a separate, unrelated caller
+(``SessionProcessor._aggregate_session_usage``'s best-effort ``by_agent``
+cost-dashboard remap) — it is not used anywhere in this module's own
+subagent-identity resolution.
 
 The module deliberately avoids invasive surgery in
 :mod:`lib.transcript_parser`. It re-uses the existing ``SessionProcessor``
@@ -66,7 +78,7 @@ class SubagentArtifact:
     """
 
     invocation_id: str  # agent file id (e.g. "a14a1c4")
-    subagent_type: str | None  # e.g. "rbg", "aops-pkb:pauli", or None if unresolved
+    subagent_type: str  # meta.json's agentType, e.g. "rbg", "aops-pkb:pauli"
     child_session_id: str  # short id used in the transcript filename (== invocation_id)
     parent_session_id: str  # parent's session id (8-char)
     first_timestamp: datetime | None
@@ -84,37 +96,42 @@ def _first_timestamp(entries: list[Entry]) -> datetime | None:
     return None
 
 
-def _subagent_slug(subagent_type: str | None, invocation_id: str) -> str:
+def _subagent_slug(subagent_type: str, invocation_id: str) -> str:
     """Build a deterministic slug for the subagent transcript filename.
 
-    Format: ``subagent-<type>`` when the type resolved, else
-    ``subagent-<invocation-id>``. The invocation id is always present in
+    Format: ``subagent-<type>``. The invocation id is always present in
     the filename via session_naming's ``session_id`` slot, so this slug
     only needs to keep multiple subagents of the same type distinguishable
     visually.
     """
-    if subagent_type:
-        # Sanitize: lowercase, replace separators with hyphens.
-        s = subagent_type.lower().replace("_", "-").replace(":", "-")
-        # Strip anything that isn't alphanum or hyphen.
-        s = "".join(c if (c.isalnum() or c == "-") else "-" for c in s)
-        # Collapse runs of hyphens.
-        while "--" in s:
-            s = s.replace("--", "-")
-        s = s.strip("-")
-        if s:
-            return f"subagent-{s}"
-    return f"subagent-{invocation_id[:8]}"
+    # Sanitize: lowercase, replace separators with hyphens.
+    s = subagent_type.lower().replace("_", "-").replace(":", "-")
+    # Strip anything that isn't alphanum or hyphen.
+    s = "".join(c if (c.isalnum() or c == "-") else "-" for c in s)
+    # Collapse runs of hyphens.
+    while "--" in s:
+        s = s.replace("--", "-")
+    s = s.strip("-")
+    return f"subagent-{s}"
 
 
 def _build_subagent_type_index(main_entries: list[Entry]) -> dict[str, str]:
     """Map agent file id (the file-stem after ``agent-``) to its subagent_type.
 
     Walks main session entries pairing Task/Agent tool_use blocks with their
-    tool_result. The result's ``tool_use_result.agentId`` is the file id; the
-    tool_use's ``input.subagent_type`` is the human-readable type
-    (e.g. ``rbg``, ``aops-pkb:pauli``). This reads structured tool-call
-    metadata only — it performs no parsing of model prose.
+    tool_result. The result's ``tool_use_result.agentId``/``agent_id`` is the
+    file id; the tool_use's ``input.subagent_type``/``agent_type`` is the
+    human-readable type (e.g. ``rbg``, ``aops-pkb:pauli``). This reads
+    structured tool-call metadata only — it performs no parsing of model
+    prose.
+
+    Used solely by :func:`SessionProcessor._aggregate_session_usage` to
+    remap ``by_agent`` token-cost UUIDs to human-readable names for the
+    dashboard cost breakdown — a best-effort supplementary label, not
+    subagent identity (that comes from ``agent-<id>.meta.json`` via
+    :func:`_load_agent_meta`/:func:`iter_subagent_invocations`). Unresolved
+    UUIDs are preserved verbatim by the caller rather than failing the
+    whole token_metrics aggregation.
     """
     type_by_tool_id: dict[str, str] = {}
     for entry in main_entries:
@@ -134,7 +151,7 @@ def _build_subagent_type_index(main_entries: list[Entry]) -> dict[str, str]:
             if not tool_id:
                 continue
             tool_input = block.get("input") or {}
-            subagent_type = tool_input.get("subagent_type")
+            subagent_type = tool_input.get("subagent_type") or tool_input.get("agent_type")
             if subagent_type:
                 type_by_tool_id[tool_id] = subagent_type
 
@@ -155,38 +172,69 @@ def _build_subagent_type_index(main_entries: list[Entry]) -> dict[str, str]:
             result = entry.tool_use_result
             agent_file_id = None
             if isinstance(result, dict):
-                agent_file_id = result.get("agentId")
+                agent_file_id = result.get("agentId") or result.get("agent_id")
             if agent_file_id:
                 index[agent_file_id] = type_by_tool_id[tool_id]
     return index
 
 
+def _load_agent_meta(parent_session_path: Path, invocation_id: str) -> dict[str, Any]:
+    """Load the ``agent-<id>.meta.json`` sidecar the harness writes next to
+    each ``agent-<id>.jsonl`` file — the required, authoritative source of
+    subagent identity/provenance (``agentType``, ``description``, ``name``,
+    ``parentAgentId``, ``spawnDepth``, ``teamName``, ``color``, ``model``,
+    ``permissionMode``, ``taskKind``, ``toolUseId``).
+
+    Searches the same two locations subagent jsonl files live in (legacy
+    flat layout and the ``<session_uuid>/subagents/`` layout). Raises if no
+    sidecar is found or it fails to parse — the sidecar is always written
+    by the harness at spawn time, so a missing one is a real defect to
+    surface, not a degraded mode to paper over.
+    """
+    session_dir = parent_session_path.parent
+    main_session_uuid = parent_session_path.stem
+    for candidate in (
+        session_dir / f"agent-{invocation_id}.meta.json",
+        session_dir / main_session_uuid / "subagents" / f"agent-{invocation_id}.meta.json",
+    ):
+        if candidate.exists():
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError(f"{candidate} did not contain a JSON object")
+            return data
+    raise FileNotFoundError(
+        f"agent-{invocation_id}.meta.json not found next to {parent_session_path}"
+    )
+
+
 def iter_subagent_invocations(
-    main_entries: list[Entry],
     agent_entries: dict[str, list[Entry]] | None,
+    parent_session_path: Path,
 ) -> list[dict[str, Any]]:
     """Enumerate subagent invocations discovered for a parent session.
 
     Each item: ``{"invocation_id", "subagent_type", "entries",
-    "first_timestamp"}``. Order follows ``agent_entries`` insertion order
-    (deterministic per filesystem listing of ``agent-*.jsonl``).
+    "first_timestamp", "meta"}``. Order follows ``agent_entries`` insertion
+    order (deterministic per filesystem listing of ``agent-*.jsonl``).
 
-    ``subagent_type`` is resolved via :func:`_build_subagent_type_index`
-    when possible; it may be ``None`` for stray agent files that have no
-    matching Task tool_use in the main thread.
+    ``subagent_type`` is the ``agent-<id>.meta.json`` sidecar's
+    ``agentType`` (see :func:`_load_agent_meta`); ``meta`` carries the full
+    parsed sidecar so callers can pull ``description``, ``name``,
+    ``parentAgentId``, ``spawnDepth``, etc.
     """
     if not agent_entries:
         return []
 
-    type_index = _build_subagent_type_index(main_entries)
     out: list[dict[str, Any]] = []
     for invocation_id, entries in agent_entries.items():
+        meta = _load_agent_meta(parent_session_path, invocation_id)
         out.append(
             {
                 "invocation_id": invocation_id,
-                "subagent_type": type_index.get(invocation_id),
+                "subagent_type": meta["agentType"],
                 "entries": entries,
                 "first_timestamp": _first_timestamp(entries),
+                "meta": meta,
             }
         )
     return out
@@ -195,24 +243,31 @@ def iter_subagent_invocations(
 def _build_subagent_session_summary(
     parent_summary: ParsedSession,
     invocation_id: str,
-    subagent_type: str | None,
+    subagent_type: str,
     entries: list[Entry],
+    meta: dict[str, Any],
 ) -> ParsedSession:
     """Synthesize a ParsedSession for a subagent transcript.
 
     Inherits parent metadata (machine, hostname, provider, crew, repo,
     task_id) and tags ``slug`` / ``summary`` with the subagent type so
-    downstream filename inference and frontmatter reads naturally.
+    downstream filename inference and frontmatter reads naturally. When the
+    ``agent-<id>.meta.json`` sidecar carries a ``description`` (the
+    commissioning agent's own one-line task description), fold it into the
+    title.
     """
     # Lazy import to avoid circular ``transcript_parser`` ↔ this module
     # cycle: transcript.py imports this module, which would otherwise
     # need transcript_parser at module load.
     from lib.transcript_parser import ParsedSession  # noqa: PLC0415
 
-    type_label = subagent_type or "unknown"
+    description = meta.get("description")
+    summary = f"Subagent: {subagent_type}"
+    if description:
+        summary = f"{summary} — {description}"
     return ParsedSession(
         uuid=invocation_id,
-        summary=f"Subagent: {type_label}",
+        summary=summary,
         artifact_type="subagent",
         created_at=(_first_timestamp(entries) or datetime.now(tz=UTC)).isoformat(),
         machine=parent_summary.machine,
@@ -251,7 +306,7 @@ def _entries_as_main_thread(entries: list[Entry]) -> list[Entry]:
 
 def _build_subagent_filename(
     invocation_id: str,
-    subagent_type: str | None,
+    subagent_type: str,
     timestamp: datetime,
     parent_session_id: str,
     parent_repo: str | None,
@@ -285,10 +340,11 @@ def _build_subagent_insights(
     parent_provider: str | None,
     parent_task_id: str | None,
     invocation_id: str,
-    subagent_type: str | None,
+    subagent_type: str,
     entries: list[Entry],
     timestamp: datetime,
     transcript_path: Path,
+    meta: dict[str, Any],
     parent_surface: str | None = None,
     parent_client: str | None = None,
 ) -> dict[str, Any]:
@@ -298,13 +354,17 @@ def _build_subagent_insights(
     reflection (subagents don't emit framework reflections), but with
     enough provenance — parent session id, invocation id, subagent type,
     entry count, transcript path — that trend/sweep tooling can rank
-    subagent quality independently.
+    subagent quality independently. ``meta`` (the ``agent-<id>.meta.json``
+    sidecar) contributes the commissioning ``description``, custom
+    ``name``, true ``parentAgentId`` (may be another subagent for nested
+    spawns, not just the top session), ``spawnDepth``, ``teamName``,
+    ``model``, ``permissionMode``, ``taskKind``.
     """
-    return {
+    insights = {
         "session_id": invocation_id,
         "date": timestamp.isoformat(),
         "project": parent_repo or "unknown",
-        "summary": f"Subagent invocation ({subagent_type or 'unknown'})",
+        "summary": f"Subagent invocation ({subagent_type})",
         "outcome": None,
         "accomplishments": [],
         "friction_points": [],
@@ -325,13 +385,29 @@ def _build_subagent_insights(
         "entry_count": len(entries),
         "transcript_path": str(transcript_path),
     }
+    if meta.get("description"):
+        insights["agent_description"] = meta["description"]
+    if meta.get("name"):
+        insights["agent_name"] = meta["name"]
+    if meta.get("parentAgentId"):
+        insights["parent_agent_id"] = meta["parentAgentId"]
+    if meta.get("spawnDepth") is not None:
+        insights["spawn_depth"] = meta["spawnDepth"]
+    if meta.get("teamName"):
+        insights["team_name"] = meta["teamName"]
+    if meta.get("model"):
+        insights["agent_model"] = meta["model"]
+    if meta.get("permissionMode"):
+        insights["agent_permission_mode"] = meta["permissionMode"]
+    if meta.get("taskKind"):
+        insights["task_kind"] = meta["taskKind"]
+    return insights
 
 
 def write_subagent_transcripts(
     parent_session_path: Path,
     parent_session_id: str,
     parent_summary: ParsedSession,
-    main_entries: list[Entry],
     agent_entries: dict[str, list[Entry]] | None,
     processor: SessionProcessor,
     *,
@@ -342,12 +418,11 @@ def write_subagent_transcripts(
 
     Args:
         parent_session_path: Path to the parent session JSONL (for
-            ``source_file`` frontmatter on the subagent transcript).
+            ``source_file`` frontmatter on the subagent transcript, and to
+            locate each subagent's ``agent-<id>.meta.json`` sidecar).
         parent_session_id: 8-char parent session id used to anchor
             ``shortform=subagent-of-<parent>`` in the subagent filename.
         parent_summary: Parent ``ParsedSession``; metadata is inherited.
-        main_entries: Parent's main-thread entries — used to resolve
-            subagent_type via tool_use/tool_result pairing.
         agent_entries: Mapping of agent file id → entries (from
             ``SessionProcessor._load_agent_files``). Empty / None ⇒ no-op.
         processor: A ``SessionProcessor`` instance used to render markdown.
@@ -369,7 +444,7 @@ def write_subagent_transcripts(
     transcripts_root.mkdir(parents=True, exist_ok=True)
     summaries_root.mkdir(parents=True, exist_ok=True)
 
-    invocations = iter_subagent_invocations(main_entries, agent_entries)
+    invocations = iter_subagent_invocations(agent_entries, parent_session_path)
     artifacts: list[SubagentArtifact] = []
 
     for inv in invocations:
@@ -377,6 +452,7 @@ def write_subagent_transcripts(
         subagent_type = inv["subagent_type"]
         entries = inv["entries"]
         ts = inv["first_timestamp"]
+        meta = inv["meta"]
 
         if not entries:
             # Skip empty subagent files (rare; happens when a Task call is
@@ -386,14 +462,11 @@ def write_subagent_transcripts(
         if ts is None:
             # No timestamps in any entry — fall back to source file mtime
             # so the rotation bucket is at least deterministic.
-            try:
-                ts = datetime.fromtimestamp(parent_session_path.stat().st_mtime, tz=UTC)
-            except OSError:
-                ts = datetime.now(tz=UTC)
+            ts = datetime.fromtimestamp(parent_session_path.stat().st_mtime, tz=UTC)
 
         # Build summary, render markdown, write files.
         sub_summary = _build_subagent_session_summary(
-            parent_summary, invocation_id, subagent_type, entries
+            parent_summary, invocation_id, subagent_type, entries, meta
         )
 
         # Strip sidechain flag so the standard turn renderer treats this
@@ -434,6 +507,7 @@ def write_subagent_transcripts(
             parent_session_path=parent_session_path,
             subagent_type=subagent_type,
             invocation_id=invocation_id,
+            meta=meta,
         )
 
         transcript_path.write_text(markdown, encoding="utf-8")
@@ -453,14 +527,9 @@ def write_subagent_transcripts(
             entries=entries,
             timestamp=ts,
             transcript_path=transcript_path,
+            meta=meta,
         )
-        try:
-            write_insights_file(insights_path, insights, session_id=invocation_id)
-        except Exception:  # noqa: BLE001
-            # Insights are best-effort; the transcript itself is the
-            # primary artefact and must not be invalidated by an
-            # insights-write hiccup. Fall back to a direct write.
-            insights_path.write_text(json.dumps(insights, indent=2), encoding="utf-8")
+        write_insights_file(insights_path, insights, session_id=invocation_id)
 
         artifacts.append(
             SubagentArtifact(
@@ -472,10 +541,16 @@ def write_subagent_transcripts(
                 transcript_path=transcript_path,
                 insights_path=insights_path,
                 entry_count=len(entries),
+                extra=meta,
             )
         )
 
     return artifacts
+
+
+def _yaml_safe_scalar(value: Any) -> str:
+    """Quote a string for a single-line ``key: "value"`` YAML entry."""
+    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").strip()
 
 
 def _inject_parent_link_into_frontmatter(
@@ -483,36 +558,56 @@ def _inject_parent_link_into_frontmatter(
     *,
     parent_session_id: str,
     parent_session_path: Path,
-    subagent_type: str | None,
+    subagent_type: str,
     invocation_id: str,
+    meta: dict[str, Any],
 ) -> str:
     """Splice subagent provenance fields into the frontmatter block.
 
     The subagent transcript is generated through the standard
-    ``format_session_as_markdown`` path, which produces a normal
+    ``format_session_as_markdown`` path, which always produces a
     ``---\\nfrontmatter\\n---`` block. We splice subagent-specific
     keys before the closing ``---`` so consumers can detect, filter,
     and link without parsing the body.
+
+    ``meta`` (the ``agent-<id>.meta.json`` sidecar) contributes
+    ``parentAgentId`` — the *true* immediate parent — for a nested
+    subagent-of-subagent spawn this is another subagent's invocation id,
+    not ``parent_session_id`` (which always anchors to the top-level
+    session for directory/filename purposes) — plus additive
+    ``description``/``name``/``spawnDepth``/``teamName``/``model``/
+    ``permissionMode``/``taskKind`` provenance.
     """
     parts = markdown.split("---\n", 2)
-    # Expected layout: ["", "<frontmatter>\n", "<body>"]
-    if len(parts) < 3 or parts[0] != "":
-        # Frontmatter not present in the expected shape — fall back to
-        # appending a small footer to body so we never lose the link.
-        footer = (
-            f"\n\n---\n\n_Subagent provenance: parent={parent_session_id}, "
-            f"invocation_id={invocation_id}, "
-            f"subagent_type={subagent_type or 'unknown'}_\n"
-        )
-        return markdown + footer
+    # format_session_as_markdown always emits "---\n<frontmatter>\n---\n<body>".
+    assert len(parts) == 3 and parts[0] == "", (
+        f"expected frontmatter block, got unrecognized markdown shape: {markdown[:80]!r}"
+    )
 
     inject = (
         f"artifact_type: subagent\n"
         f"parent_session_id: {parent_session_id}\n"
         f'parent_session_file: "{parent_session_path}"\n'
         f"invocation_id: {invocation_id}\n"
-        f'subagent_type: "{subagent_type or "unknown"}"\n'
+        f'subagent_type: "{subagent_type}"\n'
     )
+    if meta.get("name"):
+        inject += f'agent_name: "{_yaml_safe_scalar(meta["name"])}"\n'
+    if meta.get("description"):
+        inject += f'agent_description: "{_yaml_safe_scalar(meta["description"])}"\n'
+    if meta.get("parentAgentId"):
+        inject += f'parent_agent_id: "{_yaml_safe_scalar(meta["parentAgentId"])}"\n'
+    if meta.get("spawnDepth") is not None:
+        inject += f"spawn_depth: {int(meta['spawnDepth'])}\n"
+    if meta.get("teamName"):
+        inject += f'team_name: "{_yaml_safe_scalar(meta["teamName"])}"\n'
+    if meta.get("model"):
+        inject += f'agent_model: "{_yaml_safe_scalar(meta["model"])}"\n'
+    if meta.get("permissionMode"):
+        inject += f'agent_permission_mode: "{_yaml_safe_scalar(meta["permissionMode"])}"\n'
+    if meta.get("taskKind"):
+        inject += f'task_kind: "{_yaml_safe_scalar(meta["taskKind"])}"\n'
+
     fm = parts[1].rstrip("\n") + "\n" + inject
     return f"---\n{fm}---\n{parts[2]}"
 
@@ -554,7 +649,6 @@ def render_parent_subagent_footer(
 
     parent_dir = parent_transcript_path.parent
     for art in artifacts:
-        type_label = art.subagent_type or "unknown"
         if art.transcript_path is None:
             continue
         try:
@@ -567,8 +661,10 @@ def render_parent_subagent_footer(
             if art.first_timestamp
             else "unknown time"
         )
+        description = art.extra.get("description")
+        desc_suffix = f" — {description}" if description else ""
         lines.append(
-            f"- **{type_label}** "
+            f"- **{art.subagent_type}**{desc_suffix} "
             f"(id: `{art.child_session_id}`, started {ts_str}, "
             f"{art.entry_count} entries) → "
             f"[{Path(rel).name}]({rel})"
