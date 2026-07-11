@@ -310,3 +310,27 @@ def test_dataclasses_are_frozen(cfg_path: Path) -> None:
         cfg.session_defaults.hooks_enabled = False  # type: ignore[misc]
     with pytest.raises(dataclasses.FrozenInstanceError):
         cfg.session_defaults.gates.handover = "block"  # type: ignore[misc]
+
+
+def test_canonical_example_scopes_ida_gate_off_dispatched_surfaces() -> None:
+    """aops_5ea32596 / note_296e5520 §3 — the face-scoped ida honesty gate.
+
+    The tracked ``polecat/defaults/polecat.yaml.example`` is the real
+    operator-facing template (also loaded as the default test config — see
+    conftest.py's AOPS_POLECAT_CONFIG wiring). `ida` must resolve to "off" for
+    every polecat/crew (dispatched, headless-or-sibling) surface: the base
+    session_defaults value, and both the run and crew overlays. The gate is
+    structurally absent everywhere except the head/face surface, which reads
+    its posture from gate_config.py's bare-CLI fallback instead (see
+    test_gate_config.py / GATES.md), never from this file.
+    """
+    example = (
+        Path(__file__).resolve().parent.parent.parent
+        / "polecat"
+        / "defaults"
+        / "polecat.yaml.example"
+    )
+    cfg = load_polecat_config(example)
+    assert cfg.session_defaults.gates.ida == "off"
+    assert cfg.for_mode("run").gates.ida == "off"
+    assert cfg.for_mode("crew").gates.ida == "off"

@@ -33,6 +33,15 @@ perspectives and return **one reconciled verdict**. Owned by **james** (reconcil
 **you, the invoking agent, own the orchestration**: you deploy the reviewers yourself, because a
 subagent cannot spawn its own subagents. James is called only at the end, to reconcile.
 
+**Personality binding — earmarking (reconciliation step only).** James's step (§3) is bound to
+`james` specifically because compositional reconciliation of contradictory reviewer findings into
+one honest verdict _is_ james's judgment register (`specs/agents/james.md` — The Orchestrator) —
+not an arbitrary assignment that happened to route around the no-nested-spawning constraint. The
+rest of this skill (context gathering, dispatch) is personality-agnostic: `rbg`, `pauli`, and
+`marsha` in §2 are named for the distinct **judgment registers a review must apply** (axiom
+compliance, strategic fit, runtime QA — see `specs/agents/agents.md` §Personalities Are Not
+Skills), not as an exclusive roster; any agent embodying the equivalent disposition could stand in.
+
 ## Inputs
 
 - **The artifact**: a file path, a PKB id, pasted text, or a pull request (an `owner/repo#N` ref or URL).

@@ -45,16 +45,16 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 
 ### Storage and File Locations
 
-| Content                | Tool                                                  | Target                              |
-| :--------------------- | :---------------------------------------------------- | :---------------------------------- |
-| **Epics/projects**     | `mcp__pkb__create(type="epic"\|"project")`            | `projects/`                         |
-| **Tasks/issues**       | `gh issue create` (GitHub primary)                    | Synced automatically                |
-| **Durable knowledge**  | `mcp__pkb__create` or `mcp__pkb__create_memory`       | `knowledge/`, `context/`            |
-| **Session findings**   | `mcp__pkb__update_task` on parent task                | Task body                           |
-| **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow    |
-| **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                |
-| **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/` |
-| **Sessions/daily**     | `mcp__pkb__create(type="daily-note")`                 | `sessions/`                         |
+| Content                | Tool                                                  | Target                                                                                         |
+| :--------------------- | :---------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| **Epics/projects**     | `mcp__pkb__create(type="epic"\|"project")`            | `projects/`                                                                                    |
+| **Tasks/issues**       | `gh issue create` (GitHub primary)                    | Synced automatically                                                                           |
+| **Durable knowledge**  | `mcp__pkb__create` or `mcp__pkb__create_memory`       | `knowledge/`, `context/`                                                                       |
+| **Session findings**   | `mcp__pkb__update_task` on parent task                | Task body                                                                                      |
+| **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow                                                               |
+| **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                                                                           |
+| **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/`                                                            |
+| **Daily notes**        | `mcp__pkb__create(type="daily")`                      | Canonical; SSoT is [[aops-pkb/skills/daily/SKILL.md]] — derive the path there, don't restate it here |
 
 **Episodic classification:** Operational records (agent activity, debug logs) → update parent task body only; do not create `$ACA_DATA/` docs. Durable episodic (meeting notes, user daily notes) → save to `$ACA_DATA/` with correct type frontmatter.
 
@@ -101,6 +101,8 @@ To capture asynchronously, spawn a `model="haiku"` background agent with `run_in
 State PKB write details directly: tool used, note title, returned ID. Do not expose raw filesystem paths.
 
 ## Maintenance Mode (`/sleep`)
+
+**Personality binding — permission-control.** Immediate Mode above is personality-agnostic — any agent holding ordinary PKB write tools (`create`, `create_memory`, `append`, `search`) can run it, and several do (e.g. Ida captures durable facts inline via this mode). Maintenance Mode is different: consolidation (duplicate merging, reparenting, reclassification — `batch_merge`, `merge_node`, `batch_reparent`, `batch_reclassify`, `batch_archive`) is earmarked to `pauli`, because only `pauli`'s agent frontmatter grants the PKB graph-mutation tool surface these operations call (`specs/agents/pauli.md` — "sole graph-shaper"; see also `planner/SKILL.md`'s identical binding). A GHA-triggered run of this mode runs as pauli for that reason.
 
 The canonical home of the former `/sleep` skill. Runs periodic offline consolidation on a GHA workflow or manual trigger.
 

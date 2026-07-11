@@ -586,3 +586,82 @@ class TestAuditWindowAndDirective:
         assert "Bound Task Directive" in content
         assert "Implement feature X" in content
         assert "Only touch module X." in content
+
+
+# ===========================================================================
+# #1976/#1979 — audit-complete sentinel must be the genuine last line of the
+# rendered rbg file (not merely the last line of session_context), so the
+# rbg auditor's `tail -3` read finds it and never returns a false
+# COVERAGE_INCOMPLETE on a complete read (aops-84a6d6fa).
+# ===========================================================================
+
+
+class TestAuditCompleteSentinelPlacement:
+    """Exercises the real fire path: create_audit_file -> written gate file
+    -> the sentinel is within the last 3 lines an auditor would `tail -3`."""
+
+    def test_sentinel_is_last_line_of_rendered_rbg_file(self, tmp_path):
+        from lib.gates import custom_actions
+
+        transcript = tmp_path / "session.jsonl"
+        entries_data = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": _make_timestamp(0),
+                "message": {"content": [{"type": "text", "text": "Do the thing"}]},
+            },
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": _make_timestamp(1),
+                "message": {"content": [{"type": "text", "text": "On it."}]},
+            },
+        ]
+        _write_jsonl(transcript, entries_data)
+
+        ctx = _make_ctx(hook_event="PreToolUse", transcript_path=str(transcript), tool_name="Edit")
+        gate_path = custom_actions.create_audit_file("test-session", "rbg", ctx)
+        content = gate_path.read_text()
+
+        # Simulate the auditor's real read procedure (enforcer-instruction.md: `tail -3`).
+        tail_lines = content.rstrip("\n").splitlines()[-3:]
+        assert any("<!-- audit-complete:" in line for line in tail_lines), (
+            "Sentinel is not within the last 3 lines of the rendered file — "
+            "the rbg auditor's `tail -3` read would miss it, reproducing the "
+            "#1976 false-COVERAGE_INCOMPLETE defect."
+        )
+
+        # Guard the ordering invariant directly: every template section must
+        # render BEFORE the sentinel, not merely before session_context's own
+        # end (the original #1976 bug: sections appended after
+        # {session_context} in the template buried a session_context-only
+        # sentinel mid-file).
+        sentinel_pos = content.index("<!-- audit-complete:")
+        for marker in ("## Active Skill Context", "## Session Narrative", "## Your Assessment"):
+            assert content.index(marker) < sentinel_pos, (
+                f"'{marker}' renders after the sentinel — sentinel is not the "
+                "true last content of the file."
+            )
+
+    def test_sentinel_absent_for_non_rbg_gate(self, tmp_path):
+        """The sentinel is an rbg-specific coverage marker; other gates (e.g.
+        qa) must not get one appended."""
+        from lib.gates import custom_actions
+
+        transcript = tmp_path / "session.jsonl"
+        _write_jsonl(
+            transcript,
+            [
+                {
+                    "type": "user",
+                    "uuid": "u1",
+                    "timestamp": _make_timestamp(0),
+                    "message": {"content": [{"type": "text", "text": "Do the thing"}]},
+                }
+            ],
+        )
+        ctx = _make_ctx(hook_event="Stop", transcript_path=str(transcript), tool_name="Stop")
+        gate_path = custom_actions.create_audit_file("test-session", "qa", ctx)
+        content = gate_path.read_text()
+        assert "<!-- audit-complete:" not in content
