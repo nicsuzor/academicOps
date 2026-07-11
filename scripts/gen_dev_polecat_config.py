@@ -49,6 +49,22 @@ ANTIGRAVITY_PLUGINS = [
 ]
 
 CLAUDE_CACHE_ROOT = "/home/worker/.claude/plugins/cache/academicOps"
+
+
+def sanitize_cache_version(version: str) -> str:
+    """Match Claude Code's plugin installer's cache-dir naming.
+
+    marketplace.json versions carry SemVer build metadata as `+g<sha>`
+    (see scripts/build.py's `_with_build_metadata`), but the installer
+    writes the real `installed_plugins.json` installPath / cache dir with
+    `+` replaced by `-` (confirmed live: `0.3.78+ga7f022b7` source version
+    installs to `.../0.3.78-ga7f022b7/`, task_499355a9). The live-edit
+    mount target must use the same encoding or it silently binds to a
+    directory nothing reads.
+    """
+    return version.replace("+", "-")
+
+
 # NOT ~/.gemini/antigravity-cli/plugins/ (that's `agy plugin install`'s
 # COPY SOURCE, baked in once at image-build time — the Dockerfile installs
 # from it but agy never re-reads it after). The path agy's hook router
@@ -117,7 +133,7 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
                 f"warning: {dist_dir} not found — skipping (run `make build-dev`)", file=sys.stderr
             )
             continue
-        container_dest = f"{CLAUDE_CACHE_ROOT}/{plugin_name}/{version}"
+        container_dest = f"{CLAUDE_CACHE_ROOT}/{plugin_name}/{sanitize_cache_version(version)}"
         mounts.extend(editable_mounts(dist_dir, container_dest))
 
     for dist_name, plugin_name in ANTIGRAVITY_PLUGINS:
@@ -135,28 +151,29 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
     # one of these keys in EACH of the four sections; A14: no builtin
     # defaults, no guessing). The dev loop uses one identical posture for
     # all four; production polecat.yaml differs per surface.
+    _dev_gates: dict[str, str | int] = {
+        "handover": "warn",
+        "qa": "warn",
+        "rbg": "warn",
+        "hydration": "off",
+        "ida": "warn",
+        "rbg_review": "warn",
+        "rbg_threshold": 50,
+    }
     _dev_surface = {
         "hooks_enabled": True,
         "claude_model": "sonnet",
         "gemini_model": "gemini-3.1-pro-preview",
         "antigravity_model": "agy",
         "debug": False,
-        "gates": {
-            "handover": "warn",
-            "qa": "warn",
-            "rbg": "warn",
-            "hydration": "off",
-            "ida": "warn",
-            "rbg_review": "warn",
-            "rbg_threshold": 50,
-        },
+        "gates": _dev_gates,
     }
     return {
         "polecat_home": polecat_home,
-        "face": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
-        "crew": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
-        "worker": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
-        "subagent": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
+        "face": {**_dev_surface, "gates": dict(_dev_gates)},
+        "crew": {**_dev_surface, "gates": dict(_dev_gates)},
+        "worker": {**_dev_surface, "gates": dict(_dev_gates)},
+        "subagent": {**_dev_surface, "gates": dict(_dev_gates)},
         "docker": {"image": "ghcr.io/nicsuzor/aops-crew:dev"},
         "projects": {
             "aops-dev": {

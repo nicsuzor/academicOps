@@ -590,7 +590,11 @@ class TestEmergencyHandoverParsing:
         result = parse_session_handover(text)
         assert result is not None, "##### Emergency Handover must parse — this is the /dump format"
         assert result["session_id"] == "`20260525-1040-aa69d3eb`"
-        assert result["task_id"] == "`aops-40f442ab`"
+        # Backticks stripped (aops task_499355a9 transcript audit): a literal
+        # `` `aops-40f442ab` `` task_id propagates into session_summary,
+        # subagent frontmatter, and resolve_task_title's PKB lookup, which
+        # then fails to find a task that does exist under the unquoted id.
+        assert result["task_id"] == "aops-40f442ab"
         assert result["next_step"] == "Refresh GitHub tokens and push"
 
     def test_emergency_handover_at_h3(self):

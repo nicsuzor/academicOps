@@ -86,11 +86,19 @@ face:
     # actually enforce anything (warn/block) should edit this section, or
     # rely on the `crew`/`worker` sections for task-bound dispatch, which
     # DO enforce by default.
+    #
+    # ida: warn — the ONE exception. This is the face-scoped honesty gate
+    # (aops_5ea32596 / note_296e5520 §3): the head/interactive surface is
+    # exactly what it exists to protect, and under DEFAULTS-NONE there is no
+    # more code-level fallback to supply this — this value IS what
+    # gate_config.py's bare-CLI resolution reads. `crew`/`worker`/`subagent`
+    # below all set it "off" (structurally absent on every dispatched
+    # surface).
     handover: off
     qa: off
     rbg: off
     hydration: off
-    ida: off
+    ida: warn
     rbg_review: off
     rbg_threshold: 50
 
@@ -106,7 +114,7 @@ crew:
     qa: warn
     rbg: warn
     hydration: off
-    ida: warn
+    ida: off
     rbg_review: block
     rbg_threshold: 50
 
@@ -123,7 +131,7 @@ worker:
     qa: warn
     rbg: warn
     hydration: off
-    ida: warn
+    ida: off
     rbg_review: block
     rbg_threshold: 50
 
@@ -138,7 +146,7 @@ subagent:
     qa: warn
     rbg: warn
     hydration: off
-    ida: warn
+    ida: off
     rbg_review: block
     rbg_threshold: 50
 

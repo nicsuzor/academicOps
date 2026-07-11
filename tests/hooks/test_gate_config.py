@@ -205,6 +205,35 @@ class TestGeminiToolCoverage:
         """(a) mcp_pbk_get_task -> infrastructure (typo-tolerant Gemini variant)."""
         assert get_tool_category("mcp_pbk_get_task") == "infrastructure"
 
+    def test_services_deployment_prefix_release_task(self):
+        """aops_9432bb35 (task_499355a9): mcp__services__pkb__release_task -> infrastructure.
+
+        This session's actual PKB MCP tools are registered under
+        mcp__services__pkb__<op>. Neither the static _PKB_PREFIX_VARIANTS list
+        nor the (pre-fix) _PKB_PREFIX_RE fallback recognized "services__" as a
+        valid segment before pkb/pbk, so every PKB call under this shape fell
+        through to the conservative "write" default — defeating the
+        turn_did_work/session_did_work exemption logic for pure read-only PKB
+        turns (e.g. the administrative release_task call).
+        """
+        assert get_tool_category("mcp__services__pkb__release_task") == "infrastructure"
+
+    def test_services_deployment_prefix_other_ops(self):
+        """Same deployment shape, other read-only ops -> infrastructure."""
+        assert get_tool_category("mcp__services__pkb__get_task") == "infrastructure"
+        assert get_tool_category("mcp__services__pkb__search") == "infrastructure"
+        assert get_tool_category("mcp__services__pkb__list_tasks") == "infrastructure"
+
+    def test_services_deployment_prefix_single_underscore(self):
+        """Single-underscore (Gemini-style) form of the services shape."""
+        assert get_tool_category("mcp_services_pkb_release_task") == "infrastructure"
+
+    def test_pkb_prefix_regex_generalized_segment_still_delimited(self):
+        """The generalized fallback regex must still require '_' delimiters
+        around the free segment — it must not match tool names that merely
+        contain 'pkb' as a substring with no underscore boundary."""
+        assert get_tool_category("mcp__notpkbrelated__thing") == "write"
+
     def test_invoke_agent_is_spawn(self):
         """(b) invoke_agent -> spawn (Gemini CLI >= ~0.40 agent spawn tool)."""
         assert get_tool_category("invoke_agent") == "spawn"
@@ -310,3 +339,37 @@ class TestGatePrecedence:
 
         configs_order = tuple(c.name for c in GATE_CONFIGS)
         assert len(configs_order) == len(set(configs_order))
+
+
+class TestIdaGateBareCliFallback:
+    """aops_5ea32596 / note_296e5520 §3 — face-scoped ida honesty gate.
+
+    The bare-fallback IDA_GATE_MODE (used only when no polecat.yaml/launcher
+    sets the env var at all — i.e. a direct interactive CLI session, the
+    head/face surface) must default to "warn", the one exception to every
+    other gate's "off" fallback. Every dispatched polecat run/crew session
+    always gets an explicit env var from lib/polecat_config.py's resolution
+    instead (see test_polecat_config.py's
+    test_canonical_example_scopes_ida_gate_off_dispatched_surfaces), so this
+    fallback is never reached for a headless/dispatched surface.
+    """
+
+    def test_ida_gate_mode_default_is_warn(self, monkeypatch):
+        monkeypatch.delenv("IDA_GATE_MODE", raising=False)
+        from hooks import gate_config
+
+        assert gate_config.IDA_GATE_MODE == "warn"
+
+    def test_other_gate_defaults_still_off(self, monkeypatch):
+        # Regression guard: only IDA_GATE_MODE's bare fallback changed.
+        from hooks import gate_config
+
+        for name in (
+            "QA_GATE_MODE",
+            "RBG_GATE_MODE",
+            "HYDRATION_GATE_MODE",
+            "RBG_REVIEW_GATE_MODE",
+            "HANDOVER_GATE_MODE",
+        ):
+            monkeypatch.delenv(name, raising=False)
+            assert getattr(gate_config, name) == "off"

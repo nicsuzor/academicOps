@@ -30,7 +30,7 @@ description: SSoT for every gate the framework runs at session time — what eac
 | `handover`   | Exit without commit / task update / reflection           | Stop               | claim_task                                                                                         | Skill(End Session) |
 | task-binding | Work without a bound task (**reactivated**, target — H4) | PreToolUse (write) | claim_task                                                                                         | —                  |
 
-**`ida` gate — disposition OPEN, not retired.** See [§ `ida` gate](#ida-gate) below.
+**`ida` gate — face-scoped, RATIFIED (aops_5ea32596 / note_296e5520 §3).** Fires on the head/face surface only, structurally absent everywhere else. See [§ `ida` gate](#ida-gate) below.
 
 Schema lives in [`lib/polecat_config.py`](../../aops-core/lib/polecat_config.py); each `GateConfig` is defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py); mode resolution happens in [`hooks/gate_config.py`](../../aops-core/hooks/gate_config.py). **Session scope policy (H8/H12, PreToolUse exception permanent as of aops_571771b4)**: gates fire uniformly across main sessions, subagents, and workers — the previous blanket skip of PostToolUse evaluation for subagent-attributed events is retired — except PreToolUse, which stays skipped for subagent-classified sessions as a deliberate, permanent exception, not a still-pending target — see [Subagent & worker session scope](#subagent--worker-session-scope) below.
 
@@ -212,7 +212,7 @@ Subagent dispatches matching `^(aops[-_](core|pkb)[:_])?rbg$` reset the counter 
 # Live counter (since session start or last check)
 jq -r 'select(.hook_event=="PostToolUse") | .output.system_message // empty' \
   ~/.claude/projects/*/$(ls -1t ~/.claude/projects/*/ | head -1)*-hooks.jsonl \
-  | grep -E '◇|Compliance check' | tail -5
+  | grep -iE '◇|compliance check' | tail -5
 
 # Find PreToolUse blocks where the rbg gate denied
 grep '"hook_event":"PreToolUse"' <hooks.jsonl> \
@@ -223,7 +223,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
   | jq -r 'select(.subagent_type|test("rbg"))' | wc -l
 ```
 
-**Healthy fire**: PreToolUse with `tool_name` ≠ infrastructure/read-only, `output.verdict="deny"` (mode `block`) or `"warn"`, system_message starting with `✕ Compliance check required` or carrying the `rbg.policy_context` template. SubagentStart with `subagent_type` matching `rbg` clears the counter.
+**Healthy fire**: PreToolUse with `tool_name` ≠ infrastructure/read-only, `output.verdict="deny"` (mode `block`) or `"warn"`, system_message starting with `✕ 0 remaining — compliance check now required` (aops_47d0a754 — down-to-zero framing, replaces the old up-counting `✕ Compliance check required` text) or carrying the `rbg.policy_context` template. SubagentStart with `subagent_type` matching `rbg` clears the counter.
 
 **Visible icons** (`format_gate_status_icons` in `router.py`): `◇ N` during countdown window, `◇` when over threshold.
 
@@ -325,7 +325,7 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 
 ### How it's configured
 
-- **Mode**: `polecat.yaml` → the resolved surface's `gates.qa` (`warn` | `block` | `off`) — `face`/`crew`/`worker`/`subagent` each set it explicitly.
+- **Mode**: `polecat.yaml` → the resolved surface's `gates.qa` (`warn` | `block` | `off`) — `face`/`crew`/`worker`/`subagent` each set it explicitly, no shared base, no session-type branching in the gate engine itself. **Target posture** (`aops-05d487c4`, `task-8e506604`): `face`/`crew` stay `warn` (interactive/crew are advisory-only); `worker.gates.qa: block` makes QA required for `polecat run` sessions specifically. This is filed as a companion PR to `nicsuzor/sessions`' `polecat.yaml` — until it merges, live polecat runs still observe `warn`. See `ENFORCEMENT-MAP.md`'s `qa` row.
 - **Close trigger**: `update_task` PostToolUse with input matching `in_progress` (task claim). Write-tool use does not close the QA gate — only an explicit task claim activates it.
 - **Reopen triggers**: (1) any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse` with `sticky_until=["UserPromptSubmit"]`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
 - **Re-arm trigger**: `UserPromptSubmit` → clears sticky latch, then fires re-arm trigger → CLOSED. Only re-arms when a task is bound (`has_bound_task` custom check) — sessions without a claimed task skip the QA gate entirely. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a skill invocation owns its own finishing format, so it must not re-arm the gate. The exclusion suppresses the close only — it never opens the gate.
@@ -408,9 +408,14 @@ See [`forensics-details.md`](../../aops-core/skills/aops/references/forensics-de
 
 ## `ida` gate {#ida-gate}
 
-A Stop-triggered honesty/criterion-substitution reminder (fire-once per turn) plus a PreToolUse `AskUserQuestion` nudge, firing uniformly for every session including headless polecat workers with no human present to action it. Live in code — `aops-core/lib/gates/definitions.py`, `GateConfig(name="ida", ...)`.
+A Stop-triggered honesty/criterion-substitution reminder (fire-once per turn) plus a PreToolUse `AskUserQuestion` nudge. Live in code — `aops-core/lib/gates/definitions.py`, `GateConfig(name="ida", ...)`. The gate engine itself still carries zero session-type branching (see `hooks/gate_config.py`'s module docstring) — scoping is entirely a config-value split across `polecat.yaml`'s four surface sections, under DEFAULTS-NONE (no code-level fallback dict — see [§ How to configure gates](#how-to-configure-gates)):
 
-Design rationale for the honesty standard itself lives at [`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate). Disposition — whether/how this gate's enforcement is reshaped — is OPEN, pending the session-type walk ([[aops_3eabb0ae]]); this is the canonical statement of that disposition — [`specs/interactive-experience/head-role-charter.md`](../interactive-experience/head-role-charter.md) also binds to this anchor and should be re-checked once the walk rules.
+- **Dispatched surfaces (`crew`, `worker`, `subagent`) — `off`.** `polecat/defaults/polecat.yaml.example` sets `gates.ida: off` explicitly in each of the three dispatched sections (no inheritance — each is independently required). Every polecat-launched container always gets an explicit `IDA_GATE_MODE` staged from the matching section, so this value is authoritative for every worker/sibling-agent/subagent session — the gate is structurally absent there, never merely defaulted off.
+- **Head/face surface (bare interactive CLI, no polecat launcher) — `warn`.** `polecat.yaml.example`'s `face.gates.ida` is `warn` (the ONE gate whose `face` value isn't `off`) — `hooks/gate_config.py`'s `__getattr__` resolves this directly (step 2 of its two-step resolution) for any caller that reaches it without a launcher having already staged the env var, i.e. by construction the direct interactive session a researcher runs against the `ida` agent, the head/face surface [`specs/interactive-experience/head-role-charter.md`](../interactive-experience/head-role-charter.md) protects.
+
+Design rationale for the honesty standard itself lives at [`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate). This face-scoping is the ratified disposition (aops_5ea32596, superseding the prior "OPEN pending the session-type walk" note); the residual nuance the session-type walk ([[aops_3eabb0ae]]) may still need to resolve is a single edge case — whether a long-running "WSL crew container" instance used as the live orchestrator's own daily-driver session (as opposed to a dispatched `polecat crew` sibling-agent session) should read the head-surface `warn` posture instead of the dispatched-surface `off` one; today it resolves via whatever env that specific container's launch path sets, which is outside `polecat.yaml`'s `crew`/`worker` sections entirely (see the `default` scope note in `polecat.yaml.example`).
+
+**Verify the scoping**: `uv run pytest tests/lib/test_polecat_config.py::test_canonical_example_scopes_ida_gate_off_dispatched_surfaces tests/hooks/test_gate_config.py::TestIdaGateBareCliFallback -q`.
 
 ---
 

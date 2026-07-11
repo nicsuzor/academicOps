@@ -76,7 +76,10 @@ _SYSTEM_MARKERS = (
     "[Request interrupted",
     "This session is being continued",
     "Compliance report ready",
-    "Compliance check required",
+    "compliance check",  # covers "Compliance check required" and the
+    # down-to-zero "compliance check now required" wording (aops_47d0a754) —
+    # generalized past the literal phrase so a future reword doesn't
+    # silently unmatch it again.
     "Your task has already been claimed",
     "Caveat: The messages below",
     "<command-name>",

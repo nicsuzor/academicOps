@@ -134,8 +134,16 @@ def test_pretooluse_deny_without_agy_client(monkeypatch, tmp_path):
         },
     )
 
-    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse does not support context_injection" in stderr
+    # Post-fix (task_499355a9, aops_e5e2c80f): the undeliverable advisory
+    # (context_injection) is dropped loudly instead of crashing the hook
+    # subprocess. The deny itself (allowTool=False + denyReason) still ships.
+    assert output.get("allowTool") is False, (
+        f"Enforcer DENY must still block without worker posture. Got {output!r}. stderr: {stderr}"
+    )
+    assert output.get("denyReason"), (
+        f"denyReason (short_reason) must still be delivered: {output!r}"
+    )
+    assert "WARNING: agy PreToolUse block cannot carry advisory text" in stderr
 
 
 def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
@@ -164,8 +172,13 @@ def test_warn_mode_enforcer_allows_without_agy_client(monkeypatch, tmp_path):
         },
     )
 
-    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse allow/warn does not support context_injection" in stderr
+    # Post-fix (task_499355a9, aops_e5e2c80f): the undeliverable advisory
+    # (context_injection) is dropped loudly instead of crashing the hook
+    # subprocess; the underlying allow still ships.
+    assert output.get("allowTool") is True, (
+        f"Warn-mode enforcer must still allow the tool. Got {output!r}. stderr: {stderr}"
+    )
+    assert "WARNING: agy PreToolUse allow/warn cannot carry advisory text" in stderr
 
 
 # ---------------------------------------------------------------------------

@@ -284,7 +284,8 @@ face:                      # direct/interactive CLI sessions
     handover: off          # warn | block | off
     qa: off
     rbg: off
-    ida: off
+    ida: warn            # face-scoped honesty gate — warn on the head/
+                         # interactive surface it exists to protect; see below
     hydration: off
     rbg_review: off
     rbg_threshold: 50      # write ops between rbg checks
@@ -295,7 +296,7 @@ crew:                      # polecat crew — interactive multi-agent sessions
     handover: block        # crew sessions must hand over before exiting
     qa: warn
     rbg: warn
-    ida: warn
+    ida: off             # off for every polecat/crew (dispatched) session
     hydration: off
     rbg_review: block
     rbg_threshold: 50
@@ -306,7 +307,7 @@ worker:                    # polecat run — autonomous headless workers
     handover: block         # workers must hand over before exiting
     qa: warn
     rbg: block
-    ida: warn
+    ida: off
     hydration: off
     rbg_review: block
     rbg_threshold: 30
@@ -318,6 +319,8 @@ subagent:                  # Task-tool-dispatched subagents
 ```
 
 See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema. A missing `polecat.yaml`, or a missing required key in ANY of the four sections, is a hard failure at session start — including for a direct/interactive CLI session, which resolves `face` the same way a dispatched worker resolves `worker`.
+
+`ida`'s `warn` on `face` above is deliberate, not a stray default: this is the face-scoped honesty gate (see [`specs/agents/ida.md`](specs/agents/ida.md#honesty-at-stop--the-ida-gate)), and a bare direct-CLI session is, by construction, the interactive head/face surface it exists to protect — every dispatched polecat/crew/subagent session gets an explicit `off` instead.
 
 To change gate behaviour for a specific project or machine, edit `polecat.yaml` directly, or use the optional per-machine `<polecat_home>/local.yaml` overlay (`gates: {...}`, applied uniformly across all four surfaces on that machine — see the schema comments). Note: on Mac/WSL host, environment variables set in CLI settings `env` blocks do not reliably reach the hooks — this is why gate posture is resolved from `polecat.yaml`, not env vars, at the point of use. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 
