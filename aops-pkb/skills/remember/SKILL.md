@@ -54,7 +54,7 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 | **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow                                                               |
 | **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                                                                           |
 | **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/`                                                            |
-| **Daily notes**        | `mcp__pkb__create(type="daily")`                      | `daily/` — canonical; SSoT is [[aops-pkb/skills/daily/SKILL.md]], do not restate the path here |
+| **Daily notes**        | `mcp__pkb__create(type="daily")`                      | Canonical; SSoT is [[aops-pkb/skills/daily/SKILL.md]] — derive the path there, don't restate it here |
 
 **Episodic classification:** Operational records (agent activity, debug logs) → update parent task body only; do not create `$ACA_DATA/` docs. Durable episodic (meeting notes, user daily notes) → save to `$ACA_DATA/` with correct type frontmatter.
 
