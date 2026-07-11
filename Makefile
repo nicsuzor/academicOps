@@ -27,14 +27,19 @@ CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 # Additional published plugins that `make install` should install — everything on
-# the academicOps marketplace EXCEPT aops-cowork (which has its own isolated
-# marketplace/flow, see install-cowork). Soft installs: a plugin's asset can
-# legitimately be absent from a given dist build, so a failure warns and
-# continues (mirrors aops-tools). Claude-only: no antigravity builds exist for
-# these, so install-agy stays core+tools.
+# the academicOps marketplace EXCEPT aops-cowork (its own isolated
+# marketplace/flow, see install-cowork) and aops-ts (see below). Soft installs: a
+# plugin's asset can legitimately be absent from a given dist build, so a failure
+# warns and continues (mirrors aops-tools). Claude-only HERE (install-agy stays
+# core+tools) is a scope choice, not a build gap: antigravity builds of both DO
+# exist (build.py emits dist/aops-extras-antigravity, dist/aops-pkb-antigravity)
+# — see specs/build-and-install.md.
 CLAUDE_EXTRAS_PLUGIN_NAME := aops-extras@academicOps
-CLAUDE_TS_PLUGIN_NAME := aops-ts@academicOps
 CLAUDE_PKB_PLUGIN_NAME := aops-pkb@academicOps
+# aops-ts is intentionally NOT auto-installed by any target here: it's an
+# opt-in Tailscale bring-up hook for remote/cloud sessions (specs/build-and-install.md),
+# and joining the tailnet / shipping transcripts should stay an explicit
+# per-machine choice. Install it by hand: `claude plugin install aops-ts@academicOps`.
 
 # LOCAL-dev marketplace + plugin names. `make dev`/`make install-dev` register the
 # built dist/ as a marketplace named `aops` (generated at dist/.claude-plugin/
@@ -245,6 +250,17 @@ clean-local:
 	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-core >/dev/null 2>&1 || true
 	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-tools >/dev/null 2>&1 || true
 	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
+	@# `agy plugin uninstall` only knows about plugins IT installed (via its own
+	@# copy-based `agy plugin install`); it has no record of the symlinks
+	@# install.py's dev path (`make dev`) drops at these same paths pointing at
+	@# dist/aops-antigravity — now deleted above. Strip only symlinks (never a
+	@# real agy-installed copy) so a stale/dangling dev link can never shadow or
+	@# collide with the live install-agy run that follows.
+	@for d in "$(HOME)/.gemini/config/plugins" "$(HOME)/.gemini/antigravity-cli/plugins"; do \
+		for p in aops-core aops-tools; do \
+			[ -L "$$d/$$p" ] && rm -f "$$d/$$p" && echo "  removed stale dev symlink $$d/$$p"; \
+		done; \
+	done; true
 	@echo "✓ Local installs cleared"
 
 ensure-docker:

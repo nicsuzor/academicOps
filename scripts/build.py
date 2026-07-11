@@ -758,8 +758,8 @@ def build_aops_core(
     # exclusions").
     if platform == "cowork":
         # _COWORK_BLOCK_RE (not a plain substring check) so documentation that
-        # merely MENTIONS the marker syntax in prose (e.g. BUILD.md explaining
-        # the mechanism) doesn't get mistaken for a real, matched marker block.
+        # merely MENTIONS the marker syntax in prose (e.g. specs/build-and-install.md
+        # explaining the mechanism) doesn't get mistaken for a real, matched marker block.
         #
         # Scan aops-core AND aops-pkb: aops-pkb inherited commands/pull.md
         # (and its cowork-only native-list-mirror paragraph) from aops-core in
@@ -1537,9 +1537,11 @@ def build_aops_pkb(
     enforcement is needed, ruling C1) and so, like aops-tools/aops-extras, ships
     no pyproject.toml/uv.lock.
 
-    Only the "claude" platform is implemented for now (mirrors aops-ts's scope).
-    Antigravity support can be added later following build_aops_core's
-    pattern if this module needs to ship there.
+    Both "claude" and "antigravity" platforms are built (see the platform
+    check below); aops-ts is Claude-only by contrast. Neither install-agy
+    (Makefile) nor install.py's dev-symlink path installs the antigravity
+    build anywhere yet — that's an install-time scope choice, not a gap in
+    this build function.
     """
     print(f"Building aops-pkb for {platform} (v{version})...")
     plugin_name = "aops-pkb"
