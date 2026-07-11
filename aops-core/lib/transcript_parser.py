@@ -1489,6 +1489,20 @@ def extract_timeline_events(turns: list[Any], session_id: str) -> list[dict[str,
                             }
                         )
 
+                m = re.search(
+                    r"(?:polecat\s+pkb\s+|pkb\s+)(claim_task|update_task|complete_task|release_task|update_body|decompose_task)[^\w]+([a-z][a-z0-9]*-[0-9a-f]{8})\b",
+                    cmd,
+                    re.IGNORECASE,
+                )
+                if m:
+                    action, task_id = m.groups()
+                    if action == "complete_task":
+                        _emit({"timestamp": ts, "type": "task_complete", "task_id": task_id})
+                    elif action == "release_task":
+                        _emit({"timestamp": ts, "type": "task_release", "task_id": task_id})
+                    else:
+                        _emit({"timestamp": ts, "type": "task_update", "task_id": task_id})
+
             if "pkb__create_task" in tool:
                 _emit(
                     {

@@ -20,6 +20,7 @@ import sys
 import textwrap
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -288,7 +289,9 @@ def _inherit_correlation_from_parent(
 
 
 def _finalize_correlation(
-    session_summary: "ParsedSession", initial_prompt: str | None = None
+    session_summary: "ParsedSession",
+    initial_prompt: str | None = None,
+    timeline_events: list[dict[str, Any]] | None = None,
 ) -> None:
     """Backfill task_id / pull_requests from launch context.
 
@@ -301,6 +304,14 @@ def _finalize_correlation(
     """
     if not session_summary.task_id:
         session_summary.task_id = _task_id_from_branches(session_summary.git_branches)
+
+    # Fallback 1.5: If no branch task id, check timeline tool calls for active task work
+    if not session_summary.task_id and timeline_events:
+        for ev in timeline_events:
+            if ev.get("type") in ("task_update", "task_complete", "task_release", "task_create"):
+                if ev.get("task_id"):
+                    session_summary.task_id = ev["task_id"]
+                    break
 
     prs = _resolve_pr_numbers(session_summary.git_branches, session_summary.repo)
 
@@ -2217,6 +2228,7 @@ Examples:
                 _finalize_correlation(
                     session_summary,
                     initial_prompt=extract_initial_prompt(timeline_events),
+                    timeline_events=timeline_events,
                 )
 
                 session_summary.session_type = session_naming.classify_session_type(
@@ -2473,7 +2485,9 @@ Examples:
 
             _populate_session_linkage(session_summary, entries)
             _finalize_correlation(
-                session_summary, initial_prompt=extract_initial_prompt(timeline_events)
+                session_summary,
+                initial_prompt=extract_initial_prompt(timeline_events),
+                timeline_events=timeline_events,
             )
 
             session_summary.session_type = session_naming.classify_session_type(
@@ -2640,7 +2654,9 @@ Examples:
 
         _populate_session_linkage(session_summary, entries)
         _finalize_correlation(
-            session_summary, initial_prompt=extract_initial_prompt(timeline_events)
+            session_summary,
+            initial_prompt=extract_initial_prompt(timeline_events),
+            timeline_events=timeline_events,
         )
 
         session_summary.session_type = session_naming.classify_session_type(
