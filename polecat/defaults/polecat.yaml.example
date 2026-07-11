@@ -110,12 +110,16 @@ default: {}
 crew_defaults: {}
 
 # `polecat run` — autonomous workers. Hooks always on, full policy.
-# To tighten enforcement for unsupervised sessions, replace {} with:
+# To tighten enforcement for unsupervised sessions, replace {} with real
+# gate-key overrides, e.g. (matches production posture: QA is REQUIRED from
+# polecats — Nic: "QA should at least be required from polecats" — while
+# interactive/crew sessions stay `warn`; see ENFORCEMENT-MAP.md `qa` row):
 #   run_defaults:
 #     gates:
 #       handover: block
-#       enforcer: block
-#       enforcer_threshold: 30
+#       qa: block
+#       rbg: block
+#       rbg_threshold: 30
 run_defaults: {}
 
 # ---------------------------------------------------------------------------
