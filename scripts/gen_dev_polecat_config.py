@@ -49,6 +49,22 @@ ANTIGRAVITY_PLUGINS = [
 ]
 
 CLAUDE_CACHE_ROOT = "/home/worker/.claude/plugins/cache/academicOps"
+
+
+def sanitize_cache_version(version: str) -> str:
+    """Match Claude Code's plugin installer's cache-dir naming.
+
+    marketplace.json versions carry SemVer build metadata as `+g<sha>`
+    (see scripts/build.py's `_with_build_metadata`), but the installer
+    writes the real `installed_plugins.json` installPath / cache dir with
+    `+` replaced by `-` (confirmed live: `0.3.78+ga7f022b7` source version
+    installs to `.../0.3.78-ga7f022b7/`, task_499355a9). The live-edit
+    mount target must use the same encoding or it silently binds to a
+    directory nothing reads.
+    """
+    return version.replace("+", "-")
+
+
 # NOT ~/.gemini/antigravity-cli/plugins/ (that's `agy plugin install`'s
 # COPY SOURCE, baked in once at image-build time — the Dockerfile installs
 # from it but agy never re-reads it after). The path agy's hook router
@@ -117,7 +133,7 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
                 f"warning: {dist_dir} not found — skipping (run `make build-dev`)", file=sys.stderr
             )
             continue
-        container_dest = f"{CLAUDE_CACHE_ROOT}/{plugin_name}/{version}"
+        container_dest = f"{CLAUDE_CACHE_ROOT}/{plugin_name}/{sanitize_cache_version(version)}"
         mounts.extend(editable_mounts(dist_dir, container_dest))
 
     for dist_name, plugin_name in ANTIGRAVITY_PLUGINS:
