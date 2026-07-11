@@ -212,7 +212,7 @@ Subagent dispatches matching `^(aops[-_](core|pkb)[:_])?rbg$` reset the counter 
 # Live counter (since session start or last check)
 jq -r 'select(.hook_event=="PostToolUse") | .output.system_message // empty' \
   ~/.claude/projects/*/$(ls -1t ~/.claude/projects/*/ | head -1)*-hooks.jsonl \
-  | grep -E '◇|Compliance check' | tail -5
+  | grep -iE '◇|compliance check' | tail -5
 
 # Find PreToolUse blocks where the rbg gate denied
 grep '"hook_event":"PreToolUse"' <hooks.jsonl> \
@@ -223,7 +223,7 @@ grep '"hook_event":"SubagentStart"' <hooks.jsonl> \
   | jq -r 'select(.subagent_type|test("rbg"))' | wc -l
 ```
 
-**Healthy fire**: PreToolUse with `tool_name` ≠ infrastructure/read-only, `output.verdict="deny"` (mode `block`) or `"warn"`, system_message starting with `✕ Compliance check required` or carrying the `rbg.policy_context` template. SubagentStart with `subagent_type` matching `rbg` clears the counter.
+**Healthy fire**: PreToolUse with `tool_name` ≠ infrastructure/read-only, `output.verdict="deny"` (mode `block`) or `"warn"`, system_message starting with `✕ 0 remaining — compliance check now required` (aops_47d0a754 — down-to-zero framing, replaces the old up-counting `✕ Compliance check required` text) or carrying the `rbg.policy_context` template. SubagentStart with `subagent_type` matching `rbg` clears the counter.
 
 **Visible icons** (`format_gate_status_icons` in `router.py`): `◇ N` during countdown window, `◇` when over threshold.
 
