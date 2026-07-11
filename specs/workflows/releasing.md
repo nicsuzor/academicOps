@@ -1,3 +1,11 @@
+---
+id: releasing
+title: "Release & Publish Pipeline"
+type: spec
+permalink: releasing
+status: operative-target
+---
+
 # Release & Publish Pipeline — merge → tag → artifacts
 
 > Status: **operative-target**. This is the single owner-approvable contract for the

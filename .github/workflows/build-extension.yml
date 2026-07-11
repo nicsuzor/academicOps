@@ -120,7 +120,7 @@ jobs:
             # `version.py --get` here: it derives from `git describe --dirty`, and by
             # this point the build has dirtied the working tree, so it would emit
             # `X.Y.Z-dev.0+gSHA.dirty` even on a clean stable tag (G1 — see
-            # RELEASING.md §4). release-please owns the
+            # specs/workflows/releasing.md §4). release-please owns the
             # stable tag = manifest; the next step asserts that coherence. For a
             # prerelease, build.py --set-version normalises via sanitize_version() (the
             # semver-sort invariant the Claude/Gemini installers need).
