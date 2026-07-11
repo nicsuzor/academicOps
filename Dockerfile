@@ -141,6 +141,16 @@ RUN umask 000 && uv tool install ruff
 COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
+#
+# The two `gemini extensions install` steps below are guarded with a
+# directory-existence check: scripts/build.py no longer emits
+# dist/aops-gemini or dist/aops-tools-gemini (Gemini CLI plugin support was
+# removed, commit 93c815263), so AOPS_DIST_SOURCE=local builds (make
+# build-docker / build-docker-dev, both built from THIS checkout's fresh
+# dist/) would otherwise fail with "Install source not found." The published
+# `dist` branch (AOPS_DIST_SOURCE=remote, used by CI) still carries the
+# stale directories from before that commit, so the guard is a no-op there —
+# this only unblocks local builds, it does not change remote/CI behavior.
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && claude plugin marketplace add /tmp/aops-dist \
@@ -152,8 +162,8 @@ RUN umask 000 \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-gemini --consent --pre-release \
-    && GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-tools-gemini --consent --pre-release \
+    && ( [ ! -d /tmp/aops-dist/dist/aops-gemini ] || GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-gemini --consent --pre-release ) \
+    && ( [ ! -d /tmp/aops-dist/dist/aops-tools-gemini ] || GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-tools-gemini --consent --pre-release ) \
     && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && cp -r /tmp/aops-dist/dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-core \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
