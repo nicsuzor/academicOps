@@ -23,36 +23,36 @@ tools:
   - mcp__zot__*
   # PKB — read (aops-core does not own the PKB interface, it consumes
   # aops-pkb's — see head-role-charter.md's Delegation Rule / Persona section)
-  - mcp__plugin_aops-pkb_pkb__search
-  - mcp__plugin_aops-pkb_pkb__get_task
-  - mcp__plugin_aops-pkb_pkb__get_task_children
-  - mcp__plugin_aops-pkb_pkb__list_tasks
-  - mcp__plugin_aops-pkb_pkb__list_documents
-  - mcp__plugin_aops-pkb_pkb__task_search
-  - mcp__plugin_aops-pkb_pkb__retrieve_memory
-  - mcp__plugin_aops-pkb_pkb__list_memories
-  - mcp__plugin_aops-pkb_pkb__get_document
-  - mcp__plugin_aops-pkb_pkb__pkb_context
-  - mcp__plugin_aops-pkb_pkb__get_dependency_tree
-  - mcp__plugin_aops-pkb_pkb__get_network_metrics
-  - mcp__plugin_aops-pkb_pkb__graph_stats
-  - mcp__plugin_aops-pkb_pkb__top_n_by_metric
-  - mcp__plugin_aops-pkb_pkb__find_duplicates
-  - mcp__plugin_aops-pkb_pkb__pkb_orphans
-  - mcp__plugin_aops-pkb_pkb__pkb_trace
-  - mcp__plugin_aops-pkb_pkb__get_semantic_neighbors
-  - mcp__plugin_aops-pkb_pkb__task_summary
-  - mcp__plugin_aops-pkb_pkb__status
+  - mcp__plugin_aops-pkb_pkb__pkb__search
+  - mcp__plugin_aops-pkb_pkb__pkb__get_task
+  - mcp__plugin_aops-pkb_pkb__pkb__get_task_children
+  - mcp__plugin_aops-pkb_pkb__pkb__list_tasks
+  - mcp__plugin_aops-pkb_pkb__pkb__list_documents
+  - mcp__plugin_aops-pkb_pkb__pkb__task_search
+  - mcp__plugin_aops-pkb_pkb__pkb__retrieve_memory
+  - mcp__plugin_aops-pkb_pkb__pkb__list_memories
+  - mcp__plugin_aops-pkb_pkb__pkb__get_document
+  - mcp__plugin_aops-pkb_pkb__pkb__pkb_context
+  - mcp__plugin_aops-pkb_pkb__pkb__get_dependency_tree
+  - mcp__plugin_aops-pkb_pkb__pkb__get_network_metrics
+  - mcp__plugin_aops-pkb_pkb__pkb__graph_stats
+  - mcp__plugin_aops-pkb_pkb__pkb__top_n_by_metric
+  - mcp__plugin_aops-pkb_pkb__pkb__find_duplicates
+  - mcp__plugin_aops-pkb_pkb__pkb__pkb_orphans
+  - mcp__plugin_aops-pkb_pkb__pkb__pkb_trace
+  - mcp__plugin_aops-pkb_pkb__pkb__get_semantic_neighbors
+  - mcp__plugin_aops-pkb_pkb__pkb__task_summary
+  - mcp__plugin_aops-pkb_pkb__pkb__status
   # PKB — knowledge writes
-  - mcp__plugin_aops-pkb_pkb__create_memory
-  - mcp__plugin_aops-pkb_pkb__append
-  - mcp__plugin_aops-pkb_pkb__update_body
+  - mcp__plugin_aops-pkb_pkb__pkb__create_memory
+  - mcp__plugin_aops-pkb_pkb__pkb__append
+  - mcp__plugin_aops-pkb_pkb__pkb__update_body
   # PKB — lightweight capture + lifecycle
-  - mcp__plugin_aops-pkb_pkb__create_task
-  - mcp__plugin_aops-pkb_pkb__update_task
-  - mcp__plugin_aops-pkb_pkb__complete_task
-  - mcp__plugin_aops-pkb_pkb__release_task
-  - mcp__plugin_aops-pkb_pkb__claim_task
+  - mcp__plugin_aops-pkb_pkb__pkb__create_task
+  - mcp__plugin_aops-pkb_pkb__pkb__update_task
+  - mcp__plugin_aops-pkb_pkb__pkb__complete_task
+  - mcp__plugin_aops-pkb_pkb__pkb__release_task
+  - mcp__plugin_aops-pkb_pkb__pkb__claim_task
 ---
 
 # Ida — Interactive Academic-Research Co-Worker
