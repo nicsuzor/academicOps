@@ -22,6 +22,7 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
+    import mcp_tool_manifest
     from build_utils import (  # pyright: ignore[reportMissingImports]
         get_git_commit_sha,
         safe_copy,
@@ -1270,6 +1271,57 @@ def _assert_no_axiom_decoys(content_dir: Path) -> None:
         )
 
 
+def _assert_agent_frontmatter_mcp_tools_resolve(aops_root: Path) -> None:
+    """Fail the build if an agent's SOURCE `tools:` frontmatter grants an
+    explicit (non-wildcard) MCP tool name that doesn't resolve against the live
+    plugin MCP tool manifest (aops_35b7dce7 — the aops_b580e332 single-/double-
+    `pkb__`-prefix defect class: `mcp__plugin_aops-pkb_pkb__get_task` LOOKS
+    plausible but the real, live, callable name is
+    `mcp__plugin_aops-pkb_pkb__pkb__get_task`, because the aggregator's inner
+    `pkb` sub-server carries its own `pkb__` segment). Wildcard grants
+    (`mcp__plugin_*__*`) are unaffected — prefix-match tolerates the
+    aggregator's inner sub-server prefix regardless of what it is.
+
+    Runs against every package's SOURCE `agents/*.md` (discovered by globbing
+    `<aops_root>/*/agents`, so a new package needs no change here) rather than
+    built `dist/` output — catches the defect at authoring time, before any
+    platform-specific build transform runs, and covers aops-core, aops-pkb, and
+    any future agent-bearing package alike (not just aops-pkb).
+    """
+    import yaml
+
+    failures: list[str] = []
+    for agents_dir in sorted(aops_root.glob("*/agents")):
+        if not agents_dir.is_dir():
+            continue
+        for agent_file in sorted(agents_dir.glob("*.md")):
+            content = agent_file.read_text(encoding="utf-8")
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            try:
+                frontmatter = yaml.safe_load(parts[1])
+            except yaml.YAMLError:
+                continue
+            if not frontmatter:
+                continue
+            tools = frontmatter.get(
+                "tools", []
+            )  # allow-fallback: an agent with no tools: key legitimately grants none — nothing to check
+            if isinstance(tools, str):
+                tools = [t.strip() for t in tools.split(",") if t.strip()]
+            for tool in tools:
+                if not isinstance(tool, str) or not tool.startswith("mcp__"):
+                    continue
+                error = mcp_tool_manifest.classify_explicit_mcp_tool(tool)
+                if error:
+                    failures.append(f"{agent_file.relative_to(aops_root)}: {error}")
+    if failures:
+        raise RuntimeError(
+            "Agent frontmatter MCP tool-name manifest guard failed:\n  - " + "\n  - ".join(failures)
+        )
+
+
 def build_aops_tools(
     aops_root: Path,
     dist_root: Path,
@@ -1759,6 +1811,12 @@ def main():
     aops_root = Path(__file__).parent.parent.resolve()
     print(f"Info: aops_root inferred to {aops_root}")
     dist_root = aops_root / "dist"
+
+    # Anti-drift regression guard (aops_35b7dce7): every explicit MCP tool name
+    # in an agent's SOURCE frontmatter must resolve against the live plugin tool
+    # manifest, across every package build.py assembles — before any per-platform
+    # build below transforms/copies a single file.
+    _assert_agent_frontmatter_mcp_tools_resolve(aops_root)
 
     # Get version: use --set-version override or detect from git tags
     if args.set_version:
