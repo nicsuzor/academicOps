@@ -24,6 +24,8 @@ permalink: skills-verify
 
 Conduct rigorous QA reviews of artifacts to ensure correctness, complete implementation, and fitness for purpose.
 
+**Personality binding — earmarking.** This skill is earmarked to `marsha`: the "assume it's broken" default posture below (Core Directives) is a direct expression of her broken-until-proven-otherwise judgment register (`specs/agents/marsha.md`), not a generic QA checklist any agent could apply as well. Another agent could technically execute the steps, but the disposition the steps depend on — refusing to credit an artifact until it's independently proven, holding the line against agents' default eagerness to declare victory — is marsha's, and running this skill under a different disposition would silently soften the bar it's designed to hold.
+
 ## Step 0 — Premise Test (forced; runs BEFORE you read the diff)
 
 Before you read a single line of the diff, judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ — verbatim, as forcing-check item 0. **You cannot emit a `PASS` verdict without it; a bad premise is a `FAIL` regardless of test coverage** (green tests are the _expected surface_ of a bad premise, not a mitigant). Diffstat-first ordering is mandatory — reading the code first is exactly what lets a clean, well-tested surface launder a bad premise.
