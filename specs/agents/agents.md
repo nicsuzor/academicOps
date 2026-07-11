@@ -23,6 +23,17 @@ The framework strictly separates agent documentation from runtime instructions:
 2. **Agent Specifications** (`specs/agents/*.md`)
    - The acceptance contracts each agent is evaluated against: role, disposition, and fitness criteria for auditing the agent's own transcripts.
 
+## Personalities Are Not Skills
+
+An **agent personality** (this roster — Ida, Junior, pauli, rbg, marsha, james, …) defines conduct, judgment register, disposition, and responsibility: who the agent is and the standard it holds itself to. An **agent skill** (`*/skills/*/SKILL.md`, loaded via the `Skill` tool) defines a procedure or capability: how a job gets done. These are different kinds of artifact serving different purposes and must never be conflated.
+
+- **Default: skills are personality-agnostic.** Any sufficiently capable agent can execute any skill by applying its own judgment to the skill's procedure — most skills are executable by general-purpose agents or by more than one named specialist. A skill whose instructions silently assume the reader is one particular personality (a voice, a disposition, a judgment register baked into the procedure without being named as a dependency) is a defect: it has smuggled a personality dependency in through the back door instead of declaring it.
+- **Binding a skill to a personality is a deliberate, documented exception**, valid for exactly two reasons, and the skill states which reason applies at its own definition (not merely somewhere else in a spec):
+  1. **Earmarking** — the skill genuinely depends on that personality's judgment register to do its job correctly (e.g. `/verify` is earmarked to marsha's broken-until-proven-otherwise disposition).
+  2. **Permission control** — tool grants are deliberately restricted to force a workflow shape, independent of any judgment-register need (e.g. Playwright access gated to a QA role to keep authoring and verification separate). This is capability wiring, not a personality claim.
+- A skill that reads as written for, or reserved to, one personality without stating one of the two reasons above is a silent assumption, not a legitimate earmark — it should be made personality-agnostic, or given its missing justification, on sight.
+- **Corollary for review lenses.** The review-crew personalities below (pauli, rbg, marsha) name **judgment registers a review step must apply** when a workflow composes review into it — not an exclusive list of who is allowed to execute that step. Which agent physically carries a given lens is a dispatch decision, constrained only by reviewer ≠ executor.
+
 ## Core Agent Roster
 
 <!-- NS: might as well call them the 'face'... -->
