@@ -46,9 +46,9 @@ The orchestrator's current daily-driver surface. Claude Code runs **directly ins
 - **Engine**: Claude Code (interactive), running inside a long-running `polecat crew` container on WSL.
 - **Persistence**: The crew worktree at `/workspace` is persistent (mounted from the WSL host). The container itself is ephemeral — anything outside `/workspace` should be treated as wiped between sessions.
 - **Plugin source**: `aops-core` (and `aops-tools`) baked into the crew Docker image at build time — `claude plugin install …@academicOps` installs into `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` (the published plugin dirs live under `dist/` on `main`). No marketplace involvement at runtime; no local-install override mechanic. Plugin version is pinned at image build until the image is rebuilt.
-- **Hook env propagation**: The container receives env at launch (the pre-resolved `*_GATE_MODE` vars, `AOPS_POLECAT_CONTAINER=1`, `POLECAT_CREW_NAME`, `$AOPS_SESSIONS`, `$AOPS_POLECAT_CONFIG`, etc.) directly from the polecat launcher. There is **no `launchctl` / `.zshenv` hop** — the cross-surface env-stripping bug that bites Mac surfaces does not apply here. The launcher (`polecat/cli.py` + `lib/polecat_config.py`) reads `polecat.yaml` and resolves `for_mode("crew")` ON THE HOST at dispatch; the container's `gate_config.py` reads only the resulting `*_GATE_MODE` env vars, never `polecat.yaml`.
+- **Hook env propagation**: The container receives env at launch (the pre-resolved `*_GATE_MODE` vars, `AOPS_POLECAT_CONTAINER=1`, `POLECAT_CREW_NAME`, `$AOPS_SESSIONS`, `$AOPS_POLECAT_CONFIG`, etc.) directly from the polecat launcher. There is **no `launchctl` / `.zshenv` hop** — the cross-surface env-stripping bug that bites Mac surfaces does not apply here. The launcher (`polecat/cli.py` + `lib/polecat_config.py`) reads `polecat.yaml` and resolves `for_surface("crew")` (the explicit, self-contained `crew:` section — no overlay) ON THE HOST at dispatch; the container's `gate_config.py` reads only the resulting `*_GATE_MODE` env vars, never `polecat.yaml`.
 - **MCPs available**: PKB (`mcp__plugin_aops-core_pkb__*`) via Tailscale from the container — load via `ToolSearch select:mcp__plugin_aops-core_pkb__*` since they are deferred. Other MCPs depend on the crew launch config; verify per-session.
-- **Gates active**: Per `polecat.yaml crew_defaults` overlay + `gates.*`.
+- **Gates active**: Per `polecat.yaml`'s explicit `crew` section (`gates.*`) — no overlay, fully self-contained.
 - **Worker dispatch**: Direct — invoke polecat via `uv run --project ~/src/academicOps ~/src/academicOps/polecat/cli.py <subcommand> ...`. Can launch Jules via `pkb task | jules new --repo`. Can launch GHA via `gh workflow run`. No SSH hop required.
 - **Editing the canonical aops repo**: Do not edit `$AOPS` (`~/src/academicOps`) directly from this orchestrator container. Framework-file edits go through the PKB-task → polecat-worker → PR loop. Stealth edits from the orchestrator bypass review.
 - **Known traps**:
@@ -67,9 +67,9 @@ Native Claude Code installation on a developer machine (laptop, WSL, services-ne
 - **Engine**: Claude Code (Anthropic CLI / Claude.app)
 - **Persistence**: Persistent. Filesystem, settings, plugin cache all survive.
 - **Plugin source & override behaviour**: aops-core loaded from `~/.claude/plugins/cache/academicOps/aops-core/<ver>/` (most recent dir wins). Plugin enabled per `~/.claude/settings.json` `enabledPlugins`. No marketplace-override issue on this surface.
-- **Hook env propagation**: ⚠ **Broken.** `settings.json` `env` block doesn't propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). All `*_GATE_MODE` env vars in settings.json are dead — `gate_config.py` ignores env vars by design (hard-fail policy) and reads only from `polecat.yaml` via `$AOPS_SESSIONS`. Result: gates silently fail on import if `$AOPS_SESSIONS` isn't in hook env. → see _Cross-cutting: Hook env stripping_.
+- **Hook env propagation**: ⚠ **Broken.** `settings.json` `env` block doesn't propagate to hook subprocesses (`launchctl setenv` ignored; `.zshenv` partially sourced but `PATH` overridden). All `*_GATE_MODE` env vars in settings.json are dead. Since note_296e5520 §4 (DEFAULTS-NONE universal), `gate_config.py` resolves each `*_GATE_MODE` in two steps only: the env var (dead here), then `polecat.yaml`'s explicit `face` section (via `$AOPS_SESSIONS`/`$AOPS_POLECAT_CONFIG`) — there is no third, built-in-default step. Result: if `$AOPS_SESSIONS` (or `$AOPS_POLECAT_CONFIG`) reaches the hook env and points at a valid `polecat.yaml`, gates resolve correctly from `face`; if it does NOT reach the hook env, gate resolution now HARD-FAILS (loudly, at `SessionStart` — `session_env_setup.py` DENYs) instead of the old silent-import-failure/all-warn fallback. → see _Cross-cutting: Hook env stripping_.
 - **MCPs available**: Same set as the WSL crew container plus host-shell access. Specific MCP set depends on host's `settings.json` `mcpServers` block.
-- **Gates active**: ⚠ Currently none reliably — see hook env trap. After cleanup, `ida` / `handover` / `rbg` (formerly `custodiet`) / `qa` active per `polecat.yaml gates.*` — see [`GATES.md`](enforcement/GATES.md) for the runtime catalogue.
+- **Gates active**: Per `polecat.yaml`'s `face` section `gates.*`, IF `$AOPS_SESSIONS`/`$AOPS_POLECAT_CONFIG` reaches the hook env (see propagation trap above) — otherwise the session hard-fails at start rather than silently running ungated. See [`GATES.md`](enforcement/GATES.md) for the runtime catalogue.
 - **Worker dispatch**: Direct — can launch `pc run`, `pc crew`, `jules`, GHA workflows. The intended primary dispatcher surface alongside the WSL crew container.
 - **Known traps**: Hook env stripping (see above and "Cross-cutting notes" below) is the material trap here. Host-local housekeeping quirks (stale plugin-cache dirs, secret hygiene in `settings.json`) are tracked in the personal ops PKB, not here.
 - **Trust posture**: Full user trust.
@@ -121,7 +121,7 @@ The canonical autonomous worker. Headless Claude Code in a Docker container agai
 - **Plugin source & override behaviour**: `aops-core`/`aops-tools` baked into the Docker image at build time via `claude plugin install …@academicOps` (physically `~/.claude/plugins/cache/academicOps/aops-core/<ver>/`; the published plugin dirs live under `dist/` on `main`). No marketplace involvement at runtime. Plugin version pinned at image build time — may lag canonical source until image rebuild.
 - **Hook env propagation**: The launcher resolves the run-mode overlay from `polecat.yaml` ON THE HOST at dispatch and stages the resulting `*_GATE_MODE` vars into the container, alongside `AOPS_POLECAT_CONTAINER=1`. `gate_config.py` reads those env vars directly (never `polecat.yaml`). Other env (`$AOPS_SESSIONS`, etc.) propagated via container env at launch.
 - **MCPs available**: ⚠ **Significantly reduced.** PKB MCP requires Tailscale network access, which is host-side; container's reachability needs verification per-config. Aim is full PKB access; reality varies.
-- **Gates active**: Per `polecat.yaml run_defaults` overlay + `gates.*`. Reads same `polecat.yaml` as host but resolves with `for_mode("run")`.
+- **Gates active**: Per `polecat.yaml`'s explicit `worker` section (`gates.*`) — no overlay, fully self-contained. Reads the same `polecat.yaml` as host but resolves with `for_surface("worker")`.
 - **Worker dispatch**: Terminal — workers don't dispatch further work. They commit, push, exit.
 - **Known traps**:
   - **Stealth edits to canonical repo** — workers can `git push` directly to feature branches but should not edit framework files outside their task scope.
@@ -158,9 +158,9 @@ Interactive Docker session — multiple Claude Code instances cooperating in a p
 - **Engine**: Claude Code (interactive)
 - **Persistence**: Persistent worktree at `$POLECAT_HOME/polecat/crew/` (not disposable like `run` worktrees). Multiple crew sessions can revisit the same worktree.
 - **Plugin source & override behaviour**: `aops-core` baked into the Docker image at build (same image as `polecat run`; physically `~/.claude/plugins/cache/academicOps/aops-core/<ver>/`). Per `aops-d40b25a7`, crew should launch with Claude settings in 'user' mode.
-- **Hook env propagation**: The launcher resolves the crew-mode overlay from `polecat.yaml` ON THE HOST at dispatch and stages the resulting `*_GATE_MODE` vars into the container, alongside `AOPS_POLECAT_CONTAINER=1` and `POLECAT_CREW_NAME`. `gate_config.py` reads those env vars directly. `polecat.yaml` `crew_defaults: {}` block must exist (per inline YAML comment) — empty overlay is valid, but the key is required.
+- **Hook env propagation**: The launcher resolves `polecat.yaml`'s explicit `crew` section ON THE HOST at dispatch and stages the resulting `*_GATE_MODE` vars into the container, alongside `AOPS_POLECAT_CONTAINER=1` and `POLECAT_CREW_NAME`. `gate_config.py` reads those env vars directly. The `crew:` section is REQUIRED and fully explicit (no overlay/inheritance, no empty-block shortcut) — every key must be spelled out, exactly like `face`/`worker`/`subagent`.
 - **MCPs available**: ⚠ Per-launch; depends on `pc crew` flags.
-- **Gates active**: Per `polecat.yaml crew_defaults` overlay.
+- **Gates active**: Per `polecat.yaml`'s explicit `crew` section (`gates.*`).
 - **Worker dispatch**: Crew agents can hand off to sibling crew agents within the same session.
 - **Known traps**:
   - **Sudden silent exit** (`crew-session` PKB doc) — crew sessions that "just quit" after extended thinking are more likely API timeouts than OOM. Restart; no work lost (worktree preserved).
@@ -235,7 +235,7 @@ Asynchronous Google-infra worker. Receives a task spec, returns a session URL, e
 
 The `env` block in CLI settings does NOT propagate into hook subprocesses on Mac/CLI host surfaces. `launchctl setenv` is ignored by Claude.app; `.zshenv` is partially sourced but `PATH` is overridden. `gate_config.py` reads gate modes directly from environment variables (`os.environ.get`) with built-in defaults — it does not read `polecat.yaml` itself. The polecat launcher is the intermediary that reads `polecat.yaml` and stages the resolved modes as env vars.
 
-**Net effect on direct CLI sessions**: gates fall back to built-in defaults (all `warn`, hydration `off`) since no polecat launcher sets the env vars. To override, set `*_GATE_MODE` env vars in your shell profile (`~/.zshenv` / `~/.bashrc`), not in CLI settings.
+**Net effect on direct CLI sessions**: since no polecat launcher sets the env vars, `gate_config.py` resolves `polecat.yaml`'s `face` section itself (see note_296e5520 §4 — DEFAULTS-NONE is universal, no built-in code default). If `$AOPS_SESSIONS`/`$AOPS_POLECAT_CONFIG` also fails to reach the hook env, this now HARD-FAILS the session at start rather than silently running with a guessed posture. To override individual gates for a direct CLI session, set `*_GATE_MODE` env vars in your shell profile (`~/.zshenv` / `~/.bashrc`, not CLI settings) — these still take precedence over `polecat.yaml`'s `face` section — or edit `face:` in `polecat.yaml` directly.
 
 **Scope**: this bug bites surfaces that go through `launchctl` / `.zshenv` to reach hook subprocesses — i.e. the Mac/CLI host surfaces above. The WSL crew container and `polecat run/crew` containers receive env directly at container launch and are **not** affected.
 
@@ -256,17 +256,17 @@ Tracking: archived-but-still-true [academicops-459eb8f3] and [aops-1bf76d85]. Re
 
 Implication: when shipping a plugin change, multiple consumers need to pick it up via different mechanisms. PR landing isn't propagation.
 
-### Mode resolution (crew vs run vs direct)
+### Mode resolution (crew vs worker vs face vs subagent)
 
-The polecat launcher picks the overlay from the **dispatch subcommand** (`polecat crew` vs `polecat run`), resolves it from `polecat.yaml` ON THE HOST at dispatch, and stages the resulting `*_GATE_MODE` env vars into the container. There is no `POLECAT_SESSION_TYPE` label (removed in aops-b368109a); the container neither self-identifies a session type nor reads `polecat.yaml`. `gate_config.py` reads only the resulting `*_GATE_MODE` env vars. (Separately, `AOPS_POLECAT_CONTAINER=1` + `POLECAT_CREW_NAME` are resolved operational signals for state-dir routing and the handover gate's derived `session_type` — not gate-mode selectors.)
+`polecat.yaml` carries four explicit, independently-required, non-overlaid surface sections (note_296e5520 §4) — `face`, `crew`, `worker`, `subagent`. The polecat launcher picks the section by the **dispatch subcommand** (`polecat crew` → `crew`, `polecat run` → `worker`), resolves it from `polecat.yaml` ON THE HOST at dispatch via `PolecatConfig.for_surface(...)`, and stages the resulting `*_GATE_MODE` env vars into the container. There is no `POLECAT_SESSION_TYPE` label (removed in aops-b368109a); the container neither self-identifies a session type nor reads `polecat.yaml`. `gate_config.py` reads the resulting `*_GATE_MODE` env vars, falling back to resolving `polecat.yaml`'s `face` section itself (see "Hook env propagation" above) ONLY when no env var is present — never a built-in code default. (Separately, `AOPS_POLECAT_CONTAINER=1` + `POLECAT_CREW_NAME` are resolved operational signals for state-dir routing and the handover gate's derived `session_type` — not gate-mode selectors.)
 
-| Dispatch       | Config overlay applied by launcher                   | Surfaces                                           |
-| -------------- | ---------------------------------------------------- | -------------------------------------------------- |
-| `polecat crew` | `polecat.yaml:crew_defaults` over `session_defaults` | `polecat crew` sessions (incl. WSL crew container) |
-| `polecat run`  | `polecat.yaml:run_defaults` over `session_defaults`  | `polecat run` autonomous workers                   |
-| (unset)        | None — `gate_config.py` built-in defaults apply      | Direct CLI sessions (not polecat-launched)         |
+| Dispatch       | Config section resolved by launcher                                                   | Surfaces                                           |
+| -------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `polecat crew` | `polecat.yaml:crew` (self-contained)                                                  | `polecat crew` sessions (incl. WSL crew container) |
+| `polecat run`  | `polecat.yaml:worker` (self-contained)                                                | `polecat run` autonomous workers                   |
+| (unset)        | `polecat.yaml:face`, resolved directly by `gate_config.py` (not staged by a launcher) | Direct CLI sessions (not polecat-launched)         |
 
-For direct CLI sessions, no polecat launcher is involved — `gate_config.py` falls back to its built-in defaults; see "Hook env stripping" above for the resolved defaults and override instructions.
+For direct CLI sessions, no polecat launcher is involved — `gate_config.py` resolves `polecat.yaml`'s `face` section itself and hard-fails if it cannot (missing file, missing key); see "Hook env stripping" above for the propagation trap this interacts with.
 
 ---
 

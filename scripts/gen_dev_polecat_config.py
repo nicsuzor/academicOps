@@ -130,28 +130,33 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
         container_dest = f"{AGY_PLUGIN_ROOT}/{plugin_name}"
         mounts.extend(editable_mounts(dist_dir, container_dest))
 
+    # Every surface section is required and fully explicit — no overlay, no
+    # shared base (aops-core/lib/polecat_config.py hard-fails without every
+    # one of these keys in EACH of the four sections; A14: no builtin
+    # defaults, no guessing). The dev loop uses one identical posture for
+    # all four; production polecat.yaml differs per surface.
+    _dev_surface = {
+        "hooks_enabled": True,
+        "claude_model": "sonnet",
+        "gemini_model": "gemini-3.1-pro-preview",
+        "antigravity_model": "agy",
+        "debug": False,
+        "gates": {
+            "handover": "warn",
+            "qa": "warn",
+            "rbg": "warn",
+            "hydration": "off",
+            "ida": "warn",
+            "rbg_review": "warn",
+            "rbg_threshold": 50,
+        },
+    }
     return {
         "polecat_home": polecat_home,
-        # Required block — aops-core/lib/polecat_config.py hard-fails without
-        # every one of these keys (A14: no builtin defaults, no guessing).
-        "session_defaults": {
-            "hooks_enabled": True,
-            "claude_model": "sonnet",
-            "gemini_model": "gemini-3.1-pro-preview",
-            "antigravity_model": "agy",
-            "debug": False,
-            "gates": {
-                "handover": "warn",
-                "qa": "warn",
-                "rbg": "warn",
-                "hydration": "off",
-                "ida": "warn",
-                "rbg_review": "warn",
-                "rbg_threshold": 50,
-            },
-        },
-        "crew_defaults": {},
-        "run_defaults": {},
+        "face": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
+        "crew": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
+        "worker": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
+        "subagent": dict(_dev_surface, gates=dict(_dev_surface["gates"])),
         "docker": {"image": "ghcr.io/nicsuzor/aops-crew:dev"},
         "projects": {
             "aops-dev": {

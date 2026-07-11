@@ -76,23 +76,29 @@ def temp_polecat_home(tmp_path):
     home.mkdir(exist_ok=True)
     sessions = tmp_path / "sessions"
     sessions.mkdir(exist_ok=True)
-    config = {
-        "session_defaults": {
-            "hooks_enabled": True,
-            "claude_model": "claude-sonnet-4-6",
-            "antigravity_model": "agy",
-            "debug": False,
-            "gates": {
-                "handover": "warn",
-                "qa": "warn",
-                "enforcer": "warn",
-                "commit": "warn",
-                "hydration": "off",
-                "enforcer_threshold": 50,
-            },
+    # Every surface section is required and fully explicit — no overlay, no
+    # shared base (note_296e5520 §4).
+    _surface = {
+        "hooks_enabled": True,
+        "claude_model": "claude-sonnet-4-6",
+        "gemini_model": "gemini-3.1-pro-preview",
+        "antigravity_model": "agy",
+        "debug": False,
+        "gates": {
+            "handover": "warn",
+            "qa": "warn",
+            "rbg": "warn",
+            "hydration": "off",
+            "ida": "warn",
+            "rbg_review": "off",
+            "rbg_threshold": 50,
         },
-        "crew_defaults": {},
-        "run_defaults": {},
+    }
+    config = {
+        "face": dict(_surface, gates=dict(_surface["gates"])),
+        "crew": dict(_surface, gates=dict(_surface["gates"])),
+        "worker": dict(_surface, gates=dict(_surface["gates"])),
+        "subagent": dict(_surface, gates=dict(_surface["gates"])),
         "docker": {"image": "ghcr.io/nicsuzor/aops-crew"},
         "external_agents": {},
         "projects": {},

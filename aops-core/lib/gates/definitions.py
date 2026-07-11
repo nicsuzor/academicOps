@@ -119,15 +119,18 @@ GATE_CONFIGS = [
     # a code branch on session type. The lifecycle below (arm -> block ->
     # clear) is IDENTICAL for every session — the same initial_status, the
     # same triggers fire on every UserPromptSubmit regardless of who's driving.
-    # What differs across surfaces is purely which MODE is in effect:
-    #   * mode=off (built-in default — an ad hoc CLI session with no
-    #     polecat.yaml): the CLOSED state is inert, since neither
+    # What differs across surfaces is purely which MODE is in effect — resolved
+    # from polecat.yaml's explicit per-surface `gates.rbg_review` (face/crew/
+    # worker/subagent; note_296e5520 §4), never guessed or built in:
+    #   * mode=off (the `face` surface's default posture — an ad hoc/direct
+    #     CLI session): the CLOSED state is inert, since neither
     #     is_rbg_review_block_mode nor is_rbg_review_warn_mode ever matches
     #     "off" — no DENY/WARN is ever produced, so interactive users eat no
     #     per-turn rbg delay even though the gate mechanically arms/re-arms.
-    #   * mode=block (dispatched polecat/crew surfaces, set explicitly via
-    #     polecat.yaml session_defaults.gates.rbg_review): while CLOSED, the
-    #     Stop policy DENIES the exit and injects the rbg-dispatch instruction.
+    #   * mode=block (the `crew`/`worker`/`subagent` surfaces' default posture,
+    #     set explicitly via polecat.yaml's `gates.rbg_review` for that
+    #     surface): while CLOSED, the Stop policy DENIES the exit and injects
+    #     the rbg-dispatch instruction.
     #
     # Lifecycle (arm -> block -> clear):
     #   * BLOCK (mode=block/warn only): while CLOSED, the Stop policy

@@ -306,9 +306,10 @@ def shared_sessions_dir(monkeypatch: pytest.MonkeyPatch) -> Path:
     immediately with ``FileNotFoundError``. We seed it from the canonical
     version-controlled ``polecat/defaults/polecat.yaml.example`` — the same
     seed ``tests/conftest.py::ensure_test_environment`` uses — because it is
-    schema-complete (it carries every key ``load_polecat_config`` now requires,
-    e.g. ``session_defaults.antigravity_model``) and cannot drift from the
-    code's required schema the way a host's hand-maintained config can.
+    schema-complete (it carries every key ``load_polecat_config`` now requires
+    in EACH of the four explicit surface sections, e.g. ``worker.
+    antigravity_model``) and cannot drift from the code's required schema the
+    way a host's hand-maintained config can.
     Projects resolve by repo name (cloned into ``~/.aops/.repos``), not by
     host-specific absolute path, so the example resolves the ``aops`` project
     identically to the real config.

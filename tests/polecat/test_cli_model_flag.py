@@ -47,7 +47,7 @@ class TestResolveModelFlagAliases:
         # This is the canonical CORE.md form.
         client, model = _resolve_model_flag("antigravity")
         assert client == "antigravity"
-        assert model is None  # no override — defer to session_defaults.antigravity_model
+        assert model is None  # no override — defer to the resolved surface's antigravity_model
 
     def test_agy_alias_selects_antigravity_client_no_override(self):
         # --model agy is a short alias for antigravity
@@ -61,7 +61,7 @@ class TestResolveModelFlagAliases:
         # client (distinct from antigravity/agy) and defer to gemini_model.
         client, model = _resolve_model_flag("gemini")
         assert client == "gemini"
-        assert model is None  # no override — defer to session_defaults.gemini_model
+        assert model is None  # no override — defer to the resolved surface's gemini_model
 
     def test_claude_alias_selects_claude_client_no_override(self):
         client, model = _resolve_model_flag("claude")

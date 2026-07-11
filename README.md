@@ -140,7 +140,7 @@ For the full gate catalogue (state machines, triggers, debugging), see [`specs/e
 
 ### 4. Polecat — work dispatch
 
-Polecat spins up ephemeral, containerized agents against a specific PKB task — the mechanism behind `/dispatch`, `/pull`, and autonomous background workers. Before a container starts, the polecat launcher resolves gate posture for that session type — `run_defaults` for autonomous workers, `crew_defaults` for interactive crews — from `$AOPS_SESSIONS/polecat.yaml` (schema: [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example)) and stages it into the container; direct CLI sessions skip this and use the plugin's built-in gate defaults instead.
+Polecat spins up ephemeral, containerized agents against a specific PKB task — the mechanism behind `/dispatch`, `/pull`, and autonomous background workers. `polecat.yaml` is the single posture source for every surface, with four explicit, independently-required sections — `face` (direct/interactive CLI), `crew`, `worker` (autonomous polecat workers), and `subagent` — no shared "defaults" base, no overlay, no built-in code fallback (schema: [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example)). Before a container starts, the polecat launcher resolves the matching surface section from `$AOPS_SESSIONS/polecat.yaml` and stages it into the container; a direct CLI session resolves its own `face` section the same way (or hard-fails if `polecat.yaml` can't be located or is missing a required key — DEFAULTS-NONE is universal, not polecat-only).
 
 Polecat ships as a console-script entry point in this package — see [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
 
@@ -245,7 +245,7 @@ make install-cowork        # local dev: builds + installs aops-coworklocal
 
 ## Configuration
 
-The framework works out of the box after installation. Sensible defaults apply — all quality gates warn (agents see reminders without being blocked) and project repos are auto-discovered by convention.
+`polecat.yaml` is the single posture source for every surface — face/interactive, crew, worker, subagent — and DEFAULTS-NONE is universal: a missing or malformed `polecat.yaml`, or a missing required key in any one of the four surface sections, is a hard failure, not a silent fallback. Copy [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) to `$AOPS_SESSIONS/polecat.yaml` and edit before running any session — including a direct/interactive CLI session, which resolves its posture from the `face` section the same way a dispatched worker resolves `worker`.
 
 ### Environment variables
 
@@ -274,42 +274,51 @@ Gates are the runtime quality checks introduced in [Five parts → Enforcement](
 
 #### How to configure gates
 
-There are three ways to configure gates, depending on how you run your sessions:
-
-**1. `polecat.yaml`** — for polecat-managed sessions (autonomous workers and crew). This is the primary configuration file:
+`polecat.yaml` is the ONLY place gate posture is configured, for every surface — there is no plugin-level built-in default to fall back to:
 
 ```yaml
-# $AOPS_SESSIONS/polecat.yaml
-session_defaults:
+# $AOPS_SESSIONS/polecat.yaml — every section below is REQUIRED and fully
+# explicit; nothing is inherited between them (no overlay/defaults naming).
+face:                      # direct/interactive CLI sessions
   gates:
-    handover: warn      # warn | block | off
+    handover: off          # warn | block | off
+    qa: off
+    rbg: off
+    ida: off
+    hydration: off
+    rbg_review: off
+    rbg_threshold: 50      # write ops between rbg checks
+  # ... hooks_enabled / claude_model / gemini_model / antigravity_model / debug
+
+crew:                      # polecat crew — interactive multi-agent sessions
+  gates:
+    handover: block        # crew sessions must hand over before exiting
     qa: warn
     rbg: warn
     ida: warn
     hydration: off
-    rbg_threshold: 50   # write ops between rbg checks
+    rbg_review: block
+    rbg_threshold: 50
+  # ...
 
-# Override per session type
-run_defaults:             # autonomous polecat workers
+worker:                    # polecat run — autonomous headless workers
   gates:
-    handover: block       # workers must hand over before exiting
+    handover: block         # workers must hand over before exiting
+    qa: warn
     rbg: block
+    ida: warn
+    hydration: off
+    rbg_review: block
     rbg_threshold: 30
+  # ...
 
-crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
+subagent:                  # Task-tool-dispatched subagents
+  gates: { ... }            # same shape as the three sections above
+  # ...
 ```
 
-See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema.
+See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema. A missing `polecat.yaml`, or a missing required key in ANY of the four sections, is a hard failure at session start — including for a direct/interactive CLI session, which resolves `face` the same way a dispatched worker resolves `worker`.
 
-**2. Environment variables** — for direct CLI sessions (Claude Code on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
-
-```bash
-export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
-export RBG_GATE_MODE=block          # stricter compliance checking
-```
-
-The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `RBG_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`.
-
-3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
+To change gate behaviour for a specific project or machine, edit `polecat.yaml` directly, or use the optional per-machine `<polecat_home>/local.yaml` overlay (`gates: {...}`, applied uniformly across all four surfaces on that machine — see the schema comments). Note: on Mac/WSL host, environment variables set in CLI settings `env` blocks do not reliably reach the hooks — this is why gate posture is resolved from `polecat.yaml`, not env vars, at the point of use. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 
 For the detailed gate reference (state machines, triggers, debugging), see [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md).

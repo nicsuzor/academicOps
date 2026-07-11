@@ -1,13 +1,15 @@
 #!/usr/bin/env -S uv run python
 """Single source of truth for polecat / crew session configuration.
 
-The whole framework — polecat (the docker runner) and aops-core (the hooks
-running inside the resulting Claude/Gemini sessions) — reads its operational
-defaults from one YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path
-named by ``AOPS_POLECAT_CONFIG``).
+The whole framework — polecat (the docker runner), aops-core (the hooks
+running inside the resulting Claude/Gemini sessions), and every OTHER surface
+(direct/interactive CLI, subagents) — reads its operational posture from ONE
+YAML file: ``$AOPS_SESSIONS/polecat.yaml`` (or the path named by
+``AOPS_POLECAT_CONFIG``).
 
 Per AXIOMS ``halt-on-failure`` (fail-fast) and ``single-source-of-truth`` (DRY, no
-defaults, no backwards-compat):
+defaults, no backwards-compat), and the v0.4 config-rework directive
+(``note_296e5520`` §4): DEFAULTS-NONE is UNIVERSAL, not polecat-only.
 - Missing or unlocatable file ⇒ hard-fail (A14). There are no built-in defaults
   and no warn-and-continue. Config must be present or the process exits.
   A present-but-malformed file also hard-fails.
@@ -21,14 +23,24 @@ Config locations (resolution order):
                                                  the file inside containers)
     2. ``$AOPS_SESSIONS/polecat.yaml``         (host default)
 
-Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
+Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc).
+Posture lives in FOUR explicit, independently-required, non-overlaid
+per-surface sections — ``face`` (direct/interactive CLI), ``crew``
+(``polecat crew``), ``worker`` (``polecat run``), and ``subagent``
+(Task-tool-dispatched subagents). There is no shared "defaults" base and no
+overlay/inheritance between them: each section must spell out every key in
+full, exactly like the others. This is deliberate — "explicit per-surface
+sections, no overlay/defaults naming" (note_296e5520 §4):
 
-    session_defaults:                         # applied to every session
-        hooks_enabled: bool                   # legacy field, must be true (#940)
-        claude_model: str                     # model id passed to `claude --model`
-        gemini_model: str                     # model id passed to `gemini --model`
-        antigravity_model: str               # model id passed to `agy --model`
-        debug: bool                           # forwarded as DEBUG_HOOKS=1
+    face:                                      # every one of the four blocks
+    crew:                                      # has this identical shape —
+    worker:                                    # nothing is inherited from a
+    subagent:                                  # sibling block.
+        hooks_enabled: bool                    # legacy field, must be true (#940)
+        claude_model: str                      # model id passed to `claude --model`
+        gemini_model: str                      # model id passed to `gemini --model`
+        antigravity_model: str                 # model id passed to `agy --model`
+        debug: bool                            # forwarded as DEBUG_HOOKS=1
         gates:
             handover: warn|block|off
             qa: warn|block|off
@@ -37,8 +49,6 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
             rbg_review: warn|block|off     # end-of-session rbg exit audit
             hydration: warn|block|off
             ida: warn|block|off            # Ida B. Wells reminder gate
-    crew_defaults: {...}                          # overlay for `polecat crew`
-    run_defaults:  {...}                          # overlay for `polecat run`
     docker:
         image: str
     external_agents:
@@ -48,6 +58,11 @@ Schema (see ``polecat/defaults/polecat.yaml.example`` for the canonical doc):
 ``polecat.yaml`` files but no longer branches behaviour: hooks are always
 on, plan-mode is the only claude path, the vanilla settings template is
 gone (issue #940). Setting it to false is silently ignored.
+
+CLI-supplied overrides (``polecat run --model ...``, ``--set key=value``) are
+a SEPARATE, deliberately-retained mechanism from the killed overlay concept:
+they are explicit, user-supplied, per-invocation patches applied AFTER a
+surface's full config has already resolved — see ``with_overrides``.
 """
 
 from __future__ import annotations
@@ -65,6 +80,10 @@ CONFIG_PATH_ENV = "AOPS_POLECAT_CONFIG"
 
 # Permitted gate verdict modes. Anything else ⇒ ValueError at load time.
 _GATE_MODES = frozenset({"warn", "block", "off"})
+
+# The four explicit, independently-required per-surface sections. No overlay,
+# no inheritance, no "defaults" base — each is a complete SessionDefaults.
+SURFACES: tuple[str, ...] = ("face", "crew", "worker", "subagent")
 
 
 @dataclass(frozen=True)
@@ -119,19 +138,17 @@ class ExternalAgent:
 
 @dataclass(frozen=True)
 class PolecatConfig:
-    """Frozen, fully-resolved session config.
+    """Frozen, fully-resolved posture config.
 
-    Two-level access:
-        cfg.session_defaults.<key>      — global defaults
-        cfg.for_mode("crew").<key>      — defaults overlaid with crew/run block
-
-    ``for_mode`` returns a new ``SessionDefaults`` with the per-mode overrides
-    applied; the underlying config is never mutated.
+    Four independent, fully-explicit per-surface sections — access via
+    ``for_surface("face"|"crew"|"worker"|"subagent")``. There is no shared
+    base and no overlay: each section was validated complete at load time.
     """
 
-    session_defaults: SessionDefaults
-    crew_defaults: dict[str, Any]
-    run_defaults: dict[str, Any]
+    face: SessionDefaults
+    crew: SessionDefaults
+    worker: SessionDefaults
+    subagent: SessionDefaults
     docker: DockerConfig
     external_agents: dict[str, ExternalAgent]
     source_path: Path
@@ -151,30 +168,39 @@ class PolecatConfig:
     # launching session deliberately does not hold (OAuth tokens).
     container_env_forward: tuple[str, ...] = ()
 
-    def for_mode(self, mode: str) -> SessionDefaults:
-        if mode == "crew":
-            overlay = self.crew_defaults
-        elif mode == "run":
-            overlay = self.run_defaults
-        else:
-            raise ValueError(f"unknown session mode: {mode!r} (expected 'crew' or 'run')")
-        return _apply_overlay(self.session_defaults, overlay)
+    def for_surface(self, surface: str) -> SessionDefaults:
+        """Return the fully-resolved, explicit posture for one surface.
 
-    def with_overrides(self, mode: str, overrides: dict[str, Any]) -> SessionDefaults:
-        """Return ``for_mode(mode)`` with CLI-supplied overrides applied."""
-        return _apply_overlay(self.for_mode(mode), overrides)
+        ``surface`` must be one of ``SURFACES`` ("face", "crew", "worker",
+        "subagent"). There is no overlay step here — the returned value IS
+        the section as loaded and validated; nothing is merged in from a
+        sibling section.
+        """
+        if surface not in SURFACES:
+            raise ValueError(f"unknown surface: {surface!r} (expected one of {SURFACES})")
+        return getattr(self, surface)
+
+    def with_overrides(self, surface: str, overrides: dict[str, Any]) -> SessionDefaults:
+        """Return ``for_surface(surface)`` with CLI-supplied overrides applied.
+
+        Distinct from the killed overlay/defaults concept: this is an
+        explicit, per-invocation, user-supplied patch (``polecat run --model
+        ...`` / ``--set key=value``), applied AFTER the surface's own
+        complete posture has already resolved.
+        """
+        return _apply_cli_overrides(self.for_surface(surface), overrides)
 
 
-def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDefaults:
-    """Apply a shallow overlay dict to a SessionDefaults instance.
+def _apply_cli_overrides(base: SessionDefaults, overrides: dict[str, Any]) -> SessionDefaults:
+    """Apply a validated CLI-override patch to a resolved SessionDefaults.
 
     Supports nested ``gates.<name>`` keys. Unknown keys ⇒ ValueError.
     """
-    if not overlay:
+    if not overrides:
         return base
     patch: dict[str, Any] = {}
     gates_patch: dict[str, Any] = {}
-    for key, value in overlay.items():
+    for key, value in overrides.items():
         if key == "gates" and isinstance(value, dict):
             gates_patch.update(value)
             continue
@@ -202,8 +228,9 @@ def _apply_overlay(base: SessionDefaults, overlay: dict[str, Any]) -> SessionDef
 def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[str, Any]:
     """Coerce + validate the ``gates`` block.
 
-    ``allow_partial`` is True when applying CLI overrides (only specified keys
-    are validated); False when loading the YAML (all keys required).
+    ``allow_partial`` is True when applying CLI/local-machine overrides (only
+    specified keys are validated); False when loading a surface section from
+    the YAML (all keys required — no partial sections, no fallback).
     """
     out: dict[str, Any] = {}
     for name in ("handover", "qa", "rbg", "hydration", "ida", "rbg_review"):
@@ -254,12 +281,13 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
 
 
 # =============================================================================
-# DEFAULTS — NONE.
+# DEFAULTS — NONE. UNIVERSAL (note_296e5520 §4).
 # =============================================================================
 # Per A14 (fail-fast) and the operator directive: config comes from where we
 # expect (polecat.yaml, located via $AOPS_POLECAT_CONFIG or $AOPS_SESSIONS) or
 # we hard-fail. There is NO builtin config, NO warn-and-continue, NO guessed
-# path. A missing or unlocatable file is an error, not a fresh-install convenience.
+# path, for ANY surface — face/interactive, crew, worker, or subagent alike.
+# A missing or unlocatable file is an error, not a fresh-install convenience.
 #
 # The ONE remaining default is the container-forwarding whitelist below: it is
 # an optional key whose omission yields the OAuth-token list. That is a
@@ -319,17 +347,26 @@ def resolve_polecat_home() -> Path:
 
 
 def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
-    """Load and validate ``polecat.yaml`` (host-only; never read in-container).
+    """Load and validate ``polecat.yaml`` — the single posture source for
+    EVERY surface (host-only load; never read in-container).
 
     Config is located via ``$AOPS_POLECAT_CONFIG`` or ``$AOPS_SESSIONS`` (or an
     explicit ``path``). If it cannot be located, or the file is absent or
     malformed, this HARD-FAILS (A14). There is no builtin config and no
     warn-and-continue — config comes from where we expect or not at all.
 
+    ALL FOUR surface sections (``face``, ``crew``, ``worker``, ``subagent``)
+    are parsed and validated eagerly, in full, on every load — there is no
+    lazy per-surface validation and no partial section. A missing/invalid key
+    in ANY one section fails the load for every surface, by design: whoever
+    launches first hits the same error a launch of any other surface would
+    have hit.
+
     The resolved config also folds in the per-machine ``local.yaml`` overlay
     found at ``<polecat_home>/local.yaml`` (``machine:`` and ``gates:``
-    overrides). The host injects the resolved values into containers as env
-    vars; containers never read either YAML file.
+    overrides, applied uniformly to all four surfaces). The host injects the
+    resolved values into containers as env vars; containers never read either
+    YAML file.
 
     Pass ``path`` to bypass env-var resolution (used by tests).
     """
@@ -350,19 +387,18 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
             f"polecat config: {cfg_path} must be a YAML mapping (got {type(raw).__name__})"
         )
 
-    sd_raw = _require_mapping(raw, "session_defaults", cfg_path)
-    gates = GatesConfig(**_validate_gates(_require_mapping(sd_raw, "gates", cfg_path)))
-    session_defaults = SessionDefaults(
-        hooks_enabled=_require_bool(sd_raw, "hooks_enabled", cfg_path),
-        claude_model=_require_str(sd_raw, "claude_model", cfg_path),
-        gemini_model=_require_str(sd_raw, "gemini_model", cfg_path),
-        antigravity_model=_require_str(sd_raw, "antigravity_model", cfg_path),
-        debug=_require_bool(sd_raw, "debug", cfg_path),
-        gates=gates,
-    )
-
-    crew_defaults = _coerce_overlay(raw.get("crew_defaults"), "crew_defaults", cfg_path)
-    run_defaults = _coerce_overlay(raw.get("run_defaults"), "run_defaults", cfg_path)
+    surfaces: dict[str, SessionDefaults] = {}
+    for surface_name in SURFACES:
+        surface_raw = _require_mapping(raw, surface_name, cfg_path)
+        gates = GatesConfig(**_validate_gates(_require_mapping(surface_raw, "gates", cfg_path)))
+        surfaces[surface_name] = SessionDefaults(
+            hooks_enabled=_require_bool(surface_raw, "hooks_enabled", cfg_path),
+            claude_model=_require_str(surface_raw, "claude_model", cfg_path),
+            gemini_model=_require_str(surface_raw, "gemini_model", cfg_path),
+            antigravity_model=_require_str(surface_raw, "antigravity_model", cfg_path),
+            debug=_require_bool(surface_raw, "debug", cfg_path),
+            gates=gates,
+        )
 
     docker_raw = _require_mapping(raw, "docker", cfg_path)
     docker = DockerConfig(image=_require_str(docker_raw, "image", cfg_path))
@@ -409,14 +445,15 @@ def load_polecat_config(path: Path | str | None = None) -> PolecatConfig:
 
     # Per-machine overlay at <polecat_home>/local.yaml. Optional file; when
     # present it may carry `machine:` (→ AOPS_MACHINE) and `gates:` overrides
-    # applied on top of session_defaults.gates. This is the SSoT home for the
-    # per-machine knobs that used to be loose outer-env vars.
-    machine, session_defaults = _apply_local_overlay(polecat_home, session_defaults)
+    # applied uniformly on top of every surface's gates. This is the SSoT home
+    # for the per-machine knobs that used to be loose outer-env vars.
+    machine, surfaces = _apply_local_overlay(polecat_home, surfaces)
 
     return PolecatConfig(
-        session_defaults=session_defaults,
-        crew_defaults=crew_defaults,
-        run_defaults=run_defaults,
+        face=surfaces["face"],
+        crew=surfaces["crew"],
+        worker=surfaces["worker"],
+        subagent=surfaces["subagent"],
         docker=docker,
         external_agents=external_agents,
         source_path=cfg_path,
@@ -432,21 +469,25 @@ def _expand_path(value: str) -> str:
 
 
 def _apply_local_overlay(
-    polecat_home: Path, session_defaults: SessionDefaults
-) -> tuple[str | None, SessionDefaults]:
+    polecat_home: Path, surfaces: dict[str, SessionDefaults]
+) -> tuple[str | None, dict[str, SessionDefaults]]:
     """Fold the per-machine ``<polecat_home>/local.yaml`` overlay into the config.
 
-    Returns ``(machine, session_defaults)``. The overlay is OPTIONAL — a missing
-    file yields ``(None, session_defaults)`` unchanged (this is not a config
+    Returns ``(machine, surfaces)``. The overlay is OPTIONAL — a missing
+    file yields ``(None, surfaces)`` unchanged (this is not a config
     *location* guess; it is a documented optional per-machine file). A present
     file must be a mapping; a malformed one hard-fails (A14). Recognised keys:
 
         machine: <str>        # short host name → AOPS_MACHINE
-        gates: {<name>: ...}  # partial gate-mode overrides over session_defaults
+        gates: {<name>: ...}  # partial gate-mode overrides, applied
+                               # uniformly to ALL FOUR surfaces on this
+                               # machine only (a per-machine tweak, not a
+                               # per-surface posture — deliberately distinct
+                               # from the killed overlay/defaults concept).
     """
     local_path = polecat_home / "local.yaml"
     if not local_path.exists():
-        return None, session_defaults
+        return None, surfaces
     with open(local_path) as f:
         raw = yaml.safe_load(f) or {}
     if not isinstance(raw, dict):
@@ -460,10 +501,12 @@ def _apply_local_overlay(
     if gates_raw is not None:
         if not isinstance(gates_raw, dict):
             raise RuntimeError(f"polecat config: {local_path}: 'gates' must be a mapping")
-        merged = replace(session_defaults.gates, **_validate_gates(gates_raw, allow_partial=True))
-        session_defaults = replace(session_defaults, gates=merged)
+        patch = _validate_gates(gates_raw, allow_partial=True)
+        surfaces = {
+            name: replace(sd, gates=replace(sd.gates, **patch)) for name, sd in surfaces.items()
+        }
 
-    return machine, session_defaults
+    return machine, surfaces
 
 
 def _require_mapping(d: dict[str, Any], key: str, src: Path) -> dict[str, Any]:
@@ -489,22 +532,3 @@ def _require_bool(d: dict[str, Any], key: str, src: Path) -> bool:
             f"polecat config: {src}: {key!r} must be a boolean (got {type(val).__name__})"
         )
     return val
-
-
-def _coerce_overlay(raw: Any, name: str, src: Path) -> dict[str, Any]:
-    """Coerce a per-mode overlay block to a dict (empty if absent).
-
-    Both ``crew_defaults`` and ``run_defaults`` must exist in the YAML for
-    schema clarity, but may be empty mappings.
-    """
-    if raw is None:
-        raise RuntimeError(
-            f"polecat config: {src}: {name!r} block missing. "
-            "Both crew_defaults and run_defaults must be present (use {} for empty)."
-        )
-    if not isinstance(raw, dict):
-        raise RuntimeError(f"polecat config: {src}: {name!r} must be a mapping")
-    # Validate any gates keys eagerly so YAML errors surface at load time.
-    if "gates" in raw and isinstance(raw["gates"], dict):
-        _validate_gates(raw["gates"], allow_partial=True)
-    return dict(raw)

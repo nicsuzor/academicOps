@@ -214,7 +214,7 @@ def _node_version_key(p: Path) -> tuple[int, ...]:
 
 # Client-name aliases for ``--model``: when the user passes one of these
 # names, polecat both selects the matching client AND uses the model id
-# from ``polecat.yaml session_defaults.<client>_model``. Anything else is
+# from the resolved surface's ``<client>_model``. Anything else is
 # treated as a literal model id and the client is inferred from the prefix
 # (``gemini-*`` → gemini, ``antigravity-*``/``agy-*`` → antigravity,
 # ``claude-*`` / sonnet|opus|haiku-* → claude).
@@ -251,7 +251,7 @@ def _resolve_model_flag(
       configured model for ``default_client`` is used.
     * A client-name alias (``"claude"``, ``"gemini"``, ``"antigravity"``,
       ``"agy"``) → ``(client, None)``. The client is switched; the configured
-      ``<client>_model`` from ``polecat.yaml session_defaults`` is used verbatim.
+      ``<client>_model`` from the resolved surface section is used verbatim.
       ``gemini`` selects the npm/nvm Gemini CLI (its own auth + workspace
       handling). ``antigravity``/``agy`` select the agy CLI wrapper, which runs
       a Gemini model internally — its model id is ``antigravity_model``. The two
@@ -325,7 +325,7 @@ def _resolve_model_flag(
 
 
 def _resolve_session_config(
-    mode: str,
+    surface: str,
     *,
     client: str,
     hooks_enabled: bool | None = None,
@@ -333,10 +333,14 @@ def _resolve_session_config(
     debug: bool | None = None,
     set_overrides: tuple[str, ...] = (),
 ) -> tuple[PolecatConfig, "SessionDefaults"]:  # type: ignore[name-defined]  # pyright: ignore[reportUndefinedVariable]  # noqa: F821
-    """Load polecat.yaml, apply per-mode overlay + CLI overrides, return both.
+    """Load polecat.yaml, apply CLI overrides for one surface, return both.
 
     The full ``PolecatConfig`` is returned alongside the resolved session
     defaults so callers can also reach ``cfg.docker`` etc.
+
+    ``surface`` is one of ``"crew"`` or ``"worker"`` — the explicit,
+    independently-required polecat.yaml section for this dispatch (no
+    overlay/inheritance: see ``lib.polecat_config``).
 
     ``client`` is "claude", "gemini", or "shell" — used to route a CLI
     ``--model`` override to the matching client field. ``--model`` with
@@ -369,7 +373,7 @@ def _resolve_session_config(
             raise click.UsageError(f"--set expects KEY=VALUE, got {entry!r}")
         key, _, value = entry.partition("=")
         overrides[key.strip()] = _coerce_set_value(value.strip())
-    resolved = cfg.with_overrides(mode, overrides) if overrides else cfg.for_mode(mode)
+    resolved = cfg.with_overrides(surface, overrides) if overrides else cfg.for_surface(surface)
     return cfg, resolved
 
 
@@ -1409,13 +1413,13 @@ def _build_docker_cmd(
     /home/worker/.claude/projects so Claude session transcripts persist on the host.
     """
     # Container image — sourced from polecat.yaml (no env-var override).
-    # ``cfg`` and ``hooks_enabled`` default to the loaded config's session
-    # defaults; production callers always pass both. Defaulting is for tests
+    # ``cfg`` and ``hooks_enabled`` default to the loaded config's `worker`
+    # surface; production callers always pass both. Defaulting is for tests
     # that exercise pure docker-arg construction without crew/run handlers.
     if cfg is None:
         cfg = load_polecat_config()
     if hooks_enabled is None:
-        hooks_enabled = cfg.session_defaults.hooks_enabled
+        hooks_enabled = cfg.worker.hooks_enabled
     image = cfg.docker.image
 
     # Resolve docker to an absolute path up front so the eventual
@@ -5093,7 +5097,7 @@ def run(
     # _resolve_model_flag at the top of run()).
     mode = "interactive" if interactive else "headless"
     cfg, session_cfg = _resolve_session_config(
-        "run",
+        "worker",
         client=cli_tool,
         model=model_override,
         debug=debug_flag,

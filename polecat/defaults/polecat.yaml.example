@@ -1,11 +1,16 @@
-# polecat.yaml — operational config for polecat / crew sessions.
+# polecat.yaml — operational config for EVERY surface (face/interactive,
+# crew, worker, subagent). Single posture source (note_296e5520 §4).
 #
 # Copy this file to $AOPS_SESSIONS/polecat.yaml and edit to taste.
 # Loaded by aops-core/lib/polecat_config.py — that module is the SSoT for
 # the schema; consult its docstring for field semantics.
 #
-# This file is the ONLY place these knobs are configured. There are no
-# legacy env-var fallbacks: missing fields hard-fail at startup.
+# This file is the ONLY place these knobs are configured. DEFAULTS-NONE is
+# UNIVERSAL: there are no legacy env-var fallbacks and no built-in code
+# defaults anywhere — missing fields hard-fail at load time, for every
+# surface, including a bare direct/interactive CLI session with no polecat
+# launcher involved (aops-core/hooks/gate_config.py resolves this file's
+# `face` section directly in that case; see its module docstring).
 
 # ---------------------------------------------------------------------------
 # polecat_home — REQUIRED. Local cache root for worktrees, sessions/,
@@ -21,48 +26,82 @@
 polecat_home: ~/.polecat
 
 # ---------------------------------------------------------------------------
-# session_defaults — applied to every polecat / crew session.
+# FOUR EXPLICIT PER-SURFACE SECTIONS — face, crew, worker, subagent.
+#
+# No overlay, no inheritance, no shared "defaults" base: each section below
+# spells out EVERY key in full, independently of its siblings. This is
+# deliberate (note_296e5520 §4, "explicit per-surface sections, no overlay/
+# defaults naming") — a missing key in any ONE section fails config load for
+# ALL surfaces, so nobody discovers a hole by being the first to hit it.
+#
+#   face      Direct/interactive CLI sessions — a bare `claude` or `gemini`
+#             invocation with no polecat launcher involved (incl. the WSL
+#             orchestrator's own posture). Resolved either by a launcher (n/a
+#             here) or, when absent, directly by gate_config.py's own
+#             fallback (see its module docstring) / session_env_setup.py's
+#             SessionStart hook.
+#   crew      `polecat crew` interactive multi-agent sessions (incl. the WSL
+#             crew container). Resolved on the host by polecat/cli.py at
+#             dispatch and staged into the container as env vars.
+#   worker    `polecat run` autonomous headless workers. Same resolution
+#             path as crew, different dispatch subcommand.
+#   subagent  Task-tool-dispatched subagents. Config-schema section exists
+#             and is validated identically to the other three; how it is
+#             actually consumed at runtime is a gate-engine/dispatch concern,
+#             not a config-loading one (out of scope for this file's SSoT
+#             role — see aops-core/lib/gates/definitions.py + GATES.md
+#             "Subagent & worker session scope").
+#
+# Each section's shape:
+#   hooks_enabled: bool                   # legacy field, must be true (#940)
+#   claude_model: str                     # model id passed to `claude --model`
+#   gemini_model: str                     # model id passed to `gemini --model`
+#   antigravity_model: str                # model id passed to `agy --model`
+#   debug: bool                           # forwarded as DEBUG_HOOKS=1
+#   gates:
+#     handover: warn|block|off
+#     qa: warn|block|off
+#     rbg: warn|block|off
+#     hydration: warn|block|off
+#     ida: warn|block|off
+#     rbg_review: warn|block|off
+#     rbg_threshold: int
+#
+# `--model claude`/`gemini`/`antigravity` (provider alias) resolves to
+# `<client>_model` for the DISPATCHED surface at runtime — the single source
+# of truth for the default model per surface. `--model <literal-id>` overrides
+# it in-process for one invocation without mutating this file.
 # ---------------------------------------------------------------------------
-session_defaults:
-  # Master switch. Collapses what used to be POLECAT_VANILLA_CREW +
-  # AOPS_HOOKS_OFF + permission-mode selection into one boolean.
-  #
-  #   true   ⇒ framework hooks ON,
-  #            claude --permission-mode=plan,
-  #            full claude-settings.json staged.
-  #   false  ⇒ framework hooks OFF (router.sh exits 0),
-  #            claude --dangerously-skip-permissions,
-  #            minimal claude-settings.json staged.
+
+face:
   hooks_enabled: true
-
-  # Default models for each client. Per-session-type overlays below may
-  # override either field independently. The `--model` CLI flag overrides
-  # the entry for the active client (selected by `--gemini` / no flag).
-  # `--model claude` (provider alias) resolves to claude_model at runtime —
-  # the single source of truth for your default Claude model. To dispatch
-  # Opus workers without pinning a version in every command, set this to
-  # claude-opus-4-8 and use `--model claude` in dispatch commands.
   claude_model: sonnet
-  # `--model gemini` selects the npm/nvm Gemini CLI; this is the model id
-  # passed to `gemini --model`. Distinct from antigravity_model below.
   gemini_model: gemini-3.1-pro-preview
-  # `--model agy`/`antigravity` selects the agy CLI wrapper (Docker), which
-  # runs a Gemini model internally; `agy` is the wrapper's own default.
   antigravity_model: agy
-
-  # Forwarded into containers as DEBUG_HOOKS=1 when true; the hook router
-  # then dumps raw stdin to /tmp/cc_hooks_<slug>.jsonl.
   debug: false
-
-  # Gate enforcement modes. Each value MUST be one of warn | block | off.
-  # handover: block — a session that did real work must hand over before Stop
-  # (read-only sessions are exempt automatically). /end-session and /dump unlock it.
-  # rbg_review: block — dispatched (polecat/crew) sessions must run a final rbg
-  # axiom audit before exit. The code-level fallback (used only when NO
-  # polecat.yaml applies at all, e.g. an ad hoc direct-CLI session) is "off" —
-  # this is the ONLY lever for that distinction; the gate engine itself no
-  # longer branches on session type.
   gates:
+    # Bare/ad hoc direct-CLI sessions: fully quiet posture (matches the
+    # PRE-existing built-in `gate_config.py` defaults this section replaces
+    # — every gate "off"). Operators who want an interactive session to
+    # actually enforce anything (warn/block) should edit this section, or
+    # rely on the `crew`/`worker` sections for task-bound dispatch, which
+    # DO enforce by default.
+    handover: off
+    qa: off
+    rbg: off
+    hydration: off
+    ida: off
+    rbg_review: off
+    rbg_threshold: 50
+
+crew:
+  hooks_enabled: true
+  claude_model: sonnet
+  gemini_model: gemini-3.1-pro-preview
+  antigravity_model: agy
+  debug: false
+  gates:
+    # Task-bound multi-agent sessions: handover + rbg_review block on exit.
     handover: block
     qa: warn
     rbg: warn
@@ -71,52 +110,37 @@ session_defaults:
     rbg_review: block
     rbg_threshold: 50
 
-# ---------------------------------------------------------------------------
-# POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).
-#
-# These are NOT a single hierarchy; they target different runtimes and are
-# owned separately:
-#
-#   default        Policies that apply to the ORCHESTRATOR (junior) ITSELF —
-#                  the host coordinator session. Set manually if needed. These
-#                  are NOT the policies junior sets on the workers it dispatches.
-#                  Reference/manual scope only: it is NOT read by
-#                  polecat_config.py's resolver (junior runs on the host and
-#                  reads its gate posture from its own env / gate_config.py
-#                  defaults). Formerly named ``local_defaults``.
-#   crew_defaults  Policies for `polecat crew` interactive multi-agent sessions.
-#   run_defaults   Policies for `polecat run` autonomous polecat workers.
-#
-# session_defaults (above) is the base posture; crew_defaults / run_defaults are
-# overlays applied on top of it AT DISPATCH by polecat_config.py, which then
-# injects the RESOLVED concrete values (gate modes, model, hooks_enabled, …)
-# straight into the container env. The container reads no policy from a
-# session-type label — it just receives the already-resolved settings.
-#
-# The overlay blocks (crew_defaults, run_defaults) MUST exist (use {} when
-# empty). Keys present override the matching key in session_defaults for that
-# scope; nested ``gates: {...}`` overrides are supported. Direct CLI sessions
-# (no polecat container) fall back to gate_config.py's built-in defaults.
-# ---------------------------------------------------------------------------
+worker:
+  hooks_enabled: true
+  claude_model: sonnet
+  gemini_model: gemini-3.1-pro-preview
+  antigravity_model: agy
+  debug: false
+  gates:
+    # Autonomous headless workers: no human present to action a warn, so
+    # handover + rbg_review both block.
+    handover: block
+    qa: warn
+    rbg: warn
+    hydration: off
+    ida: warn
+    rbg_review: block
+    rbg_threshold: 50
 
-# `default` — the ORCHESTRATOR (junior) scope. Manual/reference only; the
-# resolver does NOT read it. Documented here so all three scopes live together
-# and junior's own intended posture is legible. Mirror session_defaults keys
-# here if you want to record it.
-default: {}
-
-# `polecat crew` — interactive multi-agent sessions. Inherits
-# session_defaults; override specific gates as needed.
-crew_defaults: {}
-
-# `polecat run` — autonomous workers. Hooks always on, full policy.
-# To tighten enforcement for unsupervised sessions, replace {} with:
-#   run_defaults:
-#     gates:
-#       handover: block
-#       enforcer: block
-#       enforcer_threshold: 30
-run_defaults: {}
+subagent:
+  hooks_enabled: true
+  claude_model: sonnet
+  gemini_model: gemini-3.1-pro-preview
+  antigravity_model: agy
+  debug: false
+  gates:
+    handover: warn
+    qa: warn
+    rbg: warn
+    hydration: off
+    ida: warn
+    rbg_review: block
+    rbg_threshold: 50
 
 # ---------------------------------------------------------------------------
 # Docker runtime config. The ssh / unix daemon endpoint is read by the
@@ -195,8 +219,13 @@ external_agents:
 #   machine:  <short-name>          # → injected into containers as AOPS_MACHINE
 #                                     (artifact filenames; replaces the loose
 #                                      AOPS_MACHINE outer-env var)
-#   gates:    {<name>: warn|block|off}  # partial overrides on session_defaults
-#                                         gates for THIS machine only
+#   gates:    {<name>: warn|block|off}  # partial gate overrides applied
+#                                         UNIFORMLY to all four surfaces
+#                                         (face/crew/worker/subagent) above,
+#                                         for THIS machine only. Distinct
+#                                         from the per-surface sections: this
+#                                         is a machine-scoped tweak, not a
+#                                         posture definition.
 #
 # This is where per-machine knobs that used to be loose outer-env vars now
 # live. The host resolves them; containers receive only the resolved values.
@@ -434,4 +463,9 @@ crew_names:
 #   POLECAT_WORKTREE                      →  dead. No reader.
 #   AOPS_CLIENT_TYPE                      →  dead. Hydration template no
 #                                            longer references it.
+#   session_defaults / crew_defaults /    →  removed (note_296e5520 §4). Use
+#   run_defaults (old overlay schema)        the four explicit `face:` /
+#                                            `crew:` / `worker:` / `subagent:`
+#                                            sections above — no overlay, no
+#                                            shared base, no built-in default.
 # ===========================================================================

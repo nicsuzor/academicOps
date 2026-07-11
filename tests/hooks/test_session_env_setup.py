@@ -21,6 +21,21 @@ from hooks.session_env_setup import run_session_env_setup
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
 
+_POLECAT_EXAMPLE = (
+    Path(__file__).parent.parent.parent / "polecat" / "defaults" / "polecat.yaml.example"
+)
+
+
+def _seeded_polecat_config(tmp_path) -> str:
+    """Write a valid polecat.yaml (from the canonical example) under tmp_path
+    and return its path as a string, for tests that fully clear os.environ
+    and must still supply a locatable, valid config — DEFAULTS-NONE is
+    universal, so gate-mode resolution now hard-fails without one even in a
+    hook invoked directly (bypassing any real launcher)."""
+    dest = tmp_path / "polecat.yaml"
+    dest.write_text(_POLECAT_EXAMPLE.read_text())
+    return str(dest)
+
 
 class TestSessionEnvSetup:
     """Test environment setup logic."""
@@ -173,6 +188,10 @@ class TestSessionEnvSetup:
             "ACA_DATA": "/home/x/brain",
             "AOPS": "/home/x/src/academicOps",
             "AOPS_SESSIONS": "/home/x/.polecat/sessions",
+            # Gate-mode resolution is DEFAULTS-NONE universal: it needs a real,
+            # locatable polecat.yaml (AOPS_SESSIONS above is a fake path used
+            # only for the provisioning-check assertions below).
+            "AOPS_POLECAT_CONFIG": _seeded_polecat_config(tmp_path),
             "PKB_MCP_URL": "http://services:8026/mcp",
             "AOPS_BOT_GH_TOKEN": "ghp_present",
             "GITHUB_ACTIONS": "",
@@ -247,6 +266,12 @@ class TestSessionEnvSetup:
                     "PYTHONPATH": "",
                     "GITHUB_ACTIONS": "true",
                     "AOPS_ENABLED_PROVIDERS": "",
+                    # See _seeded_polecat_config: gate-mode resolution needs a
+                    # real polecat.yaml even in this synthetic GHA-shaped
+                    # invocation (real GHA runners never load this plugin at
+                    # all — this only exercises the provisioning-surface
+                    # branch in isolation).
+                    "AOPS_POLECAT_CONFIG": _seeded_polecat_config(tmp_path),
                 },
                 clear=True,
             ),
