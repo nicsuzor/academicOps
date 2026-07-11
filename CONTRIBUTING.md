@@ -28,4 +28,4 @@ uv run pytest -m slow -n 0 --timeout=300   # container e2e + live session tests
 
 Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `dev`.
 
-For how plugin artifacts are built, packaged per platform, installed (including the `make dev`/`make install` local dev loop), and cleaned up, see [`specs/build-and-install.md`](specs/build-and-install.md). For the full release/publish pipeline, see [`RELEASING.md`](RELEASING.md).
+For how plugin artifacts are built, packaged per platform, installed (including the `make dev`/`make install` local dev loop), and cleaned up, see [`specs/build-and-install.md`](specs/build-and-install.md). For the full release/publish pipeline, see [`specs/workflows/releasing.md`](specs/workflows/releasing.md).

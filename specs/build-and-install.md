@@ -45,7 +45,7 @@ sources are `./dist/aops-*`. End-users install from `dist` and never build local
 
 `academicOps`'s `main` branch is a **deprecated** stale orphan from the pre-migration
 topology (pending deletion — full branch-topology decision record in
-[`RELEASING.md`](../RELEASING.md) §2); nothing in this pipeline reads from or writes to it
+[`specs/workflows/releasing.md`](workflows/releasing.md) §2); nothing in this pipeline reads from or writes to it
 today. If you see `main` referenced as the install channel anywhere, that reference is
 stale — the live channel is `dist`.
 
@@ -382,8 +382,9 @@ Manual rebuild against a specific ref: push a pre-release tag at that commit —
 
 The full merge-gate → release → publish → version-sync contract (CI required checks, the
 two human approval gates, the `dev`/`dist` branch topology decision record, and the
-version/`uv.lock` sync hardening) is owned by [`RELEASING.md`](../RELEASING.md) — read
-that for release-pipeline detail; it isn't duplicated here.
+version/`uv.lock` sync hardening) is owned by
+[`specs/workflows/releasing.md`](workflows/releasing.md) — read that for
+release-pipeline detail; it isn't duplicated here.
 
 ## 7. Local verification
 

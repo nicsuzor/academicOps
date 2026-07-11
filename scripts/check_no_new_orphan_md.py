@@ -19,7 +19,9 @@ plugin (aops-core, aops-tools, ...) symmetrically:
 - specs/**/*.md                      specifications and architecture
 - .agents/**/*.md                    project-local rules + status
 - .github/**/*.md                    GitHub-surface docs
-- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md, CONTRIBUTING.md, RELEASING.md  at repo root only
+- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md, CONTRIBUTING.md  at repo root only
+  (RELEASING.md moved to specs/workflows/releasing.md — a spec, covered by
+  specs/**/*.md above, not a root-only file anymore)
 
 The point: agents must place new markdown in a canonical home, or the
 content belongs in the task body / parent epic / PKB instead.
@@ -58,7 +60,6 @@ ALLOWED_ROOT_FILES = {
     "GEMINI.md",
     "INSTALL.md",
     "CONTRIBUTING.md",
-    "RELEASING.md",
 }
 
 
