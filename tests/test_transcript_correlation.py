@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from lib.transcript_parser import Entry, ParsedSession
 
 
 @pytest.fixture(scope="module")
@@ -119,6 +120,99 @@ class TestPrSkipPrefixes:
     def test_release_and_worktree_still_skipped(self, ts) -> None:
         assert "release-please--" in ts._PR_SKIP_PREFIXES
         assert "worktree-" in ts._PR_SKIP_PREFIXES
+
+
+class TestTaskIdBackfillOntoSessionSummary:
+    """A task_id resolved deep inside reflection/env processing must also
+    land on session_summary — otherwise it reaches the insights JSON but
+    never the markdown frontmatter (session.task_id) or subagent artifacts
+    inherited from it (_build_subagent_session_summary copies
+    parent_summary.task_id). Reproduces the gap found auditing
+    2026-07-11 transcripts: insights.json had task_id, the -full.md
+    frontmatter and every subagent transcript of that session did not.
+    """
+
+    def test_minimal_summary_backfills_env_task_id_onto_session_summary(
+        self, ts, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path))
+        monkeypatch.setenv("AOPS_TASK_ID", "aops-fromenv01")
+        s = ParsedSession(uuid="deadbeef", repo=None)
+        assert s.task_id is None
+
+        usage_stats = ts.UsageStats(input_tokens=1)
+        ts._save_minimal_token_summary(
+            session_id="deadbeef",
+            date_str="20260601",
+            project="aops",
+            slug="",
+            timestamp=None,
+            usage_stats=usage_stats,
+            session_duration_minutes=None,
+            session_summary=s,
+        )
+
+        assert s.task_id == "aops-fromenv01"
+
+    def test_minimal_summary_does_not_overwrite_existing_task_id(
+        self, ts, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path))
+        monkeypatch.setenv("AOPS_TASK_ID", "aops-fromenv01")
+        s = ParsedSession(uuid="deadbeef", task_id="aops-preexist", repo=None)
+
+        usage_stats = ts.UsageStats(input_tokens=1)
+        ts._save_minimal_token_summary(
+            session_id="deadbeef",
+            date_str="20260601",
+            project="aops",
+            slug="",
+            timestamp=None,
+            usage_stats=usage_stats,
+            session_duration_minutes=None,
+            session_summary=s,
+        )
+
+        assert s.task_id == "aops-preexist"
+
+    def test_reflection_branch_backfills_task_id_onto_session_summary(
+        self, ts, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path))
+        monkeypatch.setenv("AOPS_TASK_ID", "aops-fromenv02")
+        s = ParsedSession(uuid="deadbeef", repo=None)
+        assert s.task_id is None
+
+        reflection_entry = {
+            "type": "assistant",
+            "uuid": "a1",
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "## Framework Reflection\n\n"
+                            "**Outcome**: success\n"
+                            "**Accomplishments**: did the thing\n"
+                            "**Next step**: none\n"
+                        ),
+                    }
+                ],
+            },
+        }
+        entries = [Entry.from_dict(reflection_entry)]
+
+        header, reflections = ts._process_reflection(
+            entries,
+            session_id="deadbeef",
+            date_str="20260601",
+            project="aops",
+            session_summary=s,
+        )
+
+        assert reflections, "expected the Framework Reflection block to parse"
+        assert s.task_id == "aops-fromenv02"
 
 
 class TestOverwriteTriggers:

@@ -134,6 +134,8 @@ A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Syml
 
 An agent may invoke skill `S` via the `Skill` tool iff (1) `Skill ∈ effective(agent)` and (2) `S ∈ agent.skills`. Skills are portable: they declare `allowed-tools` (what the skill needs), not which agents may call them. Invoking a skill temporarily extends the agent's turn; the effective tool set for that turn is `effective(agent) ∩ skill.allowed-tools`. If the intersection is empty for a required tool, the skill cannot run.
 
+Portability here is the permission-control half of the personalities-are-not-skills doctrine ([[agents-overview]] §Personalities Are Not Skills): restricting which agent's frontmatter grants a tool a skill needs is a legitimate way to force a workflow shape (e.g. gating Playwright to the QA role), but it is capability wiring, not a claim that the skill itself belongs to one personality.
+
 **Nested delegation.** A skill may itself invoke further skills or spawn sub-agents — only if the enclosing agent's `skills`/`subagents` list permits it. Nested invocation never expands authority; at every level the controlling envelope is the agent's own declared allowlists.
 
 **No implicit orchestrator privilege.** Orchestrator agents (james, supervisor, planner) have no special spawning rights. Each lists its `subagents` explicitly. "Orchestrator" is a role description, not a permission class.
