@@ -760,6 +760,11 @@ REAL_TOOL_NAMES: list[tuple[str, str, str]] = [
     ("mcp__pbk__get_network_metrics", "infrastructure", "typo: network metrics"),
     # ===== PKB MCP: versioned plugin prefix (seen once) =====
     ("mcp__plugin_0_2_25_pkb__list_tasks", "infrastructure", "versioned plugin: list tasks"),
+    # ===== PKB MCP: mcp__services__pkb__* ("services" MCP deployment shape,
+    # aops_9432bb35 — task_499355a9) =====
+    ("mcp__services__pkb__release_task", "infrastructure", "services: release task"),
+    ("mcp__services__pkb__get_task", "infrastructure", "services: get task"),
+    ("mcp__services__pkb__search", "infrastructure", "services: search"),
     # ===== PKB MCP: pkb__* (bare prefix, Gemini variant) =====
     ("pkb__search", "infrastructure", "bare: search"),
     ("pkb_orphans", "infrastructure", "bare: orphans"),

@@ -108,11 +108,16 @@ def test_agy_deny_uses_top_level_allow_tool(monkeypatch, tmp_path):
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
 
-    # Post-fix (strict format): The enforcer gate produces an advisory.
-    # Since agy PreToolUse does not support context_injection, the router
-    # will fail loudly as requested.
-    assert not output, f"Expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse does not support context_injection" in stderr
+    # Post-fix (task_499355a9, aops_e5e2c80f): PreToolHookResult's block branch
+    # carries denyReason fine but has no field for advisory (context_injection)
+    # text, which is structurally undeliverable on this event. The router now
+    # drops it loudly (stderr WARNING + delivery_dropped metadata) instead of
+    # crashing the whole hook subprocess — a crash produces zero stdout, which
+    # agy silently treats as a no-op (total information loss with no alarm).
+    assert output, f"Expected router to still emit a deny, got {output!r}. stderr: {stderr}"
+    assert output.get("allowTool") is False
+    assert output.get("denyReason"), "denyReason (short_reason) must still be delivered"
+    assert "WARNING: agy PreToolUse block cannot carry advisory text" in stderr
 
     # MUST NOT nest under permissionOverrides (the pre-fix shape that live agy
     # rejected with "syntax error … unexpected token {").
@@ -148,11 +153,14 @@ def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
 
     output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
 
-    # Post-fix (strict format): The enforcer gate produces an advisory.
-    # Since agy PreToolUse does not support context_injection, the router
-    # will fail loudly as requested, instead of secretly dropping or injecting it.
-    assert not output, f"setup: expected router to crash due to strict checking, got {output!r}"
-    assert "agy PreToolUse does not support context_injection" in stderr
+    # Post-fix (task_499355a9, aops_e5e2c80f): the undeliverable advisory
+    # (context_injection) is dropped loudly — WARNING + delivery_dropped
+    # metadata on the logged record — rather than crashing the hook
+    # subprocess (a crash yields zero stdout, silently treated as a no-op by
+    # agy). The deny itself (allowTool=False + denyReason) still ships.
+    assert output, f"setup: expected router to still emit a deny, got {output!r}. stderr: {stderr}"
+    assert output.get("allowTool") is False
+    assert "WARNING: agy PreToolUse block cannot carry advisory text" in stderr
 
     accepted, offending = is_accepted_by_agy(output, "PreToolUse")
     assert accepted, (

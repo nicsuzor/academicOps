@@ -1334,9 +1334,24 @@ class HookRouter:
                         f"agy PreToolUse deny requires short_reason. (Got advisory: {context!r})"
                     )
                 if context:
-                    raise ValueError(
-                        f"agy PreToolUse does not support context_injection (advisory: {context!r})"
+                    # Same undeliverable-content class as the PreToolUse
+                    # allow/warn branch and PostToolUse fixes above
+                    # (task_499355a9, aops_e5e2c80f). PreToolHookResult's
+                    # block branch carries denyReason (reason) fine, but has
+                    # no field for advisory text; drop it loudly instead of
+                    # crashing the hook.
+                    print(
+                        f"WARNING: agy PreToolUse block cannot carry advisory "
+                        f"text — dropping undeliverable content_injection (context={context!r}).",
+                        file=sys.stderr,
                     )
+                    result.metadata["delivery_dropped"] = {
+                        "event": event,
+                        "client": "agy",
+                        "reason": None,
+                        "context": context,
+                    }
+                    context = None
             else:
                 if context:
                     # Same undeliverable-content class as the PostToolUse
@@ -1395,9 +1410,22 @@ class HookRouter:
         elif event == "Stop":
             # StopHookResult {decision, reason}. reason is strictly the system_message.
             if context:
-                raise ValueError(
-                    f"agy Stop does not support context_injection (advisory: {context!r})"
+                # Same undeliverable-content class as the PreToolUse/PostToolUse
+                # fixes above (task_499355a9, aops_e5e2c80f). StopHookResult
+                # carries reason (system_message) fine, but has no field for
+                # advisory text; drop it loudly instead of crashing the hook.
+                print(
+                    f"WARNING: agy Stop cannot carry advisory text — dropping "
+                    f"undeliverable content_injection (context={context!r}).",
+                    file=sys.stderr,
                 )
+                result.metadata["delivery_dropped"] = {
+                    "event": event,
+                    "client": "agy",
+                    "reason": None,
+                    "context": context,
+                }
+                context = None
             if wire_decision == "block" and not reason:
                 raise ValueError("agy Stop block requires a system_message (short_reason).")
         else:

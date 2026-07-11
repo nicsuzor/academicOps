@@ -173,25 +173,29 @@ _PKB_PREFIX_VARIANTS: tuple[str, ...] = (
     "mcp__pkb__",  # Claude Code short form
     "mcp__plugin_aops-core_pkb__",  # Claude Code full plugin prefix (aops-core build)
     "mcp__plugin_aops-cowork_pkb__",  # Claude Code full plugin prefix (aops-cowork build)
+    "mcp__services__pkb__",  # Claude Code "services" MCP deployment shape
     "mcp__pbk__",  # Gemini typo variant (double underscore)
     "mcp_pkb_",  # Gemini single-underscore form
     "mcp_pbk_",  # Gemini single-underscore typo variant
+    "mcp_services_pkb_",  # Gemini single-underscore form of the "services" shape
     "pkb__",  # Bare double-underscore
     "",  # Gemini bare tool name (no prefix)
 )
 
 # Regex to match any PKB MCP prefix variant and extract the operation name.
-# Used as fallback for unknown prefix variants (e.g. versioned plugin prefixes
-# not enumerated in _PKB_PREFIX_VARIANTS). The plugin-name segment uses
-# [\w.-]+ (not [\w.]+) because plugin names are hyphenated (aops-core,
-# aops-cowork, ...) — a class without "-" silently fails to match any of them
-# and falls through to the conservative "write" default instead of
-# "infrastructure" (found via a hyphenated name, aops-cowork, that had no
-# hardcoded literal the way aops-core did).
+# Used as fallback for unknown prefix variants (e.g. versioned plugin prefixes,
+# or deployment-shape prefixes such as mcp__services__pkb__, not enumerated in
+# _PKB_PREFIX_VARIANTS). The segment before pkb/pbk uses a generic [\w.-]+
+# (not a literal "plugin_") so ANY single deployment/namespace segment —
+# "plugin_aops-core_", "services_", a future version string, etc. — is
+# accepted without a code change each time a new hosting shape appears. The
+# segment still must be delimited by "_" on both sides, so unrelated tool
+# names that merely happen to contain "pkb" as a substring (no delimiters)
+# never match.
 _PKB_PREFIX_RE = re.compile(
     r"^(?:"
-    r"mcp__(?:plugin_[\w.-]+_)?(?:pkb|pbk)__"  # Claude double-underscore
-    r"|mcp_(?:plugin_[\w.-]+_)?(?:pkb|pbk)_"  # Gemini single-underscore
+    r"mcp__(?:[\w.-]+_)?(?:pkb|pbk)__"  # Claude double-underscore
+    r"|mcp_(?:[\w.-]+_)?(?:pkb|pbk)_"  # Gemini single-underscore
     r"|pkb__"  # bare double-underscore
     r")(.+)$"
 )

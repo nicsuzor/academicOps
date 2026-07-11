@@ -313,6 +313,38 @@ def test_stop_allow_is_empty():
     assert _agy("allow", event="Stop") == {}
 
 
+def test_stop_context_is_dropped_not_crashed(capsys):
+    """StopHookResult has no field for advisory (context_injection) text.
+
+    Post-fix (task_499355a9, aops_e5e2c80f): this used to raise ValueError,
+    crashing the hook subprocess (zero stdout, silently a no-op to agy). It
+    must now drop the undeliverable context loudly instead — stderr WARNING +
+    ``metadata.delivery_dropped`` marker — while still delivering the
+    reason (short_reason), which StopHookResult DOES support.
+    """
+    result = CanonicalHookOutput(
+        verdict="deny",
+        system_message="short reason",
+        context_injection="advisory that cannot be delivered on Stop",
+    )
+    resolved = HookRouter().resolve_policy_for_agy(result, "Stop")
+
+    assert resolved.reason == "short reason", "reason must still be delivered"
+    assert resolved.context is None, "context must be dropped, not raised"
+    assert result.metadata["delivery_dropped"] == {
+        "event": "Stop",
+        "client": "agy",
+        "reason": None,
+        "context": "advisory that cannot be delivered on Stop",
+    }
+
+    stderr = capsys.readouterr().err
+    assert "WARNING: agy Stop cannot carry advisory text" in stderr
+
+    payload = HookRouter().translate_agy(resolved, "Stop")
+    assert payload == {"reason": "short reason"}
+
+
 # --- Unknown event ---------------------------------------------------------
 
 

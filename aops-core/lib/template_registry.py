@@ -134,7 +134,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         category=TemplateCategory.USER_MESSAGE,
         filename="rbg-policy-message.md",
         required_vars=(),
-        optional_vars=("ops_since_open",),
+        optional_vars=("ops_since_open", "threshold"),
         description="Short message when RBG gate blocks a tool call",
     ),
     "rbg.policy_context": TemplateSpec(
@@ -142,7 +142,7 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         category=TemplateCategory.CONTEXT_INJECTION,
         filename="rbg-policy-context.md",
         required_vars=("temp_path",),
-        optional_vars=("ops_since_open",),
+        optional_vars=("ops_since_open", "threshold"),
         description="Full context injection when RBG gate blocks",
     ),
     "rbg.countdown": TemplateSpec(
@@ -252,7 +252,11 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
     "rbg_review.policy_message": TemplateSpec(
         name="rbg_review.policy_message",
         category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-policy-message.md",
+        # Deliberately its own file, not rbg-policy-message.md (aops_47d0a754)
+        # — rbg-review has no ops-count threshold/countdown concept, so it
+        # must not inherit the rbg gate's "N remaining / threshold reached"
+        # framing.
+        filename="rbg-review-policy-message.md",
         required_vars=(),
         optional_vars=("ops_since_open",),
         description="Short user-facing message when the RBG gate blocks Stop",
@@ -260,7 +264,9 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
     "rbg_review.policy_context": TemplateSpec(
         name="rbg_review.policy_context",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="rbg-policy-context.md",
+        # Deliberately its own file, not rbg-policy-context.md (aops_47d0a754)
+        # — see rbg_review.policy_message above.
+        filename="rbg-review-policy-context.md",
         required_vars=("temp_path",),
         optional_vars=("ops_since_open",),
         description="Context injection instructing the agent to dispatch RBG before Stop",
