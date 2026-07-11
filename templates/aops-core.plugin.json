@@ -14,7 +14,7 @@
   ],
   "mcpServers": "./.mcp.json",
   "worktree": {
-    "baseRef": "fresh"
+    "baseRef": "head"
   },
   "agent": "junior",
   "autoMode": {
