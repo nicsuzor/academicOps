@@ -13,6 +13,8 @@ supersedes: academicOps PR #985 (closed)
 
 # GH ↔ PKB Reconcile
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: reworked and repackaged (output contract + when-to-include added) as the PKB template component `wf-reconcile`, read by the planner. Content otherwise preserved intact — this spec required minimal rework. This file remains the operative record (SSoT for the rework pass: `note_296e5520` Component 1, D4).
+
 This is a behavioural spec. It describes what an agent does when reconciling GitHub state with the PKB task graph. It does not describe directory layouts, CLI grammars, or verification scripts — the implementing agent decides those.
 
 ## Problem

@@ -17,6 +17,8 @@ tags:
 
 # PR Pipeline — Two-Stage, Environment-Gated, Convergent (single SSoT)
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: not template material for the `wf-*` planner library — this is a LIVE/SPEC-ONLY-flagged operative spec documenting real GHA infrastructure (ruleset IDs, workflow files), not reusable prose. No change to its operative status; out of this task's scope, in module (g)'s (polecat dispatch rework). (SSoT for the rework pass: `note_296e5520` Component 1, D4.)
+>
 > Status: **operative**. This is the **single source of truth** for the PR **merge**
 > pipeline (PR opened → squash-merged to `dev`). It consolidates the former
 > `pr-pipeline.md` (v1, the merge-prep model) and `pr-pipeline-v2.md` (the two-stage

@@ -16,6 +16,8 @@ User-facing expectations for the academicOps session lifecycle. These define wha
 
 See [[specs/enforcement.md]] for the technical enforcement architecture that gives effect to these expectations.
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: not template material for the `wf-*` planner library — this is a user-facing charter of session-lifecycle expectations, and the layer model it describes (hydration gate, rbg periodic audit, QA post-hoc review, handover gate) is superseded by `note_296e5520`'s v0.4 enforcement model (task-boundary review, consolidated exit-reflection hook, retirement of the turn-based rbg counter). Retained as historical record only.
+
 ## User Expectations
 
 As specified in the framework vision, the core loop ensures that academic work maintains epistemic integrity through synchronous enforcement and qualitative review.

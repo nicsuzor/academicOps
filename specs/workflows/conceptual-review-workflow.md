@@ -16,6 +16,8 @@ related:
 
 # Conceptual Review Workflow
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: the lens registry, prioritised critique protocol, convergence rules, user override, and formality gradient in this spec have been reworked into the PKB template component `wf-critique-lens`, read by the planner at decomposition time (SSoT: `note_296e5520` Component 1, D4). This file is retained as the original design record; `wf-critique-lens` is the composable version the planner actually consumes.
+
 ## Giving Effect
 
 The conceptual review pattern is implemented through the following framework components:

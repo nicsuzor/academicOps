@@ -20,6 +20,8 @@ tags:
 
 Complete lifecycle for non-interactive agent operation: task selection through PR merge and knowledge capture.
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: not template material for the `wf-*` planner library — this spec self-flags an ARCHITECTURE PIVOT (below, 2026-02-12) and its task state machine is now superseded by the canonical `TAXONOMY.md` status model. Worker-registry and timeout-policy ideas were noted for opportunistic reference, not merged into any `wf-*` component. Retained as historical record (SSoT for the rework: `note_296e5520` Component 1, D4).
+>
 > **ARCHITECTURE PIVOT (2026-02-12)**: This spec has been revised from programmatic infrastructure to agent-based prompts. The lifecycle phases below remain valid as _concepts_, but their implementation is prompt-driven, not code-driven. Agents make all decisions; code is limited to hooks (triggers) and MCP tools (task state). See project task `aops-core-e89cdca4` for the revised plan.
 
 ## Design Principles — Revised

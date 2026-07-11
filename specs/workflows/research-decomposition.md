@@ -24,6 +24,8 @@ type: spec
 
 # Research Decomposition
 
+> **Rework status (epic_5e9fc3d5, 2026-07-11)**: the research primitives, sequencing rules, seedling/forest modes, MVC concept, and the three agent-execution failure modes have been merged into the PKB template component `wf-decompose`, alongside the general decomposition patterns from `archived/workflows/decompose.md` and `archived/workflows/base-investigation.md` (SSoT: `note_296e5520` Component 1, D4). This file is retained as the original design record.
+
 ## Giving Effect
 
 _No implementation yet. This spec defines research-specific decomposition as a domain application of several upstream specs:_
