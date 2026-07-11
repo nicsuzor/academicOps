@@ -128,17 +128,45 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
     if name == "RBG_TOOL_CALL_THRESHOLD":
         raw = os.environ.get("RBG_TOOL_CALL_THRESHOLD")
         if raw is None:
+            _warn_threshold_fallback(name, raw, _RBG_THRESHOLD_DEFAULT)
             return _RBG_THRESHOLD_DEFAULT
         try:
             return int(raw)
         except ValueError:
+            _warn_threshold_fallback(name, raw, _RBG_THRESHOLD_DEFAULT)
             return _RBG_THRESHOLD_DEFAULT
     if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
         raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
         if raw is None:
+            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
             return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
         try:
             return int(raw)
         except ValueError:
+            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
             return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _warn_threshold_fallback(name: str, raw: str | None, default: int) -> None:
+    """Loudly warn on a threshold env-var fallback (aops_47d0a754).
+
+    RBG_TOOL_CALL_THRESHOLD and RBG_REVIEW_DEGRADE_THRESHOLD used to fall
+    back to a hardcoded default silently — unlike every *_GATE_MODE var,
+    which prints a WARNING to stderr on fallback (see the `name in
+    _GATE_MODES` branch above). A silently-defaulted threshold degrades
+    enforcement calibration invisibly: if the env var is dropped by a
+    misconfigured launcher, the gate quietly enforces an arbitrary value
+    instead of the one the operator intended. Match the gate-mode pattern
+    exactly rather than introduce a second warning convention.
+    """
+    import sys
+
+    if raw is None:
+        reason = "not set in environment"
+    else:
+        reason = f"set to unparseable value {raw!r}"
+    print(
+        f"WARNING: Threshold '{name}' {reason}, falling back to default '{default}'",
+        file=sys.stderr,
+    )

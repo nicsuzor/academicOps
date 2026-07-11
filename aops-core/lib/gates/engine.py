@@ -147,6 +147,19 @@ class GenericGate:
             fp = ctx.tool_input.get("file_path") or ctx.tool_input.get("path")
             if isinstance(fp, str):
                 file_path = fp
+
+        # Shared countdown/threshold framing (aops_47d0a754) — exposed so any
+        # template (not just the countdown template) can render the same
+        # down-to-zero direction as `_evaluate_countdown` uses. Without this,
+        # rbg-policy-message/context had to fall back to the raw up-counting
+        # ops_since_open, producing a discontinuous jump ("1 turn until
+        # check" -> "17 ops since last check") at the exact moment the gate
+        # fires. `threshold`/`remaining` are only meaningful for gates with a
+        # countdown config; default to 0 for gates that don't have one so the
+        # keys are always present without raising or rendering "None".
+        threshold = self.config.countdown.threshold if self.config.countdown else 0
+        remaining = max(0, threshold - state.ops_since_open) if threshold else 0
+
         return {
             "session_id": ctx.session_id,
             "tool_name": ctx.tool_name or "",
@@ -154,6 +167,8 @@ class GenericGate:
             "gate_status": getattr(state.status, "value", state.status),
             "ops_since_open": state.ops_since_open,
             "ops_since_close": state.ops_since_close,
+            "threshold": threshold,
+            "remaining": remaining,
             "blocked": state.blocked,
             "block_reason": state.block_reason or "",
             # Access metrics
