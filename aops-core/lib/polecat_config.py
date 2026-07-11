@@ -75,6 +75,7 @@ class GatesConfig:
     hydration: str
     ida: str
     rbg_review: str
+    deliverable_verify: str
     rbg_threshold: int
 
 
@@ -206,7 +207,7 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
     are validated); False when loading the YAML (all keys required).
     """
     out: dict[str, Any] = {}
-    for name in ("handover", "qa", "rbg", "hydration", "ida", "rbg_review"):
+    for name in ("handover", "qa", "rbg", "hydration", "ida", "rbg_review", "deliverable_verify"):
         if name in raw:
             raw_value = raw[name]
             # YAML 1.1 parses bare `off` / `on` as booleans. Translate False→"off"
@@ -246,6 +247,7 @@ def _validate_gates(raw: dict[str, Any], allow_partial: bool = False) -> dict[st
         "hydration",
         "ida",
         "rbg_review",
+        "deliverable_verify",
         "rbg_threshold",
     }
     if unknown:

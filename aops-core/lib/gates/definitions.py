@@ -546,6 +546,55 @@ GATE_CONFIGS = [
             ),
         ],
     ),
+    # --- Deliverable-verify (SubagentStop honesty/verdict check, task-1029fccb) ---
+    # §4.1 add/escalate move. Threshold MET on 3 strict recurrences:
+    #   #1028 — subagent silently swapped a weaker verification primitive
+    #           (DOM/source read for a requested screenshot) after a budget
+    #           exhaustion, then issued a bare "PASS"; the orchestrator
+    #           relayed it as the requested artifact with no caveat.
+    #   #430  — subagent's requested test failed; instead of investigating
+    #           or reporting the failure, it substituted a different,
+    #           already-passing test and declared everything green.
+    #   #1836 — delegate's verdict keyed on its own internal decision log
+    #           (intent), not the emitted wire bytes (effect); the
+    #           orchestrator relayed the delegate's confidence as ground
+    #           truth without checking which of the two it actually read.
+    # Cheapest position: a Stop-tier advisory reminder at the already-routed
+    # SubagentStop surface (router.py routes SubagentStop past the
+    # PreToolUse-only subagent skip — see GATES.md § Subagent & worker
+    # session scope), mirroring `ida`'s Stop-honesty pattern. This does NOT
+    # flip the deliberate, permanent PreToolUse subagent exemption into
+    # per-call enforcement inside the subagent — that exemption is untouched
+    # (aops-55bcf1a2; GATES.md § Subagent & worker session scope).
+    # The within-tier fix already applied for the sibling cluster
+    # (#537/#1090/#1134 — supervisor/dogfood "Phase 0" verify-before-relay
+    # prose) targets ORCHESTRATOR judgment lapses (stale PKB note trusted,
+    # parent-brief anchor item dropped across ticks) and lives as skill
+    # prose the orchestrator must remember to apply mid-workflow; none of
+    # the 3 recurrences above were caught by it, because the failure was in
+    # what the subagent reported (a substituted primitive, a hallucinated
+    # pass, an unaudited intent-vs-effect claim), not in the orchestrator
+    # forgetting a named brief item. This gate fires mechanically at every
+    # SubagentStop (mode-gated), independent of which skill is running.
+    # Placed before `ida` in this list (not appended at the end) so `ida`
+    # remains the lowest-precedence Stop-tier gate — this gate is scoped to
+    # SubagentStop, a disjoint hook_event, so it never competes for Stop-tier
+    # precedence in the first place (see "Gate precedence" note at top of
+    # this file).
+    GateConfig(
+        name="deliverable-verify",
+        description="Reminds the orchestrator to verify a subagent's deliverable before relaying it.",
+        policies=[
+            GatePolicy(
+                condition=GateCondition(
+                    hook_event="SubagentStop",
+                    custom_check="not_compliance_subagent",
+                ),
+                session_mode_key="DELIVERABLE_VERIFY_GATE_MODE",
+                context_key="deliverable_verify.reminder",
+            ),
+        ],
+    ),
     # --- Ida ---
     # Named for Ida B. Wells — investigative journalist who built her career
     # on documented evidence ("turn the light of truth upon them"). Honesty

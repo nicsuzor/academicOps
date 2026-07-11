@@ -285,6 +285,14 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         required_vars=("threshold",),
         description="Loud escape-hatch message when RBG degrades to WARN-and-allow",
     ),
+    # --- Deliverable-verify gate (SubagentStop honesty/verdict check, task-1029fccb) ---
+    "deliverable_verify.reminder": TemplateSpec(
+        name="deliverable_verify.reminder",
+        category=TemplateCategory.CONTEXT_INJECTION,
+        filename="deliverable-verify-reminder.md",
+        required_vars=(),
+        description="Advisory injected on SubagentStop: verify the deliverable before relaying it",
+    ),
 }
 
 

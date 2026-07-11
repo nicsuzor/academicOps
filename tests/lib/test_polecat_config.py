@@ -29,6 +29,7 @@ CANONICAL_YAML = dedent(
         hydration: off
         ida: warn
         rbg_review: off
+        deliverable_verify: off
         rbg_threshold: 15
     crew_defaults:
       hooks_enabled: false
@@ -203,6 +204,7 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
                 hydration: off
                 ida: warn
                 rbg_review: off
+                deliverable_verify: off
                 rbg_threshold: 15
             crew_defaults: {}
             run_defaults: {}

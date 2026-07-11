@@ -763,5 +763,38 @@ class GenericGate:
     def on_subagent_stop(
         self, context: HookContext, session_state: SessionState
     ) -> GateResult | None:
-        """SubagentStop: Evaluate triggers only (policies are scoped to session end, not subagent completion)."""
-        return self._evaluate_triggers(context, session_state)
+        """SubagentStop: Evaluate triggers AND policies.
+
+        Session-lifecycle gates (rbg-review/qa/handover/ida) declare their
+        policies scoped to hook_event="Stop" only, so extending this method
+        to also call _evaluate_policies is a no-op for them (exact-match
+        hook_event comparison — "Stop" != "SubagentStop", see
+        _evaluate_condition). It is load-bearing for the `deliverable-verify`
+        gate (task-1029fccb), whose policy is scoped to hook_event=
+        "SubagentStop" and would otherwise never fire — this method
+        previously evaluated triggers only. Merge logic mirrors on_tool_use.
+        """
+        trigger_result = self._evaluate_triggers(context, session_state)
+        policy_result = self._evaluate_policies(context, session_state)
+
+        if trigger_result and policy_result:
+            # Policy verdict dominates; merge messages from both.
+            return GateResult(
+                verdict=policy_result.verdict,
+                system_message="\n".join(
+                    filter(None, [trigger_result.system_message, policy_result.system_message])
+                )
+                or None,
+                context_injection="\n\n".join(
+                    filter(
+                        None,
+                        [trigger_result.context_injection, policy_result.context_injection],
+                    )
+                )
+                or None,
+                metadata={
+                    **trigger_result.metadata,
+                    **policy_result.metadata,
+                },  # allow-fallback: same deliberate precedence as on_tool_use's merge above — policy_result (the fired verdict) intentionally overrides trigger_result's diagnostic-only key on collision; no data is required from either side
+            )
+        return policy_result or trigger_result

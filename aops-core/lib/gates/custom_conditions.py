@@ -1,7 +1,7 @@
 from lib.gate_types import GateState
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
-from lib.tool_categories import get_tool_category
+from lib.tool_categories import COMPLIANCE_SUBAGENT_TYPES, get_tool_category
 
 
 def _gate_mode(session_state: SessionState, var_name: str) -> str:
@@ -120,6 +120,14 @@ def check_custom_condition(
         # §5.4-5.5) is superseded and removed. Fire-once (the warn-mode Stop
         # trigger in definitions.py) is now the whole cadence.
         return _gate_mode(session_state, "HANDOVER_GATE_MODE") == "warn"
+
+    if name == "not_compliance_subagent":
+        # deliverable-verify gate condition (task-1029fccb): skip the
+        # reminder when the subagent that just stopped IS a compliance
+        # agent (rbg/marsha) — auditing the auditor's own SubagentStop is
+        # a recursion, not a narrowing of the surface this gate exists to
+        # catch (relayed deliverables from ordinary delegated work).
+        return ctx.subagent_type not in COMPLIANCE_SUBAGENT_TYPES
 
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)

@@ -384,6 +384,7 @@ _GATE_ENV_VARS = (
     "HYDRATION_GATE_MODE",
     "IDA_GATE_MODE",
     "RBG_REVIEW_GATE_MODE",
+    "DELIVERABLE_VERIFY_GATE_MODE",
     "RBG_TOOL_CALL_THRESHOLD",
 )
 
@@ -402,6 +403,7 @@ def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-
     env["HYDRATION_GATE_MODE"] = gates.hydration
     env["IDA_GATE_MODE"] = gates.ida
     env["RBG_REVIEW_GATE_MODE"] = gates.rbg_review
+    env["DELIVERABLE_VERIFY_GATE_MODE"] = gates.deliverable_verify
     env["RBG_TOOL_CALL_THRESHOLD"] = str(gates.rbg_threshold)
 
 

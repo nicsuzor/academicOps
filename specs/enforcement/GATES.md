@@ -414,6 +414,46 @@ Design rationale for the honesty standard itself lives at [`specs/agents/ida.md#
 
 ---
 
+## `deliverable-verify` gate {#deliverable-verify-gate}
+
+> **TL;DR.** Narrow SubagentStop advisory. Fires on every non-compliance-subagent completion; reminds the orchestrator (via context injection) to verify the subagent's actual deliverable — did it substitute a weaker primitive, reframe a failure as success, or key its verdict on its own intent rather than the observed effect — before relaying it as fact. Non-blocking by default (`warn`); `block` mode DENYs the SubagentStop if explicitly armed. Defined in [`lib/gates/definitions.py`](../../aops-core/lib/gates/definitions.py) (`GateConfig(name="deliverable-verify", ...)`). Mode key: `gates.deliverable_verify`.
+
+### What is it
+
+Added task-1029fccb (§4.1 add/escalate — [`enforcement.md` §4.1](enforcement.md#41-pr-requirements-for-enforcement-changes)), threshold met on 3 cited recurrences: #1028 (subagent silently swapped a weaker verification primitive after budget exhaustion, then issued a bare PASS), #430 (subagent's requested test failed; it substituted a different, already-passing test and declared everything green), #1836 (delegate's verdict keyed on its own internal decision log, not the emitted wire-level effect; the orchestrator relayed the delegate's confidence as ground truth).
+
+The gate's single policy fires at SubagentStop for any subagent whose type is not in `COMPLIANCE_SUBAGENT_TYPES` (rbg/marsha — auditing the auditor's own SubagentStop would be recursion, not narrowing the surface this gate exists to catch; the `not_compliance_subagent` custom condition excludes them). It injects a short reminder ([`deliverable-verify-reminder.md`](../../aops-core/hooks/templates/deliverable-verify-reminder.md)) naming three checks: substituted primitive, reframed failure, intent-vs-effect confusion.
+
+**Does NOT touch the PreToolUse subagent exemption.** This gate does not flip the blanket subagent PreToolUse skip into per-call enforcement inside the subagent — that exemption (`rbg` carries a blocking PreToolUse policy; several subagent types have no Agent-tool access to satisfy a compliance-block demand) is deliberate and permanent, unchanged by this addition. See [Subagent & worker session scope](#subagent--worker-session-scope) above. `GenericGate.on_subagent_stop` was extended to evaluate policies (previously triggers only) — this is safe for the existing session-lifecycle gates (`rbg-review`/`qa`/`handover`/`ida`) because their policies are scoped to `hook_event="Stop"`, an exact string match against `ctx.hook_event` that never matches `"SubagentStop"`.
+
+**Relationship to the sibling within-tier fix (#537/#1090/#1134).** The supervisor/dogfood "Phase 0" verify-before-relay prose (added for that cluster) targets orchestrator judgment lapses — a stale PKB note trusted over a live check, a parent-brief anchor item dropped across ticks — and lives as skill prose the orchestrator must remember to apply mid-workflow. It does not cover this gate's 3 recurrences: the failure was in what the subagent _reported_ (a substituted primitive, a hallucinated pass, an unaudited intent-vs-effect claim), not in the orchestrator forgetting a named brief item. This gate fires mechanically at every SubagentStop regardless of which skill is running, closing that gap.
+
+### Where it lives
+
+| Concern                      | Path                                                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gate definition (config)     | `aops-core/lib/gates/definitions.py` (`GateConfig(name="deliverable-verify", ...)`, mode key `gates.deliverable_verify`)                            |
+| Mode lookup                  | `aops-core/hooks/gate_config.py` (`DELIVERABLE_VERIFY_GATE_MODE`)                                                                                   |
+| Exclusion condition          | `aops-core/lib/gates/custom_conditions.py` (`not_compliance_subagent`)                                                                              |
+| SubagentStop policy dispatch | `aops-core/lib/gates/engine.py` (`GenericGate.on_subagent_stop` — now evaluates policies, not just triggers)                                        |
+| Template                     | `aops-core/hooks/templates/deliverable-verify-reminder.md`                                                                                          |
+| Config plumbing              | `aops-core/lib/polecat_config.py` (`GatesConfig.deliverable_verify`), `polecat/cli.py` (`_apply_gate_env`), `polecat/defaults/polecat.yaml.example` |
+
+### How it's configured
+
+- **Mode key**: `gates.deliverable_verify` (see [Config plumbing](#config-plumbing)). `warn` | `block` | `off`. **Required** in `polecat.yaml`'s `gates:` block, no default — matches this file's no-silent-fallback convention; existing configs must add the key.
+- Direct-CLI fallback (no `polecat.yaml` at all): `off` (`gate_config.py` `_GATE_MODES`).
+
+### How to verify it's firing
+
+```bash
+# SubagentStop events the deliverable-verify gate fired a context injection on
+grep '"hook_event":"SubagentStop"' <hooks.jsonl> \
+  | jq -r 'select(.output.context_injection // "" | contains("deliverable-verify reminder")) | .logged_at'
+```
+
+---
+
 ## Reserved names: `hydration`
 
 `hydration` is accepted in the `gates.*` schema and exposed via `HYDRATION_GATE_MODE`, but `lib/gates/definitions.py` does not define a `hydration` `GateConfig`. The visible "hydration" behaviour is one non-blocking injection in the router:

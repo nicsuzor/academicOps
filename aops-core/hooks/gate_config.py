@@ -19,6 +19,7 @@ __all__ = [
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
     "RBG_REVIEW_GATE_MODE",
+    "DELIVERABLE_VERIFY_GATE_MODE",
     "RBG_TOOL_CALL_THRESHOLD",
     "RBG_REVIEW_DEGRADE_THRESHOLD",
     "GATE_MODE_VARS",
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
     RBG_REVIEW_GATE_MODE: str
+    DELIVERABLE_VERIFY_GATE_MODE: str
     RBG_TOOL_CALL_THRESHOLD: int
     RBG_REVIEW_DEGRADE_THRESHOLD: int
 
@@ -97,6 +99,7 @@ _GATE_MODES = {
     "RBG_REVIEW_GATE_MODE": "off",
     "HANDOVER_GATE_MODE": "off",
     "IDA_GATE_MODE": "off",
+    "DELIVERABLE_VERIFY_GATE_MODE": "off",
 }
 
 # Canonical list of gate-mode env-var names — the single source of truth for

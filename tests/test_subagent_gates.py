@@ -11,7 +11,7 @@ from lib.gates.engine import GenericGate
 from lib.gates.registry import GateRegistry
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
-from lib.tool_categories import extract_subagent_type
+from lib.tool_categories import COMPLIANCE_SUBAGENT_TYPES, extract_subagent_type
 
 # --- Fixture loading (mirrors test_gate_verdicts.py pattern) ---
 
@@ -336,6 +336,94 @@ def test_regex_hook_event_matching():
         )
         is False
     )
+
+
+# =============================================================================
+# deliverable-verify gate (task-1029fccb): SubagentStop honesty/verdict check
+# =============================================================================
+
+
+class TestDeliverableVerifyGate:
+    """Narrow SubagentStop advisory: reminds the orchestrator to verify a
+    subagent's deliverable before relaying it (§4.1 add/escalate — #1028,
+    #430, #1836). Does NOT touch the PreToolUse subagent exemption.
+    """
+
+    def _gate(self) -> GenericGate:
+        config = next(g for g in GATE_CONFIGS if g.name == "deliverable-verify")
+        return GenericGate(config)
+
+    def test_fires_warn_with_reminder_when_armed(self):
+        gate = self._gate()
+        state = SessionState.create("test-deliverable-verify-warn")
+        state.gate_modes["DELIVERABLE_VERIFY_GATE_MODE"] = "warn"
+        ctx = HookContext(
+            session_id="test-deliverable-verify-warn",
+            hook_event="SubagentStop",
+            subagent_type="Explore",
+        )
+        result = gate.on_subagent_stop(ctx, state)
+        assert result is not None
+        assert result.verdict == GateVerdict.WARN
+        assert result.context_injection
+        assert "deliverable-verify reminder" in result.context_injection
+
+    def test_off_by_default_with_no_mode_set(self):
+        gate = self._gate()
+        state = SessionState.create("test-deliverable-verify-default")
+        ctx = HookContext(
+            session_id="test-deliverable-verify-default",
+            hook_event="SubagentStop",
+            subagent_type="Explore",
+        )
+        result = gate.on_subagent_stop(ctx, state)
+        assert result is None
+
+    @pytest.mark.parametrize("compliance_type", sorted(COMPLIANCE_SUBAGENT_TYPES))
+    def test_skips_compliance_subagent_stop(self, compliance_type):
+        """rbg/marsha auditing their own SubagentStop is a recursion, not the
+        surface this gate exists to catch — not_compliance_subagent excludes it.
+
+        Parametrized over the full COMPLIANCE_SUBAGENT_TYPES class (every
+        naming-convention alias across the aops-core/aops-pkb extraction),
+        not a spot-checked subset — the claim above generalises over every
+        alias, so the test must too (R2 class-instance parameterisation).
+        """
+        gate = self._gate()
+        state = SessionState.create("test-deliverable-verify-compliance")
+        state.gate_modes["DELIVERABLE_VERIFY_GATE_MODE"] = "warn"
+        ctx = HookContext(
+            session_id="test-deliverable-verify-compliance",
+            hook_event="SubagentStop",
+            subagent_type=compliance_type,
+        )
+        result = gate.on_subagent_stop(ctx, state)
+        assert result is None
+
+    def test_does_not_fire_on_other_hook_events(self):
+        gate = self._gate()
+        state = SessionState.create("test-deliverable-verify-other-event")
+        state.gate_modes["DELIVERABLE_VERIFY_GATE_MODE"] = "warn"
+        ctx = HookContext(
+            session_id="test-deliverable-verify-other-event",
+            hook_event="Stop",
+            subagent_type="Explore",
+        )
+        result = gate.on_subagent_stop(ctx, state)
+        assert result is None
+
+    def test_block_mode_denies(self):
+        gate = self._gate()
+        state = SessionState.create("test-deliverable-verify-block")
+        state.gate_modes["DELIVERABLE_VERIFY_GATE_MODE"] = "block"
+        ctx = HookContext(
+            session_id="test-deliverable-verify-block",
+            hook_event="SubagentStop",
+            subagent_type="Explore",
+        )
+        result = gate.on_subagent_stop(ctx, state)
+        assert result is not None
+        assert result.verdict == GateVerdict.DENY
 
 
 # =============================================================================
