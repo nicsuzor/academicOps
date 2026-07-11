@@ -1,0 +1,23 @@
+{
+  "env": {
+    "HANDOVER_GATE_MODE": "off",
+    "QA_GATE_MODE": "off",
+    "RBG_GATE_MODE": "off",
+    "RBG_REVIEW_GATE_MODE": "off",
+    "IDA_GATE_MODE": "off",
+    "HYDRATION_GATE_MODE": "off",
+    "RBG_TOOL_CALL_THRESHOLD": "20"
+  },
+  "worktree": {
+    "baseRef": "head"
+  },
+  "enabledPlugins": {},
+  "extraKnownMarketplaces": {},
+  "pluginConfigs": {
+    "aops-core@academicOps": {
+      "options": {
+        "pkb_mcp_url": "http://services-new.stoat-musical.ts.net:8026/mcp"
+      }
+    }
+  }
+}
