@@ -325,7 +325,7 @@ The completion-quality gate. Starts OPEN (short interactive chats don't require 
 
 ### How it's configured
 
-- **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`).
+- **Mode**: `polecat.yaml` → `session_defaults.gates.qa` (`warn` | `block` | `off`), overridable per surface via `crew_defaults.gates.qa` / `run_defaults.gates.qa` — the ONLY lever for a per-surface distinction (no session-type branching in the gate engine itself). **Target posture** (`aops-05d487c4`, `task-8e506604`): `session_defaults`/`crew_defaults` stay `warn` (interactive/crew are advisory-only); `run_defaults.gates.qa: block` makes QA required for `polecat run` sessions specifically. This is filed as a companion PR to `nicsuzor/sessions`' `polecat.yaml` — until it merges, live polecat runs still observe `warn`. See `ENFORCEMENT-MAP.md`'s `qa` row.
 - **Close trigger**: `update_task` PostToolUse with input matching `in_progress` (task claim). Write-tool use does not close the QA gate — only an explicit task claim activates it.
 - **Reopen triggers**: (1) any subagent matching `^(aops-core:)?(qa|verify|marsha)$` on `SubagentStart|SubagentStop|PostToolUse` with `sticky_until=["UserPromptSubmit"]`; (2) Stop while CLOSED (fire-once — gate opens after first block so retried Stops pass).
 - **Re-arm trigger**: `UserPromptSubmit` → clears sticky latch, then fires re-arm trigger → CLOSED. Only re-arms when a task is bound (`has_bound_task` custom check) — sessions without a claimed task skip the QA gate entirely. **Slash-command turns are excluded** (`prompt_exclude_patterns=SLASH_COMMAND_PROMPT_PATTERNS`): a skill invocation owns its own finishing format, so it must not re-arm the gate. The exclusion suppresses the close only — it never opens the gate.
