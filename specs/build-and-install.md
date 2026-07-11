@@ -113,7 +113,14 @@ the repo's pre-existing multi-form PKB-prefix tolerance
 over-fitting a rewrite beyond the load-bearing frontmatter tool grants. `rbg`/`marsha`'s
 axiom imports are co-shipped the same way `build_aops_core` does it (`build_aops_pkb` runs
 the same anti-drift guards, `_assert_plugin_imports_resolve` /
-`_assert_no_axiom_decoys`). `end_session/SKILL.md` still carries the `<!-- cowork:only -->`
+`_assert_no_axiom_decoys`). `scripts/build.py`'s `main()` additionally runs
+`_assert_agent_frontmatter_mcp_tools_resolve` once, up front, against every package's
+SOURCE `agents/*.md` (not just aops-pkb's) — it fails the build if an explicit
+(non-wildcard) `mcp__plugin_<slug>_pkb__<tool>` frontmatter grant is missing the "pkb"
+aggregator's repeated inner sub-server segment (a regex shape check, not a maintained
+tool-name list — a wildcard grant like `mcp__plugin_<slug>_pkb__*` is exempt regardless
+of shape), catching the aops_b580e332 single-/double-`pkb__`-prefix defect class
+(aops_35b7dce7). `end_session/SKILL.md` still carries the `<!-- cowork:only -->`
 marker it had in `aops-core`, so the cowork build's marker scan walks this tree too (see
 §3). Built from `aops-pkb/` by `build_aops_pkb` for **both** `claude` and `antigravity`
 (`dist/aops-pkb-claude`, `dist/aops-pkb-antigravity`) with its own **tracked**

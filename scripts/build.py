@@ -1291,6 +1291,71 @@ def _assert_no_axiom_decoys(content_dir: Path) -> None:
         )
 
 
+# A live "pkb"-aggregator MCP tool name always repeats the inner sub-server
+# segment: mcp__plugin_<slug>_pkb__<subserver>__<tool> (e.g. the aggregator's
+# `pkb` sub-server yields `...pkb__pkb__get_task`, not `...pkb__get_task`).
+# aops_b580e332 shipped the single-segment (broken) form for an unknown period.
+# A grant ending in `*` is a wildcard and tolerates whatever the live
+# sub-server prefix is, so it's exempt regardless of shape.
+_STALE_PKB_GRANT_RE = re.compile(r"^mcp__plugin_[a-z0-9-]+_pkb__[a-z0-9]+__.+$")
+
+
+def _assert_agent_frontmatter_mcp_tools_resolve(aops_root: Path) -> None:
+    """Fail the build if an agent's SOURCE `tools:` frontmatter grants an
+    explicit (non-wildcard) "pkb"-aggregator MCP tool name missing the
+    aggregator's repeated inner sub-server segment (aops_35b7dce7 — the
+    aops_b580e332 single-/double-`pkb__`-prefix defect class).
+
+    Runs against every package's SOURCE `agents/*.md` (discovered by globbing
+    `<aops_root>/*/agents`, so a new package needs no change here) rather than
+    built `dist/` output — catches the defect at authoring time, before any
+    platform-specific build transform runs, and covers aops-core, aops-pkb, and
+    any future agent-bearing package alike (not just aops-pkb).
+    """
+    import yaml
+
+    failures: list[str] = []
+    for agents_dir in sorted(aops_root.glob("*/agents")):
+        if not agents_dir.is_dir():
+            continue
+        for agent_file in sorted(agents_dir.glob("*.md")):
+            content = agent_file.read_text(encoding="utf-8")
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            try:
+                frontmatter = yaml.safe_load(parts[1])
+            except yaml.YAMLError:
+                continue
+            if not frontmatter:
+                continue
+            tools = frontmatter.get(
+                "tools", []
+            )  # allow-fallback: an agent with no tools: key legitimately grants none — nothing to check
+            if isinstance(tools, str):
+                tools = [t.strip() for t in tools.split(",") if t.strip()]
+            for tool in tools:
+                if (
+                    not isinstance(tool, str)
+                    or not tool.startswith("mcp__")
+                    or "_pkb__" not in tool
+                ):
+                    continue
+                if tool.endswith("*"):
+                    continue  # wildcard grant — tolerates the live sub-server prefix
+                if not _STALE_PKB_GRANT_RE.match(tool):
+                    failures.append(
+                        f"{agent_file.relative_to(aops_root)}: '{tool}' looks like a stale "
+                        "single-prefix pkb-aggregator grant — the live tool name repeats the "
+                        "sub-server segment (mcp__plugin_<slug>_pkb__<subserver>__<tool>, e.g. "
+                        "...pkb__pkb__get_task)"
+                    )
+    if failures:
+        raise RuntimeError(
+            "Agent frontmatter MCP tool-name guard failed:\n  - " + "\n  - ".join(failures)
+        )
+
+
 def build_aops_tools(
     aops_root: Path,
     dist_root: Path,
@@ -1780,6 +1845,12 @@ def main():
     aops_root = Path(__file__).parent.parent.resolve()
     print(f"Info: aops_root inferred to {aops_root}")
     dist_root = aops_root / "dist"
+
+    # Anti-drift regression guard (aops_35b7dce7): every explicit MCP tool name
+    # in an agent's SOURCE frontmatter must resolve against the live plugin tool
+    # manifest, across every package build.py assembles — before any per-platform
+    # build below transforms/copies a single file.
+    _assert_agent_frontmatter_mcp_tools_resolve(aops_root)
 
     # Get version: use --set-version override or detect from git tags
     if args.set_version:
