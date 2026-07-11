@@ -82,22 +82,18 @@ Axioms describe what must never happen. They don't enforce themselves — that's
 Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
 
 - **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, rbg (periodic compliance)
 - **PostToolUse**: boundary detection, warn-tier checks, autocommit
-- **Stop gates**: QA and handover discipline before a session ends
+- **Stop gate**: consolidated exit-reflection discipline before a session ends — full checklist for task-bound sessions, lightweight honesty reminder for everyone else
 - **Transcript capture**: every session recorded for reflection
 
-The gates riding those hooks:
+The gate riding those hooks:
 
-| Gate         | What it catches                                           | Default                                                   |
-| ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| `rbg`        | Scope drift / compliance, every N write ops               | `warn`                                                    |
-| `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
-| `qa`         | Claiming "done" without running verification              | `warn`                                                    |
-| `handover`   | Exiting without committing, updating tasks, or reflecting | `warn` interactive / `block` polecat                      |
-| `ida`        | Honesty / criterion-substitution check before stopping    | `warn`                                                    |
+| Gate              | What it catches                                                                                                                                                            | Default                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `exit_reflection` | FULL tier: axiom drift, "done" claimed without verification, exiting without committing/updating tasks/reflecting. LITE tier: honesty / criterion-substitution check only. | FULL tier `block` (polecat/crew) / `warn` (interactive); LITE tier always `warn` |
+| `ida`             | Honesty / criterion-substitution check before stopping (head/interactive surface)                                                                                          | `warn`                                                                           |
 
-(`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
+The turn-based `rbg` periodic-compliance gate (every N write ops) is retired — nothing fires mid-session on any surface. (`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
 
 **How an action gets enforced, end to end:**
 
@@ -105,15 +101,11 @@ The gates riding those hooks:
 flowchart TD
     A[Session start] --> B["Axioms + safety floor injected\n(always-on, every surface)"]
     B --> C[Agent works: tool calls]
-    C --> E{rbg gate\nevery N write ops}
-    E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
-    E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
-    EW --> F
+    C --> F[PostToolUse: boundary\ncheck + autocommit]
     F --> G[Agent tries to stop]
-    G --> H{rbg-review gate\npolecat/crew only}
-    H -- not yet reviewed --> HB["BLOCK exit until\nrbg axiom audit runs"]
-    H -- reviewed / n-a --> I{qa + handover + ida\ngates}
-    I -- work done, unverified\nor uncommitted --> IW["WARN interactive /\nBLOCK polecat"]
+    G --> I{exit_reflection gate\nFULL tier if task-bound + did work,\nelse LITE tier}
+    I -- FULL: unverified or\nuncommitted --> IW["WARN interactive /\nBLOCK polecat, until a\nlegal exit (auditor ran,\nhonest release_task, or\n/end-session/dump/continue)"]
+    I -- LITE --> IL["WARN-only honesty\nreminder, never blocks"]
     I -- clear --> J[Session ends]
     J --> K[PR opened]
     K --> L["Automated review:\nrbg (axioms) + marsha (QA)"]
@@ -122,7 +114,7 @@ flowchart TD
     N --> O[Merge]
 ```
 
-Three postures do the work: **hard blocks** (`rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+Three postures do the work: **hard blocks** (`exit_reflection` FULL tier on task-bound sessions) stop the action outright; **advisory warns** (`exit_reflection` LITE tier, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
 
 The same ladder continues past the session, into GitHub:
 
@@ -281,36 +273,24 @@ Gates are the runtime quality checks introduced in [Five parts → Enforcement](
 # explicit; nothing is inherited between them (no overlay/defaults naming).
 face:                      # direct/interactive CLI sessions
   gates:
-    handover: off          # warn | block | off
-    qa: off
-    rbg: off
+    exit_reflection: off   # warn | block | off
     ida: warn            # face-scoped honesty gate — warn on the head/
                          # interactive surface it exists to protect; see below
     hydration: off
-    rbg_review: off
-    rbg_threshold: 50      # write ops between rbg checks
   # ... hooks_enabled / claude_model / gemini_model / antigravity_model / debug
 
 crew:                      # polecat crew — interactive multi-agent sessions
   gates:
-    handover: block        # crew sessions must hand over before exiting
-    qa: warn
-    rbg: warn
+    exit_reflection: block # crew sessions must complete exit-reflection before exiting
     ida: off             # off for every polecat/crew (dispatched) session
     hydration: off
-    rbg_review: block
-    rbg_threshold: 50
   # ...
 
 worker:                    # polecat run — autonomous headless workers
   gates:
-    handover: block         # workers must hand over before exiting
-    qa: warn
-    rbg: block
+    exit_reflection: block  # workers must complete exit-reflection before exiting
     ida: off
     hydration: off
-    rbg_review: block
-    rbg_threshold: 30
   # ...
 
 subagent:                  # Task-tool-dispatched subagents

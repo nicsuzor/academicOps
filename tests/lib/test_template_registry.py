@@ -72,8 +72,8 @@ def configured_registry(templates_dir: Path):
 
 def test_get_spec_returns_correct_spec(registry):
     """Verify spec lookup works for known templates."""
-    spec = registry.get_spec("rbg.context")
-    assert spec.name == "rbg.context"
+    spec = registry.get_spec("exit_reflection.context")
+    assert spec.name == "exit_reflection.context"
     assert spec.required_vars is not None
 
 
@@ -200,7 +200,7 @@ def test_list_templates_all(registry):
     """Lists all registered template names."""
     names = registry.list_templates()
     assert len(names) >= 10  # At least 10 templates defined
-    assert "rbg.context" in names
+    assert "exit_reflection.context" in names
 
 
 def test_list_templates_by_category(registry):
@@ -211,10 +211,10 @@ def test_list_templates_by_category(registry):
     assert len(user_messages) >= 1
 
     subagent = registry.list_templates(category=TemplateCategory.SUBAGENT_INSTRUCTION)
-    assert "rbg.context" in subagent
+    assert "exit_reflection.context" in subagent
 
     # User messages should not include subagent instructions
-    assert "rbg.context" not in user_messages
+    assert "exit_reflection.context" not in user_messages
 
 
 # =============================================================================
@@ -386,11 +386,20 @@ def test_spec_category_assignment(registry):
     from lib.template_registry import TemplateCategory
 
     # Context injection
-    assert registry.get_spec("rbg.instruction").category == TemplateCategory.CONTEXT_INJECTION
-    assert registry.get_spec("stop.handover_block").category == TemplateCategory.CONTEXT_INJECTION
+    assert (
+        registry.get_spec("exit_reflection.policy_context").category
+        == TemplateCategory.CONTEXT_INJECTION
+    )
+    assert (
+        registry.get_spec("exit_reflection.lite_reminder").category
+        == TemplateCategory.CONTEXT_INJECTION
+    )
 
     # Subagent instruction
-    assert registry.get_spec("rbg.context").category == TemplateCategory.SUBAGENT_INSTRUCTION
+    assert (
+        registry.get_spec("exit_reflection.context").category
+        == TemplateCategory.SUBAGENT_INSTRUCTION
+    )
 
 
 # =============================================================================

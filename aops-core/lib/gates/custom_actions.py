@@ -12,18 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 def _audit_window_turns() -> int:
-    """The single context window = RBG cadence (n) + 2 overlap turns.
+    """Turns of full-detail transcript context to include in an exit-reflection
+    audit file.
 
-    n is the RBG ops-counter threshold that triggers the compliance gate
-    (RBG_TOOL_CALL_THRESHOLD). RBG fires every n tool-calls, so an n+2
-    window overlaps the previous window by 2 turns and a clean sliding window
-    covers every turn at full detail without a full-session re-send
-    (aops-5bc65f76). Both the RBG (PreToolUse) and rbg-review (Stop)
-    dispatches share this one window.
+    Historically sized to the (now-retired) RBG PreToolUse cadence threshold
+    + 2 overlap turns, so the periodic in-session check and the end-of-session
+    audit shared one windowed builder without a full-session re-send
+    (aops-5bc65f76). The periodic cadence gate is gone (aops_4c2949d9,
+    turn-based rbg retirement), but the sizing rationale — a bounded window,
+    not the whole transcript — still applies to the exit_reflection gate's
+    audit file, so the constant survives decoupled from any gate/env var.
     """
-    from hooks.gate_config import RBG_TOOL_CALL_THRESHOLD
-
-    return RBG_TOOL_CALL_THRESHOLD + 2
+    return 52
 
 
 def _bound_task_directive(task_id: str | None) -> str:
@@ -115,7 +115,7 @@ def create_audit_file(
                 exc_info=True,
             )
 
-        if gate == "rbg" and entries:
+        if gate == "exit_reflection" and entries:
             from lib.session_reader import _extract_recent_skill, load_skill_scope
 
             try:
@@ -163,9 +163,10 @@ def create_audit_file(
         )
 
         # Coverage sentinel: must be the last line of the rendered file so that
-        # a truncated read is detectable. The rbg auditor requires this via
-        # `tail -3` (aops-e4e90f31, #1976).
-        if content and gate == "rbg":
+        # a truncated read is detectable. The rbg-lens auditor requires this
+        # via `tail -3` (aops-e4e90f31, #1976) — carried over to the
+        # consolidated exit_reflection audit file (aops_4c2949d9).
+        if content and gate == "exit_reflection":
             import re
 
             # Extract turn count from session_context if possible, fallback to ?
@@ -221,107 +222,65 @@ def execute_custom_action(
     Custom actions that produce temp files MUST set state.metrics["temp_path"]
     before returning. Policy templates depend on this metric being present.
     """
-    if name == "prepare_compliance_report":
-        # Memoized audit file: avoid re-parsing the full transcript when it
-        # hasn't grown since the last compliance check.  Stores the transcript
-        # byte size at last parse in state.metrics["transcript_parse_pos"].
-        # If the audit file already exists at the same transcript size, reuse
-        # it instead of rebuilding. (#331 O(n²) token cost)
-        transcript_path_str = ctx.transcript_path or ctx.raw_input.get("transcript_path")
-        existing_temp = state.metrics.get("temp_path")
-        stored_pos = state.metrics.get("transcript_parse_pos", -1)
-        reuse = False
-        if transcript_path_str and existing_temp:
-            transcript_file = Path(transcript_path_str)
-            if transcript_file.exists() and Path(existing_temp).exists():
-                current_size = transcript_file.stat().st_size
-                if current_size == stored_pos:
-                    reuse = True
-                    temp_path = Path(existing_temp)
-
-        if not reuse:
-            temp_path = create_audit_file(
-                ctx.session_id,
-                "rbg",
-                ctx,
-                bound_task_id=session_state.main_agent.current_task,
-            )
-            state.metrics["temp_path"] = str(temp_path)
-            if transcript_path_str:
-                tf = Path(transcript_path_str)
-                state.metrics["transcript_parse_pos"] = tf.stat().st_size if tf.exists() else -1
-
-        registry = TemplateRegistry.instance()
-        instruction = registry.render("rbg.instruction", {"temp_path": str(temp_path)})
-
-        return GateResult.allow(
-            system_message=f"Compliance report ready: {temp_path}",
-            context_injection=instruction,
-        )
-
-    if name == "prepare_qa_review":
-        # Build the qa-context audit file from the session transcript so the
-        # qa.policy_context template ({temp_path}) has a real file to point at.
-        # Fires on Stop while qa gate is CLOSED; no memoization since the gate
-        # only evaluates this once per Stop attempt.
-        # On failure, return None so the gate engine falls back to the policy's
-        # default verdict (block in QA_GATE_MODE) rather than bypassing the gate.
+    if name == "prepare_exit_reflection_full":
+        # Build the exit_reflection audit file (session transcript + bound-task
+        # directive) so the exit_reflection.policy_context template
+        # ({temp_path}) has a real file to point the FULL-tier checklist at:
+        # RBG-lens self-audit, durable capture, commit/push/PR, /learn,
+        # /remember, prose handover. Fires on Stop while the exit_reflection
+        # gate is CLOSED and the session is in full scope (task-bound, did
+        # work this turn). On failure, return None so the gate engine falls
+        # back to the policy's default verdict rather than bypassing the gate
+        # (aops_4c2949d9 — replaces prepare_compliance_report/prepare_qa_review/
+        # prepare_rbg_review, all retired).
         try:
             temp_path = create_audit_file(
                 ctx.session_id,
-                "qa",
+                "exit_reflection",
                 ctx,
                 bound_task_id=session_state.main_agent.current_task,
             )
             state.metrics["temp_path"] = str(temp_path)
             return GateResult.allow(
-                system_message=f"QA review file ready: {temp_path}",
+                system_message=f"Exit-reflection record ready: {temp_path}",
             )
         except Exception as e:
-            logger.warning("Failed to create QA audit file: %s", e)
-            return None
-
-    if name == "prepare_rbg_review":
-        # Build the rbg-review audit file from the session transcript so the
-        # rbg_review.policy_context template ({temp_path}) has a real file to
-        # point the agent's rbg dispatch at. Fires on Stop while the gate is
-        # CLOSED (armed and rbg has not run this turn). Mirrors prepare_qa_review.
-        # On failure, return None so the gate engine falls back to the policy's
-        # default verdict (block) rather than bypassing the gate.
-        try:
-            temp_path = create_audit_file(ctx.session_id, "rbg_review", ctx)
-            state.metrics["temp_path"] = str(temp_path)
-            return GateResult.allow(
-                system_message=f"RBG review file ready: {temp_path}",
-            )
-        except Exception as e:
-            logger.warning("Failed to create rbg-review audit file: %s", e)
+            logger.warning("Failed to create exit-reflection audit file: %s", e)
             return None  # allow-fallback: None -> engine falls back to the policy's default DENY (gate still blocks; never bypasses)
-
-    if name == "update_todo_in_progress":
-        # Track whether the agent currently has an in-progress todo item.
-        # Called via PostToolUse trigger on TodoWrite. (#319 mid-work false BLOCK)
-        todos = ctx.tool_input.get("todos", []) if isinstance(ctx.tool_input, dict) else []
-        has_in_progress = any(
-            isinstance(t, dict) and t.get("status") == "in_progress" for t in todos
-        )
-        state.metrics["has_in_progress_todo"] = has_in_progress
-        return None
 
     if name == "set_turn_did_work":
         # Mark the CURRENT TURN as having done real work (write tool or task
-        # claim). The handover gate policies check turn_did_work to decide
-        # whether a full handover is required (aops-16a15a05). Read-only turns
-        # never trigger this action and bypass the handover gate.
+        # claim). The exit_reflection gate's FULL-tier scope check
+        # (turn_did_work) uses this to decide whether the full checklist is
+        # owed this turn (aops-16a15a05). Read-only turns never trigger this
+        # action and get the lightweight tier instead.
+        session_state.turn_did_work = True
+        return None
+
+    if name == "bind_task_from_tool_input":
+        # Extract the task id from an update_task/claim_task PostToolUse call
+        # and record it on session_state.main_agent.current_task, then mark
+        # the turn as having done work (a claim IS work). Nothing in the
+        # codebase populated main_agent.current_task before this action
+        # existed — has_bound_task/is_exit_reflection_full_scope read it, but
+        # it was always None in production, so the FULL-tier scope check
+        # would never trigger for a genuinely task-bound session (found while
+        # verifying aops_4c2949d9's fresh-session AC empirically). PKB MCP
+        # tools (update_task, claim_task) both take the task id as `id`.
+        tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
+        task_id = tool_input.get("id") if tool_input else None
+        if task_id:
+            session_state.main_agent.current_task = str(task_id)
         session_state.turn_did_work = True
         return None
 
     if name == "reset_turn_did_work":
         # Fired on the UserPromptSubmit re-arm trigger (start of a new turn):
         # turn_did_work must start False each turn so a no-op turn is exempt
-        # from handover even if an earlier turn in the same session wrote
-        # something (aops_d18b2d4b — was never reset, so one write latched the
-        # full ceremony onto every later turn for the rest of the session).
+        # from the full checklist even if an earlier turn in the same session
+        # wrote something (aops_d18b2d4b — was never reset, so one write
+        # latched the full ceremony onto every later turn for the rest of the
+        # session).
         session_state.turn_did_work = False
         return None
 

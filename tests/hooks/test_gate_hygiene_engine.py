@@ -17,13 +17,10 @@ AOPS_CORE = Path(__file__).resolve().parents[2] / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from lib.gate_types import GateCondition, GateConfig, GatePolicy, GateStatus
-from lib.gates.definitions import GATE_CONFIGS
+from lib.gate_types import GateCondition, GateConfig, GatePolicy
 from lib.gates.engine import GenericGate
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
-
-_CONFIGS = {c.name: c for c in GATE_CONFIGS}
 
 
 def _ctx(tool_name, hook_event="PreToolUse", tool_input=None):
@@ -39,22 +36,6 @@ def _ctx(tool_name, hook_event="PreToolUse", tool_input=None):
     )
 
 
-def _state_with_enforcer_overdue():
-    """Session state with the enforcer gate past its block threshold."""
-    state = SessionState.create("ws7-engine-test", client_type="claude")
-    state.main_agent.current_task = "task-x"  # so the gate is "armed"
-    state.gates["rbg"].status = GateStatus.OPEN
-    state.gates["rbg"].ops_since_open = 999
-
-    # Simulate session start environment capture
-    import os
-
-    if "RBG_GATE_MODE" in os.environ:
-        state.gate_modes["RBG_GATE_MODE"] = os.environ["RBG_GATE_MODE"]
-
-    return state
-
-
 def _verdict(result):
     if result is None:
         return None
@@ -64,28 +45,16 @@ def _verdict(result):
 # ---------------------------------------------------------------------------
 # Item 5 — never-block honoured by the engine (#1451)
 # ---------------------------------------------------------------------------
-
-
-def test_enforcer_blocks_write_at_threshold(monkeypatch):
-    """Control: an overdue enforcer DOES deny an ordinary write tool."""
-    monkeypatch.setenv("RBG_GATE_MODE", "block")
-    gate = GenericGate(_CONFIGS["rbg"])
-    result = gate.check(_ctx("Write"), _state_with_enforcer_overdue())
-    assert _verdict(result) == "deny"
-
-
-def test_enforcer_does_not_block_askuserquestion(monkeypatch):
-    """WS7 item 5: never-block stops the enforcer denying AskUserQuestion (#1451).
-
-    Same overdue state as the control above; only the tool changed. The deny
-    must NOT fire, because AskUserQuestion is on the never-block list.
-    """
-    monkeypatch.setenv("RBG_GATE_MODE", "block")
-    gate = GenericGate(_CONFIGS["rbg"])
-    result = gate.check(_ctx("AskUserQuestion"), _state_with_enforcer_overdue())
-    assert _verdict(result) != "deny", (
-        "AskUserQuestion must never be denied by a gate (never-block, #1451)"
-    )
+#
+# The former control/treatment pair here (test_enforcer_blocks_write_at_
+# threshold / test_enforcer_does_not_block_askuserquestion) drove the retired
+# turn-based `rbg` PreToolUse counter gate (aops_4c2949d9 — the whole gate is
+# deleted, nothing fires mid-session on any surface any more). Coverage for
+# the never-block invariant survives below as
+# test_never_block_continue_is_load_bearing, which is the actually
+# load-bearing test per its own docstring: it uses a synthetic always-deny
+# gate so the engine's never-block `continue` — not a condition-level
+# exclusion on any one gate — is what's under test.
 
 
 # ---------------------------------------------------------------------------

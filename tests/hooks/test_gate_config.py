@@ -324,10 +324,13 @@ class TestNeverBlockList:
 class TestGatePrecedence:
     """WS7 item 1: the precedence model must be explicit and match the runtime."""
 
-    def test_rbg_has_highest_precedence(self):
+    def test_exit_reflection_has_highest_precedence(self):
+        """exit_reflection (aops_4c2949d9) is now the sole Stop-tier gate
+        ahead of ida — replaces the former rbg-review + qa + handover trio,
+        and the turn-based rbg PreToolUse counter is retired entirely."""
         from lib.gates.definitions import GATE_CONFIGS
 
-        assert GATE_CONFIGS[0].name == "rbg"
+        assert GATE_CONFIGS[0].name == "exit_reflection"
 
     def test_ida_has_lowest_precedence(self):
         from lib.gates.definitions import GATE_CONFIGS
@@ -365,11 +368,8 @@ class TestIdaGateBareCliFallback:
         from hooks import gate_config
 
         for name in (
-            "QA_GATE_MODE",
-            "RBG_GATE_MODE",
             "HYDRATION_GATE_MODE",
-            "RBG_REVIEW_GATE_MODE",
-            "HANDOVER_GATE_MODE",
+            "EXIT_REFLECTION_GATE_MODE",
         ):
             monkeypatch.delenv(name, raising=False)
             assert getattr(gate_config, name) == "off"

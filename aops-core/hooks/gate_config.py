@@ -13,14 +13,10 @@ from typing import TYPE_CHECKING
 
 __all__ = [
     # Gate modes (PEP 562 lazy attrs)
-    "RBG_GATE_MODE",
-    "HANDOVER_GATE_MODE",
-    "QA_GATE_MODE",
+    "EXIT_REFLECTION_GATE_MODE",
     "IDA_GATE_MODE",
     "HYDRATION_GATE_MODE",
-    "RBG_REVIEW_GATE_MODE",
-    "RBG_TOOL_CALL_THRESHOLD",
-    "RBG_REVIEW_DEGRADE_THRESHOLD",
+    "EXIT_REFLECTION_DEGRADE_THRESHOLD",
     "GATE_MODE_VARS",
     # Slash-command hygiene
     "SLASH_COMMAND_PROMPT_PATTERNS",
@@ -29,14 +25,10 @@ __all__ = [
 if TYPE_CHECKING:
     # Declared here so type checkers see precise types for PEP 562 lazy attrs.
     # At runtime these names come from __getattr__ below.
-    RBG_GATE_MODE: str
-    HANDOVER_GATE_MODE: str
-    QA_GATE_MODE: str
+    EXIT_REFLECTION_GATE_MODE: str
     IDA_GATE_MODE: str
     HYDRATION_GATE_MODE: str
-    RBG_REVIEW_GATE_MODE: str
-    RBG_TOOL_CALL_THRESHOLD: int
-    RBG_REVIEW_DEGRADE_THRESHOLD: int
+    EXIT_REFLECTION_DEGRADE_THRESHOLD: int
 
 
 # =============================================================================
@@ -76,12 +68,12 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 # Gate enforcement modes have exactly two resolution steps, in order, and NO
 # third (fallback/default) step:
 #
-#   1. The env var (`*_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`) — set by a
-#      polecat/crew launcher (`polecat/cli.py`) that already resolved
-#      `polecat.yaml` on the host, OR by `session_env_setup.py`'s SessionStart
-#      hook, which resolves the SAME way this module does (step 2) and
-#      persists the result so inner-loop hooks (stripped shell env) can reuse
-#      it via `session_state.gate_modes`.
+#   1. The env var (`*_GATE_MODE`) — set by a polecat/crew launcher
+#      (`polecat/cli.py`) that already resolved `polecat.yaml` on the host,
+#      OR by `session_env_setup.py`'s SessionStart hook, which resolves the
+#      SAME way this module does (step 2) and persists the result so
+#      inner-loop hooks (stripped shell env) can reuse it via
+#      `session_state.gate_modes`.
 #   2. `polecat.yaml`'s `face` section (this module resolves it directly via
 #      `lib.polecat_config.load_polecat_config`) — the fallback path for any
 #      caller that reaches this module WITHOUT having gone through a launcher
@@ -102,30 +94,32 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 # split now comes SOLELY from `polecat.yaml`'s per-surface `gates.ida` value
 # (see polecat/defaults/polecat.yaml.example), not from a code-level default.
 #
+# EXIT_REFLECTION_GATE_MODE (aops_4c2949d9) is the single consolidated Stop
+# gate replacing the former rbg-review + qa + handover trio; the turn-based
+# `rbg` PreToolUse counter gate (and its RBG_TOOL_CALL_THRESHOLD env var) is
+# retired entirely — nothing fires mid-session on any surface any more.
+#
 # When NEITHER step resolves a value (no env var AND polecat.yaml is missing/
 # unlocatable/malformed), this HARD-FAILS. There is no third step. A session
 # that cannot resolve its posture does not run with a guessed one.
 
 GATE_MODE_VARS: list[str] = [
-    "QA_GATE_MODE",
-    "RBG_GATE_MODE",
     "HYDRATION_GATE_MODE",
-    "RBG_REVIEW_GATE_MODE",
-    "HANDOVER_GATE_MODE",
+    "EXIT_REFLECTION_GATE_MODE",
     "IDA_GATE_MODE",
 ]
 _GATE_MODE_VAR_SET = frozenset(GATE_MODE_VARS)
 
-# RBG_REVIEW_DEGRADE_THRESHOLD is deliberately EXEMPT from DEFAULTS-NONE: it
-# is not a polecat.yaml-sourced posture value (no `gates.rbg_review_degrade_
-# threshold` key exists in the schema, and no launcher ever stages this env
-# var). It is an internal failure-degradation constant — the escape hatch that
-# downgrades a stuck rbg-review DENY loop to WARN-and-allow after N consecutive
-# blocks — with an optional env-var override used only for test tuning. There
-# is nothing in polecat.yaml for a missing value to be "missing from" here, so
-# the hard-fail requirement (which targets config-loading, not this kind of
-# engineering constant) does not apply.
-_RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT = 5
+# EXIT_REFLECTION_DEGRADE_THRESHOLD is deliberately EXEMPT from DEFAULTS-NONE:
+# it is not a polecat.yaml-sourced posture value (no `gates.exit_reflection_
+# degrade_threshold` key exists in the schema, and no launcher ever stages
+# this env var). It is an internal failure-degradation constant — the escape
+# hatch that downgrades a stuck exit_reflection DENY loop to WARN-and-allow
+# after N consecutive blocks — with an optional env-var override used only
+# for test tuning. There is nothing in polecat.yaml for a missing value to be
+# "missing from" here, so the hard-fail requirement (which targets
+# config-loading, not this kind of engineering constant) does not apply.
+_EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT = 5
 
 
 def _face_session_defaults():
@@ -155,40 +149,29 @@ def __getattr__(name: str):  # PEP 562 module-level lazy attrs
             return val
         gate_key = name[: -len("_GATE_MODE")].lower()
         return getattr(_face_session_defaults().gates, gate_key)
-    if name == "RBG_TOOL_CALL_THRESHOLD":
-        raw = os.environ.get("RBG_TOOL_CALL_THRESHOLD")
-        if raw is not None:
-            try:
-                return int(raw)
-            except ValueError as exc:
-                raise RuntimeError(
-                    f"gate_config: RBG_TOOL_CALL_THRESHOLD={raw!r} is not an integer "
-                    "(sourced from polecat.yaml gates.rbg_threshold)."
-                ) from exc
-        return _face_session_defaults().gates.rbg_threshold
-    if name == "RBG_REVIEW_DEGRADE_THRESHOLD":
-        raw = os.environ.get("RBG_REVIEW_DEGRADE_THRESHOLD")
+    if name == "EXIT_REFLECTION_DEGRADE_THRESHOLD":
+        raw = os.environ.get("EXIT_REFLECTION_DEGRADE_THRESHOLD")
         if raw is None:
-            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
-            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
+            _warn_threshold_fallback(name, raw, _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT)
+            return _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT
         try:
             return int(raw)
         except ValueError:
-            _warn_threshold_fallback(name, raw, _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT)
-            return _RBG_REVIEW_DEGRADE_THRESHOLD_DEFAULT
+            _warn_threshold_fallback(name, raw, _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT)
+            return _EXIT_REFLECTION_DEGRADE_THRESHOLD_DEFAULT
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _warn_threshold_fallback(name: str, raw: str | None, default: int) -> None:
     """Loudly warn on a threshold env-var fallback (aops_47d0a754).
 
-    RBG_REVIEW_DEGRADE_THRESHOLD is deliberately EXEMPT from DEFAULTS-NONE
-    (see the module-level comment above) and falls back to a hardcoded
-    default when its env var is absent or unparseable — unlike every
-    *_GATE_MODE var and RBG_TOOL_CALL_THRESHOLD, which hard-fail instead of
-    silently defaulting. A silently-defaulted threshold degrades enforcement
-    calibration invisibly, so this fallback is loud: it prints a WARNING to
-    stderr rather than defaulting without a trace.
+    EXIT_REFLECTION_DEGRADE_THRESHOLD is deliberately EXEMPT from
+    DEFAULTS-NONE (see the module-level comment above) and falls back to a
+    hardcoded default when its env var is absent or unparseable — unlike
+    every *_GATE_MODE var, which hard-fails instead of silently defaulting.
+    A silently-defaulted threshold degrades enforcement calibration
+    invisibly, so this fallback is loud: it prints a WARNING to stderr
+    rather than defaulting without a trace.
     """
     import sys
 

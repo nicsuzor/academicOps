@@ -32,18 +32,16 @@ RBG evaluates compliance against:
 
 ## Invocation Points
 
-RBG is dispatched from three surfaces (operative detail in `specs/enforcement/GATES.md`):
+RBG is dispatched from two surfaces (operative detail in `specs/enforcement/GATES.md`):
 
-1. The PreToolUse periodic-compliance gate (fires after N tool calls since the last check).
-2. The Stop `rbg-review` gate — a final axiom-audit backstop that must run once before a task-bound polecat/crew session exits.
-3. The PR-pipeline `enforcer-status` check (runs on PR events, or on demand via `/enforce`). The GHA enforcer is the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`); it runs Sonnet with `Bash,Read,Edit,Write` and may push mechanical fixes. The persona, not the invocation point, is the source of truth.
+1. The Stop `exit_reflection` gate's FULL tier — a final axiom-audit backstop that must run once before a task-bound polecat/crew session exits (aops_4c2949d9 — replaces the former separate `rbg-review` gate; the retired turn-based PreToolUse periodic-compliance gate that used to fire after N tool calls no longer exists — nothing fires mid-session on any surface any more).
+2. The PR-pipeline `enforcer-status` check (runs on PR events, or on demand via `/enforce`). The GHA enforcer is the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`); it runs Sonnet with `Bash,Read,Edit,Write` and may push mechanical fixes. The persona, not the invocation point, is the source of truth.
 
 ### Gate rationale (what each surface defends)
 
-Two of these surfaces are session-time gates catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); their _why_ — the class of failure each defends against — lives here:
+The session-time surface is catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); its _why_ — the class of failure it defends against — lives here:
 
-- **`enforcer` gate (PreToolUse, periodic).** Catches ultra-vires drift, scope creep, unaudited long-running sessions, and axiom violations the agent didn't self-catch. It enforces a _periodic_ compliance check — a mid-session audit triggered once write operations cross a threshold — rather than blocking individual actions, because drift accumulates silently across a long session and needs a recurring backstop rather than per-action policing.
-- **`rbg-review` gate (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions precisely so ad hoc interactive users do not eat a per-turn review delay.
+- **`exit_reflection` gate, FULL tier, RBG-lens step (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions that did work this turn precisely so ad hoc interactive/read-only sessions do not eat a per-turn review delay (the LITE tier they get instead is a lightweight honesty reminder only). The former separate mid-session periodic PreToolUse check (previously named `rbg`/`enforcer`/`custodiet`) is retired (aops_4c2949d9) — its "catch drift before it accumulates" concern is judged sufficiently covered by the end-of-session backstop plus the module-boundary thesis (see `specs/enforcement/enforcement.md` Purpose).
 
 ## Fitness Criteria (auditing RBG's own transcripts)
 

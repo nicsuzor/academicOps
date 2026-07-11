@@ -59,114 +59,21 @@ unit-level deferral guard lives in ``test_output_for_agy.py``.
 
 from __future__ import annotations
 
-from lib.gate_types import GateStatus
-from lib.session_state import SessionState
-
 from tests.hooks.agy_accept_contract import PreToolHookResult, is_accepted_by_agy
 from tests.hooks.gate_helpers import run_router_agy
 
-
-def _seed_enforcer_deny(monkeypatch, state_dir, session_id: str) -> None:
-    """Seed on-disk session state so a PreToolUse on `session_id` DENYs.
-
-    The subprocess router loads this state by session id; an enforcer gate held
-    OPEN and parked above its tool-call threshold produces a canonical
-    compliance DENY — the safety-critical verdict the agy harness silently drops.
-    """
-    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(state_dir))
-    monkeypatch.setenv("RBG_GATE_MODE", "block")
-    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", "50")
-    state = SessionState.create(session_id, client_type="agy")
-    state.gates["rbg"].status = GateStatus.OPEN
-    state.gates["rbg"].ops_since_open = 100
-    state.save()
-
-
-def _deny_input(session_id: str) -> dict:
-    return {
-        "hook_event_name": "PreToolUse",
-        "session_id": session_id,
-        "tool_name": "Bash",
-        "tool_input": {"command": "git commit -m x"},
-    }
-
-
-def test_agy_deny_uses_top_level_allow_tool(monkeypatch, tmp_path):
-    """Post-fix regression: a canonical enforcer DENY uses TOP-LEVEL ``allowTool``.
-
-    This test is the INVERSION of the original silent-drop reproduction (pre-fix
-    it asserted ``--client agy`` emitted Claude-schema JSON the protojson harness
-    rejected on ``systemMessage``). With ``output_for_agy()`` landed AND the
-    deny-shape repair from aops-891c0e36 in place, the enforcer DENY is now
-    expressed STRUCTURALLY via the TOP-LEVEL ``allowTool=false`` + ``denyReason``
-    fields of ``PreToolHookResult`` — NOT nested under ``permissionOverrides``,
-    which is a repeated field that protojson rejected with
-    ``unexpected token {`` and which silently dropped every live agy DENY.
-    """
-    sid = "agy-contract-deny-repro"
-    _seed_enforcer_deny(monkeypatch, tmp_path, sid)
-
-    output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
-
-    # Post-fix (task_499355a9, aops_e5e2c80f): PreToolHookResult's block branch
-    # carries denyReason fine but has no field for advisory (context_injection)
-    # text, which is structurally undeliverable on this event. The router now
-    # drops it loudly (stderr WARNING + delivery_dropped metadata) instead of
-    # crashing the whole hook subprocess — a crash produces zero stdout, which
-    # agy silently treats as a no-op (total information loss with no alarm).
-    assert output, f"Expected router to still emit a deny, got {output!r}. stderr: {stderr}"
-    assert output.get("allowTool") is False
-    assert output.get("denyReason"), "denyReason (short_reason) must still be delivered"
-    assert "WARNING: agy PreToolUse block cannot carry advisory text" in stderr
-
-    # MUST NOT nest under permissionOverrides (the pre-fix shape that live agy
-    # rejected with "syntax error … unexpected token {").
-    assert "permissionOverrides" not in output, (
-        f"Pre-fix wrong-nesting under permissionOverrides leaked back into agy "
-        f"output (protojson rejects this with unexpected-token): {output!r}"
-    )
-    # None of the Claude/Gemini-schema fields that protojson rejects may leak.
-    for forbidden in ("decision", "metadata", "systemMessage", "hookSpecificOutput"):
-        assert forbidden not in output, (
-            f"Claude/Gemini-schema field {forbidden!r} leaked into agy output "
-            f"(protojson would reject on it): {output!r}"
-        )
-    accepted, offending = is_accepted_by_agy(output, "PreToolUse")
-    assert accepted, (
-        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the DENY "
-        f"output on unknown field(s): {offending}"
-    )
-
-
-def test_agy_deny_survives_protojson_strict_roundtrip(monkeypatch, tmp_path):
-    """A canonical enforcer DENY must survive the agy protojson accept-contract.
-
-    This is the consumer-side acceptance test that would have failed the instant
-    4c73f02a landed. A DENY is expressed protojson-side via the TOP-LEVEL
-    ``allowTool=false`` + ``denyReason`` fields (no enum string required), so
-    this is satisfiable ahead of the ``decision`` enum discovery. Flipped from
-    xfail(strict) to a live assert when ``output_for_agy()`` landed
-    (aops-d27d55a0); deny-shape repaired aops-891c0e36.
-    """
-    sid = "agy-contract-deny-guard"
-    _seed_enforcer_deny(monkeypatch, tmp_path, sid)
-
-    output, stderr = run_router_agy(_deny_input(sid), "PreToolUse")
-
-    # Post-fix (task_499355a9, aops_e5e2c80f): the undeliverable advisory
-    # (context_injection) is dropped loudly — WARNING + delivery_dropped
-    # metadata on the logged record — rather than crashing the hook
-    # subprocess (a crash yields zero stdout, silently treated as a no-op by
-    # agy). The deny itself (allowTool=False + denyReason) still ships.
-    assert output, f"setup: expected router to still emit a deny, got {output!r}. stderr: {stderr}"
-    assert output.get("allowTool") is False
-    assert "WARNING: agy PreToolUse block cannot carry advisory text" in stderr
-
-    accepted, offending = is_accepted_by_agy(output, "PreToolUse")
-    assert accepted, (
-        f"agy accept-contract (offline; live agy is aops-7fa86b45) rejects the DENY "
-        f"output on unknown field(s): {offending}"
-    )
+# NOTE (aops_4c2949d9): the former test_agy_deny_uses_top_level_allow_tool and
+# test_agy_deny_survives_protojson_strict_roundtrip seeded a DENY via the
+# retired turn-based `rbg` PreToolUse gate to exercise the agy protojson
+# DENY-shape contract (top-level allowTool=false + denyReason). That gate —
+# and PreToolUse gating generally — is deleted entirely (nothing fires
+# mid-session on any surface any more; GATE_CONFIGS carries no PreToolUse
+# policy at all). The scenario these tests drove is now structurally
+# unreachable through the real router: no gate can produce a PreToolUse DENY
+# any more, on any client, so there is nothing left to seed. Removed rather
+# than kept as a synthetic/unreachable reproduction — the ALLOW and
+# PostToolUse round-trip tests below remain live coverage of the same
+# protojson accept-contract for the events that DO still fire.
 
 
 def test_agy_allow_survives_protojson_strict_roundtrip():

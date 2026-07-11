@@ -59,13 +59,9 @@ polecat_home: ~/.polecat
 #   antigravity_model: str                # model id passed to `agy --model`
 #   debug: bool                           # forwarded as DEBUG_HOOKS=1
 #   gates:
-#     handover: warn|block|off
-#     qa: warn|block|off
-#     rbg: warn|block|off
+#     exit_reflection: warn|block|off  # consolidated exit-reflection Stop gate (aops_4c2949d9)
 #     hydration: warn|block|off
 #     ida: warn|block|off
-#     rbg_review: warn|block|off
-#     rbg_threshold: int
 #
 # `--model claude`/`gemini`/`antigravity` (provider alias) resolves to
 # `<client>_model` for the DISPATCHED surface at runtime — the single source
@@ -94,13 +90,9 @@ face:
     # gate_config.py's bare-CLI resolution reads. `crew`/`worker`/`subagent`
     # below all set it "off" (structurally absent on every dispatched
     # surface).
-    handover: off
-    qa: off
-    rbg: off
+    exit_reflection: off
     hydration: off
     ida: warn
-    rbg_review: off
-    rbg_threshold: 50
 
 crew:
   hooks_enabled: true
@@ -109,14 +101,13 @@ crew:
   antigravity_model: agy
   debug: false
   gates:
-    # Task-bound multi-agent sessions: handover + rbg_review block on exit.
-    handover: block
-    qa: warn
-    rbg: warn
+    # Task-bound multi-agent sessions: the consolidated exit-reflection gate
+    # (aops_4c2949d9, replacing the former rbg-review + qa + handover trio,
+    # and the turn-based rbg PreToolUse counter is retired entirely — nothing
+    # fires mid-session on any surface any more) blocks on exit.
+    exit_reflection: block
     hydration: off
     ida: off
-    rbg_review: block
-    rbg_threshold: 50
 
 worker:
   hooks_enabled: true
@@ -126,14 +117,10 @@ worker:
   debug: false
   gates:
     # Autonomous headless workers: no human present to action a warn, so
-    # handover + rbg_review both block.
-    handover: block
-    qa: warn
-    rbg: warn
+    # exit_reflection blocks.
+    exit_reflection: block
     hydration: off
     ida: off
-    rbg_review: block
-    rbg_threshold: 50
 
 subagent:
   hooks_enabled: true
@@ -142,13 +129,9 @@ subagent:
   antigravity_model: agy
   debug: false
   gates:
-    handover: warn
-    qa: warn
-    rbg: warn
+    exit_reflection: warn
     hydration: off
     ida: off
-    rbg_review: block
-    rbg_threshold: 50
 
 # ---------------------------------------------------------------------------
 # Docker runtime config. The ssh / unix daemon endpoint is read by the

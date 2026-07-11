@@ -17,9 +17,7 @@ def _deterministic_gate_modes(monkeypatch):
     """Ensure gate modes use known defaults regardless of host env."""
     set_gate_modes(
         monkeypatch,
-        handover="warn",
-        qa="block",
-        rbg="block",
+        exit_reflection="block",
         hydration="off",
     )
     reinit_gates_with_defaults()

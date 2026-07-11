@@ -151,14 +151,10 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
     # one of these keys in EACH of the four sections; A14: no builtin
     # defaults, no guessing). The dev loop uses one identical posture for
     # all four; production polecat.yaml differs per surface.
-    _dev_gates: dict[str, str | int] = {
-        "handover": "warn",
-        "qa": "warn",
-        "rbg": "warn",
+    _dev_gates: dict[str, str] = {
+        "exit_reflection": "warn",
         "hydration": "off",
         "ida": "warn",
-        "rbg_review": "warn",
-        "rbg_threshold": 50,
     }
     _dev_surface = {
         "hooks_enabled": True,

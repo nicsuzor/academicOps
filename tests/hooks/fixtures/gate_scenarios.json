@@ -656,7 +656,7 @@
   "handover_gate_opens": [
     {
       "id": "gemini-slash-dump",
-      "description": "Handover gate opens when /dump slash command is injected as UserPromptSubmit",
+      "description": "exit_reflection gate opens when /dump slash command is injected as UserPromptSubmit",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "UserPromptSubmit",
       "tool_name": null,
@@ -668,7 +668,7 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "handover": {
+        "exit_reflection": {
           "status": "closed"
         }
       },
@@ -678,7 +678,7 @@
     },
     {
       "id": "gemini-pauli-dump",
-      "description": "Handover gate opens when Pauli subagent is delegated to for handover",
+      "description": "exit_reflection gate opens when Pauli subagent is delegated to for handover",
       "_synthetic": "real-tool-synthetic-gate",
       "hook_event": "PreToolUse",
       "tool_name": "pauli",
@@ -695,7 +695,7 @@
       },
       "is_subagent": false,
       "gate_overrides": {
-        "handover": {
+        "exit_reflection": {
           "status": "closed"
         }
       },
