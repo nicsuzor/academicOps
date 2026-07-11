@@ -58,35 +58,18 @@ priority class, due-date bucket, status, or count, or mask identifiers (`task-XX
 ## Worker Handback Format
 
 Every brief requires a capped structured handback — the supervisor reads _this_, not the
-narrative thread:
-
-```
-VERDICT: <PASS | FAIL | BLOCKED | NEEDS-PRINCIPAL>
-CLAIM: <one sentence — the conclusion>
-GATE: <the acceptance gate, and the observed result against it>
-EVIDENCE: <pointers — session id, log path, line refs — NOT pasted dumps>
-CONFIDENCE: <high|med|low> + <what single control/test would falsify this>
-CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT RUN">
-```
+narrative thread. The field shape, the mandatory `CONFOUND CHECK` rule, the
+claim+evidence-pointer itemization rule, and the Observed/Reported register are defined once,
+canonically, in
+[[specs/enforcement/evidence-contract.md#the-canonical-structured-handback-format]] — this
+section does not restate them, only the supervisor-specific worked example below.
 
 `CONFOUND CHECK` is mandatory whenever the verdict blames what we don't own; `NOT RUN` means do
 not relay — commission the control first (§3 of [[../SKILL.md]]).
 
-**CLAIM/EVIDENCE is a set of claim+evidence-pointer pairs, not a bare assertion.** If the
-handback asserts more than one substantive fact, itemize each on its own line. Each itemized
-claim carries one of the two labels from the canonical Observed/Reported register
-([[specs/interactive-experience/head-role-charter.md#fitness-criteria--anti-patterns]]):
-
-- **Observed** — saw the primary evidence this session (a file read, command output, live
-  service state) — cite it. In a handback, "cite it" means paired with an EVIDENCE pointer
-  (file:line, command output, session id — not a narrative dump).
-- **Reported** — a subagent, transcript, or document said it — attribute the source and state
-  its verification status. If no evidence pointer exists, the tag is the literal fallback
-  `UNVERIFIED` — the universal tag for a missing evidence pointer.
-
-One `EVIDENCE` line may not silently cover multiple unrelated claims — the supervisor cannot
-sanity-check a verdict (see Verdict Sanity Check below) against evidence it can't attribute to a
-specific claim.
+Reading a handback's fields is not itself verification: the supervisor confirms the claims each
+field points to actually hold — the substance-over-form requirement in
+[[specs/enforcement/evidence-contract.md#substance-over-form]] — before acting on the verdict.
 
 **Worked example** (two claims — one Observed with a pointer, one Reported/`UNVERIFIED`):
 

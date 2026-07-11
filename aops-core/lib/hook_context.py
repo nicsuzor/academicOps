@@ -54,7 +54,13 @@ class HookContext(BaseModel):
     # Event Data
     tool_name: str | None = None
     tool_input: dict[str, Any] | list[Any] = Field(default_factory=dict)
-    tool_output: dict[str, Any] | list[Any] = Field(default_factory=dict)
+    # str is required alongside dict/list: Claude Code's real PostToolUseFailure
+    # payload carries the raw error message as a bare string, not a dict/list —
+    # a dict/list-only type raises a pydantic ValidationError on that legitimate
+    # payload shape and crashes normalize_input (aops_9d3894e3). No gate reads
+    # tool_output as a dict, so preserving the string as-is (rather than
+    # wrapping it) is both faithful to the wire shape and safe for consumers.
+    tool_output: dict[str, Any] | list[Any] | str = Field(default_factory=dict)
 
     transcript_path: str | None = None
     cwd: str | None = None

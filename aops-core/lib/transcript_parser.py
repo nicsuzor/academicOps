@@ -639,6 +639,15 @@ def parse_session_handover(text: str) -> dict[str, Any] | None:
         f_match = re.search(reg, handover_text, re.IGNORECASE)
         if f_match:
             val = f_match.group(1).strip()
+            if key == "task_id":
+                # Agents commonly write the id as `` `task_499355a9` `` —
+                # the capture group excludes whitespace/`(` but not the
+                # backticks themselves, so without this strip the id
+                # propagates with literal backticks into session_summary,
+                # subagent frontmatter, and resolve_task_title's PKB lookup
+                # (which then reports "Task not found" for an id that does
+                # exist, just not spelled with backticks).
+                val = val.strip("`*_")
             if val.lower() != "none":
                 raw_fields[key] = val
 
