@@ -285,7 +285,8 @@ session_defaults:
     handover: warn      # warn | block | off
     qa: warn
     rbg: warn
-    ida: warn
+    ida: off            # face-scoped honesty gate — head-surface only, off for
+                         # every polecat/crew (dispatched) session; see below
     hydration: off
     rbg_threshold: 50   # write ops between rbg checks
 
@@ -309,6 +310,8 @@ export RBG_GATE_MODE=block          # stricter compliance checking
 ```
 
 The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `RBG_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`.
+
+`IDA_GATE_MODE` defaults to `warn` on this path specifically (every other gate defaults `off`) — a bare direct-CLI session with no `polecat.yaml` is, by construction, the interactive head/face surface the honesty gate exists to protect (see [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md)). Dispatched polecat/crew sessions always get an explicit `off` from `polecat.yaml` instead, regardless of this fallback.
 
 3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 

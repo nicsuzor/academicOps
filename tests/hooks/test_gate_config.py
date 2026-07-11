@@ -339,3 +339,37 @@ class TestGatePrecedence:
 
         configs_order = tuple(c.name for c in GATE_CONFIGS)
         assert len(configs_order) == len(set(configs_order))
+
+
+class TestIdaGateBareCliFallback:
+    """aops_5ea32596 / note_296e5520 §3 — face-scoped ida honesty gate.
+
+    The bare-fallback IDA_GATE_MODE (used only when no polecat.yaml/launcher
+    sets the env var at all — i.e. a direct interactive CLI session, the
+    head/face surface) must default to "warn", the one exception to every
+    other gate's "off" fallback. Every dispatched polecat run/crew session
+    always gets an explicit env var from lib/polecat_config.py's resolution
+    instead (see test_polecat_config.py's
+    test_canonical_example_scopes_ida_gate_off_dispatched_surfaces), so this
+    fallback is never reached for a headless/dispatched surface.
+    """
+
+    def test_ida_gate_mode_default_is_warn(self, monkeypatch):
+        monkeypatch.delenv("IDA_GATE_MODE", raising=False)
+        from hooks import gate_config
+
+        assert gate_config.IDA_GATE_MODE == "warn"
+
+    def test_other_gate_defaults_still_off(self, monkeypatch):
+        # Regression guard: only IDA_GATE_MODE's bare fallback changed.
+        from hooks import gate_config
+
+        for name in (
+            "QA_GATE_MODE",
+            "RBG_GATE_MODE",
+            "HYDRATION_GATE_MODE",
+            "RBG_REVIEW_GATE_MODE",
+            "HANDOVER_GATE_MODE",
+        ):
+            monkeypatch.delenv(name, raising=False)
+            assert getattr(gate_config, name) == "off"

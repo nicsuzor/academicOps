@@ -62,12 +62,21 @@ session_defaults:
   # polecat.yaml applies at all, e.g. an ad hoc direct-CLI session) is "off" —
   # this is the ONLY lever for that distinction; the gate engine itself no
   # longer branches on session type.
+  # ida: off — the face-scoped honesty gate (aops_5ea32596 / note_296e5520
+  # §3) is a head-surface-only mechanism. session_defaults is the base for
+  # EVERY polecat/crew (dispatched, headless-or-sibling) session, never the
+  # head/orchestrator itself (the orchestrator reads its own posture from
+  # gate_config.py's bare-CLI fallback — "warn" — or its own env, per the
+  # `default` scope note below; it never resolves through session_defaults).
+  # Leaving crew_defaults/run_defaults at {} is therefore correct: both
+  # inherit this "off" base, keeping the gate structurally absent from every
+  # dispatched worker and crew sibling agent.
   gates:
     handover: block
     qa: warn
     rbg: warn
     hydration: off
-    ida: warn
+    ida: off
     rbg_review: block
     rbg_threshold: 50
 
