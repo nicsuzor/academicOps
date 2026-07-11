@@ -28,14 +28,19 @@ GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 # Additional published plugins that `make install` should install — everything on
 # the academicOps marketplace EXCEPT aops-cowork (its own isolated
-# marketplace/flow, see install-cowork) and aops-ts (see below). Soft installs: a
-# plugin's asset can legitimately be absent from a given dist build, so a failure
-# warns and continues (mirrors aops-tools). Claude-only HERE (install-agy stays
+# marketplace/flow, see install-cowork) and aops-ts (see below). Every plugin
+# below is now a HARD dependency (Nic ruling 2026-07-12): a missing/broken
+# plugin asset in a dist build is a build bug that must surface immediately at
+# install time, not later as a missing skill. Claude-only HERE (install-agy stays
 # core+tools) is a scope choice, not a build gap: antigravity builds of both DO
 # exist (build.py emits dist/aops-extras-antigravity, dist/aops-pkb-antigravity)
 # — see specs/build-and-install.md.
 CLAUDE_EXTRAS_PLUGIN_NAME := aops-extras@academicOps
 CLAUDE_PKB_PLUGIN_NAME := aops-pkb@academicOps
+# The full set of Claude plugins a live `make install` must successfully install.
+# install-claude/install-windows loop over this list and HALT on the first
+# failure — no per-plugin soft-fail exceptions.
+CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_EXTRAS_PLUGIN_NAME) $(CLAUDE_PKB_PLUGIN_NAME)
 # aops-ts is intentionally NOT auto-installed by any target here: it's an
 # opt-in Tailscale bring-up hook for remote/cloud sessions (specs/build-and-install.md),
 # and joining the tailnet / shipping transcripts should stay an explicit
@@ -50,6 +55,9 @@ CLAUDE_PKB_PLUGIN_NAME := aops-pkb@academicOps
 CLAUDE_LOCAL_MARKETPLACE := aops
 CLAUDE_LOCAL_PLUGIN_NAME := aops-core@aops
 CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
+CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME := aops-extras@aops
+CLAUDE_LOCAL_PKB_PLUGIN_NAME := aops-pkb@aops
+CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME) $(CLAUDE_LOCAL_PKB_PLUGIN_NAME)
 
 # The local-dev cowork plugin lives in its OWN isolated marketplace + plugin
 # namespace (`aops-coworklocal`) so a local install never clobbers the published
@@ -82,7 +90,7 @@ help:
 	@echo "Local Development (Install from source):"
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools)"
+	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools, aops-extras, aops-pkb)"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -157,8 +165,12 @@ install-dev: build-dev
 	@# a dev install never double-loads alongside a release install.
 	-command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_LOCAL_PKB_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_EXTRAS_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_PKB_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
@@ -189,12 +201,16 @@ uninstall-dev:
 	@echo "Removing local '$(CLAUDE_LOCAL_MARKETPLACE)' marketplace + plugins..."
 	@command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME) >/dev/null 2>&1 || true
 	@command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin uninstall $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin uninstall $(CLAUDE_LOCAL_PKB_PLUGIN_NAME) >/dev/null 2>&1 || true
 	@command claude plugin marketplace remove $(CLAUDE_LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)
+	@command claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME)
+	@command claude plugin install $(CLAUDE_PKB_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -240,16 +256,13 @@ clean-local:
 	@echo "--- 🧹 Clearing local/dev installs ---"
 	@# Local dev build (`@aops` marketplace, from `make dev`) — remove its plugins and
 	@# marketplace so this live install is never shadowed by a prior local build.
-	@command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@for p in $(CLAUDE_LOCAL_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@command claude plugin marketplace remove $(CLAUDE_LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@# Released install + any legacy local-dir override that reused the `academicOps` name.
-	@command claude plugin uninstall $(CLAUDE_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@for p in $(CLAUDE_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
-	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-core >/dev/null 2>&1 || true
-	@command -v agy >/dev/null 2>&1 && agy plugin uninstall aops-tools >/dev/null 2>&1 || true
-	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
+	@command -v agy >/dev/null 2>&1 && for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done || true
+	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity" "$(DIST_DIR)/aops-extras-antigravity" "$(DIST_DIR)/aops-pkb-antigravity"
 	@# `agy plugin uninstall` only knows about plugins IT installed (via its own
 	@# copy-based `agy plugin install`); it has no record of the symlinks
 	@# install.py's dev path (`make dev`) drops at these same paths pointing at
@@ -257,7 +270,7 @@ clean-local:
 	@# real agy-installed copy) so a stale/dangling dev link can never shadow or
 	@# collide with the live install-agy run that follows.
 	@for d in "$(HOME)/.gemini/config/plugins" "$(HOME)/.gemini/antigravity-cli/plugins"; do \
-		for p in aops-core aops-tools; do \
+		for p in aops-core aops-tools aops-extras aops-pkb; do \
 			[ -L "$$d/$$p" ] && rm -f "$$d/$$p" && echo "  removed stale dev symlink $$d/$$p"; \
 		done; \
 	done; true
@@ -276,12 +289,16 @@ ensure-docker:
 		$(MAKE) build-sandbox || echo "⚠️  Docker image build failed — continuing without sandbox image."; \
 	fi
 
+# Every plugin in $(CLAUDE_PLUGINS) is a hard dependency — HALT on the first
+# failure (Nic ruling 2026-07-12: no more soft-fail/warn-and-continue for any
+# plugin). A missing plugin asset means the dist build is broken; that must
+# stop the install, not degrade silently into a partial one.
 install-claude:
-	@echo "Installing aops plugin for Claude Code..."
+	@echo "Installing aops plugins for Claude Code..."
 	@echo "  Source: $(DIST_REPO_URL)"
+	@echo "  Plugins: $(CLAUDE_PLUGINS)"
 	@# Idempotent, quiet teardown (uninstalling something absent is expected).
-	@command claude plugin uninstall $(CLAUDE_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@for p in $(CLAUDE_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@# Force the academicOps marketplace to the LIVE dist repo. `marketplace add`
 	@# no-ops when the name already exists (it will NOT re-point an existing
 	@# source), so remove any prior source first — e.g. a local-dir override left
@@ -289,22 +306,10 @@ install-claude:
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
-	@# aops-core is the success criterion of this surface — HALT on failure rather
-	@# than warn-and-continue (mirrors install-agy/install-cowork). aops-tools is a
-	@# softer dependency: its asset can legitimately be absent from a dist build, so
-	@# a tools failure warns and continues.
-	@command claude plugin install $(CLAUDE_PLUGIN_NAME) \
-		&& echo "✓ Claude Code aops-core installed" \
-		|| { echo "  ⚠️ Claude aops-core install failed — could not install from $(DIST_REPO_URL) marketplace" >&2; exit 1; }
-	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME) \
-		&& echo "✓ Claude Code aops-tools installed" \
-		|| echo "  ⚠️ Claude aops-tools install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
-	@command claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME) \
-		&& echo "✓ Claude Code aops-extras installed" \
-		|| echo "  ⚠️ Claude aops-extras install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
-	@command claude plugin install $(CLAUDE_PKB_PLUGIN_NAME) \
-		&& echo "✓ Claude Code aops-pkb installed" \
-		|| echo "  ⚠️ Claude aops-pkb install failed — plugin source missing from $(DIST_REPO_URL) marketplace (next dist build should restore it)"
+	@for p in $(CLAUDE_PLUGINS); do \
+		command claude plugin install $$p && echo "✓ Claude Code $$p installed" \
+			|| { echo "  x Claude $$p install failed — could not install from $(DIST_REPO_URL) marketplace" >&2; exit 1; }; \
+	done
 
 
 # Cowork on personal accounts has no marketplace mechanism. The Cowork plugin
@@ -394,30 +399,33 @@ uninstall-cowork:
 # For LOCAL dev (dist/aops-antigravity present) install straight from that dir.
 AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-antigravity
 AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-tools-antigravity
+# install-agy stays core+tools by design (deliberate scope choice, not a build
+# gap — see specs/build-and-install.md and the CLAUDE_EXTRAS/PKB comment above).
+# Both are now hard dependencies: no more tools-softer-than-core exception.
+AGY_PLUGINS := aops-core aops-tools
 
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
 		echo "  (agy not found on PATH — skipping Antigravity install)"; \
 		exit 0; \
 	fi
-	@echo "Installing aops plugin into Antigravity CLI (agy)..."
-	-@agy plugin uninstall aops-core >/dev/null 2>&1 || true
-	-@agy plugin uninstall aops-tools >/dev/null 2>&1 || true
-	@if [ -d "$(DIST_DIR)/aops-antigravity" ]; then \
-		echo "  Source: $(DIST_DIR)/aops-antigravity (local build)"; \
-		agy plugin install "$(DIST_DIR)/aops-antigravity" && echo "✓ agy aops-core installed" \
-			|| { echo "  ⚠️ agy aops-core install failed" >&2; exit 1; }; \
-		if [ -d "$(DIST_DIR)/aops-tools-antigravity" ]; then \
-			agy plugin install "$(DIST_DIR)/aops-tools-antigravity" && echo "✓ agy aops-tools installed" \
-				|| echo "  ⚠️ agy aops-tools install failed"; \
+	@echo "Installing aops plugins into Antigravity CLI (agy): $(AGY_PLUGINS)"
+	@for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done
+	@for p in $(AGY_PLUGINS); do \
+		case $$p in \
+			aops-core) local_dir="$(DIST_DIR)/aops-antigravity"; url="$(AGY_CORE_URL)" ;; \
+			aops-tools) local_dir="$(DIST_DIR)/aops-tools-antigravity"; url="$(AGY_TOOLS_URL)" ;; \
+		esac; \
+		if [ -d "$$local_dir" ]; then \
+			echo "  Source ($$p): $$local_dir (local build)"; \
+			agy plugin install "$$local_dir" && echo "✓ agy $$p installed" \
+				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
+		else \
+			echo "  Source ($$p): $$url (live dist branch)"; \
+			agy plugin install "$$url" && echo "✓ agy $$p installed" \
+				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
 		fi; \
-	else \
-		echo "  Source: $(AGY_CORE_URL) (live dist branch)"; \
-		agy plugin install "$(AGY_CORE_URL)" && echo "✓ agy aops-core installed" \
-			|| { echo "  ⚠️ agy aops-core install failed" >&2; exit 1; }; \
-		agy plugin install "$(AGY_TOOLS_URL)" && echo "✓ agy aops-tools installed" \
-			|| echo "  ⚠️ agy aops-tools install failed (next dist build should restore it)"; \
-	fi
+	done
 	@# Resolve ${extensionPath} in the INSTALLED agy mcp_config.json. agy copies
 	@# the plugin to ~/.gemini/config/plugins/aops-core/ at install but does NOT
 	@# substitute ${extensionPath} in native-format mcp_config.json, and it spawns
@@ -447,21 +455,14 @@ install-windows:
 	fi; \
 	echo "--- 🪟  WSL detected — checking for Windows-side Claude ---"; \
 	if (cd /mnt/c && cmd.exe /c "where claude" >/dev/null 2>&1); then \
-		echo "Installing aops-core plugin into Windows Claude..."; \
+		echo "Installing aops plugins into Windows Claude: $(CLAUDE_PLUGINS)"; \
 		(cd /mnt/c && cmd.exe /c "claude plugin marketplace add $(DIST_REPO)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)' || true); \
 		(cd /mnt/c && cmd.exe /c "claude plugin marketplace update academicOps" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)' || true); \
-		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Claude aops-core installed" \
-			|| echo "  ⚠️ Windows Claude aops-core install failed"; \
-		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Claude aops-tools installed" \
-			|| echo "  ⚠️ Windows Claude aops-tools install failed"; \
-		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Claude aops-extras installed" \
-			|| echo "  ⚠️ Windows Claude aops-extras install failed"; \
-		(cd /mnt/c && cmd.exe /c "claude plugin install $(CLAUDE_PKB_PLUGIN_NAME)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
-			&& echo "✓ Windows Claude aops-pkb installed" \
-			|| echo "  ⚠️ Windows Claude aops-pkb install failed"; \
+		for p in $(CLAUDE_PLUGINS); do \
+			(cd /mnt/c && cmd.exe /c "claude plugin install $$p" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+				&& echo "✓ Windows Claude $$p installed" \
+				|| { echo "  x Windows Claude $$p install failed" >&2; exit 1; }; \
+		done; \
 	else \
 		echo "  (no Windows-side claude found — skipping)"; \
 	fi
