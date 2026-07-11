@@ -37,11 +37,16 @@ subtask, an epic, or a multi-epic release all run the same five steps:
 
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
    settled _at decomposition time_, before compute is spent executing it.
-   This is pauli's pre-hoc lens (premise/worth/shape), folded into
-   `/planner` decomposition rather than run as a standalone gate — the
-   previously separate premise-gate concept ([premise-gate.md](premise-gate.md))
-   is superseded by this step; dispatch surfaces trust the planner's
-   decomposition and do not re-judge it.
+   This is pauli's pre-hoc lens (premise/worth/shape). **Target design:**
+   fold this into `/planner` decomposition rather than run it as a
+   standalone gate, so the previously separate premise-gate concept
+   ([premise-gate.md](premise-gate.md)) is superseded and dispatch surfaces
+   trust the planner's decomposition without re-judging it. That fold-in has
+   not landed — today the premise gate still hard-refuses at the spend
+   surfaces (`/pull`, `/dispatch`, `/supervisor` dispatch) per
+   [premise-gate.md](premise-gate.md) and the `judgment-non-delegable` row in
+   [ENFORCEMENT-MAP.md](../ENFORCEMENT-MAP.md) (mode `block`); this step
+   describes the target, not current behavior.
 2. **Execution** — the claimed agent does the work. Layers 0–1
    ([pyramid.md](pyramid.md)) govern this span: trust-the-method, no
    process-level enforcement, evidence-driven escalation only if something
