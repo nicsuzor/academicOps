@@ -22,7 +22,6 @@ sys.path.append(str(SCRIPT_DIR / "lib"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    import mcp_tool_manifest
     from build_utils import (  # pyright: ignore[reportMissingImports]
         get_git_commit_sha,
         safe_copy,
@@ -1271,16 +1270,20 @@ def _assert_no_axiom_decoys(content_dir: Path) -> None:
         )
 
 
+# A live "pkb"-aggregator MCP tool name always repeats the inner sub-server
+# segment: mcp__plugin_<slug>_pkb__<subserver>__<tool> (e.g. the aggregator's
+# `pkb` sub-server yields `...pkb__pkb__get_task`, not `...pkb__get_task`).
+# aops_b580e332 shipped the single-segment (broken) form for an unknown period.
+# A grant ending in `*` is a wildcard and tolerates whatever the live
+# sub-server prefix is, so it's exempt regardless of shape.
+_STALE_PKB_GRANT_RE = re.compile(r"^mcp__plugin_[a-z0-9-]+_pkb__[a-z0-9]+__.+$")
+
+
 def _assert_agent_frontmatter_mcp_tools_resolve(aops_root: Path) -> None:
     """Fail the build if an agent's SOURCE `tools:` frontmatter grants an
-    explicit (non-wildcard) MCP tool name that doesn't resolve against the live
-    plugin MCP tool manifest (aops_35b7dce7 — the aops_b580e332 single-/double-
-    `pkb__`-prefix defect class: `mcp__plugin_aops-pkb_pkb__get_task` LOOKS
-    plausible but the real, live, callable name is
-    `mcp__plugin_aops-pkb_pkb__pkb__get_task`, because the aggregator's inner
-    `pkb` sub-server carries its own `pkb__` segment). Wildcard grants
-    (`mcp__plugin_*__*`) are unaffected — prefix-match tolerates the
-    aggregator's inner sub-server prefix regardless of what it is.
+    explicit (non-wildcard) "pkb"-aggregator MCP tool name missing the
+    aggregator's repeated inner sub-server segment (aops_35b7dce7 — the
+    aops_b580e332 single-/double-`pkb__`-prefix defect class).
 
     Runs against every package's SOURCE `agents/*.md` (discovered by globbing
     `<aops_root>/*/agents`, so a new package needs no change here) rather than
@@ -1311,14 +1314,24 @@ def _assert_agent_frontmatter_mcp_tools_resolve(aops_root: Path) -> None:
             if isinstance(tools, str):
                 tools = [t.strip() for t in tools.split(",") if t.strip()]
             for tool in tools:
-                if not isinstance(tool, str) or not tool.startswith("mcp__"):
+                if (
+                    not isinstance(tool, str)
+                    or not tool.startswith("mcp__")
+                    or "_pkb__" not in tool
+                ):
                     continue
-                error = mcp_tool_manifest.classify_explicit_mcp_tool(tool)
-                if error:
-                    failures.append(f"{agent_file.relative_to(aops_root)}: {error}")
+                if tool.endswith("*"):
+                    continue  # wildcard grant — tolerates the live sub-server prefix
+                if not _STALE_PKB_GRANT_RE.match(tool):
+                    failures.append(
+                        f"{agent_file.relative_to(aops_root)}: '{tool}' looks like a stale "
+                        "single-prefix pkb-aggregator grant — the live tool name repeats the "
+                        "sub-server segment (mcp__plugin_<slug>_pkb__<subserver>__<tool>, e.g. "
+                        "...pkb__pkb__get_task)"
+                    )
     if failures:
         raise RuntimeError(
-            "Agent frontmatter MCP tool-name manifest guard failed:\n  - " + "\n  - ".join(failures)
+            "Agent frontmatter MCP tool-name guard failed:\n  - " + "\n  - ".join(failures)
         )
 
 
