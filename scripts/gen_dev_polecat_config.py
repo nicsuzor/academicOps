@@ -49,7 +49,14 @@ ANTIGRAVITY_PLUGINS = [
 ]
 
 CLAUDE_CACHE_ROOT = "/home/worker/.claude/plugins/cache/academicOps"
-AGY_PLUGIN_ROOT = "/home/worker/.gemini/antigravity-cli/plugins"
+# NOT ~/.gemini/antigravity-cli/plugins/ (that's `agy plugin install`'s
+# COPY SOURCE, baked in once at image-build time — the Dockerfile installs
+# from it but agy never re-reads it after). The path agy's hook router
+# actually executes from at runtime, every invocation, is this one —
+# confirmed live by bind-mounting the wrong root, watching a router.py fix
+# have zero effect on a running container, then manually patching THIS path
+# instead and observing it take effect immediately (task_499355a9).
+AGY_PLUGIN_ROOT = "/home/worker/.gemini/config/plugins"
 
 
 def read_plugin_versions(aops_root: Path) -> dict[str, str]:

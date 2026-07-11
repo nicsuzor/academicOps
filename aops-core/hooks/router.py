@@ -1339,16 +1339,57 @@ class HookRouter:
                     )
             else:
                 if context:
-                    raise ValueError(
-                        f"agy PreToolUse allow/warn does not support context_injection (advisory: {context!r})"
+                    # Same undeliverable-content class as the PostToolUse
+                    # case above, live-reproduced twice this tick (agy-test2,
+                    # agy-test3 — the `rbg` gate's periodic countdown fires
+                    # here on plain tool use and crashed every time,
+                    # task_499355a9). PreToolHookResult's allow branch has no
+                    # field for advisory text; drop it loudly instead of
+                    # crashing the hook.
+                    print(
+                        f"WARNING: agy PreToolUse allow/warn cannot carry advisory "
+                        f"text — dropping undeliverable content_injection (context={context!r}).",
+                        file=sys.stderr,
                     )
+                    result.metadata["delivery_dropped"] = {
+                        "event": event,
+                        "client": "agy",
+                        "reason": None,
+                        "context": context,
+                    }
+                    context = None
                 # allowTool has no field for short_reason; translate_agy's allow
                 # branch can't emit it, so clear it here rather than logging a
                 # `resolved.reason` that never actually reaches the wire.
                 reason = None
         elif event == "PostToolUse":
             if reason or context:
-                raise ValueError("agy PostToolUse does not support any fields.")
+                # agy's PostToolHookResult protojson has no field to carry a
+                # message (translate_agy's PostToolUse branch always emits
+                # {}) — this content is structurally undeliverable to agy on
+                # this event. Raising here used to crash the whole hook
+                # subprocess: it exited non-zero with no stdout, agy silently
+                # treated that as a no-op, and the only trace was a
+                # misleading log entry carrying the pre-crash gate message as
+                # if it had reached the user (aops_e5e2c80f — a fabricated
+                # "◇ Compliance verified." system_message on a PostToolUse
+                # record whose handler had actually thrown). Drop the content
+                # instead, but loudly: per O1's delivery-liveness-alarm
+                # requirement (task_499355a9), a silently-dropped gate must
+                # never be indistinguishable from a passing one.
+                print(
+                    f"WARNING: agy PostToolUse cannot carry a message — dropping "
+                    f"undeliverable content (reason={reason!r}, context={context!r}).",
+                    file=sys.stderr,
+                )
+                result.metadata["delivery_dropped"] = {
+                    "event": event,
+                    "client": "agy",
+                    "reason": reason,
+                    "context": context,
+                }
+                reason = None
+                context = None
         elif event in ("PreInvocation", "PostInvocation"):
             pass  # both reason and context are supported, folded into injectSteps by translate_agy
         elif event == "Stop":

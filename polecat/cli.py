@@ -2488,6 +2488,34 @@ def _replicate_gemini_auth(
             if src.exists():
                 shutil.copy2(src, target_ag_dir / f, follow_symlinks=True)
 
+        # Antigravity CLI (agy) does NOT read the classic Gemini
+        # trustedFolders.json handled above — it keeps its own trust store
+        # in antigravity-cli/settings.json's `trustedWorkspaces` array. The
+        # copy above faithfully replicates the HOST's list (verified live:
+        # a container with /workspace already TRUST_FOLDER in
+        # trustedFolders.json still hit agy's "Do you trust this folder?"
+        # prompt, blocking headless dispatch — task_499355a9). Inject the
+        # in-container mount path (and the host work_dir, in case agy ever
+        # runs against that path directly) the same way trustedFolders.json
+        # is patched above.
+        if work_dir:
+            ag_settings_path = target_ag_dir / "settings.json"
+            if ag_settings_path.exists():
+                try:
+                    with open(ag_settings_path) as f:
+                        ag_settings = json.load(f)
+                    trusted = ag_settings.setdefault("trustedWorkspaces", [])
+                    for path in (str(work_dir.resolve()), "/workspace"):
+                        if path not in trusted:
+                            trusted.append(path)
+                    with open(ag_settings_path, "w") as f:
+                        json.dump(ag_settings, f, indent=2)
+                except (json.JSONDecodeError, OSError) as e:
+                    print(
+                        f"   Warning: could not add trustedWorkspaces to {ag_settings_path}: {e}",
+                        file=sys.stderr,
+                    )
+
     # Replace host home directory paths and template variables in settings/configs
     host_home_str = str(home)
     container_home_str = "/home/worker"
