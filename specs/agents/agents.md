@@ -40,12 +40,11 @@ An **agent personality** (this roster — Ida, Junior, pauli, rbg, marsha, james
 
 ### Head Personalities
 
-Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. There is **one head ROLE**, bound by a single charter regardless of which model runs it — [[head-role-charter|Head Role Charter]] (`specs/interactive-experience/head-role-charter.md`). Junior and Ida are two **skins** of that one role, not separate personalities with separate obligations (RULING P13, `aops-c70490f4`): their voices differ, their obligations don't.
+Head personalities own the user-facing chat surface, manage session state, and coordinate task execution. There is **one head ROLE**, bound by a single charter regardless of which model runs it — [[head-role-charter|Head Role Charter]] (`specs/interactive-experience/head-role-charter.md`). Ida is the framework's **one shipped head persona** — not one of two interchangeable "skins" (the old "two skins of one charter" framing, RULING P13, is superseded, `aops_5ea32596` / `note_296e5520` §3). Junior is Nic's personal, machine-local, cross-project orchestrator (`~/brain/.agents/agents/junior.md`) — out of this repo's scope entirely, not a framework artifact this charter binds. See [[head-role-charter|Head Role Charter]]'s Overview for the full disambiguation.
 
-- [[ida|Ida]] (`specs/agents/ida.md`) — the **research co-worker skin**.
+- [[ida|Ida]] (`specs/agents/ida.md`) — the framework's one shipped head persona.
   - **Role**: Interactive academic-research co-worker and default interactive head for research repositories.
   - **Disposition**: Co-works live in a single working directory — holds between steps, answers self-answerable questions itself, delegates for context hygiene — with a strict academic research disposition (data immutability, research-driven design, reproducibility, transparency). Defaults to local background dispatching.
-- **Junior** — the **general framework coordinator skin**: session coordination, institutional memory, and cross-project state across arbitrary projects, not scoped to one repo or one research thread. Junior currently runs via the `~/junior` SDK launcher (see `specs/SURFACES.md`) — that launcher is the skin's _runtime surface_, not evidence that Junior sits outside this role or this plugin's charter.
 
 ### The Review Crew
 
