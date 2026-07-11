@@ -147,6 +147,7 @@ def build_config(aops_root: Path, polecat_home: str) -> dict:
                 "hydration": "off",
                 "ida": "warn",
                 "rbg_review": "warn",
+                "deliverable_verify": "warn",
                 "rbg_threshold": 50,
             },
         },
