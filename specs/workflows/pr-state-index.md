@@ -1,6 +1,6 @@
 # PR State Index Spec
 
-> **Rework status (epic_5e9fc3d5, 2026-07-11)**: not template material for the `wf-*` planner library — this is a JSON data-artifact schema (producer/consumer contract), not a reusable prose workflow step. No change to its operative status. (SSoT for the rework pass: `note_296e5520` Component 1, D4.)
+> **Rework status**: not template material for the `wf-*` planner library — this is a JSON data-artifact schema (producer/consumer contract), not a reusable prose workflow step. No change to its operative status.
 
 This document defines the schema and producer requirements for the PR state index used by academicOps to close the loop on task completion.
 

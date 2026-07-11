@@ -13,7 +13,7 @@ related: [[framework-observability]], [[enforcement]]
 
 # Framework Feedback Loops
 
-> **Rework status (epic_5e9fc3d5, 2026-07-11)**: the escalation ladder (intervention levels 1-4, escalate/de-escalate triggers) has been merged into the PKB template component `wf-critique-lens`. The rest of this spec (the OBSERVE→ANALYZE→DIAGNOSE→DOCUMENT→VERIFY meta-loop for framework self-improvement) is not template material — it describes framework-governance process, not a composable task-workflow step — and is retained here as the operative record (SSoT for the rework: `note_296e5520` Component 1, D4).
+> **Rework status**: the escalation ladder (intervention levels 1-4, escalate/de-escalate triggers) has been merged into the PKB template component `wf-critique-lens`. The rest of this spec (the OBSERVE→ANALYZE→DIAGNOSE→DOCUMENT→VERIFY meta-loop for framework self-improvement) is not template material — it describes framework-governance process, not a composable task-workflow step — and is retained here as the operative record.
 
 ## Giving Effect
 
