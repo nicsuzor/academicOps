@@ -53,7 +53,7 @@ If no mode token is present, default to `dispatch` (the safe, context-cheap path
 
 - Search for task nodes with `status: "queued"`.
 - If no task id is given, list the top candidates via
-  `mcp__plugin_aops-pkb_pkb__list_tasks(status="queued")` and pick the one with
+  `mcp__plugin_aops-pkb_pkb__pkb__list_tasks(status="queued")` and pick the one with
   the highest `focus_score`.
 - Descend to leaf tasks if the selected task has children.
 
@@ -105,7 +105,7 @@ For the selected candidate leaf task:
   needed here. What the select step _cannot_ see is a leftover from a completed
   decomposition:
   - If the task has a parent, retrieve the parent's children (siblings) via
-    `mcp__plugin_aops-pkb_pkb__get_task_children`. If **all** siblings are
+    `mcp__plugin_aops-pkb_pkb__pkb__get_task_children`. If **all** siblings are
     already `done` (a heuristic, not proof — parallel siblings legitimately
     finish at different times), the task may be a leftover from a completed
     decomposition. Print `[WARNING] Task <id>'s siblings are all done — may be a
@@ -133,7 +133,7 @@ Record and exit:
 - Do not mark the task as `in_progress` from this session — the executing surface
   claims it.
 - If using a subagent that does not self-claim, update the task `assignee` and
-  add a dispatch note via `mcp__plugin_aops-pkb_pkb__update_task`.
+  add a dispatch note via `mcp__plugin_aops-pkb_pkb__pkb__update_task`.
 - The task ID propagates to the execution surface via the `$AOPS_TASK_ID`
   environment variable and the git branch name; do not synthesise a filesystem
   binding file.
@@ -155,7 +155,7 @@ genuinely the user's to make — scope, ambiguous acceptance criteria, or a
 hard-to-reverse step. Do not dispatch to a background worker.
 
 1. **Claim.** Set `status: in_progress` and `assignee` to yourself via
-   `mcp__plugin_aops-pkb_pkb__update_task`. (On the Cowork surface this claim
+   `mcp__plugin_aops-pkb_pkb__pkb__update_task`. (On the Cowork surface this claim
    step also drives the native-list mirror — see the `cowork-sync` skill in the
    aops-core/aops-cowork packages.)
 2. **Confirm the working context.** Verify the current working directory / repo
