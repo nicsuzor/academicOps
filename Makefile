@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker verify-docker shell docker-push
+.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker build-docker-dev verify-docker shell docker-push
 
 # --- Configuration ---
 
@@ -564,6 +564,16 @@ build-docker: build-dev
 	@docker build --build-arg AOPS_DIST_SOURCE=local --build-arg CLAUDE_CODE_VERSION=$$(date +%Y%m%d) --build-arg RUST_CACHEBUST=$$(date +%Y%m%d) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Image built: $(DOCKER_IMAGE) (also tagged $(notdir $(DOCKER_IMAGE)):latest)"
 	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
+
+# Build a DEV-ONLY image tagged `:dev`, never `:latest`/bare $(DOCKER_IMAGE) —
+# real polecats pull the bare/`:latest` tag (see build-docker above), so this
+# target must never touch it. Used by scripts/dev-crew.sh for the live-editing
+# dev loop (tests/harness/README.md § "Dev-loop"). Same AOPS_DIST_SOURCE=local
+# build as build-docker; only the `-t` flags differ.
+build-docker-dev: build-dev
+	@echo "Building aops crew DEV image (tag :dev only — does not touch :latest)..."
+	@docker build --build-arg AOPS_DIST_SOURCE=local --build-arg CLAUDE_CODE_VERSION=$$(date +%Y%m%d) --build-arg RUST_CACHEBUST=$$(date +%Y%m%d) -t $(DOCKER_IMAGE):dev .
+	@echo "✓ Image built: $(DOCKER_IMAGE):dev ($(DOCKER_IMAGE):latest untouched)"
 
 # Force an immediate Claude Code / Rust refresh without a full --no-cache rebuild.
 docker-refresh-tools: build-dev
