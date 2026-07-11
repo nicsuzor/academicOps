@@ -66,10 +66,19 @@ session_defaults:
   # polecat.yaml applies at all, e.g. an ad hoc direct-CLI session) is "off" —
   # this is the ONLY lever for that distinction; the gate engine itself never
   # branches on session type.
+  # ida: off — the face-scoped honesty gate (aops_5ea32596 / note_296e5520
+  # §3) is a head-surface-only mechanism. session_defaults is the base for
+  # EVERY polecat/crew (dispatched, headless-or-sibling) session, never the
+  # head/orchestrator itself (the orchestrator reads its own posture from
+  # gate_config.py's bare-CLI fallback — "warn" — or its own env, per the
+  # `default` scope note below; it never resolves through session_defaults).
+  # Leaving crew_defaults/run_defaults at {} is therefore correct: both
+  # inherit this "off" base, keeping the gate structurally absent from every
+  # dispatched worker and crew sibling agent.
   gates:
     exit_reflection: block
     hydration: off
-    ida: warn
+    ida: off
 
 # ---------------------------------------------------------------------------
 # POLICY SCOPES — three DISTINCT, separately-owned scopes (aops-b368109a).
@@ -110,7 +119,11 @@ default: {}
 crew_defaults: {}
 
 # `polecat run` — autonomous workers. Hooks always on, full policy.
-# To tighten enforcement for unsupervised sessions, replace {} with:
+# session_defaults.gates.exit_reflection is already `block` for every
+# surface (see above — matches production posture: Nic wanted the full
+# checklist REQUIRED from polecats, not just warned). To tighten enforcement
+# further for unsupervised sessions, replace {} with real gate-key overrides,
+# e.g.:
 #   run_defaults:
 #     gates:
 #       exit_reflection: block

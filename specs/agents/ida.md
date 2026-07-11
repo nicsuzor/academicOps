@@ -13,9 +13,11 @@ created: 2026-06-29
 
 ## Overview
 
-Ida is the framework's interactive academic-research co-worker and the default head personality for research repositories. Named in honour of **Ida B. Wells**, who built her pioneering career on documented evidence, relentless investigation, and systematic fact-gathering — the same evidentiary discipline the agent enforces on itself and the work.
+Ida is the framework's **one shipped interactive head personality** — the default head for research repositories, and since `aops_5ea32596` (`note_296e5520` §3) a **superset**: her original academic-rigor/research-integrity register plus the general dispatch-discipline and self-maintenance doctrine previously described separately as Junior's. Named in honour of **Ida B. Wells**, who built her pioneering career on documented evidence, relentless investigation, and systematic fact-gathering — the same evidentiary discipline the agent enforces on itself and the work.
 
-- **Runtime Definition**: `aops-core/agents/ida.md` (moved to the short-lived `aops-interactive` plugin — aops-cf3fb2f0 — then back to `aops-core` when that plugin was dissolved pre-ship, ruling A10, aops-7ea63b63) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) (RULING P13) rather than restating them.
+**Ida/Junior disambiguation** (supersedes the old "two skins of one charter" framing, RULING P13): Junior is Nic's personal, machine-local, cross-project orchestrator (`~/brain/.agents/agents/junior.md`) — out of this repo's scope, not a framework artifact, and not edited by any task against this repo. Ida is this framework's sole shipped head; there is no second in-framework skin. See [head-role-charter.md's Overview](../interactive-experience/head-role-charter.md#overview) for the full disambiguation.
+
+- **Runtime Definition**: `aops-core/agents/ida.md` (moved to the short-lived `aops-interactive` plugin — aops-cf3fb2f0 — then back to `aops-core` when that plugin was dissolved pre-ship, ruling A10, aops-7ea63b63) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) rather than restating them.
 - **Primary Surface**: Interactive research sessions (auto-selected via `"agent": "ida"` in the local `.claude/settings.json`).
 
 ## Persona & Disposition

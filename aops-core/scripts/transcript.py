@@ -569,6 +569,17 @@ def _save_minimal_token_summary(
                 task_id = event["task_id"]
                 break
 
+    # Backfill onto session_summary so this resolution is also visible to
+    # the markdown frontmatter (format_session_as_markdown reads
+    # session.task_id directly) and to any subagent artifacts inherited
+    # from it (_build_subagent_session_summary copies parent_summary.task_id)
+    # — without this, a task_id discovered only here (env var / timeline
+    # task-tool events) landed in the insights JSON but never in the
+    # transcript frontmatter or subagent transcripts (aops task_499355a9
+    # transcript audit).
+    if session_summary and not session_summary.task_id and task_id:
+        session_summary.task_id = task_id
+
     # Determine stable project if we only have a UUID fragment
     stable_project = project
     if (
@@ -822,6 +833,15 @@ def _process_reflection(
     insights = per_reflection_insights[0]
     for nxt in per_reflection_insights[1:]:
         insights = merge_insights(insights, nxt)
+
+    # Backfill onto session_summary so a task_id resolved only inside
+    # reflection_to_insights (reflection's self-reported task_id, or the
+    # AOPS_TASK_ID env fallback) is also visible to the markdown frontmatter
+    # (generated from session_summary right after this call returns) and to
+    # any subagent artifacts inherited from it — mirrors the same backfill in
+    # _save_minimal_token_summary for the no-reflection path.
+    if session_summary and not session_summary.task_id and insights.get("task_id"):
+        session_summary.task_id = insights["task_id"]
 
     # Capture the user's initial intent (aops-efffc1f7). timeline_events is
     # attached to the last per-reflection dict, so it survives the merge above.
@@ -1448,7 +1468,6 @@ def _emit_subagent_artifacts(
     session_path: Path,
     parent_session_id: str,
     session_summary,
-    entries,
     agent_entries,
     processor,
     parent_full_path: Path,
@@ -1462,15 +1481,10 @@ def _emit_subagent_artifacts(
     if not agent_entries:
         return
     try:
-        # Main thread = parent's non-sidechain entries (subagent invocations
-        # are loaded via _load_agent_files and carry is_sidechain=True on
-        # their own entries).
-        main_entries = [e for e in entries if not getattr(e, "is_sidechain", False)]
         artifacts = write_subagent_transcripts(
             parent_session_path=session_path,
             parent_session_id=parent_session_id,
             parent_summary=session_summary,
-            main_entries=main_entries,
             agent_entries=agent_entries,
             processor=processor,
         )
@@ -1479,8 +1493,7 @@ def _emit_subagent_artifacts(
             for art in artifacts:
                 if art.transcript_path:
                     print(
-                        f"   ↳ {art.subagent_type or 'unknown'} ({art.child_session_id}): "
-                        f"{art.transcript_path}"
+                        f"   ↳ {art.subagent_type} ({art.child_session_id}): {art.transcript_path}"
                     )
             maybe_append_subagent_footer(parent_full_path, artifacts)
     except Exception as e:  # noqa: BLE001
@@ -2310,7 +2323,6 @@ Examples:
                     session_path=session_path,
                     parent_session_id=session_id,
                     session_summary=session_summary,
-                    entries=entries,
                     agent_entries=agent_entries,
                     processor=processor,
                     parent_full_path=full_path,
@@ -2561,7 +2573,6 @@ Examples:
                 session_path=session_path,
                 parent_session_id=sid,
                 session_summary=session_summary,
-                entries=entries,
                 agent_entries=agent_entries,
                 processor=processor,
                 parent_full_path=full_path,
@@ -2732,7 +2743,6 @@ Examples:
             session_path=session_path,
             parent_session_id=session_id,
             session_summary=session_summary,
-            entries=entries,
             agent_entries=agent_entries,
             processor=processor,
             parent_full_path=full_path,

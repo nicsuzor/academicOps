@@ -275,7 +275,8 @@ There are three ways to configure gates, depending on how you run your sessions:
 session_defaults:
   gates:
     exit_reflection: warn  # warn | block | off
-    ida: warn
+    ida: off            # face-scoped honesty gate — head-surface only, off for
+                         # every polecat/crew (dispatched) session; see below
     hydration: off
 
 # Override per session type
@@ -296,6 +297,8 @@ export IDA_GATE_MODE=block            # stricter honesty checking on the head su
 ```
 
 The full list: `EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `EXIT_REFLECTION_DEGRADE_THRESHOLD`.
+
+`IDA_GATE_MODE` defaults to `warn` on this path specifically (every other gate defaults `off`) — a bare direct-CLI session with no `polecat.yaml` is, by construction, the interactive head/face surface the honesty gate exists to protect (see [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md)). Dispatched polecat/crew sessions always get an explicit `off` from `polecat.yaml` instead, regardless of this fallback.
 
 3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
 

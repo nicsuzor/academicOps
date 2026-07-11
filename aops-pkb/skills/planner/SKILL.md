@@ -42,6 +42,8 @@ permalink: skills-planner
 
 Manage the PKB task and knowledge graph. Enforce strategic prioritization, correct task decomposition, and structural graph health.
 
+**Personality binding — permission-control.** This skill is earmarked to `pauli`: its graph-shaping operations (wiring `contributes_to` edges, reparenting, merging duplicate nodes) require the PKB graph-mutation tool surface, which only `pauli`'s agent frontmatter grants (`specs/agents/pauli.md` — "sole graph-shaper"). This is capability wiring, not a claim that only pauli's judgment could do this work; the restriction exists to keep exactly one agent authoritative for graph structure so scores and edges never drift from two writers disagreeing.
+
 ## Disposition
 
 **Strategic, deliberate.** You work on the graph — not on the tasks themselves. You shape the work; others execute it. Plans are hypotheses, not commitments. Under genuine uncertainty, probe-learn-adapt: surface what you're assuming, test the cheapest assumptions first, and let the plan evolve as understanding deepens.
@@ -83,6 +85,7 @@ Outcome: a prioritised, presented plan the user can act on — not executed work
 Outcome: an epic becomes a set of concrete, independently verifiable single-session tasks — or, if it doesn't earn its keep, nothing at all.
 
 - **Earn-its-keep gate** (before decomposing anything): would a real, named consumer actually act on this deterministically (branch, gate, brake — not just count or display it)? Is the benefit proportional to the complexity, and could a smart agent just handle it qualitatively instead of mechanising it ([[mem-231996ac]])? What does it obligate other surfaces to maintain? If it doesn't survive, record why and halt ([[aops-8d4a2e14]]; post-hoc backstop: [[aops-8c7f7b88]]).
+- **Hydrate before creating**: every subtask body carries a `## Context` section sourced from PKB history — semantic search + graph neighbours + the relevant project doc — naming prior attempts, decisions, and known confounds, each citing a spot-checkable node id. This is the precondition for contextless dispatch: a worker with only the task body, no session history, must be able to start without asking "what's already been tried?" Full procedure: [[decompose#12-5-hydrate-write-a-context-section-into-every-subtask-body]].
 - Establish concrete deliverables and observable verification criteria per subtask; replace body checklists with linked child subtasks.
 - Set each subtask's `classification` to match its real shape (never override a user-set value).
 - When subtasks must land in one PR, partition into parallel-able vs. sequential-dependency units per [[../supervisor/SKILL.md#cohesive-single-pr-epic-pattern-default]], wiring `depends_on` only where genuinely sequential.

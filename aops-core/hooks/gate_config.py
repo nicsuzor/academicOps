@@ -81,11 +81,25 @@ SLASH_COMMAND_PROMPT_PATTERNS: list[str] = [
 #
 # When no env var is set at all (fresh-install dev machine, no polecat.yaml,
 # no settings.json override), the defaults below apply.
-
+#
+# IDA_GATE_MODE default is "warn", not "off" (aops_5ea32596 / note_296e5520
+# §3 — the face-scoped ida honesty gate). This bare-fallback path is reached
+# ONLY by sessions with no polecat launcher at all (see GATES.md's `ida` gate
+# section): every polecat run/crew session always gets an explicit
+# IDA_GATE_MODE injected by lib/polecat_config.py's for_mode() resolution
+# (session_defaults.gates.ida, currently "off" — see
+# polecat/defaults/polecat.yaml.example), so this fallback never fires for a
+# headless/dispatched worker. What it DOES cover is the bare interactive CLI
+# — a researcher running Claude/Gemini directly against the ida agent with no
+# container — which is exactly the head/face surface the gate exists to
+# protect (specs/interactive-experience/head-role-charter.md). Defaulting
+# that path to "warn" is what makes the gate fire on the head surface and
+# stay structurally absent everywhere else, without any code-level
+# session-type branching (still forbidden — see the module docstring above).
 _GATE_MODES = {
     "HYDRATION_GATE_MODE": "off",
     "EXIT_REFLECTION_GATE_MODE": "off",
-    "IDA_GATE_MODE": "off",
+    "IDA_GATE_MODE": "warn",
 }
 
 # Canonical list of gate-mode env-var names — the single source of truth for

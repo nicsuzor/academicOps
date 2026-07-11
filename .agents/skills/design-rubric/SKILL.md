@@ -27,6 +27,8 @@ permalink: skills-design-rubric
 
 Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`.
 
+**Personality binding — earmarking.** This skill is earmarked to `pauli`: authoring or red-teaming a fitness rubric is premise-and-fit judgment — "does this design actually serve the person under pressure, in this shape?" — the same architectural-fit register pauli applies in strategic review (`specs/agents/pauli.md`), not a template-filling exercise a generic agent could do as well. The persona-immersion and negative-space moves below (what's missing, what's assumed) are pauli's systems-thinking disposition applied to design intent rather than code.
+
 ## Qualitative Bar Signals
 
 A rubric is required if:

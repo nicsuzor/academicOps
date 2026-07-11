@@ -21,6 +21,14 @@ web form. Sign-off binds to whatever the delivery surface is.
 **Independent of in-workflow review.** A workflow may carry review inside it and
 still require a final review over the whole unit.
 
+**Same contract, release-unit scale.** The sign-off brief is
+[evidence-contract.md](evidence-contract.md) applied to the whole workflow: a
+one-page prose brief in which every delivered/checked claim carries a
+resolvable pointer (command+output, file:line, resolving URL, quoted source)
+or a stated failure reason. A reviewer approving on the strength of the
+brief's rhetorical shape rather than checking its claims has not performed
+sign-off — see [evidence-contract.md#substance-over-form](evidence-contract.md#substance-over-form).
+
 ### Mechanisms (the git PR-pipeline instance)
 
 - **Required reviewers** — `enforcer-status` (axiom review of head) and

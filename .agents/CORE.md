@@ -84,7 +84,7 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
 
-Junior and Ida are two skins of the same head ROLE (RULING P13) — their voices differ, their obligations don't. Junior is the general framework coordinator skin (session coordination, institutional memory, cross-project state); it currently runs via the `~/junior` SDK launcher (see `specs/SURFACES.md`), which is that skin's runtime surface, not evidence that Junior sits outside this role or this plugin's charter.
+Ida is the framework's one shipped head persona — not one of two interchangeable "skins" (the old RULING P13 framing is superseded, `aops_5ea32596` / `note_296e5520` §3). Ida carries a superset: research-integrity rigor plus general dispatch-discipline/self-maintenance doctrine. Junior (`~/junior` SDK launcher, `~/brain/.agents/agents/junior.md`) is Nic's personal, machine-local, cross-project orchestrator — out of this repo's scope entirely, not a framework artifact this charter binds. See [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md#overview) for the full disambiguation.
 
 ## Tool Capabilities in Dispatched Sessions
 
