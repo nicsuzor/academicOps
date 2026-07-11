@@ -68,16 +68,23 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 **Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers legacy fallback (router.py:838, #1042) leaking `context_injection` to user — false positive; check verdict type.
 
-**Pass / fail:**
+**Channel vocabulary — derive, do not restate.** The disposition for a given (client, event) is not a fixed named category memorised here — it is computed from `channel_spec(client, event)` in [`aops-core/hooks/client_spec.py`](../../../../aops-core/hooks/client_spec.py) (the same table CLIENT-TRANSLATION.md's authoritative channel matrix renders). Look up the spec for the hook under test and read off its fields:
 
-| Expected     | Pass condition                                                                                             |
-| ------------ | ---------------------------------------------------------------------------------------------------------- |
-| `user-only`  | `system_message` user-side: Yes. `context_injection` user-side: **No**. Agent-side: No.                    |
-| `agent-only` | `system_message` user-side: Yes. `context_injection` user-side: **No** (inversion guard). Agent-side: Yes. |
-| `both`       | `system_message` user-side: Yes. `context_injection` user-side: **No**. Agent-side: Yes.                   |
-| `TBD`        | Record all; do not pass/fail — escalate.                                                                   |
+- `user_message` — does ANY message reach the user on this channel?
+- agent receives context — `agent_context_without_block` (non-blocking delivery) OR `can_block` (block-to-inject; a block's `reason` is the agent's only channel, and on Claude/Gemini that `reason` is ALSO user-visible — there is no agent-only block channel).
+- `agent_full_user_summary` — the quiet-split disposition: agent gets the FULL body, user sees only a short summary of it (never the body). **Currently `False` for every (client, event) in the table.** The mechanism that would set it True — Claude's `asyncRewake` (Stop, exit 2) — was retired 2026-07-08 (GH #2181, fixed by PR #2189) after it was found to silently discard `decision:block` output from co-located block-mode gates sharing the same Stop entry. See `ChannelSpec.agent_full_user_summary`'s docstring and `tests/hooks/test_client_spec.py::TestChannelTable::test_claude_stop_asyncrewake_quiet_split_retired` / `test_no_client_event_has_the_retired_quiet_split`. Do not assume this disposition is exercised anywhere live; if a probe shows it True and the code disagrees, that is itself a finding (channel_spec has drifted from the client) — file it, don't force a pass.
 
-Any mismatch is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, and agent's verbatim answer. Do not attempt to fix routing in this session.
+**Pass / fail — computed from the fields above, not a restated table:**
+
+| `agent_full_user_summary` | `user_message` | agent gets context | Disposition                 | Pass condition                                                                                                                                                                                                                        |
+| ------------------------- | -------------- | ------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `True`                    | —              | —                  | `agent-full / user-summary` | Agent transcript contains the FULL body. User pane shows ONLY a short summary line — the full body must never render to the user. (Not currently reachable — see note above; a live hit here is a drift finding, not a routine pass.) |
+| `False`                   | `False`        | `True`             | `agent-only`                | `system_message` user-side: **No**. `context_injection`/agent-side: Yes.                                                                                                                                                              |
+| `False`                   | `True`         | `False`            | `user-only`                 | `system_message` user-side: Yes. Agent-side: No.                                                                                                                                                                                      |
+| `False`                   | `True`         | `True`             | `both`                      | `system_message` user-side: Yes. `context_injection`/agent-side: Yes — and (Claude/Gemini Stop/block) it is the SAME text on both sides, since `reason` is the only agent channel and it is also user-visible.                        |
+| —                         | `False`        | `False`            | _(unmapped/inert)_          | No live channel — the event is log-only or the client drops it. Record and move on; not a routing bug.                                                                                                                                |
+
+Any mismatch between the computed expectation and the observed pane/transcript is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, agent's verbatim answer, and which `channel_spec()` cell it contradicts. Do not attempt to fix routing in this session.
 
 **Automated Live Verification (`pty_hook_probe.py`)**
 
