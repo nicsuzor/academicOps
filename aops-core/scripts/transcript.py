@@ -287,13 +287,16 @@ def _inherit_correlation_from_parent(
     return None, []
 
 
-def _finalize_correlation(session_summary: "ParsedSession") -> None:
+def _finalize_correlation(
+    session_summary: "ParsedSession", initial_prompt: str | None = None
+) -> None:
     """Backfill task_id / pull_requests from launch context.
 
     Preference for task_id: whatever is already set (env / task tools /
     reflection) > the working branch name > the parent session's task. PRs
     resolve from branches, falling back to the parent's PRs for subagents that
-    inherit a branch-less context. Runs before session-type classification so
+    inherit a branch-less context, and finally attempting to extract PR numbers
+    from the initial prompt. Runs before session-type classification so
     branch/parent-derived ids feed that decision too.
     """
     if not session_summary.task_id:
@@ -309,6 +312,11 @@ def _finalize_correlation(session_summary: "ParsedSession") -> None:
             session_summary.task_id = inherited_task
         if not prs and inherited_prs:
             prs = inherited_prs
+
+    if not prs and initial_prompt:
+        found_prs = re.findall(r"PR\s*#(\d+)", initial_prompt, re.IGNORECASE)
+        if found_prs:
+            prs = sorted(list(set(int(p) for p in found_prs)))
 
     session_summary.pull_requests = prs
 
@@ -2206,7 +2214,10 @@ Examples:
                     )
 
                 _populate_session_linkage(session_summary, entries)
-                _finalize_correlation(session_summary)
+                _finalize_correlation(
+                    session_summary,
+                    initial_prompt=extract_initial_prompt(timeline_events),
+                )
 
                 session_summary.session_type = session_naming.classify_session_type(
                     session_summary.surface,
@@ -2461,7 +2472,9 @@ Examples:
             session_summary.models = session_ctx.get("models", [])
 
             _populate_session_linkage(session_summary, entries)
-            _finalize_correlation(session_summary)
+            _finalize_correlation(
+                session_summary, initial_prompt=extract_initial_prompt(timeline_events)
+            )
 
             session_summary.session_type = session_naming.classify_session_type(
                 session_summary.surface,
@@ -2626,7 +2639,9 @@ Examples:
         )  # allow-fallback: field optional in older transcripts
 
         _populate_session_linkage(session_summary, entries)
-        _finalize_correlation(session_summary)
+        _finalize_correlation(
+            session_summary, initial_prompt=extract_initial_prompt(timeline_events)
+        )
 
         session_summary.session_type = session_naming.classify_session_type(
             session_summary.surface,
