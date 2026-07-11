@@ -361,3 +361,4 @@ test_result*.json
 .antigravitycli
 .claude-plugin/marketplace.json
 .claude/skills
+archived
