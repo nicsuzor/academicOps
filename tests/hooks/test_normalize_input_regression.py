@@ -95,3 +95,46 @@ class TestAntigravityEventMapping:
         with patch("hooks.router.persist_session_data"):
             ctx = router.normalize_input(raw, client_type="agy")
         assert ctx.hook_event == "PostToolUse"
+
+
+class TestPostToolUseFailurePayload:
+    """PostToolUseFailure crashed normalize_input on a legitimate CC payload
+    shape (aops_9d3894e3).
+
+    Live during PR #2192 headless verification (2026-07-09): a failed `Agent`
+    tool call ("Agent type 'aops-pkb:rbg' not found") produced a
+    PostToolUseFailure hook whose tool-result field is the raw error STRING,
+    not a dict/list, and whose payload carries no session_id.
+    HookContext.tool_output previously required dict/list, so pydantic
+    validation raised and normalize_input crashed (exit_code=1) — masked only
+    by the PR #2192 fallback log sink, which let the surrounding client run
+    still report success while the event itself failed to route.
+    """
+
+    def test_string_tool_output_does_not_crash(self, router, monkeypatch):
+        monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+        raw = {
+            "hook_event_name": "PostToolUseFailure",
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "aops-pkb:rbg"},
+            "tool_response": "Agent type 'aops-pkb:rbg' not found",
+        }
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        assert ctx.hook_event == "PostToolUseFailure"
+        assert ctx.tool_output == "Agent type 'aops-pkb:rbg' not found"
+
+    def test_missing_session_id_resolves_without_crash(self, router, monkeypatch):
+        monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+        raw = {
+            "hook_event_name": "PostToolUseFailure",
+            "tool_response": "Agent type 'aops-pkb:rbg' not found",
+        }
+        with patch("hooks.router.persist_session_data"):
+            ctx = router.normalize_input(raw, client_type="claude")
+        # Graceful synthetic fallback ("unknown-<uuid8>"), not a crash — and
+        # not the bare "unknown" that main()'s exception-path stub produced
+        # when normalize_input never returned a context at all.
+        assert ctx.session_id
+        assert ctx.session_id.startswith("unknown-")
+        assert ctx.session_id != "unknown"
