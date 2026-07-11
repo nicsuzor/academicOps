@@ -23,13 +23,9 @@ CANONICAL_YAML = dedent(
       antigravity_model: agy
       debug: false
       gates:
-        handover: warn
-        qa: warn
-        rbg: warn
+        exit_reflection: warn
         hydration: off
         ida: warn
-        rbg_review: off
-        rbg_threshold: 15
     crew_defaults:
       hooks_enabled: false
     run_defaults: {}
@@ -65,9 +61,8 @@ def test_load_canonical(cfg_path: Path) -> None:
     assert cfg.session_defaults.model_for("gemini") == "gemini-3.1-pro-preview"
     assert cfg.session_defaults.model_for("antigravity") == "agy"
     assert cfg.session_defaults.debug is False
-    assert cfg.session_defaults.gates.handover == "warn"
+    assert cfg.session_defaults.gates.exit_reflection == "warn"
     assert cfg.session_defaults.gates.hydration == "off"
-    assert cfg.session_defaults.gates.rbg_threshold == 15
     assert cfg.docker.image == "ghcr.io/nicsuzor/aops-crew"
     assert cfg.external_agents["github"].enabled is True
     assert cfg.external_agents["jules"].enabled is False
@@ -162,10 +157,9 @@ def test_model_for_rejects_unknown_client(cfg_path: Path) -> None:
 
 def test_overrides_supports_dotted_gates_key(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
-    overridden = cfg.with_overrides("run", {"gates.handover": "block"})
-    assert overridden.gates.handover == "block"
+    overridden = cfg.with_overrides("run", {"gates.exit_reflection": "block"})
+    assert overridden.gates.exit_reflection == "block"
     # Other gate fields preserved
-    assert overridden.gates.qa == "warn"
 
 
 def test_overrides_rejects_unknown_top_level_key(cfg_path: Path) -> None:
@@ -177,7 +171,7 @@ def test_overrides_rejects_unknown_top_level_key(cfg_path: Path) -> None:
 def test_overrides_rejects_invalid_gate_mode(cfg_path: Path) -> None:
     cfg = load_polecat_config(cfg_path)
     with pytest.raises(ValueError, match="invalid gate mode"):
-        cfg.with_overrides("crew", {"gates.handover": "scream"})
+        cfg.with_overrides("crew", {"gates.exit_reflection": "scream"})
 
 
 def test_missing_file_hard_fails(tmp_path: Path) -> None:
@@ -197,13 +191,9 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
               antigravity_model: agy
               debug: false
               gates:
-                handover: warn
-                qa: warn
-                rbg: warn
+                exit_reflection: warn
                 hydration: off
                 ida: warn
-                rbg_review: off
-                rbg_threshold: 15
             crew_defaults: {}
             run_defaults: {}
             # docker missing
@@ -216,8 +206,8 @@ def test_missing_required_field_hard_fails(tmp_path: Path) -> None:
 
 def test_invalid_gate_mode_at_load_hard_fails(tmp_path: Path) -> None:
     p = tmp_path / "polecat.yaml"
-    p.write_text(CANONICAL_YAML.replace("handover: warn", "handover: maybe"))
-    with pytest.raises(ValueError, match="invalid gate mode for 'handover'"):
+    p.write_text(CANONICAL_YAML.replace("exit_reflection: warn", "exit_reflection: maybe"))
+    with pytest.raises(ValueError, match="invalid gate mode for 'exit_reflection'"):
         load_polecat_config(p)
 
 
@@ -276,19 +266,19 @@ def test_local_overlay_machine_and_gates(tmp_path: Path) -> None:
     # The per-machine local.yaml overlay supplies `machine:` and overrides gates.
     home = tmp_path / "home"
     home.mkdir()
-    (home / "local.yaml").write_text("machine: dev-box\ngates:\n  handover: block\n")
+    (home / "local.yaml").write_text("machine: dev-box\ngates:\n  exit_reflection: block\n")
     p = tmp_path / "polecat.yaml"
     p.write_text(CANONICAL_YAML + f"\npolecat_home: {home}\n")
     cfg = load_polecat_config(p)
     assert cfg.machine == "dev-box"
-    assert cfg.session_defaults.gates.handover == "block"  # overlaid
-    assert cfg.session_defaults.gates.qa == "warn"  # untouched base value
+    assert cfg.session_defaults.gates.exit_reflection == "block"  # overlaid
+    assert cfg.session_defaults.gates.hydration == "off"  # untouched base value
 
 
 def test_local_overlay_rejects_bad_gate_mode(tmp_path: Path) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    (home / "local.yaml").write_text("gates:\n  handover: scream\n")
+    (home / "local.yaml").write_text("gates:\n  exit_reflection: scream\n")
     p = tmp_path / "polecat.yaml"
     p.write_text(CANONICAL_YAML + f"\npolecat_home: {home}\n")
     with pytest.raises(ValueError, match="invalid gate mode"):
@@ -309,7 +299,7 @@ def test_dataclasses_are_frozen(cfg_path: Path) -> None:
     with pytest.raises(dataclasses.FrozenInstanceError):
         cfg.session_defaults.hooks_enabled = False  # type: ignore[misc]
     with pytest.raises(dataclasses.FrozenInstanceError):
-        cfg.session_defaults.gates.handover = "block"  # type: ignore[misc]
+        cfg.session_defaults.gates.exit_reflection = "block"  # type: ignore[misc]
 
 
 def test_canonical_example_scopes_ida_gate_off_dispatched_surfaces() -> None:

@@ -22,7 +22,6 @@ if str(AOPS_CORE) not in sys.path:
 
 from hooks.router import HookRouter
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.hook_context import HookContext
 from lib.session_state import SessionState
@@ -149,20 +148,21 @@ class TestEveryContextKeyTemplateFileExists:
 class TestStopBlockHasContextInjection:
     """Stop hook blocks must always produce non-empty context_injection.
 
-    Tests each gate that can block Stop independently.
+    exit_reflection (aops_4c2949d9) consolidates the former rbg-review + qa +
+    handover trio into one Stop gate; both tiers are exercised here.
     """
 
-    def test_handover_stop_block_has_context(self, router, monkeypatch):
-        """Handover gate blocking Stop in block mode must include context_injection."""
-        monkeypatch.setenv("HANDOVER_GATE_MODE", "block")
-        state = SessionState.create("test-stop-ctx")
-        state.gates["handover"].status = GateStatus.CLOSED
-        # turn_did_work=True is required for the handover policy to fire
-        # (read-only sessions are exempt from the handover requirement).
-        state.turn_did_work = True
+    def test_exit_reflection_full_tier_stop_block_has_context(self, router, monkeypatch):
+        """exit_reflection FULL tier blocking Stop in block mode must include
+        context_injection."""
+        from tests.hooks.gate_helpers import make_gate_trigger_state, set_gate_modes
+
+        set_gate_modes(monkeypatch, exit_reflection="block")
+        state = make_gate_trigger_state("exit_reflection")  # task-bound, did work
 
         ctx = HookContext(
-            session_id="test-stop-ctx",
+            session_id="test-gate-mode",
+            client_type="claude",
             hook_event="Stop",
             tool_name=None,
             tool_input={},
@@ -170,28 +170,27 @@ class TestStopBlockHasContextInjection:
 
         result = router._dispatch_gates(ctx, state)
 
-        assert result is not None, "Handover gate should block Stop when closed"
-        assert result.verdict != GateVerdict.ALLOW
+        assert result is not None, "exit_reflection FULL tier should block Stop when closed"
+        assert result.verdict == GateVerdict.DENY
         assert result.context_injection and len(result.context_injection) > 0, (
-            f"Handover stop block has no context_injection. "
+            f"exit_reflection FULL-tier stop block has no context_injection. "
             f"Agent sees 'Blocked by hook' with no guidance. "
             f"verdict={result.verdict.value}, "
             f"system_message={result.system_message!r}, "
             f"context_injection={result.context_injection!r}"
         )
 
-    def test_qa_stop_block_has_context(self, router, monkeypatch):
-        """QA gate blocking Stop in block mode must include context_injection."""
-        monkeypatch.setenv("QA_GATE_MODE", "block")
-        state = SessionState.create("test-stop-ctx")
-        state.close_gate("qa")
-        # Provide temp_path so the qa.policy_context template can render
-        state.gates["qa"].metrics["temp_path"] = "/tmp/qa-review.md"
-        # Open handover so only QA fires
-        state.gates["handover"].status = GateStatus.OPEN
+    def test_exit_reflection_lite_tier_stop_warn_has_context(self, router, monkeypatch):
+        """exit_reflection LITE tier (no bound task) warning at Stop must
+        include context_injection too — the reminder IS the context."""
+        from tests.hooks.gate_helpers import make_gate_trigger_state, set_gate_modes
+
+        set_gate_modes(monkeypatch, exit_reflection="block")
+        state = make_gate_trigger_state("exit_reflection", full_tier=False)
 
         ctx = HookContext(
-            session_id="test-stop-ctx",
+            session_id="test-gate-mode",
+            client_type="claude",
             hook_event="Stop",
             tool_name=None,
             tool_input={},
@@ -199,77 +198,66 @@ class TestStopBlockHasContextInjection:
 
         result = router._dispatch_gates(ctx, state)
 
-        assert result is not None, "QA gate should block Stop when closed"
-        assert result.verdict != GateVerdict.ALLOW
+        assert result is not None, "exit_reflection LITE tier should warn at Stop when closed"
+        assert result.verdict == GateVerdict.WARN
         assert result.context_injection and len(result.context_injection) > 0, (
-            f"QA stop block has no context_injection. "
-            f"verdict={result.verdict.value}, "
-            f"context_injection={result.context_injection!r}"
-        )
-
-
-class TestPreToolUseBlockHasContextInjection:
-    """PreToolUse blocks must always produce non-empty context_injection."""
-
-    def test_enforcer_block_has_context(self, router):
-        """Enforcer gate blocking at threshold must include context_injection."""
-        state = SessionState.create("test-ptu-ctx", client_type="claude")
-        state.gates["rbg"].ops_since_open = 75
-
-        ctx = HookContext(
-            session_id="test-ptu-ctx",
-            client_type="claude",
-            hook_event="PreToolUse",
-            tool_name="Bash",
-            tool_input={"command": "echo hello"},
-        )
-
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict != GateVerdict.ALLOW
-        assert result.context_injection and len(result.context_injection) > 0, (
-            f"Enforcer block has no context_injection. "
+            f"exit_reflection LITE-tier stop warn has no context_injection. "
             f"verdict={result.verdict.value}, "
             f"context_injection={result.context_injection!r}"
         )
 
 
 class TestSubagentStartContextInjectionDoesNotCrash:
-    """End-to-end regression: an rbg SubagentStart must not crash output_for_claude.
+    """End-to-end regression: a SubagentStart-triggered context_injection must
+    not crash output_for_claude.
 
-    The rbg reset trigger fires on ^(PreToolUse|SubagentStart|SubagentStop)$ with
-    a shared transition that emits ``rbg.verified`` context_injection. On
-    SubagentStart, Claude has no additionalContext channel, so the router must
-    DROP the advisory rather than raise — otherwise every rbg dispatch fails with
-    "Failed with non-blocking status code: Traceback ... ValueError: Claude Code
-    does not support context_injection (advisory) for SubagentStart."
+    Formerly reproduced via the retired `rbg` gate's SubagentStart reset
+    trigger (aops_4c2949d9 — the whole gate is deleted). The router-level
+    invariant under test — Claude has no additionalContext channel on
+    SubagentStart, so the advisory must be DROPPED, never raised — is generic
+    to the engine, not gate-specific, so it is reproduced here with a
+    synthetic gate (mirrors test_gate_hygiene_engine.py's never-block probe)
+    rather than depending on any one gate's trigger shape.
     """
 
-    def test_rbg_subagent_start_produces_context_but_router_does_not_crash(self, router):
-        state = SessionState.create("test-subagent-start", client_type="claude")
+    def test_subagent_start_context_injection_does_not_crash_router(self, router, monkeypatch):
+        from lib.gate_types import GateCondition, GateConfig, GateTransition, GateTrigger
+        from lib.gates.engine import GenericGate
+        from lib.gates.registry import GateRegistry
 
-        ctx = HookContext(
-            session_id="test-subagent-start",
-            client_type="claude",
-            hook_event="SubagentStart",
-            subagent_type="aops-core:rbg",
-            tool_name=None,
-            tool_input={},
+        probe = GateConfig(
+            name="ws7_subagent_start_ctx_probe",
+            description="test-only gate that emits context_injection on SubagentStart",
+            triggers=[
+                GateTrigger(
+                    condition=GateCondition(hook_event="SubagentStart"),
+                    transition=GateTransition(context_template="probe context injection"),
+                )
+            ],
         )
+        GateRegistry.register(GenericGate(probe))
+        try:
+            state = SessionState.create("test-subagent-start", client_type="claude")
 
-        result = router._dispatch_gates(ctx, state)
+            ctx = HookContext(
+                session_id="test-subagent-start",
+                client_type="claude",
+                hook_event="SubagentStart",
+                subagent_type="aops-core:rbg",
+                tool_name=None,
+                tool_input={},
+            )
 
-        # The rbg reset trigger fired and produced a context_injection — the exact
-        # canonical output that used to crash the Claude formatter.
-        assert result is not None, "rbg reset trigger should fire on SubagentStart"
-        assert result.context_injection, (
-            "expected the rbg.verified context_injection that reproduces the crash"
-        )
+            result = router._dispatch_gates(ctx, state)
 
-        canonical = router._gate_result_to_canonical(result)
-        # Must NOT raise — the advisory is dropped (no HSO channel on SubagentStart).
-        output = router.output_for_claude(canonical, "SubagentStart")
-        payload = output.model_dump_json(exclude_none=True)
-        assert "hookSpecificOutput" not in payload
-        assert "additionalContext" not in payload
+            assert result is not None, "probe trigger should fire on SubagentStart"
+            assert result.context_injection, "expected the probe context_injection"
+
+            canonical = router._gate_result_to_canonical(result)
+            # Must NOT raise — the advisory is dropped (no HSO channel on SubagentStart).
+            output = router.output_for_claude(canonical, "SubagentStart")
+            payload = output.model_dump_json(exclude_none=True)
+            assert "hookSpecificOutput" not in payload
+            assert "additionalContext" not in payload
+        finally:
+            GateRegistry._gates.pop(probe.name, None)

@@ -21,16 +21,13 @@ from tests.hooks.gate_helpers import (
 # --- Gate mode override parameterisation ---
 
 _GATE_MODE_CASES = [
-    ("rbg", "warn", GateVerdict.WARN),
-    ("rbg", "block", GateVerdict.DENY),
-    # Stop-triggered gates: warn mode delivers non-blockingly (WARN, no forced
-    # continuation); block mode forces a continuation (DENY). The warn-vs-block
-    # difference is now both the verdict AND the re-fire latch (warn=fire-once,
-    # block=persist).
-    ("qa", "warn", GateVerdict.WARN),
-    ("qa", "block", GateVerdict.DENY),
-    ("handover", "warn", GateVerdict.WARN),
-    ("handover", "block", GateVerdict.DENY),
+    # exit_reflection (aops_4c2949d9) consolidates the former rbg-review + qa +
+    # handover trio into one Stop gate. Stop-triggered gates: warn mode
+    # delivers non-blockingly (WARN, no forced continuation); block mode
+    # forces a continuation (DENY). The warn-vs-block difference is now both
+    # the verdict AND the re-fire latch (warn=fire-once, block=persist).
+    ("exit_reflection", "warn", GateVerdict.WARN),
+    ("exit_reflection", "block", GateVerdict.DENY),
     ("ida", "warn", GateVerdict.WARN),
     ("ida", "block", GateVerdict.DENY),
 ]
@@ -77,20 +74,20 @@ class TestTwoModeLatch:
     above); this pins the LATCH that distinguishes their re-fire behavior:
     `warn` fires once then latches the gate OPEN (fire-once),
     while `block` keeps the gate CLOSED and re-fires every Stop until a
-    satisfaction trigger opens it (persist-until-satisfied). Uses `handover`
-    (no PKB/temp dependency) for the warn-vs-block contrast, and `ida` for the
-    fire-once-in-both-modes case (ida has no satisfaction predicate).
+    satisfaction trigger opens it (persist-until-satisfied). Uses
+    `exit_reflection` FULL tier for the warn-vs-block contrast, and `ida` for
+    the fire-once-in-both-modes case (ida has no satisfaction predicate).
     """
 
-    def test_handover_warn_fires_once_then_latches_open(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, handover="warn", qa="off", ida="off")
+    def test_exit_reflection_warn_fires_once_then_latches_open(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, exit_reflection="warn", ida="off")
         reinit_gates_with_defaults()
-        state = make_gate_trigger_state("handover")  # sets turn_did_work
-        ctx = make_gate_trigger_context("handover")
+        state = make_gate_trigger_state("exit_reflection")  # task-bound, sets turn_did_work
+        ctx = make_gate_trigger_context("exit_reflection")
 
         r1 = router._dispatch_gates(ctx, state)
         assert r1 is not None and r1.verdict == GateVerdict.WARN
-        assert state.gates["handover"].status == GateStatus.OPEN, (
+        assert state.gates["exit_reflection"].status == GateStatus.OPEN, (
             "warn is fire-once: the gate latches OPEN after the first delivery"
         )
         r2 = router._dispatch_gates(ctx, state)
@@ -98,20 +95,20 @@ class TestTwoModeLatch:
             "warn must not re-fire on a retried Stop in the same turn"
         )
 
-    def test_handover_block_persists_closed_and_refires(self, router, monkeypatch):
-        set_gate_modes(monkeypatch, handover="block", qa="off", ida="off")
+    def test_exit_reflection_block_persists_closed_and_refires(self, router, monkeypatch):
+        set_gate_modes(monkeypatch, exit_reflection="block", ida="off")
         reinit_gates_with_defaults()
-        state = make_gate_trigger_state("handover")
-        ctx = make_gate_trigger_context("handover")
+        state = make_gate_trigger_state("exit_reflection")
+        ctx = make_gate_trigger_context("exit_reflection")
 
         r1 = router._dispatch_gates(ctx, state)
         assert r1 is not None and r1.verdict == GateVerdict.DENY
-        assert state.gates["handover"].status == GateStatus.CLOSED, (
+        assert state.gates["exit_reflection"].status == GateStatus.CLOSED, (
             "block persists: no fire-once, the gate stays CLOSED (block-until-satisfied)"
         )
         r2 = router._dispatch_gates(ctx, state)
         assert r2 is not None and r2.verdict == GateVerdict.DENY, (
-            "block re-fires on every Stop until a satisfaction trigger opens the gate"
+            "block re-fires on every Stop until a legal exit opens the gate"
         )
 
     @pytest.mark.parametrize("mode", ["warn", "block"])
@@ -119,7 +116,7 @@ class TestTwoModeLatch:
         # ida has no satisfaction predicate, so block == warn == fire-once
         # (block would otherwise be an unescapable loop). block hard-blocks
         # (DENY); warn delivers non-blockingly (WARN). Both fire exactly once.
-        set_gate_modes(monkeypatch, ida=mode, qa="off", handover="off")
+        set_gate_modes(monkeypatch, ida=mode, exit_reflection="off")
         reinit_gates_with_defaults()
         state = make_gate_trigger_state("ida")
         ctx = make_gate_trigger_context("ida")
@@ -136,7 +133,15 @@ class TestTwoModeLatch:
 
 
 class TestReadOnlyBypassesEnforcer:
-    """Read-only tools bypass enforcer gate (unlike write tools)."""
+    """Read-only tools bypass the (now-retired) turn-based enforcer gate.
+
+    NOTE: the fixture group this parametrizes over ("read_only_bypasses_
+    enforcer") does not exist in gate_scenarios*.json — flatten_scenarios
+    degrades to an empty list rather than erroring, so this test currently
+    collects zero cases. Pre-existing drift, not introduced by aops_4c2949d9
+    (the turn-based rbg/enforcer PreToolUse gate this targeted is retired
+    anyway — see gate_helpers.py and lib/gates/definitions.py).
+    """
 
     SCENARIOS = flatten_scenarios("read_only_bypasses_enforcer")
 

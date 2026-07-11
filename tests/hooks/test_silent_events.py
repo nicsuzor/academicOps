@@ -162,9 +162,9 @@ class TestUpsDiagnosticEnrichment:
         self, monkeypatch, tmp_path
     ) -> None:
         """A real (non-task-notification) UPS: is_task_notification=False, and
-        rbg-review's unconditional UPS trigger (definitions.py — fires on
-        EVERY UserPromptSubmit regardless of RBG_REVIEW_GATE_MODE) must show
-        up in gate_transitions, proving the plumbing actually captures a
+        exit_reflection's unconditional UPS trigger (definitions.py — fires on
+        EVERY UserPromptSubmit regardless of EXIT_REFLECTION_GATE_MODE) must
+        show up in gate_transitions, proving the plumbing actually captures a
         real gate re-arm end-to-end."""
         log_path = tmp_path / "ups-diagnostic-hooks.jsonl"
         monkeypatch.setenv("AOPS_HOOK_LOG_PATH", str(log_path))
@@ -189,13 +189,13 @@ class TestUpsDiagnosticEnrichment:
         assert diagnostic["is_task_notification"] is False
 
         transitions = diagnostic["gate_transitions"]
-        assert any(t["gate"] == "rbg-review" for t in transitions), (
-            f"Expected rbg-review's unconditional UPS re-arm trigger in "
+        assert any(t["gate"] == "exit_reflection" for t in transitions), (
+            f"Expected exit_reflection's unconditional UPS re-arm trigger in "
             f"gate_transitions, got: {transitions}"
         )
-        rbg_transition = next(t for t in transitions if t["gate"] == "rbg-review")
-        assert rbg_transition["hook_event"] == "UserPromptSubmit"
-        assert rbg_transition["to_status"] == "closed"
+        exit_reflection_transition = next(t for t in transitions if t["gate"] == "exit_reflection")
+        assert exit_reflection_transition["hook_event"] == "UserPromptSubmit"
+        assert exit_reflection_transition["to_status"] == "closed"
 
     def test_task_notification_ups_diagnostic_marks_short_circuit(
         self, monkeypatch, tmp_path

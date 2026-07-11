@@ -95,18 +95,20 @@ All session artefacts share one base name `<base> = {date}-{time}-{shorthash}-{s
 
 ## Gate Forensics
 
-### RBG / RBG Gate
+### RBG / RBG Gate (RETIRED — aops_4c2949d9)
 
-The compliance gate periodically requires the agent to invoke the rbg (Haiku) or rbg (Sonnet) subagent.
+**The turn-based periodic PreToolUse compliance-counter gate described in this subsection no longer exists in code.** It fired mid-session on a rolling operation count (`gates.rbg_threshold`); that whole mechanism — `GateConfig`, threshold config, counter, countdown — is deleted, not disabled. Nothing fires mid-session (PreToolUse) on any surface any more. The RBG-lens self-audit concern survives as one step of the consolidated `exit_reflection` gate's FULL tier at Stop — see [`GATES.md#exit_reflection-gate`](../../../specs/enforcement/GATES.md#exit_reflection-gate). The commands below are kept for historical-session forensics (older transcripts still show this gate firing) but do not describe current behaviour.
 
-**Configuration**:
+The compliance gate periodically required the agent to invoke the rbg (Haiku) or rbg (Sonnet) subagent.
+
+**Configuration (historical)**:
 
 - Threshold: `gates.rbg_threshold` in `$AOPS_SESSIONS/polecat.yaml` (default: **50 operations**)
 - Countdown starts: 7 operations before threshold (`start_before=7`)
 - Counter: tracks `ops_since_open` (incremented on PostToolUse for non-subagent calls)
 - Resets: when rbg/rbg subagent completes (SubagentStop event)
 
-**IMPORTANT**: The gate counts **operations** (tool calls), NOT turns (user prompts). A single turn may produce 5-10 tool calls. "11 turns" ≈ 50 operations.
+**IMPORTANT**: The gate counted **operations** (tool calls), NOT turns (user prompts). A single turn may produce 5-10 tool calls. "11 turns" ≈ 50 operations.
 
 **Diagnostic commands**:
 
@@ -148,14 +150,14 @@ for line in sys.stdin:
 - PreToolUse with `verdict=deny` and system_message mentioning "Compliance check" = gate blocking tools
 - Multiple SubagentStart/Stop pairs = gate firing repeatedly (normal in long sessions)
 
-### Stop / Handover Gate
+### Stop / `exit_reflection` Gate
 
-The Stop hook enforces session completion requirements (commit, handover, etc.).
+The Stop hook enforces session completion requirements (commit, capture, evidenced handover, etc.) via the consolidated `exit_reflection` gate (aops_4c2949d9 — replaces the former separate `qa`/`handover`/`rbg-review` gates).
 
 **Configuration**:
 
-- Handover gate: starts CLOSED when task bound, opens when `/dump` skill completes
-- Safety override: after **4 consecutive denies within 2 minutes**, auto-approves to prevent deadlock
+- `exit_reflection` gate, FULL tier: starts CLOSED when task bound and the turn did work, opens on a reflection-auditor run, an honest `release_task` completion/failure, or `/end-session`/`/dump`/`/continue`.
+- Escape-hatch: after `EXIT_REFLECTION_DEGRADE_THRESHOLD` (default **5**) consecutive denies within a turn, degrades to WARN-and-allow to prevent deadlock; a residual client-agnostic 5-blocks-in-2-min override also applies. (Historical note: an earlier handover-gate-only version of this doc cited a 4-deny pattern under a different, now-superseded mechanism.)
 
 **Diagnostic commands**:
 
@@ -176,11 +178,11 @@ for line in sys.stdin:
 
 **What to look for**:
 
-- `verdict=deny` with `system_message` containing "Uncommitted changes" = handover gate blocking
-- 4 consecutive denies followed by `verdict=allow` = safety override fired (common pattern)
+- `verdict=deny` with `system_message` mentioning "Exit-reflection required" = `exit_reflection` gate FULL tier blocking
+- Several consecutive denies followed by `verdict=allow` = the escape hatch fired (common pattern; historical sessions below show 4, current default threshold is 5)
 - `verdict=allow` with no denies = session ended cleanly
 
-**The 4-deny pattern**: Many sessions show exactly 4 Stop denies before auto-approval. This is the safety override, not agent compliance. It means the agent either ignored or could not comply with the stop advice. Investigate the CC session JSONL to understand what the agent did between denies.
+**The N-deny pattern**: Many sessions show a handful of Stop denies before auto-approval. This is the escape hatch, not agent compliance. It means the agent either ignored or could not comply with the stop advice. Investigate the CC session JSONL to understand what the agent did between denies.
 
 ## Identifying Polecat Sessions
 

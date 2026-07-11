@@ -33,7 +33,6 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.router import HookRouter
 from hooks.schemas import CanonicalHookOutput
 from lib.gate_model import GateVerdict
-from lib.gate_types import GateStatus
 from lib.gates.registry import GateRegistry
 from lib.hook_context import HookContext
 from lib.session_paths import get_gate_file_path
@@ -75,12 +74,9 @@ def _reinit_gates_with_defaults():
 
 
 def _set_gate_modes(monkeypatch, **modes) -> None:
-    monkeypatch.setenv("HANDOVER_GATE_MODE", modes.get("handover", "warn"))
-    monkeypatch.setenv("QA_GATE_MODE", modes.get("qa", "block"))
-    monkeypatch.setenv("RBG_GATE_MODE", modes.get("enforcer", "block"))
+    monkeypatch.setenv("EXIT_REFLECTION_GATE_MODE", modes.get("exit_reflection", "block"))
     monkeypatch.setenv("HYDRATION_GATE_MODE", modes.get("hydration", "off"))
     monkeypatch.setenv("IDA_GATE_MODE", modes.get("ida", "off"))
-    monkeypatch.setenv("RBG_TOOL_CALL_THRESHOLD", str(modes.get("enforcer_threshold", 50)))
 
 
 @pytest.fixture(autouse=True)
@@ -356,141 +352,12 @@ class TestHookLogDiscovery:
 # ===========================================================================
 
 
-class TestPostToolUseCounter:
-    """Verify ops_since_open increments on PostToolUse for write tools."""
-
-    def test_ops_counter_increments_on_write_tool(self, router):
-        """PostToolUse for write tools must increment ops_since_open."""
-        state = SessionState.create("test-counter")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 0
-
-        initial_ops = state.gates["rbg"].ops_since_open
-
-        # Simulate PostToolUse for a write tool
-        ctx = HookContext(
-            session_id="test-counter",
-            hook_event="PostToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-        router._dispatch_gates(ctx, state)
-
-        assert state.gates["rbg"].ops_since_open == initial_ops + 1, (
-            f"ops_since_open should increment from {initial_ops} to {initial_ops + 1}, "
-            f"got {state.gates['rbg'].ops_since_open}"
-        )
-
-    def test_ops_counter_increments_multiple_times(self, router):
-        """Multiple PostToolUse events should increment the counter each time."""
-        state = SessionState.create("test-counter-multi")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 0
-
-        for i in range(5):
-            ctx = HookContext(
-                session_id="test-counter-multi",
-                hook_event="PostToolUse",
-                tool_name="Bash",
-                tool_input={"command": f"echo {i}"},
-            )
-            router._dispatch_gates(ctx, state)
-
-        assert state.gates["rbg"].ops_since_open == 5, (
-            f"ops_since_open should be 5 after 5 PostToolUse events, "
-            f"got {state.gates['rbg'].ops_since_open}"
-        )
-
-    def test_enforcer_counter_resets_after_compliance_check(self, router):
-        """Counter should reset to 0 when enforcer SubagentStop fires."""
-        state = SessionState.create("test-counter-reset")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 42
-
-        # Simulate enforcer SubagentStop
-        ctx = HookContext(
-            session_id="test-counter-reset",
-            hook_event="SubagentStop",
-            tool_name=None,
-            tool_input={},
-            subagent_type="aops-core:rbg",
-        )
-        router._dispatch_gates(ctx, state)
-
-        assert state.gates["rbg"].ops_since_open == 0, (
-            f"ops_since_open should reset to 0 after enforcer check, "
-            f"got {state.gates['rbg'].ops_since_open}"
-        )
-
-
-# ===========================================================================
-# Countdown Warning: Ops approaching threshold
-# ===========================================================================
-
-
-class TestCountdownWarning:
-    """Verify countdown warning fires when ops approach enforcer threshold."""
-
-    def test_countdown_warning_in_range(self, router):
-        """Ops at 45 (within 43-49 range) should produce countdown message."""
-        state = SessionState.create("test-countdown", client_type="claude")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 45  # threshold=50, start_before=7
-
-        ctx = HookContext(
-            session_id="test-countdown",
-            client_type="claude",
-            hook_event="PreToolUse",
-            tool_name="Read",  # Read-only: bypasses enforcer policy, but countdown still shows
-            tool_input={"file_path": "/f.py"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        # Countdown should produce a system message with remaining count
-        assert result is not None, "Countdown warning should produce a result"
-        assert result.system_message is not None, "Countdown should have a system message"
-        assert "5" in result.system_message or "turns" in result.system_message.lower(), (
-            f"Countdown message should mention remaining turns, got: {result.system_message}"
-        )
-
-    def test_no_countdown_below_range(self, router):
-        """Ops at 10 (well below range) should not produce countdown."""
-        state = SessionState.create("test-no-countdown")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 10
-
-        ctx = HookContext(
-            session_id="test-no-countdown",
-            hook_event="PreToolUse",
-            tool_name="Read",
-            tool_input={"file_path": "/f.py"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        # Should be None (allow) with no messages
-        if result is not None:
-            assert result.verdict == GateVerdict.ALLOW
-
-    def test_no_countdown_at_threshold(self, router):
-        """Ops at 50 (at threshold) should produce policy block, not countdown."""
-        state = SessionState.create("test-at-threshold", client_type="claude")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 50
-
-        ctx = HookContext(
-            session_id="test-at-threshold",
-            client_type="claude",
-            hook_event="PreToolUse",
-            tool_name="Edit",  # Write tool: subject to enforcer policy
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
-        )
-        result = router._dispatch_gates(ctx, state)
-
-        assert result is not None
-        assert result.verdict == GateVerdict.DENY, (
-            f"At threshold, write tool should be DENIED, got {result.verdict.value}"
-        )
-
+# NOTE: TestPostToolUseCounter and TestCountdownWarning (ops_since_open
+# PreToolUse threshold counter + its countdown warning) tested the retired
+# turn-based `rbg` PreToolUse gate — deleted whole, not disabled, per
+# aops_4c2949d9 ("Retire the turn-based rbg PreToolUse counter everywhere —
+# nothing fires mid-session on any surface"). No replacement: the exit_reflection
+# gate is Stop-only.
 
 # ===========================================================================
 # Temp Path Validation
@@ -553,34 +420,32 @@ class TestTempPathValidation:
         assert path == test_gate_file
         assert path.parent.exists(), f"Gate file parent directory must exist: {path.parent}"
 
-    def test_enforcer_context_injection_contains_temp_path(self, router):
-        """When enforcer gate fires, context injection must contain temp_path."""
-        state = SessionState.create("test-enforcer-path")
-        state.gates["rbg"].status = GateStatus.OPEN
-        state.gates["rbg"].ops_since_open = 55
+    def test_exit_reflection_context_injection_contains_temp_path(self, router, monkeypatch):
+        """When exit_reflection FULL tier fires, context injection must contain
+        temp_path (replaces the retired rbg-turn-counter version of this test,
+        aops_4c2949d9)."""
+        from tests.hooks.gate_helpers import make_gate_trigger_state, set_gate_modes
+
+        set_gate_modes(monkeypatch, exit_reflection="block")
+        state = make_gate_trigger_state("exit_reflection")  # task-bound, did work
 
         ctx = HookContext(
-            session_id="test-enforcer-path",
-            hook_event="PreToolUse",
-            tool_name="Edit",
-            tool_input={"file_path": "/f.py", "old_string": "a", "new_string": "b"},
+            session_id="test-exit-reflection-path",
+            client_type="claude",
+            hook_event="Stop",
         )
 
-        # The enforcer policy has custom_action="prepare_compliance_report"
-        # which creates a file and sets temp_path. In tests, this will fail
-        # because templates aren't available. We mock it.
         with patch(
             "lib.gates.custom_actions.create_audit_file",
-            return_value=Path("/tmp/enforcer-test.md"),
+            return_value=Path("/tmp/exit-reflection-test.md"),
         ):
             result = router._dispatch_gates(ctx, state)
 
         assert result is not None
-        # temp_path should have been set by the custom action mock
-        temp_path = state.gates["rbg"].metrics.get("temp_path")
-        assert temp_path is not None, "Enforcer policy should set temp_path in metrics"
+        temp_path = state.gates["exit_reflection"].metrics.get("temp_path")
+        assert temp_path is not None, "exit_reflection FULL policy should set temp_path in metrics"
         assert result.context_injection is not None, (
-            "Enforcer gate should produce context injection"
+            "exit_reflection FULL tier should produce context injection"
         )
         assert temp_path in result.context_injection, (
             f"Context injection should contain temp_path '{temp_path}', "
@@ -936,8 +801,6 @@ class TestRealSpawnEventCategorization:
     ):
         """Spawn tools are in 'spawn' category."""
         state = SessionState.create("test-spawn-categorization")
-        # Hostile state: enforcer at threshold
-        state.gates["rbg"].ops_since_open = 100
 
         tool_input = (
             {"subagent_type": subagent_type, "prompt": "test"}

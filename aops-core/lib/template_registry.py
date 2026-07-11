@@ -10,7 +10,7 @@ Usage:
     from lib.template_registry import TemplateRegistry
 
     registry = TemplateRegistry.instance()
-    content = registry.render("rbg.policy_message", {})
+    content = registry.render("exit_reflection.policy_message", {})
 
 Exit behavior: Functions raise exceptions (fail-fast P#8). Callers handle graceful degradation.
 """
@@ -99,127 +99,60 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         description="Guidance injected on background task-notification prompts: act on it, absorb routine completions silently",
         env_override="TASK_NOTIFICATION_GUIDANCE_TEMPLATE",
     ),
-    # --- RBG gate ---
-    "rbg.context": TemplateSpec(
-        name="rbg.context",
+    # --- Exit-reflection gate (consolidated rbg-review + qa + handover,
+    # aops_4c2949d9) ---
+    "exit_reflection.context": TemplateSpec(
+        name="exit_reflection.context",
         category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="rbg-context.md",
+        filename="exit-reflection-context.md",
         required_vars=(
             "session_context",
             "tool_name",
         ),
         optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
-        description="Full context for RBG compliance check",
+        description="Turn record written to the temp file the FULL-tier exit-reflection checklist reads",
     ),
-    "qa.context": TemplateSpec(
-        name="qa.context",
-        category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="qa-context.md",
-        required_vars=(
-            "session_context",
-            "tool_name",
-        ),
-        optional_vars=("session_id", "gate_name"),
-        description="Session context for QA verification before exit",
-    ),
-    "rbg.verified": TemplateSpec(
-        name="rbg.verified",
+    "exit_reflection.bound": TemplateSpec(
+        name="exit_reflection.bound",
         category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-verified.md",
+        filename="exit-reflection-bound.md",
         required_vars=(),
-        description="Status message when RBG compliance check passes",
+        description="Status message when a task is bound and full exit-reflection will be required before exit",
     ),
-    "rbg.policy_message": TemplateSpec(
-        name="rbg.policy_message",
+    "exit_reflection.complete": TemplateSpec(
+        name="exit_reflection.complete",
         category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-policy-message.md",
+        filename="exit-reflection-complete.md",
         required_vars=(),
-        optional_vars=("ops_since_open", "threshold"),
-        description="Short message when RBG gate blocks a tool call",
+        description="Status message when the reflection auditor ran or a legal exit (honest completion/failure, /end-session, /dump, /continue) opened the gate",
     ),
-    "rbg.policy_context": TemplateSpec(
-        name="rbg.policy_context",
+    "exit_reflection.policy_message": TemplateSpec(
+        name="exit_reflection.policy_message",
+        category=TemplateCategory.USER_MESSAGE,
+        filename="exit-reflection-policy-message.md",
+        required_vars=(),
+        description="Short user-facing message when the FULL-tier exit-reflection policy blocks/warns on Stop",
+    ),
+    "exit_reflection.policy_context": TemplateSpec(
+        name="exit_reflection.policy_context",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="rbg-policy-context.md",
+        filename="exit-reflection-policy-context.md",
         required_vars=("temp_path",),
-        optional_vars=("ops_since_open", "threshold"),
-        description="Full context injection when RBG gate blocks",
+        description="Full FULL-tier checklist context injection: RBG-lens self-audit, durable capture, commit/push/PR, /learn, /remember, prose handover with substance-vs-form guardrail",
     ),
-    "rbg.countdown": TemplateSpec(
-        name="rbg.countdown",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-countdown.md",
-        required_vars=("remaining", "temp_path"),
-        optional_vars=("threshold", "current", "gate_name"),
-        description="Countdown warning before RBG threshold",
-    ),
-    "rbg.instruction": TemplateSpec(
-        name="rbg.instruction",
+    "exit_reflection.lite_reminder": TemplateSpec(
+        name="exit_reflection.lite_reminder",
         category=TemplateCategory.CONTEXT_INJECTION,
-        filename="rbg-instruction.md",
-        required_vars=("temp_path",),
-        description="Instruction to invoke RBG agent",
-        env_override="RBG_INSTRUCTION_TEMPLATE",
+        filename="exit-reflection-lite-reminder.md",
+        required_vars=(),
+        description="LITE-tier honesty/self-reflection reminder (ida-gate lineage) for subagents, sessions with no bound task, or read-only turns",
     ),
-    "rbg.audit": TemplateSpec(
-        name="rbg.audit",
-        category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="rbg-audit.md",
-        required_vars=("session_id", "gate_name", "tool_name"),
-        description="Audit context for RBG gate",
-    ),
-    # --- QA gate: trigger and policy messages ---
-    "qa.complete": TemplateSpec(
-        name="qa.complete",
+    "exit_reflection.degraded": TemplateSpec(
+        name="exit_reflection.degraded",
         category=TemplateCategory.USER_MESSAGE,
-        filename="qa-complete.md",
-        required_vars=(),
-        description="Status message when QA verification completes",
-    ),
-    "qa.policy_message": TemplateSpec(
-        name="qa.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="qa-policy-message.md",
-        required_vars=(),
-        description="Short message when QA gate blocks exit",
-    ),
-    "qa.policy_context": TemplateSpec(
-        name="qa.policy_context",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="qa-policy-context.md",
-        required_vars=("temp_path",),
-        description="Full context injection when QA gate blocks exit",
-    ),
-    # --- Handover gate: trigger and policy messages ---
-    "handover.bound": TemplateSpec(
-        name="handover.bound",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="handover-bound.md",
-        required_vars=(),
-        description="Status message when task is bound and handover required",
-    ),
-    "handover.complete": TemplateSpec(
-        name="handover.complete",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="handover-complete.md",
-        required_vars=(),
-        description="Status message when end_session / handover / dump skill completes",
-    ),
-    "handover.policy_message": TemplateSpec(
-        name="handover.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="handover-policy-message.md",
-        required_vars=(),
-        description="Short message when handover gate blocks exit",
-    ),
-    # --- Stop gate ---
-    "stop.handover_block": TemplateSpec(
-        name="stop.handover_block",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        filename="stop-gate-handover-block.md",
-        required_vars=(),
-        description="Block message requiring handover before stop",
-        env_override="STOP_GATE_HANDOVER_TEMPLATE",
+        filename="exit-reflection-degraded.md",
+        required_vars=("threshold",),
+        description="Loud escape-hatch message when the FULL-tier exit-reflection gate degrades DENY to WARN-and-allow",
     ),
     # --- Ida (Ida B. Wells — proof-of-claim reminder) gate ---
     "ida.reminder": TemplateSpec(
@@ -239,51 +172,6 @@ TEMPLATE_SPECS: dict[str, TemplateSpec] = {
         filename="ida-askuserquestion-reminder.md",
         required_vars=(),
         description="Capability-verification nudge injected on PreToolUse AskUserQuestion",
-    ),
-    # --- RBG-review gate (per-turn axiom review must RUN before Stop) ---
-    "rbg_review.context": TemplateSpec(
-        name="rbg_review.context",
-        category=TemplateCategory.SUBAGENT_INSTRUCTION,
-        filename="rbg-context.md",
-        required_vars=("session_context", "tool_name"),
-        optional_vars=("session_id", "gate_name", "active_skill", "skill_scope"),
-        description="Turn record written to the temp file the RBG subagent reads",
-    ),
-    "rbg_review.policy_message": TemplateSpec(
-        name="rbg_review.policy_message",
-        category=TemplateCategory.USER_MESSAGE,
-        # Deliberately its own file, not rbg-policy-message.md (aops_47d0a754)
-        # — rbg-review has no ops-count threshold/countdown concept, so it
-        # must not inherit the rbg gate's "N remaining / threshold reached"
-        # framing.
-        filename="rbg-review-policy-message.md",
-        required_vars=(),
-        optional_vars=("ops_since_open",),
-        description="Short user-facing message when the RBG gate blocks Stop",
-    ),
-    "rbg_review.policy_context": TemplateSpec(
-        name="rbg_review.policy_context",
-        category=TemplateCategory.CONTEXT_INJECTION,
-        # Deliberately its own file, not rbg-policy-context.md (aops_47d0a754)
-        # — see rbg_review.policy_message above.
-        filename="rbg-review-policy-context.md",
-        required_vars=("temp_path",),
-        optional_vars=("ops_since_open",),
-        description="Context injection instructing the agent to dispatch RBG before Stop",
-    ),
-    "rbg_review.complete": TemplateSpec(
-        name="rbg_review.complete",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-verified.md",
-        required_vars=(),
-        description="Status message when RBG has run and the RBG gate clears",
-    ),
-    "rbg_review.degraded": TemplateSpec(
-        name="rbg_review.degraded",
-        category=TemplateCategory.USER_MESSAGE,
-        filename="rbg-review-degraded.md",
-        required_vars=("threshold",),
-        description="Loud escape-hatch message when RBG degrades to WARN-and-allow",
     ),
 }
 

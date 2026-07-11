@@ -82,22 +82,18 @@ Axioms describe what must never happen. They don't enforce themselves — that's
 Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
 
 - **SessionStart**: loads principles, pulls latest state
-- **PreToolUse gates**: hydration, rbg (periodic compliance)
 - **PostToolUse**: boundary detection, warn-tier checks, autocommit
-- **Stop gates**: QA and handover discipline before a session ends
+- **Stop gate**: consolidated exit-reflection discipline before a session ends — full checklist for task-bound sessions, lightweight honesty reminder for everyone else
 - **Transcript capture**: every session recorded for reflection
 
-The gates riding those hooks:
+The gate riding those hooks:
 
-| Gate         | What it catches                                           | Default                                                   |
-| ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| `rbg`        | Scope drift / compliance, every N write ops               | `warn`                                                    |
-| `rbg-review` | Final axiom audit before a task-bound session exits       | `block` (polecat/crew only; inert for ad hoc interactive) |
-| `qa`         | Claiming "done" without running verification              | `warn`                                                    |
-| `handover`   | Exiting without committing, updating tasks, or reflecting | `warn` interactive / `block` polecat                      |
-| `ida`        | Honesty / criterion-substitution check before stopping    | `warn`                                                    |
+| Gate              | What it catches                                                                                                                                                            | Default                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `exit_reflection` | FULL tier: axiom drift, "done" claimed without verification, exiting without committing/updating tasks/reflecting. LITE tier: honesty / criterion-substitution check only. | FULL tier `block` (polecat/crew) / `warn` (interactive); LITE tier always `warn` |
+| `ida`             | Honesty / criterion-substitution check before stopping (head/interactive surface)                                                                                          | `warn`                                                                           |
 
-(`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
+The turn-based `rbg` periodic-compliance gate (every N write ops) is retired — nothing fires mid-session on any surface. (`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
 
 **How an action gets enforced, end to end:**
 
@@ -105,15 +101,11 @@ The gates riding those hooks:
 flowchart TD
     A[Session start] --> B["Axioms + safety floor injected\n(always-on, every surface)"]
     B --> C[Agent works: tool calls]
-    C --> E{rbg gate\nevery N write ops}
-    E -- threshold hit --> EW["WARN: dispatch rbg\nfor compliance check"]
-    E -- under threshold --> F[PostToolUse: boundary\ncheck + autocommit]
-    EW --> F
+    C --> F[PostToolUse: boundary\ncheck + autocommit]
     F --> G[Agent tries to stop]
-    G --> H{rbg-review gate\npolecat/crew only}
-    H -- not yet reviewed --> HB["BLOCK exit until\nrbg axiom audit runs"]
-    H -- reviewed / n-a --> I{qa + handover + ida\ngates}
-    I -- work done, unverified\nor uncommitted --> IW["WARN interactive /\nBLOCK polecat"]
+    G --> I{exit_reflection gate\nFULL tier if task-bound + did work,\nelse LITE tier}
+    I -- FULL: unverified or\nuncommitted --> IW["WARN interactive /\nBLOCK polecat, until a\nlegal exit (auditor ran,\nhonest release_task, or\n/end-session/dump/continue)"]
+    I -- LITE --> IL["WARN-only honesty\nreminder, never blocks"]
     I -- clear --> J[Session ends]
     J --> K[PR opened]
     K --> L["Automated review:\nrbg (axioms) + marsha (QA)"]
@@ -122,7 +114,7 @@ flowchart TD
     N --> O[Merge]
 ```
 
-Three postures do the work: **hard blocks** (`rbg-review` on task-bound sessions) stop the action outright; **advisory warns** (`rbg`, `qa`, `handover`, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
+Three postures do the work: **hard blocks** (`exit_reflection` FULL tier on task-bound sessions) stop the action outright; **advisory warns** (`exit_reflection` LITE tier, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
 
 The same ladder continues past the session, into GitHub:
 
@@ -282,20 +274,15 @@ There are three ways to configure gates, depending on how you run your sessions:
 # $AOPS_SESSIONS/polecat.yaml
 session_defaults:
   gates:
-    handover: warn      # warn | block | off
-    qa: warn
-    rbg: warn
+    exit_reflection: warn  # warn | block | off
     ida: off            # face-scoped honesty gate — head-surface only, off for
                          # every polecat/crew (dispatched) session; see below
     hydration: off
-    rbg_threshold: 50   # write ops between rbg checks
 
 # Override per session type
 run_defaults:             # autonomous polecat workers
   gates:
-    handover: block       # workers must hand over before exiting
-    rbg: block
-    rbg_threshold: 30
+    exit_reflection: block  # workers must complete exit-reflection before exiting
 
 crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
 ```
@@ -305,11 +292,11 @@ See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.exam
 **2. Environment variables** — for direct CLI sessions (Claude Code on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
 
 ```bash
-export HANDOVER_GATE_MODE=off       # skip handover for quick interactive chats
-export RBG_GATE_MODE=block          # stricter compliance checking
+export EXIT_REFLECTION_GATE_MODE=off  # skip exit-reflection for quick interactive chats
+export IDA_GATE_MODE=block            # stricter honesty checking on the head surface
 ```
 
-The full list: `HANDOVER_GATE_MODE`, `QA_GATE_MODE`, `RBG_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `RBG_TOOL_CALL_THRESHOLD`.
+The full list: `EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `EXIT_REFLECTION_DEGRADE_THRESHOLD`.
 
 `IDA_GATE_MODE` defaults to `warn` on this path specifically (every other gate defaults `off`) — a bare direct-CLI session with no `polecat.yaml` is, by construction, the interactive head/face surface the honesty gate exists to protect (see [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md)). Dispatched polecat/crew sessions always get an explicit `off` from `polecat.yaml` instead, regardless of this fallback.
 

@@ -73,7 +73,7 @@ _CLAUDE_HSO_EVENTS = {"PreToolUse", "UserPromptSubmit", "PostToolUse", "PostTool
 
 # Pause detection (Claude Code 2.1.145+ `background_tasks` / `session_crons`).
 # A session that yields while waiting on backgrounded work is NOT claiming
-# "done", so its exit gates (rbg-review/qa/handover/ida) are suppressed — see
+# "done", so its exit gates (exit_reflection/ida) are suppressed — see
 # _dispatch_gates and specs/ENFORCEMENT-MAP.md.
 #
 # Both sets are ALLOWLISTS so the gate fails SAFE (fires) on anything unknown —
@@ -155,34 +155,22 @@ def format_gate_status_icons(state: SessionState) -> str:
     """Format current gate statuses as a lifecycle-aware icon strip.
 
     Only shows gates when they need attention:
-    - ◇ N  RBG countdown active
-    - ◇    RBG overdue (past threshold)
-    - ≡    handover complete (gate OPEN + handover invoked)
+    - ≡    exit-reflection complete (gate OPEN + sticky — a legal exit fired
+           this turn: auditor ran, honest release_task, or /end-session/
+           /dump/continue)
     - ▶ T-id  active task bound
     - ✓    nothing needs attention
-    """
-    from lib.gates.registry import GateRegistry
 
+    The former RBG countdown icon (◇ N / ◇ overdue) tracked the turn-based
+    `rbg` PreToolUse counter — retired entirely (aops_4c2949d9, nothing fires
+    mid-session on any surface any more); there is no replacement icon for it.
+    """
     parts: list[str] = []
 
-    # RBG: countdown or overdue
-    rbg = state.gates.get("rbg")
-    if rbg:
-        rbg_gate = GateRegistry.get_gate("rbg")
-        if rbg_gate and rbg_gate.config.countdown:
-            threshold = rbg_gate.config.countdown.threshold
-            start_before = rbg_gate.config.countdown.start_before
-            countdown_start = threshold - start_before
-            ops = rbg.ops_since_open
-            if ops >= threshold:
-                parts.append("◇")
-            elif ops >= countdown_start:
-                remaining = threshold - ops
-                parts.append(f"◇ {remaining}")
-
-    # Handover: show only AFTER completion (gate OPEN + sticky)
-    handover = state.gates.get("handover")
-    if handover and handover.status == "open" and handover.sticky:
+    # exit_reflection: show ≡ while sticky-open (a legal exit fired this
+    # turn) but not yet re-armed — mirrors the retired handover gate's icon.
+    exit_reflection = state.gates.get("exit_reflection")
+    if exit_reflection and exit_reflection.status == "open" and exit_reflection.sticky:
         parts.append("≡")
 
     # Active task
@@ -652,19 +640,21 @@ class HookRouter:
     def _build_ups_diagnostic(ctx: HookContext) -> dict[str, Any]:
         """Diagnostic snapshot of a UserPromptSubmit's origin signal.
 
-        aops_2597b5ff scope D — the instrument for catching WHAT re-arms
-        rbg-review with no human prompt. Nic's CORRECTION (2026-07-09):
-        template-appearance is NOT proof of no-re-arm; his leading unverified
-        hypothesis is that in the interactive head, a
-        ``[SYSTEM NOTIFICATION - NOT USER INPUT]`` preamble ahead of
-        ``<task-notification>`` makes ``_is_task_notification`` (a bare
-        ``.startswith`` check) return False, so worker-completion prompts
-        fall through to the NORMAL gate path instead of the short-circuit —
-        re-arming rbg-review's UserPromptSubmit trigger unconditionally. This
-        snapshot is captured for BOTH the short-circuit and the fall-through
-        path (see the two call sites below) so a real UPS log line can show
-        which branch a given prompt actually took, without asserting which
-        one is the culprit (that diagnosis is deferred, not this PR's job).
+        aops_2597b5ff scope D — the instrument for catching WHAT re-arms the
+        exit-tier Stop gate (formerly rbg-review; consolidated into
+        exit_reflection, aops_4c2949d9) with no human prompt. Nic's
+        CORRECTION (2026-07-09): template-appearance is NOT proof of
+        no-re-arm; his leading unverified hypothesis is that in the
+        interactive head, a ``[SYSTEM NOTIFICATION - NOT USER INPUT]``
+        preamble ahead of ``<task-notification>`` makes
+        ``_is_task_notification`` (a bare ``.startswith`` check) return
+        False, so worker-completion prompts fall through to the NORMAL gate
+        path instead of the short-circuit — re-arming exit_reflection's
+        UserPromptSubmit trigger unconditionally. This snapshot is captured
+        for BOTH the short-circuit and the fall-through path (see the two
+        call sites below) so a real UPS log line can show which branch a
+        given prompt actually took, without asserting which one is the
+        culprit (that diagnosis is deferred, not this PR's job).
         """
         raw_prompt = ctx.raw_input.get(
             "prompt", ""
@@ -899,7 +889,7 @@ class HookRouter:
         # Don't nag a session that stopped only because it is PAUSED — yielding
         # while it waits on a backgrounded subagent/workflow/monitor or a cron to
         # wake it (is_paused, computed in normalize_input). It isn't claiming
-        # "done", so the exit gates (rbg-review/qa/handover/ida) shouldn't fire.
+        # "done", so the exit gates (exit_reflection/ida) shouldn't fire.
         # A genuine stop (no waking background work) still triggers them.
         # NOTE: this suppresses ALL Stop/SessionEnd gates while paused — kept in
         # sync with specs/ENFORCEMENT-MAP.md.

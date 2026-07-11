@@ -22,6 +22,26 @@ def _gate_mode(session_state: SessionState, var_name: str) -> str:
     return getattr(gate_config, var_name)
 
 
+def _exit_reflection_full_scope(ctx: HookContext, session_state: SessionState) -> bool:
+    """True when this Stop belongs to the exit-reflection gate's FULL-checklist
+    audience: a task-bound main-agent session that did real work this turn
+    (polecat / crew-after-`/pull` / interactive-with-claimed-task, per
+    note_296e5520 §1).
+
+    Everyone else — subagents, a session with no claimed task, or a task-bound
+    session on a pure read-only turn — gets the lightweight honesty-only tier
+    instead (`is_exit_reflection_lite_active` below). The read-only-turn
+    carve-out preserves the handover gate's hard-won exemption (aops-16a15a05,
+    aops_d18b2d4b): a no-op turn doesn't owe a full exit ceremony just because
+    a task is claimed session-wide.
+    """
+    if ctx.is_subagent:
+        return False
+    if not session_state.main_agent.current_task:
+        return False
+    return session_state.turn_did_work
+
+
 def check_custom_condition(
     name: str, ctx: HookContext, state: GateState, session_state: SessionState
 ) -> bool:
@@ -29,23 +49,17 @@ def check_custom_condition(
     Evaluate a named custom condition.
     """
     if name == "is_write_tool":
-        # Treat shell tools as read-only when the handover gate is sticky
-        # (post-skill) or no task is bound — prevents gates from re-closing
-        # on discovery/status commands (e.g. git status after /end-session).
-        handover_state = session_state.gates.get("handover")
-        if (handover_state and handover_state.sticky) or not session_state.main_agent.current_task:
+        # Treat shell tools as read-only when the exit_reflection gate is
+        # sticky (post-skill) or no task is bound — prevents the gate from
+        # re-closing on discovery/status commands (e.g. git status after
+        # /end-session).
+        gate_state = session_state.gates.get("exit_reflection")
+        if (gate_state and gate_state.sticky) or not session_state.main_agent.current_task:
             if ctx.tool_name in ("Bash", "run_shell_command", "shell", "execute_code"):
                 return False
 
         tool_input = ctx.tool_input if isinstance(ctx.tool_input, dict) else None
         return ctx.tool_name is not None and get_tool_category(ctx.tool_name, tool_input) == "write"
-
-    if name == "not_mid_edit":
-        # Defer RBG block while agent has an in-progress todo item.
-        # The RBG trigger on TodoWrite PostToolUse keeps this metric
-        # up to date. False (condition not met) when mid-edit, deferring the
-        # block until the agent has finished its current sub-task. (#319)
-        return not state.metrics.get("has_in_progress_todo", False)
 
     if name == "is_ida_active":
         # IDA gate trigger: fires when IDA mode is warn or block (not off).
@@ -70,56 +84,44 @@ def check_custom_condition(
         # the WARN verdict to decision=block for the Stop hook.
         return _gate_mode(session_state, "IDA_GATE_MODE") == "warn"
 
-    if name == "is_qa_block_mode":
-        # QA gate policy: active only when QA_GATE_MODE is blocking.
-        # Separating block vs warn into distinct policies lets each choose
-        # appropriate message channels (context_key vs message_key) so
-        # warn mode doesn't inadvertently upgrade Stop to decision=block.
-        return _gate_mode(session_state, "QA_GATE_MODE") in ("block", "deny")
-
-    if name == "is_qa_warn_mode":
-        # QA gate policy: active only when QA_GATE_MODE is warn.
-        # Warn mode delivers the advisory via system_message only (user-visible)
-        # rather than context_injection, so output_for_claude does not upgrade
-        # the WARN verdict to decision=block for the Stop hook.
-        return _gate_mode(session_state, "QA_GATE_MODE") == "warn"
-
-    if name == "is_rbg_review_block_mode":
-        # RBG-review gate policy: active only when RBG_REVIEW_GATE_MODE is
-        # blocking. Block mode delivers the dispatch instruction via the
-        # context_injection channel (upgraded to decision=block on Stop), which
-        # is what makes the agent actually run rbg. This is the directive's
-        # required posture: a real DENY until rbg has run for the armed turn.
-        return _gate_mode(session_state, "RBG_REVIEW_GATE_MODE") in ("block", "deny")
-
-    if name == "is_rbg_review_warn_mode":
-        # RBG-review gate policy: active only when RBG_REVIEW_GATE_MODE is warn.
-        # Warn still injects the dispatch instruction (block-once per turn via
-        # the warn+context_injection upgrade path), but does not hard-hold the
-        # session. Provided for parity / staged rollout; default mode is block.
-        return _gate_mode(session_state, "RBG_REVIEW_GATE_MODE") == "warn"
-
-    if name == "is_handover_block_mode":
-        # Handover gate policy: active only when HANDOVER_GATE_MODE is blocking
-        # AND the CURRENT TURN did real work (write tool or task claim).
-        # Read-only turns (turn_did_work=False) are exempt — they need no
-        # structured handover (aops-16a15a05, aops_d18b2d4b).
-        if not session_state.turn_did_work:
+    if name == "is_exit_reflection_full_block_mode":
+        # exit_reflection gate, FULL tier, block mode: task-bound session that
+        # did work this turn, and EXIT_REFLECTION_GATE_MODE is blocking.
+        # Delivers the full checklist via context_injection (upgraded to
+        # decision=block on Stop) — persists (no fire-once) until a legal exit
+        # (auditor ran, or an honest release_task failure/completion) opens
+        # the gate.
+        if not _exit_reflection_full_scope(ctx, session_state):
             return False
-        return _gate_mode(session_state, "HANDOVER_GATE_MODE") in ("block", "deny")
+        return _gate_mode(session_state, "EXIT_REFLECTION_GATE_MODE") in ("block", "deny")
 
-    if name == "is_handover_warn_mode":
-        # Handover gate policy: active only when HANDOVER_GATE_MODE is warn
-        # AND the current turn did real work. Same read-only exemption as block mode.
-        if not session_state.turn_did_work:
+    if name == "is_exit_reflection_full_warn_mode":
+        # exit_reflection gate, FULL tier, warn mode: same scope, non-blocking
+        # delivery. Fire-once per turn (see is_exit_reflection_fire_once).
+        if not _exit_reflection_full_scope(ctx, session_state):
             return False
+        return _gate_mode(session_state, "EXIT_REFLECTION_GATE_MODE") == "warn"
 
-        # D1 (uniform stop-gate behaviour): warn hard-blocks ONCE per turn like
-        # every other warn gate — the single forced continuation IS the nudge,
-        # so the former soft interactive rate-limiting (spec mem-438429c5
-        # §5.4-5.5) is superseded and removed. Fire-once (the warn-mode Stop
-        # trigger in definitions.py) is now the whole cadence.
-        return _gate_mode(session_state, "HANDOVER_GATE_MODE") == "warn"
+    if name == "is_exit_reflection_lite_active":
+        # exit_reflection gate, LITE tier: everyone NOT in full scope
+        # (subagents, no bound task, or a read-only turn on a bound task).
+        # Lightweight honesty/self-reflection reminder ONLY — the ida-gate
+        # lineage — and NEVER denies (reminder only, no deadlock risk).
+        if _exit_reflection_full_scope(ctx, session_state):
+            return False
+        return _gate_mode(session_state, "EXIT_REFLECTION_GATE_MODE") in ("warn", "block", "deny")
+
+    if name == "is_exit_reflection_fire_once":
+        # Stop (while CLOSED) -> OPEN, fire-once — mirrors every other
+        # warn-mode gate so a retried Stop in the same turn passes. The FULL
+        # tier's BLOCK mode deliberately has NO fire-once here (persist-until-
+        # satisfied, matching the retired rbg-review/qa/handover gates'
+        # block-mode behaviour) — its only exits are a real auditor run, an
+        # honest release_task call, or the stop-deny escape hatch. The LITE
+        # tier is WARN-only by construction, so it always fires-once.
+        if _exit_reflection_full_scope(ctx, session_state):
+            return _gate_mode(session_state, "EXIT_REFLECTION_GATE_MODE") == "warn"
+        return _gate_mode(session_state, "EXIT_REFLECTION_GATE_MODE") in ("warn", "block", "deny")
 
     if name == "has_bound_task":
         return bool(session_state.main_agent.current_task)

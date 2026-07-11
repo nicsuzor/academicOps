@@ -453,6 +453,19 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
                 for hook in (
                     hook_entry.get("hooks") or []
                 ):  # allow-fallback: a source hook entry may carry no nested 'hooks' list
+                    # "type": "prompt" hooks (harness-dispatched LLM judgment,
+                    # e.g. the exit-reflection auditor on Stop, aops_4c2949d9)
+                    # are a Claude-Code-only capability — agy's protojson
+                    # dialect has no equivalent and is not confirmed to accept
+                    # this hook type at all (this is the exact "silently
+                    # discarded / unknown field" failure class this build
+                    # transform exists to guard against, see module
+                    # docstring). Drop it here rather than risk shipping an
+                    # unaccepted hook to agy; the sibling command hook's
+                    # reminder-text delivery is agy's fallback (note_296e5520
+                    # §1: "Fall back to reminder text where unsupported").
+                    if hook.get("type") == "prompt":
+                        continue
                     flat_hooks.append(_transform_hook(hook, output_event))
             if flat_hooks:
                 agy_hooks[output_event] = flat_hooks
@@ -464,7 +477,15 @@ def _generate_antigravity_hooks_json(src_path: Path, dst_path: Path) -> None:
             new_entry = {}
             for key, value in hook_entry.items():
                 if key == "hooks":
-                    new_entry[key] = [_transform_hook(hook, output_event) for hook in value]
+                    # Drop "type": "prompt" hooks for agy — see the flat-shape
+                    # loop above for the rationale (agy protojson has no
+                    # confirmed prompt-hook support; command hooks stay the
+                    # agy delivery path).
+                    new_entry[key] = [
+                        _transform_hook(hook, output_event)
+                        for hook in value
+                        if hook.get("type") != "prompt"
+                    ]
                 else:
                     new_entry[key] = value
             transformed_hooks.append(new_entry)
