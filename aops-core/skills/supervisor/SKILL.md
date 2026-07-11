@@ -107,12 +107,17 @@ principal as established fact, correct your own prior conclusions out loud, supe
 record, and never fake-pass.
 
 **§7 — Context-economy contract (mandatory, every mode).** (a) **Capped structured handback,
-every brief** — require the worker to end with VERDICT/CLAIM/GATE/EVIDENCE/CONFIDENCE/CONFOUND
-CHECK; read _that_, not the narrative (format: [[references/subagent-contracts#worker-handback-format]]).
-`CONFOUND CHECK: NOT RUN` blocks relay — commission the control first (§3). (b) **Cheap
-summariser agent** for all bulk reading — never absorb a 30k narrative to lift a one-line verdict.
-(c) **Ledger lives in the epic body — always open an epic node**, even in conversational mode;
-chat is not durable state.
+every brief** — require the worker to end with the canonical structured handback; read _that_,
+not the narrative. The field shape, the substance-over-form review requirement, and the
+Observed/Reported labelling rule are defined once, canonically, in
+[[specs/enforcement/evidence-contract.md#the-canonical-structured-handback-format]] and are not
+restated here (format worked example: [[references/subagent-contracts#worker-handback-format]]).
+`CONFOUND CHECK: NOT RUN` blocks relay — commission the control first (§3). Reading the fields
+back is not the check: verify the claims they point to, per
+[[specs/enforcement/evidence-contract.md#substance-over-form]] — a worker's own VERDICT: PASS is
+never sufficient by itself. (b) **Cheap summariser agent** for all bulk reading — never absorb a
+30k narrative to lift a one-line verdict. (c) **Ledger lives in the epic body — always open an
+epic node**, even in conversational mode; chat is not durable state.
 
 **One-line test before reporting:** _Have I proofed this against a falsifiable gate? If it blames
 anything I don't own — has a clean-room control ruled out our code? If not, I'm relaying a claim,
