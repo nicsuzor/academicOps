@@ -56,7 +56,8 @@ When the artifact was dispatched via a delegation brief ([[two-layer-decompositi
 **emit-for-evaluation contract** — quality rubric, claim-provenance rules, procedural record — is
 the primary evidence source for every reviewer. Load it in step 1 alongside the artifact; each
 reviewer cites it directly rather than re-investigating from scratch. **Missing or thin emitted
-evidence is itself a defect to flag** — the executor didn't meet the contract, not an invitation to
+evidence is itself a blocking defect** — it forces at minimum a REVISE verdict (never downgraded to
+ADVISORY/TRIVIAL): the executor didn't meet the contract, and that is not an invitation to
 reconstruct what should have been emitted.
 
 Of the pipeline's three evaluation lenses (claim-reliability / quality / compliance — see

@@ -16,6 +16,7 @@ mode: execution
 domain:
   - planning
   - knowledge-management
+allowed-tools: Read,mcp__pkb__search,mcp__pkb__task_search,mcp__pkb__get_task,mcp__pkb__get_semantic_neighbors,mcp__pkb__get_network_metrics,mcp__pkb__get_dependency_tree,mcp__pkb__create_task,mcp__pkb__update_task,mcp__pkb__append,AskUserQuestion
 version: 1.0.0
 permalink: skills-situate
 ---
@@ -30,7 +31,8 @@ at a different time (when the epic comes due) by a different skill — [[decompo
 
 **Personality binding — pauli.** Earmarked to `pauli`: graph mutation (creating the task node,
 wiring `contributes_to`, writing `depends_on`/supersession) requires the PKB graph-mutation tool
-surface, which only pauli's agent frontmatter grants. This is capability wiring, not a claim that
+surface, which only pauli's agent frontmatter grants (`specs/agents/pauli.md` — "sole graph-shaper").
+This is capability wiring, not a claim that
 only pauli's judgment could value a task — the restriction keeps exactly one agent authoritative
 for edges and scores so they never drift from two writers disagreeing.
 

@@ -23,10 +23,10 @@ hydrate reports obligations, you sequence and compose them into a regime.
 
 ## Door-type → gate weight
 
-| Door-type              | Examples                                  | Composed gate weight                                                                                   |
-| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Two-way (reversible)   | drafts, analysis, read-only investigation | Light or automated evaluator-optimizer loop; gate templates like `base-qa`/`base-verification` suffice |
-| One-way (irreversible) | send, publish, prod, spend, delete, merge | Hard gate: a distinct evaluator identity, usually **plus human authorisation**, before crossing        |
+| Door-type              | Examples                                  | Composed gate weight                                                                            |
+| ---------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Two-way (reversible)   | drafts, analysis, read-only investigation | Light or automated evaluator-optimizer loop; gate templates like `qa`/`verification` suffice    |
+| One-way (irreversible) | send, publish, prod, spend, delete, merge | Hard gate: a distinct evaluator identity, usually **plus human authorisation**, before crossing |
 
 Gate at real junctures only (DO-CONFIRM), not between every step. When a subtask's reversibility is
 genuinely ambiguous, classify it one-way — the cost of an unnecessary evaluator pass is far lower

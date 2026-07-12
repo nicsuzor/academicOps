@@ -97,8 +97,10 @@ focus scores and inverts the priority queue. Canonical scale:
 
 ## Must not
 
-- Capture, plan, or decompose a task, or explore/think-out-loud with the user — that's
-  [[skills-situate]] / [[skills-decompose]].
+- Capture, plan, or decompose a task — that's [[skills-situate]] / [[skills-decompose]]. (Pure
+  think-out-loud ideation that creates nothing needs no dedicated skill — it's an ordinary
+  conversational turn; when it converges on something worth keeping, hand the result to `hydrate`
+  → `situate`. The old planner's standalone "Explore" mode is retired, not rehomed.)
 - Write delegation briefs or dispatch work — that's `brief`.
 - Assign or suggest `priority` — that's Nic's personally curated intent, never this skill's
   estimate, however important a target looks.

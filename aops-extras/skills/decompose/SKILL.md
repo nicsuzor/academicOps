@@ -120,5 +120,6 @@ script to copy): [[aops_d6ae35af]] §Pass-1 decomposition.
 
 From this record alone, could a reviewer state: (a) why decomposition was warranted (the earn-its-
 keep answer), (b) the composed regime **by template name**, and (c) confirm every DAG node is
-session-sized with exactly one owner — with total prose kept small? If any of those needs
-re-deriving from context the reviewer doesn't have, the pass isn't done.
+session-sized and **owner-assignable** — a single accountable owner evident from its one-line scope
+(owner is assigned at dispatch, not pinned here) — with total prose kept small? If any of those
+needs re-deriving from context the reviewer doesn't have, the pass isn't done.

@@ -121,4 +121,5 @@ response, for stage 3 (`situate`) to consume directly.
 A downstream agent reading **only** the bundle — not the conversation, not the PKB — must be able
 to state: what's being asked, what's already known or tried, and which standards apply. If you
 can't point to the exact bullet/section that answers each of those three questions, the bundle
-isn't done.
+isn't done. (This binds the full bundle for substantial work; a right-sized micro-bundle answers a
+deliberately narrower ask — see [`references/right-sizing.md`](references/right-sizing.md).)

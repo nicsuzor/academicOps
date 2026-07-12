@@ -65,7 +65,10 @@ composed regime. Your job is narrow on purpose:
 
 `get_task` the subtask and its parent epic. You're looking for: the one-line scope decompose left,
 the subtask's `door-type`, and any composed gate/process templates wikilinked onto it or the epic
-(e.g. `[[workflows-gates-qa]]`) — carry these forward, don't re-derive them. If the hydrate bundle on
+(e.g. `[[workflows-gates-qa]]`) — carry these forward, don't re-derive them. **Pull the hydrate
+bundle's `## Context` section — prior attempts, decisions, known confounds (each with its
+spot-checkable node id) — forward into the brief's Scoped context; that carry-over is exactly what
+lets the executor start without asking "what's already been tried?"** If the hydrate bundle on
 this task predates material changes (the codebase moved, a dependency resolved differently than
 assumed, real time has passed since decompose ran), invoke [[skills-hydrate]] for a refresh rather
 than trusting a stale bundle — a brief built on stale context is worse than a slow one.
