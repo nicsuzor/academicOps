@@ -9,24 +9,8 @@ This project contains the **academicOps** framework itself. You are currently wo
 Specifically for this project:
 
 - Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
-- Project hub: [[aops|brain/projects/aops/aops]]
-- Vision: [[vision|brain/projects/aops/vision]] (where applicable)
-- Canonical taxonomy: `~/src/academicOps/aops-pkb/skills/remember/references/TAXONOMY.md`
-- Transcript naming & artifact conventions: `specs/observability/framework-observability.md`
-- Session summaries schema: `specs/summaries-schema.md`
-- Agent Compliance Matrix: `specs/audit/AGENT-COMPLIANCE-MATRIX.md`
-- Agent Tool Matrix: `specs/audit/AGENT-TOOLS.md`
-- Agent Remediation Backlog: `specs/audit/AGENT-REMEDIATION-BACKLOG.md`
 
-If you need to make a framework change, the spec is the contract. If the spec doesn't exist for the area you're touching, write or update one _first_ — don't ship undocumented framework changes.
-
-If reading source code is your first move, you've skipped this step. Stop and check the PKB.
-
-## Path Discovery (CRITICAL)
-
-To discover project locations, read `.agents/INDEX.md` in the relevant repo. If the file is missing, STOP and report.
-
-## Fail-Fast / Halt Rule (ENFORCED)
+## Fail-Fast / Halt Rule
 
 If you cannot do what was asked, **STOP and report** — do NOT search broadly, do NOT invent workarounds.
 

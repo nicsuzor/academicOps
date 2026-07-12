@@ -1,0 +1,334 @@
+"""Client translation SSoT — Table 1 of specs/hooks/CLIENT-TRANSLATION.md.
+
+The SINGLE source of truth for how the Universal Hook Router maps between the
+internal canonical hook model and each client's wire dialect (Claude Code,
+Antigravity CLI / "agy"). Both the RUNTIME router
+(``aops-core/hooks/router.py``) and the BUILD (``scripts/build.py``) import from
+here, replacing the three previously-divergent copies of the event map
+(``router.GEMINI_EVENT_MAP``, ``build.CLAUDE_TO_GEMINI_EVENTS`` + ``AGY_EVENT_MAP``,
+``scripts/transforms/hooks.py``) and the scattered channel-routing prose in the
+three ``output_for_*`` formatters.
+
+DESIGN CONSTRAINT: this module is **stdlib-only** (no pydantic, no project
+imports) so ``scripts/build.py`` can import it without pulling in the hook
+runtime's dependency tree.
+
+Two concerns live here:
+
+1. EVENT-NAME MAPPING (both directions):
+   - ``to_internal_event(client, wire)`` — inbound, used by ``normalize_input``.
+   - ``to_wire_events(client, internal)`` — outbound, used by the build to emit
+     ``hooks.json`` (a list, because one internal event can fan out to several
+     wire events, e.g. Gemini ``Stop`` → ``[SessionEnd, AfterAgent]``).
+   plus per-wire-event registration shape and cold-start timeout floors.
+
+2. CHANNEL CAPABILITY (``channel_spec(client, internal)``): for each
+   (client, event), WHICH delivery channels exist — can it block? can it deliver
+   ``context_injection`` to the AGENT without forcing a block? is there a
+   USER-only message channel? The per-client renderers read this to decide
+   routing; the cross-client test matrix asserts the renderer honoured it; the
+   gate layer reads ``agent_context_without_block`` to decide whether a WARN that
+   carries advisory must be upgraded to a block purely to deliver it.
+
+   The wire FIELD names (``allowTool`` vs ``decision``, ``additionalContext`` vs
+   ``injectSteps``) are structural and live in the renderers — the table carries
+   POLICY (what is supported), not byte layout.
+
+PROVISIONAL cells are contested/empirically-pending. USER-visibility cells are
+resolved by the PTY harness (``scripts/pty_hook_probe.py`` →
+``tests/hooks/fixtures/pty_capabilities.json``, Test Layer C — drives a real
+interactive ``claude`` in tmux), not headless JSON verification: a headless
+check is structurally blind to TTY user-visibility. Cells are flagged
+``provisional=True`` with a note so a wrong guess is never silently
+load-bearing.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+CLIENTS = ("claude", "agy")
+
+
+# --- Canonical internal event names -----------------------------------------
+class Event:
+    SESSION_START = "SessionStart"
+    PRE_TOOL = "PreToolUse"
+    POST_TOOL = "PostToolUse"
+    USER_PROMPT = "UserPromptSubmit"
+    STOP = "Stop"
+    SESSION_END = "SessionEnd"
+    SUBAGENT_START = "SubagentStart"
+    SUBAGENT_STOP = "SubagentStop"
+    PRE_COMPACT = "PreCompact"
+    NOTIFICATION = "Notification"
+
+    # --- Log-only events (aops_2597b5ff scope D) ---------------------------
+    # These have NO gate branch in router._call_gate_method — they exist
+    # solely so hooks.json subscribes and the router logs them (see
+    # main() -> log_hook_event). Never add gate dispatch logic keyed on
+    # these without also adding a _call_gate_method branch + tests; until
+    # then they are intentionally inert (log, exit 0, no blocking).
+    POST_TOOL_USE_FAILURE = "PostToolUseFailure"
+    POST_TOOL_BATCH = "PostToolBatch"
+    USER_PROMPT_EXPANSION = "UserPromptExpansion"
+    STOP_FAILURE = "StopFailure"
+    POST_COMPACT = "PostCompact"
+    PERMISSION_REQUEST = "PermissionRequest"
+    PERMISSION_DENIED = "PermissionDenied"
+    SETUP = "Setup"
+    TEAMMATE_IDLE = "TeammateIdle"
+    TASK_CREATED = "TaskCreated"
+    TASK_COMPLETED = "TaskCompleted"
+    ELICITATION = "Elicitation"
+    ELICITATION_RESULT = "ElicitationResult"
+    CONFIG_CHANGE = "ConfigChange"
+    WORKTREE_CREATE = "WorktreeCreate"
+    WORKTREE_REMOVE = "WorktreeRemove"
+    INSTRUCTIONS_LOADED = "InstructionsLoaded"
+    CWD_CHANGED = "CwdChanged"
+    FILE_CHANGED = "FileChanged"
+    MESSAGE_DISPLAY = "MessageDisplay"
+
+
+# The full canonical Claude Code hook-event set (30 events), confirmed
+# 2026-07-09 against the INSTALLED client — extracted from the `vQ` array in
+# anthropic.claude-code-2.1.205's extension.js (the same array backs the
+# settings.json ``hooks`` schema: ``h.partialRecord(h.enum(vQ), ...)``, so
+# every one of these is a valid hooks.json registration key). This is
+# TREATED AS OBSERVED, not the ~30-event docs estimate cited in
+# aops_2597b5ff's ground truth — re-verify against extension.js on a CC
+# version bump before trusting it silently stale. The first 10 already had
+# gate branches + hooks.json entries before this change; the other 20 did
+# not (the "log-all" gap this module now closes) and get a log-only
+# subscription in hooks.json with no corresponding gate dispatch.
+CLAUDE_ALL_EVENTS: tuple[str, ...] = (
+    Event.PRE_TOOL,
+    Event.POST_TOOL,
+    Event.POST_TOOL_USE_FAILURE,
+    Event.POST_TOOL_BATCH,
+    Event.NOTIFICATION,
+    Event.USER_PROMPT,
+    Event.USER_PROMPT_EXPANSION,
+    Event.SESSION_START,
+    Event.SESSION_END,
+    Event.STOP,
+    Event.STOP_FAILURE,
+    Event.SUBAGENT_START,
+    Event.SUBAGENT_STOP,
+    Event.PRE_COMPACT,
+    Event.POST_COMPACT,
+    Event.PERMISSION_REQUEST,
+    Event.PERMISSION_DENIED,
+    Event.SETUP,
+    Event.TEAMMATE_IDLE,
+    Event.TASK_CREATED,
+    Event.TASK_COMPLETED,
+    Event.ELICITATION,
+    Event.ELICITATION_RESULT,
+    Event.CONFIG_CHANGE,
+    Event.WORKTREE_CREATE,
+    Event.WORKTREE_REMOVE,
+    Event.INSTRUCTIONS_LOADED,
+    Event.CWD_CHANGED,
+    Event.FILE_CHANGED,
+    Event.MESSAGE_DISPLAY,
+)
+
+
+# =============================================================================
+# EVENT-NAME MAPPING
+# =============================================================================
+# INBOUND: wire event name (as the client invokes the hook) -> internal canonical
+# name. Used by HookRouter.normalize_input. Claude is identity (its native names
+# ARE the canonical names). Identity-mapped wire names that equal an internal name
+# need no entry; the resolver falls back to identity.
+_INBOUND: dict[str, dict[str, str]] = {
+    "claude": {},  # identity — Claude's wire names are the canonical names.
+    "agy": {
+        "PreToolUse": Event.PRE_TOOL,
+        "PostToolUse": Event.POST_TOOL,
+        "PreInvocation": Event.USER_PROMPT,  # agy: fires before each model invocation
+        "PostInvocation": Event.STOP,  # agy: fires after tool calls finish
+        "Stop": Event.STOP,  # agy native session-end (see P4 correction)
+    },
+}
+
+# OUTBOUND: internal canonical name -> list of wire event names to REGISTER in the
+# generated hooks.json. A list because one internal event can fan out (Gemini
+# Stop -> SessionEnd AND AfterAgent). Events absent from a client's map are NOT
+# shipped to that client (e.g. agy drops SessionStart/SubagentStart/etc).
+_OUTBOUND: dict[str, dict[str, list[str]]] = {
+    # identity for every event Claude supports natively — CLAUDE_ALL_EVENTS
+    # is the full 30-event set (see its docstring for provenance); the 20
+    # added 2026-07-09 (aops_2597b5ff scope D) are log-only, no gate branch.
+    "claude": {e: [e] for e in CLAUDE_ALL_EVENTS},
+    "agy": {
+        # CURRENT behavior: internal Stop -> PostInvocation. The P4 correction
+        # (harness-gated) adds native ``Stop`` so handover can hard-block; until
+        # the harness confirms terminationBehavior/decision delivery this stays
+        # PostInvocation so P1-P3 are byte-identical. See AGY_STOP_PROVISIONAL.
+        Event.USER_PROMPT: ["PreInvocation"],
+        Event.STOP: ["PostInvocation"],
+        Event.PRE_TOOL: ["PreToolUse"],
+        Event.POST_TOOL: ["PostToolUse"],
+    },
+}
+
+# Wire events each client's harness actually accepts in hooks.json (the build
+# drops anything that maps to a wire event not in this set).
+VALID_WIRE_EVENTS: dict[str, frozenset[str]] = {
+    "claude": frozenset(_OUTBOUND["claude"]),  # Claude accepts all native names
+    "agy": frozenset({"PreToolUse", "PostToolUse", "PreInvocation", "PostInvocation", "Stop"}),
+}
+
+# Registration shape per (client, wire_event):
+#   "wrapper" — matcher + hooks[] list (tool events)
+#   "flat"    — bare handler list directly under the event key
+#   "claude"  — Claude's native settings.json hook entry shape
+_CONFIG_SHAPE: dict[str, dict[str, str]] = {
+    "agy": {
+        "PreToolUse": "wrapper",
+        "PostToolUse": "wrapper",
+        "PreInvocation": "flat",
+        "PostInvocation": "flat",
+        "Stop": "flat",
+    },
+    # gemini uses the wrapper shape for every event; claude uses its own.
+}
+
+# Cold-start timeout floors (ms) per (client, wire_event). Only RAISES a source
+# timeout, never lowers it. agy PreToolUse 15000 guards the cold venv build that
+# otherwise surfaces as a spurious "Tool call denied" (invariant #10).
+_TIMEOUT_FLOOR_MS: dict[str, dict[str, int]] = {
+    "agy": {"PreToolUse": 15000},
+}
+
+
+# =============================================================================
+# CHANNEL CAPABILITY TABLE
+# =============================================================================
+@dataclass(frozen=True)
+class ChannelSpec:
+    """What delivery channels (client, internal_event) supports.
+
+    POLICY, not byte layout. The per-client renderer maps these to wire fields.
+    """
+
+    can_block: bool
+    # Can context_injection reach the AGENT on a NON-blocking result? If False and
+    # the gate has advisory to deliver, the gate/renderer must block to deliver it
+    # (the "block-to-inject" path) — that is the ONLY place that decision lives.
+    agent_context_without_block: bool
+    # Is there a USER-facing (not agent) message channel for system_message?
+    user_message: bool
+    notes: str = ""
+    provisional: bool = False
+    # The "quiet split" disposition: can this (client, event) deliver the FULL
+    # instruction body to the AGENT while the USER sees only a one-line summary?
+    # Claude's wire-level `asyncRewake` (Stop, exit 2) is the mechanism that would
+    # do this, but the router does not wire it — see the `asyncRewake` row in
+    # specs/CLIENT-TRANSLATION.md's per-client capability matrix for what it does
+    # and why it stays unused. Deliberately False everywhere. Tests assert this
+    # stays False — do not re-enable without updating both.
+    agent_full_user_summary: bool = False
+
+
+# Key: (client, internal_event). Confirmed from live docs + the conformance
+# harness (2026-06-25). PROVISIONAL=contested, pending harness measurement.
+_CHANNELS: dict[tuple[str, str], ChannelSpec] = {
+    # ---- Claude Code (2.1.191) ----
+    ("claude", Event.PRE_TOOL): ChannelSpec(True, True, True),
+    ("claude", Event.USER_PROMPT): ChannelSpec(True, True, True),
+    ("claude", Event.POST_TOOL): ChannelSpec(False, True, True),
+    ("claude", Event.SESSION_START): ChannelSpec(False, True, True),
+    # Stop additionalContext-without-block: delivery works without blocking.
+    # user_message=True: the delivered field ALSO renders to the user as "Stop
+    # hook feedback:" — there is NO user-silent agent-only Stop channel.
+    # Full channel rationale + the asyncRewake retirement: CLIENT-TRANSLATION.md.
+    ("claude", Event.STOP): ChannelSpec(
+        True,
+        True,
+        True,
+        notes="see specs/CLIENT-TRANSLATION.md (#2181)",
+    ),
+    ("claude", Event.SESSION_END): ChannelSpec(True, True, True, notes="same as Stop"),
+    # ---- Antigravity CLI (agy) ----
+    # PreToolUse has only decision/reason (+allowTool/denyReason) — no inject
+    # channel, so advisory cannot ride an allow; reason carries the deny reason.
+    ("agy", Event.PRE_TOOL): ChannelSpec(True, False, True),
+    ("agy", Event.POST_TOOL): ChannelSpec(False, False, False, notes="{} only"),
+    # PreInvocation injectSteps delivery LIVE-PROVEN by model echo (invariant #14,
+    # 2026-06-25 agy 1.0.12): ephemeralMessage reaches the model (C✓) but does NOT
+    # leak to the user terminal (U✗) and does NOT persist across --conversation
+    # (P✗). user_message=True here means a user banner is structurally possible,
+    # NOT that the EMITTED ephemeralMessage is user-visible — it is not.
+    # Recorded in tests/hooks/fixtures/client_capabilities.json (frozen 2026-06-26;
+    # the agy live-measurement harness was deleted, value stands as recorded).
+    ("agy", Event.USER_PROMPT): ChannelSpec(
+        False, True, True, notes="injectSteps; ephemeralMessage U✗ C✓ P✗ live-proven"
+    ),
+    # PostInvocation: injectSteps deliver advisory (ephemeralMessage U✗ C✓ P✗
+    # LIVE-PROVEN, same as PreInvocation); terminationBehavior hard-block PROVISIONAL
+    # — not emitted and unmeasurable on agy 1.0.12 (ignores synthetic probe hooks).
+    ("agy", Event.STOP): ChannelSpec(
+        True,
+        True,
+        True,
+        notes="injectSteps U✗ C✓ P✗ live-proven; terminationBehavior unmeasurable",
+        provisional=True,
+    ),
+}
+
+# The P4 agy hard-stop correction: register native ``Stop`` and emit
+# ``{"decision":"continue","reason":...}``. Held until the harness confirms the
+# enum + reason delivery; see CLIENT-TRANSLATION.md §P4.
+AGY_STOP_PROVISIONAL = True
+
+
+# =============================================================================
+# Accessors
+# =============================================================================
+def to_internal_event(client: str, wire_event: str) -> str:
+    """Map a client's wire event name to the internal canonical name.
+
+    Falls back to identity (the wire name already equals an internal name, e.g.
+    Claude, or an unmapped passthrough event).
+    """
+    return _INBOUND.get(client, {}).get(
+        wire_event, wire_event
+    )  # allow-fallback: identity is the designed default for unmapped/passthrough events
+
+
+def to_wire_events(client: str, internal_event: str) -> list[str]:
+    """Map an internal event to the wire event name(s) to register for a client.
+
+    Returns [] if the client does not support the event (build drops it).
+    """
+    return list(
+        _OUTBOUND.get(client, {}).get(internal_event, [])
+    )  # allow-fallback: empty = event not shipped to this client (build drops it), the designed semantics
+
+
+def valid_wire_event(client: str, wire_event: str) -> bool:
+    return wire_event in VALID_WIRE_EVENTS.get(client, frozenset())
+
+
+def config_shape(client: str, wire_event: str) -> str:
+    """Registration shape for a (client, wire_event): 'wrapper' | 'flat' | 'claude'."""
+    if client == "claude":
+        return "claude"
+    return _CONFIG_SHAPE.get(client, {}).get(
+        wire_event, "wrapper"
+    )  # allow-fallback: wrapper is the default registration shape for tool-style events
+
+
+def timeout_floor_ms(client: str, wire_event: str) -> int | None:
+    return _TIMEOUT_FLOOR_MS.get(client, {}).get(
+        wire_event
+    )  # allow-fallback: None = no floor for this (client, event), the designed default
+
+
+def channel_spec(client: str, internal_event: str) -> ChannelSpec | None:
+    """Channel capability for (client, internal_event), or None if unmapped."""
+    return _CHANNELS.get((client, internal_event))

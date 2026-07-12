@@ -1,0 +1,25 @@
+{
+  "name": "aops",
+  "description": "Local dev marketplace",
+  "owner": {
+    "name": "Local Dev"
+  },
+  "plugins": [
+    {
+      "name": "aops-core",
+      "source": "./aops-core-claude"
+    },
+    {
+      "name": "aops",
+      "source": "./aops-claude"
+    },
+    {
+      "name": "aops-tools",
+      "source": "./aops-tools-claude"
+    },
+    {
+      "name": "aops-ts",
+      "source": "./aops-ts-claude"
+    }
+  ]
+}

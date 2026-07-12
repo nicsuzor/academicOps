@@ -146,6 +146,7 @@ def uninstall_framework(aops_path: Path):
     # 2. Gemini Extensions
     if shutil.which("gemini"):
         run_command(["gemini", "extensions", "uninstall", "aops-core"], check=False)
+        run_command(["gemini", "extensions", "uninstall", "aops"], check=False)
         run_command(["gemini", "extensions", "uninstall", "aops-tools"], check=False)
         print("✓ Gemini extensions uninstalled")
 
@@ -153,7 +154,10 @@ def uninstall_framework(aops_path: Path):
     if shutil.which("claude"):
         run_command(["claude", "plugin", "uninstall", "aops-core"], check=False)
         run_command(["claude", "plugin", "uninstall", "aops-core@aops"], check=False)
-        run_command(["claude", "plugin", "uninstall", "aops-tools@academicOps"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-tools@aops"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops-core@academicOps"], check=False)
+        run_command(["claude", "plugin", "uninstall", "aops@academicOps"], check=False)
         run_command(["claude", "plugin", "uninstall", "aops-tools@aops"], check=False)
         print("✓ Claude plugins uninstalled")
 
@@ -255,8 +259,9 @@ def main():
     # New build naming uses 'aops-...' (aops-claude, aops-gemini, aops-antigravity)
     # Fall back to legacy 'aops-core' layout if present.
     candidate_skill_dirs = [
-        aops_root / "dist" / "aops" / "skills",
         aops_root / "dist" / "aops-core" / "skills",
+        aops_root / "dist" / "aops-core-claude" / "skills",
+        aops_root / "dist" / "aops" / "skills",
         aops_root / "dist" / "aops-claude" / "skills",
         aops_root / "dist" / "aops-gemini" / "skills",
         aops_root / "dist" / "aops-antigravity" / "skills",
@@ -377,10 +382,9 @@ def main():
         # past silently. New core builds name the directory 'aops-claude'; the
         # legacy 'aops-core-claude' name is still probed for older dist trees.
         claude_plugin_specs = [
-            ("aops-core", ("aops-core-claude", "aops-claude")),
+            ("aops-core", ("aops-core-claude",)),
+            ("aops", ("aops-claude",)),
             ("aops-tools", ("aops-tools-claude", "aops-tools")),
-            ("aops-extras", ("aops-extras-claude",)),
-            ("aops-pkb", ("aops-pkb-claude",)),
         ]
 
         resolved = {}
@@ -453,10 +457,9 @@ def main():
     # extras+pkb to be wired in here too, and for every plugin to be a hard
     # dependency — no soft-fail (2026-07-12).
     ag_plugin_specs = [
-        ("aops-core", "aops-antigravity"),
+        ("aops-core", "aops-core-antigravity"),
+        ("aops", "aops-antigravity"),
         ("aops-tools", "aops-tools-antigravity"),
-        ("aops-extras", "aops-extras-antigravity"),
-        ("aops-pkb", "aops-pkb-antigravity"),
     ]
 
     ag_plugins_dirs = [

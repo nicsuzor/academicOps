@@ -107,9 +107,43 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
 
         print(f"  ✓ Built {dist_dir.name} and packaged into {archive_name}")
 
+def generate_local_marketplace(dist_root: Path):
+    """Generate the local marketplace JSON so claude can install from dist/."""
+    import json
+    marketplace_dir = dist_root / ".claude-plugin"
+    marketplace_dir.mkdir(exist_ok=True)
+    marketplace = {
+        "name": "aops",
+        "description": "Local dev marketplace",
+        "owner": {
+            "name": "Local Dev"
+        },
+        "plugins": [
+            {
+                "name": "aops-core",
+                "source": "./aops-core-claude"
+            },
+            {
+                "name": "aops",
+                "source": "./aops-claude"
+            },
+            {
+                "name": "aops-tools",
+                "source": "./aops-tools-claude"
+            },
+            {
+                "name": "aops-ts",
+                "source": "./aops-ts-claude"
+            }
+        ]
+    }
+    with open(marketplace_dir / "marketplace.json", "w") as f:
+        json.dump(marketplace, f, indent=2)
+    print("✓ Generated local marketplace.json")
+
 def main():
     parser = argparse.ArgumentParser(description="Simple build script for plugins")
-    parser.add_argument("--plugins", nargs="+", default=["aops", "aops-tools", "aops-ts"], help="Plugins to build")
+    parser.add_argument("--plugins", nargs="+", default=["aops-core", "aops", "aops-tools", "aops-ts"], help="Plugins to build")
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -123,6 +157,8 @@ def main():
             print(f"Warning: Plugin source {src_dir} does not exist. Skipping.")
             continue
         build_plugin(plugin, src_dir, dist_root)
+
+    generate_local_marketplace(dist_root)
 
 if __name__ == "__main__":
     main()

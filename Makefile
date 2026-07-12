@@ -26,21 +26,11 @@ GEMINI_EXT_NAME := aops-core
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
 GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
-# Additional published plugins that `make install` should install — everything on
-# the academicOps marketplace EXCEPT aops-cowork (its own isolated
-# marketplace/flow, see install-cowork) and aops-ts (see below). Every plugin
-# below is now a HARD dependency (Nic ruling 2026-07-12): a missing/broken
-# plugin asset in a dist build is a build bug that must surface immediately at
-# install time, not later as a missing skill. Claude-only HERE (install-agy stays
-# core+tools) is a scope choice, not a build gap: antigravity builds of both DO
-# exist (build.py emits dist/aops-extras-antigravity, dist/aops-pkb-antigravity)
-# — see specs/build-and-install.md.
-CLAUDE_EXTRAS_PLUGIN_NAME := aops-extras@academicOps
-CLAUDE_PKB_PLUGIN_NAME := aops-pkb@academicOps
+CLAUDE_AOPS_PLUGIN_NAME := aops@academicOps
 # The full set of Claude plugins a live `make install` must successfully install.
 # install-claude/install-windows loop over this list and HALT on the first
 # failure — no per-plugin soft-fail exceptions.
-CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_EXTRAS_PLUGIN_NAME) $(CLAUDE_PKB_PLUGIN_NAME)
+CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_AOPS_PLUGIN_NAME)
 # aops-ts is intentionally NOT auto-installed by any target here: it's an
 # opt-in Tailscale bring-up hook for remote/cloud sessions (specs/build-and-install.md),
 # and joining the tailnet / shipping transcripts should stay an explicit
@@ -55,9 +45,8 @@ CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_EXT
 CLAUDE_LOCAL_MARKETPLACE := aops
 CLAUDE_LOCAL_PLUGIN_NAME := aops-core@aops
 CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
-CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME := aops-extras@aops
-CLAUDE_LOCAL_PKB_PLUGIN_NAME := aops-pkb@aops
-CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME) $(CLAUDE_LOCAL_PKB_PLUGIN_NAME)
+CLAUDE_LOCAL_AOPS_PLUGIN_NAME := aops@aops
+CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)
 
 # The local-dev cowork plugin lives in its OWN isolated marketplace + plugin
 # namespace (`aops-coworklocal`) so a local install never clobbers the published
@@ -165,12 +154,10 @@ install-dev: build-dev
 	@# a dev install never double-loads alongside a release install.
 	-command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_LOCAL_PKB_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
 	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_EXTRAS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_PKB_PLUGIN_NAME)
+	-command claude plugin uninstall $(CLAUDE_AOPS_PLUGIN_NAME)
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
@@ -201,16 +188,14 @@ uninstall-dev:
 	@echo "Removing local '$(CLAUDE_LOCAL_MARKETPLACE)' marketplace + plugins..."
 	@command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME) >/dev/null 2>&1 || true
 	@command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_LOCAL_EXTRAS_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_LOCAL_PKB_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@command claude plugin uninstall $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) >/dev/null 2>&1 || true
 	@command claude plugin marketplace remove $(CLAUDE_LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
 	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)
-	@command claude plugin install $(CLAUDE_EXTRAS_PLUGIN_NAME)
-	@command claude plugin install $(CLAUDE_PKB_PLUGIN_NAME)
+	@command claude plugin install $(CLAUDE_AOPS_PLUGIN_NAME)
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
