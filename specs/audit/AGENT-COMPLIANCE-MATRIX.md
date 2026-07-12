@@ -29,10 +29,9 @@ Generated on Wed Jul 1 08:18:13 AM UTC 2026 from `scripts/audit_agent_compliance
 | aops-core/skills/dump/SKILL.md             | ❌ Missing allowed-tools |
 | aops-core/skills/end_session/SKILL.md      | ❌ Missing allowed-tools |
 | aops-core/skills/planner/SKILL.md          | ❌ Missing allowed-tools |
-| aops-core/skills/project/SKILL.md          | ❌ Missing allowed-tools |
+| aops-core/skills/new-project/SKILL.md      | ❌ Missing allowed-tools |
 | aops-core/skills/remember/SKILL.md         | ✅                       |
 | aops-core/skills/strategic-review/SKILL.md | ✅                       |
 | aops-core/skills/supervisor/SKILL.md       | ❌ Missing allowed-tools |
 | aops-core/skills/triage/SKILL.md           | ✅                       |
-| aops-core/skills/task-lifecycle/SKILL.md   | ❌ Missing allowed-tools |
 | aops-core/skills/verify/SKILL.md           | ✅                       |

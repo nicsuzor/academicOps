@@ -24,7 +24,7 @@ queue; polecat is the workspace and execution surface.
 - [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
 - [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
   transcript stubs
-- `aops-core/skills/task-lifecycle/SKILL.md` — `/pull` and `/dispatch`, which route
+- `aops-pkb/commands/pull.md` and `aops-pkb/commands/dispatch.md` — commands which route
   work onto this surface
 
 ## Guarantees

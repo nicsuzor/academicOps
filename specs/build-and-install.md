@@ -97,13 +97,12 @@ so bring-up must be a hook, not setup).
 MCP server registration, but **no hooks** — the module operates outside the agent loop,
 see PKB task `aops-b225ec53`). It ships the task/work-unit module extracted from
 `aops-core`: capture (`/q`), strategic planning + decomposition (the `planner` skill), the
-task-lifecycle spine (`/pull`, `/dispatch`), acceptance (`/verify` +
-`strategic-review`'s four-agent sign-off — `james`, `rbg`, `pauli`, `marsha`), PKB
+`/pull` and `/dispatch` commands, PKB
 curation (`/remember`, `/learn`, `/maintain`), and session lifecycle (`/daily`, `/dump`,
 `/end_session` — moved here from the short-lived `aops-interactive` plugin per ruling A10,
 task `aops-7ea63b63`: these skills are bound up with the PKB, not with the head
 personality). Because it registers its own `pkb` MCP server under a distinct plugin name,
-its 4 moved agents (`james`/`rbg`/`pauli`/`marsha`) and the `task-lifecycle` skill were
+the skills inside it were
 rewritten at the source level to the `mcp__plugin_aops-pkb_pkb__*` tool-name prefix (not a
 build-time rewrite, unlike aops-cowork's — aops-pkb is a standalone package, not an
 aops-core overlay). The other moved skill-body files (`planner`, `remember`'s
@@ -141,10 +140,10 @@ dev-symlink path wires antigravity builds of `aops-extras`/`aops-pkb` into any a
 evidence the antigravity builds don't exist or are unfinished (§5.5 covers what
 `install-agy` does install and how).
 
-`aops-core` also ships the `ida` agent, the shared head ROLE charter it `@`-imports
+`aops-core` also ships the `ida` agent and the shared head ROLE charter it `@`-imports
 (`.agents/charter/head-role-charter.md`, co-shipped from
-`specs/interactive-experience/head-role-charter.md` the same way axioms are co-shipped),
-and the `narrative-digest` skill. These lived briefly in a separate `aops-interactive`
+`specs/interactive-experience/head-role-charter.md` the same way axioms are co-shipped).
+These lived briefly in a separate `aops-interactive`
 plugin (epic `aops-c70490f4`, PR #2115, 2026-07-05) before that plugin was dissolved
 pre-ship (ruling A10, never installed anywhere, task `aops-7ea63b63`, 2026-07-06): hooks
 don't work across plugins, and the head personality that the `ida` honesty-at-Stop gate

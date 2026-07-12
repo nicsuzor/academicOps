@@ -43,7 +43,7 @@ Routing keys on:
   never on a background surface.
 - **Not dispatchable**: missing inputs or blockers → record a block note and defer.
 
-This routing is implemented in the `task-lifecycle` skill's dispatch mode. Weighing
+This routing is implemented in the `/dispatch` command. Weighing
 expected duration/effort in the routing decision is a target requirement, not yet
 implemented.
 
@@ -103,15 +103,15 @@ in where work runs and whether they loop:
 | **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` |
 
 All three verbs share **one** Select+Gates spine, implemented once in the
-`task-lifecycle` skill: `/pull` claims the task and runs it inline (with licence to
+shared dispatch logic: `/pull` claims the task and runs it inline (with licence to
 ask the user questions); `/dispatch` routes it to a worker and halts.
 
-The supervisor's Dispatch phase **reuses that same spine** (`task-lifecycle`
-§§1–2) for task selection, the premise gate, and the freshness pre-check — it does
+The supervisor's Dispatch phase **reuses that same spine**
+for task selection, the premise gate, and the freshness pre-check — it does
 not re-implement them, so there is exactly one description of that behaviour.
 On top of the spine the supervisor adds the discipline that is genuinely its own and
-has no meaning in `task-lifecycle`: the pauli pre-flight confirmation and critic gate,
-proof, the ledger, evaluation, and escalation **across ticks** (`task-lifecycle` has
+has no meaning in standard dispatch: the pauli pre-flight confirmation and critic gate,
+proof, the ledger, evaluation, and escalation **across ticks** (standard dispatch has
 no concept of "across ticks"). `/dispatch` is a thin one-shot slice of a single
 supervisor dispatch step.
 
@@ -138,5 +138,5 @@ extensions.
   PR-based merge that the supervisor dispatches onto
 - `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
   checkpoint loop, proof discipline, evaluation protocol)
-- `aops-core/skills/task-lifecycle/SKILL.md` — The Select+Gates spine shared by
-  `/pull` and `/dispatch`
+- `aops-pkb/commands/pull.md` and `dispatch.md` — The Select+Gates spine shared by
+  `/pull`, `/dispatch`, and `/supervisor`.
