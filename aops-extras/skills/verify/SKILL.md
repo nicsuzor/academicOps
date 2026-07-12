@@ -16,7 +16,7 @@ mode: execution
 domain:
   - quality-assurance
 allowed-tools: Task,Read,Glob,Grep
-version: 2.0.0
+version: 2.1.0
 permalink: skills-verify
 ---
 
@@ -53,6 +53,27 @@ Default posture: **assume it's broken.** The burden is on the artifact to prove 
 6. **No Anchoring/Bias**:
    - If you participated in designing or iterating on this artifact, you are disqualified from reviewing it for fitness.
    - Dispatches must be neutral (do not pre-state expected verdicts).
+
+## Evaluating Brief-Sourced Work (pipeline `evaluate` stage)
+
+When the artifact under review was dispatched via a delegation brief ([[two-layer-decomposition]]),
+the brief's **emit-for-evaluation contract** — quality rubric, claim-provenance rules, procedural
+record — is the primary evidence source. Read it first; cite it directly in the report rather than
+reconstructing the investigation from scratch. **Missing or thin emitted evidence is itself a
+FAIL** — the executor didn't meet the contract — not a licence to re-investigate as if the brief
+said nothing. Core Directive 1 ("verify evidence directly") still applies: independently confirm
+what's emitted, don't just accept it uncross-checked.
+
+This skill owns two of the pipeline's three evaluation lenses on that evidence:
+
+- **Quality** — is the rubric/AC met? (the Fitness/Mechanical Bar above.)
+- **Claim-reliability** — does the emitted evidence separate observed from inferred, and is every
+  load-bearing claim provenanced? Treat an unprovenanced load-bearing claim as a sentinel (Forcing
+  Check 1).
+
+The third lens — **compliance** (regime/axiom obligations honoured) — belongs to
+`/strategic-review` (rbg), not here; if compliance concerns surface mid-verification, note them
+under Process Compliance and route rather than adjudicate.
 
 ## Data Pipeline Verification
 
@@ -104,7 +125,10 @@ Output reports exactly in this format:
 
 ### Recommendation
 
-[If FAIL/REVISE: specific remediation steps and user impact]
+[If FAIL/REVISE: specific remediation steps and user impact. For brief-sourced work, phrase as a
+critique addressed to the brief — name which brief element (intent / scoped context / constraints /
+autonomy+non-goals / acceptance criteria / emit-for-evaluation / effort+door-type) was unmet or
+ambiguous, so re-dispatch is a brief update, not a new plan.]
 ```
 
 ## Browser-Driven UI Verification

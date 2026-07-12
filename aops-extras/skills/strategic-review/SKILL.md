@@ -22,7 +22,7 @@ domain:
   - framework
   - quality-assurance
 allowed-tools: Agent, Bash, Read, Glob, Grep, AskUserQuestion
-version: 3.0.0
+version: 3.1.0
 permalink: skills-strategic-review
 ---
 
@@ -49,6 +49,27 @@ Skills), not as an exclusive roster; any agent embodying the equivalent disposit
   you return the verdict to the caller and change nothing.
 
 ---
+
+## Evaluating Brief-Sourced Work (pipeline `evaluate` stage)
+
+When the artifact was dispatched via a delegation brief ([[two-layer-decomposition]]), its
+**emit-for-evaluation contract** — quality rubric, claim-provenance rules, procedural record — is
+the primary evidence source for every reviewer. Load it in step 1 alongside the artifact; each
+reviewer cites it directly rather than re-investigating from scratch. **Missing or thin emitted
+evidence is itself a defect to flag** — the executor didn't meet the contract, not an invitation to
+reconstruct what should have been emitted.
+
+Of the pipeline's three evaluation lenses (claim-reliability / quality / compliance — see
+[[20-skill-requirements]] §5), this skill's distinctive contribution is **compliance**: rbg checks
+regime/axiom obligations were honoured, pauli checks the premise and strategic fit still hold.
+Quality is also checked here (marsha, step 2), but the **claim-reliability** lens — provenance
+present, observed separated from inferred — is `/verify`'s addition; if a reviewer here spots a
+provenance gap, note it under Process Compliance and route to `/verify` rather than adjudicate it.
+
+**On REVISE/REJECT**, james's synthesis (§3) addresses the brief, not a fresh plan: the table's
+Feedback column names which brief element (intent, scoped context, constraints, autonomy/non-goals,
+acceptance criteria, emit-for-evaluation, effort/door-type) the artifact failed against, so
+re-dispatch is a brief edit.
 
 ## Procedure (default mode)
 
