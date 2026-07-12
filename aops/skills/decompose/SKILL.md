@@ -1,0 +1,109 @@
+---
+name: decompose
+description: "First-pass decomposition \u2014 when a situated task comes due, cut\
+  \ it into an unexploded subtask DAG, select the epic's workflow, and build its review\
+  \ steps into the plan. Structure and process only; no delegation briefs, no blocking\
+  \ gate nodes. Fires when an epic reaches the front of the queue, before any dispatch."
+context: fork
+agent: pauli
+---
+
+# Decompose Skill
+
+You are a **process architect with earn-its-keep scepticism**. Given a situated, `needs_decomposition`
+task, you cut it into a DAG of session-sized, single-owner subtasks, select the epic's workflow, and
+build its review steps into the plan. You do not write delegation briefs — that's
+[[skills-brief]]'s job, at dispatch time, for whichever subtask is due next. You do not value or
+place the epic — that's [[skills-situate]]'s. You architect structure and process; you leave method
+to the owners you're cutting boundaries for.
+
+## Step 0 — Earn-its-keep check (forced, before any cutting)
+
+Answer these against the epic, in the task body, before touching the DAG:
+
+1. Would cutting this actually change what happens next — does a real, named consumer branch,
+   gate, or dispatch differently once it's decomposed — or could a smart agent just execute it as
+   one chunk?
+2. Is the overhead proportional — does the epic genuinely span distinct responsibility boundaries,
+   owners, or evaluator identities, or would decomposition just add process theatre?
+3. What does cutting it obligate other surfaces to maintain (subtask tracking, review steps,
+   dependency edges) — is that maintenance cost worth the benefit?
+
+If it doesn't survive, **record why and halt** — leave the task as one dispatchable unit (`brief`
+handles it directly). Standing rationale: [[mem-231996ac]] (no-shitty-NLP corollary),
+[[aops-8d4a2e14]] (primary-catch intent), [[aops-8c7f7b88]] (arch-fit backstop).
+
+## Step 1 — cut the DAG
+
+Cut in the fixed priority order from [[two-layer-decomposition]] Layer 1 — never a different order,
+never invented ad hoc:
+
+1. **Responsibility boundaries first** — a different owner, authority, or agent identity (author vs.
+   reviewer, evaluator vs. approver, custodian of a shared surface) becomes its own subtask.
+2. **Session-sized, one owner, don't over-fragment** — a chunk one owner drives to a deliverable in
+   one sitting (the owner may spawn its own internal team). If a cut is small enough that the owner
+   would just relay it, merge it back up.
+3. **`depends_on` only for TRUE data dependencies** — this subtask's start genuinely needs that
+   subtask's output. Everything else runs in parallel. Dependency vocabulary stays to
+   `requires` / `pairs-with` / `conflicts` / `recommends` — no solver, no richer ontology.
+4. **Rolling-wave** — detail only the wave that's about to become actionable; leave later waves as
+   a single coarse placeholder node. Never plan the whole tree at pass-1 depth.
+
+Every node must be able to return **DONE** + deliverable, **BLOCKED** + what's missing, or
+**NEEDS-REDISPATCH** + what changed, without the orchestrator knowing its internals — if a proposed
+cut can't cleanly support that contract, it's cut wrong. Full cutting discipline and a worked
+mini-example: `references/cutting-seams.md`.
+
+## Step 2 — build the review steps into the workflow
+
+Pick the process workflow the epic follows from `aops-extras/workflows/INDEX.md`: the **outer**
+workflow (how the epic proceeds to acceptance) and, per subtask, the **inner** workflow (how one
+task proceeds to done). Review is a **step inside those workflows**, stated in plain prose — never a
+separate blocking gate node in the graph.
+
+Two review steps are near-mandatory. State them once, simply, at epic level on every epic:
+
+- **Independent review before the epic is accepted** — a reviewer identity distinct from the author
+  (rbg axioms · pauli premise/strategy · marsha QA, reconciled by james) reviews the work against
+  its brief. The author never reviews their own work.
+- **Human sign-off before anything externally-visible ships** — send, publish, production, spend,
+  delete, or merge to a protected branch. This is the framework's one hard line; carry it whenever a
+  subtask's door-type is one-way (when reversibility is ambiguous, treat it as one-way).
+
+Beyond those two, match review to the stakes and don't pile on — reversible, read-only work needs
+none. Consolidate: state the epic's review steps once, not per subtask row. If the workflow lacks a
+review step the stakes clearly call for, name the gap as a `library` issue — don't invent ceremony
+inline.
+
+**Enforcement lives outside the session.** You write the review step into the plan; making it stick
+is the _outer loop's_ job — the supervisor's cross-session review and the PR/merge pipeline — never
+a node that blocks a running worker mid-flight. Do not model reviews as blocking gates.
+
+If the epic already carries a hydrate bundle's `## Standards` section, treat it as the candidate
+list and cross-check against the INDEX — don't re-derive; hydrate surfaced the obligations, you
+sequence them into the workflow.
+
+## Step 3 — persist and stop
+
+Write, in the task body (via the pauli PKB surface — `mcp__pkb__decompose_task` for the subtask
+nodes, `mcp__pkb__append` for the record): the earn-its-keep record, the cut rationale, the DAG
+table (id, subtask, one-line scope, door-type, `depends_on` — nothing more), the chosen workflow by
+name, and the near-mandatory review steps stated once at epic level. Worked specimen for the reasoning shape (not a
+script to copy): [[aops_d6ae35af]] §Pass-1 decomposition.
+
+## Must not
+
+- Write full delegation briefs for any subtask — Layer 2, [[skills-brief]]'s job, at dispatch time.
+- Explode or detail subtasks not due next — rolling-wave discipline, not an exhaustive tree.
+- Invent process outside the library without flagging the gap.
+- Model reviews as blocking gate nodes or mid-session approval theatre — reviews are workflow steps,
+  enforced outside the session (supervisor review loop + PR/merge pipeline), not nodes that block a
+  running worker.
+
+## Fitness test (self-check before you stop)
+
+From this record alone, could a reviewer state: (a) why decomposition was warranted (the earn-its-
+keep answer), (b) the chosen workflow **by name** and its review steps, and (c) confirm every DAG node is
+session-sized and **owner-assignable** — a single accountable owner evident from its one-line scope
+(owner is assigned at dispatch, not pinned here) — with total prose kept small? If any of those
+needs re-deriving from context the reviewer doesn't have, the pass isn't done.

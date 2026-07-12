@@ -1,0 +1,20 @@
+{
+  "name": "aops",
+  "version": "0.4.0",
+  "description": "AcademicOps core framework — combining task/work-unit modules, strategic planning, task-lifecycle, dispatch, session lifecycle, and swappable technology-specific academic skills.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "research",
+    "framework",
+    "workflow",
+    "pkb",
+    "enforcement",
+    "task-lifecycle",
+    "academic",
+    "extras"
+  ]
+}
