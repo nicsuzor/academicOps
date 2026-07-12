@@ -28,21 +28,7 @@ The conceptual review pattern is implemented through the following framework com
   - [[specs/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
   - [[specs/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
 
-## Motivation
-
-### The gist pattern
-
-Inspired by [LuD1161's Codex-Review skill](https://gist.github.com/LuD1161/84102959a9375961ad9252e4d16ed592): an iterative multi-agent review loop where a second agent provides structured critique of a first agent's output. The pattern works for code review because a reviewer with different optimisation targets catches what the author misses.
-
-### Two insights from dogfooding
-
-When we used a structured 5-pass review to evaluate the first draft of a combined spec (PR #648), two things became clear:
-
-1. **The highest-value review question was universal.** "Does this spec practice what it preaches?" applies to any intellectual artifact, not just research plans. A general-purpose conceptual review workflow is more useful than a research-specific one.
-
-2. **The same pattern serves many domains.** Spec review, manuscript review, grant proposals, design documents, and research decomposition are all instances of structured multi-agent critique with domain-specific lenses. The general pattern should be specified once and instantiated per domain.
-
-## The User
+# The User
 
 Someone who has produced an intellectual artifact -- a spec, proposal, design doc, research plan, or manuscript draft -- and wants structured feedback that goes beyond surface editing. They need a thinking partner that catches what they miss: hidden assumptions, structural gaps, internal contradictions, missing context. When it works, it feels like a conversation with a rigorous collaborator. When it fails, it feels like submitting to a committee.
 
