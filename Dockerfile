@@ -1,6 +1,12 @@
 # --- aops dist/ source selection ---------------------------------------
 # The image needs the built dist/aops-* tree + .claude-plugin/marketplace.json.
-# Two interchangeable sources, selected by AOPS_DIST_SOURCE:
+# Two interchangeable sources, selected by AOPS_DIST_SOURCE. Both land at
+# /aops-dist, but with different internal shapes (the published `dist` BRANCH
+# still predates the aops-core -> aops rename and nests plugin dirs one level
+# under `dist/`, while our local build.py output is self-contained: dist/ IS
+# the marketplace root, .claude-plugin/marketplace.json included — the
+# `claude plugin marketplace add`/`update`/install RUN block below branches on
+# $AOPS_DIST_SOURCE to point at the right root and marketplace name for each):
 #   remote (default) — clone the published `dist` branch. Used by CI
 #     (build-extension.yml builds the image right after publishing that
 #     branch, so this is exactly the release just shipped).
@@ -19,12 +25,15 @@ RUN git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} /aops-dist
 
 FROM scratch AS aops-dist-local
 COPY dist /aops-dist/dist
-COPY .claude-plugin /aops-dist/.claude-plugin
 
 FROM aops-dist-${AOPS_DIST_SOURCE} AS aops-dist
 
 # Use Python 3.12 with Debian Bookworm slim for a minimal, compatible base
 FROM python:3.12-slim-bookworm
+
+# Re-declared: ARGs don't cross a FROM boundary. Needed below to branch the
+# plugin-install step on which /aops-dist shape we actually got.
+ARG AOPS_DIST_SOURCE=remote
 
 # Create non-root user early so we can switch to it after system-level installs
 RUN useradd -m -d /home/worker -s /bin/bash worker
@@ -142,38 +151,37 @@ COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
 #
-# The two `gemini extensions install` steps below are guarded with a
-# directory-existence check: scripts/build.py no longer emits
-# dist/aops-gemini or dist/aops-tools-gemini (Gemini CLI plugin support was
-# removed, commit 93c815263), so AOPS_DIST_SOURCE=local builds (make
-# build-docker / build-docker-dev, both built from THIS checkout's fresh
-# dist/) would otherwise fail with "Install source not found." The published
-# `dist` branch (AOPS_DIST_SOURCE=remote, used by CI) still carries the
-# stale directories from before that commit, so the guard is a no-op there —
-# this only unblocks local builds, it does not change remote/CI behavior.
+# Exactly two plugins ship, for two surfaces (claude, agy): aops + aops-tools.
+# The Gemini CLI extension surface is deprecated and intentionally not
+# installed here (matches `make install`, which doesn't install it either).
+#
+# $AOPS_DIST_SOURCE picks the marketplace root/name (see aops-dist-local /
+# aops-dist-remote above for why these differ): local's /aops-dist/dist IS
+# the self-contained marketplace root build.py produces (name "aops"); the
+# published `dist` branch has `.claude-plugin/` at its own root with plugin
+# dirs nested one level under `dist/` (name "academicOps"). Antigravity plugin
+# dirs happen to resolve to the same path either way: /tmp/aops-dist/dist/*.
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
-    && claude plugin marketplace add /tmp/aops-dist \
-    && claude plugin marketplace update academicOps \
-    && claude plugin install aops-core@academicOps \
-    && claude plugin install aops-tools@academicOps \
-    && claude plugin install aops@academicOps \
+    && if [ "$AOPS_DIST_SOURCE" = "local" ]; then MP_ROOT=/tmp/aops-dist/dist; MP_NAME=aops; else MP_ROOT=/tmp/aops-dist; MP_NAME=academicOps; fi \
+    && claude plugin marketplace add "$MP_ROOT" \
+    && claude plugin marketplace update "$MP_NAME" \
+    && claude plugin install aops@"$MP_NAME" \
+    && claude plugin install aops-tools@"$MP_NAME" \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
-    && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
-    && ( [ ! -d /tmp/aops-dist/dist/aops-gemini ] || GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-gemini --consent --pre-release ) \
-    && ( [ ! -d /tmp/aops-dist/dist/aops-tools-gemini ] || GEMINI_API_KEY=dummy-for-install gemini extensions install /tmp/aops-dist/dist/aops-tools-gemini --consent --pre-release ) \
+    && echo '{"/home/worker/.gemini/antigravity-cli/plugins/aops": "TRUST_FOLDER", "/home/worker/.gemini/antigravity-cli/plugins/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
     && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
-    && cp -r /tmp/aops-dist/dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-core \
-    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
+    && cp -r /tmp/aops-dist/dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops \
+    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops \
     && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
-    && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
-    && cp /tmp/aops-dist/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/academicOps/.claude-plugin/marketplace.json \
+    && mkdir -p /home/worker/.claude/plugins/cache/"$MP_NAME"/.claude-plugin \
+    && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/"$MP_NAME"/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
-    && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache
+    && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
 # NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
@@ -209,7 +217,7 @@ RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-en
 # extension dir, independent of the root project venv at /home/worker/.venv
 # (built below).
 RUN umask 000 && set -e && \
-    for d in /home/worker/.claude/plugins/cache/academicOps/*/*/ \
+    for d in /home/worker/.claude/plugins/cache/*/*/*/ \
              /home/worker/.gemini/extensions/*/ \
              /home/worker/.gemini/antigravity-cli/plugins/*/ ; do \
         if [ -f "${d}pyproject.toml" ]; then \
@@ -219,25 +227,15 @@ RUN umask 000 && set -e && \
         fi ; \
     done
 
-# Build-time assertion: agy PreToolUse-allow path must emit {"allowTool": true}.
-# Regression guard for aops-aa4c85a6 (parent epic aops-348e5858): a stale baked
-# router emitted {} for a PreToolUse ALLOW event. agy protojson parses stdout as
-# exa.hooks_pb.PreToolHookResult, where an OMITTED bool defaults to false — so {}
-# causes agy to deny every tool call. AOPS_AGY_CLIENT=1 sets is_subagent=True so
-# gates are skipped and the plain ALLOW path is exercised in isolation.
-# NOT redundant with tests/hooks/test_agy_protojson_contract.py: that test
-# validates protojson *shape* against canonical router output in isolation and
-# explicitly disclaims proving the live/baked harness behavior; this check
-# exercises the actual pre-baked router.sh inside the image being built, which
-# is the artifact that actually shipped broken in aops-aa4c85a6.
-RUN set -e; \
-    ROUTER=/home/worker/.gemini/antigravity-cli/plugins/aops-core/hooks/router.sh; \
-    out=$(printf '{"toolCall":{"name":"Bash","args":{"command":"echo test"}},"workspacePaths":["/workspace"]}' \
-          | AOPS_AGY_CLIENT=1 bash "$ROUTER" --client agy PreToolUse 2>/dev/null); \
-    echo "agy PreToolUse-allow output: $out" >&2; \
-    echo "$out" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('allowTool') is True, repr(d)" \
-        || { echo "FATAL: agy PreToolUse-allow did not emit allowTool:true — stale router baked?" >&2; exit 1; }; \
-    echo "Build check passed: agy PreToolUse-allow emits allowTool:true" >&2
+# NOTE: the build-time "agy PreToolUse-allow" regression assertion that used to
+# live here (guarding aops-aa4c85a6 — a stale baked router.sh emitting {} for a
+# PreToolUse ALLOW event) has been removed: aops/hooks/router.py no longer
+# implements PreToolUse or any tool-gating at all (it only injects
+# reminder/hydrate context on PostInvocation/PreInvocation for agy and
+# Stop/SubagentStop/UserPromptSubmit for claude — see the file). That whole
+# tool-allow/deny mechanism (aops-core/lib/automode.py, the gates workflow) was
+# removed in the same large refactor that broke scripts/install.py. If it's
+# rebuilt, a fresh build-time assertion belongs here again.
 
 # Pre-build Python project venv at a stable image path.
 # UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),

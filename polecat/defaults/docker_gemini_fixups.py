@@ -12,7 +12,6 @@ import json
 import pathlib
 
 GEMINI_HOME = pathlib.Path("/home/worker/.gemini")
-CLAUDE_PLUGIN_CACHE = pathlib.Path("/home/worker/.claude/plugins/cache/academicOps")
 KNOWN_MARKETPLACES = pathlib.Path("/home/worker/.claude/plugins/known_marketplaces.json")
 
 
@@ -36,23 +35,25 @@ def fixup_mcp_config_paths() -> None:
             path.write_text(resolved)
 
 
-def fixup_marketplace_cache() -> None:
+def fixup_marketplace_cache(marketplace_name: str) -> None:
     """Point known_marketplaces.json + marketplace.json at the single dist clone.
 
-    Both CLIs install from one shallow clone of the dist repo (see comment
-    above the git clone in the Dockerfile); this rewrites the marketplace
-    metadata to reference that cache location instead of the ephemeral
-    /tmp/aops-dist clone dir that no longer exists post-install.
+    Both CLIs install from one shallow clone/copy of the dist tree (see
+    comment above the git clone in the Dockerfile); this rewrites the
+    marketplace metadata to reference the permanent plugin cache location
+    instead of the ephemeral /tmp/aops-dist dir that no longer exists
+    post-install (rm -rf'd at the end of the plugin-install RUN step).
     """
+    plugin_cache = pathlib.Path(f"/home/worker/.claude/plugins/cache/{marketplace_name}")
     known = json.loads(KNOWN_MARKETPLACES.read_text())
-    known["academicOps"]["source"]["path"] = str(CLAUDE_PLUGIN_CACHE)
-    known["academicOps"]["installLocation"] = str(CLAUDE_PLUGIN_CACHE)
+    known[marketplace_name]["source"]["path"] = str(plugin_cache)
+    known[marketplace_name]["installLocation"] = str(plugin_cache)
     KNOWN_MARKETPLACES.write_text(json.dumps(known, indent=2))
 
-    marketplace_path = CLAUDE_PLUGIN_CACHE / ".claude-plugin" / "marketplace.json"
+    marketplace_path = plugin_cache / ".claude-plugin" / "marketplace.json"
     marketplace = json.loads(marketplace_path.read_text())
     for plugin in marketplace["plugins"]:
-        plugin_dir = CLAUDE_PLUGIN_CACHE / plugin["name"]
+        plugin_dir = plugin_cache / plugin["name"]
         if plugin_dir.is_dir():
             version_dir = next((e.name for e in plugin_dir.iterdir() if e.is_dir()), "")
             plugin["source"] = f"./{plugin['name']}/{version_dir}"
@@ -85,8 +86,16 @@ COMMANDS = {
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=sorted(COMMANDS))
+    parser.add_argument(
+        "--marketplace-name",
+        default="academicOps",
+        help="Marketplace name to fix up (fixup-marketplace-cache only)",
+    )
     args = parser.parse_args()
-    COMMANDS[args.command]()
+    if args.command == "fixup-marketplace-cache":
+        fixup_marketplace_cache(args.marketplace_name)
+    else:
+        COMMANDS[args.command]()
 
 
 if __name__ == "__main__":

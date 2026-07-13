@@ -117,8 +117,8 @@
     ]
   },
   "enabledPlugins": {
-    "aops-core@academicOps": true,
-    "aops-tools@academicOps": true,
+    "aops@aops": true,
+    "aops-tools@aops": true,
     "aops@academicOps": true,
     "aops-tools@academicOps": true
   }

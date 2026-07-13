@@ -20,14 +20,16 @@ DIST_REPO := $(DIST_REPO_SLUG)@dist
 DIST_REPO_URL := https://github.com/$(DIST_REPO_SLUG)
 
 # Extension names. The live `make install` flow no longer installs the
-# deprecated Gemini CLI extension (see install / install-windows).
-CLAUDE_PLUGIN_NAME := aops-core@academicOps
+# deprecated Gemini CLI extension (see install / install-windows). Exactly two
+# plugins ship: aops (core) + aops-tools. `aops-core`/`aops-pkb`/`aops-extras`
+# are gone from source (folded into aops/ or never existed here) and are no
+# longer installed by anything in this file.
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 CLAUDE_AOPS_PLUGIN_NAME := aops@academicOps
 # The full set of Claude plugins a live `make install` must successfully install.
 # install-claude/install-windows loop over this list and HALT on the first
 # failure — no per-plugin soft-fail exceptions.
-CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_AOPS_PLUGIN_NAME)
+CLAUDE_PLUGINS := $(CLAUDE_AOPS_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME)
 # aops-ts is intentionally NOT auto-installed by any target here: it's an
 # opt-in Tailscale bring-up hook for remote/cloud sessions (specs/build-and-install.md),
 # and joining the tailnet / shipping transcripts should stay an explicit
@@ -39,10 +41,6 @@ CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_AOP
 # visibly DISTINCT from the released `academicOps` marketplace in `claude plugin
 # marketplace list`. `make install`'s clean-local removes these so a live install
 # is never shadowed by a prior `make dev`.
-# NOTE: `aops-core` is a legacy plugin name — its source dir no longer exists
-# (folded into `aops/`), so build.py doesn't produce dist/aops-core-claude and
-# it's intentionally absent here. It's kept in the release-side variables below
-# (CLAUDE_PLUGIN_NAME et al.) untouched since that's the official install path.
 CLAUDE_LOCAL_MARKETPLACE := aops
 CLAUDE_LOCAL_AOPS_PLUGIN_NAME := aops@aops
 CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
@@ -198,9 +196,7 @@ uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
-	@command claude plugin install $(CLAUDE_PLUGIN_NAME)
-	@command claude plugin install $(CLAUDE_TOOLS_PLUGIN_NAME)
-	@command claude plugin install $(CLAUDE_AOPS_PLUGIN_NAME)
+	@for p in $(CLAUDE_PLUGINS); do command claude plugin install $$p; done
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -254,13 +250,13 @@ clean-local:
 	@command -v agy >/dev/null 2>&1 && for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done || true
 	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
 	@# `agy plugin uninstall` only knows about plugins IT installed (via its own
-	@# copy-based `agy plugin install`); it has no record of the symlinks
-	@# install.py's dev path (`make dev`) drops at these same paths pointing at
+	@# copy-based `agy plugin install`); it has no record of any symlinks a prior
+	@# dev workflow may have dropped at these same paths pointing at
 	@# dist/aops-antigravity — now deleted above. Strip only symlinks (never a
 	@# real agy-installed copy) so a stale/dangling dev link can never shadow or
 	@# collide with the live install-agy run that follows.
 	@for d in "$(HOME)/.gemini/config/plugins" "$(HOME)/.gemini/antigravity-cli/plugins"; do \
-		for p in aops-core aops-tools; do \
+		for p in aops aops-tools; do \
 			[ -L "$$d/$$p" ] && rm -f "$$d/$$p" && echo "  removed stale dev symlink $$d/$$p"; \
 		done; \
 	done; true
@@ -389,9 +385,8 @@ uninstall-cowork:
 # For LOCAL dev (dist/aops-antigravity present) install straight from that dir.
 AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-antigravity
 AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-tools-antigravity
-# install-agy stays core+tools by design (deliberate scope choice, not a build
-# gap — see specs/build-and-install.md and the CLAUDE_EXTRAS/PKB comment above).
-# Both are now hard dependencies: no more tools-softer-than-core exception.
+# Exactly two plugins ship for agy too — aops + aops-tools, both hard
+# dependencies (no soft-fail exception for either).
 AGY_PLUGINS := aops aops-tools
 
 install-agy:
