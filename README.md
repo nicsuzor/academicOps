@@ -15,13 +15,13 @@ An automation framework for academic work, built as a Claude Code plugin.
           ┌────────────────────────┼────────────────────────┐
           │                        │                        │
 ┌─────────▼─────────┐   ┌─────────▼─────────┐   ┌─────────▼─────────┐
-│    TASK SYSTEM     │   │      SKILLS        │   │   SESSION HOOKS   │
+│    TASK SYSTEM     │   │      SKILLS        │   │  AGENT JUDGMENT    │
 │                    │   │                    │   │                    │
-│  capture ideas     │   │  /daily   /aops    │   │  load context     │
-│  track work        │   │  /plan    /learn   │   │  autocommit       │
-│  search context    │   │  /qa      /email   │   │  sync state       │
-│  connect knowledge │   │  /pull    /sleep   │   │  capture session  │
-│                    │   │  + domain skills   │   │                    │
+│  capture ideas     │   │  /daily  /decompose│   │  premise (pauli)   │
+│  track work        │   │  /learn  /remember │   │  rules (rbg)       │
+│  search context    │   │  /pull   /verify   │   │  quality (marsha)  │
+│  connect knowledge │   │  + domain skills   │   │  sign-off (human)  │
+│                    │   │                    │   │                    │
 └─────────┬──────────┘   └─────────┬──────────┘   └─────────┬──────────┘
           │                        │                        │
           └────────────────────────┼────────────────────────┘
