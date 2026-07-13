@@ -2,7 +2,7 @@
 name: q
 type: command
 category: instruction
-description: Quick-queue a task — delegates to planner capture mode
+description: Quick-queue a task — delegates to the situate skill
 triggers:
   - "/q"
   - "quick queue"
@@ -17,12 +17,12 @@ permalink: commands/q
 
 # /q — Quick Queue
 
-Captures a task by delegating to the `planner` skill in `capture` mode.
+Captures a task by delegating to the `situate` skill.
 
 ## Execution
 
-Invoke the planner skill:
-`Skill(skill="planner", args="capture: <user args>")`
+Invoke the situate skill:
+`Skill(skill="situate", args="<user args>")`
 
 Pass all arguments exactly as provided. If no arguments are given, run:
-`Skill(skill="planner", args="capture")`
+`Skill(skill="situate")`

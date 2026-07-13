@@ -25,5 +25,5 @@ Runs graph-hygiene and anti-inflation audits on the task graph. Surface findings
 
 ## Execution Protocol
 
-Invoke the `planner` skill to run the audit:
-`Skill(skill="planner", args="maintain: anti-inflation")`
+Invoke the graph-maintenance skill to run the audit:
+`Skill(skill="graph-maintenance", args="maintain: anti-inflation")`
