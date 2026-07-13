@@ -6,7 +6,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop"
+              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop'"
             }
           ]
         }
@@ -16,7 +16,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop"
+              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop'"
             }
           ]
         }
@@ -26,7 +26,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit"
+              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit'"
             }
           ]
         }
@@ -40,7 +40,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PostInvocation"
+              "command": "bash -c 'uv run python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PostInvocation'"
             }
           ]
         }
@@ -50,7 +50,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PreInvocation"
+              "command": "bash -c 'uv run python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PreInvocation'"
             }
           ]
         }

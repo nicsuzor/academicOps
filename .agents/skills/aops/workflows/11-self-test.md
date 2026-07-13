@@ -36,7 +36,7 @@ Walk layers in order; stop at first failure:
 
 **§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make verify-docker` (**not** `make build-docker` — verification requires a clean build; `--no-cache` prevents stale cached layers from producing a false-green result; issue #1452).
 
-**§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container (and `gemini extensions list` for Gemini sessions) to verify plugins and extensions loaded correctly. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either command returns no plugins / no extensions, halt and diagnose before proceeding.
+**§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container to verify exactly two plugins loaded (`aops`, `aops-tools` — see `polecat/defaults/claude-settings.json`'s `enabledPlugins`). For agy, there is no `list` subcommand; confirm the install structurally with `ls ~/.gemini/antigravity-cli/plugins/` (expect `aops/` and `aops-tools/` only). The Gemini CLI extension surface is deprecated and intentionally not installed (see Dockerfile) — do not check `gemini extensions list`. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either check comes back empty or wrong, halt and diagnose before proceeding.
 
 **§1 Boot signals** — spin via tmux using the **same permission flags that `polecat run` uses** (auto-approval / `--dangerously-skip-permissions`, not plan mode), then `capture-pane -p -S -2000`. Look for router banner, no onboarding/trust prompts. Do NOT use footer text as a boot signal (#1197).
 
@@ -46,7 +46,7 @@ Walk layers in order; stop at first failure:
 
 **§3 Environment sanity** (if §2 failed) — UID resolution, fast-path artifacts, plugin install path vs. expected path.
 
-**§4 Skill + subagent exercise** — `/aops-core:aops` + `Agent(subagent_type='aops-core:ida')`. Verify visible output, not just return.
+**§4 Skill + subagent exercise** — `/aops:aops` + `Agent(subagent_type='aops:ida')`. Verify visible output, not just return.
 
 **§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops_pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 
@@ -86,19 +86,4 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 Any mismatch between the computed expectation and the observed pane/transcript is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, agent's verbatim answer, and which `channel_spec()` cell it contradicts. Do not attempt to fix routing in this session.
 
-**Automated Live Verification (`pty_hook_probe.py`)**
-
-The manual walkthrough has been replaced by the PTY host testing system (`scripts/pty_hook_probe.py`), which automates end-to-end verification. This script drives live interactive `claude` and `agy` clients in a headless `tmux` pane.
-
-**Run the probe:**
-
-```bash
-uv run python scripts/pty_hook_probe.py --client all
-```
-
-The script explicitly verifies BOTH surfaces:
-
-1. **User Surface:** Uses `tmux capture-pane` with early and late snapshots to verify that transient toasts, feedback banners, and notifications are actually rendered to the user, and that agent-only context never leaks into the UI.
-2. **Agent Surface:** Checks the transcript JSONL (for Claude) or model echo (for agy) to confirm the agent successfully received `context_injection`.
-
-This maintains the "no synthetic testing" rule by verifying real runtime behavior in a real terminal context, closing the structural blindness gap of previous synthetic JSON harnesses without requiring manual walkthroughs.
+**No automated probe — use the manual tmux walkthrough.** `scripts/pty_hook_probe.py` (an automated PTY probe) was deleted in the 2026-07-12 aops-core cleanup and was not rebuilt; there is no automated replacement. Drive `claude`/`agy` directly per [[tests/harness/README.md]]'s tmux pattern, `capture-pane` at two points (right after the triggering action, and after a short settle) to distinguish transient toasts from steady-state UI, and cross-check the transcript JSONL (Step 0's stderr-on-every-attachment method) for the agent-side `context_injection`.

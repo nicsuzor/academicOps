@@ -362,3 +362,4 @@ test_result*.json
 .claude-plugin/marketplace.json
 .claude/skills
 archived
+.lmnr/

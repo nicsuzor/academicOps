@@ -1,0 +1,56 @@
+# Dev-only polecat.yaml for driving `polecat crew` against the
+# `aops-crew:dev` image (see `make build-docker-dev`) instead of `:latest`.
+#
+# Static and hand-maintained — NOT generated. Earlier iterations of this
+# dev loop (#1110-era) generated a live-bind-mounted profile via
+# scripts/gen_dev_polecat_config.py; that script (and its 4-plugin,
+# version-pinned cache-path assumptions) went stale when the plugin set
+# was cut down to aops + aops-tools and the marketplace.json dropped
+# per-plugin versioning (see aops-dist-only restructuring). Rebuilding an
+# accurate live-mount generator against the new layout was out of scope
+# for a minimal harness, so this profile trades mount-time live-editing
+# for a plain rebuild-and-relaunch loop:
+#
+#   1. edit plugin source
+#   2. make build-dev            (refreshes dist/, no Docker)
+#   3. make build-docker-dev     (rebuilds :dev only, layer-cached)
+#   4. scripts/dev-crew.sh start <claude|antigravity>
+#
+# Usage: AOPS_POLECAT_CONFIG=tests/harness/dev-polecat.yaml polecat crew ...
+# (scripts/dev-crew.sh sets this for you.) Never touches the real
+# $AOPS_SESSIONS/polecat.yaml or the `:latest` image.
+
+polecat_home: ~/.polecat-dev
+
+session_defaults:
+  hooks_enabled: true
+  claude_model: sonnet
+  gemini_model: gemini-3.1-pro-preview
+  antigravity_model: agy
+  debug: false
+  gates:
+    exit_reflection: warn
+    hydration: off
+    ida: warn
+
+crew_defaults: {}
+run_defaults: {}
+
+docker:
+  image: ghcr.io/nicsuzor/aops-crew:dev
+
+container_env_forward:
+  - CLAUDE_CODE_OAUTH_TOKEN
+  - AGY_API_KEY
+  - AOPS_CC_OAUTH_TOKEN
+  - GEMINI_API_KEY
+  - AOPS_BOT_GH_TOKEN
+  - GH_TOKEN
+  - GITHUB_TOKEN
+
+projects:
+  aops-dev:
+    repo: academicOps
+    default_branch: dev
+    aliases: [aopsdev]
+    sessions_access: true

@@ -100,12 +100,12 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                             data[k] = v
                             
                     if stem == "mcp" and client == "antigravity":
-                        if "mcpServers" in data and "pkb" in data["mcpServers"]:
+                        if "mcpServers" in data and "services" in data["mcpServers"]:
                             # Workaround for antigravity-cli#390: agy doesn't resolve ${extensionPath}
                             # and runs MCP servers from the workspace cwd, so relative paths fail.
                             # For GitHub users who don't run `make install-agy`, we must use bash -c
                             # with tilde expansion to the default install location.
-                            data["mcpServers"]["pkb"]["args"] = [
+                            data["mcpServers"]["services"]["args"] = [
                                 "-c",
                                 f"~/.gemini/config/plugins/{plugin_name}/scripts/run-mcp.sh"
                             ]

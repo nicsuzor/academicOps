@@ -1,7 +1,7 @@
 {
   "claude": {
     "mcpServers": {
-      "pkb": {
+      "services": {
         "type": "http",
         "url": "${user_config.pkb_mcp_url}"
       }
@@ -9,7 +9,7 @@
   },
   "antigravity": {
     "mcpServers": {
-      "pkb": {
+      "services": {
         "command": "bash",
         "args": [
           "${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"
