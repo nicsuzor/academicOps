@@ -16,8 +16,8 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 > Code auto-mode classifier is _for_: the policy that decides which rules
 > belong in it and the cost model that shapes how those rules must be
 > written. The rules themselves are installed in
-> `polecat/defaults/claude-settings.json`; [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)
-> tracks the mechanism's state (seeded/unseeded), not a per-rule copy.
+> `polecat/defaults/claude-settings.json`; this spec tracks the mechanism's
+> design and cost model, not a per-rule copy.
 
 Claude Code's auto mode delegates tool-call approvals to a model-based
 classifier that runs before every tool call. It reads a **stripped
@@ -49,17 +49,16 @@ expectation the agent finds a safer path rather than routes around it.
 
 Write each rule as **prose stating principle + reasoning + cue + carve-outs**, never a rule-ID lookup or keyword pattern. Each rule states:
 
-1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`AXIOMS.md`](../../.agents/rules/AXIOMS.md).
+1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`AXIOMS.md`](../../.agents/AXIOMS.md).
 2. **The cue** the classifier should look for in the action + user context — the observable signal, since it cannot see reasoning.
 3. **What counts as a violation**, and the **safer path** to name in the denial.
 4. **Explicit carve-outs** — when the same action is fine. The classifier handles disjunctions ("deny X when bypassing tests; allow X when validating") as prose.
 
 Default every new behavioural rule to `soft_deny` (context-overridable); escalate to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
 
-**Current state: the rule set is seeded and populated.** `autoMode` rules live in `polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec and [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) track the mechanism, not each entry. New rules still follow the evidence loop above before landing, with a mechanism-class note (not a per-rule row) added to [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) when the ruleset changes shape.
+**Current state: the rule set is seeded and populated.** `autoMode` rules live in `polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
 
 ## References
 
 - [CC Auto Mode engineering post](https://www.anthropic.com/engineering/claude-code-auto-mode) — canonical external description.
-- [`specs/enforcement/enforcement.md`](enforcement.md) — enforcement design statement (pyramid, escalation discipline).
-- [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) — operative register (where this classifier's rules are recorded).
+- [`specs/enforcement/enforcement.md`](enforcement.md) — enforcement design statement.

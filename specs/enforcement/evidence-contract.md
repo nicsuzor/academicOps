@@ -9,14 +9,15 @@ tags: [enforcement, framework-architecture, verification, evidence-contract]
 # Enforcement — The Evidence Contract
 
 > **Numbering note.** This file is not a fifth `Layer` in the module-boundary
-> layer model ([pyramid.md](pyramid.md), [task-contract.md](task-contract.md),
-> [workflow.md](workflow.md), [sign-off.md](sign-off.md)). It is the single
-> contract those layers each instantiate at their own boundary — `release_task`
-> (Layer 2), the boundary-check and QA-around steps of a workflow (Layer 3),
-> and the principal sign-off brief (Layer 4) all read the same rule defined
-> here, rather than each layer inventing its own evidence format. The
-> supervisor's per-tick worker handback ([`SKILL.md` §7](../../aops-core/skills/supervisor/SKILL.md)) is the same contract again,
-> instantiated for orchestration rather than a PKB task boundary.
+> layer model ([task-contract.md](task-contract.md), [workflow.md](workflow.md),
+> [sign-off.md](sign-off.md)). It is the single contract those layers each
+> instantiate at their own boundary — `release_task` (Layer 2), the
+> boundary-check and QA-around steps of a workflow (Layer 3), and the
+> principal sign-off brief (Layer 4) all read the same rule defined here,
+> rather than each layer inventing its own evidence format. The supervisor's
+> per-tick worker handback ([`specs/polecat/supervisor.md`](../polecat/supervisor.md))
+> is the same contract again, instantiated for orchestration rather than a
+> PKB task boundary.
 
 ## The contract
 
@@ -81,10 +82,7 @@ are present has not performed either step.
 ## The canonical structured-handback format
 
 This section is the single source of truth for the six-field handback shape.
-Every other surface that uses it —
-[`aops-core/skills/supervisor/SKILL.md`
-§7](../../aops-core/skills/supervisor/SKILL.md),
-[`references/subagent-contracts.md`](../../aops-core/skills/supervisor/references/subagent-contracts.md#worker-handback-format),
+Every other surface that uses it — [`specs/polecat/supervisor.md`](../polecat/supervisor.md)
 and any task brief that asks for a handback — links here rather than
 restating the field definitions.
 
@@ -99,10 +97,9 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
 
 - `CONFOUND CHECK` is mandatory whenever the verdict blames anything outside
   the agent's own change. `NOT RUN` means the claim is not relayed as
-  established until the control is run — this is the same rule as
-  [`SKILL.md` §3](../../aops-core/skills/supervisor/SKILL.md), generalised
-  past the supervisor context: any agent relaying a "not our bug" claim
-  without a control is relaying an unverified claim.
+  established until the control is run — this rule generalises past the
+  supervisor context: any agent relaying a "not our bug" claim without a
+  control is relaying an unverified claim.
 - **CLAIM/EVIDENCE is a set of claim+evidence-pointer pairs, not a bare
   assertion.** If a handback asserts more than one substantive fact, itemize
   each on its own line, and pair each with its own evidence pointer — one
@@ -124,10 +121,9 @@ prose, never structured data formats agents must parse exactly (D2, module-d
 binding decision). Any harness or gate that wants to check for the format's
 presence mechanically may do so as a cheap, non-authoritative hint; it is
 never the verdict. The verdict is always an agent reading the content and
-judging whether the claim holds — never a regex over the field names (see
-Substance over form above, and the governing principle in
-[[note_296e5520]] §0: no programmatic, deterministic, or mechanical
-enforcement of quality, ever).
+judging whether the claim holds — never a regex over the field names (see Substance over form above, and the
+governing principle in [enforcement.md](enforcement.md#governing-principle--agents-all-the-way-down):
+no programmatic, deterministic, or mechanical enforcement of quality, ever).
 
 ## Where this binds
 
@@ -141,10 +137,9 @@ enforcement of quality, ever).
   prose brief to the principal is this contract at release-unit scale: every
   delivered/checked claim in it carries a resolvable pointer or a stated
   failure reason, exactly as at Layer 2.
-- **Supervisor per-tick handback**
-  ([`SKILL.md` §7](../../aops-core/skills/supervisor/SKILL.md)). Same
-  contract, applied to a background worker reporting to its supervisor rather
-  than a task boundary reporting to a reviewer.
+- **Supervisor per-tick handback** ([`specs/polecat/supervisor.md`](../polecat/supervisor.md)).
+  Same contract, applied to a background worker reporting to its supervisor
+  rather than a task boundary reporting to a reviewer.
 
 ## Cutover / grandfather policy
 

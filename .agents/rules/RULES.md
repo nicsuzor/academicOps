@@ -8,24 +8,14 @@ These rules are **project-specific** — they apply to the `academicOps` reposit
 
 A rule lives here when it (a) governs how this repo's enforcement / authority / governance surfaces operate, AND (b) cannot be derived from the universal axioms alone — it states a project-level commitment whose violation is concrete enough that a reviewer can name the breach from the diff. Anything that is a universal claim belongs in [[AXIOMS]] instead.
 
-## Enforcement-Map Currency — every mechanism change updates the map in the same PR {#enforcement-map-currency}
+## Enforcement-Spec Currency — every mechanism change updates the spec in the same PR {#enforcement-map-currency}
 
-Any PR that **adds, modifies, escalates, or retires** an **enforcement mechanism** MUST update `specs/ENFORCEMENT-MAP.md` in the **same change**, so the map still describes reality after merge. An enforcement mechanism is **any measure intended to shape how agents behave** — not only gates, hooks, chokepoints, classifier rules, review agents, and branch-protection checks, but also **instructions, project rules, and agent-persona edits** that change what an agent is directed to do. The test is not "which file did I touch?" but **"does this diff change the regulatory surface — what any agent is made to do?"**
+Any PR that **adds, modifies, escalates, or retires** an **enforcement mechanism** MUST update [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md) (and its sibling docs where the change lands — `task-contract.md`, `workflow.md`, `sign-off.md`, `evidence-contract.md`, `auto-mode-classifier.md`, or the `aops/workflows/gates/` component library) in the **same change**, so the spec still describes reality after merge. An enforcement mechanism is **any measure intended to shape how agents behave** — not only structural isolation, the harness delivery channel, review lenses, and branch-protection checks, but also **instructions, project rules, and agent-persona edits** that change what an agent is directed to do. The test is not "which file did I touch?" but **"does this diff change the regulatory surface — what any agent is made to do?"**
 
-- The map is the routing table for "how is each rule currently enforced?" — a mechanism that ships without a row (or with a now-inaccurate row) is an unmapped/stale surface, and that degrades to silent state drift the next time someone reads the map and trusts it.
-- This rule is **derivative of [[AXIOMS#single-source-of-truth]] applied to enforcement state**: the map is the single authoritative copy of the regulatory surface.
-- The map's own header states the rule: _"Any PR that adds, escalates, or retires a mechanism updates a row here in the same change (P#65); `rbg` blocks on currency."_ This rule operationalises that header.
-- "Same change" means same PR, not "follow-up PR". A follow-up has the same failure mode the rule is designed to prevent.
-
-**Granularity — map the mechanism class, not the change.** Represent each measure at the level of its **generic injection type / mechanism class**, never per-PR, per-rule, or per-agent. Row-proliferation is the standing failure mode: one line per generic injection type keeps the map readable; a row per change makes it useless.
-
-- **New rule/axiom _content_ on an already-mapped mechanism owes no new row.** A new project rule (or axiom) is _content carried by_ the review mechanisms that already have rows — e.g. "agents apply repo-local `.agents/rules/RULES.md` in addition to universal axioms" is already mapped (the rbg + qa rows). Rules are content, not mechanisms (see the map's pyramid note: axioms do not appear as rows). Touch the map only if the _mechanism's_ trigger, surface, or workflow-impact actually changed.
-- **Refining an already-mapped persona's prose** (clarifying scope, tightening wording) updates the **existing row's** workflow-impact cell only if that cell is now inaccurate; it does not spawn a new row.
-- **Add a new row only for a genuinely new mechanism class** — a generic injection type / surface that no existing row describes.
-
-- _Example — a real new mechanism (illustrative, NOT an exhaustive trigger list):_ PR #1824 (`feat(junior): replace PKB wildcard with explicit allowlist`) changed an agent's `tools:` allowlist — a chokepoint/funnel (L4) mechanism per the Pyramid — and shipped without a row; `rbg` returns `REVISE`. _Counter-example — no row owed:_ adding a new process rule to `.agents/rules/RULES.md` adds _content_ to the already-mapped "agents apply repo-local RULES.md" mechanism; no new row is owed.
-
-_When applying:_ ask first **"does this diff change the regulatory surface — what any agent is made to do?"** If yes, confirm the map describes the post-merge reality at the **mechanism-class grain**: update the existing generic row if its trigger/surface/impact changed; add a row only for a new mechanism class; add nothing for new rule/axiom _content_ on an already-mapped mechanism. If the surface changed and the map does not reflect it → `REVISE`.
+- `enforcement.md` is the single authoritative description of "what currently enforces things" (see [[AXIOMS#single-source-of-truth]] applied to enforcement state) — a mechanism that changes without the spec being updated is silent state drift the next time someone reads it and trusts it.
+- "Same change" means same PR, not "follow-up PR." A follow-up has the same failure mode this rule is designed to prevent.
+- **New rule/axiom _content_ enforced by an already-described mechanism owes no new section.** e.g. "agents apply repo-local `.agents/rules/RULES.md` in addition to universal axioms" is already described (the rbg boundary-review lens). Touch the spec only if the _mechanism itself_ — its trigger, surface, or scope — actually changed.
+- Given how few mechanical mechanisms remain (see `enforcement.md`'s governing principle — agents all the way down, structural prevention only), this is now a light-touch discipline, not a large routing table to maintain. The obligation is: if you touch a mechanism, the spec says so, in the same PR.
 
 ## Markdown files MUST NOT include irrelevant text
 

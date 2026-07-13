@@ -8,7 +8,7 @@ tags: [enforcement, framework-architecture, verification]
 
 # In-Session Enforcement — The Work-Unit Contract (Layer 2)
 
-> **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
+> **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — a different axis from any pipeline/pyramid numbering that may appear elsewhere.
 
 ## aops — Work-unit loop (the task contract)
 
@@ -28,15 +28,18 @@ work.
 
 ### Mechanisms
 
-- **Premise gate** — at `claim_task`; refuses a task with no genuine premise
-  assessment before compute is spent.
-- **Freshness gate** — at `claim_task`; path-resolution and supersession checks.
-- **Task-binding gate** — reactivated (H4): no mutating work without a task
-  bound to the session via `claim_task`. The invariant is **one session claims
-  exactly one task** (possibly multiple subtasks of it) — never
-  `$AOPS_TASK_ID`, which never worked and is not to be built on (H10 rider).
-  Wiring is target-state, lands with the mechanics-separation task
-  (aops-5b9e95c4).
+- **Premise judgment** — no longer a standalone gate at `claim_task`. The
+  premise/worth/shape assessment happens earlier, at decomposition time,
+  inside the `decompose` skill (pauli's lens) — see
+  [enforcement.md § Task-boundary review](enforcement.md#5-task-boundary-review--three-lenses-reviewer--executor).
+  Dispatch surfaces (`/pull`, `/dispatch`) trust that decomposition rather than
+  re-judging the premise themselves.
+- **Task-binding invariant** — no mutating work without a task bound to the
+  session via `claim_task`. The invariant is **one session claims exactly one
+  task** (possibly multiple subtasks of it) — never `$AOPS_TASK_ID`, which
+  never worked and is not to be built on. This is a design invariant the
+  framework holds agents to by convention and review, not a code-level
+  blocking check today.
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
   or a stated failure reason. **This is the primary enforcement point** (H7).

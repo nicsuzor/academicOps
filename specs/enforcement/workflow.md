@@ -8,7 +8,7 @@ tags: [enforcement, framework-architecture, verification, workflow]
 
 # Enforcement — The Workflow (Layer 3)
 
-> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
+> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)) — a different axis from any pipeline/pyramid numbering that may appear elsewhere.
 
 ## aops — Workflow
 
@@ -37,20 +37,15 @@ subtask, an epic, or a multi-epic release all run the same five steps:
 
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
    settled _at decomposition time_, before compute is spent executing it.
-   This is pauli's pre-hoc lens (premise/worth/shape). **Target design:**
-   fold this into `/planner` decomposition rather than run it as a
-   standalone gate, so the previously separate premise-gate concept
-   ([premise-gate.md](premise-gate.md)) is superseded and dispatch surfaces
-   trust the planner's decomposition without re-judging it. That fold-in has
-   not landed — today the premise gate still hard-refuses at the spend
-   surfaces (`/pull`, `/dispatch`, `/supervisor` dispatch) per
-   [premise-gate.md](premise-gate.md) and the `judgment-non-delegable` row in
-   [ENFORCEMENT-MAP.md](../ENFORCEMENT-MAP.md) (mode `block`); this step
-   describes the target, not current behavior.
-2. **Execution** — the claimed agent does the work. Layers 0–1
-   ([pyramid.md](pyramid.md)) govern this span: trust-the-method, no
-   process-level enforcement, evidence-driven escalation only if something
-   goes wrong.
+   This is pauli's pre-hoc lens (premise/worth/shape), carried inside the
+   `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)).
+   The previously separate standalone premise-gate concept — a two-judge
+   hard-refuse ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is
+   retired; dispatch surfaces trust the planner's decomposition without
+   re-judging the premise themselves.
+2. **Execution** — the claimed agent does the work. This span is
+   trust-the-method: no process-level enforcement, evidence-driven
+   escalation only if something goes wrong.
 3. **Boundary check** — rbg's lens: did the executing agent follow the
    rules? Reviews the task's contract and handback only — inputs and
    outputs — never the transcript. This is [task-contract.md](task-contract.md)'s
