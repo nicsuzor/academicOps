@@ -17,6 +17,47 @@ EXCLUDES = {
     ".venv", ".uv-cache", ".git", ".DS_Store"
 }
 
+FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
+
+
+def load_axioms(axioms_dir: Path) -> list[dict]:
+    """Parse the `trigger: always_on` rule files out of aops/axioms/*.md.
+
+    Axioms carry simple `key: value` frontmatter (no nested YAML needed).
+    Only `trigger: always_on` files are universal rules — the other
+    axioms/*.md files (RULES.md, HEURISTICS.md, AXIOMS-REVIEW.md) are
+    reference docs loaded explicitly elsewhere (by rbg, GHA), not rules that
+    should be auto-merged into every session.
+    """
+    axioms = []
+    if not axioms_dir.exists():
+        return axioms
+
+    for md_file in sorted(axioms_dir.glob("*.md")):
+        text = md_file.read_text(encoding="utf-8")
+        m = FRONTMATTER_RE.match(text)
+        if not m:
+            continue
+
+        meta = {}
+        for line in m.group(1).splitlines():
+            if ":" in line:
+                k, v = line.split(":", 1)
+                meta[k.strip()] = v.strip()
+
+        if meta.get("trigger") != "always_on":
+            continue
+
+        axioms.append({
+            "slug": md_file.stem,
+            "description": meta.get("description", ""),
+            "body": m.group(2).strip(),
+            "source_file": md_file.name,
+        })
+
+    return axioms
+
+
 def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
     print(f"Building {plugin_name}...")
 
@@ -87,7 +128,18 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                         else:
                             dst_file = dist_dir / "plugin.json"
                     elif stem == "hooks":
-                        dst_file = dist_dir / "hooks.json"
+                        if client == "claude":
+                            # Claude Code auto-discovers hooks ONLY at
+                            # <plugin_root>/hooks/hooks.json — a root-level
+                            # hooks.json is silently never read. (Confirmed via
+                            # the claude binary's own embedded strings: "The
+                            # standard hooks/hooks.json is loaded
+                            # automatically...")
+                            dst_file = dist_dir / "hooks" / "hooks.json"
+                        else:
+                            # agy's own convention is root-level hooks.json
+                            # (confirmed via its plugin-structure docs).
+                            dst_file = dist_dir / "hooks.json"
                     elif stem == "mcp":
                         if client == "claude":
                             dst_file = dist_dir / ".mcp.json"
@@ -126,6 +178,50 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                 dst_file = dst_root / file
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, dst_file)
+
+        # Wire always-on axioms into each client's native rule mechanism.
+        # axioms/*.md is already copied verbatim above (part of the generic
+        # file walk) but that's inert content — neither client treats an
+        # arbitrary "axioms/" folder as anything special. This makes the
+        # `trigger: always_on` axioms actually take effect:
+        #   - agy: plugins/<name>/rules/*.md is the canonical location whose
+        #     contents get merged into the active rule set (confirmed from
+        #     the agy binary's embedded assets/external/skills/
+        #     agy-customizations/docs/plugins.md).
+        #   - Claude Code: no equivalent plugin-level "rules" folder exists,
+        #     so we (b) ship a JSONL data file for anything that wants to read
+        #     the raw rules, and (c) fold them into the plugin manifest's
+        #     `autoMode.soft_deny` list — the same SSoT-in-manifest spot the
+        #     old aops-core/lib/automode.py read from. That alone doesn't
+        #     change runtime behavior (Claude Code reads autoMode from
+        #     ~/.claude/settings.json, not from an installed plugin's
+        #     manifest) — `make install-dev` merges it into settings.json
+        #     separately; the manifest copy is the durable, version-controlled
+        #     fallback if that merge step doesn't run.
+        axioms_dir = src_dir / "axioms"
+        axioms = load_axioms(axioms_dir)
+        if axioms:
+            if client == "antigravity":
+                rules_dir = dist_dir / "rules"
+                rules_dir.mkdir(parents=True, exist_ok=True)
+                for axiom in axioms:
+                    shutil.copy2(axioms_dir / axiom["source_file"], rules_dir / axiom["source_file"])
+            elif client == "claude":
+                jsonl_path = dist_dir / "axioms.jsonl"
+                with open(jsonl_path, "w") as f:
+                    for axiom in axioms:
+                        f.write(json.dumps(axiom) + "\n")
+
+                plugin_json_path = dist_dir / ".claude-plugin" / "plugin.json"
+                if plugin_json_path.exists():
+                    manifest = json.loads(plugin_json_path.read_text())
+                    auto_mode = manifest.setdefault("autoMode", {})
+                    soft_deny = auto_mode.setdefault("soft_deny", [])
+                    for axiom in axioms:
+                        rule = f"{axiom['slug']}: {axiom['description']}"
+                        if rule not in soft_deny:
+                            soft_deny.append(rule)
+                    plugin_json_path.write_text(json.dumps(manifest, indent=2))
 
         # Cleanup any empty directories that might have been left over
         for dirpath, dirnames, filenames in os.walk(dist_dir, topdown=False):

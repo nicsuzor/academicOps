@@ -76,21 +76,23 @@ endif
 help:
 	@echo "AcademicOps Build & Install Utility"
 	@echo ""
+	@echo "Two top-level install paths — dev (local source) and live (released dist)."
+	@echo "Both cover Claude Code + Antigravity (agy) in one shot; install-agy/"
+	@echo "install-claude are shared plumbing the two paths call, not separate paths."
+	@echo ""
 	@echo "Local Development (Install from source):"
-	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
+	@echo "  make dev            - Full local dev setup (build, install-dev, install-hooks)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude Code (aops + aops-tools)"
+	@echo "  make install-dev    - Install current dist/ into Claude Code + Antigravity (agy)"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
-	@echo "User Installation (Install from remote releases):"
+	@echo "Live Installation (Install from remote releases):"
 	@echo "  make install        - Clean local installs, then install live plugins (Claude + agy) from the dist channel"
 	@echo "  make clean-local    - Remove local/dev installs + marketplace override (run before a live install)"
-	@echo "  make install-claude - Install Claude plugins from dist repo"
 	@echo "  make package-cowork - Build the Cowork upload zip (dist/aops-core-vX.Y.Z.zip)"
 	@echo "  make install-cowork - Install aops-cowork locally from its isolated 'academicOps-cowork' marketplace"
 	@echo "  make uninstall-cowork - Remove aops-cowork + its isolated marketplace"
-	@echo "  make install-agy   - Install plugin into Antigravity CLI (agy) via official 'agy plugin install'"
 	@echo "  make install-windows - (WSL only) Install into Windows-side Claude if present"
 	@echo "  make install-crontab - Setup background sync"
 	@echo ""
@@ -133,14 +135,19 @@ build-dev:
 	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-tools-antigravity || echo "  (agy not on PATH, skipping verification)"
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
-# Install local build artifacts directly into Claude Code — no orchestrator
-# script, just `claude plugin` calls against the local dist/ marketplace.
-# (scripts/install.py, which used to do this plus Gemini/Antigravity symlinks,
-# cron jobs, and automode rules, has been retired — it drifted out of sync with
-# the current source layout (aops-core folded into aops/, aops-extras/aops-pkb
-# never existed here) and was unusable. Antigravity dev-install is handled
-# separately and already works standalone: `make install-agy` prefers the local
-# dist/aops-antigravity build when present.)
+# Install local build artifacts directly into BOTH Claude Code and Antigravity
+# (agy) — this is the complete local-dev counterpart to `make install` (the
+# live path); there is no separate third "install Antigravity for dev"
+# step to remember. (scripts/install.py, which used to do the Claude side plus
+# Gemini symlinks, cron jobs, and automode rules, has been retired — it drifted
+# out of sync with the current source layout (aops-core folded into aops/,
+# aops-extras/aops-pkb never existed here) and was unusable.)
+#
+# `install-agy` itself is shared, surface-agnostic plumbing: it prefers a local
+# dist/aops-antigravity build when present (true here — build-dev just made
+# one) and falls back to the live `dist` branch URL otherwise (true for `make
+# install`, after clean-local deletes any local build). Same target, two
+# different inputs depending on which top-level path calls it.
 #
 # NOTE: This overrides the release marketplace with a local directory source.
 # Run `make uninstall-dev` to restore the release marketplace when done testing.
@@ -175,6 +182,9 @@ cache_root = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETP
 		command claude plugin install $$p && echo "✓ $$p installed" \
 			|| { echo "  x $$p install failed" >&2; exit 1; }; \
 	done
+	@$(MAKE) install-agy
+	@echo "Merging aops axiom rules into ~/.claude/settings.json (best-effort)..."
+	@uv run python scripts/install_automode.py || true
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
 	@echo "  ⚠️  Local marketplace '$(CLAUDE_LOCAL_MARKETPLACE)' now points to $(DIST_DIR) (plugins: $(CLAUDE_LOCAL_PLUGINS))"
