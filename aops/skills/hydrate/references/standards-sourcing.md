@@ -7,7 +7,7 @@ composition (selecting and ordering gate/process templates proportionate to stak
 
 ## Sources, in order
 
-1. **`aops-extras/workflows/INDEX.md`** — the workflow-library index (owned by the library, not by
+1. **`aops/workflows/INDEX.md`** — the workflow-library index (owned by the library, not by
    this skill). Read its routing table/descriptions; name any template whose "when it applies"
    signal matches this ask's subject (e.g. "outbound-facing" → the outbound-review gate template;
    "irreversible/one-way-door" → an approval-gate template). If the index isn't present yet or

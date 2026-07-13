@@ -56,7 +56,7 @@ mini-example: `references/cutting-seams.md`.
 
 ## Step 2 — build the review steps into the workflow
 
-Pick the process workflow the epic follows from `aops-extras/workflows/INDEX.md`: the **outer**
+Pick the process workflow the epic follows from `aops/workflows/INDEX.md`: the **outer**
 workflow (how the epic proceeds to acceptance) and, per subtask, the **inner** workflow (how one
 task proceeds to done). Review is a **step inside those workflows**, stated in plain prose — never a
 separate blocking gate node in the graph.

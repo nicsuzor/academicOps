@@ -1496,8 +1496,8 @@ def _build_docker_cmd(
         # entry point.
 
         # Stage a settings.json with pkb_mcp_url pre-merged when PKB_MCP_URL is
-        # available. The aops-pkb plugin's Claude MCP transport reads the URL from
-        # pluginConfigs["aops-pkb@academicOps"].options.pkb_mcp_url in settings.json
+        # available. The aops plugin's Claude MCP transport reads the URL from
+        # pluginConfigs["aops@academicOps"].options.pkb_mcp_url in settings.json
         # (via ${user_config.pkb_mcp_url}); interactive enable-time prompt never
         # runs in headless containers so we inject it here at launch time.
         pkb_url = env.get("PKB_MCP_URL")
@@ -1507,7 +1507,7 @@ def _build_docker_cmd(
                 json.loads(_default_settings.read_text()) if _default_settings.exists() else {}
             )
             _cfg_node = _settings_data.setdefault("pluginConfigs", {}).setdefault(
-                "aops-pkb@academicOps", {}
+                "aops@academicOps", {}
             )
             _cfg_node.setdefault("options", {})["pkb_mcp_url"] = pkb_url
             _staged_settings = staging_dir / ".claude" / "settings.json"

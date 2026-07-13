@@ -24,7 +24,7 @@ queue; polecat is the workspace and execution surface.
 - [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
 - [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
   transcript stubs
-- `aops-pkb/commands/pull.md` and `aops-pkb/commands/dispatch.md` — commands which route
+- `aops/commands/pull.md` and `aops/commands/dispatch.md` — commands which route
   work onto this surface
 
 ## Guarantees
@@ -66,7 +66,7 @@ names, operational config), with per-machine paths overridable in
 ## Task Status Lifecycle
 
 Polecat uses the canonical PKB statuses (see
-[[aops-pkb/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
+[[aops/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
 
 ```
 queued → in_progress → merge_ready → done   (PR merged)

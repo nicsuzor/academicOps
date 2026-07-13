@@ -2,7 +2,7 @@
 title: Streamlit Patterns
 type: reference
 category: ref
-permalink: aops-extras-streamlit-patterns
+permalink: aops-tools-streamlit-patterns
 description: Best practices and design patterns for building Streamlit dashboards for research data analysis
 tags: [streamlit, patterns, dashboard, visualization, reference]
 ---

@@ -10,13 +10,13 @@ tags: [enforcement, framework-architecture, verification]
 
 > **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
 
-## aops-pkb — Work-unit loop (the task contract)
+## aops — Work-unit loop (the task contract)
 
 Operative from PKB `claim_task` → `release_task`. That pair is the contract for a
 single agent session's single unit of work: one claimed unit, released under
 contract.
 
-**aops-pkb is the sole owner of the verification invariant.** The `release_task` /
+**aops is the sole owner of the verification invariant.** The `release_task` /
 `complete_task` call is the authoritative completion claim — the task graph is the
 single source of truth, and a prose "done" that never moves task state is cheap
 talk. Enforcement binds to the claim act, not to the session, so it holds

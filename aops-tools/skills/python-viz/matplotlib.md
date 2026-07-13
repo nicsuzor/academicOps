@@ -2,7 +2,7 @@
 title: Matplotlib Visualization Reference
 type: reference
 category: ref
-permalink: aops-extras-matplotlib
+permalink: aops-tools-matplotlib
 description: Guidance on matplotlib for creating static and interactive plots, covering pyplot and object-oriented interfaces, customization, and publication-quality visualizations.
 ---
 

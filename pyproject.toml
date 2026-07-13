@@ -107,19 +107,19 @@ exclude = [
   "**/build",
   "**/dist",
   "**/venv",
-  "aops-core/*.md", # Exclude markdown docs
-  "aops-core/*.conf", # Exclude config files
-  "aops-core/uv.lock", # Exclude lock file
-  "aops-core/agents/", # Exclude non-code agent configs
-  "aops-core/commands/", # Exclude command specs
-  "aops-core/policies/", # Exclude policy docs
-  "aops-core/scripts/", # Exclude scripts
-  "aops-core/skills/", # Exclude skill definitions (YAML)
+  "aops/*.md", # Exclude markdown docs
+  "aops/*.conf", # Exclude config files
+  "aops/uv.lock", # Exclude lock file
+  "aops/agents/", # Exclude non-code agent configs
+  "aops/commands/", # Exclude command specs
+  "aops/policies/", # Exclude policy docs
+  "aops/scripts/", # Exclude scripts
+  "aops/skills/", # Exclude skill definitions (YAML)
   "aops-tools/skills/", # Exclude aops-tools skill definitions (scientific scripts)
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["aops-core", "aops-core/lib", "aops-core/hooks"]
+extraPaths = ["aops", "aops/lib", "aops/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -173,9 +173,9 @@ env = [
   "RBG_GATE_MODE=deny",
   "HYDRATION_GATE_MODE=off",
 ]
-testpaths = ["tests", "aops-core/tests"]
+testpaths = ["tests", "aops/tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "aops-core", "aops-core/hooks", "aops-core/lib"]
+pythonpath = [".", "aops", "aops/hooks", "aops/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

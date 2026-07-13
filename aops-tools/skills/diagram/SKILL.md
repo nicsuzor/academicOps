@@ -6,7 +6,7 @@ description: "Creating diagrams in any style \u2014 Mermaid flowcharts (structur
 
 # Diagram Design Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for creating diagrams. See [[aops-pkb/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for creating diagrams. See [[aops/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 **Purpose**: Create diagrams that communicate clearly. Choose the right style for the job.
 

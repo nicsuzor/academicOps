@@ -7,7 +7,7 @@ description: General extraction/ingestion skill that routes to specific workflow
 
 # Extraction & Ingestion Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting structured information from documents and sources. See [[aops-pkb/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting structured information from documents and sources. See [[aops/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 General-purpose extraction skill that intelligently routes to specialized workflows based on input type. Extracts structured information from various sources and stores it appropriately (public framework vs. private data).
 

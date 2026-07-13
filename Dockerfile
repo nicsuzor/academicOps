@@ -157,8 +157,7 @@ RUN umask 000 \
     && claude plugin marketplace update academicOps \
     && claude plugin install aops-core@academicOps \
     && claude plugin install aops-tools@academicOps \
-    && claude plugin install aops-pkb@academicOps \
-    && claude plugin install aops-extras@academicOps \
+    && claude plugin install aops@academicOps \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/tmp/aops-dist/dist/aops-gemini": "TRUST_FOLDER", "/tmp/aops-dist/dist/aops-tools-gemini": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER", "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
@@ -169,10 +168,6 @@ RUN umask 000 \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-core \
     && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
-    && cp -r /tmp/aops-dist/dist/aops-pkb-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
-    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-pkb \
-    && cp -r /tmp/aops-dist/dist/aops-extras-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
-    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-extras \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/cache/academicOps/.claude-plugin \
@@ -180,7 +175,7 @@ RUN umask 000 \
     && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache
 
-# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops-pkb's
+# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 

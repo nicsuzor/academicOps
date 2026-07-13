@@ -2,7 +2,7 @@
 title: Streamlit Visualization Workflow
 type: note
 category: instruction
-permalink: aops-extras-streamlit-workflow
+permalink: aops-tools-streamlit-workflow
 description: Single-step collaborative workflow for building Streamlit dashboards and visualizations
 ---
 

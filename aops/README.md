@@ -1,6 +1,6 @@
 # Workflow-system pipeline — component, trigger & contract reference
 
-Developer documentation for the five-stage pipeline in `aops-extras/skills/`. Covers **how each
+Developer documentation for the five-stage pipeline in `aops/skills/`. Covers **how each
 stage is triggered**, **where each stage pulls information from**, and the **data contract at each
 seam**.
 
@@ -12,7 +12,7 @@ not by a return value.
 
 > ### ⚠ Wiring status (read this first)
 >
-> The five pipeline **skills are implemented** (`aops-extras/skills/`). The **trigger layer that
+> The five pipeline **skills are implemented** (`aops/skills/`). The **trigger layer that
 > should fire them is not yet repointed** to them — it still targets the now-deleted `planner` skill
 > and an absent `task-lifecycle` skill. **Today the pipeline runs only by manual `Skill()`
 > invocation.** Every trigger below is marked with its real status: ✅ wired · ⚠ partial/broken · ⬚
@@ -107,8 +107,8 @@ flowchart TB
 | Stage                    | Intended trigger                                                                                                 | State in source today                                                                                                                                                                                  | Status                                                |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | `hydrate`                | `router.py` (UserPromptSubmit hook) hydrates every inbound ask, or a `/hydrate` command                          | No `/hydrate` command exists. `router.sh`→`router.py` **is** registered on `UserPromptSubmit` (`aops-core/hooks/hooks.json`), but I did **not** confirm it invokes the new `hydrate` skill.            | ⬚ **not wired / unverified**                          |
-| `situate`                | `/q` (capture) → `situate`                                                                                       | `aops-pkb/commands/q.md` exists but runs `Skill(skill="planner", …)` — **`planner` was deleted**.                                                                                                      | ⚠ **broken** — repoint `/q` → `situate`               |
-| `decompose`              | `/pull` or `/dispatch` → `task-lifecycle` fires `decompose` when a `needs_decomposition` task comes due          | `/pull` + `/dispatch` commands exist but delegate to a **`task-lifecycle` skill with no `SKILL.md` in source** (`aops-pkb/skills/task-lifecycle/` absent).                                             | ⬚ **not wired**                                       |
+| `situate`                | `/q` (capture) → `situate`                                                                                       | `aops/commands/q.md` exists but runs `Skill(skill="planner", …)` — **`planner` was deleted**.                                                                                                          | ⚠ **broken** — repoint `/q` → `situate`               |
+| `decompose`              | `/pull` or `/dispatch` → `task-lifecycle` fires `decompose` when a `needs_decomposition` task comes due          | `/pull` + `/dispatch` commands exist but delegate to a **`task-lifecycle` skill with no `SKILL.md` in source** (`aops/skills/task-lifecycle/` absent).                                                 | ⬚ **not wired**                                       |
 | `brief`                  | `task-lifecycle` expands the due subtask into a brief just before dispatch                                       | Same absent `task-lifecycle` skill. Nothing else invokes `brief`.                                                                                                                                      | ⬚ **not wired**                                       |
 | _execute_                | `/dispatch` → background surface (polecat / subagent) reads the brief by task-id                                 | `/dispatch` command exists; delegates to the absent `task-lifecycle`.                                                                                                                                  | ⚠ **partial**                                         |
 | `evaluate` (review step) | a workflow's review step runs `/verify` or `/strategic-review`; the outer loop advances only once it's satisfied | `/verify` + `/strategic-review` skills **exist and are invokable**. `decompose` writes review steps into the plan, but the **outer loop that enforces them runs through the absent `task-lifecycle`**. | ⚠ **partial** — evaluators present, enforcement blank |

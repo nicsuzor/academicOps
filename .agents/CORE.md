@@ -36,7 +36,7 @@ These are the universal safety floor. They are injected here at session start as
 - **aops-core/**: Framework core (hooks, enforcement, skills)
 - **aops-tools/**: Additional tools and utilities
 - **specs/**: Framework specifications and architecture
-- **tests/**: All tests (at repo root, NOT in aops-core/). Subdirs: `hooks/`, `integration/`, `lib/`, `e2e/`
+- **tests/**: Core test suite and test harness
 
 ## Component Topology
 

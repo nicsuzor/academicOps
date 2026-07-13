@@ -6,7 +6,7 @@ category: ref
 
 Engine-neutral commands for working with a modelled analytical warehouse. For
 transformation-engine commands (e.g. `dbt run`/`dbt test`) and presentation-engine
-commands (e.g. `streamlit run`), see the aops-extras `dbt` and `streamlit` skills.
+commands (e.g. `streamlit run`), see the aops-tools `dbt` and `streamlit` skills.
 
 ## Querying the Modelled Layer (DuckDB example)
 

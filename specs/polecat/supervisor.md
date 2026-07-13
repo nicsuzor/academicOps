@@ -128,7 +128,7 @@ queued → in_progress → merge_ready → done (PR merged)
                 └→ blocked (external dependency)
 ```
 
-See [[aops-pkb/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
+See [[aops/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
 for canonical status definitions. The supervisor uses the canonical set without
 extensions.
 
@@ -138,5 +138,5 @@ extensions.
   PR-based merge that the supervisor dispatches onto
 - `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
   checkpoint loop, proof discipline, evaluation protocol)
-- `aops-pkb/commands/pull.md` and `dispatch.md` — The Select+Gates spine shared by
+- `aops/commands/pull.md` and `dispatch.md` — The Select+Gates spine shared by
   `/pull`, `/dispatch`, and `/supervisor`.

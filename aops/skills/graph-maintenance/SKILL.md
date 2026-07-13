@@ -71,7 +71,7 @@ Severity belongs only on `type: target` nodes, with explicit `consequence` prose
 epics, or other leaves, which default to `severity: 0`/omit. Agent-assigned non-zero severity on a
 non-target node is prohibited and blocked by the write-boundary guard; it artificially inflates
 focus scores and inverts the priority queue. Canonical scale:
-[[../../../aops-pkb/skills/remember/references/TAXONOMY.md#severity-ladder-sev0sev4]].
+[[../../../aops/skills/remember/references/TAXONOMY.md#severity-ladder-sev0sev4]].
 
 ## Must not
 

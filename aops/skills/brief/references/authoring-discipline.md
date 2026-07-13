@@ -3,7 +3,7 @@ title: "Task-Body Authoring Discipline: Trust the Worker"
 type: reference
 permalink: authoring-discipline
 tags: [doctrine, delegation, authoring, briefing]
-relocated-from: aops-pkb/skills/planner/authoring-discipline.md
+relocated-from: aops/skills/planner/authoring-discipline.md
 ---
 
 # Task-Body Authoring Discipline: Trust the Worker

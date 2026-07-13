@@ -98,7 +98,7 @@ Save directly to the spec or epic task body:
 
 ```json
 Task(
-  subagent_type="aops-pkb:pauli",
+  subagent_type="aops:pauli",
   prompt="Author a Fitness Rubric for <spec or epic>. Mode: <author | critique>. Land it on the spec body under `## Fitness Rubric`."
 )
 ```

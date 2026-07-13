@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Minimal Hook Router for aops-extras.
+Minimal Hook Router for aops-tools.
 Injects ida-reminder.md and ida-hydrate.md for Claude Code and Antigravity.
 """
 

@@ -79,7 +79,7 @@ help:
 	@echo "Local Development (Install from source):"
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools, aops-extras, aops-pkb)"
+	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools)"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -247,7 +247,7 @@ clean-local:
 	@for p in $(CLAUDE_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
 	@command -v agy >/dev/null 2>&1 && for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done || true
-	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity" "$(DIST_DIR)/aops-extras-antigravity" "$(DIST_DIR)/aops-pkb-antigravity"
+	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
 	@# `agy plugin uninstall` only knows about plugins IT installed (via its own
 	@# copy-based `agy plugin install`); it has no record of the symlinks
 	@# install.py's dev path (`make dev`) drops at these same paths pointing at
@@ -255,7 +255,7 @@ clean-local:
 	@# real agy-installed copy) so a stale/dangling dev link can never shadow or
 	@# collide with the live install-agy run that follows.
 	@for d in "$(HOME)/.gemini/config/plugins" "$(HOME)/.gemini/antigravity-cli/plugins"; do \
-		for p in aops-core aops-tools aops-extras aops-pkb; do \
+		for p in aops-core aops-tools; do \
 			[ -L "$$d/$$p" ] && rm -f "$$d/$$p" && echo "  removed stale dev symlink $$d/$$p"; \
 		done; \
 	done; true

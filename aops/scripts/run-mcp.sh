@@ -8,7 +8,7 @@
 #
 # Called by the Cowork and Antigravity plugin MCP launchers, which provide a
 # minimal PATH and do NOT propagate the user's shell env. Claude does NOT use
-# this script — aops-pkb serves pkb for the "claude" platform over HTTP
+# this script — aops serves pkb for the "claude" platform over HTTP
 # transport directly.
 #
 # PKB_MCP_URL MUST arrive via this process's environment — there is no file

@@ -20,7 +20,7 @@ only make sure they never start cold.
 
 **≤6 PKB/index tool calls for a full bundle; a micro-bundle needs 1–2.** Index and PKB search only
 — **no filesystem trawling** (no `Grep`/`Glob` fishing through the repo). The one filesystem read
-you're allowed is the workflow-library index itself (`aops-extras/workflows/INDEX.md`) and, if
+you're allowed is the workflow-library index itself (`aops/workflows/INDEX.md`) and, if
 present, project-local standards files (`.agents/rules/*.md`, `AXIOMS.md`) — these are indexes, not
 trawling.
 
@@ -46,7 +46,7 @@ checked (via search) that there's no relevant prior context, not merely assumed 
 2. `task_search` / `search` for prior attempts, decisions, related nodes.
 3. `get_semantic_neighbors` for graph-adjacent context the keyword search misses.
 4. `retrieve_memory` for durable facts/preferences/feedback bearing on this class of work.
-5. Read `aops-extras/workflows/INDEX.md` + any project-local standards files to determine
+5. Read `aops/workflows/INDEX.md` + any project-local standards files to determine
    applicable Standards (see `references/standards-sourcing.md` — you _report_ obligations, you do
    not compose a regime from them).
 6. `get_dependency_tree` (only if a task id exists) for known blocking/related work.

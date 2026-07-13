@@ -19,7 +19,7 @@ Guide to discovering and reading project context before beginning analysis work.
 - Existing transformation-layer models and analysis work
 - Project-specific conventions and rules
 - Testing strategy and quality expectations
-- Tools and technologies in use (which transformation engine? which presentation tool? — see the aops-extras skills)
+- Tools and technologies in use (which transformation engine? which presentation tool? — see the aops-tools skills)
 
 **Without context discovery, you risk:**
 
@@ -145,7 +145,7 @@ cat data/projects/project-name.md
 - **Naming patterns**: `stg_*`, `int_*`, `fct_*`, `dim_*` conventions
 - **Reusable components**: Can existing models be extended instead of creating new ones?
 
-**Commands (dbt example — see the aops-extras `dbt` skill for the full reference):**
+**Commands (dbt example — see the aops-tools `dbt` skill for the full reference):**
 
 ```bash
 # List all transformation-layer models (dbt example)
@@ -180,7 +180,7 @@ dbt docs serve  # Opens documentation in browser
 - **Interaction patterns**: What filters, controls, layouts are used?
 - **Conventions**: Code style, organization patterns
 
-**Commands (Streamlit example — see the aops-extras `streamlit` skill for the full reference):**
+**Commands (Streamlit example — see the aops-tools `streamlit` skill for the full reference):**
 
 ```bash
 # List Streamlit apps

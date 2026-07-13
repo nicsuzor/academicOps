@@ -10,7 +10,7 @@ tags: [enforcement, framework-architecture, verification, workflow]
 
 > **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`, spanning [pyramid.md](pyramid.md), [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)) — an axis orthogonal to [`enforcement.md`](enforcement.md)'s pipeline (`L0`–`L11`) and pyramid-position (`L0`–`L7`) numbers. They reuse the same digits for a different purpose; see [enforcement.md § Two views of the same mechanisms](enforcement.md#two-views-of-the-same-mechanisms) for the distinction.
 
-## aops-pkb — Workflow
+## aops — Workflow
 
 A set of PKB tasks and subtasks that make up a more user-reviewable,
 user-directed unit of work.

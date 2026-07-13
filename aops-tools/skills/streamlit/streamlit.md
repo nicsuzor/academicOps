@@ -2,7 +2,7 @@
 title: Streamlit
 type: reference
 category: ref
-permalink: aops-extras-streamlit
+permalink: aops-tools-streamlit
 description: Best practices and design patterns for building Streamlit dashboards for research data analysis
 tags: [streamlit, dashboard, visualization, reference]
 ---

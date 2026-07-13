@@ -33,16 +33,16 @@ Provides domain instructions for knowledge capture, persistence, and maintenance
 
 ### Storage and File Locations
 
-| Content                | Tool                                                  | Target                                                                                               |
-| :--------------------- | :---------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
-| **Epics/projects**     | `mcp__pkb__create(type="epic"\|"project")`            | `projects/`                                                                                          |
-| **Tasks/issues**       | `gh issue create` (GitHub primary)                    | Synced automatically                                                                                 |
-| **Durable knowledge**  | `mcp__pkb__create` or `mcp__pkb__create_memory`       | `knowledge/`, `context/`                                                                             |
-| **Session findings**   | `mcp__pkb__update_task` on parent task                | Task body                                                                                            |
-| **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow                                                                     |
-| **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                                                                                 |
-| **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/`                                                                  |
-| **Daily notes**        | `mcp__pkb__create(type="daily")`                      | Canonical; SSoT is [[aops-pkb/skills/daily/SKILL.md]] — derive the path there, don't restate it here |
+| Content                | Tool                                                  | Target                                                                                           |
+| :--------------------- | :---------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| **Epics/projects**     | `mcp__pkb__create(type="epic"\|"project")`            | `projects/`                                                                                      |
+| **Tasks/issues**       | `gh issue create` (GitHub primary)                    | Synced automatically                                                                             |
+| **Durable knowledge**  | `mcp__pkb__create` or `mcp__pkb__create_memory`       | `knowledge/`, `context/`                                                                         |
+| **Session findings**   | `mcp__pkb__update_task` on parent task                | Task body                                                                                        |
+| **Axioms/framework**   | `/framework` skill — do NOT write to `brain/context/` | `skills/` via framework workflow                                                                 |
+| **Context/goals**      | `mcp__pkb__create`                                    | `context/`, `goals/`                                                                             |
+| **Meeting/call notes** | `mcp__pkb__create(type="meeting-note")`               | `knowledge/<topic>/` or `projects/`                                                              |
+| **Daily notes**        | `mcp__pkb__create(type="daily")`                      | Canonical; SSoT is [[aops/skills/daily/SKILL.md]] — derive the path there, don't restate it here |
 
 **Episodic classification:** Operational records (agent activity, debug logs) → update parent task body only; do not create `$ACA_DATA/` docs. Durable episodic (meeting notes, user daily notes) → save to `$ACA_DATA/` with correct type frontmatter.
 

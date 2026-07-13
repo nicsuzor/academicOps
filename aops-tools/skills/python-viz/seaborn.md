@@ -2,7 +2,7 @@
 title: Seaborn Statistical Visualization
 type: reference
 category: ref
-permalink: aops-extras-seaborn
+permalink: aops-tools-seaborn
 description: Guidance on seaborn for creating publication-quality statistical graphics with dataset-oriented plotting, semantic mappings, and statistical estimation.
 ---
 

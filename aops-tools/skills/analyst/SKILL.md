@@ -6,16 +6,16 @@ description: "Support academic research data analysis with technology-agnostic p
   \ for any computational research project with an empirical data pipeline. The skill\
   \ enforces academicOps best practices for reproducible, transparent research with\
   \ a collaborative single-step workflow. Tech-specific how-to (dbt, Streamlit, Python\
-  \ plotting/stats) lives in the aops-extras package."
+  \ plotting/stats) lives in the aops-tools package."
 ---
 
 # Analyst
 
-> **Taxonomy note**: This skill provides tech-agnostic domain principles (HOW) for research data analysis. Technology-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the **aops-extras** package skills. See [[aops-pkb/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
+> **Taxonomy note**: This skill provides tech-agnostic domain principles (HOW) for research data analysis. Technology-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the **aops-tools** package skills. See [[aops/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
 
 ## Overview
 
-Support academic research data analysis through technology-agnostic principles: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation. The principles here hold regardless of which transformation engine or dashboard tool you use. When you have settled on specific tooling, pair this skill with the relevant aops-extras skill (`dbt`, `streamlit`, `python-viz`) for the concrete commands.
+Support academic research data analysis through technology-agnostic principles: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation. The principles here hold regardless of which transformation engine or dashboard tool you use. When you have settled on specific tooling, pair this skill with the relevant aops-tools skill (`dbt`, `streamlit`, `python-viz`) for the concrete commands.
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
@@ -42,7 +42,7 @@ Support academic research data analysis through technology-agnostic principles: 
 
 **ALL data transformation happens in a versioned, tested, reproducible transformation layer. The presentation layer ONLY displays pre-computed data. Period.**
 
-This is non-negotiable for academic integrity, reproducibility, and auditability. It is a property of the _architecture_, not of any particular tool. (e.g. the transformation layer might be a dbt project, a SQL pipeline, or scripted notebooks under version control; the presentation layer might be a Streamlit dashboard, a static report, or a notebook viewer. See the aops-extras `dbt` and `streamlit` skills for those concrete implementations.)
+This is non-negotiable for academic integrity, reproducibility, and auditability. It is a property of the _architecture_, not of any particular tool. (e.g. the transformation layer might be a dbt project, a SQL pipeline, or scripted notebooks under version control; the presentation layer might be a Streamlit dashboard, a static report, or a notebook viewer. See the aops-tools `dbt` and `streamlit` skills for those concrete implementations.)
 
 | Layer              | Allowed                                                             | Prohibited                                                         |
 | ------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -107,9 +107,9 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 Start with [[references/statistical-analysis.md]] (complete guide). Also: [[references/test_selection_guide.md]], [[references/assumptions_and_diagnostics.md]], [[references/effect_sizes_and_power.md]], [[references/bayesian_statistics.md]], [[references/reporting_standards.md]].
 
-### Technology-Specific Skills (aops-extras)
+### Technology-Specific Skills (aops-tools)
 
-The concrete how-to for particular tools lives in the **aops-extras** package, so it can be swapped for official/community-consensus skills:
+The concrete how-to for particular tools lives in the **aops-tools** package, so it can be swapped for official/community-consensus skills:
 
 - **`dbt`** — transformation-layer implementation (models, tests, marts).
 - **`streamlit`** — presentation-layer implementation (display-only dashboards).
@@ -121,8 +121,8 @@ Invoke this skill when:
 
 1. **Working in computational research projects** - An empirical data pipeline, analytical database, or transformation/presentation layer is present
 2. **User requests data analysis** - "Analyze X", "Create a chart showing Y", "Explore the relationship between Z"
-3. **Building or updating dashboards** - Presentation-layer visualization work (see the aops-extras `streamlit` skill for that engine)
-4. **Creating or modifying transformations** - Transformation-layer pipeline work (see the aops-extras `dbt` skill for that engine)
+3. **Building or updating dashboards** - Presentation-layer visualization work (see the aops-tools `streamlit` skill for that engine)
+4. **Creating or modifying transformations** - Transformation-layer pipeline work (see the aops-tools `dbt` skill for that engine)
 5. **Validating data quality** - Adding tests, checking consistency
 
 **Key indicators in project structure:**
@@ -202,7 +202,7 @@ From these files, identify:
 - **Existing transformation models** - What models already exist in the transformation layer?
 - **Conventions** - Naming patterns, coding standards, project-specific rules
 - **Testing strategy** - What tests exist? What quality expectations?
-- **Tools and technologies** - Which transformation engine and presentation tool? (e.g. dbt + Streamlit — see the aops-extras skills.) DuckDB? PostgreSQL? Specific Python packages?
+- **Tools and technologies** - Which transformation engine and presentation tool? (e.g. dbt + Streamlit — see the aops-tools skills.) DuckDB? PostgreSQL? Specific Python packages?
 
 **Example context discovery:**
 
@@ -219,7 +219,7 @@ cat data/README.md
 ```
 
 > The example commands above assume a dbt + Streamlit stack. For the concrete
-> per-engine discovery commands, see the aops-extras `dbt` and `streamlit` skills.
+> per-engine discovery commands, see the aops-tools `dbt` and `streamlit` skills.
 
 After context discovery, summarize findings to user:
 
@@ -283,11 +283,11 @@ df = conn.execute("SELECT * FROM fct_case_decisions").df()  # fct_* = a tested m
 - **Quality**: Data passes through a validated, tested transformation pipeline
 - **Consistency**: All analysts use the same transformations
 
-**See:** the aops-extras `dbt` skill for the dbt implementation of this policy.
+**See:** the aops-tools `dbt` skill for the dbt implementation of this policy.
 
 ## Follow Transformation Model Workflow
 
-Create or modify transformation-layer models following academicOps layered architecture. The layering below is engine-neutral; the aops-extras `dbt` skill gives the dbt-specific commands and file layout.
+Create or modify transformation-layer models following academicOps layered architecture. The layering below is engine-neutral; the aops-tools `dbt` skill gives the dbt-specific commands and file layout.
 
 ### Quick Reference: Model Layers
 
@@ -304,7 +304,7 @@ Create or modify transformation-layer models following academicOps layered archi
 
 **ALWAYS check for duplicate models before creating new ones.**
 
-**See:** the aops-extras `dbt` skill for complete workflow details and comprehensive patterns.
+**See:** the aops-tools `dbt` skill for complete workflow details and comprehensive patterns.
 
 ## Follow Visualization Workflow
 
@@ -312,11 +312,11 @@ Create presentation-layer visualizations following the single-step collaborative
 
 **🚨 REMINDER: The presentation layer is DISPLAY ONLY. No transformations. See "Transformation Layer vs Presentation Layer" above.**
 
-**For the detailed engine-specific workflow (structure, single-step patterns, examples), see the aops-extras `streamlit` skill.**
+**For the detailed engine-specific workflow (structure, single-step patterns, examples), see the aops-tools `streamlit` skill.**
 
 ### Quick Reference: Presentation Pattern
 
-Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. See the aops-extras `streamlit` skill for engine-specific tips (e.g. Streamlit hot-reload).
+Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. See the aops-tools `streamlit` skill for engine-specific tips (e.g. Streamlit hot-reload).
 
 ## Follow Testing Workflow
 
@@ -348,7 +348,7 @@ Review the model and ask:
 
 **Step 2: Add schema tests** (after user agrees on test plan)
 
-The examples below use dbt's `schema.yml` syntax to illustrate the _principle_ — column-level tests declared alongside the model. See the aops-extras `dbt` skill for the full engine-specific testing reference; any transformation engine should provide an equivalent declarative test layer.
+The examples below use dbt's `schema.yml` syntax to illustrate the _principle_ — column-level tests declared alongside the model. See the aops-tools `dbt` skill for the full engine-specific testing reference; any transformation engine should provide an equivalent declarative test layer.
 
 ```yaml
 # dbt/schema.yml (dbt example)
@@ -416,7 +416,7 @@ When testing LLM pipelines or templated content, validate **substantive content*
 - ✅ Use position-based length for multiline content (regex `.*?` doesn't cross newlines)
 - ❌ Don't just check for specific error strings - upstream bugs are unpredictable
 
-**See:** the aops-extras `dbt` skill for complete engine-specific testing patterns.
+**See:** the aops-tools `dbt` skill for complete engine-specific testing patterns.
 
 ## Follow Data Investigation Workflow
 
@@ -489,4 +489,4 @@ Research projects MUST maintain:
 
 ## Quick Reference
 
-See [[references/quick-reference-commands.md]] for common data-pipeline and DuckDB commands. For engine-specific commands, see the aops-extras `dbt` and `streamlit` skills.
+See [[references/quick-reference-commands.md]] for common data-pipeline and DuckDB commands. For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.

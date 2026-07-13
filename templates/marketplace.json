@@ -28,16 +28,6 @@
       "category": "productivity"
     },
     {
-      "name": "aops-extras",
-      "description": "Replaceable technology-specific academic skills - dbt, Streamlit, Python plotting/stats - swappable for official/community-consensus skills",
-      "version": "__VERSION__",
-      "author": {
-        "name": "Nicolas Suzor"
-      },
-      "source": "./dist/aops-extras-claude",
-      "category": "productivity"
-    },
-    {
       "name": "aops-cowork",
       "description": "AcademicOps variant for Cowork - includes native task list synchronization",
       "version": "__VERSION__",
@@ -55,16 +45,6 @@
         "name": "Nicolas Suzor"
       },
       "source": "./dist/aops-ts-claude",
-      "category": "productivity"
-    },
-    {
-      "name": "aops-pkb",
-      "description": "AcademicOps task/work-unit module - the judgment layer at the entry (dispatch-readiness) and exit (acceptance) chokepoints: capture, strategic planning, task-lifecycle, dispatch, session lifecycle (/daily, /end_session, /dump), and the four-agent sign-off review",
-      "version": "__VERSION__",
-      "author": {
-        "name": "Nicolas Suzor"
-      },
-      "source": "./dist/aops-pkb-claude",
       "category": "productivity"
     }
   ]

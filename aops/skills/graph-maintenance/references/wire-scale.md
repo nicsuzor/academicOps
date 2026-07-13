@@ -40,7 +40,7 @@ it points at.
 **How a task inherits stakes (the sanctioned channel):** put `severity` on the **target** node
 (`type: target`), then wire the task to it with `contributes_to` — never on the task itself. See
 the Severity Ladder + Severity Target Boundary in
-[[../../../../aops-pkb/skills/remember/references/TAXONOMY.md#severity-ladder-sev0sev4]].
+[[../../../../aops/skills/remember/references/TAXONOMY.md#severity-ladder-sev0sev4]].
 
 ## Critical rules
 
