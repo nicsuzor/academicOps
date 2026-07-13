@@ -75,6 +75,23 @@ this fan-out must happen here, at the top level.
   moves). **Always runs.** Discipline and the worked specimen live in [[references/premise-test.md]].
 - **marsha** — runtime / verification QA. Runs **on any outputs** to check quality meets our standards.
 
+#### The Composable Lens Registry (For Reviewers)
+
+When evaluating the artifact, reviewers (especially pauli and marsha) should select 3-4 specific lenses from the registry below rather than applying all criteria exhaustively. Breadth kills depth. Self-consistency should always be running as a background check.
+
+| Lens                        | Applies to         | Core question                                         |
+| --------------------------- | ------------------ | ----------------------------------------------------- |
+| **Self-consistency**        | Everything         | Does it practice what it preaches?                    |
+| Strategic alignment         | Specs, designs     | Does this fit the larger vision?                      |
+| Assumption hygiene          | Plans, proposals   | Are load-bearing assumptions identified and testable? |
+| Scope discipline            | Everything         | Is it building for now or for hypothetical futures?   |
+| Cross-reference consistency | Specs, docs        | Does it contradict existing work?                     |
+| Attribution                 | Intellectual work  | Is the intellectual debt acknowledged?                |
+| Methodological coherence    | Research, analysis | Does the method match the question?                   |
+| Literature awareness        | Research, academic | Is it building on or reinventing existing work?       |
+| Ethics and governance       | Research, data     | Are ethical obligations addressed?                    |
+| Feasibility                 | Plans, proposals   | Can this actually be done with available resources?   |
+
 ### 3. Reconcile via @james
 
 When all three return, dispatch **@james** with the original artifact plus all three reviewer

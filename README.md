@@ -128,8 +128,6 @@ And it isn't limited to the framework's own axioms — a project extends it unde
 - **`.agents/workflows/`** — project-specific workflows supplementing the global index
 - **`.agents/INDEX.md`** — plain-text index of project documentation, to aid discovery
 
-For the full gate catalogue (state machines, triggers, debugging), see [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md). For the rule → mechanism → trigger register across every surface, see [`specs/ENFORCEMENT-MAP.md`](specs/ENFORCEMENT-MAP.md).
-
 ### 4. Polecat — work dispatch
 
 Polecat spins up ephemeral, containerized agents against a specific PKB task — the mechanism behind `/dispatch`, `/pull`, and autonomous background workers. Before a container starts, the polecat launcher resolves gate posture for that session type — `run_defaults` for autonomous workers, `crew_defaults` for interactive crews — from `$AOPS_SESSIONS/polecat.yaml` (schema: [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example)) and stages it into the container; direct CLI sessions skip this and use the plugin's built-in gate defaults instead.
@@ -270,6 +268,4 @@ The full list: `EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MOD
 
 `IDA_GATE_MODE` defaults to `warn` on this path specifically (every other gate defaults `off`) — a bare direct-CLI session with no `polecat.yaml` is, by construction, the interactive head/face surface the honesty gate exists to protect (see [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md)). Dispatched polecat/crew sessions always get an explicit `off` from `polecat.yaml` instead, regardless of this fallback.
 
-3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks. See [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md) for technical details.
-
-For the detailed gate reference (state machines, triggers, debugging), see [`specs/enforcement/GATES.md`](specs/enforcement/GATES.md).
+3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks.
