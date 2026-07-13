@@ -1,59 +1,76 @@
 #!/usr/bin/env python3
 """
-Path resolution module for tests - delegates to lib.paths.
+Path resolution for tests — self-contained.
 
-This module exists for backwards compatibility with tests that import from tests.paths.
-All functionality delegates to lib.paths which uses AOPS and ACA_DATA environment variables.
+Previously delegated to ``lib.paths``, which was removed when ``aops-core`` was
+folded into ``aops/``. These helpers replicate the old ``lib.paths`` semantics
+directly from the repo layout and the ``ACA_DATA`` environment variable, so the
+test harness no longer depends on the deleted ``lib`` package.
 """
 
-import sys
+import os
 from pathlib import Path
 
-# Ensure academicOps is on path for lib imports
-_aops_root = Path(__file__).parent.parent
-_aops_core = _aops_root / "aops-core"
-for path in [_aops_root, _aops_core]:
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
+# Repo root is the parent of tests/; the plugin source lives at <repo>/aops
+# (formerly the separate aops-core plugin).
+_repo_root = Path(__file__).resolve().parent.parent
+_plugin_root = _repo_root / "aops"
 
-from lib.paths import (  # noqa: E402
-    get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
-)
-from lib.paths import (
-    get_data_root as get_data_dir,
-)
-from lib.paths import (
-    get_hooks_dir,
-)
 
-# Aliases for writing-related paths
-get_writing_root = get_bots_dir  # Writing root points to framework root
+def get_plugin_root() -> Path:
+    """Framework plugin root (``<repo>/aops`` — formerly ``aops-core``)."""
+    return _plugin_root
+
+
+def get_bots_dir() -> Path:
+    """Framework root (alias of the plugin root; the old "bots" dir)."""
+    return _plugin_root
+
+
+def get_data_dir() -> Path:
+    """Shared data vault root (``$ACA_DATA``).
+
+    Raises:
+        RuntimeError: if ``ACA_DATA`` is unset or the path doesn't exist.
+    """
+    data = os.environ.get("ACA_DATA")
+    if not data:
+        raise RuntimeError(
+            "ACA_DATA environment variable not set.\n"
+            "Add to ~/.bashrc or ~/.zshrc:\n"
+            "  export ACA_DATA='$HOME/writing/data'"
+        )
+    path = Path(data).resolve()
+    if not path.exists():
+        raise RuntimeError(f"ACA_DATA path doesn't exist: {path}")
+    return path
+
+
+def get_hooks_dir() -> Path:
+    """Hooks directory (``plugin_root/hooks``)."""
+    return _plugin_root / "hooks"
+
+
+# Writing root historically aliased the framework root.
+get_writing_root = get_bots_dir
 
 
 def get_repo_root() -> Path:
-    """
-    Return path to repository root (parent of aops-core plugin).
+    """Repository root (parent of the plugin).
 
     GitHub workflows and other repo-level files live here, not in the plugin.
-
-    Returns:
-        Path: Absolute path to repository root
     """
-    return _aops_root
+    return _repo_root
 
 
 def get_hook_script(name: str) -> Path:
-    """
-    Return path to a specific hook script.
+    """Return the path to a specific hook script.
 
     Args:
-        name: Hook script filename (e.g., "session_start.py")
-
-    Returns:
-        Path: Absolute path to the hook script
+        name: Hook script filename (e.g., "router.py").
 
     Raises:
-        RuntimeError: If hook script doesn't exist
+        RuntimeError: If the hook script doesn't exist.
     """
     hook_path = get_hooks_dir() / name
     if not hook_path.exists():
@@ -65,8 +82,9 @@ def get_hook_script(name: str) -> Path:
 __all__ = [
     "get_bots_dir",
     "get_data_dir",
-    "get_hooks_dir",
     "get_hook_script",
+    "get_hooks_dir",
+    "get_plugin_root",
     "get_repo_root",
     "get_writing_root",
 ]

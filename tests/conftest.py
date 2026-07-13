@@ -28,10 +28,9 @@ from .paths import (
 log = logging.getLogger(__name__)
 
 # Point AOPS_POLECAT_CONFIG at the canonical example *before* any test module
-# is imported. lib/polecat_config.py hard-fails when no config is found, and
-# many modules (lib/gates/definitions.py, hooks/gate_config.py) resolve gate
-# modes at import time. Tests that need a different config monkeypatch it
-# per-test via the autouse `ensure_test_environment` fixture below.
+# is imported. lib/polecat_config.py hard-fails when no config is found. Tests
+# that need a different config monkeypatch it per-test via the autouse
+# `ensure_test_environment` fixture below.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _POLECAT_EXAMPLE = _REPO_ROOT / "polecat" / "defaults" / "polecat.yaml.example"
 if _POLECAT_EXAMPLE.exists():
@@ -312,18 +311,6 @@ def ensure_test_environment(monkeypatch, tmp_path):
     if _POLECAT_EXAMPLE.exists():
         (sessions_dir / "polecat.yaml").write_text(_POLECAT_EXAMPLE.read_text())
     monkeypatch.delenv("AOPS_POLECAT_CONFIG", raising=False)
-
-    # Reset the session_naming providers cache so each test re-resolves
-    # external_agents from the test-scoped polecat.yaml.  Without this,
-    # the module-level _PROVIDERS_CACHE persists across tests in the same
-    # worker process and can be populated from a different config (e.g. from
-    # a test that runs before AOPS_SESSIONS is pointed at the seeded yaml).
-    try:
-        from lib import session_naming
-
-        session_naming._reset_providers_cache()
-    except Exception:
-        pass
 
     # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
     # This is required for hooks to run successfully under macOS Seatbelt
@@ -801,11 +788,6 @@ def run_claude_headless(
             "error": "ACA_DATA environment variable not set - required for memory server tests",
         }
 
-    # Apply agent-env-map.conf credential isolation mappings
-    from lib.agent_env import apply_env_mappings
-
-    apply_env_mappings(env)
-
     try:
         # Execute command
         log.debug("Full Launch Command: %s", " ".join(_redact_cmd(cmd)))
@@ -1001,11 +983,6 @@ def run_gemini_headless(
             "result": {},
             "error": "AOPS environment variable not set - required for tests",
         }
-
-    # Apply agent-env-map.conf credential isolation mappings
-    from lib.agent_env import apply_env_mappings
-
-    apply_env_mappings(env)
 
     # Set GEMINI_CLI_HOME if provided (used by fixture-based tests)
     if gemini_home:
@@ -2047,10 +2024,6 @@ def gemini_docker(tmp_path):
         new_mount = f"{session_dir.resolve()}:{container_sessions_dir}:rw"
         env["SANDBOX_MOUNTS"] = f"{mounts},{new_mount}" if mounts else new_mount
         env["GEMINI_SESSION_ID"] = f"gemini-{session_id}"
-
-        from lib.agent_env import apply_env_mappings
-
-        apply_env_mappings(env)
 
         # Prepare prompt to write output to a file for robust extraction
         # This bypasses all CLI noise (warnings, ANSI, etc.)

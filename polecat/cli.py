@@ -373,30 +373,6 @@ def _resolve_session_config(
     return cfg, resolved
 
 
-# Env var names for the gate-mode posture forwarded into agent sessions.
-# Polecat resolves the per-mode posture from polecat.yaml here on the host;
-# the in-container hooks read these env vars directly (they never read
-# polecat.yaml).
-_GATE_ENV_VARS = (
-    "EXIT_REFLECTION_GATE_MODE",
-    "HYDRATION_GATE_MODE",
-    "IDA_GATE_MODE",
-)
-
-
-def _apply_gate_env(env: dict, session_cfg) -> None:  # type: ignore[no-untyped-def]
-    """Stamp the resolved gate posture onto ``env`` as plain env vars.
-
-    Called by the run/crew handlers after they resolve ``session_cfg`` from
-    polecat.yaml. ``_build_docker_cmd`` forwards these vars into the
-    container. The hook stack reads them directly via ``hooks.gate_config``.
-    """
-    gates = session_cfg.gates
-    env["EXIT_REFLECTION_GATE_MODE"] = gates.exit_reflection
-    env["HYDRATION_GATE_MODE"] = gates.hydration
-    env["IDA_GATE_MODE"] = gates.ida
-
-
 def _coerce_set_value(raw: str) -> object:
     """Coerce a ``--set`` value to bool / int / str."""
     lowered = raw.lower()
@@ -1648,10 +1624,9 @@ def _build_docker_cmd(
             cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
         cmd.extend(["-e", "AOPS_SESSIONS=/sessions"])
 
-    # Pattern-arm forwarding — POLECAT_* and AOPS_* prefix, plus the explicit
-    # gate-mode env vars stamped by ``_apply_gate_env``. Gate modes are
-    # resolved from polecat.yaml here on the host (never inside the
-    # container) and forwarded as plain env vars; hooks read them directly.
+    # Pattern-arm forwarding — POLECAT_* and AOPS_* prefix. Gate posture is
+    # carried as AOPS_GATE_FILE_* markdown paths (stamped below), not as
+    # blocking gate-mode env vars (the mode-based hook engine was retired).
     for key, val in env.items():
         if not val or key in conf_forwards:
             continue
@@ -1666,7 +1641,7 @@ def _build_docker_cmd(
             "AOPS_SESSION_STATE_DIR",
         ):
             continue
-        if key.startswith("POLECAT_") or key.startswith("AOPS_") or key in _GATE_ENV_VARS:
+        if key.startswith("POLECAT_") or key.startswith("AOPS_"):
             cmd.extend(["-e", f"{key}={val}"])
 
     # Session storage: transcripts persist beyond container lifetime.
@@ -1775,8 +1750,8 @@ def _build_docker_cmd(
 
     # The container NEVER reads polecat.yaml. The host is the SSoT: it resolved
     # the config above and injects the few values the container actually needs
-    # as plain env vars. Gate modes + model + debug are stamped elsewhere
-    # (_apply_gate_env / model flags); here we inject the remaining two:
+    # as plain env vars. Gate files + model + debug are stamped elsewhere
+    # (AOPS_GATE_FILE_* / model flags); here we inject the remaining two:
     #   AOPS_ENABLED_PROVIDERS — the enabled external_agents set, consumed by
     #       lib/session_naming for artifact-filename parsing.
     #   AOPS_MACHINE           — the host's short name (from the local.yaml
@@ -4351,7 +4326,6 @@ def crew(
     env["POLECAT_CREW_NAME"] = crew_name
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
-    _apply_gate_env(env, session_cfg)
 
     # Compute session directory for Claude transcript persistence.
     project_slug = target or projects[0]
@@ -5200,7 +5174,6 @@ def run(
         env["AOPS_AGY_CLIENT"] = "1"
     if session_cfg.debug:
         env["DEBUG_HOOKS"] = "1"
-    _apply_gate_env(env, session_cfg)
 
     # Resolve container memory limit and check daemon memory
     memory_limit, daemon_mem = _init_container_memory(memory, manager, env)

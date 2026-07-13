@@ -165,14 +165,6 @@ reportImplicitOverride = false
 reportUnusedVariable = false
 reportUnusedImport = false
 [tool.pytest.ini_options]
-# Required by gate_config.py, which intentionally has no defaults (fail-fast design).
-# Values must match valid gate engine verdicts: warn, deny, or block.
-env = [
-  "HANDOVER_GATE_MODE=deny",
-  "QA_GATE_MODE=warn",
-  "RBG_GATE_MODE=deny",
-  "HYDRATION_GATE_MODE=off",
-]
 testpaths = ["tests", "aops/tests"]
 norecursedirs = ["archived", "tests/archived"]
 pythonpath = [".", "aops", "aops/hooks", "aops/lib"]
