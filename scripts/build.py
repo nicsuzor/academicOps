@@ -147,34 +147,35 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
         print(f"  ✓ Built {dist_dir.name} and packaged into {archive_name}")
 
 def generate_local_marketplace(dist_root: Path):
-    """Generate the local marketplace JSON so claude can install from dist/."""
+    """Generate the local marketplace JSON so claude can install from dist/.
+
+    Only lists plugins whose dist/<name>-claude dir was actually built —
+    a plugin whose source dir doesn't exist is skipped by build_plugin(),
+    so listing it here would leave a dangling `source` entry.
+    """
     import json
     marketplace_dir = dist_root / ".claude-plugin"
     marketplace_dir.mkdir(exist_ok=True)
+
+    candidates = [
+        ("aops-core", "aops-core-claude"),
+        ("aops", "aops-claude"),
+        ("aops-tools", "aops-tools-claude"),
+        ("aops-ts", "aops-ts-claude"),
+    ]
+    plugins = [
+        {"name": name, "source": f"./{dirname}"}
+        for name, dirname in candidates
+        if (dist_root / dirname).exists()
+    ]
+
     marketplace = {
         "name": "aops",
         "description": "Local dev marketplace",
         "owner": {
             "name": "Local Dev"
         },
-        "plugins": [
-            {
-                "name": "aops-core",
-                "source": "./aops-core-claude"
-            },
-            {
-                "name": "aops",
-                "source": "./aops-claude"
-            },
-            {
-                "name": "aops-tools",
-                "source": "./aops-tools-claude"
-            },
-            {
-                "name": "aops-ts",
-                "source": "./aops-ts-claude"
-            }
-        ]
+        "plugins": plugins
     }
     with open(marketplace_dir / "marketplace.json", "w") as f:
         json.dump(marketplace, f, indent=2)

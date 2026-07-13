@@ -2754,25 +2754,16 @@ def main(ctx, home, verbose):
 @main.command()
 @click.pass_context
 def setup(ctx):
-    """Run full framework installation and extension linking.
+    """Build the framework and install it locally into Claude Code.
 
-    This builds extensions and runs scripts/install.py to set up
-    cron jobs, symlinks, and link Gemini/Claude extensions.
-    Requires uv and should be run from the repository root.
+    Runs `make install-dev` (build + local Claude plugin install).
+    Requires make/uv and should be run from the repository root.
     """
     repo_root = Path(__file__).parent.parent.resolve()
-    install_script = repo_root / "scripts" / "install.py"
 
-    if not install_script.exists():
-        print(f"Error: install.py not found at {install_script}", file=sys.stderr)
-        sys.exit(1)
-
-    # scripts/install.py is the single authoritative install path (epic-267fe017).
-    # It runs the build (Phase 1) before installing, so there is no separate
-    # build step to invoke here. setup.sh (the former wrapper) is tombstoned.
-    print(f"Running framework setup via {install_script}...")
+    print(f"Running `make install-dev` in {repo_root}...")
     try:
-        subprocess.run(["uv", "run", "python", str(install_script)], cwd=repo_root, check=True)
+        subprocess.run(["make", "install-dev"], cwd=repo_root, check=True)
         print("\n✓ Polecat setup complete")
     except subprocess.CalledProcessError as e:
         print(f"\nError: Setup failed with exit code {e.returncode}", file=sys.stderr)

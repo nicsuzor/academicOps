@@ -19,12 +19,9 @@ DIST_REPO_SLUG := nicsuzor/academicOps
 DIST_REPO := $(DIST_REPO_SLUG)@dist
 DIST_REPO_URL := https://github.com/$(DIST_REPO_SLUG)
 
-# Extension names. GEMINI_* are retained only for install-dev's legacy gemini
-# teardown; the live `make install` flow no longer installs the deprecated
-# Gemini CLI extension (see install / install-windows).
-GEMINI_EXT_NAME := aops-core
+# Extension names. The live `make install` flow no longer installs the
+# deprecated Gemini CLI extension (see install / install-windows).
 CLAUDE_PLUGIN_NAME := aops-core@academicOps
-GEMINI_TOOLS_EXT_NAME := aops-tools
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
 CLAUDE_AOPS_PLUGIN_NAME := aops@academicOps
 # The full set of Claude plugins a live `make install` must successfully install.
@@ -42,11 +39,14 @@ CLAUDE_PLUGINS := $(CLAUDE_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_AOP
 # visibly DISTINCT from the released `academicOps` marketplace in `claude plugin
 # marketplace list`. `make install`'s clean-local removes these so a live install
 # is never shadowed by a prior `make dev`.
+# NOTE: `aops-core` is a legacy plugin name — its source dir no longer exists
+# (folded into `aops/`), so build.py doesn't produce dist/aops-core-claude and
+# it's intentionally absent here. It's kept in the release-side variables below
+# (CLAUDE_PLUGIN_NAME et al.) untouched since that's the official install path.
 CLAUDE_LOCAL_MARKETPLACE := aops
-CLAUDE_LOCAL_PLUGIN_NAME := aops-core@aops
-CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
 CLAUDE_LOCAL_AOPS_PLUGIN_NAME := aops@aops
-CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)
+CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
+CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
 
 # The local-dev cowork plugin lives in its OWN isolated marketplace + plugin
 # namespace (`aops-coworklocal`) so a local install never clobbers the published
@@ -79,7 +79,7 @@ help:
 	@echo "Local Development (Install from source):"
 	@echo "  make dev            - Full local dev setup (sync, build, install-dev)"
 	@echo "  make build-dev      - Build extension locally (dist/)"
-	@echo "  make install-dev    - Install current dist/ into Claude and Gemini (includes aops-tools)"
+	@echo "  make install-dev    - Install current dist/ into Claude Code (aops + aops-tools)"
 	@echo "  make uninstall-dev  - Restore release marketplace after local testing"
 	@echo "  make install-hooks  - Install pre-commit hooks"
 	@echo ""
@@ -133,44 +133,32 @@ build-dev:
 	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-tools-antigravity || echo "  (agy not on PATH, skipping verification)"
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
-# Install local build artifacts into clients.
+# Install local build artifacts directly into Claude Code — no orchestrator
+# script, just `claude plugin` calls against the local dist/ marketplace.
+# (scripts/install.py, which used to do this plus Gemini/Antigravity symlinks,
+# cron jobs, and automode rules, has been retired — it drifted out of sync with
+# the current source layout (aops-core folded into aops/, aops-extras/aops-pkb
+# never existed here) and was unusable. Antigravity dev-install is handled
+# separately and already works standalone: `make install-agy` prefers the local
+# dist/aops-antigravity build when present.)
 #
-# install-dev is the ONE authoritative local-install orchestrator (epic-267fe017).
-# It prepares the dev-only environment (local marketplace override, cache prune)
-# that scripts/install.py does not own, then delegates the actual installation —
-# Gemini policy/skill/workflow symlinks, extension-enablement rewrites, automode
-# rules, cron, Claude plugin install — to scripts/install.py UNCONDITIONALLY.
-# Previously this target hand-rolled a subset of the Claude/Gemini install and
-# silently skipped everything install.py does (the install split-brain). The
-# only remaining caller of those extra steps was the now-tombstoned setup.sh.
-#
-# NOTE: This overrides the release marketplace with a local directory source and
-# (via install.py) installs the background sync crontab. Run `make uninstall-dev`
-# to restore the release marketplace when done testing.
+# NOTE: This overrides the release marketplace with a local directory source.
+# Run `make uninstall-dev` to restore the release marketplace when done testing.
 install-dev: build-dev
-	@echo "Installing from local build artifacts (orchestrator: scripts/install.py)..."
-	@echo "  Claude source: $(DIST_DIR) (local marketplace)"
-	@echo "  Gemini source: $(DIST_DIR)/aops-gemini (local build)"
-	@echo "Uninstalling existing local plugins/extensions..."
-	-command gemini extensions uninstall $(GEMINI_EXT_NAME) 2>/dev/null; \
-		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_EXT_NAME)"
-	-command gemini extensions uninstall $(GEMINI_TOOLS_EXT_NAME) 2>/dev/null; \
-		rm -rf "$(HOME)/.gemini/extensions/$(GEMINI_TOOLS_EXT_NAME)"
+	@echo "Installing from local build artifacts into Claude Code..."
+	@echo "  Source: $(DIST_DIR) (local marketplace)"
+	@echo "Uninstalling existing local/released plugins..."
 	@# Uninstall BOTH the local (`@aops`) and any released (`@academicOps`) copies so
 	@# a dev install never double-loads alongside a release install.
-	-command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_TOOLS_PLUGIN_NAME)
-	-command claude plugin uninstall $(CLAUDE_AOPS_PLUGIN_NAME)
+	@for p in $(CLAUDE_LOCAL_PLUGINS) $(CLAUDE_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@echo "Pruning old plugin cache versions..."
 	-python3 -c "\
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
-active = json.load(open(f))['plugins'].get('$(CLAUDE_LOCAL_PLUGIN_NAME)', [{}])[-1].get('installPath', '') if f.exists() else ''; \
-cache = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE)/aops-core'; \
-[shutil.rmtree(v) or print(f'  removed {v.name}') for v in cache.iterdir() if v.is_dir() and str(v) != active] if cache.exists() else None \
+data = json.load(open(f))['plugins'] if f.exists() else {}; \
+active = {p.split('@')[0] for p in ['$(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)', '$(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)']}; \
+cache_root = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE)'; \
+[shutil.rmtree(d) or print(f'  removed stale cache dir {d.name}') for d in (cache_root.iterdir() if cache_root.exists() else []) if d.is_dir() and d.name not in active] \
 "
 	@echo "Configuring local Claude marketplace '$(CLAUDE_LOCAL_MARKETPLACE)' (distinct from released 'academicOps')..."
 	@# Remove any prior marketplace first — `marketplace add` no-ops when the name
@@ -180,21 +168,22 @@ cache = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE)
 	-command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
 	-command claude plugin marketplace remove $(CLAUDE_LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@# Add dist/ as the marketplace: dist/.claude-plugin/marketplace.json names it
-	@# `aops` and sources ./aops-* (see build.py generate_local_marketplace).
-	-command claude plugin marketplace add $(DIST_DIR)
-	@echo "Delegating install to scripts/install.py (single authoritative path)..."
-	@AOPS=$(AOPS_ROOT) ACA_DATA=$${ACA_DATA:-$(AOPS_ROOT)} uv run python scripts/install.py
+	@# `aops` and sources ./aops-* (see build.py generate_local_marketplace) —
+	@# only plugins that were actually built are listed.
+	@command claude plugin marketplace add $(DIST_DIR)
+	@for p in $(CLAUDE_LOCAL_PLUGINS); do \
+		command claude plugin install $$p && echo "✓ $$p installed" \
+			|| { echo "  x $$p install failed" >&2; exit 1; }; \
+	done
 	@$(MAKE) report-versions
 	@echo "✓ Local installation complete"
-	@echo "  ⚠️  Local marketplace '$(CLAUDE_LOCAL_MARKETPLACE)' now points to $(DIST_DIR) (plugins: $(CLAUDE_LOCAL_PLUGIN_NAME))"
+	@echo "  ⚠️  Local marketplace '$(CLAUDE_LOCAL_MARKETPLACE)' now points to $(DIST_DIR) (plugins: $(CLAUDE_LOCAL_PLUGINS))"
 	@echo "  Run 'make uninstall-dev' to restore the release marketplace."
 
 # Restore the release marketplace after local dev testing
 uninstall-dev:
 	@echo "Removing local '$(CLAUDE_LOCAL_MARKETPLACE)' marketplace + plugins..."
-	@command claude plugin uninstall $(CLAUDE_LOCAL_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) >/dev/null 2>&1 || true
-	@command claude plugin uninstall $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) >/dev/null 2>&1 || true
+	@for p in $(CLAUDE_LOCAL_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@command claude plugin marketplace remove $(CLAUDE_LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)

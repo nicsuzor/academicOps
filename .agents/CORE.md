@@ -111,7 +111,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 - **Pre-commit Hooks**: Run `./scripts/format.sh` before committing to avoid failures.
 - **Testing**: Run tests using `uv run pytest tests/` or `uv run pytest aops-core/`.
 - **Building**: Use `uv run python scripts/build.py` to build the distribution.
-- **Installing**: Use `make install-dev` (orchestrator) or `uv run python scripts/install.py` to install locally. (`setup.sh` is a deprecated tombstone that forwards to `scripts/install.py`.)
+- **Installing**: Use `make install-dev` to build and install the local plugin into Claude Code. (`scripts/install.py` has been retired — it drifted out of sync with the current source layout.)
 
 ## PR Review Management
 
