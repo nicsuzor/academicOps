@@ -60,13 +60,9 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                             
                     if stem == "mcp" and client == "antigravity":
                         if "mcpServers" in data and "pkb" in data["mcpServers"]:
-                            # Workaround for antigravity-cli#390: agy doesn't resolve ${extensionPath}
-                            # and runs MCP servers from the workspace cwd, so relative paths fail.
-                            # For GitHub users who don't run `make install-agy`, we must use bash -c
-                            # with tilde expansion to the default install location.
+                            args = data["mcpServers"]["pkb"].get("args", [])
                             data["mcpServers"]["pkb"]["args"] = [
-                                "-c",
-                                f"~/.gemini/config/plugins/{plugin_name}/scripts/run-mcp.sh"
+                                arg.replace("${PKB_MCP_ROOT}", "${extensionPath}").replace("${CLAUDE_PLUGIN_ROOT}", "${extensionPath}") for arg in args
                             ]
                     elif stem == "hooks" and client == "antigravity":
                         if "hooks" in data:
@@ -74,7 +70,11 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                                 for event in events:
                                     for hook in event.get("hooks", []):
                                         if "command" in hook:
-                                            hook["command"] = hook["command"].replace("${AGY_PLUGIN_ROOT}", ".")
+                                            # Remove quotes around the script path because agy execs via argv
+                                            cmd = hook["command"]
+                                            cmd = cmd.replace('"${AGY_PLUGIN_ROOT}/hooks/router.py"', "hooks/router.py")
+                                            cmd = cmd.replace("${AGY_PLUGIN_ROOT}/hooks/router.py", "hooks/router.py")
+                                            hook["command"] = cmd
                             
                     # determine destination
                     if stem == plugin_name:
