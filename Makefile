@@ -412,8 +412,9 @@ install-agy:
 			agy plugin install "$$local_dir" && echo "✓ agy $$p installed" \
 				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
 		else \
-			echo "  Source ($$p): $$url (live dist branch)"; \
 			agy plugin install "$$url" && echo "✓ agy $$p installed" \
+				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
+		fi; \
 	done
 
 # Optional: install into Windows-side Claude when invoked from WSL.
