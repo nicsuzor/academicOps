@@ -1,0 +1,32 @@
+{
+  "__base__": {
+    "name": "aops",
+    "version": "0.4.0",
+    "description": "AcademicOps core framework \u2014 combining task/work-unit modules, strategic planning, task-lifecycle, dispatch, session lifecycle, and swappable technology-specific academic skills.",
+    "author": {
+      "name": "Nicolas Suzor"
+    },
+    "license": "MIT",
+    "keywords": [
+      "academicOps",
+      "research",
+      "framework",
+      "workflow",
+      "pkb",
+      "enforcement",
+      "task-lifecycle",
+      "academic",
+      "extras"
+    ]
+  },
+  "claude": {
+    "mcpServers": "./.mcp.json",
+    "userConfig": {
+      "pkb_mcp_url": {
+        "type": "string",
+        "title": "PKB MCP server URL",
+        "description": "URL of your academicOps PKB MCP server (Streamable HTTP), e.g. http://host:8026/mcp/. Supplied to the pkb MCP server as PKB_MCP_URL. Leave blank only if PKB_MCP_URL is already exported in the environment that launches the MCP server; there is no ~/.env.local fallback."
+      }
+    }
+  }
+}

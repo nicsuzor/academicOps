@@ -125,6 +125,12 @@ dev:
 build-dev:
 	@echo "Building AcademicOps extension locally..."
 	@ACA_DATA=$(AOPS_ROOT) uv run python scripts/build.py
+	@echo "Validating Claude plugins..."
+	@command -v claude >/dev/null 2>&1 && claude plugin validate $(DIST_DIR)/aops-claude || echo "  (claude not on PATH, skipping validation)"
+	@command -v claude >/dev/null 2>&1 && claude plugin validate $(DIST_DIR)/aops-tools-claude || echo "  (claude not on PATH, skipping validation)"
+	@echo "Verifying Antigravity plugins..."
+	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-antigravity || echo "  (agy not on PATH, skipping verification)"
+	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-tools-antigravity || echo "  (agy not on PATH, skipping verification)"
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
 # Install local build artifacts into clients.
@@ -387,7 +393,7 @@ AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-tools-
 # install-agy stays core+tools by design (deliberate scope choice, not a build
 # gap — see specs/build-and-install.md and the CLAUDE_EXTRAS/PKB comment above).
 # Both are now hard dependencies: no more tools-softer-than-core exception.
-AGY_PLUGINS := aops-core aops-tools
+AGY_PLUGINS := aops aops-tools
 
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
@@ -398,7 +404,7 @@ install-agy:
 	@for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@for p in $(AGY_PLUGINS); do \
 		case $$p in \
-			aops-core) local_dir="$(DIST_DIR)/aops-antigravity"; url="$(AGY_CORE_URL)" ;; \
+			aops) local_dir="$(DIST_DIR)/aops-antigravity"; url="$(AGY_CORE_URL)" ;; \
 			aops-tools) local_dir="$(DIST_DIR)/aops-tools-antigravity"; url="$(AGY_TOOLS_URL)" ;; \
 		esac; \
 		if [ -d "$$local_dir" ]; then \
@@ -406,26 +412,10 @@ install-agy:
 			agy plugin install "$$local_dir" && echo "✓ agy $$p installed" \
 				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
 		else \
-			echo "  Source ($$p): $$url (live dist branch)"; \
 			agy plugin install "$$url" && echo "✓ agy $$p installed" \
 				|| { echo "  x agy $$p install failed" >&2; exit 1; }; \
 		fi; \
 	done
-	@# Resolve ${extensionPath} in the INSTALLED agy mcp_config.json. agy copies
-	@# the plugin to ~/.gemini/config/plugins/aops-core/ at install but does NOT
-	@# substitute ${extensionPath} in native-format mcp_config.json, and it spawns
-	@# MCP servers with the workspace cwd — so the pkb server's bundled run-mcp.sh
-	@# is otherwise unreachable (upstream bug antigravity-cli#390). We resolve the
-	@# token to the actual install dir (discovered, not hardcoded). Hooks need no
-	@# such step — agy runs them from the plugin dir, so they use a relative path.
-	@# Remove this once #390 is fixed and ${extensionPath} resolves natively.
-	@AGY_RT="$$HOME/.gemini/config/plugins/aops-core"; \
-	if [ -f "$$AGY_RT/mcp_config.json" ]; then \
-		sed -i.bak "s#\$${extensionPath}#$$AGY_RT#g" "$$AGY_RT/mcp_config.json" && rm -f "$$AGY_RT/mcp_config.json.bak" && \
-		echo "  ✓ Resolved \$${extensionPath} -> $$AGY_RT in agy mcp_config.json (antigravity-cli#390 workaround)"; \
-	elif command -v agy >/dev/null 2>&1; then \
-		echo "  ⚠️ agy mcp_config.json not found under $$AGY_RT — pkb MCP path NOT resolved"; \
-	fi
 
 # Optional: install into Windows-side Claude when invoked from WSL.
 # Silently no-ops outside WSL or when no Windows Claude is found.

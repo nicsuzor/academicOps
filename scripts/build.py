@@ -7,6 +7,8 @@ Assembles dist versions of the plugins based on client-specific files.
 import argparse
 import os
 import shutil
+import re
+import json
 from pathlib import Path
 
 # Directories to exclude from copying
@@ -27,11 +29,7 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
             shutil.rmtree(dist_dir)
         dist_dir.mkdir(parents=True)
 
-        # Determine suffixes
-        hook_suffix = ".claude.json" if client == "claude" else ".agy.json"
-        plugin_suffix = ".claude-plugin.json" if client == "claude" else ".antigravity-plugin.json"
-        mcp_suffix = ".claude.json" if client == "claude" else ".agy.json"
-
+        import json
         for root, dirs, files in os.walk(src_dir):
             dirs[:] = [d for d in dirs if d not in EXCLUDES]
 
@@ -45,47 +43,88 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
 
                 src_file = Path(root) / file
 
-                # Check for client-specific hooks file
-                if file == f"hooks{hook_suffix}":
-                    if client == "claude":
-                        # Claude expects hooks in hooks/hooks.json
-                        hooks_dir = dist_dir / "hooks"
-                        hooks_dir.mkdir(exist_ok=True)
-                        dst_file = hooks_dir / "hooks.json"
-                    else:
-                        # Antigravity expects hooks in root as hooks.json
+                if file.endswith(".template.json"):
+                    stem = file[:-14]
+                    
+                    with open(src_file) as f:
+                        template = json.load(f)
+                        
+                    data = template.get("__base__", {}).copy()
+                    client_data = template.get(client, {})
+                    
+                    for k, v in client_data.items():
+                        if isinstance(v, dict) and k in data and isinstance(data[k], dict):
+                            data[k].update(v)
+                        else:
+                            data[k] = v
+                            
+                    if stem == "mcp" and client == "antigravity":
+                        if "mcpServers" in data and "pkb" in data["mcpServers"]:
+                            # Workaround for antigravity-cli#390: agy doesn't resolve ${extensionPath}
+                            # and runs MCP servers from the workspace cwd, so relative paths fail.
+                            # For GitHub users who don't run `make install-agy`, we must use bash -c
+                            # with tilde expansion to the default install location.
+                            data["mcpServers"]["pkb"]["args"] = [
+                                "-c",
+                                f"~/.gemini/config/plugins/{plugin_name}/scripts/run-mcp.sh"
+                            ]
+                    elif stem == "hooks" and client == "antigravity":
+                        if "hooks" in data:
+                            for events in data["hooks"].values():
+                                for event in events:
+                                    for hook in event.get("hooks", []):
+                                        if "command" in hook:
+                                            # Remove quotes around the script path because agy execs via argv
+                                            cmd = hook["command"]
+                                            cmd = cmd.replace('"${AGY_PLUGIN_ROOT}/hooks/router.py"', "hooks/router.py")
+                                            cmd = cmd.replace("${AGY_PLUGIN_ROOT}/hooks/router.py", "hooks/router.py")
+                                            hook["command"] = cmd
+                            
+                    # determine destination
+                    if stem == plugin_name:
+                        if client == "claude":
+                            dst_file = dist_dir / ".claude-plugin" / "plugin.json"
+                        else:
+                            dst_file = dist_dir / "plugin.json"
+                    elif stem == "hooks":
                         dst_file = dist_dir / "hooks.json"
-
-                # Check for client-specific plugin manifest
-                elif file == f"{plugin_name}{plugin_suffix}":
-                    if client == "claude":
-                        # Claude expects manifest in .claude-plugin/plugin.json
-                        manifest_dir = dist_dir / ".claude-plugin"
-                        manifest_dir.mkdir(exist_ok=True)
-                        dst_file = manifest_dir / "plugin.json"
+                    elif stem == "mcp":
+                        if client == "claude":
+                            dst_file = dist_dir / ".mcp.json"
+                        else:
+                            dst_file = dist_dir / "mcp_config.json"
                     else:
-                        # Antigravity expects manifest in root as plugin.json
-                        dst_file = dist_dir / "plugin.json"
-
-                # Check for client-specific MCP config
-                # We assume naming convention like mcp.claude.json or mcp.agy.json
-                elif file == f"mcp{mcp_suffix}":
-                    if client == "claude":
-                        # Claude expects .mcp.json at root
-                        dst_file = dist_dir / ".mcp.json"
-                    else:
-                        # Antigravity expects mcp_config.json at root
-                        dst_file = dist_dir / "mcp_config.json"
-
-                # Skip files intended for the other client or other templates
-                elif any(file.endswith(suffix) for suffix in [
+                        dst_file = dist_dir / rel_root / f"{stem}.json"
+                        
+                    dst_file.parent.mkdir(parents=True, exist_ok=True)
+                    with open(dst_file, "w") as f:
+                        json.dump(data, f, indent=2)
+                    continue
+                    
+                # Skip the old specific files that might still be lingering
+                if any(file.endswith(suffix) for suffix in [
                     ".claude.json", ".agy.json",
                     ".claude-plugin.json", ".antigravity-plugin.json"
                 ]):
                     continue
-                else:
-                    dst_file = dst_root / file
+                    
+                # Handle commands to skills for agy
+                if rel_root.parts and rel_root.parts[0] == "commands" and file.endswith(".md"):
+                    if client == "antigravity":
+                        skill_name = file[:-3]
+                        dst_file = dist_dir / "skills" / f"cmd-{skill_name}" / "SKILL.md"
+                        dst_file.parent.mkdir(parents=True, exist_ok=True)
+                        content = src_file.read_text(encoding="utf-8")
+                        content = re.sub(r"(?m)^type:\s*command\s*$", "type: skill", content)
+                        dst_file.write_text(content, encoding="utf-8")
+                    else:
+                        dst_file = dist_dir / file
+                        dst_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src_file, dst_file)
+                    continue
 
+                dst_file = dst_root / file
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, dst_file)
 
         # Cleanup any empty directories that might have been left over

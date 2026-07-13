@@ -1,0 +1,60 @@
+{
+  "claude": {
+    "hooks": {
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop"
+            }
+          ]
+        }
+      ],
+      "SubagentStop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop"
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "antigravity": {
+    "hooks": {
+      "PostInvocation": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PostInvocation"
+            }
+          ]
+        }
+      ],
+      "PreInvocation": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"${AGY_PLUGIN_ROOT}/hooks/router.py\" agy PreInvocation"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

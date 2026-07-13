@@ -29,7 +29,7 @@ aops-core/uv.lock
 
 # Distribution / packaging
 .Python
-#dist/
+dist/
 build/
 develop-eggs/
 downloads/
