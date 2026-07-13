@@ -160,19 +160,19 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                 ]):
                     continue
                     
-                # Handle commands to skills for agy
-                if rel_root.parts and rel_root.parts[0] == "commands" and file.endswith(".md"):
-                    if client == "antigravity":
-                        skill_name = file[:-3]
-                        dst_file = dist_dir / "skills" / f"cmd-{skill_name}" / "SKILL.md"
-                        dst_file.parent.mkdir(parents=True, exist_ok=True)
-                        content = src_file.read_text(encoding="utf-8")
-                        content = re.sub(r"(?m)^type:\s*command\s*$", "type: skill", content)
-                        dst_file.write_text(content, encoding="utf-8")
-                    else:
-                        dst_file = dist_dir / file
-                        dst_file.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(src_file, dst_file)
+                # Handle commands to skills for agy. Only antigravity needs the
+                # commands->skills conversion; claude falls through to the
+                # generic copy below, which preserves the commands/ subdir so
+                # Claude Code auto-discovers the slash commands at
+                # <plugin_root>/commands/*.md.
+                if (rel_root.parts and rel_root.parts[0] == "commands"
+                        and file.endswith(".md") and client == "antigravity"):
+                    skill_name = file[:-3]
+                    dst_file = dist_dir / "skills" / f"cmd-{skill_name}" / "SKILL.md"
+                    dst_file.parent.mkdir(parents=True, exist_ok=True)
+                    content = src_file.read_text(encoding="utf-8")
+                    content = re.sub(r"(?m)^type:\s*command\s*$", "type: skill", content)
+                    dst_file.write_text(content, encoding="utf-8")
                     continue
 
                 dst_file = dst_root / file
