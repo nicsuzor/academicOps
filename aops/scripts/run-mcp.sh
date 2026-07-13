@@ -51,4 +51,4 @@ if [[ -z "$UV_CACHE_DIR" ]] || ! mkdir -p "$UV_CACHE_DIR" 2>/dev/null; then
     export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache-$(id -u)"
 fi
 
-exec uvx fastmcp run "$PKB_MCP_URL"
+exec uvx --from fastmcp-slim fastmcp run "$PKB_MCP_URL"
