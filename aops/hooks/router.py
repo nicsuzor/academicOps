@@ -72,6 +72,8 @@ def main():
         if event in ("Stop", "SubagentStop"):
             if not raw_input.get("stop_hook_active"):
                 output = {
+                    "decision": "block",
+                    "reason": reminder_content,
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": reminder_content
