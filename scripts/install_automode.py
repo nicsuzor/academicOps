@@ -1,14 +1,14 @@
 #!/usr/bin/env -S uv run python
 """
-Merge the aops axiom rules (built into dist/aops-claude's plugin.json
-`autoMode` key by scripts/build.py) into the user's ~/.claude/settings.json.
+Merge the aops axiom rules (shipped as dist/aops-claude/axioms.jsonl by
+scripts/build.py) into the user's ~/.claude/settings.json.
 
 Claude Code's `autoMode` classifier only reads its config from
-~/.claude/settings.json (merged with CC's own built-in defaults) — it does NOT
-read an `autoMode` key from an installed plugin's manifest (confirmed via
-`claude plugin validate`: "Unknown field 'autoMode'. Claude Code ignores it at
-load time."). So the plugin manifest copy is a durable, version-controlled
-SSoT; this script is what actually makes the rules take effect for a session.
+~/.claude/settings.json (merged with CC's own built-in defaults). The built
+plugin therefore ships the axioms as a JSONL data file (one JSON object per
+line, with `slug`/`description`/`body`/`source_file` fields) as the durable,
+version-controlled transport; this script reads that file and is what actually
+makes the rules take effect for a session.
 
 Best-effort by design: any failure here should not abort a `make install-dev`
 run, so this always exits 0 and just prints what happened.
@@ -26,18 +26,23 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent.resolve()
-DIST_PLUGIN_JSON = REPO_ROOT / "dist" / "aops-claude" / ".claude-plugin" / "plugin.json"
+DIST_AXIOMS_JSONL = REPO_ROOT / "dist" / "aops-claude" / "axioms.jsonl"
 
 
 def _get_aops_auto_mode() -> dict | None:
-    if not DIST_PLUGIN_JSON.exists():
+    if not DIST_AXIOMS_JSONL.exists():
         return None
     try:
-        manifest = json.loads(DIST_PLUGIN_JSON.read_text())
-    except (json.JSONDecodeError, OSError):
+        soft_deny = []
+        for line in DIST_AXIOMS_JSONL.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            axiom = json.loads(line)
+            soft_deny.append(f"{axiom['slug']}: {axiom['description']}")
+    except (json.JSONDecodeError, KeyError, OSError):
         return None
-    auto_mode = manifest.get("autoMode")
-    return auto_mode if isinstance(auto_mode, dict) else None
+    return {"soft_deny": soft_deny} if soft_deny else None
 
 
 def _get_cc_defaults() -> dict | None:
@@ -71,7 +76,7 @@ def _merge(cc_defaults: dict, aops_rules: dict) -> dict:
 def main() -> int:
     aops_rules = _get_aops_auto_mode()
     if not aops_rules:
-        print(f"  (no autoMode rules in {DIST_PLUGIN_JSON} — skipping settings.json merge)")
+        print(f"  (no autoMode rules in {DIST_AXIOMS_JSONL} — skipping settings.json merge)")
         return 0
 
     cc_defaults = _get_cc_defaults()

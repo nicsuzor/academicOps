@@ -208,15 +208,12 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
         #     the agy binary's embedded assets/external/skills/
         #     agy-customizations/docs/plugins.md).
         #   - Claude Code: no equivalent plugin-level "rules" folder exists,
-        #     so we (b) ship a JSONL data file for anything that wants to read
-        #     the raw rules, and (c) fold them into the plugin manifest's
-        #     `autoMode.soft_deny` list — the same SSoT-in-manifest spot the
-        #     old aops-core/lib/automode.py read from. That alone doesn't
-        #     change runtime behavior (Claude Code reads autoMode from
-        #     ~/.claude/settings.json, not from an installed plugin's
-        #     manifest) — `make install-dev` merges it into settings.json
-        #     separately; the manifest copy is the durable, version-controlled
-        #     fallback if that merge step doesn't run.
+        #     so we ship a JSONL data file (axioms.jsonl) as the durable,
+        #     version-controlled transport. Claude Code reads autoMode from
+        #     ~/.claude/settings.json (not from an installed plugin's
+        #     manifest, which it doesn't recognize), so `make install-dev`
+        #     runs scripts/install_automode.py to read axioms.jsonl and merge
+        #     the rules into settings.json separately.
         axioms_dir = src_dir / "axioms"
         axioms = load_axioms(axioms_dir)
         if axioms:
@@ -232,17 +229,6 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                 with open(jsonl_path, "w") as f:
                     for axiom in axioms:
                         f.write(json.dumps(axiom) + "\n")
-
-                plugin_json_path = dist_dir / ".claude-plugin" / "plugin.json"
-                if plugin_json_path.exists():
-                    manifest = json.loads(plugin_json_path.read_text())
-                    auto_mode = manifest.setdefault("autoMode", {})
-                    soft_deny = auto_mode.setdefault("soft_deny", [])
-                    for axiom in axioms:
-                        rule = f"{axiom['slug']}: {axiom['description']}"
-                        if rule not in soft_deny:
-                            soft_deny.append(rule)
-                    plugin_json_path.write_text(json.dumps(manifest, indent=2))
 
         # Cleanup any empty directories that might have been left over
         for dirpath, _dirnames, _filenames in os.walk(dist_dir, topdown=False):
