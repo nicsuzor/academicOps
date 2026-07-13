@@ -70,12 +70,13 @@ def main():
             }
     elif client == "claude":
         if event in ("Stop", "SubagentStop"):
-            output = {
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": reminder_content
+            if not raw_input.get("stop_hook_active"):
+                output = {
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": reminder_content
+                    }
                 }
-            }
         elif event == "UserPromptSubmit":
             output = {
                 "hookSpecificOutput": {
