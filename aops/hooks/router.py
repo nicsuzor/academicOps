@@ -47,6 +47,7 @@ def main():
 
     reminder_content = get_template("ida-reminder.md")
     hydrate_content = get_template("ida-hydrate.md")
+    verify_content = get_template("deliverable-verify-reminder.md")
 
     output = {}
 
@@ -59,7 +60,7 @@ def main():
         elif event == "PreInvocation":
             output = {"injectSteps": [{"ephemeralMessage": hydrate_content}]}
     elif client == "claude":
-        if event in ("Stop", "SubagentStop"):
+        if event == "Stop":
             if not raw_input.get("stop_hook_active"):
                 output = {
                     "decision": "block",
@@ -67,6 +68,16 @@ def main():
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": reminder_content,
+                    },
+                }
+        elif event == "SubagentStop":
+            if not raw_input.get("stop_hook_active"):
+                output = {
+                    "decision": "block",
+                    "reason": verify_content,
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": verify_content,
                     },
                 }
         elif event == "UserPromptSubmit":
