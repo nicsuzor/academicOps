@@ -3,7 +3,7 @@
 #
 # This is the observability companion to the bring-up hook: cloud/web sessions
 # have no durable filesystem and no inbound access, so a session's transcript
-# dies with the container unless it is pushed out. This hook runs aops-core's
+# dies with the container unless it is pushed out. This hook runs the aops plugin's
 # transcript.py over the ending session's JSONL and ships the result to a host
 # on the tailnet (the same tailnet the bring-up hook joins).
 #
@@ -43,10 +43,10 @@
 #                      Set e.g. to "ssh" to use key-based auth to a plain host.
 #   AOPS_TS_SSH_OPTS   extra ssh options for the plain-ssh path (optional), e.g.
 #                      "-o StrictHostKeyChecking=accept-new"
-#   AOPS_SRC_DIR       aops-core source dir (optional; else the plugin cache is used)
+#   AOPS_SRC_DIR       aops plugin source dir (optional; else the plugin cache is used)
 #
-# Dependency: parsing requires aops-core (transcript.py). In single-session mode,
-# if aops-core cannot be run, the hook falls back to shipping the RAW JSONL
+# Dependency: parsing requires the aops plugin (transcript.py). In single-session mode,
+# if the aops plugin cannot be run, the hook falls back to shipping the RAW JSONL
 # (unredacted — see note). Batch mode has no such fallback — shipping every
 # session on disk unredacted is a materially bigger exposure than shipping one,
 # so a failed transcript.py run in batch mode just skips the sync instead.
@@ -98,17 +98,17 @@ fi
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/aops-ts-sync.XXXXXX")" || { echo "[aops-ts] mktemp failed; skipping."; exit 0; }
 trap 'rm -rf "$STAGE"' EXIT
 
-# --- locate aops-core (sibling plugin) so we can run transcript.py ---
+# --- locate the aops plugin (sibling) so we can run transcript.py ---
 # Use a while-read over process substitution so paths containing spaces don't
 # word-split (a silent split would drop us to the raw/unredacted fallback).
 AOPS_CORE=""
-if [ -f "${AOPS_SRC_DIR:-/nonexistent}/aops-core/scripts/transcript.py" ]; then
-  AOPS_CORE="${AOPS_SRC_DIR}/aops-core"
+if [ -f "${AOPS_SRC_DIR:-/nonexistent}/aops/scripts/transcript.py" ]; then
+  AOPS_CORE="${AOPS_SRC_DIR}/aops"
 else
   while IFS= read -r c; do
     [ -n "$c" ] || continue
     if [ -f "${c%/}/scripts/transcript.py" ]; then AOPS_CORE="${c%/}"; break; fi
-  done < <(ls -d "$HOME"/.claude/plugins/cache/academicOps/aops-core/*/ 2>/dev/null | sort -rV)
+  done < <(ls -d "$HOME"/.claude/plugins/cache/academicOps/aops/*/ 2>/dev/null | sort -rV)
 fi
 
 # transcript.py writes transcripts/ + summaries/ under $AOPS_SESSIONS; point that

@@ -44,10 +44,10 @@ description: Process for adding new framework capability (hook, skill, script, c
    **Or manual congruence check** (if skill unavailable):
    ```bash
    # Compare documentation claims to actual structure
-   ls -d $AOPS/aops-core/skills/*/       # vs INDEX.md skills section
-   ls $AOPS/aops-core/commands/*.md      # vs INDEX.md commands section
-   ls $AOPS/aops-core/agents/*.md        # vs INDEX.md agents section
-   ls $AOPS/aops-core/hooks/*.py         # vs INDEX.md hooks section
+   ls -d $AOPS/aops/skills/*/       # vs INDEX.md skills section
+   ls $AOPS/aops/commands/*.md      # vs INDEX.md commands section
+   ls $AOPS/aops/agents/*.md        # vs INDEX.md agents section
+   ls $AOPS/aops/hooks/*.py         # vs INDEX.md hooks section
    ```
 
    **Verify all match**:
@@ -66,7 +66,7 @@ description: Process for adding new framework capability (hook, skill, script, c
 
 **Adding hooks** (safe):
 
-1. Add hook script to `aops-core/hooks/`
+1. Add hook script to `aops/hooks/`
 2. Add hook entry to `config/claude/settings.json`
 3. Commit and push
 4. Next session loads new hook automatically

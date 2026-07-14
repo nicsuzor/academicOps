@@ -10,7 +10,7 @@ Five kinds of document, partitioned by who reads them.
 
 ## Instructions — for agents executing
 
-Live in `aops-core/agents/<name>.md` (personas, loaded via the `Agent` tool), `aops-core/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
+Live in `aops/agents/<name>.md` (personas, loaded via the `Agent` tool), `aops/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
 
 **Generally contain**: who the agent is or what the skill does, what tools and permissions it has, what to do in common situations.
 

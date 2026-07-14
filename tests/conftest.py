@@ -390,7 +390,7 @@ def writing_root() -> Path:
 
 @pytest.fixture
 def repo_root() -> Path:
-    """Return Path to repository root (parent of aops-core plugin).
+    """Return Path to repository root (parent of aops plugin).
 
     GitHub workflows and other repo-level files live here, not in the plugin.
 
@@ -990,8 +990,8 @@ def run_gemini_headless(
 
     # Ensure CLAUDE_PLUGIN_ROOT is set for hooks.json variable expansion
     if "CLAUDE_PLUGIN_ROOT" not in env:
-        # aops-core is the plugin root
-        env["CLAUDE_PLUGIN_ROOT"] = str(Path(env["AOPS"]) / "aops-core")
+        # aops is the plugin root
+        env["CLAUDE_PLUGIN_ROOT"] = str(Path(env["AOPS"]) / "aops")
 
     try:
         # Execute command
@@ -1808,11 +1808,8 @@ def claude_docker(tmp_path):
     # Import _build_docker_cmd from polecat
     repo_root = get_repo_root()
     polecat_dir = str(repo_root / "polecat")
-    aops_core_dir = str(repo_root / "aops-core")
     if polecat_dir not in sys.path:
         sys.path.insert(0, polecat_dir)
-    if aops_core_dir not in sys.path:
-        sys.path.insert(0, aops_core_dir)
 
     from cli import _build_docker_cmd
 
@@ -1979,11 +1976,8 @@ def gemini_docker(tmp_path):
     # Import polecat helpers
     repo_root = get_repo_root()
     polecat_dir = str(repo_root / "polecat")
-    aops_core_dir = str(repo_root / "aops-core")
     if polecat_dir not in sys.path:
         sys.path.insert(0, polecat_dir)
-    if aops_core_dir not in sys.path:
-        sys.path.insert(0, aops_core_dir)
 
     from cli import _replicate_gemini_auth
 

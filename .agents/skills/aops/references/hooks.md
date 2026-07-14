@@ -14,7 +14,7 @@ For Claude Code's hook system in general, see the [official docs](https://code.c
 
 ## Hook message visibility quick-reference
 
-Per-client channel capability (which wire field reaches the user vs. the agent, and whether it persists) is the `_CHANNELS` table in [`aops-core/hooks/client_spec.py`](../../../../aops-core/hooks/client_spec.py) — rendered as a readable matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client). Raw PTY-probe measurements backing that table live in `tests/hooks/fixtures/pty_capabilities.json`.
+Per-client channel capability (which wire field reaches the user vs. the agent, and whether it persists) is the `_CHANNELS` table in [`aops/hooks/client_spec.py`](../../../../aops/hooks/client_spec.py) — rendered as a readable matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client). Raw PTY-probe measurements backing that table live in `tests/hooks/fixtures/pty_capabilities.json`.
 
 ## Active Hooks
 
@@ -72,16 +72,16 @@ The PKB MCP server uses a wrapper script instead of calling `uvx` directly:
 
 `aops/scripts/{run-mcp.sh,ensure-path.sh}` is the sole tracked copy of the PKB launcher pair — `aops-core` carries no `run-mcp.sh` of its own. The cowork build of `aops-core` copies both files in from `aops/scripts/` at build time (`scripts/build.py`); the antigravity build of `aops` ships them directly via its own full-tree copy.
 
-`aops-core/scripts/ensure-path.sh` is a deliberate exception — a second tracked copy, kept in sync with `aops`'s. `aops-core/hooks/router.sh` sources it for its own PATH bootstrap (unrelated to PKB), and `aops-core` must be installable standalone without `aops` present, so it cannot rely on a sibling `aops` checkout/plugin existing at hook-run time.
+`aops/scripts/ensure-path.sh` is a deliberate exception — a second tracked copy, kept in sync with `aops`'s. `aops/hooks/router.sh` sources it for its own PATH bootstrap (unrelated to PKB), and `aops-core` must be installable standalone without `aops` present, so it cannot rely on a sibling `aops` checkout/plugin existing at hook-run time.
 
-**Template**: `aops-core/mcp.json.template` (Claude/Cowork/Gemini/Antigravity sections) and `aops/mcp.json.template` (Claude/Antigravity) — platform-specific sections for Claude (`${CLAUDE_PLUGIN_ROOT}`, `${user_config.*}`) and Gemini/Antigravity (`${extensionPath}`, `${PKB_MCP_URL}`).
+**Template**: `aops/templates/mcp.template.json` carries platform-specific `claude` and `antigravity` sections — Claude uses an HTTP server at `${user_config.pkb_mcp_url}`; Antigravity launches the PKB server via `${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh`.
 
 ## Hook I/O Schemas
 
 > **SSoT Warning:** The exact JSON schemas and field definitions for hooks are defined in code to prevent drift. For the definitive schema structures, refer to:
 >
 > - Gate models: [`aops-core/lib/gate_types.py`](../../../lib/gate_types.py)
-> - Hook routing formats: [`aops-core/hooks/router.py`](../../../hooks/router.py)
+> - Hook routing formats: [`aops/hooks/router.py`](../../../hooks/router.py)
 
 ### Exit Codes (PreToolUse)
 
@@ -107,7 +107,7 @@ The `additionalContext` field can instruct the agent to use tools, not just add 
 
 ## Python Hook Conventions
 
-**Location**: `aops-core/hooks/`. **Naming**: `{event}_{purpose}.py`.
+**Location**: `aops/hooks/`. **Naming**: `{event}_{purpose}.py`.
 
 ```python
 #!/usr/bin/env python3

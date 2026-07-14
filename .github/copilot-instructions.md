@@ -35,7 +35,7 @@ academicOps/
 ├── .github/
 │   ├── agents/       # Agent prompts (pr-reviewer, enforcer, mechanic, qa)
 │   └── workflows/    # GitHub Actions (17 workflows)
-├── aops-core/        # Framework core
+├── aops/        # Framework core
 │   ├── hooks/        # Session lifecycle hooks
 │   ├── lib/          # Shared libraries (gates, hydration, tasks, etc.)
 │   ├── mcp_servers/  # MCP servers (tasks, memory)
@@ -56,9 +56,9 @@ academicOps/
 - **Python 3.11+** required.
 - **Fail-fast**: No defaults, no fallbacks, no silent failures. Raise exceptions early.
 - **Type hints**: Use throughout. Pydantic for data models.
-- **Imports**: Use absolute imports from `aops-core/lib/`, `aops-core/hooks/`.
+- **Imports**: Use absolute imports from `aops/hooks/`.
 - **Line length**: 100 characters (ruff configured).
-- **Tests**: Place in `tests/` at repo root, NOT inside `aops-core/`. Mirror the source structure.
+- **Tests**: Place in `tests/` at repo root, NOT inside `aops/`. Mirror the source structure.
 
 ### Commit Messages
 
@@ -82,7 +82,7 @@ Closes: <task-id>
 ### What NOT to Do
 
 - Do NOT modify files under `.agents/rules/` — these are inviolable.
-- Do NOT add tests inside `aops-core/` — tests go in the root `tests/` directory.
+- Do NOT add tests inside `aops/` — tests go in the root `tests/` directory.
 - Do NOT create backup or archive files — git is the backup system.
 - Do NOT disable pre-commit hooks or CI checks.
 - Do NOT modify `.github/workflows/` without explicit justification.

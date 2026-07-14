@@ -194,7 +194,7 @@ subtask-1 ~> subtask-3 (informs)
 
 ### Specialist Registry
 
-Configured in `data/aops-core/config/specialist-registry.yaml`:
+Configured in `data/aops/config/specialist-registry.yaml`:
 
 ```yaml
 specialists:
@@ -332,7 +332,7 @@ If 7 days pass without user action:
 
 ### Worker Registry
 
-Configured in `data/aops-core/config/worker-registry.yaml`:
+Configured in `data/aops/config/worker-registry.yaml`:
 
 ```yaml
 workers:
@@ -506,10 +506,10 @@ def extract_knowledge(task, pr):
 
 ### Knowledge Schema
 
-Stored in `data/aops-core/knowledge/`:
+Stored in `data/aops/knowledge/`:
 
 ```yaml
-# data/aops-core/knowledge/2026-02-12-auth-module-learnings.yaml
+# data/aops/knowledge/2026-02-12-auth-module-learnings.yaml
 source_task: aops-core-abc123
 source_pr: 123
 extracted: 2026-02-12T10:30:00Z
@@ -551,7 +551,7 @@ Infinite loop prevention: Follow-ups have `depth` field. Max depth = 2. Beyond t
 | Artifact           | Location                       | Purpose           |
 | ------------------ | ------------------------------ | ----------------- |
 | Full execution log | Task body                      | Audit trail       |
-| Learnings          | `data/aops-core/knowledge/`    | Knowledge graph   |
+| Learnings          | `data/aops/knowledge/`         | Knowledge graph   |
 | Follow-up tasks    | Task queue                     | Future work       |
 | Summary            | Daily note "Completed" section | User visibility   |
 | Metrics            | Overwhelm dashboard            | Progress tracking |
@@ -715,7 +715,7 @@ User can retry a task that halted with a diagnostic:
 
 ### Audit Log
 
-Every state transition logged to `data/aops-core/audit/transitions.jsonl`:
+Every state transition logged to `data/aops/audit/transitions.jsonl`:
 
 ```json
 {

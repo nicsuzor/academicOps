@@ -15,7 +15,7 @@ created: 2026-06-29
 
 RBG is the framework's Judge: the axiom-compliance reviewer. It evaluates artifacts and actions for compliance with the framework's universal axioms and repo-local rules, and issues clear compliance verdicts.
 
-- **Runtime Definition**: `aops-core/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the R1–R6 verdict-composition rules.
+- **Runtime Definition**: `aops/agents/rbg.md` — the operative persona: review protocol, `OK`/`WARN`/`REVISE` verdict schema, and the R1–R6 verdict-composition rules.
 
 ## Persona & Disposition
 

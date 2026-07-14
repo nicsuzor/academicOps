@@ -24,11 +24,7 @@
           "type": "toml",
           "path": "pyproject.toml",
           "jsonpath": "$.project.version"
-        },
-        "templates/aops-core.gemini-extension.json",
-        "templates/aops-core.plugin.json",
-        "templates/aops-tools.gemini-extension.json",
-        "templates/aops-tools.plugin.json"
+        }
       ]
     }
   }

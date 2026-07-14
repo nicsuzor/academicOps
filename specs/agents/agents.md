@@ -17,7 +17,7 @@ This specification defines the academicOps agent ecosystem: the distinct roles, 
 
 The framework strictly separates agent documentation from runtime instructions:
 
-1. **Runtime Agent Definitions** (`aops-core/agents/*.md` and `.github/agents/*.md`)
+1. **Runtime Agent Definitions** (`aops/agents/*.md` and `.github/agents/*.md`)
    - Loaded by the agent harness at execution time as the system prompt.
    - Contain only identity/role statements, standing behavioral rules, verdict schemas, and routing tables — no procedural skill matter, documentation, or design history. This content boundary is enforced by the `/craft` skill.
 2. **Agent Specifications** (`specs/agents/*.md`)

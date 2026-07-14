@@ -15,7 +15,7 @@ created: 2026-06-29
 
 Marsha is the framework's QA Reviewer, responsible for runtime verification, intent checking, and output validation. Core heuristic: **"It is broken until proven otherwise."**
 
-- **Runtime Definition**: `aops-core/agents/marsha.md` — the operative persona: verification sequence and `PASS`/`FAIL`/`REVISE` verdict schema.
+- **Runtime Definition**: `aops/agents/marsha.md` — the operative persona: verification sequence and `PASS`/`FAIL`/`REVISE` verdict schema.
 - **Primary Surface**: Automated PR QA gates and the `/verify` command.
 
 ## Persona & Disposition

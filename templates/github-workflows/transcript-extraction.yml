@@ -78,8 +78,8 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for knowledge standards and transcript mining guidance:
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/references/maintenance-phases.md
 
             ## Environment
             - Brain repo (knowledge base): ${{ github.workspace }}
@@ -97,7 +97,7 @@ jobs:
                ${{ inputs.session_id && format('- Process ONLY session: {0}', inputs.session_id) || '' }}
 
             2. **Convert transcripts** to readable format:
-               - Use `uv run python ${{ github.workspace }}/_aops/aops-core/scripts/transcript.py`
+               - Use `uv run python ${{ github.workspace }}/_aops/aops/scripts/transcript.py`
                  to generate readable markdown from JSONL
                - Or read the generated .md transcript if already processed
 
@@ -130,12 +130,12 @@ jobs:
             ## CI-Specific Rules
             - **No PKB MCP server** — you are working directly with markdown files.
               Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
-              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
+              reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate any per-transcript work to
               an `aops-core:pauli` sub-agent, pass the explicit `tools` list per
               the "Sub-Agent Dispatch" section in maintenance-phases.md. On CI: `Bash,
-              Glob, Grep, Read, Write, Edit, Skill` (omit mcp__plugin_aops-core_pkb__*
+              Glob, Grep, Read, Write, Edit, Skill` (omit mcp__services__pkb__*
               — not available). `Edit` is restricted to transcript frontmatter
               under `_sessions/` only. Without an explicit `tools` arg pauli sees
               only `Read` and `Skill` and cannot mine transcripts.

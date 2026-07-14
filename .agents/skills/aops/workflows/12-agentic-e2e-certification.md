@@ -25,7 +25,7 @@ A hooks-JSONL record proves a gate **computed** a verdict. It does not prove tha
 Treat these as three separate, independently falsifiable claims, and verify each one on its own evidence — never infer a later stage from an earlier one:
 
 - **Computed**: the hooks JSONL's `output.system_message` / `output.context_injection` / `output.metadata.gate_transitions` show the gate fired and produced the expected content.
-- **Delivered**: the log's `exit_code` is `0` with no `error` traceback, and the client-specific wire payload (e.g. `translate_agy`'s returned dict, or Claude's `hookSpecificOutput`) actually contains that content for the event in question — some events structurally cannot carry certain fields (see `resolve_policy_for_agy` in `aops-core/hooks/router.py`) and a gate assigned to one of those events can compute perfect content that is unconditionally undeliverable.
+- **Delivered**: the log's `exit_code` is `0` with no `error` traceback, and the client-specific wire payload (e.g. `translate_agy`'s returned dict, or Claude's `hookSpecificOutput`) actually contains that content for the event in question — some events structurally cannot carry certain fields (see `resolve_policy_for_agy` in `aops/hooks/router.py`) and a gate assigned to one of those events can compute perfect content that is unconditionally undeliverable.
 - **Seen**: the exact expected text is present in the `tmux capture-pane` output or rendered transcript the user/agent actually consumed this turn — not a paraphrase, not "a message of roughly that shape appeared."
 
 A finding that only checks the hooks JSONL and reports "the gate fired and delivered its message" is incomplete and can be actively misleading — e.g. a crashed hook's log entry still carries the gate's pre-crash `system_message`, which reads exactly like a successful delivery unless you separately confirm `exit_code`/`error` and cross-check the pane/transcript. Every certification pass in this workflow (Axis 1/2 below, and the Closing Pipeline's marsha/rbg review) must state which of the three layers its evidence actually proves, per expected signal — not just whether "the hook worked."
@@ -97,10 +97,10 @@ tmux send-keys -t $SESSION_ID "Finally, delegate a quick check to the 'ida' suba
 
 ### Step 3: Render the transcript yourself before delegating
 
-Before invoking `marsha` or `rbg`, run `aops-core/scripts/transcript.py` **yourself** against the test session's own transcript file to produce a pinned, human-readable artifact:
+Before invoking `marsha` or `rbg`, run `aops/scripts/transcript.py` **yourself** against the test session's own transcript file to produce a pinned, human-readable artifact:
 
 ```bash
-python3 aops-core/scripts/transcript.py /path/to/<session-id>.jsonl -o /path/to/unique/e2e-<timestamp>
+python3 aops/scripts/transcript.py /path/to/<session-id>.jsonl -o /path/to/unique/e2e-<timestamp>
 # generates e2e-<timestamp>-full.md and e2e-<timestamp>-abridged.md
 ```
 

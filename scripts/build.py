@@ -389,7 +389,7 @@ def main():
     parser.add_argument(
         "--plugins",
         nargs="+",
-        default=["aops-core", "aops", "aops-tools", "aops-ts"],
+        default=["aops", "aops-tools", "aops-ts"],
         help="Plugins to build",
     )
     parser.add_argument(

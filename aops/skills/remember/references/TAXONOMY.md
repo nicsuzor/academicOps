@@ -478,6 +478,6 @@ inbox → ready → queued → in_progress → merge_ready → done   (merge_rea
 
 This document supersedes any conflicting definitions in other framework files. If another document defines these terms differently, that document should be updated to reference this one.
 
-**Referenced by**: all `SKILL.md` files, `aops-core/skills/planner/WORKFLOWS.md`, brain PKB (project: aops, topic: workflow-system-spec)
+**Referenced by**: all `SKILL.md` files, `aops/skills/planner/WORKFLOWS.md`, brain PKB (project: aops, topic: workflow-system-spec)
 
 **Supersedes**: Fixed-depth waterfall definitions (Goal→Project→Epic→Task as structural types at fixed depths). The hierarchy is now `TASK → TASK → …`, with targets linked by metadata and "project" reserved for the polecat repo routing field. (Decision 2026-05-10.)

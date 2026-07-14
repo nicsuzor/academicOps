@@ -76,9 +76,9 @@ jobs:
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
             Read the unified memory skill for full instructions:
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/procedures/consolidate.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/references/maintenance-phases.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/procedures/consolidate.md
 
             Work through ALL phases in order (0 through 11):
               Phase 0:  Graph Health (baseline)
@@ -113,7 +113,7 @@ jobs:
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **No PKB MCP server** — you are working directly with markdown files.
               Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
-              reference mcp__pkb__* tools. Changes sync to PKB consumers via git push.
+              reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - **Sub-agent dispatch (Phases 2, 4, quality review)**: when you
               delegate to `aops-core:pauli` sub-agents, you MUST pass the explicit
               `tools` list per the "Sub-Agent Dispatch" section in maintenance-phases.md.
@@ -121,7 +121,7 @@ jobs:
               MCP tools — without an explicit `tools` arg the sub-agent will only
               see `Read` and `Skill` and cannot do consolidation work. On CI
               (this workflow) the toolset is: `Bash, Glob, Grep, Read, Write,
-              Edit, Skill` (omit mcp__plugin_aops-core_pkb__* — not available
+              Edit, Skill` (omit mcp__services__pkb__* — not available
               here). `Edit` is restricted to transcript frontmatter under
               `_sessions/` only.
             - **Halt surfacing**: parse every sub-agent return for `HALT:`,

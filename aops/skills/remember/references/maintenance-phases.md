@@ -23,7 +23,7 @@ When dispatching, ALWAYS pass the explicit `tools` argument to ensure the sub-ag
 ```
 Agent(
   subagent_type='general-purpose',
-  prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
+  prompt='Execute Phase 2 (Transcript Mining) per aops/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
     'mcp__services__pkb__search',
@@ -47,7 +47,7 @@ Agent(
 
 **Edit scope**: `Edit` is granted ONLY to mark transcripts as `mined: YYYY-MM-DD` in their frontmatter. Transcripts live OUTSIDE `$ACA_DATA` (typically `$AOPS_SESSIONS/**/*.md`), which is the explicit exception to the [[remember]] skill's hard rules. Sub-agents must NOT use `Edit` to modify anything inside `$ACA_DATA` — knowledge writes go through PKB MCP tools.
 
-**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
+**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__services__pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
 
 ### PKB MCP Tool Mutator Invariants (dry_run Default)
 
@@ -106,20 +106,20 @@ gh pr merge --auto --squash -R nicsuzor/brain <pr-number>
 
 The agent works through these in order, using judgment about what needs attention:
 
-| Phase | Name                        | What it does                                                                                         |
-| ----- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle                                              |
-| 1     | Session Backfill            | Run `aops-core/scripts/transcript.py` for pending transcripts (Stop hook + cron usually handle this) |
-| 2     | Transcript Mining           | Extract unsaved insights from session transcripts                                                    |
-| 3     | Episode Replay              | Scan recent activity, identify promotion candidates                                                  |
-| 4     | Knowledge Consolidation     | Transform episodic content into semantic knowledge                                                   |
-| 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                              |
-| 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                     |
-| 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                                    |
-| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (consequence, stakeholder, deps, due), remove flag        |
-| 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                                    |
-| 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                                  |
-| 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                                    |
+| Phase | Name                        | What it does                                                                                    |
+| ----- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| 0     | Graph Health                | Run `graph_stats` — baseline measurement for this cycle                                         |
+| 1     | Session Backfill            | Run `aops/scripts/transcript.py` for pending transcripts (Stop hook + cron usually handle this) |
+| 2     | Transcript Mining           | Extract unsaved insights from session transcripts                                               |
+| 3     | Episode Replay              | Scan recent activity, identify promotion candidates                                             |
+| 4     | Knowledge Consolidation     | Transform episodic content into semantic knowledge                                              |
+| 5     | Index Refresh               | Update mechanical framework indices (`SKILLS.md`, etc.)                                         |
+| 6     | Data Quality Reconciliation | Dedup, staleness verification, misclassification                                                |
+| 7     | Staleness Sweep             | Detect orphans, stale docs, under-specified tasks                                               |
+| 8     | Refile Processing           | Re-parent and re-weight user-flagged tasks (consequence, stakeholder, deps, due), remove flag   |
+| 9     | Graph Maintenance           | Densify, reparent, or connect — pick ONE strategy                                               |
+| 10    | Consolidation Self-Check    | Lightweight sanity check of this cycle's own output                                             |
+| 11    | Brain Sync                  | Commit and push `$ACA_DATA`; re-run `graph_stats`                                               |
 
 ## Phase 0: Graph Health Baseline
 
@@ -154,7 +154,7 @@ Extract insights from session transcripts that agents may not have saved during 
 
 ### Process
 
-1. **Sync GHA sessions**: Run `aops-core/scripts/sync_gha_sessions.py` to fetch new transcripts from GitHub Actions artifacts into `$AOPS_SESSIONS/github/`.
+1. **Sync GHA sessions**: Run `aops/scripts/sync_gha_sessions.py` to fetch new transcripts from GitHub Actions artifacts into `$AOPS_SESSIONS/github/`.
 2. Find transcripts not yet mined: check for `mined: YYYY-MM-DD` in frontmatter across all session directories.
 3. For each unmined transcript (up to 15 per cycle):
    a. Read the transcript carefully, noting decisions, patterns, facts, and problems.

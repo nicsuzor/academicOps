@@ -17,7 +17,7 @@ import json
 import shutil
 from pathlib import Path
 
-AOPS_PLUGIN_NAMES = {"aops-core", "aops-tools"}
+AOPS_PLUGIN_NAMES = {"aops-core", "aops", "aops-ts", "aops-tools"}
 
 
 def clean_cli() -> None:

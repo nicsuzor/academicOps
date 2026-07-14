@@ -17,7 +17,7 @@ Ida is the framework's **one shipped interactive head personality** — the defa
 
 **Ida/Junior disambiguation** (supersedes the old "two skins of one charter" framing, RULING P13): Junior is Nic's personal, machine-local, cross-project orchestrator (`~/brain/.agents/agents/junior.md`) — out of this repo's scope, not a framework artifact, and not edited by any task against this repo. Ida is this framework's sole shipped head; there is no second in-framework skin. See [head-role-charter.md's Overview](../interactive-experience/head-role-charter.md#overview) for the full disambiguation.
 
-- **Runtime Definition**: `aops-core/agents/ida.md` (moved to the short-lived `aops-interactive` plugin — aops-cf3fb2f0 — then back to `aops-core` when that plugin was dissolved pre-ship, ruling A10, aops-7ea63b63) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) rather than restating them.
+- **Runtime Definition**: `aops/agents/ida.md` (moved to the short-lived `aops-interactive` plugin — aops-cf3fb2f0 — then back to `aops-core` when that plugin was dissolved pre-ship, ruling A10, aops-7ea63b63) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) rather than restating them.
 - **Primary Surface**: Interactive research sessions (auto-selected via `"agent": "ida"` in the local `.claude/settings.json`).
 
 ## Persona & Disposition

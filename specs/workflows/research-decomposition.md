@@ -30,8 +30,8 @@ _No implementation yet. This spec defines research-specific decomposition as a d
 
 - [[specs/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
 - [[specs/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
-- PKB task-graph MCP tools (`mcp__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
-- [[aops-core/skills/planner/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
+- PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
+- [[aops/skills/planner/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
 
 ## Motivation
 
@@ -41,7 +41,7 @@ The intellectual foundations for why research needs its own decomposition approa
 
 Together, these traditions explain why research decomposition cannot simply be software project management with different labels. Research operates under genuine uncertainty -- not risk (known probability distribution) but uncertainty (unknown unknowns). The decomposition must respect this by front-loading information-gathering, treating assumptions as first-class objects, and maintaining the flexibility to pivot when early findings reshape the question.
 
-This spec composes with the general decomposition workflow in `aops-core/skills/planner/workflows/decompose.md` and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
+This spec composes with the general decomposition workflow in `aops/skills/planner/workflows/decompose.md` and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
 
 ## The User
 
@@ -112,7 +112,7 @@ The intended handoff works as follows: the effectual planner receives a research
 
 ### Decompose Workflow
 
-The existing `aops-core/skills/planner/workflows/decompose.md` provides general decomposition infrastructure:
+The existing `aops/skills/planner/workflows/decompose.md` provides general decomposition infrastructure:
 
 - **Spike patterns**: when to investigate vs. commit; spike completion checklists
 - **Dependency types**: hard (`depends_on`) vs. soft (`soft_depends_on`) dependency decisions; human handoff patterns
@@ -206,7 +206,7 @@ The typical sequencing above is a default, not a mandate. Common deviations:
 
 1. **Start with unknowns.** Every unknown becomes a spike or pilot. Information-gathering precedes commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption gets: confidence level, validation path, and contingency (what happens if wrong).
-3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work. When an upstream soft dependency completes, propagate its findings to any downstream task whose scope or approach may be affected (knowledge-flow pattern from `aops-core/skills/planner/workflows/decompose.md`). The downstream task is not blocked -- it proceeds with current knowledge -- but should be revisited once upstream findings arrive.
+3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work. When an upstream soft dependency completes, propagate its findings to any downstream task whose scope or approach may be affected (knowledge-flow pattern from `aops/skills/planner/workflows/decompose.md`). The downstream task is not blocked -- it proceeds with current knowledge -- but should be revisited once upstream findings arrive.
 4. **Collaboration gates.** Any step requiring human judgment or external input is a separate task marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation, decision.
 
@@ -322,7 +322,7 @@ Forest mode applies when the researcher has:
 
 ### Process
 
-1. **Decomposer agent produces plan.** The agent uses the research primitives, the sequencing rules from this spec, and the Academic Output Layer from `aops-core/skills/planner/workflows/decompose.md`. It runs the post-decomposition self-checks (decision prerequisites, execution gating, writing data dependencies, methodology layer). It produces all four output items: assumptions table, task graph, dependency visualisation, and MVC.
+1. **Decomposer agent produces plan.** The agent uses the research primitives, the sequencing rules from this spec, and the Academic Output Layer from `aops/skills/planner/workflows/decompose.md`. It runs the post-decomposition self-checks (decision prerequisites, execution gating, writing data dependencies, methodology layer). It produces all four output items: assumptions table, task graph, dependency visualisation, and MVC.
 
 2. **Reviewer agent reviews.** The conceptual review workflow activates with research-specific lenses. The reviewer applies the prioritised critique protocol: lead with the single most important concern (typically methodological coherence or assumption hygiene for research), propose a resolution, then list up to 2 secondary concerns.
 
@@ -435,7 +435,7 @@ verify: "Verify: platform governance study objectives met"
 
 - Research decomposition primitives and sequencing rules
 - Seedling and forest modes with fully specified outputs
-- Integration with effectual planner and `aops-core/skills/planner/workflows/decompose.md`
+- Integration with effectual planner and `aops/skills/planner/workflows/decompose.md`
 - Research-specific review lenses for the conceptual review workflow
 
 ### Out of scope
@@ -463,7 +463,7 @@ verify: "Verify: platform governance study objectives met"
 
 - [[specs/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
 - [[specs/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
-- PKB task-graph MCP tools (`mcp__pkb__*`) -- task graph tools; reused for structured output
+- PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools; reused for structured output
 - [[specs/non-interactive-agent-workflow-spec.md]] -- lifecycle management for non-interactive agent execution
 - [[specs/polecat-swarms.md]] -- execution layer; consumes decomposed task graphs
-- [[aops-core/skills/planner/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives
+- [[aops/skills/planner/workflows/decompose.md]] -- general decomposition workflow; this spec extends it with research primitives

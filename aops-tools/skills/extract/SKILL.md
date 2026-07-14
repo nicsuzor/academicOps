@@ -80,7 +80,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - Goal is to surface approval/choice items
 - Source is task queue
 
-**Route to**: Existing `aops-core/skills/decision-extract/SKILL.md`
+**Route to**: Existing `aops/skills/decision-extract/SKILL.md`
 
 **Storage**: Daily note with decision formatting
 
@@ -159,8 +159,8 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Generalized patterns** → Framework (public repo):
 
-- `aops-core/skills/hydrator/workflows/peer-review.md` (update with principles)
-- `aops-core/skills/*/references/` (depersonalized examples)
+- `aops/skills/hydrator/workflows/peer-review.md` (update with principles)
+- `aops/skills/*/references/` (depersonalized examples)
 - No names, no specific unpublished content, no identifying details
 
 ### Quality Standards
@@ -192,7 +192,7 @@ Apply selective extraction logic.
 
 ## Workflow: Decision Extraction
 
-Delegate to `aops-core/skills/decision-extract/SKILL.md`.
+Delegate to `aops/skills/decision-extract/SKILL.md`.
 
 **Key principle**: Extract tasks requiring approval/choice that are blocking other work.
 

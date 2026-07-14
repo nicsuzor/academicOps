@@ -1,10 +1,10 @@
 #!/bin/bash
 # run-mcp.sh — Launch the PKB MCP client.
 #
-# This is the sole tracked copy of this launcher (single-source-of-truth);
-# aops-core's cowork build copies these same two files in at build time
-# (scripts/build.py, build_aops_core's cowork branch) rather than keeping a
-# second copy in aops-core/scripts/.
+# This is the sole tracked copy of this launcher (single-source-of-truth),
+# living here at aops/scripts/. The cowork plugin does not keep its own copy —
+# an aops-cowork build is expected to copy these launcher files in rather than
+# duplicating them in-tree.
 #
 # Called by the Cowork and Antigravity plugin MCP launchers, which provide a
 # minimal PATH and do NOT propagate the user's shell env. Claude does NOT use

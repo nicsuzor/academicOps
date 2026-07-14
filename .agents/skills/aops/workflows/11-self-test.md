@@ -48,7 +48,7 @@ Walk layers in order; stop at first failure:
 
 **§4 Skill + subagent exercise** — `/aops:aops` + `Agent(subagent_type='aops:ida')`. Verify visible output, not just return.
 
-**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__plugin_aops_pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
+**§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__services__pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 
 **§6 Cleanup** — `/exit` → `tmux kill-session` → `polecat nuke <crew>`. Repeat for other client.
 
@@ -68,7 +68,7 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 **Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers legacy fallback (router.py:838, #1042) leaking `context_injection` to user — false positive; check verdict type.
 
-**Channel vocabulary — derive, do not restate.** The disposition for a given (client, event) is not a fixed named category memorised here — it is computed from `channel_spec(client, event)` in [`aops-core/hooks/client_spec.py`](../../../../aops-core/hooks/client_spec.py) (the same table CLIENT-TRANSLATION.md's authoritative channel matrix renders). Look up the spec for the hook under test and read off its fields:
+**Channel vocabulary — derive, do not restate.** The disposition for a given (client, event) is not a fixed named category memorised here — it is computed from `channel_spec(client, event)` in [`aops/hooks/client_spec.py`](../../../../aops/hooks/client_spec.py) (the same table CLIENT-TRANSLATION.md's authoritative channel matrix renders). Look up the spec for the hook under test and read off its fields:
 
 - `user_message` — does ANY message reach the user on this channel?
 - agent receives context — `agent_context_without_block` (non-blocking delivery) OR `can_block` (block-to-inject; a block's `reason` is the agent's only channel, and on Claude/Gemini that `reason` is ALSO user-visible — there is no agent-only block channel).

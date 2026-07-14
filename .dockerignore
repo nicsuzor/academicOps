@@ -12,11 +12,9 @@
 !/LICENSE
 !/Makefile
 !/setup.sh
-!/gemini-extension.json
 !/.claude-plugin/**
 
 # Allow source code
-!/aops-core/**
 !/polecat/**
 !/scripts/**
 !/specs/**

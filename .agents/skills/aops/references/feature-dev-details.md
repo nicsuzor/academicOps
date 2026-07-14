@@ -102,7 +102,7 @@ Feature development follows eight phases:
 3. Define success criteria (from Phase 2)
 4. Specify scope boundaries (what's in/out)
 5. Identify control state (current behavior without feature)
-6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__plugin_aops-core_tasks__create_task(title="experiment: [feature-name]", tags=["experiment"], body="[experiment plan content]")`
+6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__services__pkb__create_task(title="experiment: [feature-name]", tags=["experiment"], body="[experiment plan content]")`
 
 **Experiment Tracking Required For**:
 
@@ -140,7 +140,7 @@ Feature development follows eight phases:
 
 **Test Location**:
 
-- Framework features: `aops-core/skills/aops/tests/`
+- Framework features: `aops/skills/aops/tests/`
 - Project features: Within project test directory
 - Cross-cutting features: Dedicated test directory with clear ownership
 
@@ -291,7 +291,7 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Complete experiment task**: `mcp__plugin_aops-core_tasks__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name]"
+5. **Complete experiment task**: `mcp__services__pkb__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name]"
 6. **Commit spec update in the brain PKB**
 
 **TodoWrite items** (mandatory):
@@ -370,7 +370,7 @@ Use TodoWrite at key points:
 **This workflow produces**:
 
 - Experiment tracking via tasks (tag: `experiment`)
-- Integration tests in `aops-core/skills/aops/tests/` or project tests
+- Integration tests in `aops/skills/aops/tests/` or project tests
 - Features following framework principles
 
 **This workflow enforces**:

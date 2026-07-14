@@ -340,9 +340,8 @@ The PKB MCP server respects `RUST_LOG` env var. Add `RUST_LOG: "debug"` to the e
 
 Config locations:
 
-- **Gemini extension**: `~/.gemini/extensions/aops-core/gemini-extension.json`
-- **Claude plugin**: `~/.claude/plugins/cache/aops/aops-core/<version>/.mcp.json`
-- **Source template**: `aops-core/mcp.json.template`
+- **Claude plugin**: `~/.claude/plugins/cache/aops/aops/<version>/.mcp.json`
+- **Source template**: `aops/templates/mcp.template.json`
 
 ### 4. Crew Session Transcripts
 
@@ -368,11 +367,6 @@ echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-1
 # Step 3: Check ACA_DATA is set and valid
 echo "ACA_DATA=$ACA_DATA"
 ls "$ACA_DATA" | head -5
-
-# Step 4: Check the extension config has correct args
-cat ~/.gemini/extensions/aops-core/gemini-extension.json | python3 -m json.tool
-# Verify: "args": ["mcp"] must be present in the pkb server config.
-# Without it, Gemini runs bare "pkb" which outputs a task list and exits.
 ```
 
 ### 6. Gemini Sandbox Environment Variables

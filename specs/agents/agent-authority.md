@@ -11,7 +11,7 @@ created: 2026-04-21
 
 # Agent Authority — Permissions and Skill Delegation
 
-**Operative state**: `aops-core/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each agent holds. This spec defines the schema — fields, canonical tool naming, the four permissions axes, and skill/sub-agent delegation rules; the per-agent files are the binding declarations against it.
+**Operative state**: `aops/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each agent holds. This spec defines the schema — fields, canonical tool naming, the four permissions axes, and skill/sub-agent delegation rules; the per-agent files are the binding declarations against it.
 
 **Audit-artifact**: `specs/audit/AGENT-TOOLS.md` is a mechanical dump generated from per-agent frontmatter for at-a-glance comparison. It is not writeable — drift is reported by it, not declared in it.
 
@@ -20,7 +20,7 @@ created: 2026-04-21
 - [[rbg]] — Authority envelope this spec makes concrete
 - [[enforcement]] — Five-layer enforcement model; this spec feeds L3/L4
 - [[polecat-system]] — Enforces `fileAccess` and `bashScopes` at the worktree boundary
-- `aops-core/agents`, `.github/agents` — Must conform (GH Action agents: subset, see §GitHub Action Agents)
+- `aops/agents`, `.github/agents` — Must conform (GH Action agents: subset, see §GitHub Action Agents)
 
 ## Problem
 
@@ -43,14 +43,14 @@ All agent and skill files use **Claude Code tool names**:
 | Category          | Form                                    | Examples                                                                                                                                   |
 | ----------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Built-in          | PascalCase                              | `Read`, `Edit`, `Write`, `Bash`, `Grep`, `Glob`, `Agent`, `Skill`, `TodoWrite`, `AskUserQuestion`, `WebFetch`, `WebSearch`, `NotebookEdit` |
-| MCP               | `mcp__<server>__<tool>`                 | `mcp__pkb__search`, `mcp__playwright__browser_navigate`                                                                                    |
-| Plugin-scoped MCP | `mcp__plugin_<plugin>_<server>__<tool>` | `mcp__plugin_aops-core_pkb__create_task`                                                                                                   |
+| MCP               | `mcp__<server>__<tool>`                 | `mcp__services__pkb__search`, `mcp__playwright__browser_navigate`                                                                          |
+| Plugin-scoped MCP | `mcp__plugin_<plugin>_<server>__<tool>` | `mcp__services__pkb__create_task`                                                                                                          |
 
 Legacy snake_case names (`read_file`, `run_shell_command`, `mcp_playwright_browser_navigate`) are **not permitted** in source. The build script (see §Build Translation) translates to target-specific forms as needed.
 
 ## Agent Frontmatter Schema
 
-Agent files live under `aops-core/agents/<name>.md` (core) or `.github/agents/<name>.agent.md` (GitHub Actions). Frontmatter is YAML.
+Agent files live under `aops/agents/<name>.md` (core) or `.github/agents/<name>.agent.md` (GitHub Actions). Frontmatter is YAML.
 
 **Required:**
 
@@ -123,7 +123,7 @@ fileAccess:
   read:
     - "**/*"
   write:
-    - "aops-core/skills/**"
+    - "aops/skills/**"
     - "specs/**"
     - "!specs/archived/**"   # deny override; beats the grant above
 ```
@@ -168,7 +168,7 @@ The lint tool enforces:
 2. **Canonical naming.** No snake_case tool names in source.
 3. **Referential integrity.** Every entry in `tools`, `mcpServers`, `skills`, `subagents` resolves to a real tool / server / skill / agent.
 4. **No authority inflation in prose.** Agent body text does not instruct the agent to call tools absent from its allowlist.
-5. **Skill `allowed-tools` present.** Every skill file under `aops-core/skills/**/SKILL.md` declares `allowed-tools`.
+5. **Skill `allowed-tools` present.** Every skill file under `aops/skills/**/SKILL.md` declares `allowed-tools`.
 6. **Bash requires scopes.** `Bash ∈ tools` without `bashScopes` is rejected.
 7. **Filesystem tools require fileAccess.** Any of `Read`/`Write`/`Edit`/`NotebookEdit`/`Glob`/`Grep` in `tools` without `fileAccess` is rejected.
 8. **`unrestricted` bashScope always warns**, regardless of agent class.
@@ -177,7 +177,7 @@ Violations are reported as `error` (1–3, 6, 7 — schema, naming, referential,
 
 ## Derived Agents
 
-Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `aops-core/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
+Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `aops/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
 
 ## GitHub Action Agents
 

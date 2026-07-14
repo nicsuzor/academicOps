@@ -53,7 +53,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 
 ## Key Conventions
 
-- **Tests live in `tests/`** at the repo root, NOT inside `aops-core/`.
+- **Tests live in `tests/`** at the repo root, NOT inside `aops/`.
 - **Python 3.12**, managed by `uv`. Always use `uv run` for tools.
 - **Type hints** throughout. Pydantic for data models.
 - **No backup files.** Git is the backup system (P#24).

@@ -106,7 +106,7 @@ flowchart TB
 
 | Stage                    | Intended trigger                                                                                                 | State in source today                                                                                                                                                                                  | Status                                                |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `hydrate`                | `router.py` (UserPromptSubmit hook) hydrates every inbound ask, or a `/hydrate` command                          | No `/hydrate` command exists. `router.sh`→`router.py` **is** registered on `UserPromptSubmit` (`aops-core/hooks/hooks.json`), but I did **not** confirm it invokes the new `hydrate` skill.            | ⬚ **not wired / unverified**                          |
+| `hydrate`                | `router.py` (UserPromptSubmit hook) hydrates every inbound ask, or a `/hydrate` command                          | No `/hydrate` command exists. `router.sh`→`router.py` **is** registered on `UserPromptSubmit` (`aops/hooks/hooks.json`), but I did **not** confirm it invokes the new `hydrate` skill.                 | ⬚ **not wired / unverified**                          |
 | `situate`                | `/q` (capture) → `situate`                                                                                       | `aops/commands/q.md` exists but runs `Skill(skill="planner", …)` — **`planner` was deleted**.                                                                                                          | ⚠ **broken** — repoint `/q` → `situate`               |
 | `decompose`              | `/pull` or `/dispatch` → `task-lifecycle` fires `decompose` when a `needs_decomposition` task comes due          | `/pull` + `/dispatch` commands exist but delegate to a **`task-lifecycle` skill with no `SKILL.md` in source** (`aops/skills/task-lifecycle/` absent).                                                 | ⬚ **not wired**                                       |
 | `brief`                  | `task-lifecycle` expands the due subtask into a brief just before dispatch                                       | Same absent `task-lifecycle` skill. Nothing else invokes `brief`.                                                                                                                                      | ⬚ **not wired**                                       |
@@ -199,7 +199,7 @@ flowchart TB
     classDef bus fill:#f5f6f8,stroke:#838d97,color:#57616c;
 ```
 
-### Session roles (grounded in `agents/ida.md` + `aops-core/skills/supervisor/SKILL.md`)
+### Session roles (grounded in `agents/ida.md` + `aops/skills/supervisor/SKILL.md`)
 
 - **Head session — `ida`** (interactive, one working dir): talks to the user; runs intake → hydrate
   → situate, delegating graph writes to a **pauli** subagent _in the same harness session_; reads

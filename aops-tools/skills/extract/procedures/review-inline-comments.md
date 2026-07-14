@@ -17,7 +17,7 @@ Document containing source text and inline comments/feedback (DOCX, Google Docs,
 
 ### Generalized Patterns → Framework (public repo)
 
-1. **Update `aops-core/skills/hydrator/workflows/peer-review.md`**: Add depersonalized principles
+1. **Update `aops/skills/hydrator/workflows/peer-review.md`**: Add depersonalized principles
 2. **Constructed examples**: Create generic examples illustrating principles
 3. **No identifying information**: Remove names, titles, institutional details
 
@@ -36,7 +36,7 @@ For detailed step-by-step procedures and patterns, see **[[review-extraction-det
 ## Storage Locations
 
 - **Sensitive Data**: `$ACA_DATA/processed/review_training/` (Personal data directory, restricted access)
-- **Public Patterns**: Framework docs in `aops-core/` (Depersonalized, safe for public repo)
+- **Public Patterns**: Framework docs in `aops/` (Depersonalized, safe for public repo)
 
 ## Validation Checklist
 

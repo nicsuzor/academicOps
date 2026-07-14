@@ -14,20 +14,29 @@ Researchers who just want to _install_ the framework want [`INSTALL.md`](../INST
 (repo root) or [`README.md`](../README.md); contributors doing dev setup want
 [`CONTRIBUTING.md`](../CONTRIBUTING.md), which points here for design detail.
 
+> **Naming note.** The main plugin was formerly two plugins — `aops-core` (the large
+> Claude plugin) and a separate `aops` task module — during a transitional period. They
+> have since been **consolidated into a single `aops` plugin**. `aops-core` no longer
+> exists as a plugin or a source directory; every reference below is to the current
+> layout. The PKB MCP server is registered under the server name **`services`** (tools:
+> `mcp__services__pkb__*`). The Gemini CLI **extension** surface (the old
+> `gemini-extension.json`) has been dropped; only the Antigravity CLI (`agy`) build
+> remains as a non-Claude target.
+
 ## 1. Shape of the pipeline (source → dist → install)
 
 ```
 nicsuzor/academicOps @ dev   (source of truth: dev / feature branches)
         │   uv run scripts/build.py        nicsuzor/mem
-        │   ───────────────────────  ◄──── pkb binary (per platform)
+        │   ───────────────────────  ◄──── pkb binary (per platform, runtime dep)
         ▼
-   dist/   (local build artifacts)
+   dist/   (local build artifacts: dist/aops-claude, dist/aops-antigravity, …)
         │
         │   vX.Y.Z tag → .github/workflows/build-extension.yml
         ▼
 nicsuzor/academicOps @ dist   (published distribution channel — orphan branch)
    • built plugin dirs published at the branch ROOT:
-     aops-claude/  aops-tools-claude/  aops-cowork/  aops-antigravity/  …
+     aops-claude/  aops-tools-claude/  aops-ts-claude/  aops-antigravity/  …
    • .claude-plugin/marketplace.json at the root (sources ./aops-claude, …)
         │
         ▼
@@ -38,199 +47,142 @@ There is no separate dist repo. `nicsuzor/academicOps` is both the source of tru
 `dev` / feature branches) and the published distribution: a `vX.Y.Z` tag fires
 `.github/workflows/build-extension.yml`, which builds the per-platform `dist/` artifacts
 and fast-forward-publishes the built plugin directories to the ROOT of the orphan
-**`dist`** branch (`aops-claude/`, `aops-tools-claude/`, `aops-cowork/`,
-`aops-antigravity/`, …) alongside a root `.claude-plugin/marketplace.json` whose
-sources are `./aops-*`. (Older publishes nested these one level under a `dist/`
-subdirectory — `dist:dist/aops-claude` — that layout is superseded; the publish step
-removes the stale subdirectory on first run against a branch still carrying it.)
-End-users install from `dist` and never build locally — see `INSTALL.md` / `README.md`
-for the canonical install commands.
+**`dist`** branch (`aops-claude/`, `aops-tools-claude/`, `aops-ts-claude/`,
+`aops-antigravity/`, …) alongside a root `.claude-plugin/marketplace.json` whose sources
+are `./aops-*`. (Older publishes nested these one level under a `dist/` subdirectory —
+`dist:dist/aops-claude` — that layout is superseded; the publish step removes the stale
+subdirectory on first run against a branch still carrying it.) End-users install from
+`dist` and never build locally — see `INSTALL.md` / `README.md` for the canonical install
+commands.
 
 `academicOps`'s `main` branch is a **deprecated** stale orphan from the pre-migration
 topology (pending deletion — full branch-topology decision record in
-[`specs/workflows/releasing.md`](workflows/releasing.md) §2); nothing in this pipeline reads from or writes to it
-today. If you see `main` referenced as the install channel anywhere, that reference is
-stale — the live channel is `dist`.
+[`specs/workflows/releasing.md`](workflows/releasing.md) §2); nothing in this pipeline
+reads from or writes to it today. If you see `main` referenced as the install channel
+anywhere (including stale Makefile comments), that reference is stale — the live channel
+is `dist`.
 
 ## 2. What goes where (`scripts/build.py`)
 
-`scripts/build.py` reads from the source layout and writes to `dist/`. Mapping:
+`scripts/build.py` is a **simple, generic** assembler: one function, `build_plugin(name,
+src_dir, dist_root, version)`, run once per plugin in the default set
+`["aops", "aops-tools", "aops-ts"]` (override with `--plugins`). For each plugin it builds
+the two client formats — `claude` and `antigravity` — except `aops-ts`, which is
+Claude-only. Output goes to `dist/<plugin>-<client>` and each dir is also tarred to
+`dist/<plugin>-<client>.tar.gz`:
 
-| Source                                              | Claude artifact                               | Cowork artifact                                                                                                                                                                                                                                                       |
-| --------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aops-core/skills/`, `agents/`, `commands/`, `lib/` | `dist/aops-claude/<same>/`                    | **NOT copied** — except individual files carrying `<!-- cowork:only -->` markers (currently `aops/skills/end_session/SKILL.md` and `aops/commands/pull.md`, scanned across both plugin trees — `aops-core`, `aops`), copied singly with markers stripped/content kept |
-| `aops-cowork/` (real package)                       | (not used)                                    | `dist/aops-cowork/skills/<same>/` — the entirety of aops-cowork's shipped skill content (e.g. `cowork-sync`)                                                                                                                                                          |
-| `aops-core/hooks/`                                  | `dist/aops-claude/hooks/` (verbatim)          | **omitted** — the cowork build ships NO hooks (aops-core supplies the shared stack)                                                                                                                                                                                   |
-| `aops-core/mcp.json.template`                       | `dist/aops-claude/.mcp.json`                  | `dist/aops-cowork/.mcp.json` (launcher: `scripts/run-mcp.sh` + `scripts/ensure-path.sh` are copied in from `aops/scripts/` — the sole tracked copy, see the `aops` note below — not from anything in `aops-core/`)                                                    |
-| `templates/aops-core.plugin.json`                   | `dist/aops-claude/.claude-plugin/plugin.json` | (not used)                                                                                                                                                                                                                                                            |
-| `aops-cowork/.claude-plugin/plugin.json` (tracked)  | (not used)                                    | `dist/aops-cowork/.claude-plugin/plugin.json`                                                                                                                                                                                                                         |
-| —                                                   | —                                             | aops-cowork ships **no** `pyproject.toml`/`uv.lock` — no Python deps of its own (no `lib/`, no hooks)                                                                                                                                                                 |
-| `templates/marketplace.json`                        | `dist/.claude-plugin/marketplace.json`        | `dist/.claude-plugin/marketplace.json` — `aops-cowork` entry, source `./dist/aops-cowork`, installed alongside `aops-core`                                                                                                                                            |
+| Plugin       | Claude build             | Antigravity build             |
+| ------------ | ------------------------ | ----------------------------- |
+| `aops`       | `dist/aops-claude`       | `dist/aops-antigravity`       |
+| `aops-tools` | `dist/aops-tools-claude` | `dist/aops-tools-antigravity` |
+| `aops-ts`    | `dist/aops-ts-claude`    | _(skipped — Claude-only)_     |
 
-Dist directory naming is `dist/aops-{platform}` (`build_aops_core`'s `dist_dir`), e.g.
-`dist/aops-claude`, `dist/aops-cowork`, `dist/aops-antigravity` — not the older
-`aops-core-{platform}` form (some install-time code, e.g. `scripts/install.py`, still
-checks the legacy name as a fallback for older builds).
+The core of `build_plugin` is an `os.walk` of the plugin's source tree that copies files
+verbatim into the dist dir (skipping `__pycache__`, `.venv`, `.git`, and the other
+`EXCLUDES`), with four transforms layered on top:
 
-`build.py` also injects the version into every manifest, strips marketplace-only fields
-(`source`, `category`) from the plugin manifest (CC bug
-[#26555](https://github.com/anthropics/claude-code/issues/26555) — leak causes
-"Unrecognized keys" validation error), and packages `aops-cowork-v{version}.zip` (plus a
-legacy `aops-core-v{version}.zip` symlink) for Cowork manual upload.
+1. **`*.template.json` → concrete manifest.** Each template merges a `__base__` object
+   with the active client's section. The stem picks the destination:
+   - `<plugin>.template.json` → the plugin manifest, with `version` injected:
+     `.claude-plugin/plugin.json` (claude) or `plugin.json` (antigravity).
+   - `mcp.template.json` → `.mcp.json` (claude) or `mcp_config.json` (antigravity). For
+     antigravity, build.py rewrites the `services` server's `args` to
+     `["-c", "~/.gemini/config/plugins/<plugin>/scripts/run-mcp.sh"]` — a permanent
+     workaround for antigravity-cli#390 (agy doesn't resolve `${extensionPath}` and runs
+     MCP servers from the workspace cwd, so a relative path fails). This bakes the fix in
+     at **build** time; there is no post-install `sed`.
+   - `hooks.template.json` → `hooks/hooks.json` (claude — Claude Code auto-discovers hooks
+     ONLY at `<plugin_root>/hooks/hooks.json`) or `hooks.json` (antigravity — root-level,
+     with the `${AGY_PLUGIN_ROOT}/hooks/router.py` command quotes stripped because agy
+     execs via argv).
+2. **`commands/*.md` → `skills/cmd-<name>/SKILL.md` (antigravity only).** agy has no
+   slash-command surface, so each command is republished as a skill with its frontmatter
+   `type: command` rewritten to `type: skill`. Claude keeps `commands/*.md` verbatim.
+3. **Always-on axioms.** `load_axioms(<plugin>/axioms)` collects the `trigger: always_on`
+   rule files. For antigravity they're copied into `rules/*.md` (agy's canonical
+   merged-rules location); for claude they're written to `axioms.jsonl` (Claude Code has
+   no plugin-level rules folder, so `make install-dev` runs `scripts/install_automode.py`
+   to merge them into `~/.claude/settings.json` separately).
+4. **Manifest hygiene.** The version is stamped into every plugin manifest; lingering
+   legacy per-client files (`*.claude.json`, `*.agy.json`, etc.) are skipped; empty dirs
+   are pruned.
 
-`aops-tools` is a separate, lightweight plugin: skills only, no hooks/agents/MCP. Built
-from `aops-tools/` with its own `templates/aops-tools.*` manifests. `aops-tools` mirrors
-it exactly (replaceable technology-specific skills — dbt, Streamlit, Python
-plotting/stats). Both are built for **both** `claude` and `antigravity` platforms.
+After the plugins are built, `main()` generates **two marketplaces** from
+`templates/marketplace.json`:
 
-`aops-ts` is a separate, **opt-in** plugin (no skills/agents/MCP, Claude-only build) that
-ships two hooks for remote/cloud sessions: a `SessionStart` hook running `tailscale up` so
-tailnet-only services (e.g. the PKB MCP at `*.ts.net`) resolve, and a `SessionEnd` hook
-that parses the session transcript and rsyncs it to a tailnet host
-(`AOPS_TS_SYNC_DEST`) so cloud transcripts survive container reclamation. The bring-up
-hook is self-contained bash with no dependency; the sync hook reuses aops-core's
-`transcript.py` when present and falls back to shipping the raw JSONL. Keeping it a
-separate plugin means joining the tailnet / shipping transcripts stays an explicit choice
-— **no `make` target installs it**; install by hand:
-`claude plugin install aops-ts@academicOps`. Tailscale itself is installed by the
-environment's setup script, not this plugin (the authkey only exists at session runtime,
-so bring-up must be a hook, not setup).
+- `generate_local_marketplace` → `dist/.claude-plugin/marketplace.json`, named **`aops`**
+  (not `academicOps`) so `make dev` installs land in their own marketplace namespace,
+  with sources rewritten `./dist/aops-*` → `./aops-*` (the marketplace root is `dist/`,
+  so a co-located `./aops-claude` resolves to `dist/aops-claude`). Filtered to plugins
+  that were actually built.
+- `generate_production_marketplace` → `dist/marketplace-production.json`, the file the
+  release workflow copies to the `dist` branch root, with the same `./dist/aops-*` →
+  `./aops-*` rewrite.
 
-`aops` is a separate, standalone plugin (agents + commands + skills + its own `pkb`
-MCP server registration, but **no hooks** — the module operates outside the agent loop,
-see PKB task `aops-b225ec53`). It ships the task/work-unit module extracted from
-`aops-core`: capture (`/q`), strategic planning + decomposition (the `planner` skill), the
-`/pull` and `/dispatch` commands, PKB
-curation (`/remember`, `/learn`, `/maintain`), and session lifecycle (`/daily`, `/dump`,
-`/end_session` — moved here from the short-lived `aops-interactive` plugin per ruling A10,
-task `aops-7ea63b63`: these skills are bound up with the PKB, not with the head
-personality). Because it registers its own `pkb` MCP server under a distinct plugin name,
-the skills inside it were
-rewritten at the source level to the `mcp__plugin_aops_pkb__*` tool-name prefix (not a
-build-time rewrite, unlike aops-cowork's — aops is a standalone package, not an
-aops-core overlay). The other moved skill-body files (`planner`, `remember`'s
-procedures/SKILL.md, etc.) still reference the bare `mcp__pkb__*` short form in prose —
-the repo's pre-existing multi-form PKB-prefix tolerance
-(`aops-core/lib/tool_categories.py`'s `_PKB_PREFIX_VARIANTS`) — left as-is rather than
-over-fitting a rewrite beyond the load-bearing frontmatter tool grants. `rbg`/`marsha`'s
-axiom imports are co-shipped the same way `build_aops_core` does it (`build_aops_pkb` runs
-the same anti-drift guards, `_assert_plugin_imports_resolve` /
-`_assert_no_axiom_decoys`). `scripts/build.py`'s `main()` additionally runs
-`_assert_agent_frontmatter_mcp_tools_resolve` once, up front, against every package's
-SOURCE `agents/*.md` (not just aops's) — it fails the build if an explicit
-(non-wildcard) `mcp__plugin_<slug>_pkb__<tool>` frontmatter grant is missing the "pkb"
-aggregator's repeated inner sub-server segment (a regex shape check, not a maintained
-tool-name list — a wildcard grant like `mcp__plugin_<slug>_pkb__*` is exempt regardless
-of shape), catching the aops_b580e332 single-/double-`pkb__`-prefix defect class
-(aops_35b7dce7). `end_session/SKILL.md` still carries the `<!-- cowork:only -->`
-marker it had in `aops-core`, so the cowork build's marker scan walks this tree too (see
-§3). Built from `aops/` by `build_aops_pkb` for **both** `claude` and `antigravity`
-(`dist/aops-claude`, `dist/aops-antigravity`) with its own **tracked**
-`aops/.claude-plugin/plugin.json` (aops-cowork-style, not template-fabricated) and
-`aops/mcp.json.template`; registered in `templates/marketplace.json` with source
-`./dist/aops-claude`. `aops/scripts/run-mcp.sh` is also the sole tracked copy of
-the pkb stdio MCP launcher: the antigravity build ships it via its normal full-tree copy,
-and the cowork build of `aops-core` (above) copies it in at build time rather than keeping
-a second copy under `aops-core/scripts/`. `ensure-path.sh` is the one exception to the
-single-copy rule — `aops-core/scripts/ensure-path.sh` is a deliberately-maintained second
-tracked copy, because `aops-core/hooks/router.sh` sources it for PATH bootstrap and
-`aops-core` must install standalone without a sibling `aops` present.
+`templates/marketplace.json` (name `academicOps`) is the source of truth for the shipped
+plugin set: `aops` → `./dist/aops-claude`, `aops-tools` → `./dist/aops-tools-claude`,
+`aops-ts` → `./dist/aops-ts-claude`. `aops-cowork` and the `*-antigravity` builds are
+**not** in the marketplace (cowork is a manual upload, §3; antigravity installs go through
+`agy plugin install`, §5.5).
 
-**The `dist/aops-antigravity` and `dist/aops-tools-antigravity` builds exist but
-aren't installed anywhere yet.** Neither `install-agy` (Makefile) nor `install.py`'s
-dev-symlink path wires antigravity builds of `aops-tools`/`aops` into any agy install
-— `install-agy` stays core+tools by design. That's a deliberate install-scope choice, not
-evidence the antigravity builds don't exist or are unfinished (§5.5 covers what
-`install-agy` does install and how).
+Version comes from `get_project_version`: the top-level `pyproject.toml` `version`, with
+git short-SHA / `.dirty` metadata appended for local builds.
 
-`aops-core` also ships the `ida` agent and the shared head ROLE charter it `@`-imports
-(`.agents/charter/head-role-charter.md`, co-shipped from
-`specs/interactive-experience/head-role-charter.md` the same way axioms are co-shipped).
-These lived briefly in a separate `aops-interactive`
-plugin (epic `aops-c70490f4`, PR #2115, 2026-07-05) before that plugin was dissolved
-pre-ship (ruling A10, never installed anywhere, task `aops-7ea63b63`, 2026-07-06): hooks
-don't work across plugins, and the head personality that the `ida` honesty-at-Stop gate
-binds to must live where the hooks are. `ida` does not own the PKB interface — it consumes
-`aops`'s, so its PKB tool grants stay the `mcp__plugin_aops_pkb__*` prefix
-unchanged by the move. The `junior` personality skin was **not** moved here — ruling A8
-makes junior user-level, canonical in Nic's brain repo (`~/brain/.agents/`), never
-plugin-shipped.
+**Plugin identities today:**
 
-## 3. The cowork build variant
+- **`aops`** — the main, standalone plugin: agents + commands + skills + hooks + its own
+  `services` (PKB) MCP registration + axioms. Its manifest/MCP/hooks templates live in
+  `aops/templates/` (`aops.template.json`, `mcp.template.json`, `hooks.template.json`).
+- **`aops-tools`** — a separate lightweight plugin: skills only, no hooks/agents/MCP
+  (replaceable technology-specific skills — dbt, Streamlit, Python plotting/stats). Built
+  for both `claude` and `antigravity`.
+- **`aops-ts`** — a separate, **opt-in**, Claude-only plugin that ships two hooks for
+  remote/cloud sessions: a `SessionStart` hook running `tailscale up` so tailnet-only
+  services (e.g. the PKB MCP at `*.ts.net`) resolve, and a `SessionEnd` hook that parses
+  the session transcript and rsyncs it to a tailnet host (`AOPS_TS_SYNC_DEST`) so cloud
+  transcripts survive container reclamation. The bring-up hook is self-contained bash; the
+  sync hook reuses the `aops` plugin's `transcript.py` when present and falls back to
+  shipping raw JSONL. **No `make` target installs it** — install by hand:
+  `claude plugin install aops-ts@academicOps`.
+- **`aops-cowork`** — a Cowork-specific package; see §3.
 
-`aops-cowork` is a **real, tracked package** (`aops-cowork/`) and a genuinely
-**additive, skills-only** layer on top of `aops-core` — it is not a manifest fabricated
-from `templates/`, and (as of aops-10afe69d) it is not a second copy of the aops-core tree
-either. Users install `aops-core` (from the main dist marketplace) AND `aops-cowork` side
-by side; aops-core supplies every shared agent/skill/command/lib file and the one shared
-hook stack, so aops-cowork ships only what's genuinely Cowork-specific. It is
-Claude-shaped (same `.claude-plugin/plugin.json` + `.mcp.json` layout) but differs in
-**four** ways:
+## 3. The cowork variant
 
-1. **Distinct, tracked plugin manifest.** Sourced from `aops-cowork/.claude-plugin/plugin.json`
-   (a committed file), not a template — the manifest names the plugin `aops-cowork` and
-   tunes the description/keywords. This lets Cowork installs coexist with Claude Code CLI
-   installs without colliding.
-2. **`cowork-sync` skill included.** The skill at `aops-cowork/skills/cowork-sync/SKILL.md`
-   lives ONLY in the cowork package and is overlaid onto the build. It describes the PKB →
-   native task list mirror that the Cowork harness depends on.
-3. **Cowork-only marker files, and ONLY those files.** Source files (currently
-   `aops/skills/end_session/SKILL.md` — moved from `aops-core` via the short-lived
-   `aops-interactive` plugin, aops-cf3fb2f0 then aops-7ea63b63 — and
-   `aops/commands/pull.md` — inherited from aops-core in the aops-b225ec53 extraction)
-   wrap a short Cowork-specific paragraph in `<!-- cowork:only --> ... <!-- /cowork:only -->`.
-   The cowork build scans the `aops-core/` tree AND the `aops/` tree (aops has no
-   cowork build of its own, so this is the only place its marker content ships) for `.md`
-   files containing a real (regex-matched, not just string-contains) marker block and
-   copies ONLY those files — nothing else from any tree is copied. The copied files get
-   the markers stripped and the content kept; every other build of aops-core
-   (claude/antigravity) gets the full aops-core tree with both the markers AND the content
-   stripped, and aops's own (claude-only) build strips the block the same way. The
-   marker handling lives in `_process_cowork_markers` / `_COWORK_BLOCK_RE` in
-   `scripts/build.py`.
-4. **No hooks, no Python deps.** The cowork build ships **no `hooks/` directory, no
-   `hooks.json`, and no `pyproject.toml`/`uv.lock`** — it has no `lib/` or hooks of its own
-   to declare deps for. Installing `aops-core` into Cowork from the `nicsuzor/aops` main
-   `dist` marketplace makes Cowork fire the standard aops-core hook stack (empirically
-   confirmed — see `mem-fe29111a` / task `aops-04075740`), so one shared hook stack serves
-   both surfaces. Bundling hooks here too would register the router a second time and
-   double-fire every lifecycle hook. The only non-Python file aops-cowork needs outside
-   its skill is the pkb MCP launcher (`scripts/run-mcp.sh` + `scripts/ensure-path.sh`,
-   copied individually from `aops/scripts/` — see the `.mcp.json` row in §2).
+`aops-cowork` is a **real, tracked package** (`aops-cowork/`) — an additive, skills-only
+layer meant to be installed alongside the main `aops` plugin on Claude Cowork. Its tree is
+deliberately tiny:
 
-A full `dist/aops-cowork/` build is therefore just: `.claude-plugin/plugin.json`,
-`.mcp.json`, `scripts/{run-mcp.sh,ensure-path.sh}`, `commands/pull.md`,
-`skills/end_session/SKILL.md`, `skills/cowork-sync/`. Compare against `dist/aops-claude/`,
-which ships the full framework (hundreds of files) — the gap is the point.
+```
+aops-cowork/.claude-plugin/plugin.json      # names the plugin `aops-cowork`
+aops-cowork/skills/cowork-sync/SKILL.md     # the PKB → native task-list mirror skill
+```
 
-The cowork build is invoked from `main()` as
-`build_aops_core(aops_root, dist_root, aca_data_path, "cowork", version)` alongside
-`claude`/`antigravity`. Output goes to `dist/aops-cowork/`; `package_artifacts` then zips
-that directory into `dist/aops-cowork-v{version}.zip` for manual upload. The legacy
-`aops-core-v{version}.zip` filename is kept as a symlink for backward compatibility with
-existing download URLs. `build_coworklocal_plugin` additionally emits a rename-only,
-same-content copy at `dist/aops-coworklocal` (plugin name `aops-coworklocal`) plus its own
-isolated `academicOps-cowork` marketplace, purely for local dev use (§5.4) — never
-published.
+Users install `aops` (from the main dist marketplace) AND `aops-cowork` side by side;
+`aops` supplies every shared agent/skill/command/lib file and the one shared hook stack,
+so `aops-cowork` ships only the Cowork-specific `cowork-sync` skill (which describes the
+PKB → native task-list mirror the Cowork harness depends on). It carries **no hooks and no
+Python deps** — installing `aops` provides the shared hook stack, and bundling hooks here
+too would double-register the router.
 
-To add a new cowork-only behaviour, choose the smallest surface that fits:
+The published plugin is `aops-cowork` (intended dist dir `dist/aops-cowork`); a
+local-dev rename copy `aops-coworklocal` (`dist/aops-coworklocal`) exists so a local
+install can't clobber a real published `aops-cowork`. Cowork has **no marketplace
+mechanism on personal accounts**, so the intended distribution is a manual zip upload via
+Claude desktop (**Cowork → Customize → Add plugins → Upload a file**).
 
-- **A whole skill that only makes sense on Cowork** → drop it under
-  `aops-cowork/skills/<name>/`. The cowork build overlays everything in the package's
-  `skills/` automatically — no exclusion needed.
-- **A few paragraphs inside an existing shared skill or command** → wrap them in
-  `<!-- cowork:only -->` markers. The cowork build auto-discovers the file (by scanning
-  for a real marker block, not by an allowlist) and ships ONLY that file, stripped of
-  markers; every other build strips the markers and the wrapped content. Don't add a whole
-  new shared file for this — the marker mechanism exists precisely so one inline paragraph
-  doesn't force shipping the rest of that file's containing directory.
-
-**Known gap (not addressed by aops-10afe69d):** `aops-core` and `aops-cowork` still each
-register their own `pkb` MCP server under different plugin-namespaced tool names
-(`mcp__plugin_aops-core_pkb__*` vs `mcp__plugin_aops-cowork_pkb__*`) — see `aops-6c39380e`.
-Separately, `aops-cowork/skills/cowork-sync/SKILL.md`'s own PKB tool references are
-unprefixed (`mcp__pkb__...`), which doesn't resolve to either registered namespace; this
-predates aops-10afe69d and wasn't introduced by the skills-only trim.
+> **⚠️ Known gap — the cowork build path is currently defunct.** `scripts/build.py` does
+> **not** build `aops-cowork` or `aops-coworklocal` (neither is in the default plugin set,
+> and there is no cowork-specific build function). The Makefile's `package-cowork` target
+> runs `build-dev` and then looks for `dist/aops-coworklocal-v*.zip`, but `build-dev`
+> never produces that zip (build.py emits per-plugin `.tar.gz`, not a cowork `.zip`), so
+> the target falls through to `"(missing — check build output above)"`. The Makefile
+> comments still reference a `build_coworklocal_plugin` function and a
+> `build_aops_core(platform="cowork", …)` path — **neither exists in the current
+> `scripts/build.py`.** There is no working automated build/package path for cowork today;
+> producing an installable `aops-cowork` artifact requires either restoring a cowork build
+> step in `build.py` or assembling the zip by hand from `aops-cowork/` plus the shared
+> `run-mcp.sh`/`ensure-path.sh` launcher. (verify + fix separately; tracked as a cleanup
+> item — do not treat `make package-cowork` as functional.)
 
 ## 4. The plugin manifest contract
 
@@ -242,19 +194,18 @@ conventional path.
 
 Verify what CC actually loaded with `/hooks` inside an interactive Claude session —
 registered hooks appear under their plugin source, e.g.
-`Plugin Hooks (aops-core@academicOps)`. If the plugin shows enabled in
+`Plugin Hooks (aops@academicOps)`. If the plugin shows enabled in
 `~/.claude/plugins/installed_plugins.json` but `/hooks` doesn't list its events, the
 loader couldn't read the hooks file — usually a JSON syntax error, missing event name, or
 unresolvable `${CLAUDE_PLUGIN_ROOT}` in a command path.
 
 Symptom of a hook that's _registered but not firing_: no `*-session-hooks.jsonl` file is
-written for the session. Most common cause is the router or its underlying Python
-crashing before it writes the log; invoke the router manually with a synthetic event to
-reproduce:
+written for the session. Most common cause is the router or its underlying Python crashing
+before it writes the log; invoke the router manually with a synthetic event to reproduce:
 
 ```bash
 echo '{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/tmp/x","cwd":"'$PWD'"}' \
-  | bash ~/.claude/plugins/cache/academicOps/aops-core/<version>/hooks/router.sh --client claude
+  | bash ~/.claude/plugins/cache/academicOps/aops/<version>/hooks/router.sh --client claude
 ```
 
 If that succeeds but a real session produces no hook log, the cause is in how the session
@@ -263,113 +214,100 @@ subagents and isolated worktree sessions may not).
 
 ## 5. Local install & dev loop (the Makefile)
 
-The root `Makefile` is the single entry point for turning source into installed plugins
-on a developer's own machine, across every distribution surface: Claude Code CLI, Cowork,
+The root `Makefile` is the single entry point for turning source into installed plugins on
+a developer's own machine, across every distribution surface: Claude Code CLI, Cowork,
 Antigravity CLI (`agy`), and Windows-side Claude (from WSL). It wraps `scripts/build.py`
-(build) and `scripts/install.py` (the local-dev Gemini/Antigravity linking step), and also
-drives the `claude`/`agy` CLIs directly for plugin lifecycle (install/uninstall,
-marketplace add/remove).
+(build) and drives the `claude` / `agy` CLIs directly for plugin lifecycle
+(install/uninstall, marketplace add/remove). **There is no `scripts/install.py`** — it was
+retired; every install path below is a direct `claude`/`agy` CLI call from a `make`
+target.
 
 ### 5.1 Two install modes: dev vs release
 
-|                             | `make dev` / `install-dev`                                                        | `make install`                                                 |
-| --------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Source**                  | This checkout's `dist/` (freshly built)                                           | The live `dist` branch on GitHub (`nicsuzor/academicOps@dist`) |
-| **Claude marketplace name** | `aops` (local-dir source, generated by `build.py`'s `generate_local_marketplace`) | `academicOps`                                                  |
-| **Claude plugin ref**       | `aops-core@aops`                                                                  | `aops-core@academicOps`                                        |
-| **Purpose**                 | Iterating on source and testing the result immediately                            | Installing/updating the published framework like any user      |
-| **First step run**          | `build-dev` (always rebuilds)                                                     | `clean-local` (tears down any dev install first, see §5.3)     |
+|                             | `make dev` / `install-dev`                                              | `make install`                                                 |
+| --------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Source**                  | This checkout's `dist/` (freshly built by `build-dev`)                  | The live `dist` branch on GitHub (`nicsuzor/academicOps@dist`) |
+| **Claude marketplace name** | `aops` (local-dir source, from build.py's `generate_local_marketplace`) | `academicOps`                                                  |
+| **Claude plugin ref**       | `aops@aops`                                                             | `aops@academicOps`                                             |
+| **Purpose**                 | Iterating on source and testing the result immediately                  | Installing/updating the published framework like any user      |
+| **First step run**          | `build-dev` (always rebuilds)                                           | `clean-local` (tears down any dev install first, see §5.3)     |
 
 The two are namespaced under different marketplace names specifically so one can never
 silently shadow the other — `claude plugin marketplace add` is a no-op when a name already
-exists (it will **not** re-point an existing source to a new one), so without this
-separation a stale dev override could survive a later `make install` and the "live"
-install would silently keep serving the local build.
+exists (it will **not** re-point an existing source to a new one), so both `install-dev`
+and `install-claude` `remove` the marketplace before re-adding it. Without this a stale dev
+override could survive a later `make install` and the "live" install would silently keep
+serving the local build.
 
-### 5.2 Is a dev install "live"? — symlink vs copy, per surface
+`make dev` chains `build-dev` → `install-dev` → `install-hooks` (pre-commit).
 
-Not uniform — this is worth knowing precisely before debugging a change that "isn't
-showing up":
+### 5.2 Is a dev install "live"? — it's copies, everywhere
 
-| Surface                                                                 | Mechanism                                                                                                                         | Live-linked to what?                                                                                                                                                                                                                                                                                                      |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Claude Code CLI**                                                     | `claude plugin marketplace add dist/` (dir source) + `claude plugin install aops-core@aops`                                       | **Copied, not symlinked.** `claude plugin install` copies `dist/`'s content into `~/.claude/plugins/cache/aops/aops-core/<version>/` as real files. Every source edit needs `build-dev` (regenerate `dist/`) **and** a re-`install` (`install.py` uninstalls + reinstalls on every run) before it's visible in a session. |
-| **Antigravity/agy, dev path** (`install.py` Phase 5, run by `make dev`) | `safe_symlink(dist/aops-antigravity, ~/.gemini/config/plugins/aops-core)` and the same under `~/.gemini/antigravity-cli/plugins/` | **Symlinked** to the build output. A source edit still needs `build-dev` to regenerate `dist/aops-antigravity` (agent-format transforms, hook JSON generation, etc.), but once that's done the existing symlink picks it up with no reinstall step.                                                                       |
-| **Gemini CLI workflows/commands** (deprecated surface, `install.py`)    | `safe_symlink` straight from `aops-core/workflows/*` and `aops-core/commands/*`                                                   | **True live source symlinks** — point directly at source files, no build step involved. The Gemini CLI extension itself is deprecated and no longer part of `make install` (see the `GEMINI_*` var comment in the Makefile).                                                                                              |
-| **Gemini CLI skills**                                                   | `safe_symlink` from the first existing dist candidate (`dist/aops/skills`, `dist/aops-core/skills`, …)                            | Symlinked, but to **dist output** — skills there are partly auto-generated from agents, so a raw-source symlink wouldn't be equivalent.                                                                                                                                                                                   |
+With `install.py` retired, there is **no live-symlink dev path**. Both Claude Code and agy
+install by **copying** the built `dist/` content into their plugin caches, so a source edit
+is never picked up automatically:
+
+| Surface             | Mechanism                                                                                                                                                | To see an edit                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Claude Code CLI** | `claude plugin marketplace add dist/` (dir source) + `claude plugin install aops@aops` — **copies** into `~/.claude/plugins/cache/aops/aops/<version>/`. | Re-run `make install-dev` (rebuild `dist/`, then uninstall + reinstall). |
+| **Antigravity/agy** | `agy plugin install dist/aops-antigravity` — **copies** into `~/.gemini/config/plugins/aops/` and `~/.gemini/antigravity-cli/plugins/aops/`.             | Re-run `build-dev` + `install-agy`.                                      |
+
+`install-dev` also prunes stale versions from the local `aops` marketplace cache and (via
+the axioms transport, §2) runs `scripts/install_automode.py` to merge the always-on axioms
+into `~/.claude/settings.json`.
 
 ### 5.3 Cleanup targets — what removes what, and when
 
-| Target                                                 | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | When it runs                                                                                                                                        |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `clean-local`                                          | Uninstalls the local-dev Claude plugins (`aops-core@aops`, `aops-tools@aops`) and removes the `aops` marketplace; uninstalls the released plugins too and removes the `academicOps` marketplace; uninstalls agy's `aops-core`/`aops-tools`; deletes `dist/aops-antigravity` + `dist/aops-tools-antigravity` (so a subsequent `install-agy` falls through to the live GitHub URL instead of a stale local dir); strips any leftover **symlink** (never a real copy) at the agy plugin paths so a dangling dev-symlink can't collide with the release-path install that follows (§5.5). | Automatically, as the first step of `make install`. Idempotent and quiet — uninstalling/removing something already absent is expected and silenced. |
-| `uninstall-dev`                                        | Inverse of the dev install: tears down the local `aops` marketplace/plugins and restores the release `academicOps` marketplace + plugins.                                                                                                                                                                                                                                                                                                                                                                                                                                             | Manually, when done dev-testing.                                                                                                                    |
-| `uninstall-cowork`                                     | Removes _only_ the isolated `academicOps-cowork` marketplace + `aops-coworklocal` plugin. Leaves `academicOps`/`aops-core`/`aops-tools` untouched.                                                                                                                                                                                                                                                                                                                                                                                                                                    | Manually.                                                                                                                                           |
-| `clean` / `clean-plugins` (`scripts/clean_plugins.py`) | Disk hygiene, not marketplace/plugin-identity cleanup: prunes CLI-surface cache versions not referenced by `installed_plugins.json` plus orphaned `.install-manifests/*.json`; on the desktop GUI surface, force-strips `aops-core`/`aops-tools` entries from `local-agent-mode-sessions/*/rpm/manifest.json` and deletes their unpacked dirs (for when the GUI's own uninstall button fails).                                                                                                                                                                                        | Manually (`make clean`/`make clean-plugins`), or whenever the GUI uninstall path is broken.                                                         |
+| Target                                                 | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                            | When it runs                                                                                |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `clean-local`                                          | Uninstalls the local-dev Claude plugins (`aops@aops`, `aops-tools@aops`) and removes the `aops` marketplace; uninstalls the released plugins and removes the `academicOps` marketplace; uninstalls agy's `aops`/`aops-tools`; deletes `dist/aops-antigravity` + `dist/aops-tools-antigravity`; strips any leftover **symlink** (never a real copy) at the agy plugin paths so a dangling dev-symlink can't collide with the release install that follows (§5.5). | Automatically, as the first step of `make install`. Idempotent and quiet.                   |
+| `uninstall-dev`                                        | Inverse of the dev install: tears down the local `aops` marketplace/plugins and restores the release `academicOps` marketplace + plugins.                                                                                                                                                                                                                                                                                                                        | Manually, when done dev-testing.                                                            |
+| `uninstall-cowork`                                     | Removes _only_ the isolated `academicOps-cowork` marketplace + `aops-coworklocal` plugin. Leaves `academicOps`/`aops`/`aops-tools` untouched.                                                                                                                                                                                                                                                                                                                    | Manually.                                                                                   |
+| `clean` / `clean-plugins` (`scripts/clean_plugins.py`) | Disk hygiene, not marketplace/plugin-identity cleanup: prunes CLI-surface cache versions not referenced by `installed_plugins.json` plus orphaned `.install-manifests/*.json`; on the desktop GUI surface, force-strips the aops plugin entries (drop-set: `aops-core`, `aops`, `aops-ts`, `aops-tools`) from `local-agent-mode-sessions/*/rpm/manifest.json` and deletes their unpacked dirs (for when the GUI's own uninstall button fails).                   | Manually (`make clean`/`make clean-plugins`), or whenever the GUI uninstall path is broken. |
 
 There is currently **no mechanism, anywhere in this pipeline, that removes stray/orphan
-MCP server entries** from a user's `~/.claude.json`. The dotfiles-side installer
-(`~/dotfiles/scripts/setup-ai-tools.sh`) only ever merges `config/mcp/*.json` templates
-into `~/.claude.json` by name (replacing a same-named entry, leaving everything else
-alone) — it never wipes. If stray MCP servers need removing, that's a manual edit today.
+MCP server entries** from a user's `~/.claude.json`. If stray MCP servers need removing,
+that's a manual edit today.
 
 ### 5.4 Cowork install (no marketplace mechanism, mac vs Windows)
 
-Cowork has **no marketplace mechanism on personal accounts** at all, so both platforms
-funnel to the same manual step: build a zip, then upload it through Claude desktop's
-**Cowork → Customize → Add plugins → Upload a file** UI. `aops-coworklocal` (built by
-`build_coworklocal_plugin`, §3) is a rename-only copy of `dist/aops-cowork` under a
-distinct plugin name, specifically so a local build never clobbers a real installed
-`aops-cowork`.
+Cowork has **no marketplace mechanism on personal accounts**, so both platforms funnel to
+the same manual step: build a zip, then upload it through Claude desktop's **Cowork →
+Customize → Add plugins → Upload a file** UI. `make package-cowork` is meant to produce the
+zip and (on WSL) copy it into the Windows-side `Downloads` folder via
+`package-cowork-windows` (UNC paths are flaky in the native file-picker). `make
+install-cowork` registers a separate `academicOps-cowork` marketplace over a local
+directory (`dist/aops-coworklocal`) and installs from it, so it never touches the genuine
+`academicOps` marketplace.
 
-The platform difference is only in _how the zip gets somewhere the file-picker can see
-it_:
-
-- **Mac (or any native `make` host)** — `make package-cowork` runs `build-dev` (which
-  also emits `dist/aops-coworklocal-vX.Y.Z.zip`); since `make` runs natively, the zip is
-  already on a native drive and the upload picker can point straight at `dist/`.
-- **Windows via WSL** — `package-cowork` auto-chains into `package-cowork-windows` when
-  it detects `/mnt/c` + a Microsoft kernel: it copies the newest zip into the
-  **Windows-side `Downloads` folder** (resolved via `cmd.exe /c echo %USERNAME%`), because
-  UNC paths (`\\wsl$\...`) are flaky in the native file-picker.
-- **Native Windows without WSL** — there is no automated path; `make` doesn't run there.
-  The zip has to be produced on another machine (or in WSL) and transferred manually.
+> **⚠️** As noted in §3, the automated cowork build path is currently defunct —
+> `make package-cowork` will not produce a zip until the cowork build step is restored.
+> `make install-cowork` similarly depends on a `dist/aops-coworklocal` that nothing builds
+> today.
 
 ### 5.5 Antigravity (`agy`) install: release vs local
 
 `install-agy` uses agy's **official** `agy plugin install <source>` — never hand-copying
-plugin source. agy has no user-addable marketplace (its marketplaces are built into the
-binary), so third-party plugins install from either a local directory or a GitHub URL
-(`agy plugin install https://github.com/<o>/<r>/tree/<branch>/<subpath>`, which clones the
-repo, checks out the branch, locates the plugin in the subpath, and converts/installs it).
-`install-agy` prefers a local `dist/aops-antigravity` when present (a prior `build-dev`
-ran) and otherwise falls back to the live `dist` branch URL — deliberately **not** GitHub's
-`/releases/latest/download/` assets, since GitHub's "latest" excludes prereleases and the
-antigravity assets only attach to prerelease builds. Either way, **agy copies** the plugin
-into `~/.gemini/config/plugins/aops-core/` and `~/.gemini/antigravity-cli/plugins/aops-core/`
-— it does not symlink to source.
+plugin source. agy has no user-addable marketplace, so third-party plugins install from
+either a local directory or a GitHub URL. For each of `aops` and `aops-tools`, `install-agy`
+prefers the local `dist/aops-antigravity` / `dist/aops-tools-antigravity` when present (a
+prior `build-dev` ran) and otherwise falls back to a live `dist`-branch URL. Either way,
+**agy copies** the plugin into `~/.gemini/config/plugins/<plugin>/` and
+`~/.gemini/antigravity-cli/plugins/<plugin>/` — it does not symlink.
 
-This is a genuinely different mechanism from the dev-symlink path in §5.2 (`install.py`
-Phase 5), which bypasses `agy plugin install` entirely and hand-symlinks
-`dist/aops-antigravity` into those same two paths. Both write to the same target, so
-`clean-local` now removes any stale symlink at those paths before a live `install-agy` run
-(§5.3) — this prevents a leftover dev symlink from either dangling (after its target
-`dist/aops-antigravity` is deleted) or silently shadowing what `agy plugin install` writes.
-
-There's also a permanent workaround baked into `install-agy`: agy doesn't substitute
-`${extensionPath}` in the installed `mcp_config.json` (upstream bug
-antigravity-cli#390), so `install-agy` `sed`s the token to the real install dir after every
-install. Remove this once #390 is fixed and `${extensionPath}` resolves natively.
+The `${extensionPath}` non-resolution bug (antigravity-cli#390) is handled at **build**
+time now: `build.py` writes the antigravity `mcp_config.json` `services` server to launch
+via `bash -c ~/.gemini/config/plugins/<plugin>/scripts/run-mcp.sh` (§2), so there is no
+post-install `sed` step. Remove that workaround once #390 is fixed upstream.
 
 ### 5.6 Plugin → surface matrix
 
-| Plugin       | Claude Code CLI                                                                                       | Claude Cowork                                                | Antigravity/agy                 | Windows-side Claude (WSL) | Gemini CLI (deprecated)                |
-| ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------- | ------------------------- | -------------------------------------- |
-| `aops-core`  | ✅ `aops-core@academicOps` — hard-fail gate (the success criterion of the whole `make install` chain) | ✅ `aops-cowork` / `aops-coworklocal` — manual upload (§5.4) | ✅                              | ✅                        | was ✅, removed from the install chain |
-| `aops-tools` | ✅ (soft-fail — asset can legitimately be absent from a dist build)                                   | — (not built for cowork)                                     | ✅ (soft-fail)                  | ✅                        | was ✅                                 |
-| `aops-tools` | ✅ (soft-fail)                                                                                        | —                                                            | not wired up (build exists, §2) | ✅                        | —                                      |
-| `aops`       | ✅ (soft-fail)                                                                                        | —                                                            | not wired up (build exists, §2) | ✅                        | —                                      |
-| `aops-ts`    | manual only — `claude plugin install aops-ts@academicOps` (§2)                                        | —                                                            | —                               | —                         | —                                      |
+| Plugin        | Claude Code CLI                                                                                  | Claude Cowork                                           | Antigravity/agy       | Windows-side Claude (WSL) |
+| ------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | --------------------- | ------------------------- |
+| `aops`        | ✅ `aops@academicOps` — hard-fail gate (the success criterion of the whole `make install` chain) | ➖ via `aops-cowork` side-by-side (manual upload, §5.4) | ✅ (`install-agy`)    | ✅                        |
+| `aops-tools`  | ✅ (soft-fail — asset can legitimately be absent from a dist build)                              | —                                                       | ✅ (`install-agy`)    | ✅                        |
+| `aops-ts`     | manual only — `claude plugin install aops-ts@academicOps` (§2)                                   | —                                                       | — (Claude-only build) | —                         |
+| `aops-cowork` | —                                                                                                | manual upload (§3/§5.4) — **build path defunct**        | —                     | —                         |
 
 ## 6. Release path (`dev` → tag → publish)
 
@@ -392,8 +330,8 @@ Manual rebuild against a specific ref: push a pre-release tag at that commit —
 The full merge-gate → release → publish → version-sync contract (CI required checks, the
 two human approval gates, the `dev`/`dist` branch topology decision record, and the
 version/`uv.lock` sync hardening) is owned by
-[`specs/workflows/releasing.md`](workflows/releasing.md) — read that for
-release-pipeline detail; it isn't duplicated here.
+[`specs/workflows/releasing.md`](workflows/releasing.md) — read that for release-pipeline
+detail; it isn't duplicated here.
 
 ## 7. Local verification
 
@@ -402,55 +340,59 @@ After running `uv run scripts/build.py`:
 ```bash
 # 1. Manifest validates and strips marketplace leakage
 jq '{name, version, mcpServers}' dist/aops-claude/.claude-plugin/plugin.json
-jq 'has("source"), has("category")' dist/aops-claude/.claude-plugin/plugin.json  # both false
 
 # 2. Hooks payload structure
 jq '.hooks | keys' dist/aops-claude/hooks/hooks.json
 
 # 3. Install locally, then in a fresh interactive `claude` session run `/hooks`
 claude plugin install ./dist/aops-claude
-# in the new session, `/hooks` should list `Plugin Hooks (aops-core@academicOps)`
+# in the new session, `/hooks` should list `Plugin Hooks (aops@academicOps)`
 # and a session-hooks.jsonl should appear under ~/.claude/projects/<slug>/
 ```
 
-If `/hooks` shows the plugin's events but no `*-session-hooks.jsonl` is written, the
-router is crashing. Reproduce in isolation:
+`make build-dev` additionally runs `claude plugin validate dist/aops-claude` /
+`dist/aops-tools-claude` and `agy plugin validate dist/aops-antigravity` /
+`dist/aops-tools-antigravity` when those CLIs are on PATH.
+
+If `/hooks` shows the plugin's events but no `*-session-hooks.jsonl` is written, the router
+is crashing. Reproduce in isolation:
 
 ```bash
 echo '{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/tmp/x","cwd":"'$PWD'"}' \
-  | bash ~/.claude/plugins/cache/academicOps/aops-core/<version>/hooks/router.sh --client claude
+  | bash ~/.claude/plugins/cache/academicOps/aops/<version>/hooks/router.sh --client claude
 ```
 
 ## 8. Common breakage modes
 
 - **Plugin enabled but `/hooks` doesn't list its events.** CC couldn't read
-  `hooks/hooks.json` — usually a JSON syntax error or an unresolvable command path.
-  Inspect with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
+  `hooks/hooks.json` — usually a JSON syntax error or an unresolvable command path. Inspect
+  with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
 - **`/hooks` lists events but no session-hooks log is written.** Router crashes before
   logging. Run the router manually with a synthetic event (see §4/§7).
 - **Subagent / isolated-worktree sessions don't run SessionStart.**
   Programmatically-spawned Claude sessions (Agent tool with `isolation: worktree`,
   FleetView-launched sessions) may not invoke SessionStart hooks the way the interactive
-  `claude` CLI does. Symptom: hooks fire fine for normal `claude` sessions in the same
-  project, but a subagent in the same repo has no env file written. This is a
-  session-kind issue, not a plugin manifest issue.
+  `claude` CLI does. This is a session-kind issue, not a plugin manifest issue.
 - **Plugin shows installed but version drifted.** `~/.claude/plugins/installed_plugins.json`
   pins an older version than `marketplace.json` advertises. Run
-  `claude plugin update aops-core@academicOps` (note: the marketplace nickname is
-  `academicOps`, the plugin name is `aops-core`).
-- **"Unrecognized keys" validation error on install.** `source` and `category` leaked into
-  `dist/aops-claude/.claude-plugin/plugin.json`. `build.py` already strips these — if it
-  recurs, check the template doesn't have them either.
+  `claude plugin update aops@academicOps` (marketplace nickname `academicOps`, plugin name
+  `aops`).
+- **"Unrecognized keys" validation error on install.** Marketplace-only fields (`source`,
+  `category`) leaked into `dist/aops-claude/.claude-plugin/plugin.json`. Check the plugin's
+  `templates/aops.template.json` doesn't carry them.
 - **A local dev install (`make dev`) "isn't shadowing" a release install, or vice versa.**
   Check `claude plugin marketplace list` for both `aops` (dev) and `academicOps` (release)
-  — `marketplace add` never re-points an existing name (§5.1), so a stale one of either
-  can silently win. Run `make clean-local` to reset before `make install`.
-- **agy shows a plugin installed but edits to `dist/aops-antigravity` never show up.**
-  Check whether `~/.gemini/config/plugins/aops-core` is a symlink (dev path, §5.2) or a
-  real directory (release path via `agy plugin install`, §5.5) — `ls -la` /
-  `readlink`. A symlink needs only `build-dev`; a real copy needs `install-agy` re-run.
+  — `marketplace add` never re-points an existing name (§5.1), so a stale one of either can
+  silently win. Run `make clean-local` to reset before `make install`.
+- **agy shows a plugin installed but edits to `dist/aops-antigravity` never show up.** agy
+  installs are **copies** (§5.5) — an edit needs `build-dev` + `install-agy` re-run. If
+  `~/.gemini/config/plugins/aops` is a leftover symlink from an older dev workflow, remove
+  it (`make clean-local` strips stray symlinks at those paths).
+- **`make package-cowork` produces no zip.** Expected — the cowork build path is currently
+  defunct (§3). This is a known gap, not a local misconfiguration.
 
 ## 9. Do not modify
 
-Files under `dist/` are build outputs. Edit `templates/`, `aops-core/`, or
-`scripts/build.py` and rerun the build. PRs that touch `dist/` will be reverted.
+Files under `dist/` are build outputs. Edit `templates/`, the plugin source directories
+(`aops/`, `aops-tools/`, `aops-ts/`, `aops-cowork/`), or `scripts/build.py` and rerun the
+build. PRs that touch `dist/` will be reverted.

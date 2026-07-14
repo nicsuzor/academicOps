@@ -55,8 +55,8 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for quality assessment guidance and knowledge standards:
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops-core/skills/remember/references/maintenance-phases.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/aops/skills/remember/references/maintenance-phases.md
 
             ## Process
 
@@ -97,7 +97,7 @@ jobs:
             ## CI-Specific Rules
             - **No PKB MCP server** — you are working directly with markdown files.
               Use Grep/Glob to search, Read to inspect files. Do NOT reference
-              mcp__pkb__* tools.
+              mcp__services__pkb__* tools.
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate the qualitative review to
               an `aops-core:pauli` sub-agent, you MUST pass the explicit `tools`

@@ -20,7 +20,7 @@ description: Process for collaboratively developing task specifications before i
    - Confirm this is actual pain point worth automating
 
 1. **Create specification document**
-   - Copy `$AOPS/aops-core/skills/aops/templates/spec.md` to working location
+   - Copy `$AOPS/aops/skills/aops/templates/spec.md` to working location
    - Specs live in the brain PKB (project: aops, type: spec); use `mcp__services__pkb__create` to persist
    - This is a collaborative working document
 

@@ -1,6 +1,6 @@
 ---
 name: enforcer
-description: PR-context framing for the RBG enforcer agent. Sourced after aops-core/agents/rbg.md to assemble the full enforcer prompt. Reusable — no GHA-only assumptions; env vars are the interface.
+description: PR-context framing for the RBG enforcer agent. Sourced after aops/agents/rbg.md to assemble the full enforcer prompt. Reusable — no GHA-only assumptions; env vars are the interface.
 ---
 
 # Enforcer — PR Review Framing

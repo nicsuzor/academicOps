@@ -15,7 +15,7 @@ mode: execution
 domain:
   - meta
   - framework
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__search, mcp__pkb__retrieve_memory
+allowed-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__append, mcp__services__pkb__search, mcp__services__pkb__retrieve_memory
 version: 1.0.0
 ---
 
@@ -85,7 +85,7 @@ Create or bind to a parent task for the session's work. All findings are childre
 If you found something worth acting on:
 
 ```
-mcp__pkb__create_task(
+mcp__services__pkb__create_task(
   title="[specific finding, not generic]",
   parent="<session-task-id>",
   tags=["learning", "<domain>"]
@@ -102,7 +102,7 @@ mcp__pkb__create_task(
 When creating or revising a plan, create an explicit feedback task:
 
 ```
-mcp__pkb__create_task(
+mcp__services__pkb__create_task(
   title="Review: [plan description] — get feedback on [specific question]",
   tags=["feedback", "<domain>"]
 )
@@ -113,7 +113,7 @@ mcp__pkb__create_task(
 When completing work that changed instructions or methodology:
 
 ```
-mcp__pkb__create_task(
+mcp__services__pkb__create_task(
   title="Verify: [change description] — did it work in practice?",
   tags=["verification", "<domain>"],
   body="Check in 3 sessions whether [specific observable outcome]."
@@ -150,6 +150,6 @@ When explicitly dogfooding (e.g., "dogfood this", interactive framework session)
 
 ## Related
 
-- `aops-core/commands/learn.md` — the framework's immune system (root cause → enforcement)
-- `aops-core/skills/hydrator/workflows/dogfooding.md` — the original framework-specific version
+- `aops/commands/learn.md` — the framework's immune system (root cause → enforcement)
+- `aops/skills/hydrator/workflows/dogfooding.md` — the original framework-specific version
 - `specs/feedback-loops.md` — the full Observe→Analyze→Diagnose→Intervene→Verify architecture

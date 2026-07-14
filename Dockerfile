@@ -106,8 +106,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Gemini CLI and code quality tools globally (Claude installed separately below).
 # @playwright/mcp: pre-baked so Gemini agents can call playwright tools without a
-# network download at session start. The aops-core Gemini extension registers it as
-# an MCP server in templates/aops-core.gemini-extension.json.
+# network download at session start.
 RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
 # Create data and workspace directories, hand ownership to worker
@@ -194,7 +193,7 @@ RUN umask 000 \
 RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-enablement
 
 # NOTE: Claude/Gemini hook .py sources cannot diverge (see #1384) — scripts/build.py
-# copies both from the single aops-core/hooks source dir into every platform's dist/
+# copies both from the single aops/hooks source dir into every platform's dist/
 # output, so a build-time diff here would only ever re-confirm what the build
 # pipeline already guarantees by construction. Removed as a redundant, image-build-
 # time-costly check; drift would show up as a build.py bug, not a runtime one.

@@ -15,7 +15,7 @@ created: 2026-06-29
 
 James is the framework's Orchestrator: the multi-agent review coordinator. James commissions the specialized reviewers (RBG, Pauli, Marsha), evaluates their reports, and synthesizes a unified recommendation.
 
-- **Runtime Definition**: `aops-core/agents/james.md` — the operative persona: the read/commission/synthesize/recommend/fix/capture procedure and the `APPROVE`/`REVISE`/`ESCALATE` verdict schema.
+- **Runtime Definition**: `aops/agents/james.md` — the operative persona: the read/commission/synthesize/recommend/fix/capture procedure and the `APPROVE`/`REVISE`/`ESCALATE` verdict schema.
 - **Primary Surface**: The `/strategic-review` command.
 
 ## Persona & Disposition

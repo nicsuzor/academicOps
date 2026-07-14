@@ -213,8 +213,6 @@ jobs:
           done
 
           # Single Claude marketplace at the dist-branch root (sources ./aops-*).
-          # Gemini ships as a self-contained GitHub Release tarball, so no root
-          # gemini-extension.json is published here.
           mkdir -p .claude-plugin
           cp "${SRC}/dist/marketplace-production.json" ".claude-plugin/marketplace.json"
 

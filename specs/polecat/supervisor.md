@@ -136,7 +136,7 @@ extensions.
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces, atomic claiming, and
   PR-based merge that the supervisor dispatches onto
-- `aops-core/skills/supervisor/SKILL.md` — The operative skill (orient → act →
+- `aops/skills/supervisor/SKILL.md` — The operative skill (orient → act →
   checkpoint loop, proof discipline, evaluation protocol)
 - `aops/commands/pull.md` and `dispatch.md` — The Select+Gates spine shared by
   `/pull`, `/dispatch`, and `/supervisor`.

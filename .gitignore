@@ -18,11 +18,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 .aops-version
-# aops-core/pyproject.toml is now a tracked source file (epic-267fe017): the
-# build stamps its placeholder version and (for cowork) trims the hooks package,
-# but the dependency set is authoritative in-tree. uv.lock is still generated
-# per-platform into dist/ at build time, so it stays ignored.
-aops-core/uv.lock
 
 # C extensions
 *.so
@@ -341,12 +336,8 @@ data/views/today-priorities-*.md
 reference-graph.json
 reference-graph.csv
 
-# Plugin-specific MCP configs (generated from templates)
-aops-core/.mcp.json
-
 # Generated marketplace.json (produced by build.py from templates/marketplace.json)
 .claude-plugin/marketplace.json
-gemini-extension.json
 
 streamlit_log.txt
 data/
