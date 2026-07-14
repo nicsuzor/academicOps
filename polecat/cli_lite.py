@@ -234,8 +234,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = [
                 "claude",
-                "--permission-mode=plan",
-                "--allow-dangerously-skip-permissions",
+                "--permission-mode=auto",
                 "--setting-sources=user,project",
             ]
         elif agent_cmd == "agy":

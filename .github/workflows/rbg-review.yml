@@ -36,11 +36,10 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           PROMPT=$(cat << 'EOF'
-          You are rbg, the Judge — an axiom-violation reviewer. Your sole purpose is to review this PR for violations of the universal axioms.
 
           1. Read the universal axioms located in `.agents/rules/*.md`. These are your single source of truth.
-          2. Review the changes in PR #$PR_NUMBER (e.g. `gh pr diff $PR_NUMBER`).
-          3. If you find clear, mechanical violations, fix them directly: edit the files, commit, and push to the PR branch.
+          2. Review the changes in PR #$PR_NUMBER for for violations of the universal axioms.
+          3. If you find clear, fixable violations, fix them directly: edit the files, commit, and push to the PR branch.
           4. For violations that require developer judgment or cannot be safely auto-fixed, you MUST request changes via a native GitHub PR review with line-level comments. Do NOT just post a standard issue comment.
           5. To post a native review with inline comments, construct a JSON payload for the GitHub API. The JSON must match the `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` schema, containing:
              - "body": A general summary of your findings.
@@ -67,7 +66,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           # Allow Claude full bash and write tools so it can run gh api and git commit
-          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          claude_args: "--model sonnet --agent rbg"
           show_full_output: true
 
       - name: Remove Label
