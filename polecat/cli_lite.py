@@ -220,12 +220,19 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
         # Determine internal CLI tool & args
         docker_args = []
 
-        # Determine interactive TTY flag
-        is_interactive = (
-            agent_cmd in ("shell", "sleep", "sleep infinity")
-            or not extra_args
-            or "-p" not in extra_args
-        )
+        # Determine interactive TTY flag.
+        # Bug (found 2026-07-14 dispatching a demo container over a non-tty SSH
+        # pipe): the old check forced -it for agent_cmd in (shell, sleep, ...)
+        # regardless of whether a TTY was actually available, so `docker run -it`
+        # hard-failed with "the input device is not a TTY" instead of degrading
+        # gracefully. This is the same bug class fixed once already in the
+        # now-removed polecat/cli.py (task-academicops-a39821f4, PR #1340) for
+        # the `crew -- -p "..."` headless path; cli_lite.py reintroduced it in a
+        # sibling implementation that fix never touched.
+        # Fix: never request -it without a real TTY on our side, and still honour
+        # an explicit `-p` (headless prompt) flag as an unconditional override.
+        explicit_headless = "-p" in extra_args
+        is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
 
