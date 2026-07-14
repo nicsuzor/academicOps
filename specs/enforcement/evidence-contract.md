@@ -145,17 +145,25 @@ no programmatic, deterministic, or mechanical enforcement of quality, ever).
 
 This spec formalises a contract that was previously stated informally (a
 prose reminder in the exit-reflection hook and a mechanism bullet in
-[task-contract.md](task-contract.md)); it does not yet have a mechanical
-gate enforcing it beyond `release_task`'s existing evidence-or-failure-reason
-check (H7). A strengthened release gate that checks handback _content_ — not
-just presence — is tracked separately (`epic_17aa5821`).
+[task-contract.md](task-contract.md)). Per the governing principle
+([enforcement.md](enforcement.md#governing-principle--agents-all-the-way-down),
+§0 "agents all the way down"), there is **no mechanical gate that judges
+handback _content_** — that would be a mechanical quality verdict, which the
+framework forbids. The obligation is carried two ways: (1) **agentically** —
+the exit-reflection reminder instructs every agent to hand back with checkable
+evidence or a stated failure reason (`aops/templates/ida-reminder.md`), and
+the boundary-check / QA-around reviewers judge whether the evidence actually
+holds (§Substance over form above); and (2) **structurally, presence-only** —
+`release_task`/`complete_task` make the required fields mandatory and advertise
+them as mandatory (non-empty checks; never content inspection). `epic_17aa5821`
+delivered (1); its mem field-mandatoriness follow-up delivers (2).
 
-**Tasks created before that strengthened gate ships are grandfathered.**
-Concretely: the gate, when it lands, evaluates a task's `created` frontmatter
-timestamp against its own ship date. Tasks created before that date are not
-retroactively held to a stricter mechanical check than existed when they were
-claimed — the agentic/prose obligation in this file binds immediately and
-universally (it always did, informally), but the _mechanical_ gate epic_17aa5821
-builds is forward-only. This uses the existing `created` field; it introduces
-no new frontmatter field (D2: ≤1 new frontmatter field framework-wide for this
-module, and zero is simpler than one).
+**Tasks created before the presence-only field requirement ships are
+grandfathered.** Concretely: the mem gate, when it lands, evaluates a task's
+`created` frontmatter timestamp against its own ship date. Tasks created before
+that date are not retroactively held to a stricter presence check than existed
+when they were claimed — the agentic/prose obligation in this file binds
+immediately and universally (it always did, informally), but the _mechanical_
+presence requirement is forward-only. This uses the existing `created` field;
+it introduces no new frontmatter field (D2: ≤1 new frontmatter field
+framework-wide for this module, and zero is simpler than one).
