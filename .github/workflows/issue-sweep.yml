@@ -69,7 +69,7 @@ jobs:
 
             ## CI-Specific Rules & Hard Constraints
             - **No PKB MCP server** — you are working directly with markdown files in the brain repo.
-              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT reference mcp__pkb__* tools.
+              Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT reference mcp__services__pkb__* tools.
             - **Datestamped Instances**: Since `mcp_pkb_claim_task` is unavailable, manually emulate it.
               Create a new markdown file named `epic-a0523a25-YYYYMMDD-HHMM-ci.md` in the appropriate tasks/ directory,
               copy the frontmatter and body from `epic-a0523a25.md`, update its ID, and append your cycle log there.

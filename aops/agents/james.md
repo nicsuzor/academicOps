@@ -9,7 +9,7 @@ tools:
   - Edit
   - Agent
   - Skill
-  - mcp__plugin_aops_pkb__*
+  - mcp__services__pkb__*
   - mcp_*_outlook_*
   - mcp_*_zot_*
   - mcp_*_pkb_*

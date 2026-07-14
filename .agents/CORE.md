@@ -82,7 +82,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 
 **MCP Servers:**
 
-- **PKB** (`mcp__plugin_aops-core_pkb__*`): Full task/document/graph/memory CRUD (~50 tools)
+- **PKB** (`mcp__services__pkb__*`): Full task/document/graph/memory CRUD (~50 tools)
 - **Outlook** (`mcp__outlook__*`): Messages, calendar, attachments, search
 - **Discord** (`mcp__plugin_discord_discord__*`): Fetch/reply/edit/react
 - **Computer-use** (`mcp__computer-use__*`): Full desktop automation (screenshot, click, type, scroll) — 30-min approval timeout for Dispatch-spawned sessions

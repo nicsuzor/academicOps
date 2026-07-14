@@ -47,7 +47,7 @@ Agent(
 
 **Edit scope**: `Edit` is granted ONLY to mark transcripts as `mined: YYYY-MM-DD` in their frontmatter. Transcripts live OUTSIDE `$ACA_DATA` (typically `$AOPS_SESSIONS/**/*.md`), which is the explicit exception to the [[remember]] skill's hard rules. Sub-agents must NOT use `Edit` to modify anything inside `$ACA_DATA` — knowledge writes go through PKB MCP tools.
 
-**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__plugin_aops_pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
+**CI environment**: when running on GitHub Actions, the PKB MCP server is unavailable. In that environment sub-agents work directly against markdown files via `Bash`/`Glob`/`Edit`/`Write` and the dispatch can omit the `mcp__services__pkb__*` entries. The parent must surface this clearly in the dispatched prompt so the sub-agent knows which channel is live.
 
 ### PKB MCP Tool Mutator Invariants (dry_run Default)
 
