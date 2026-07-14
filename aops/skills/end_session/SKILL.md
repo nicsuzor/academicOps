@@ -2,6 +2,7 @@
 name: end_session
 description: "Canonical session close \u2014 commit, push, PR, release_task, reflection\
   \ blocks, handover. Use /dump for emergency bail (no commit/PR/reflection)."
+agent: pauli
 ---
 
 # /end-session: Canonical Session Close and Handover

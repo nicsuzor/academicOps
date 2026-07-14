@@ -4,6 +4,7 @@ description: "Unified multi-agent review of any artifact \u2014 a document, plan
   \ proposal, or pull request. The calling agent deploys rbg, pauli, and marsha in\
   \ parallel, then @james reconciles their findings into one verdict. Pass `comment`\
   \ and/or `fix` to write the result back to the review surface."
+agent: james
 ---
 
 # /strategic-review — Unified Multi-Agent Review

@@ -5,6 +5,7 @@ description: Just before dispatch, expand exactly the subtask(s) due next into a
   evaluation-evidence contract, effort/door-type) a contextless smart agent can execute
   and be judged on. Personality-agnostic; the composer must never be the executor.
 context: fork
+agent: pauli
 ---
 
 # Brief Skill
