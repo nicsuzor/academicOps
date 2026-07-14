@@ -28,6 +28,15 @@ An **agent personality** (charter — Ida, pauli, rbg, marsha, james, …) defin
 
 ## What actually enforces things today
 
+**Enforcement is risk-reduction**: compliance is not guaranteed. Mechanical hard blocks are often NOT the best option. We have four groups of levers:
+
+1. **Norms** — the agent's internalised alignment with intent (prompt directives, system rules, explicit instructions).
+2. **Cost** — the token/time/friction cost of complying versus the incentive to bypass.
+3. **Defaults** — whether the compliant path is mechanically the path of least resistance (e.g. automated execution) rather than something the agent must remember to invoke.
+4. **Likelihood** — the probability a violation is detected, multiplied by its consequence (Rule + Delict × Likelihood) — this is the one lever pyramid severity directly moves.
+
+Before escalating severity, check whether the actual failure is a cost or defaults problem — the "Escalate up" rule below already requires confirming the lighter tiers were exhausted first, and a cost/defaults fix is usually cheaper than a severity bump. _Worked example:_ repeated stale-state PKB assertions across sessions are not a norms or severity failure — agents are told to check the PKB and the rule is known and enforced. The fix is lowering the cost (better search ergonomics, trimmed response payloads) and improving the default (inject PKB search results directly into context via the `UserPromptSubmit` hook, rather than merely exhorting agents to search).
+
 ### 1. Structural prevention (the only mechanical layer)
 
 - **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `polecat/cli.py` / `cli_lite.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
