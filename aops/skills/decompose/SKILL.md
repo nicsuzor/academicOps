@@ -57,7 +57,7 @@ mini-example: `references/cutting-seams.md`.
 
 ## Step 2 — emit the standing review tasks into the DAG
 
-Pick the process workflow the epic follows from `aops/workflows/INDEX.md`: the **outer**
+Pick the process workflow the epic follows from `../../workflows/INDEX.md`: the **outer**
 workflow (how the epic proceeds to acceptance) and, per subtask, the **inner** workflow (how one
 task proceeds to done).
 
@@ -69,14 +69,28 @@ each review task is a separate, later dispatch concern — reviewer ≠ executor
 property of each review being its own independently-dispatched task, not something you build or
 enforce here.
 
-- **pauli — premise ("is this a good idea?")** — worth, alignment with design intent, and shape.
-  Emit as an early blocking task: the rest of the epic's work depends on it clearing. There is no
-  separate "premise gate" to invoke — this task IS the mechanism.
-- **rbg — rules ("do these changes violate any rules?")** — boundary review of the task contract
-  and handback only (inputs/outputs, never the transcript). Wire it to block epic acceptance.
-- **marsha — QA, post-hoc ("are the changes high-quality and do they achieve the epic's stated
-  purpose?")** — delivered artifact vs. the original aim and acceptance criteria; bar is excellent,
-  not passing. Wire it to block epic acceptance.
+- **pauli — premise** — the standard the review affirms: _The idea is sound, elegant, and strongly
+  aligned with the project's strategic aims when evaluated in the full context._ Emit as an early
+  blocking task: the rest of the epic's work depends on it clearing. There is no separate "premise
+  gate" to invoke — this task IS the mechanism.
+- **rbg — rules** — did the changes violate any rules? Boundary review of the task contract and
+  handback only (inputs/outputs, never the transcript). Wire it to block epic acceptance.
+- **marsha — QA, post-hoc** — are the changes high-quality and do they achieve the epic's stated
+  purpose? Delivered artifact vs. the original aim and acceptance criteria; bar is excellent, not
+  passing. Wire it to block epic acceptance.
+
+**The review-task body is minimal — it points, it does not prescribe.** Each of the three tasks you
+emit carries only: the subject to review (the epic / chunk id) and an instruction to invoke the
+relevant review skill for that lens and apply its standard **as written**. You do not restate,
+narrow, expand, or invent review criteria, and you do not design a bespoke review cycle — the
+standard lives in the review skill, and the task's whole job is to send the assigned agent to it.
+Use this shape verbatim for each emitted review task's body:
+
+```markdown
+Review <subject: epic/chunk id + one-line what> against the <pauli premise | rbg rules | marsha QA>
+lens by invoking that lens's review skill (pauli → `/strategic-review`; rbg → the rbg axiom review;
+marsha → `/verify`). Apply the skill's standard as written — add no criteria here.
+```
 
 **Altitude is your call.** High-risk/wide-blast-radius work gets per-chunk instances of rbg and
 marsha, each wired with `depends_on` at its own juncture; low-risk/narrow-blast-radius work gets
