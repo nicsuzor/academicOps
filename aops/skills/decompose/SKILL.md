@@ -31,8 +31,7 @@ Answer these against the epic, in the task body, before touching the DAG:
    dependency edges) — is that maintenance cost worth the benefit?
 
 If it doesn't survive, **record why and halt** — leave the task as one dispatchable unit (`brief`
-handles it directly). Standing rationale: [[mem-231996ac]] (no-shitty-NLP corollary),
-[[aops-8d4a2e14]] (primary-catch intent), [[aops-8c7f7b88]] (arch-fit backstop).
+handles it directly).
 
 ## Step 1 — cut the DAG
 

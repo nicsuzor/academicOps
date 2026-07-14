@@ -10,18 +10,16 @@ agent: pauli
 # Situate — Strategic Intake & Valuation
 
 Turn a hydrated ask into **one** high-level task placed on the graph, valued, and marked
-`needs_decomposition` — nothing more. This is stage 3 of the [[00-pipeline]] workflow system: it
-runs every time hydrate hands off a non-trivial ask, and it stops the instant the task is placed.
-Decomposing that task into subtasks is a different kind of knowledge (process architecture) done
-at a different time (when the epic comes due) by a different skill — [[decompose]].
+`needs_decomposition` — nothing more. Stage 3 of the [[00-pipeline]]: runs every time hydrate hands
+off a non-trivial ask, and stops the instant the task is placed. Subtask creation is [[decompose]]'s
+job, at a later stage.
 
 ## Disposition
 
 **Effectual strategist.** Plans are hypotheses, not commitments. Under genuine uncertainty,
 probe-learn-adapt: surface what you're assuming, don't demand full specification before placing a
 fragment, and let the estimate be wrong and revised rather than stall on getting it right the first
-time. You are placing and valuing — not building the plan under this task; that's the next agent's
-job, at the next stage.
+time.
 
 ## Input: the context bundle
 

@@ -335,77 +335,14 @@ Use appropriate test type for the validation:
 
 ### Follow Single-Step Testing Workflow
 
-**Step 1: Identify what to test**
+Work one step at a time, checkpointing with the user between each:
 
-Review the model and ask:
+1. **Identify what to test** — which columns should never be null, must be unique, have accepted-value lists, or carry date/range logic. STOP; agree the test plan with the user.
+2. **Add declarative schema tests** alongside the model. STOP; show to user.
+3. **Run the tests.** STOP; report results. If failures, discuss before fixing.
+4. **Add singular/multi-column tests** for logic a column-level test can't express. STOP; show, then run and report.
 
-- Which columns should never be null?
-- Which columns should be unique?
-- Are there accepted value lists?
-- Any date range logic to validate?
-
-**STOP. Discuss with user which tests to add.**
-
-**Step 2: Add schema tests** (after user agrees on test plan)
-
-The examples below use dbt's `schema.yml` syntax to illustrate the _principle_ — column-level tests declared alongside the model. See the aops-tools `dbt` skill for the full engine-specific testing reference; any transformation engine should provide an equivalent declarative test layer.
-
-```yaml
-# dbt/schema.yml (dbt example)
-models:
-  - name: stg_cases
-    columns:
-      - name: case_id
-        tests:
-          - unique
-          - not_null
-      - name: status
-        tests:
-          - accepted_values:
-              values: ["pending", "reviewed", "published"]
-```
-
-**STOP. Show to user.**
-
-**Step 3: Run tests** (after user approves test definitions)
-
-```bash
-dbt test --select stg_cases
-```
-
-**STOP. Report results. If failures, discuss with user before fixing.**
-
-**Step 4: Add singular test if needed** (complex validation)
-
-```sql
--- tests/assert_decision_dates_logical.sql
-select
-    case_id,
-    submission_date,
-    decision_date
-from {{ ref('stg_cases') }}
-where decision_date < submission_date
-```
-
-**STOP. Show test SQL to user.**
-
-**Step 5: Run singular test**
-
-```bash
-dbt test --select test_name:assert_decision_dates_logical
-```
-
-**STOP. Report results.**
-
-### Test Severity
-
-Use `severity: warn` for known issues or aspirational standards:
-
-```yaml
-tests:
-  - not_null:
-      severity: warn # Don't fail build, just warn
-```
+The engine-specific syntax (test declarations, `severity: warn` for aspirational/known issues, run commands) lives in the aops-tools `dbt` skill.
 
 ### Pipeline/Template Validation Tests
 

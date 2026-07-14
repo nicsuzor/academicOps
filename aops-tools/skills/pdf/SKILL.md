@@ -62,54 +62,10 @@ All fonts are embedded in `assets/fonts/` and automatically loaded via the CSS s
 
 ### Style Features
 
-Two stylesheets are available:
+Two bundled stylesheets, applied automatically by the script:
 
-#### Academic Style (`assets/academic-style.css`)
-
-**Page Layout:**
-
-- A4 page size
-- 2.5cm top/bottom margins, 2cm left/right margins
-- Justified text with proper hyphenation
-- Orphan/widow control
-
-**Typography:**
-
-- 11pt body text with 1.6 line height
-- Hierarchical heading sizes (24pt → 11pt)
-- Heading borders for h1 and h2
-- Page break control (avoid breaking after headings)
-
-**Code Formatting:**
-
-- 9pt monospaced code in RobotoMono Nerd Font
-- Syntax-highlighted code blocks with left border
-- Shaded background for readability
-
-**Special Elements:**
-
-- Blockquotes with left border and italic styling
-- Professional table formatting with alternating row colors
-- Callout boxes (.note, .warning, .tip, .important)
-- Footnote support
-- Figure captions
-
-#### Letter Style (`assets/letter-style.css`)
-
-**Page Layout:**
-
-- A4 page size with same margins as academic
-- Justified body text with proper hyphenation
-
-**Typography:**
-
-- **Hidden h1 headers** - letters shouldn't show document titles
-- **Condensed header block** - Date, recipient name, title with reduced spacing (0.2em)
-- **Body paragraphs** - 11pt with 1.5 line height, justified
-- **Signature block** - Last 4 paragraphs formatted with:
-  - Closing (e.g., "Best,") with top margin
-  - 2.5em space for handwritten signature
-  - Name, title, contact info in smaller font (10pt, gray)
+- **`academic-style.css`** — A4, justified text with hyphenation, hierarchical bordered headings, syntax-highlighted code blocks, tables, callout boxes (`.note`, `.warning`, `.tip`, `.important`), footnotes, figure captions.
+- **`letter-style.css`** — hides the h1 title, condenses the recipient header block, and formats a signature block (space for a handwritten signature; name/title/contact in smaller gray text). Assumes the structure below.
 
 **Letter Structure Assumptions:**
 
@@ -209,44 +165,12 @@ When a user requests PDF generation:
 
 ## Common Patterns
 
-### Standard Academic Document
-
-```bash
-uv run python scripts/generate_pdf.py thesis-chapter.md --title "Chapter 3: Methodology"
-```
-
-### Reference Letter or Formal Letter
-
-```bash
-# Auto-detection will use letter style
-uv run python scripts/generate_pdf.py reference-letter.md
-
-# Or explicit
-uv run python scripts/generate_pdf.py letter.md --type letter
-```
-
-### Multiple Documents
+The Quick Start invocations cover single documents. To batch a directory:
 
 ```bash
 for file in reviews/lucinda/*.md; do
   uv run python scripts/generate_pdf.py "$file"
 done
-```
-
-### Override Auto-Detection
-
-```bash
-# Force academic style even if it looks like a letter
-uv run python scripts/generate_pdf.py document.md --type academic
-
-# Force letter style even with h1 heading
-uv run python scripts/generate_pdf.py document.md --type letter
-```
-
-### Custom Title Override
-
-```bash
-uv run python scripts/generate_pdf.py document.md output.pdf --title "Professional Title"
 ```
 
 ## Troubleshooting
@@ -279,47 +203,8 @@ sudo apt install pandoc
 brew install pandoc
 ```
 
-## Resources
+## Bundled Resources
 
-### assets/academic-style.css
-
-Professional stylesheet for research documents with:
-
-- Complete `@font-face` declarations for bundled fonts
-- Academic typography optimized for readability
-- Responsive heading hierarchy with visible h1
-- Code block styling
-- Table formatting
-- Blockquote and callout box styles
-- Print-specific optimizations
-
-### assets/letter-style.css
-
-Professional stylesheet for formal correspondence with:
-
-- Same font declarations as academic style
-- **Hidden h1 headers** (letters shouldn't show document titles)
-- **Condensed header spacing** for recipient info
-- **Signature block formatting** with space for handwritten signature
-- Body text optimized for letter format
-- Assumes specific letter structure (see Letter Style section)
-
-### assets/fonts/
-
-Embedded Roboto font family:
-
-- `Roboto-Regular.ttf`, `Roboto-Bold.ttf`, `Roboto-Italic.ttf`, `Roboto-BoldItalic.ttf`
-- `Roboto-Light.ttf`, `Roboto-Medium.ttf`
-- `RobotoMonoNerdFont-Regular.ttf`, `RobotoMonoNerdFont-Bold.ttf`, `RobotoMonoNerdFont-Italic.ttf`
-
-### scripts/generate_pdf.py
-
-Python script that wraps pandoc with intelligent defaults:
-
-- **Auto-detects document type** (letter vs academic) from content
-- Automatically applies appropriate stylesheet
-- Derives title from filename if not specified
-- Handles output path resolution
-- Provides clear error messages
-- Supports `--type` override for manual control
-- Can be imported as a module for programmatic use
+- **`assets/academic-style.css`**, **`assets/letter-style.css`** — the two stylesheets (see Style Features above).
+- **`assets/fonts/`** — embedded Roboto family (Regular/Bold/Italic/Light/Medium) plus RobotoMono Nerd Font; loaded via `@font-face`, no system install needed.
+- **`scripts/generate_pdf.py`** — pandoc wrapper: auto-detects document type, applies the stylesheet, derives the title, resolves the output path, supports `--type` override, and can be imported as a module.

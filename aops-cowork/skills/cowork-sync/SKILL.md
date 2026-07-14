@@ -121,7 +121,3 @@ for t in tasks:
 | `complete_task` fails with terminal state error | Row already updated   | Ignore and continue.                                       |
 | Sync call failed mid-session                    | Server disconnect     | Final reconciliation at session close will correct status. |
 | Native task cancelled (`deleted`)               | Task aborted          | Do not sync to PKB.                                        |
-
-## Platform Scope
-
-This skill is exclusive to the cowork build of `aops-core`. Keep files clean of other platform references.

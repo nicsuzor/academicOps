@@ -10,7 +10,7 @@ agent: marsha
 
 Conduct rigorous QA reviews of artifacts to ensure correctness, complete implementation, and fitness for purpose.
 
-**Personality binding — earmarking.** This skill is earmarked to `marsha`: the "assume it's broken" default posture below (Core Directives) is a direct expression of her broken-until-proven-otherwise judgment register (`specs/agents/marsha.md`), not a generic QA checklist any agent could apply as well. Another agent could technically execute the steps, but the disposition the steps depend on — refusing to credit an artifact until it's independently proven, holding the line against agents' default eagerness to declare victory — is marsha's, and running this skill under a different disposition would silently soften the bar it's designed to hold.
+**Personality binding — earmarking.** This skill is earmarked to `marsha`: the "assume it's broken" posture below (Core Directives) is a direct expression of her broken-until-proven-otherwise judgment register. Running it under a different disposition would silently soften the bar it's designed to hold.
 
 ## Step 0 — Premise Test (forced; runs BEFORE you read the diff)
 

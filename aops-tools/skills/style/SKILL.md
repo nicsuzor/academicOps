@@ -315,52 +315,5 @@ Include instructions on how to use the guide:
 
 ## Key Principles for LLM Execution
 
-### Be Specific and Concrete
-
-- Quote exact phrases from their writing samples
-- Identify specific word choices, not general tendencies
-- Create actionable guidance, not abstract descriptions
-- Include real examples from their work
-
-### Focus on What's Unique
-
-- Don't document universal writing advice
-- Identify what makes THEIR voice distinctive
-- Look for patterns that differ from standard business/academic writing
-- Note what they consistently do differently from common approaches
-
-### Make It Practical
-
-- Every guideline should be actionable
-- Include specific alternatives to avoid generic advice
-- Provide context for when different approaches apply
-- Create checklists and reference lists for easy use
-
-### Test Thoroughly
-
-- The test writing phase is crucial - don't skip it
-- Be receptive to feedback and willing to revise significantly
-- Continue testing until they confirm authenticity
-- Focus on specific, concrete feedback rather than general impressions
-
-### Document Evolution
-
-- Note that writing styles evolve over time
-- Include version numbers and update dates
-- Suggest regular review and refinement
-- Build in flexibility for natural voice development
-
----
-
-## Success Metrics
-
-The style guide is successful when:
-
-- The user confirms test writing "sounds like them"
-- AI tools produce authentic-sounding content using the guide
-- The guide includes specific, actionable guidance (not generic advice)
-- Examples clearly demonstrate the voice characteristics
-- Anti-patterns prevent common mistakes that would sound inauthentic
-- The guide works across different contexts and formats they write in
-
-You have now created a comprehensive personal writing style guide that captures their authentic voice and enables consistent, natural-sounding content creation.
+- **Focus on what's unique.** Don't document universal writing advice — capture only what makes THIS voice distinctive and differs from standard business/academic writing.
+- **Test thoroughly.** The test-writing phase (Phase 4) is crucial — don't skip it. Continue testing and revising until the user confirms the output authentically sounds like them.

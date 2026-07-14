@@ -14,13 +14,11 @@ perspectives and return **one reconciled verdict**. Owned by **james** (reconcil
 subagent cannot spawn its own subagents. James is called only at the end, to reconcile.
 
 **Personality binding — earmarking (reconciliation step only).** James's step (§3) is bound to
-`james` specifically because compositional reconciliation of contradictory reviewer findings into
-one honest verdict _is_ james's judgment register (`specs/agents/james.md` — The Orchestrator) —
-not an arbitrary assignment that happened to route around the no-nested-spawning constraint. The
-rest of this skill (context gathering, dispatch) is personality-agnostic: `rbg`, `pauli`, and
-`marsha` in §2 are named for the distinct **judgment registers a review must apply** (axiom
-compliance, strategic fit, runtime QA — see `specs/agents/agents.md` §Personalities Are Not
-Skills), not as an exclusive roster; any agent embodying the equivalent disposition could stand in.
+`james`: reconciling contradictory reviewer findings into one honest verdict _is_ james's judgment
+register. The rest (context gathering, dispatch) is personality-agnostic; `rbg`, `pauli`, and
+`marsha` in §2 name the distinct **judgment registers a review must apply** (axiom compliance,
+strategic fit, runtime QA), not an exclusive roster — any agent embodying the equivalent
+disposition could stand in.
 
 ## Inputs
 
@@ -130,4 +128,4 @@ full verdict to chat.
 
 ## Epistemic humility — absence of evidence is not a negative result
 
-Missing evidence licenses _"not supported by the available evidence"_ — never _"false / failed / did not happen."_ A negative verdict requires a held falsifier the reviewer actually holds; where ground truth is unobservable (intent, off-record events, room dynamics), downgrade to **ADVISORY (needs primary-source confirmation)**. Silence in a record is not failure. Apply the same discount symmetrically to flattering and unflattering claims alike. (Source incident: #1891.)
+Missing evidence licenses _"not supported by the available evidence"_ — never _"false / failed / did not happen."_ A negative verdict requires a held falsifier the reviewer actually holds; where ground truth is unobservable (intent, off-record events, room dynamics), downgrade to **ADVISORY (needs primary-source confirmation)**. Silence in a record is not failure. Apply the same discount symmetrically to flattering and unflattering claims alike.

@@ -90,7 +90,7 @@ State PKB write details directly: tool used, note title, returned ID. Do not exp
 
 ## Maintenance Mode (`/sleep`)
 
-**Personality binding — permission-control.** Immediate Mode above is personality-agnostic — any agent holding ordinary PKB write tools (`create`, `create_memory`, `append`, `search`) can run it, and several do (e.g. Ida captures durable facts inline via this mode). Maintenance Mode is different: consolidation (duplicate merging, reparenting, reclassification — `batch_merge`, `merge_node`, `batch_reparent`, `batch_reclassify`, `batch_archive`) is earmarked to `pauli`, because only `pauli`'s agent frontmatter grants the PKB graph-mutation tool surface these operations call (`specs/agents/pauli.md` — "sole graph-shaper"; see also `planner/SKILL.md`'s identical binding). A GHA-triggered run of this mode runs as pauli for that reason.
+**Personality binding — permission-control.** Immediate Mode is personality-agnostic — any agent holding ordinary PKB write tools (`create`, `create_memory`, `append`, `search`) can run it. Maintenance Mode consolidation (`batch_merge`, `merge_node`, `batch_reparent`, `batch_reclassify`, `batch_archive`) requires `pauli`'s graph-mutation tools; a GHA-triggered run of this mode runs as pauli.
 
 The canonical home of the former `/sleep` skill. Runs periodic offline consolidation on a GHA workflow or manual trigger.
 

@@ -12,10 +12,8 @@ agent: pauli
 # Graph Maintenance Skill
 
 Custodian of the PKB graph's **structure**, not its strategy: edge density (Wire) and structural
-health (Garden/Maintain). Carved out of `planner`'s Wire and Maintain modes — `planner`'s
-capture/plan/decompose modes moved to [[skills-situate]] and [[skills-decompose]]; this skill
-covers what's left. Do not resurrect capture, plan, decompose, or explore here — route those asks
-to situate/decompose instead of handling them inline.
+health (Garden/Maintain). Do not resurrect capture, plan, decompose, or explore here — route those
+asks to [[skills-situate]] / [[skills-decompose]] instead of handling them inline.
 
 ## Disposition
 
@@ -76,9 +74,8 @@ focus scores and inverts the priority queue. Canonical scale:
 ## Must not
 
 - Capture, plan, or decompose a task — that's [[skills-situate]] / [[skills-decompose]]. (Pure
-  think-out-loud ideation that creates nothing needs no dedicated skill — it's an ordinary
-  conversational turn; when it converges on something worth keeping, hand the result to `hydrate`
-  → `situate`. The old planner's standalone "Explore" mode is retired, not rehomed.)
+  think-out-loud ideation that creates nothing needs no dedicated skill; when it converges on
+  something worth keeping, hand the result to `hydrate` → `situate`.)
 - Write delegation briefs or dispatch work — that's `brief`.
 - Assign or suggest `priority` — that's Nic's personally curated intent, never this skill's
   estimate, however important a target looks.

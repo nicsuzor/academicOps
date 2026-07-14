@@ -28,7 +28,7 @@ If the user gives you a URL and asks to "capture", go straight to capture — no
 
 ## Prerequisites
 
-- `rclone` installed with a configured Google Drive remote named `gdrive`. To configure: `rclone config` → `n` (new) → name `gdrive` → type `drive` → accept defaults → authorise via browser URL. Verify with `rclone lsd gdrive:` (should not error).
+- `rclone` installed with a configured Google Drive remote named `gdrive` (`rclone config` → new remote of type `drive`). Verify with `rclone lsd gdrive:` (should not error).
 - Capture relies on `rclone` for download, `unzip` for image extraction from `.docx` exports, and your own vision capability for alt-text transcription. **Never** route image transcription through an external service — the agent transcribes, the user verifies.
 
 ## Process
@@ -52,13 +52,6 @@ Follow [[pkb-capture]]. Short version:
 - Filename convention: `<common-theme>-<task-id>-<slug>.md` when multiple briefs form a set (e.g. `pkb-weight-<task-id-1>-edge-elicitation.md`); a single standalone brief uses `<topic>-<task-id>-<slug>.md`
 - Store images under `knowledge/<topic>/figures/<note-id>/<imageN>.png`
 - Update the sourcing task: set `research_output: <note-id>`, add `**Captured**: <date> to [[<note-id>]]`, and mark `done` if acceptance criteria are met
-
-## Reference Files
-
-| Task                                                 | Reference            |
-| ---------------------------------------------------- | -------------------- |
-| Writing a new deep-research prompt                   | [[prompt-authoring]] |
-| Downloading + ingesting a finished research document | [[pkb-capture]]      |
 
 ## Guardrails
 

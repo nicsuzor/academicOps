@@ -18,10 +18,9 @@ never touch the work's substance yourself.
 ## Hard rule — the composer is not the executor
 
 **The agent identity that writes this brief must not, in the same invocation, be the agent identity
-that executes the subtask.** Same-context self-instruction has been observed not to bind: an agent
+that executes the subtask.** Same-context self-instruction does not reliably bind: an agent
 that has just reasoned its way to a plan inline will act on that reasoning trace directly and skip
-the discipline the brief exists to impose (see [`references/authoring-discipline.md`](references/authoring-discipline.md) §3
-for the incident record this rule comes from). Concretely:
+the discipline the brief exists to impose. Concretely:
 
 - Compose the brief, persist it to the task body, then dispatch **by task-id reference** — hand the
   executor a task id, never the freshly-composed brief text inlined as a prompt. The executor's

@@ -262,16 +262,6 @@ When adding examples to public framework docs:
 
 **Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 
-### Skill Composition
-
-```
-/extract → analyze input → route to:
-  - /remember (for archival preservation)
-  - /decision-extract (for pending decisions)
-  - training-data workflow (for LLM training data)
-  - document-knowledge workflow (for general extraction)
-```
-
 ## Error Handling
 
 | Scenario                       | Behavior                                                 |
@@ -281,51 +271,6 @@ When adding examples to public framework docs:
 | Ambiguous feedback             | Flag with `"quality": "ambiguous"`, include with caveats |
 | No clear extraction value      | Ask user if they want to skip or force extraction        |
 | Storage location unclear       | Default to `$ACA_DATA/processed/`, confirm with user     |
-
-## Examples
-
-### Example 1: Peer Review Extraction
-
-**Input**: DOCX file with inline comments from peer review
-
-**User**: `/extract /path/to/review.docx --type peer-review`
-
-**Agent**:
-
-1. Detects inline comments → routes to review-inline-comments workflow
-2. Converts DOCX with `pandoc --track-changes=all`
-3. Extracts 18 feedback units
-4. Identifies 10 generalisable principles
-5. Stores sensitive data in `$ACA_DATA/processed/review_training/aoir2026/`
-6. Updates `aops-core/skills/hydrator/workflows/peer-review.md` with depersonalized principles
-
-### Example 2: Email Archive
-
-**Input**: Directory of email MSG files
-
-**User**: `/extract emails/2025-Q1/ --type archive`
-
-**Agent**:
-
-1. Detects email archive → routes to extractor skill logic
-2. Processes each email, applies judgment criteria
-3. Extracts significant events/relationships
-4. Uses `/remember` to store in PKB
-5. Skips 90% of emails as noise
-
-### Example 3: Auto-Detection
-
-**Input**: Mixed documents without type specified
-
-**User**: `/extract documents/`
-
-**Agent**:
-
-1. Analyzes each document
-2. Detects: 2 peer reviews (tracked changes), 5 emails, 1 grant application
-3. Routes peer reviews → training-data workflow
-4. Routes emails → archive extraction
-5. Asks user about grant application (unclear extraction goal)
 
 ## Validation Checklist
 
@@ -354,11 +299,3 @@ Before completing extraction:
 - [ ] Extraction process documented
 - [ ] Decisions and ambiguities noted
 - [ ] Collection summary created
-
-## Future Enhancements
-
-- Semi-automated pattern detection
-- Batch processing for multiple documents
-- Integration with continuous ingestion pipeline
-- Quality metrics and validation tools
-- Cross-collection pattern analysis
