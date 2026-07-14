@@ -93,11 +93,14 @@ def main():
                             f.write(f"export {key}={shlex.quote(value)}\n")
                 except Exception as e:
                     print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
+            output = {
+                    "systemMessage": "aOps plugin loaded."}
         elif event == "Stop":
             if not raw_input.get("stop_hook_active"):
                 output = {
                     # "decision": "block",
                     # "reason": reminder_content,
+                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": reminder_content,
@@ -108,6 +111,7 @@ def main():
                 output = {
                     # "decision": "block",
                     # "reason": verify_content,
+                    "systemMessage": "≡ **Before you hand back — be honest and useful.**",
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": verify_content,
@@ -115,6 +119,7 @@ def main():
                 }
         elif event == "UserPromptSubmit":
             output = {
+                    "systemMessage": "≡ **Don't forget to hydrate.**",
                 "hookSpecificOutput": {"hookEventName": event, "additionalContext": hydrate_content}
             }
 
