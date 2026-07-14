@@ -206,8 +206,8 @@ jobs:
           # Single Claude marketplace at the dist-branch root (sources ./dist/aops-*).
           # Gemini ships as a self-contained GitHub Release tarball, so no root
           # gemini-extension.json is published here.
-          mkdir -p dist/.claude-plugin
-          cp "${SRC}/dist/.claude-plugin/marketplace.json" "dist/.claude-plugin/marketplace.json"
+          mkdir -p .claude-plugin
+          cp "${SRC}/dist/marketplace-production.json" ".claude-plugin/marketplace.json"
 
           # Publish the PR-pipeline reusable workflows so external consumers can
           # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
@@ -231,6 +231,7 @@ jobs:
           git add -A
           git add -f dist
           git add -f .github/workflows
+          git add -f .claude-plugin/marketplace.json
           if git diff --cached --quiet; then
             echo "dist already in sync — nothing to publish"
           else

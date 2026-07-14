@@ -255,38 +255,82 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
         print(f"  ✓ Built {dist_dir.name} and packaged into {archive_name}")
 
 
-def generate_local_marketplace(dist_root: Path):
-    """Generate the local marketplace JSON so claude can install from dist/.
+def generate_local_marketplace(project_root: Path, dist_root: Path, version: str):
+    """Generate the LOCAL-dev Claude marketplace at dist/.claude-plugin/marketplace.json.
 
-    Only lists plugins whose dist/<name>-claude dir was actually built —
-    a plugin whose source dir doesn't exist is skipped by build_plugin(),
-    so listing it here would leave a dangling `source` entry.
+    Same plugin set as the root marketplace, but with TWO deliberate differences:
+      • name is `aops` (not `academicOps`) so `make dev` installs land in their own
+        marketplace/plugin namespace (`aops@aops`) — visibly distinct from the
+        released `academicOps` install.
+      • plugin sources are rewritten ./dist/aops-* → ./aops-* because THIS
+        marketplace root is dist/ (not the repo root), so a co-located ./aops-claude
+        resolves to dist/aops-claude.
     """
+    template_path = project_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    data["name"] = "aops"
+    data["description"] = (
+        "academicOps LOCAL dev build — distinct from the released 'academicOps' marketplace"
+    )
+    data["owner"] = {"name": "Local Dev"}
+
+    plugins = []
+    for plugin in data.get("plugins", []):
+        plugin["version"] = version
+        src = plugin.get("source", "")
+        if src.startswith("./dist/"):
+            dirname = src[len("./dist/"):]
+            if (dist_root / dirname).exists():
+                plugin["source"] = "./" + dirname
+                plugins.append(plugin)
+
+    data["plugins"] = plugins
 
     marketplace_dir = dist_root / ".claude-plugin"
-    marketplace_dir.mkdir(exist_ok=True)
-
-    candidates = [
-        ("aops-core", "aops-core-claude"),
-        ("aops", "aops-claude"),
-        ("aops-tools", "aops-tools-claude"),
-        ("aops-ts", "aops-ts-claude"),
-    ]
-    plugins = [
-        {"name": name, "source": f"./{dirname}"}
-        for name, dirname in candidates
-        if (dist_root / dirname).exists()
-    ]
-
-    marketplace = {
-        "name": "aops",
-        "description": "Local dev marketplace",
-        "owner": {"name": "Local Dev"},
-        "plugins": plugins,
-    }
-    with open(marketplace_dir / "marketplace.json", "w") as f:
-        json.dump(marketplace, f, indent=2)
+    marketplace_dir.mkdir(parents=True, exist_ok=True)
+    marketplace = marketplace_dir / "marketplace.json"
+    with open(marketplace, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
     print("✓ Generated local marketplace.json")
+
+
+def generate_production_marketplace(project_root: Path, dist_root: Path, version: str):
+    """Generate the production marketplace JSON to be placed at the root of the dist branch.
+
+    Loads from templates/marketplace.json, updates versions, filters to built plugins,
+    and writes to dist/marketplace-production.json.
+    """
+    template_path = project_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
+
+    with open(template_path) as f:
+        data = json.load(f)
+
+    plugins = []
+    for plugin in data.get("plugins", []):
+        plugin["version"] = version
+        src = plugin.get("source", "")
+        if src.startswith("./dist/"):
+            dirname = src[len("./dist/"):]
+            if (dist_root / dirname).exists():
+                plugins.append(plugin)
+        else:
+            plugins.append(plugin)
+
+    data["plugins"] = plugins
+
+    marketplace_file = dist_root / "marketplace-production.json"
+    with open(marketplace_file, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"✓ Generated production marketplace.json at {marketplace_file}")
 
 
 def get_project_version(project_root: Path) -> str:
@@ -375,7 +419,8 @@ def main():
             continue
         build_plugin(plugin, src_dir, dist_root, version)
 
-    generate_local_marketplace(dist_root)
+    generate_local_marketplace(project_root, dist_root, version)
+    generate_production_marketplace(project_root, dist_root, version)
 
 
 if __name__ == "__main__":
