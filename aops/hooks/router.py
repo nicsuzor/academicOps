@@ -6,6 +6,8 @@ Injects ida-reminder.md and ida-hydrate.md for Claude Code and Antigravity.
 
 import argparse
 import json
+import os
+import shlex
 import sys
 from pathlib import Path
 
@@ -60,7 +62,38 @@ def main():
         elif event == "PreInvocation":
             output = {"injectSteps": [{"ephemeralMessage": hydrate_content}]}
     elif client == "claude":
-        if event == "Stop":
+        if event == "SessionStart":
+            # Copy basic env vars to the Claude session via CLAUDE_ENV_FILE
+            env_file = os.environ.get("CLAUDE_ENV_FILE")
+            if env_file:
+                basic_vars = [
+                    "AOPS_SESSIONS",
+                    "AOPS_BOT_GH_TOKEN",
+                    "PKB_MCP_URL",
+                    "PKB_MCP_TOOL_PREFIX"
+                ]
+                persist = {}
+                session_id = raw_input.get("session_id") or raw_input.get("conversationId")
+                if session_id:
+                    persist["AOPS_SESSION_ID"] = session_id
+                
+                for var in basic_vars:
+                    val = os.environ.get(var)
+                    if val is not None:
+                        persist[var] = val
+                
+                bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
+                if bot_token:
+                    persist.setdefault("GH_TOKEN", bot_token)
+                    persist.setdefault("GITHUB_TOKEN", bot_token)
+                
+                try:
+                    with open(env_file, "a") as f:
+                        for key, value in persist.items():
+                            f.write(f"export {key}={shlex.quote(value)}\n")
+                except Exception as e:
+                    print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
+        elif event == "Stop":
             if not raw_input.get("stop_hook_active"):
                 output = {
                     "decision": "block",
